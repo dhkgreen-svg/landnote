@@ -321,6 +321,9 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
       max_budget: 10000,
       customer_name: `김고객`,
       customer_phone: `010-1111-2222`,
+      customer_email: 'test@example.com',
+      detailed_conditions: { max_budget: 10000 },
+      images: [],
       created_at: new Date().toISOString(),
     };
 
