@@ -16,7 +16,7 @@ import {
   REQUIRED_PRICE_FIELDS,
 } from '@landnote/shared';
 import type { CategoryCode, TransactionType } from '@landnote/shared';
-import { X, Upload, Loader2 } from 'lucide-react';
+import { X, Upload, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { AddressSearch } from '@/components/address-search';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -106,30 +106,20 @@ export default function NewListingPage() {
 
   const agentCategories = agent?.selected_categories ?? [];
 
-  const toggleCategory = (code: string) => {
-    setCategoryCodes(prev =>
-      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code],
-    );
-    setSubcategoryCodes([]);
-    setTags([]);
+  const toggleCategorySelection = (mainCode: string, subCode: string, item: string) => {
+    // Single selection for listing registration
+    setCategoryCodes([mainCode]);
+    setSubcategoryCodes([subCode]);
+    setTags([item]);
   };
+  
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
-  const toggleTransactionType = (type: string) => {
-    setTransactionTypes(prev =>
-      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type],
-    );
-  };
-
-  const toggleSubcategory = (code: string) => {
-    setSubcategoryCodes(prev =>
-      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code],
-    );
-  };
-
-  const toggleTag = (tag: string) => {
-    setTags(prev =>
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag],
-    );
+  const toggleExpandedGroup = (subCode: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [subCode]: !prev[subCode]
+    }));
   };
 
   const requiredPriceFields = transactionTypes.flatMap(
@@ -204,16 +194,7 @@ export default function NewListingPage() {
     }
   };
 
-  // Subcategory options for selected categories
-  const subcategoryOptions: { code: string; label: string; tags: string[] }[] = [];
-  for (const cat of categoryCodes) {
-    const subs = SUBCATEGORIES[cat as CategoryCode];
-    if (subs) {
-      for (const [subCode, subTags] of Object.entries(subs)) {
-        subcategoryOptions.push({ code: subCode, label: SUBCATEGORY_LABELS[subCode] ?? subCode, tags: subTags });
-      }
-    }
-  }
+
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -223,56 +204,85 @@ export default function NewListingPage() {
       <Card>
         <CardHeader><CardTitle className="text-lg">카테고리</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {agentCategories.map(code => (
-              <Button
-                key={code}
-                variant={categoryCodes.includes(code) ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => toggleCategory(code)}
-              >
-                {CATEGORY_LABELS[code] ?? code}
-              </Button>
-            ))}
+          <div className="space-y-6">
+            {Object.entries(CATEGORY_LABELS).map(([mainCode, mainLabel]) => {
+              const groups = SUBCATEGORIES[mainCode as keyof typeof SUBCATEGORIES] || {};
+              
+              // Filter to only groups that contain AT LEAST ONE item the agent handles
+              const allowedGroups = Object.entries(groups).filter(([subCode, subItems]) => 
+                subItems.some(item => agentCategories.includes(item))
+              );
+              
+              if (allowedGroups.length === 0) return null;
+
+              return (
+                <div key={mainCode} className="space-y-4">
+                  <h3 className="font-bold text-base text-foreground border-b pb-2">{mainLabel}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {allowedGroups.map(([subCode, subItems]) => {
+                      const allowedItems = subItems.filter(item => agentCategories.includes(item));
+                      const isExpanded = !!expandedGroups[subCode];
+                      const hasSelectedItems = allowedItems.some(item => tags.includes(item));
+                      
+                      return (
+                        <div key={subCode} className="bg-white rounded-lg border shadow-sm overflow-hidden transition-all duration-200">
+                          <button
+                            type="button"
+                            onClick={() => toggleExpandedGroup(subCode)}
+                            className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-foreground/90 text-sm">
+                                {SUBCATEGORY_LABELS[subCode] || subCode}
+                              </span>
+                              {hasSelectedItems && (
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                                  ✓
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-muted-foreground transition-transform duration-200">
+                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            </div>
+                          </button>
+
+                          {isExpanded && (
+                            <div className="p-4 pt-0 border-t bg-muted/10">
+                              <div className="flex flex-wrap gap-2 mt-4">
+                                {allowedItems.map((item) => {
+                                  const isSelected = tags.includes(item);
+                                  return (
+                                    <Button
+                                      key={item}
+                                      variant={isSelected ? 'default' : 'outline'}
+                                      size="sm"
+                                      type="button"
+                                      className={`rounded-lg transition-all duration-150 ${
+                                        isSelected 
+                                          ? 'shadow-sm ring-2 ring-primary ring-offset-1' 
+                                          : 'bg-white hover:bg-muted/50 hover:shadow-sm'
+                                      }`}
+                                      onClick={() => toggleCategorySelection(mainCode, subCode, item)}
+                                    >
+                                      {item}
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-
-          {subcategoryOptions.length > 0 && (
-            <>
-              <Label>세부 분류</Label>
-              <div className="flex flex-wrap gap-2">
-                {subcategoryOptions.map(sub => (
-                  <Button
-                    key={sub.code}
-                    variant={subcategoryCodes.includes(sub.code) ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => toggleSubcategory(sub.code)}
-                  >
-                    {sub.label}
-                  </Button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {subcategoryCodes.length > 0 && (
-            <>
-              <Label>태그</Label>
-              <div className="flex flex-wrap gap-1">
-                {subcategoryOptions
-                  .filter(s => subcategoryCodes.includes(s.code))
-                  .flatMap(s => s.tags)
-                  .map(tag => (
-                    <Badge
-                      key={tag}
-                      variant={tags.includes(tag) ? 'default' : 'outline'}
-                      className="cursor-pointer"
-                      onClick={() => toggleTag(tag)}
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
-              </div>
-            </>
+          {agentCategories.length === 0 && (
+            <div className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg text-center">
+              대시보드 환경설정에서 취급 카테고리를 먼저 설정해주세요.
+            </div>
           )}
         </CardContent>
       </Card>

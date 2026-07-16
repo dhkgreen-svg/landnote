@@ -12,7 +12,7 @@ import { apiFetch } from '@/lib/api';
 import { CATEGORY_CODE, PLAN_LIMITS, PLAN_PRICE, SUBCATEGORIES, SUBCATEGORY_LABELS } from '@landnote/shared';
 import { BillingRegisterButton } from '@/components/dashboard/BillingRegisterButton';
 import { UpgradeModal } from '@/components/dashboard/UpgradeModal';
-import { Lock } from 'lucide-react';
+import { Lock, ChevronDown, ChevronRight } from 'lucide-react';
 
 const CATEGORY_LABELS: Record<string, string> = {
   residential: '주거', commercial: '상업', industrial: '산업', land: '토지',
@@ -44,6 +44,15 @@ export default function SettingsPage() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelMsg, setCancelMsg] = useState('');
   const [showUpgrade, setShowUpgrade] = useState(false);
+  
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  const toggleExpandedGroup = (subCode: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [subCode]: !prev[subCode]
+    }));
+  };
 
   useEffect(() => {
     if (agent) {
@@ -199,54 +208,84 @@ export default function SettingsPage() {
             {Object.entries(CATEGORY_LABELS).map(([mainCode, mainLabel]) => {
               const groups = SUBCATEGORIES[mainCode as keyof typeof SUBCATEGORIES] || {};
               return (
-                <div key={mainCode} className="space-y-2">
-                  <h3 className="font-semibold text-sm text-foreground/80">{mainLabel}</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(groups).map(([subCode, subItems]) => (
-                      <div key={subCode} className="mb-4">
-                        <h4 className="text-xs font-semibold text-muted-foreground mb-2">
-                          {SUBCATEGORY_LABELS[subCode] || subCode}
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {subItems.map((item) => {
-                            const isSelected = selectedCats.includes(item);
-                            
-                            // Calculate if selecting this new subcategory would exceed the top-level category limit
-                            const currentTopLevelCats = new Set<string>();
-                            selectedCats.forEach(cat => {
-                              for (const [top, subs] of Object.entries(SUBCATEGORIES)) {
-                                if (Object.values(subs).some(arr => arr.includes(cat))) {
-                                  currentTopLevelCats.add(top);
-                                  break;
-                                }
-                              }
-                            });
-                            
-                            const wouldExceedLimit = !currentTopLevelCats.has(mainCode) && currentTopLevelCats.size >= limits.max_categories;
-                            const isLocked = !isSelected && wouldExceedLimit && plan === 'starter';
+                <div key={mainCode} className="space-y-4">
+                  <h3 className="font-bold text-base text-foreground border-b pb-2">{mainLabel}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {Object.entries(groups).map(([subCode, subItems]) => {
+                      const isExpanded = !!expandedGroups[subCode];
+                      const hasSelectedItems = subItems.some(item => selectedCats.includes(item));
+                      
+                      return (
+                        <div key={subCode} className="bg-white rounded-lg border shadow-sm overflow-hidden transition-all duration-200">
+                          <button
+                            type="button"
+                            onClick={() => toggleExpandedGroup(subCode)}
+                            className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-foreground/90 text-sm">
+                                {SUBCATEGORY_LABELS[subCode] || subCode}
+                              </span>
+                              {hasSelectedItems && (
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                                  {subItems.filter(item => selectedCats.includes(item)).length}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-muted-foreground transition-transform duration-200">
+                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            </div>
+                          </button>
 
-                            return (
-                              <Button
-                                key={item}
-                                variant={isSelected ? 'default' : isLocked ? 'ghost' : 'outline'}
-                                size="sm"
-                                className={isLocked ? 'opacity-50 cursor-not-allowed' : ''}
-                                onClick={() => {
-                                  if (isLocked) {
-                                    setShowUpgrade(true);
-                                  } else {
-                                    toggleCategory(item);
-                                  }
-                                }}
-                              >
-                                {item}
-                                {isLocked && <Lock className="ml-1 h-3 w-3" />}
-                              </Button>
-                            );
-                          })}
+                          {isExpanded && (
+                            <div className="p-4 pt-0 border-t bg-muted/10">
+                              <div className="flex flex-wrap gap-2 mt-4">
+                                {subItems.map((item) => {
+                                  const isSelected = selectedCats.includes(item);
+                                  
+                                  // Calculate if selecting this new subcategory would exceed the top-level category limit
+                                  const currentTopLevelCats = new Set<string>();
+                                  selectedCats.forEach(cat => {
+                                    for (const [top, subs] of Object.entries(SUBCATEGORIES)) {
+                                      if (Object.values(subs).some(arr => arr.includes(cat))) {
+                                        currentTopLevelCats.add(top);
+                                        break;
+                                      }
+                                    }
+                                  });
+                                  
+                                  const wouldExceedLimit = !currentTopLevelCats.has(mainCode) && currentTopLevelCats.size >= limits.max_categories;
+                                  const isLocked = !isSelected && wouldExceedLimit && plan === 'starter';
+
+                                  return (
+                                    <Button
+                                      key={item}
+                                      variant={isSelected ? 'default' : isLocked ? 'ghost' : 'outline'}
+                                      size="sm"
+                                      className={`rounded-lg transition-all duration-150 ${
+                                        isSelected 
+                                          ? 'shadow-sm ring-2 ring-primary ring-offset-1' 
+                                          : isLocked ? 'opacity-50 cursor-not-allowed bg-transparent border-transparent' : 'bg-white hover:bg-muted/50 hover:shadow-sm'
+                                      }`}
+                                      onClick={() => {
+                                        if (isLocked) {
+                                          setShowUpgrade(true);
+                                        } else {
+                                          toggleCategory(item);
+                                        }
+                                      }}
+                                    >
+                                      {item}
+                                      {isLocked && <Lock className="ml-1 h-3 w-3" />}
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );
