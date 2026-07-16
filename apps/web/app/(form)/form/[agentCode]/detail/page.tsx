@@ -1,9 +1,10 @@
 'use client'; // trigger fast refresh 1 // trigger fast refresh 3
 
 import { useRouter, useParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useFormStore } from '@/lib/stores/form-store';
 import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { FormProgress } from '../Step1Client';
 import { CATEGORY_LABELS, SUBCATEGORIES, SUBCATEGORY_LABELS } from '@landnote/shared';
@@ -39,6 +40,14 @@ export default function DetailPage() {
   const params = useParams();
   const agentCode = params.agentCode as string;
   const store = useFormStore();
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroup = (subcatCode: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [subcatCode]: !prev[subcatCode]
+    }));
+  };
 
   useEffect(() => {
     if (!store.inquiry_type || store.category_codes.length === 0) {
@@ -82,39 +91,63 @@ export default function DetailPage() {
                 {CATEGORY_LABELS[catCode as CategoryCode] ?? catCode}
               </h3>
 
-              {Object.entries(groups).map(([subcatCode, subItems]) => (
-                <div key={subcatCode} className="mb-4">
-                  <h4 className="text-sm font-semibold text-muted-foreground mb-2 px-1">
-                    {SUBCATEGORY_LABELS[subcatCode] ?? subcatCode}
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {subItems.map(item => {
-                      const isSubcatSelected = store.subcategory_codes.includes(item);
-                      return (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => {
-                            store.toggleSubcategory(item);
-                          }}
-                          className={`rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-150 ${
-                            isSubcatSelected
-                              ? 'text-white shadow-sm'
-                              : 'text-foreground/70 hover:shadow-sm'
-                          }`}
-                          style={
-                            isSubcatSelected
-                              ? { backgroundColor: colors?.bg ?? 'hsl(220, 91%, 54%)' }
-                              : { backgroundColor: 'white' }
-                          }
-                        >
-                          {item}
-                        </button>
-                      );
-                    })}
+              {Object.entries(groups).map(([subcatCode, subItems]) => {
+                const isExpanded = !!expandedGroups[subcatCode];
+                const hasSelectedItems = subItems.some(item => store.subcategory_codes.includes(item));
+                
+                return (
+                  <div key={subcatCode} className="mb-4 bg-white rounded-lg border shadow-sm overflow-hidden transition-all duration-200">
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(subcatCode)}
+                      className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground/90">
+                          {SUBCATEGORY_LABELS[subcatCode] ?? subcatCode}
+                        </span>
+                        {hasSelectedItems && (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                            {subItems.filter(item => store.subcategory_codes.includes(item)).length}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-muted-foreground transition-transform duration-200">
+                        {isExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                      </div>
+                    </button>
+                    
+                    {isExpanded && (
+                      <div className="p-4 pt-0 border-t bg-muted/10">
+                        <div className="flex flex-wrap gap-2 mt-4">
+                          {subItems.map(item => {
+                            const isSubcatSelected = store.subcategory_codes.includes(item);
+                            return (
+                              <button
+                                key={item}
+                                type="button"
+                                onClick={() => store.toggleSubcategory(item)}
+                                className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-150 ${
+                                  isSubcatSelected
+                                    ? 'text-white shadow-sm ring-2 ring-primary ring-offset-1'
+                                    : 'text-foreground/70 hover:shadow-sm hover:bg-white border bg-white'
+                                }`}
+                                style={
+                                  isSubcatSelected
+                                    ? { backgroundColor: colors?.bg ?? 'hsl(220, 91%, 54%)' }
+                                    : {}
+                                }
+                              >
+                                {item}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           );
         })}
