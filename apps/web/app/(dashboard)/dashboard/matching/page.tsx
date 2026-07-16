@@ -6,12 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  useMatchingInquiries,
-  useMatchResults,
-  useMarkShown,
-  useToggleLiked,
-} from '@/lib/hooks/queries';
+import { useMatchingInquiries, useMatchResults } from '@/lib/hooks/queries/use-matching';
+import { useMarkShown, useToggleLiked, useToggleContract } from '@/lib/hooks/queries/use-matching-mutations';
 import { Star, ExternalLink, Eye, StarOff, CheckCircle2 } from 'lucide-react';
 
 // ── 상수 ──────────────────────────────────────────────
@@ -58,6 +54,7 @@ export default function MatchingPage() {
   const { data: matches = [], isLoading: loadingMatches } = useMatchResults(selectedId);
   const markShown = useMarkShown(selectedId ?? '');
   const toggleLiked = useToggleLiked(selectedId ?? '');
+  const toggleContract = useToggleContract(selectedId ?? '');
 
   const totalPending = inquiries.reduce((sum, inq) => sum + inq.pending_count, 0);
 
@@ -71,6 +68,10 @@ export default function MatchingPage() {
 
   const handleToggleLiked = (matchId: string, currentLiked: boolean) => {
     toggleLiked.mutate({ matchId, currentLiked });
+  };
+
+  const handleToggleContract = (matchId: string, currentContracted: boolean) => {
+    toggleContract.mutate({ matchId, currentContracted });
   };
 
   const selectedInquiry = inquiries.find(inq => inq.id === selectedId);
@@ -293,16 +294,12 @@ export default function MatchingPage() {
                           )}
                           <Button
                             size="sm"
-                            variant="secondary"
-                            className="bg-green-100 text-green-700 hover:bg-green-200"
-                            onClick={() => {
-                              if (confirm('이 매칭으로 계약이 성사되었습니까?\n확인을 누르면 해당 매물과 고객 문의 상태가 모두 [계약 완료]로 자동 변경됩니다.')) {
-                                alert('계약 완료 처리되었습니다. (현재는 UI 테스트 모드입니다)');
-                              }
-                            }}
+                            variant={match.is_contracted ? 'default' : 'secondary'}
+                            className={match.is_contracted ? 'bg-green-600 hover:bg-green-700' : 'bg-green-50 text-green-700 hover:bg-green-100'}
+                            onClick={() => handleToggleContract(match.id, match.is_contracted)}
                           >
                             <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                            계약 성공
+                            {match.is_contracted ? '계약 성공' : '계약 여부'}
                           </Button>
                         </div>
                       </CardContent>

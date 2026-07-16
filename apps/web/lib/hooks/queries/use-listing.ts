@@ -36,6 +36,8 @@ interface ListingDetail {
   images: ListingImage[];
   status: string;
   agent_memo: string | null;
+  owner_phone: string | null;
+  contract_party_phone: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -72,6 +72,8 @@ interface ListingDetail {
   images: ListingImage[];
   status: string;
   agent_memo: string | null;
+  owner_phone: string | null;
+  contract_party_phone: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -126,6 +128,8 @@ export default function ListingDetailPage() {
   const [editAddressRoad, setEditAddressRoad] = useState('');
   const [editAddressJibun, setEditAddressJibun] = useState('');
   const [editDongName, setEditDongName] = useState('');
+  const [ownerPhone, setOwnerPhone] = useState('');
+  const [contractPartyPhone, setContractPartyPhone] = useState('');
 
   useEffect(() => {
     if (listing) {
@@ -134,6 +138,8 @@ export default function ListingDetailPage() {
       setEditAddressFull(listing.address_full ?? '');
       setEditAddressRoad(listing.address_road ?? '');
       setEditDongName(listing.dong_name ?? '');
+      setOwnerPhone(listing.owner_phone ?? '');
+      setContractPartyPhone(listing.contract_party_phone ?? '');
     }
   }, [listing]);
 
@@ -146,6 +152,8 @@ export default function ListingDetailPage() {
         address_road: editAddressRoad || null,
         address_jibun: editAddressJibun || null,
         dong_name: editDongName || null,
+        owner_phone: ownerPhone || null,
+        contract_party_phone: status === 'contracted' ? (contractPartyPhone || null) : null,
       },
       { onSuccess: () => setEditing(false) },
     );
@@ -422,6 +430,34 @@ export default function ListingDetailPage() {
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Label>임대인/매도인 연락처</Label>
+            {editing ? (
+              <Input
+                value={ownerPhone}
+                onChange={e => setOwnerPhone(e.target.value)}
+                placeholder="예: 010-1234-5678"
+                className="max-w-[300px] mt-1"
+              />
+            ) : (
+              <div className="text-sm mt-1">{listing.owner_phone || '-'}</div>
+            )}
+          </div>
+          {status === 'contracted' && (
+            <div className="p-4 border rounded-md bg-blue-50/50">
+              <Label className="text-blue-900 font-semibold">계약 당사자 연락처 (임차인/매수인)</Label>
+              {editing ? (
+                <Input
+                  value={contractPartyPhone}
+                  onChange={e => setContractPartyPhone(e.target.value)}
+                  placeholder="예: 010-9876-5432"
+                  className="max-w-[300px] mt-2 border-blue-200"
+                />
+              ) : (
+                <div className="text-sm mt-2 text-blue-800">{listing.contract_party_phone || '-'}</div>
+              )}
+            </div>
+          )}
           <div>
             <Label>메모</Label>
             <Textarea

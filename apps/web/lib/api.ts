@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/client';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 let mockMatchingInquiries = [
   {
     id: 'mock-inquiry-1',
@@ -37,6 +39,7 @@ let mockMatchingResults = [
     score_breakdown: { category: 0.30, price: 0.35, area: 0.15, location: 0.15 },
     shown_count: 0,
     is_liked: false,
+    is_contracted: false,
     created_at: new Date().toISOString(),
     property: {
       id: 'mock-listing-1',
@@ -61,6 +64,7 @@ let mockMatchingResults = [
     score_breakdown: { category: 0.30, price: 0.28, area: 0.20, location: 0.10 },
     shown_count: 0,
     is_liked: true,
+    is_contracted: false,
     created_at: new Date(Date.now() - 3600000).toISOString(),
     property: {
       id: 'mock-listing-2',
@@ -75,6 +79,8 @@ let mockMatchingResults = [
       floor_current: 12,
       direction: '동향',
       status: 'active',
+      owner_phone: '010-3333-4444',
+      contract_party_phone: null,
     }
   },
   {
@@ -85,6 +91,7 @@ let mockMatchingResults = [
     score_breakdown: { category: 0.30, price: 0.20, area: 0.15, location: 0.17 },
     shown_count: 0,
     is_liked: false,
+    is_contracted: false,
     created_at: new Date(Date.now() - 7200000).toISOString(),
     property: {
       id: 'mock-listing-3',
@@ -99,6 +106,8 @@ let mockMatchingResults = [
       floor_current: 2,
       direction: '남서향',
       status: 'active',
+      owner_phone: '010-5555-6666',
+      contract_party_phone: null,
     }
   },
   {
@@ -109,6 +118,7 @@ let mockMatchingResults = [
     score_breakdown: { category: 0.30, price: 0.15, area: 0.20, location: 0.10 },
     shown_count: 1,
     is_liked: false,
+    is_contracted: false,
     created_at: new Date(Date.now() - 86400000).toISOString(),
     property: {
       id: 'mock-listing-4',
@@ -133,6 +143,7 @@ let mockMatchingResults = [
     score_breakdown: { category: 0.30, price: 0.05, area: 0.15, location: 0.10 },
     shown_count: 2,
     is_liked: false,
+    is_contracted: false,
     created_at: new Date(Date.now() - 172800000).toISOString(),
     property: {
       id: 'mock-listing-5',
@@ -147,6 +158,8 @@ let mockMatchingResults = [
       floor_current: 1,
       direction: '북향',
       status: 'active',
+      owner_phone: '010-9999-0000',
+      contract_party_phone: null,
     }
   },
   
@@ -159,6 +172,7 @@ let mockMatchingResults = [
     score_breakdown: { category: 0.30, price: 0.30, area: 0.15, location: 0.15 },
     shown_count: 0,
     is_liked: true,
+    is_contracted: false,
     created_at: new Date().toISOString(),
     property: {
       id: 'mock-listing-6',
@@ -183,6 +197,7 @@ let mockMatchingResults = [
     score_breakdown: { category: 0.30, price: 0.25, area: 0.20, location: 0.10 },
     shown_count: 1,
     is_liked: false,
+    is_contracted: false,
     created_at: new Date(Date.now() - 3600000).toISOString(),
     property: {
       id: 'mock-listing-7',
@@ -259,6 +274,8 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
       created_at: new Date().toISOString(),
       images: [],
       agent_memo: '가상 매물입니다.',
+      owner_phone: '010-9999-8888',
+      contract_party_phone: null,
     };
 
     if (isDetail) {
@@ -273,6 +290,8 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
       ...mockListing,
       id: `mock-listing-${i}`,
       status: i === 0 ? 'contracted' : 'active',
+      owner_phone: `010-1234-000${i}`,
+      contract_party_phone: i === 0 ? '010-5678-0000' : null,
       transaction_types: i % 2 === 0 ? ['sale'] : ['monthly_rent'],
       price_sale: i % 2 === 0 ? 100000 + i * 5000 : null,
       deposit: i % 2 !== 0 ? 5000 : null,

@@ -12,6 +12,8 @@ export function useUpdateListing(id: string) {
       address_road?: string | null;
       address_jibun?: string | null;
       dong_name?: string | null;
+      owner_phone?: string | null;
+      contract_party_phone?: string | null;
     }) =>
       apiFetch(`/listings/${id}`, {
         method: 'PATCH',

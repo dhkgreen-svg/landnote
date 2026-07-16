@@ -23,6 +23,7 @@ interface MatchItem {
   score_breakdown: { category: number; price: number; area: number; location: number };
   shown_count: number;
   is_liked: boolean;
+  is_contracted: boolean;
   created_at: string;
   property: {
     id: string;

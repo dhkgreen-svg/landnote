@@ -100,6 +100,7 @@ export default function NewListingPage() {
   const [floorTotal, setFloorTotal] = useState('');
   const [builtYear, setBuiltYear] = useState('');
   const [direction, setDirection] = useState('');
+  const [ownerPhone, setOwnerPhone] = useState('');
   const [memo, setMemo] = useState('');
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -162,6 +163,7 @@ export default function NewListingPage() {
     setError('');
     if (categoryCodes.length === 0) { setError('카테고리를 선택하세요'); return; }
     if (transactionTypes.length === 0) { setError('거래유형을 선택하세요'); return; }
+    if (!ownerPhone.trim()) { setError('임대인/매도인 연락처를 입력하세요'); return; }
 
     setSubmitting(true);
     try {
@@ -182,6 +184,7 @@ export default function NewListingPage() {
         floor_total: floorTotal ? parseInt(floorTotal) : undefined,
         built_year: builtYear ? parseInt(builtYear) : undefined,
         direction: direction || undefined,
+        owner_phone: ownerPhone.trim(),
         agent_memo: memo || undefined,
       };
 
@@ -461,16 +464,26 @@ export default function NewListingPage() {
         </CardContent>
       </Card>
 
-      {/* Memo */}
+      {/* 연락처 및 메모 */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">메모</CardTitle></CardHeader>
-        <CardContent>
-          <Textarea
-            value={memo}
-            onChange={e => setMemo(e.target.value)}
-            placeholder="이 매물에 대한 메모를 작성하세요"
-            rows={3}
-          />
+        <CardHeader><CardTitle className="text-lg">연락처 및 기타</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>임대인/매도인 연락처 <span className="text-red-500">*</span></Label>
+            <Input 
+              value={ownerPhone}
+              onChange={e => setOwnerPhone(e.target.value)}
+              placeholder="예: 010-1234-5678"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>메모</Label>
+            <Textarea
+              value={memo}
+              onChange={e => setMemo(e.target.value)}
+              placeholder="중개사님만 볼 수 있는 메모를 입력하세요 (방문 가능 시간, 특이사항 등)"
+            />
+          </div>
         </CardContent>
       </Card>
 

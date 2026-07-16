@@ -88,3 +88,37 @@ export function useToggleLiked(inquiryId: string) {
     },
   });
 }
+
+export function useToggleContract(inquiryId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { matchId: string; currentContracted: boolean }) =>
+      apiFetch(`/matching/${params.matchId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ is_contracted: !params.currentContracted }),
+      }),
+    onMutate: async ({ matchId, currentContracted }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.matching.results(inquiryId) });
+
+      const prevResults = queryClient.getQueryData<MatchItem[]>(
+        queryKeys.matching.results(inquiryId),
+      );
+
+      queryClient.setQueryData<MatchItem[]>(
+        queryKeys.matching.results(inquiryId),
+        (old) => old?.map((m) => (m.id === matchId ? { ...m, is_contracted: !currentContracted } : m)),
+      );
+
+      return { prevResults };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prevResults) {
+        queryClient.setQueryData(queryKeys.matching.results(inquiryId), context.prevResults);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.matching.results(inquiryId) });
+    },
+  });
+}
