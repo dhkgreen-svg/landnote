@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,13 +54,22 @@ function formatPrice(listing: ListingItem): string {
   return '-';
 }
 
-export default function ListingsPage() {
+const PERIOD_LABELS: Record<string, string> = {
+  month: '이번 달 계약', year: '올해 계약',
+};
+
+function ListingsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialStatus = searchParams.get('status') || '';
+  const initialPeriod = searchParams.get('period') || '';
+
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({
-    status: '',
+    status: initialStatus,
     category_code: '',
     transaction_type: '',
+    period: initialPeriod,
   });
   const limit = 20;
 
@@ -70,6 +79,7 @@ export default function ListingsPage() {
     status: filters.status || undefined,
     category_code: filters.category_code || undefined,
     transaction_type: filters.transaction_type || undefined,
+    period: filters.period || undefined,
   });
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -103,6 +113,18 @@ export default function ListingsPage() {
             ))}
           </SelectContent>
         </Select>
+
+        {filters.status === 'contracted' && (
+          <Select value={filters.period || 'all'} onValueChange={v => handleFilterChange('period', v)}>
+            <SelectTrigger className="w-[140px]"><SelectValue placeholder="계약 시기" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">전체 시기</SelectItem>
+              {Object.entries(PERIOD_LABELS).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         <Select value={filters.category_code || 'all'} onValueChange={v => handleFilterChange('category_code', v)}>
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="카테고리" /></SelectTrigger>
@@ -201,5 +223,13 @@ export default function ListingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ListingsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">불러오는 중...</div>}>
+      <ListingsContent />
+    </Suspense>
   );
 }

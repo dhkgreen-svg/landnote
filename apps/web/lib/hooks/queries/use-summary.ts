@@ -5,7 +5,8 @@ import { queryKeys } from './keys';
 interface SummaryStats {
   new_inquiries: { count: number; diff_from_last_period: number };
   active_listings: { count: number; diff_from_last_month: number };
-  contracts_this_month: { count: number };
+  contracts_this_month: { count: number; diff_from_last_month?: number };
+  contracts_this_year: { count: number };
   pending_matches: { count: number };
   categories?: { code: string; listing_count: number; inquiry_count: number }[];
 }

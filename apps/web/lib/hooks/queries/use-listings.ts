@@ -27,6 +27,7 @@ interface ListingListParams {
   status?: string;
   category_code?: string;
   transaction_type?: string;
+  period?: string;
 }
 
 export function useListings(params: ListingListParams) {
@@ -36,6 +37,7 @@ export function useListings(params: ListingListParams) {
   if (params.status) searchParams.set('status', params.status);
   if (params.category_code) searchParams.set('category_code', params.category_code);
   if (params.transaction_type) searchParams.set('transaction_type', params.transaction_type);
+  if (params.period) searchParams.set('period', params.period);
 
   return useQuery({
     queryKey: queryKeys.listings.list(params),

@@ -242,7 +242,8 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     return {
       new_inquiries: { count: 4, diff_from_last_period: 2 },
       active_listings: { count: 10, diff_from_last_month: 3 },
-      contracts_this_month: { count: 1 },
+      contracts_this_month: { count: 3, diff_from_last_month: 1 },
+      contracts_this_year: { count: 15 },
       pending_matches: { count: mockMatchingResults.filter(m => m.shown_count === 0).length },
       categories: [
         { code: 'residential', listing_count: 5, inquiry_count: 2 },
