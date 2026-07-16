@@ -23,11 +23,13 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
+    const actualEmail = email === 'admin' && password === 'admin' ? 'admin@landnote.com' : email;
+
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: actualEmail, password }),
       });
 
       const json = await res.json();
@@ -64,11 +66,11 @@ export default function LoginPage() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">이메일</Label>
+            <Label htmlFor="email">이메일 또는 아이디</Label>
             <Input
               id="email"
-              type="email"
-              placeholder="example@email.com"
+              type="text"
+              placeholder="example@email.com (체험은 admin 입력)"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
