@@ -65,7 +65,7 @@ export default function DetailPage() {
 
       <h2 className="mb-2 text-center text-xl font-bold">세부 조건 선택</h2>
       <p className="mb-6 text-center text-sm font-medium text-muted-foreground">
-        관심 있는 세부 유형을 선택해주세요 (복수 선택 가능)
+        관심 있는 세부 유형을 1개만 선택해주세요
       </p>
 
       <div className="space-y-4">
@@ -126,7 +126,12 @@ export default function DetailPage() {
                               <button
                                 key={item}
                                 type="button"
-                                onClick={() => store.toggleSubcategory(item)}
+                                onClick={() => {
+                                  store.setStoreValue('subcategory_codes', [item]);
+                                  setTimeout(() => {
+                                    handleNext();
+                                  }, 150);
+                                }}
                                 className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-150 ${
                                   isSubcatSelected
                                     ? 'text-white shadow-sm ring-2 ring-primary ring-offset-1'
@@ -157,18 +162,10 @@ export default function DetailPage() {
         <Button
           type="button"
           variant="outline"
-          className="flex-1 h-12 text-base"
+          className="w-full h-12 text-base"
           onClick={() => router.push(`/form/${agentCode}/category`)}
         >
-          이전
-        </Button>
-        <Button
-          type="button"
-          className="flex-1 h-12 text-base font-bold bg-primary hover:bg-primary/90 text-white"
-          onClick={handleNext}
-          disabled={store.subcategory_codes.length === 0}
-        >
-          다음
+          이전으로 돌아가기
         </Button>
       </div>
     </>
