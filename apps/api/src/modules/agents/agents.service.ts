@@ -77,7 +77,6 @@ export class AgentsService {
 
   async getQrCodes(agent: any) {
     const baseUrl = process.env.APP_URL ?? 'http://localhost:3000';
-    const categories: CategoryCode[] = agent.selected_categories ?? [];
 
     const qrCodes = [
       {
