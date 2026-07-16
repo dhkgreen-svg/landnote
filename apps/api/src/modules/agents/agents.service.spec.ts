@@ -119,7 +119,7 @@ describe('AgentsService', () => {
   });
 
   describe('getQrCodes', () => {
-    it('should always return 1 generic QR even if no categories selected', async () => {
+    it('should always return 5 QRs (1 generic + 4 categories) regardless of selected categories', async () => {
       const agent = {
         subscription_plan: 'starter',
         agent_code: 'ABC123',
@@ -127,13 +127,18 @@ describe('AgentsService', () => {
       };
 
       const result = await service.getQrCodes(agent);
-      expect(result).toHaveLength(1);
+      expect(result).toHaveLength(5);
       expect(result[0].label).toBe('전체');
       expect(result[0].category).toBeNull();
       expect(result[0].url).not.toContain('?cat=');
+      
+      expect(result[1].url).toContain('?cat=residential');
+      expect(result[1].category).toBe('residential');
+      expect(result[2].url).toContain('?cat=commercial');
+      expect(result[2].category).toBe('commercial');
     });
 
-    it('should return generic QR + category-specific QRs for pro plan', async () => {
+    it('should return 5 QRs for pro plan as well', async () => {
       const agent = {
         subscription_plan: 'pro',
         agent_code: 'ABC123',
@@ -141,12 +146,8 @@ describe('AgentsService', () => {
       };
 
       const result = await service.getQrCodes(agent);
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(5);
       expect(result[0].label).toBe('전체');
-      expect(result[1].url).toContain('?cat=residential');
-      expect(result[1].category).toBe('residential');
-      expect(result[2].url).toContain('?cat=commercial');
-      expect(result[2].category).toBe('commercial');
     });
   });
 

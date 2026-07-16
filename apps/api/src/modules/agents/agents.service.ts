@@ -87,17 +87,15 @@ export class AgentsService {
       }
     ];
 
-    // Pro: 선택된 카테고리별 QR 코드 추가
-    const isPro = agent.subscription_plan === 'pro';
-    if (isPro && categories.length > 0) {
-      categories.forEach(cat => {
-        qrCodes.push({
-          url: `${baseUrl}/form/${agent.agent_code}?cat=${cat}`,
-          label: CATEGORY_LABELS[cat] ?? cat,
-          category: cat,
-        });
+    const allCategories: CategoryCode[] = ['residential', 'commercial', 'industrial', 'land'];
+    
+    allCategories.forEach(cat => {
+      qrCodes.push({
+        url: `${baseUrl}/form/${agent.agent_code}?cat=${cat}`,
+        label: CATEGORY_LABELS[cat] ?? cat,
+        category: cat,
       });
-    }
+    });
 
     return qrCodes;
   }
