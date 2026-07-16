@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { createClient } from '@supabase/supabase-js';
-import { PLAN_LIMITS, CATEGORY_LABELS, isUnlimited, SUBCATEGORIES } from '@landnote/shared';
+import { PLAN_LIMITS, CATEGORY_LABELS } from '@landnote/shared';
 import type { CategoryCode } from '@landnote/shared';
 import { encryptPhone, decryptPhone } from '../../common/utils/crypto.util';
 

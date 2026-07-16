@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAgent } from '@/lib/hooks/use-agent';
 import { apiFetch } from '@/lib/api';
-import { CATEGORY_CODE, PLAN_LIMITS, PLAN_PRICE } from '@landnote/shared';
+import { PLAN_LIMITS } from '@landnote/shared';
 import { BillingRegisterButton } from '@/components/dashboard/BillingRegisterButton';
 import { UpgradeModal } from '@/components/dashboard/UpgradeModal';
 import { Lock } from 'lucide-react';
