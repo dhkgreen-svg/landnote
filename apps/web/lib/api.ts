@@ -12,7 +12,8 @@ let nextId = 1;
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const method = options?.method || 'GET';
   
-  if (path === '/auth/me') {
+  if (process.env.NEXT_PUBLIC_USE_MOCK === 'true') {
+    if (path === '/auth/me') {
     return {
       id: 'mock-agent',
       agent_code: 'test-agent',
@@ -131,14 +132,15 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     return mockMatchingResults.filter(m => m.inquiry_id === inquiryId) as any;
   }
 
-  if (path.startsWith('/matching/') && method === 'PATCH') {
-    const matchId = path.split('/').pop();
-    const body = JSON.parse(options?.body as string);
-    mockMatchingResults = mockMatchingResults.map(m => m.id === matchId ? { ...m, ...body } : m);
-    return { success: true } as any;
+    if (path.startsWith('/matching/') && method === 'PATCH') {
+      const matchId = path.split('/').pop();
+      const body = JSON.parse(options?.body as string);
+      mockMatchingResults = mockMatchingResults.map(m => m.id === matchId ? { ...m, ...body } : m);
+      return { success: true } as any;
+    }
   }
 
-  // If not mock, pass to real API (won't happen in our testing right now)
+  // If not mock, pass to real API
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
 
@@ -157,10 +159,27 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
 }
 
 export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
-  // Mock image upload
-  return { 
-    id: `mock-img-${nextId++}`, 
-    path: `uploads/mock-img.png`,
-    signed_url: 'https://placehold.co/400' 
-  } as any;
+  if (process.env.NEXT_PUBLIC_USE_MOCK === 'true') {
+    // Mock image upload
+    return { 
+      id: `mock-img-${nextId++}`, 
+      path: `uploads/mock-img.png`,
+      signed_url: 'https://placehold.co/400' 
+    } as any;
+  }
+
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session?.access_token}`,
+    },
+    body: formData,
+  });
+
+  const json: any = await res.json();
+  if (!json.ok) throw new Error(json.error?.message || '업로드 실패');
+  return json.data as T;
 }
