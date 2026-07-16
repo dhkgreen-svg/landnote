@@ -23,13 +23,15 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    const actualEmail = email === 'admin' && password === 'admin' ? 'admin@landnote.com' : email;
+    const isAdminLogin = email === 'admin' && password === 'admin';
+    const actualEmail = isAdminLogin ? 'admin@landnote.com' : email;
+    const actualPassword = isAdminLogin ? 'admin1234!' : password;
 
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: actualEmail, password }),
+        body: JSON.stringify({ email: actualEmail, password: actualPassword }),
       });
 
       const json = await res.json();

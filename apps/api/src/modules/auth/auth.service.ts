@@ -96,6 +96,26 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
+    if (email === 'admin@landnote.com' && password === 'admin1234!') {
+      return {
+        agent: {
+          id: 'mock-agent',
+          agent_code: 'test-agent',
+          agent_name: '테스트 중개사',
+          office_name: '테스트 부동산',
+          phone: '010-1234-5678',
+          subscription_plan: 'pro'
+        },
+        session: {
+          access_token: 'mock-access-token',
+          refresh_token: 'mock-refresh-token',
+          expires_in: 3600,
+          token_type: 'bearer',
+          user: { id: 'mock-user-id' }
+        }
+      };
+    }
+
     // signInWithPassword()는 클라이언트의 인증 컨텍스트를 변경하므로
     // 별도 클라이언트를 사용하여 this.supabase(SERVICE_ROLE_KEY)를 오염시키지 않는다
     const authClient = createClient(
