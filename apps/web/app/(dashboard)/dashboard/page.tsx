@@ -95,8 +95,8 @@ export default function DashboardPage() {
   const cards = [
     {
       title: '신규 문의',
-      value: summary?.new_inquiries.count ?? 0,
-      diff: summary?.new_inquiries.diff_from_last_period,
+      value: summary?.new_inquiries?.count ?? 0,
+      diff: summary?.new_inquiries?.diff_from_last_period,
       diffLabel: '지난 주 대비',
       icon: MessageSquare,
       color: 'text-blue-600',
@@ -104,8 +104,8 @@ export default function DashboardPage() {
     },
     {
       title: '이번 달 계약 완료',
-      value: summary?.contracts_this_month.count ?? 0,
-      diff: summary?.contracts_this_month.diff_from_last_month,
+      value: summary?.contracts_this_month?.count ?? 0,
+      diff: summary?.contracts_this_month?.diff_from_last_month,
       diffLabel: '지난 달 대비',
       icon: Building2,
       color: 'text-green-600',
@@ -113,14 +113,14 @@ export default function DashboardPage() {
     },
     {
       title: '올해 계약 완료',
-      value: summary?.contracts_this_year.count ?? 0,
+      value: summary?.contracts_this_year?.count ?? 0,
       icon: FileCheck,
       color: 'text-orange-600',
       href: '/dashboard/listings?status=contracted&period=year',
     },
     {
       title: '미확인 매칭',
-      value: summary?.pending_matches.count ?? 0,
+      value: summary?.pending_matches?.count ?? 0,
       icon: Shuffle,
       color: 'text-purple-600',
       href: '/dashboard/matching',
