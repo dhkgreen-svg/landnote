@@ -6,7 +6,7 @@ import { useFormStore } from '@/lib/stores/form-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { FormProgress } from '../Step1Client';
-import { SUBCATEGORIES, type CategoryCode } from '@landnote/shared';
+import { type CategoryCode } from '@landnote/shared';
 
 const CATEGORY_LABELS: Record<CategoryCode, { label: string; icon: string; desc: string }> = {
   residential: { label: '주거용 부동산', icon: '🏠', desc: '아파트·빌라·단독주택·원룸' },
@@ -49,16 +49,7 @@ export default function CategoryPage() {
 
       // 활성 카테고리가 1개뿐이면 자동 선택 후 detail로 스킵
       if (cats.length === 1 && store.category_codes.length === 0) {
-        let topLevelCat = cats[0];
-        if (!ALL_CATEGORIES.includes(topLevelCat as CategoryCode)) {
-          for (const [topCat, subcats] of Object.entries(SUBCATEGORIES)) {
-            if (Object.keys(subcats).includes(topLevelCat)) {
-              topLevelCat = topCat as CategoryCode;
-              break;
-            }
-          }
-        }
-        store.toggleCategory(topLevelCat, plan === 'pro' ? 4 : 1);
+        store.toggleCategory(cats[0], plan === 'pro' ? 4 : 1);
         router.replace(`/form/${agentCode}/detail`);
         return;
       }
@@ -84,15 +75,11 @@ export default function CategoryPage() {
           const meta = CATEGORY_LABELS[code];
           const colors = CATEGORY_STYLES[code];
           
-          // isSelectable logic restored
           let isSelectable = false;
           if (subscriptionPlan === 'pro' || safeAgentCategories.length === 0) {
             isSelectable = true;
           } else {
-            // Check if safeAgentCategories contains 3rd level items that belong to this code
-            isSelectable = safeAgentCategories.includes(code) || safeAgentCategories.some(cat => {
-              return Object.values(SUBCATEGORIES[code] || {}).some(subArray => subArray.includes(cat));
-            });
+            isSelectable = safeAgentCategories.includes(code);
           }
 
           const isSelected = store.category_codes.includes(code);

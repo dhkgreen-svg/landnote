@@ -46,23 +46,13 @@ export class AgentsService {
 
   async changeCategories(agent: any, newCategories: string[]) {
     if (!newCategories || newCategories.length < 1) {
-      throw new BadRequestException('최소 1개 세부 업종을 선택해야 합니다');
+      throw new BadRequestException('최소 1개 분야를 선택해야 합니다');
     }
 
     const limits = PLAN_LIMITS[agent.subscription_plan as 'starter' | 'pro'];
 
-    const currentTopLevelCats = new Set<string>();
-    newCategories.forEach(cat => {
-      for (const [top, subs] of Object.entries(SUBCATEGORIES)) {
-        if (Object.values(subs).some(arr => arr.includes(cat))) {
-          currentTopLevelCats.add(top);
-          break;
-        }
-      }
-    });
-
-    if (currentTopLevelCats.size > limits.max_categories) {
-      throw new BadRequestException(`큰 분류 기준 최대 ${limits.max_categories}개까지만 취급 가능합니다`);
+    if (newCategories.length > limits.max_categories) {
+      throw new BadRequestException(`최대 ${limits.max_categories}개까지만 선택 가능합니다`);
     }
 
     if (limits.category_changes_per_month > 0 && agent.category_changed_at) {
@@ -86,25 +76,30 @@ export class AgentsService {
   }
 
   async getQrCodes(agent: any) {
-    const limits = PLAN_LIMITS[agent.subscription_plan as 'starter' | 'pro'];
     const baseUrl = process.env.APP_URL ?? 'http://localhost:3000';
     const categories: CategoryCode[] = agent.selected_categories ?? [];
 
-    // Starter: 1개 범용 QR (카테고리 필터 없음)
-    if (limits.max_qr_codes === 1) {
-      return [{
+    const qrCodes = [
+      {
         url: `${baseUrl}/form/${agent.agent_code}`,
         label: '전체',
         category: null,
-      }];
+      }
+    ];
+
+    // Pro: 선택된 카테고리별 QR 코드 추가
+    const isPro = agent.subscription_plan === 'pro';
+    if (isPro && categories.length > 0) {
+      categories.forEach(cat => {
+        qrCodes.push({
+          url: `${baseUrl}/form/${agent.agent_code}?cat=${cat}`,
+          label: CATEGORY_LABELS[cat] ?? cat,
+          category: cat,
+        });
+      });
     }
 
-    // Pro: 선택된 카테고리별 QR 코드 생성
-    return categories.map(cat => ({
-      url: `${baseUrl}/form/${agent.agent_code}?cat=${cat}`,
-      label: CATEGORY_LABELS[cat] ?? cat,
-      category: cat,
-    }));
+    return qrCodes;
   }
 
   async getPublicProfile(agentCode: string) {

@@ -9,10 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAgent } from '@/lib/hooks/use-agent';
 import { apiFetch } from '@/lib/api';
-import { CATEGORY_CODE, PLAN_LIMITS, PLAN_PRICE, SUBCATEGORIES, SUBCATEGORY_LABELS } from '@landnote/shared';
+import { CATEGORY_CODE, PLAN_LIMITS, PLAN_PRICE } from '@landnote/shared';
 import { BillingRegisterButton } from '@/components/dashboard/BillingRegisterButton';
 import { UpgradeModal } from '@/components/dashboard/UpgradeModal';
-import { Lock, ChevronDown, ChevronRight } from 'lucide-react';
+import { Lock } from 'lucide-react';
 
 const CATEGORY_LABELS: Record<string, string> = {
   residential: '주거', commercial: '상업', industrial: '산업', land: '토지',
@@ -44,22 +44,13 @@ export default function SettingsPage() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelMsg, setCancelMsg] = useState('');
   const [showUpgrade, setShowUpgrade] = useState(false);
-  
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-
-  const toggleExpandedGroup = (subCode: string) => {
-    setExpandedGroups(prev => ({
-      ...prev,
-      [subCode]: !prev[subCode]
-    }));
-  };
 
   useEffect(() => {
     if (agent) {
       setName(agent.agent_name);
       setOffice(agent.office_name);
       setLicense(agent.license_number);
-      setSelectedCats(agent.selected_categories);
+      setSelectedCats(agent.selected_categories ?? []);
     }
   }, [agent]);
 
@@ -100,22 +91,12 @@ export default function SettingsPage() {
 
   const handleCategorySave = async () => {
     if (selectedCats.length === 0) {
-      setCatMsg('최소 1개 세부 업종을 선택하세요');
+      setCatMsg('최소 1개 분야를 선택하세요');
       return;
     }
 
-    const currentTopLevelCats = new Set<string>();
-    selectedCats.forEach(cat => {
-      for (const [top, subs] of Object.entries(SUBCATEGORIES)) {
-        if (Object.values(subs).some(arr => arr.includes(cat))) {
-          currentTopLevelCats.add(top);
-          break;
-        }
-      }
-    });
-
-    if (currentTopLevelCats.size > limits.max_categories) {
-      setCatMsg(`큰 분류 기준 최대 ${limits.max_categories}개까지만 취급 가능합니다`);
+    if (selectedCats.length > limits.max_categories) {
+      setCatMsg(`최대 ${limits.max_categories}개까지만 취급 가능합니다`);
       return;
     }
 
@@ -202,92 +183,39 @@ export default function SettingsPage() {
 
       {/* Categories */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">취급 카테고리 (세부 업종)</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">취급 카테고리</CardTitle></CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-6">
-            {Object.entries(CATEGORY_LABELS).map(([mainCode, mainLabel]) => {
-              const groups = SUBCATEGORIES[mainCode as keyof typeof SUBCATEGORIES] || {};
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.entries(CATEGORY_LABELS).map(([code, label]) => {
+              const isSelected = selectedCats.includes(code);
+              
+              const wouldExceedLimit = !isSelected && selectedCats.length >= limits.max_categories;
+              const isLocked = wouldExceedLimit && plan === 'starter';
+
               return (
-                <div key={mainCode} className="space-y-4">
-                  <h3 className="font-bold text-base text-foreground border-b pb-2">{mainLabel}</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {Object.entries(groups).map(([subCode, subItems]) => {
-                      const isExpanded = !!expandedGroups[subCode];
-                      const hasSelectedItems = subItems.some(item => selectedCats.includes(item));
-                      
-                      return (
-                        <div key={subCode} className="bg-white rounded-lg border shadow-sm overflow-hidden transition-all duration-200">
-                          <button
-                            type="button"
-                            onClick={() => toggleExpandedGroup(subCode)}
-                            className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/30 transition-colors"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-foreground/90 text-sm">
-                                {SUBCATEGORY_LABELS[subCode] || subCode}
-                              </span>
-                              {hasSelectedItems && (
-                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                                  {subItems.filter(item => selectedCats.includes(item)).length}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-muted-foreground transition-transform duration-200">
-                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                            </div>
-                          </button>
-
-                          {isExpanded && (
-                            <div className="p-4 pt-0 border-t bg-muted/10">
-                              <div className="flex flex-wrap gap-2 mt-4">
-                                {subItems.map((item) => {
-                                  const isSelected = selectedCats.includes(item);
-                                  
-                                  // Calculate if selecting this new subcategory would exceed the top-level category limit
-                                  const currentTopLevelCats = new Set<string>();
-                                  selectedCats.forEach(cat => {
-                                    for (const [top, subs] of Object.entries(SUBCATEGORIES)) {
-                                      if (Object.values(subs).some(arr => arr.includes(cat))) {
-                                        currentTopLevelCats.add(top);
-                                        break;
-                                      }
-                                    }
-                                  });
-                                  
-                                  const wouldExceedLimit = !currentTopLevelCats.has(mainCode) && currentTopLevelCats.size >= limits.max_categories;
-                                  const isLocked = !isSelected && wouldExceedLimit && plan === 'starter';
-
-                                  return (
-                                    <Button
-                                      key={item}
-                                      variant={isSelected ? 'default' : isLocked ? 'ghost' : 'outline'}
-                                      size="sm"
-                                      className={`rounded-lg transition-all duration-150 ${
-                                        isSelected 
-                                          ? 'shadow-sm ring-2 ring-primary ring-offset-1' 
-                                          : isLocked ? 'opacity-50 cursor-not-allowed bg-transparent border-transparent' : 'bg-white hover:bg-muted/50 hover:shadow-sm'
-                                      }`}
-                                      onClick={() => {
-                                        if (isLocked) {
-                                          setShowUpgrade(true);
-                                        } else {
-                                          toggleCategory(item);
-                                        }
-                                      }}
-                                    >
-                                      {item}
-                                      {isLocked && <Lock className="ml-1 h-3 w-3" />}
-                                    </Button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <Button
+                  key={code}
+                  type="button"
+                  variant={isSelected ? 'default' : 'outline'}
+                  className={`h-24 flex flex-col gap-2 rounded-xl transition-all ${
+                    isSelected 
+                      ? 'ring-2 ring-primary ring-offset-2' 
+                      : isLocked ? 'opacity-50 cursor-not-allowed bg-muted' : 'hover:bg-muted/50'
+                  }`}
+                  onClick={() => {
+                    if (isLocked) {
+                      setShowUpgrade(true);
+                    } else {
+                      toggleCategory(code);
+                    }
+                  }}
+                >
+                  <span className="text-2xl">
+                    {code === 'residential' ? '🏠' : code === 'commercial' ? '🏬' : code === 'industrial' ? '🏭' : '🌳'}
+                  </span>
+                  <span className="font-semibold">{label}</span>
+                  {isLocked && <Lock className="h-4 w-4 text-muted-foreground mt-1" />}
+                </Button>
               );
             })}
           </div>
@@ -295,7 +223,7 @@ export default function SettingsPage() {
           <Separator />
           
           <div className="space-y-1 text-xs text-muted-foreground mt-4">
-            <p>※ 요금제 제한은 '큰 분류(주거/상업 등)' 개수를 기준으로 적용됩니다.</p>
+            <p>※ Starter 요금제는 최대 2개, PRO 요금제는 4개 전체 선택 가능합니다.</p>
           </div>
           <div className="flex items-center gap-3">
             <Button onClick={handleCategorySave} disabled={catSaving}>

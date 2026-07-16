@@ -107,7 +107,7 @@ export default function LinksPage() {
       <p className="mb-4 text-sm text-muted-foreground">
         {qrEntries.length === 1
           ? '범용 접수용으로 명함과 사무실에 함께 사용할 수 있습니다'
-          : '카테고리별 전용 QR로 분야별 홍보에 바로 사용할 수 있습니다'}
+          : '기본 범용 QR과 함께, 분야별 홍보에 바로 사용할 수 있는 전용 QR이 제공됩니다'}
       </p>
 
       <div className={`grid gap-4 ${qrEntries.length > 1 ? 'sm:grid-cols-2' : 'max-w-sm mx-auto'}`}>

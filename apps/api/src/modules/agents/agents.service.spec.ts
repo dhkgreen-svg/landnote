@@ -85,8 +85,9 @@ describe('AgentsService', () => {
     });
 
     it('should reject exceeding max_categories for starter', async () => {
+      // Starter max is 2
       await expect(
-        service.changeCategories(starterAgent, ['residential', 'commercial', 'industrial'] as any),
+        service.changeCategories(starterAgent, ['residential', 'commercial', 'industrial']),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -97,7 +98,7 @@ describe('AgentsService', () => {
       };
 
       await expect(
-        service.changeCategories(agentChangedThisMonth, ['residential'] as any),
+        service.changeCategories(agentChangedThisMonth, ['residential']),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -112,17 +113,17 @@ describe('AgentsService', () => {
       });
 
       await expect(
-        service.changeCategories(starterAgent, ['residential'] as any),
+        service.changeCategories(starterAgent, ['residential', 'commercial']),
       ).resolves.toBeDefined();
     });
   });
 
   describe('getQrCodes', () => {
-    it('should return 1 generic QR for starter plan', async () => {
+    it('should always return 1 generic QR even if no categories selected', async () => {
       const agent = {
         subscription_plan: 'starter',
         agent_code: 'ABC123',
-        selected_categories: ['residential', 'commercial'],
+        selected_categories: [],
       };
 
       const result = await service.getQrCodes(agent);
@@ -132,7 +133,7 @@ describe('AgentsService', () => {
       expect(result[0].url).not.toContain('?cat=');
     });
 
-    it('should return category-specific QRs for pro plan', async () => {
+    it('should return generic QR + category-specific QRs for pro plan', async () => {
       const agent = {
         subscription_plan: 'pro',
         agent_code: 'ABC123',
@@ -140,11 +141,12 @@ describe('AgentsService', () => {
       };
 
       const result = await service.getQrCodes(agent);
-      expect(result).toHaveLength(2);
-      expect(result[0].url).toContain('?cat=residential');
-      expect(result[0].category).toBe('residential');
-      expect(result[1].url).toContain('?cat=commercial');
-      expect(result[1].category).toBe('commercial');
+      expect(result).toHaveLength(3);
+      expect(result[0].label).toBe('전체');
+      expect(result[1].url).toContain('?cat=residential');
+      expect(result[1].category).toBe('residential');
+      expect(result[2].url).toContain('?cat=commercial');
+      expect(result[2].category).toBe('commercial');
     });
   });
 
