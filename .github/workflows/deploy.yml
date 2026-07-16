@@ -1,0 +1,52 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @landnote/shared build
+
+      - name: Build API
+        run: pnpm --filter @landnote/api build
+
+      - name: Build Web
+        run: pnpm --filter @landnote/web build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+          NEXT_PUBLIC_API_URL: https://placeholder.api.com
+          NEXT_PUBLIC_TOSS_CLIENT_KEY: YOUR_TOSS_CLIENT_KEY
+          NEXT_PUBLIC_APP_URL: https://placeholder.vercel.app
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY: placeholder
+
+      - name: Run API tests
+        run: pnpm test:api

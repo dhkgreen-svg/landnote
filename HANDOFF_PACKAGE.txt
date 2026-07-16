@@ -1,0 +1,6 @@
+﻿LandNote handoff package
+
+This package contains source code, migrations, documentation, and environment-variable examples only.
+It does not contain Git history, installed dependencies, build outputs, real .env files, service credentials, database dumps, or customer data.
+
+The recipient must create and configure their own GitHub, Vercel, Railway, Supabase, Toss Payments, Resend, and DNS resources by following README.md and docs/deploy.md.

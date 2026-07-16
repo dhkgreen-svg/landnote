@@ -1,0 +1,24 @@
+{
+  "name": "landnote",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "dev:web": "turbo dev --filter=@landnote/web",
+    "dev:api": "turbo dev --filter=@landnote/api",
+    "db:migrate": "cd apps/api && pnpm run db:migrate",
+    "test:api": "pnpm --filter @landnote/api test",
+    "test:e2e": "pnpm --filter @landnote/web test:e2e",
+    "verify": "pnpm test:api && pnpm build",
+    "handoff:zip": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-handoff.ps1"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
