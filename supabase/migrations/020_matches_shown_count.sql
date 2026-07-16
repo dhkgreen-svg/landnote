@@ -8,5 +8,5 @@ UPDATE matches SET shown_count = 1 WHERE is_shown = TRUE;
 ALTER TABLE matches DROP COLUMN is_shown;
 
 -- 인덱스 변경 (pending 판단: shown_count = 0)
-DROP INDEX idx_matches_pending;
+DROP INDEX IF EXISTS idx_matches_pending;
 CREATE INDEX idx_matches_pending ON matches(agent_id, shown_count) WHERE shown_count = 0;

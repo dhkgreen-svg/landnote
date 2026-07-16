@@ -138,6 +138,48 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
       mockMatchingResults = mockMatchingResults.map(m => m.id === matchId ? { ...m, ...body } : m);
       return { success: true } as any;
     }
+
+    // --- ADMIN MOCK ---
+    if (path.startsWith('/admin/stats/kpis')) {
+      return {
+        total_agents: 120,
+        active_agents: 95,
+        trial_agents: 15,
+        expired_agents: 10,
+        new_agents_this_month: 8,
+        new_agents_diff: 3,
+        mrr: 1250000,
+        total_revenue: 14500000
+      } as any;
+    }
+
+    if (path.startsWith('/admin/stats/agents/growth')) {
+      return [
+        { month: '2월', new_agents: 5, total: 50 },
+        { month: '3월', new_agents: 12, total: 62 },
+        { month: '4월', new_agents: 15, total: 77 },
+        { month: '5월', new_agents: 20, total: 97 },
+        { month: '6월', new_agents: 15, total: 112 },
+        { month: '7월', new_agents: 8, total: 120 },
+      ] as any;
+    }
+
+    if (path.startsWith('/admin/revenue/failed')) {
+      return [
+        { id: '1', agent_name: '홍길동', amount: 15000, date: '2026-07-15' },
+        { id: '2', agent_name: '김철수', amount: 10000, date: '2026-07-16' },
+      ] as any;
+    }
+
+    if (path.startsWith('/admin/agents')) {
+      return {
+        agents: [
+          { id: 'a1', agent_name: '테스트중개사1', office_name: '믿음부동산', created_at: new Date().toISOString() },
+          { id: 'a2', agent_name: '테스트중개사2', office_name: '소망부동산', created_at: new Date(Date.now() - 86400000).toISOString() },
+        ],
+        total: 2
+      } as any;
+    }
   }
 
   // If not mock, pass to real API
