@@ -12,7 +12,7 @@ import {
   useMarkShown,
   useToggleLiked,
 } from '@/lib/hooks/queries';
-import { Star, ExternalLink, Eye, StarOff } from 'lucide-react';
+import { Star, ExternalLink, Eye, StarOff, CheckCircle2 } from 'lucide-react';
 
 // ── 상수 ──────────────────────────────────────────────
 
@@ -206,7 +206,7 @@ export default function MatchingPage() {
                 matches.map((match, idx) => {
                   const p = match.property;
                   return (
-                    <Card key={match.id} className={!match.is_shown ? 'border-l-4 border-l-blue-500' : ''}>
+                    <Card key={match.id} className={match.shown_count === 0 ? 'border-l-4 border-l-blue-500' : ''}>
                       <CardContent className="p-4">
                         {/* 상단: 순위 + 점수 */}
                         <div className="flex items-center justify-between mb-2">
@@ -217,7 +217,7 @@ export default function MatchingPage() {
                             <Badge variant="secondary" className="text-sm font-semibold">
                               {Math.round(match.score * 100)}점
                             </Badge>
-                            {!match.is_shown && (
+                            {match.shown_count === 0 && (
                               <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
                                 미검토
                               </Badge>
@@ -260,16 +260,14 @@ export default function MatchingPage() {
                           })}
                         </div>
 
-                        {/* 액션 버튼 */}
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button
                             size="sm"
-                            variant={match.is_shown ? 'secondary' : 'default'}
-                            disabled={match.is_shown}
+                            variant={match.shown_count > 0 ? 'secondary' : 'default'}
                             onClick={() => handleMarkShown(match.id)}
                           >
                             <Eye className="h-3.5 w-3.5 mr-1" />
-                            {match.is_shown ? '안내 완료' : '안내 완료'}
+                            {match.shown_count > 0 ? `안내 ${match.shown_count}회` : '안내 체크'}
                           </Button>
                           <Button
                             size="sm"
@@ -293,6 +291,19 @@ export default function MatchingPage() {
                               매물 상세
                             </Button>
                           )}
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="bg-green-100 text-green-700 hover:bg-green-200"
+                            onClick={() => {
+                              if (confirm('이 매칭으로 계약이 성사되었습니까?\n확인을 누르면 해당 매물과 고객 문의 상태가 모두 [계약 완료]로 자동 변경됩니다.')) {
+                                alert('계약 완료 처리되었습니다. (현재는 UI 테스트 모드입니다)');
+                              }
+                            }}
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                            계약 성공
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>

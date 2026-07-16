@@ -21,7 +21,7 @@ interface MatchItem {
   property_id: string;
   score: number;
   score_breakdown: { category: number; price: number; area: number; location: number };
-  is_shown: boolean;
+  shown_count: number;
   is_liked: boolean;
   created_at: string;
   property: {

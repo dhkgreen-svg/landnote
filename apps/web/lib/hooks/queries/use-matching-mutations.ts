@@ -10,7 +10,7 @@ export function useMarkShown(inquiryId: string) {
     mutationFn: (matchId: string) =>
       apiFetch(`/matching/${matchId}`, {
         method: 'PATCH',
-        body: JSON.stringify({ is_shown: true }),
+        body: JSON.stringify({ increment_shown: true }),
       }),
     onMutate: async (matchId) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.matching.results(inquiryId) });
@@ -25,7 +25,7 @@ export function useMarkShown(inquiryId: string) {
 
       queryClient.setQueryData<MatchItem[]>(
         queryKeys.matching.results(inquiryId),
-        (old) => old?.map((m) => (m.id === matchId ? { ...m, is_shown: true } : m)),
+        (old) => old?.map((m) => (m.id === matchId ? { ...m, shown_count: (m.shown_count || 0) + 1 } : m)),
       );
       queryClient.setQueryData<InquiryWithMatches[]>(
         queryKeys.matching.inquiries(),
