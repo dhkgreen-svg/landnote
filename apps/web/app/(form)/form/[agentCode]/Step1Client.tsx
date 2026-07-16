@@ -62,7 +62,9 @@ export default function Step1Client({ agentCode, agentName, officeName, phone, s
       <FormProgress current={1} />
 
       <div className="mb-6 text-center">
-        <h2 className="text-2xl font-bold text-foreground">{agentName} 중개사</h2>
+        <h2 className="text-2xl font-bold text-foreground">
+          {agentName}{agentName.endsWith('중개사') ? '' : ' 중개사'}
+        </h2>
         {officeName && (
           <p className="mt-1 text-sm text-muted-foreground">{officeName}</p>
         )}

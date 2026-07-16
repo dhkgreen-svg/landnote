@@ -18,7 +18,7 @@ async function getAgent(agentCode: string) {
     const res = await fetch(`${API_URL}/public/agent/${agentCode}`, {
       cache: 'no-store',
     });
-    if (!res.ok) return null;
+    if (!res.ok) throw new Error("API returned not ok");
     const json = await res.json();
     return json.data as {
       agent_name: string;
