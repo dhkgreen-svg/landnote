@@ -100,6 +100,7 @@ export default function DashboardPage() {
       diffLabel: '지난 주 대비',
       icon: MessageSquare,
       color: 'text-blue-600',
+      href: '/dashboard/inquiries?status=new',
     },
     {
       title: '활성 매물',
@@ -108,18 +109,21 @@ export default function DashboardPage() {
       diffLabel: '지난 달 대비',
       icon: Building2,
       color: 'text-green-600',
+      href: '/dashboard/listings?status=active',
     },
     {
       title: '이번 달 계약',
       value: summary?.contracts_this_month.count ?? 0,
       icon: FileCheck,
       color: 'text-orange-600',
+      href: '/dashboard/listings?status=contracted',
     },
     {
       title: '미확인 매칭',
       value: summary?.pending_matches.count ?? 0,
       icon: Shuffle,
       color: 'text-purple-600',
+      href: '/dashboard/matching',
     },
   ];
 
@@ -132,30 +136,32 @@ export default function DashboardPage() {
         {cards.map(card => {
           const Icon = card.icon;
           return (
-            <Card key={card.title}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {card.title}
-                </CardTitle>
-                <Icon className={`h-4 w-4 ${card.color}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{card.value}</div>
-                {card.diff !== undefined && (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                    {card.diff > 0 ? (
-                      <TrendingUp className="h-3 w-3 text-green-500" />
-                    ) : card.diff < 0 ? (
-                      <TrendingDown className="h-3 w-3 text-red-500" />
-                    ) : null}
-                    <span className={card.diff > 0 ? 'text-green-600' : card.diff < 0 ? 'text-red-600' : ''}>
-                      {card.diff > 0 ? '+' : ''}{card.diff}
-                    </span>
-                    {' '}{card.diffLabel}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            <Link key={card.title} href={card.href} className="block group">
+              <Card className="transition-all hover:border-primary hover:shadow-md h-full">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors">
+                    {card.title}
+                  </CardTitle>
+                  <Icon className={`h-4 w-4 ${card.color}`} />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{card.value}</div>
+                  {card.diff !== undefined && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      {card.diff > 0 ? (
+                        <TrendingUp className="h-3 w-3 text-green-500" />
+                      ) : card.diff < 0 ? (
+                        <TrendingDown className="h-3 w-3 text-red-500" />
+                      ) : null}
+                      <span className={card.diff > 0 ? 'text-green-600' : card.diff < 0 ? 'text-red-600' : ''}>
+                        {card.diff > 0 ? '+' : ''}{card.diff}
+                      </span>
+                      {' '}{card.diffLabel}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </Link>
           );
         })}
       </div>
@@ -203,11 +209,11 @@ export default function DashboardPage() {
 
                 if (!isSelected && !isStarter) return null;
 
-                return (
+                const content = (
                   <div
                     key={code}
-                    className={`flex items-center gap-3 rounded-lg border p-3 ${
-                      isSelected ? '' : 'opacity-60'
+                    className={`flex items-center gap-3 rounded-lg border p-3 transition-colors ${
+                      isSelected ? 'hover:border-primary hover:bg-muted/30 cursor-pointer' : 'opacity-60'
                     }`}
                   >
                     <span className="text-2xl">{CATEGORY_ICONS[code]}</span>
@@ -222,8 +228,8 @@ export default function DashboardPage() {
                         </p>
                       ) : (
                         <button
-                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
-                          onClick={() => setShowUpgrade(true)}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary relative z-10"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowUpgrade(true); }}
                         >
                           <Lock className="h-3 w-3" />
                           프로로 해제 가능
@@ -231,6 +237,14 @@ export default function DashboardPage() {
                       )}
                     </div>
                   </div>
+                );
+
+                return isSelected ? (
+                  <Link key={code} href={`/dashboard/listings?category=${code}`}>
+                    {content}
+                  </Link>
+                ) : (
+                  content
                 );
               })}
             </div>

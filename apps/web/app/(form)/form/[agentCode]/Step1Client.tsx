@@ -61,39 +61,29 @@ export default function Step1Client({ agentCode, agentName, officeName, phone, s
     <>
       <FormProgress current={1} />
 
-      <div className="mb-6 text-center">
+      <div className="mb-10 text-center space-y-2">
         <h2 className="text-2xl font-bold text-foreground">
           {agentName}{agentName.endsWith('중개사') ? '' : ' 중개사'}
         </h2>
-        {officeName && (
-          <p className="mt-1 text-sm text-muted-foreground">{officeName}</p>
-        )}
         {phone && /^[0-9+()\-\s]{8,20}$/.test(phone) && (
-          <a href={`tel:${phone}`} className="text-sm text-muted-foreground underline">
+          <a href={`tel:${phone}`} className="inline-block px-4 py-1.5 rounded-full bg-muted/50 text-base font-medium text-foreground hover:bg-muted transition-colors">
             {phone}
           </a>
         )}
-        <p className="mt-2 text-xs text-muted-foreground">
-          입력하신 정보는 해당 중개사에게만 전달됩니다
-        </p>
       </div>
 
-      <p className="mb-5 text-center text-base font-medium text-foreground/80">
-        어떤 도움이 필요하신가요?
-      </p>
-
-      <div className="space-y-4">
+      <div className="space-y-4 mt-8">
         <Card
-          className="cursor-pointer border-transparent bg-white shadow-sm transition-all hover:shadow-md hover:border-primary/20"
+          className="cursor-pointer border-transparent bg-primary text-primary-foreground shadow-md transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
           onClick={() => handleSelect('looking_for')}
         >
           <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-3xl">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-3xl shadow-sm">
               🔍
             </div>
             <div>
-              <p className="text-base font-semibold">원하는 매물을 찾고 있어요</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="text-lg font-bold">원하는 매물을 찾고 있어요</p>
+              <p className="mt-1 text-sm text-primary-foreground/80 font-medium">
                 조건을 남기면 맞는 매물을 찾아드립니다
               </p>
             </div>
@@ -101,17 +91,17 @@ export default function Step1Client({ agentCode, agentName, officeName, phone, s
         </Card>
 
         <Card
-          className="cursor-pointer border-transparent bg-white shadow-sm transition-all hover:shadow-md hover:border-primary/20"
+          className="cursor-pointer border-transparent bg-indigo-600 text-white shadow-md transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
           onClick={() => handleSelect('listing')}
         >
           <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-3xl">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-3xl shadow-sm">
               🏠
             </div>
             <div>
-              <p className="text-base font-semibold">매물을 접수하고 싶어요</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                매물 정보를 남기면 바로 검토할 수 있습니다
+              <p className="text-lg font-bold">매물을 접수하고 싶어요</p>
+              <p className="mt-1 text-sm text-indigo-100 font-medium">
+                가지고 계신 매물을 빠르게 거래해 드립니다
               </p>
             </div>
           </CardContent>

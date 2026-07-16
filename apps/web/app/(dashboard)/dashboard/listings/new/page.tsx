@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { apiFetch, apiUpload } from '@/lib/api';
 import { useAgent } from '@/lib/hooks/use-agent';
 import {
@@ -111,6 +112,22 @@ export default function NewListingPage() {
     setCategoryCodes([mainCode]);
     setSubcategoryCodes([subCode]);
     setTags([item]);
+    // If not commercial, remove premium_transfer from selected tx types
+    if (mainCode !== 'commercial') {
+      setTransactionTypes(prev => prev.filter(t => t !== 'premium_transfer'));
+    }
+  };
+
+  const toggleTransactionType = (key: string) => {
+    setTransactionTypes(prev => {
+      let next = prev.includes(key) ? prev.filter(t => t !== key) : [...prev, key];
+      if (key === 'premium_transfer' && !prev.includes(key)) {
+        next = ['premium_transfer'];
+      } else if (key !== 'premium_transfer' && !prev.includes(key)) {
+        next = next.filter(t => t !== 'premium_transfer');
+      }
+      return next;
+    });
   };
   
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -204,25 +221,24 @@ export default function NewListingPage() {
       <Card>
         <CardHeader><CardTitle className="text-lg">카테고리</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-6">
-            {Object.entries(CATEGORY_LABELS).map(([mainCode, mainLabel]) => {
+          <Tabs defaultValue="residential" className="w-full">
+            <TabsList className="w-full flex">
+              {Object.entries(CATEGORY_LABELS).map(([mainCode, mainLabel]) => (
+                <TabsTrigger key={mainCode} value={mainCode} className="flex-1">
+                  {mainLabel}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {Object.entries(CATEGORY_LABELS).map(([mainCode]) => {
               const groups = SUBCATEGORIES[mainCode as keyof typeof SUBCATEGORIES] || {};
-              
-              // Filter to only groups that contain AT LEAST ONE item the agent handles
-              const allowedGroups = Object.entries(groups).filter(([subCode, subItems]) => 
-                subItems.some(item => agentCategories.includes(item))
-              );
-              
-              if (allowedGroups.length === 0) return null;
 
               return (
-                <div key={mainCode} className="space-y-4">
-                  <h3 className="font-bold text-base text-foreground border-b pb-2">{mainLabel}</h3>
+                <TabsContent key={mainCode} value={mainCode} className="mt-6 space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {allowedGroups.map(([subCode, subItems]) => {
-                      const allowedItems = subItems.filter(item => agentCategories.includes(item));
+                    {Object.entries(groups).map(([subCode, subItems]) => {
                       const isExpanded = !!expandedGroups[subCode];
-                      const hasSelectedItems = allowedItems.some(item => tags.includes(item));
+                      const hasSelectedItems = subItems.some(item => tags.includes(item));
                       
                       return (
                         <div key={subCode} className="bg-white rounded-lg border shadow-sm overflow-hidden transition-all duration-200">
@@ -249,7 +265,7 @@ export default function NewListingPage() {
                           {isExpanded && (
                             <div className="p-4 pt-0 border-t bg-muted/10">
                               <div className="flex flex-wrap gap-2 mt-4">
-                                {allowedItems.map((item) => {
+                                {subItems.map((item) => {
                                   const isSelected = tags.includes(item);
                                   return (
                                     <Button
@@ -275,10 +291,11 @@ export default function NewListingPage() {
                       );
                     })}
                   </div>
-                </div>
+                </TabsContent>
               );
             })}
-          </div>
+          </Tabs>
+
           {agentCategories.length === 0 && (
             <div className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg text-center">
               대시보드 환경설정에서 취급 카테고리를 먼저 설정해주세요.
@@ -294,16 +311,24 @@ export default function NewListingPage() {
           <div>
             <Label>거래유형</Label>
             <div className="mt-1 flex flex-wrap gap-2">
-              {Object.entries(TX_LABELS).map(([key, label]) => (
-                <Button
-                  key={key}
-                  variant={transactionTypes.includes(key) ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => toggleTransactionType(key)}
-                >
-                  {label}
-                </Button>
-              ))}
+              {Object.entries(TX_LABELS)
+                .filter(([key]) => {
+                  if (key === 'premium_transfer') {
+                    return categoryCodes.includes('commercial');
+                  }
+                  return true;
+                })
+                .map(([key, label]) => (
+                  <Button
+                    key={key}
+                    variant={transactionTypes.includes(key) ? 'default' : 'outline'}
+                    size="sm"
+                    type="button"
+                    onClick={() => toggleTransactionType(key)}
+                  >
+                    {label}
+                  </Button>
+                ))}
             </div>
           </div>
 
