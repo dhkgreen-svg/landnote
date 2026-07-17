@@ -18,31 +18,51 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const [rememberEmail, setRememberEmail] = useState(false);
-  const [keepLoggedIn, setKeepLoggedIn] = useState(true);
+  const [rememberCredentials, setRememberCredentials] = useState(false);
+  const [autoLogin, setAutoLogin] = useState(false);
 
   useEffect(() => {
     const savedEmail = localStorage.getItem('landnote_saved_email');
+    const savedPassword = localStorage.getItem('landnote_saved_password');
+    const isAutoLogin = localStorage.getItem('landnote_auto_login') === 'true';
+
     if (savedEmail) {
       setEmail(savedEmail);
-      setRememberEmail(true);
+      setRememberCredentials(true);
+    }
+    if (savedPassword) {
+      setPassword(savedPassword);
+    }
+    if (isAutoLogin) {
+      setAutoLogin(true);
+    }
+
+    if (isAutoLogin && savedEmail && savedPassword) {
+      performLogin(savedEmail, savedPassword, true, true);
     }
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performLogin = async (loginEmail: string, loginPass: string, saveCreds: boolean, isAuto: boolean) => {
     setError('');
     setLoading(true);
 
-    if (rememberEmail) {
-      localStorage.setItem('landnote_saved_email', email);
+    if (saveCreds) {
+      localStorage.setItem('landnote_saved_email', loginEmail);
+      localStorage.setItem('landnote_saved_password', loginPass);
     } else {
       localStorage.removeItem('landnote_saved_email');
+      localStorage.removeItem('landnote_saved_password');
     }
 
-    const isAdminLogin = email === 'admin' && password === 'admin';
-    const actualEmail = isAdminLogin ? 'admin@landnote.com' : email;
-    const actualPassword = isAdminLogin ? 'admin1234!' : password;
+    if (isAuto) {
+      localStorage.setItem('landnote_auto_login', 'true');
+    } else {
+      localStorage.removeItem('landnote_auto_login');
+    }
+
+    const isAdminLogin = loginEmail === 'admin' && loginPass === 'admin';
+    const actualEmail = isAdminLogin ? 'admin@landnote.com' : loginEmail;
+    const actualPassword = isAdminLogin ? 'admin1234!' : loginPass;
 
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
@@ -55,6 +75,7 @@ export default function LoginPage() {
 
       if (!res.ok || json.ok === false) {
         setError(json.error?.message ?? '로그인에 실패했습니다');
+        setLoading(false);
         return;
       }
 
@@ -67,18 +88,21 @@ export default function LoginPage() {
           access_token: session.access_token,
           refresh_token: session.refresh_token,
         });
-        
-        // Supabase SSR uses cookies, but we can't easily alter cookie expiration purely from client-side setSession.
-        // By default Supabase cookies are persistent. 
       }
 
       router.push('/dashboard');
     } catch {
       setError('네트워크 오류가 발생했습니다');
-    } finally {
       setLoading(false);
     }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    performLogin(email, password, rememberCredentials, autoLogin);
+  };
+
+
 
   return (
     <Card className="w-full max-w-md">
@@ -115,25 +139,28 @@ export default function LoginPage() {
             <div className="flex items-center space-x-2">
               <input 
                 type="checkbox"
-                id="rememberEmail" 
+                id="rememberCredentials" 
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary"
-                checked={rememberEmail}
-                onChange={(e) => setRememberEmail(e.target.checked)}
+                checked={rememberCredentials}
+                onChange={(e) => setRememberCredentials(e.target.checked)}
               />
-              <Label htmlFor="rememberEmail" className="text-sm font-normal cursor-pointer">
-                아이디 저장
+              <Label htmlFor="rememberCredentials" className="text-sm font-normal cursor-pointer">
+                아이디/비밀번호 저장
               </Label>
             </div>
             <div className="flex items-center space-x-2">
               <input 
                 type="checkbox"
-                id="keepLoggedIn" 
+                id="autoLogin" 
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary"
-                checked={keepLoggedIn}
-                onChange={(e) => setKeepLoggedIn(e.target.checked)}
+                checked={autoLogin}
+                onChange={(e) => {
+                  setAutoLogin(e.target.checked);
+                  if (e.target.checked) setRememberCredentials(true);
+                }}
               />
-              <Label htmlFor="keepLoggedIn" className="text-sm font-normal cursor-pointer">
-                로그인 상태 유지
+              <Label htmlFor="autoLogin" className="text-sm font-normal cursor-pointer">
+                자동 로그인
               </Label>
             </div>
           </div>
