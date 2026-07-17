@@ -17,7 +17,7 @@ import {
   useDeleteListing,
 } from '@/lib/hooks/queries';
 import { SUBCATEGORY_LABELS } from '@landnote/shared';
-import { ArrowLeft, Pencil, X, Upload, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Upload, Camera, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { AddressSearch } from '@/components/address-search';
 
@@ -505,21 +505,38 @@ export default function ListingDetailPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">이미지</CardTitle>
-          <label className="cursor-pointer">
-            <Button variant="outline" size="sm" asChild>
-              <span>
-                <Upload className="mr-1 h-3 w-3" />
-                추가
-              </span>
-            </Button>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic"
-              multiple
-              className="hidden"
-              onChange={handleAddImage}
-            />
-          </label>
+          <div className="flex items-center gap-2">
+            <label className="cursor-pointer">
+              <Button variant="outline" size="sm" asChild>
+                <span>
+                  <Upload className="mr-1 h-3 w-3" />
+                  앨범
+                </span>
+              </Button>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic"
+                multiple
+                className="hidden"
+                onChange={handleAddImage}
+              />
+            </label>
+            <label className="cursor-pointer">
+              <Button variant="outline" size="sm" asChild>
+                <span>
+                  <Camera className="mr-1 h-3 w-3" />
+                  카메라
+                </span>
+              </Button>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic"
+                capture="environment"
+                className="hidden"
+                onChange={handleAddImage}
+              />
+            </label>
+          </div>
         </CardHeader>
         <CardContent>
           {listing.images.length === 0 ? (

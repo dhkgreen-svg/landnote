@@ -18,7 +18,7 @@ import {
   REQUIRED_PRICE_FIELDS, ZONING_OPTIONS, JIMOK_OPTIONS,
 } from '@landnote/shared';
 import type { CategoryCode, TransactionType } from '@landnote/shared';
-import { X, Upload, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Upload, Camera, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { AddressSearch } from '@/components/address-search';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -559,11 +559,22 @@ export default function NewListingPage() {
             ))}
             <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed text-muted-foreground transition-colors hover:border-primary hover:text-primary">
               <Upload className="mb-1 h-5 w-5" />
-              <span className="text-xs">추가</span>
+              <span className="text-xs">앨범</span>
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/heic"
                 multiple
+                className="hidden"
+                onChange={handleImageAdd}
+              />
+            </label>
+            <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed text-muted-foreground transition-colors hover:border-primary hover:text-primary">
+              <Camera className="mb-1 h-5 w-5" />
+              <span className="text-xs">카메라</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic"
+                capture="environment"
                 className="hidden"
                 onChange={handleImageAdd}
               />
