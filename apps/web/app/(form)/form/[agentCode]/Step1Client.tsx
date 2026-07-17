@@ -63,7 +63,7 @@ export default function Step1Client({ agentCode, agentName, officeName, phone, s
 
       <div className="mb-10 text-center space-y-2">
         <h2 className="text-2xl font-bold text-foreground">
-          {agentName}{agentName.endsWith('중개사') ? '' : ' 중개사'}
+          {officeName || `${agentName}${agentName.endsWith('중개사') ? '' : ' 중개사'}`}
         </h2>
         {phone && /^[0-9+()\-\s]{8,20}$/.test(phone) && (
           <a href={`tel:${phone}`} className="inline-block px-4 py-1.5 rounded-full bg-muted/50 text-base font-medium text-foreground hover:bg-muted transition-colors">

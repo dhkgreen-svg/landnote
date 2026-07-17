@@ -46,10 +46,12 @@ function DoneContent() {
         <Card className="w-full border-primary/10 bg-white shadow-sm">
           <CardContent className="p-6">
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">담당 중개사</h3>
-            <p className="text-base font-bold">{agentInfo.agentName} 중개사</p>
+            <p className="text-base font-bold">
+              {agentInfo.officeName || `${agentInfo.agentName} 중개사`}
+            </p>
             {agentInfo.officeName && (
               <p className="mt-0.5 text-sm text-muted-foreground">
-                {agentInfo.officeName}
+                {agentInfo.agentName} 중개사
               </p>
             )}
           </CardContent>
