@@ -21,6 +21,19 @@ export class MatchingController {
     return this.matchingService.getMatchesByInquiry(agent.id, inquiryId);
   }
 
+  @Get('listings')
+  async listingsWithMatches(@CurrentAgent() agent: any) {
+    return this.matchingService.getListingsWithMatches(agent.id);
+  }
+
+  @Get('listings/:listingId')
+  async matchesByListing(
+    @CurrentAgent() agent: any,
+    @Param('listingId') listingId: string,
+  ) {
+    return this.matchingService.getMatchesByListing(agent.id, listingId);
+  }
+
   @Post('run/:inquiryId')
   async run(
     @CurrentAgent() agent: any,

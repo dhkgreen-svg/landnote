@@ -15,6 +15,24 @@ interface InquiryWithMatches {
   pending_count: number;
 }
 
+interface ListingWithMatches {
+  id: string;
+  address_full: string | null;
+  dong_name: string | null;
+  category_codes: string[];
+  transaction_types: string[];
+  price_sale: number | null;
+  deposit: number | null;
+  monthly_rent: number | null;
+  area_exclusive: number | null;
+  floor_current: number | null;
+  direction: string | null;
+  status: string;
+  created_at: string;
+  match_count: number;
+  pending_count: number;
+}
+
 interface MatchItem {
   id: string;
   inquiry_id: string;
@@ -39,9 +57,18 @@ interface MatchItem {
     direction: string | null;
     status: string;
   } | null;
+  inquiry: {
+    id: string;
+    customer_name: string | null;
+    inquiry_type: string;
+    category_codes: string[];
+    transaction_types: string[];
+    detailed_conditions: Record<string, unknown>;
+    status: string;
+  } | null;
 }
 
-export type { InquiryWithMatches, MatchItem };
+export type { InquiryWithMatches, ListingWithMatches, MatchItem };
 
 export function useMatchingInquiries() {
   return useQuery({
@@ -57,5 +84,22 @@ export function useMatchResults(inquiryId: string | null) {
     queryFn: () => apiFetch<MatchItem[]>(`/matching/${inquiryId}`),
     staleTime: 2 * 60 * 1000,
     enabled: !!inquiryId,
+  });
+}
+
+export function useMatchingListings() {
+  return useQuery({
+    queryKey: queryKeys.matching.listings(),
+    queryFn: () => apiFetch<ListingWithMatches[]>('/matching/listings'),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useMatchResultsForListing(listingId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.matching.resultsForListing(listingId!),
+    queryFn: () => apiFetch<MatchItem[]>(`/matching/listings/${listingId}`),
+    staleTime: 2 * 60 * 1000,
+    enabled: !!listingId,
   });
 }

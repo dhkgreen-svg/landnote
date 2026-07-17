@@ -62,6 +62,10 @@ const mockNotificationsService = {
   sendPush: jest.fn(),
 };
 
+const mockMatchingService = {
+  runMatching: jest.fn(),
+};
+
 describe('InquiriesService', () => {
   let service: InquiriesService;
 
@@ -70,6 +74,7 @@ describe('InquiriesService', () => {
       mockStorageService as any,
       mockEmailService as any,
       mockNotificationsService as any,
+      mockMatchingService as any,
     );
     jest.clearAllMocks();
     mockUpdate.mockReturnValue({

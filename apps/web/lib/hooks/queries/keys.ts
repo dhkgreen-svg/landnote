@@ -22,6 +22,9 @@ export const queryKeys = {
     inquiries: () => [...queryKeys.matching.all, 'inquiries'] as const,
     results: (inquiryId: string) =>
       [...queryKeys.matching.all, 'results', inquiryId] as const,
+    listings: () => [...queryKeys.matching.all, 'listings'] as const,
+    resultsForListing: (listingId: string) =>
+      [...queryKeys.matching.all, 'results-listing', listingId] as const,
   },
 
   stats: {

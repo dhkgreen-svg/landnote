@@ -260,6 +260,74 @@ export class MatchingService {
     }));
   }
 
+  /** 매칭이 존재하는 매물 목록 (미검토 우선 정렬) */
+  async getListingsWithMatches(agentId: string) {
+    const { data: matches } = await this.supabase
+      .from('matches')
+      .select('property_id, is_shown')
+      .eq('agent_id', agentId);
+
+    const listingMap = new Map<string, { pending: number; total: number }>();
+    for (const m of matches ?? []) {
+      const entry = listingMap.get(m.property_id) ?? { pending: 0, total: 0 };
+      entry.total++;
+      if (!m.is_shown) entry.pending++;
+      listingMap.set(m.property_id, entry);
+    }
+
+    const listingIds = [...listingMap.keys()];
+    if (listingIds.length === 0) return [];
+
+    const { data: listings } = await this.supabase
+      .from('property_listings')
+      .select('id, address_full, dong_name, category_codes, transaction_types, price_sale, deposit, monthly_rent, area_exclusive, floor_current, direction, status, created_at')
+      .eq('agent_id', agentId)
+      .in('id', listingIds);
+
+    return (listings ?? [])
+      .map(listing => ({
+        ...listing,
+        match_count: listingMap.get(listing.id)?.total ?? 0,
+        pending_count: listingMap.get(listing.id)?.pending ?? 0,
+      }))
+      .sort((a, b) =>
+        b.pending_count - a.pending_count ||
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+  }
+
+  /** 특정 매물의 매칭 결과 목록 (score DESC, 고객 정보 포함) */
+  async getMatchesByListing(agentId: string, listingId: string) {
+    const { data: matches } = await this.supabase
+      .from('matches')
+      .select('*')
+      .eq('agent_id', agentId)
+      .eq('property_id', listingId)
+      .order('score', { ascending: false });
+
+    if (!matches || matches.length === 0) return [];
+
+    const inquiryIds = matches.map(m => m.inquiry_id);
+    const { data: inquiries } = await this.supabase
+      .from('customer_inquiries')
+      .select('id, customer_name, inquiry_type, category_codes, transaction_types, detailed_conditions, status, created_at')
+      .in('id', inquiryIds);
+
+    const inquiryMap = new Map((inquiries ?? []).map(i => [i.id, i]));
+
+    return matches.map(m => ({
+      id: m.id,
+      inquiry_id: m.inquiry_id,
+      property_id: m.property_id,
+      score: m.score,
+      score_breakdown: m.score_breakdown,
+      is_shown: m.is_shown,
+      is_liked: m.is_liked,
+      created_at: m.created_at,
+      inquiry: inquiryMap.get(m.inquiry_id) ?? null,
+    }));
+  }
+
   /** 매칭 상태 업데이트 (is_shown / is_liked) */
   async updateMatch(agentId: string, matchId: string, body: { is_shown?: boolean; is_liked?: boolean }) {
     const updateData: Record<string, boolean> = {};

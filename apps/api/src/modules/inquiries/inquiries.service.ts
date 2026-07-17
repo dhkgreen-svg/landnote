@@ -4,6 +4,7 @@ import { encryptPhone, decryptPhone } from '../../common/utils/crypto.util';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { MatchingService } from '../matching/matching.service';
 import { CreateInquiryDto } from './dto/create-inquiry.dto';
 import { UpdateInquiryDto } from './dto/update-inquiry.dto';
 
@@ -18,6 +19,7 @@ export class InquiriesService {
     private readonly storageService: StorageService,
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
+    private readonly matchingService: MatchingService,
   ) {}
 
   async sendOtp(phone: string) {
@@ -182,7 +184,16 @@ export class InquiriesService {
       // 푸시 실패는 접수 자체를 실패시키지 않음
     }
 
-    // 7. 결과 반환
+    // 7. 자동 매칭 실행 (비차단)
+    try {
+      if (dto.inquiry_type === 'looking_for') {
+        await this.matchingService.runMatching(agent.id, inquiry.id);
+      }
+    } catch {
+      // 매칭 실패는 접수 자체를 실패시키지 않음
+    }
+
+    // 8. 결과 반환
     return { inquiryId: inquiry.id };
   }
 
@@ -236,6 +247,15 @@ export class InquiriesService {
 
     if (insertErr || !inquiry) {
       throw new Error(`접수 저장 실패: ${insertErr?.message}`);
+    }
+
+    // 자동 매칭 실행 (비차단)
+    try {
+      if (dto.inquiry_type === 'looking_for') {
+        await this.matchingService.runMatching(agent.id, inquiry.id);
+      }
+    } catch {
+      // 매칭 실패는 접수 자체를 실패시키지 않음
     }
 
     // 중개사 본인이 직접 등록했으므로 이메일/푸시 알림은 생략할 수 있음
