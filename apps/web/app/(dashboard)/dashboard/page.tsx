@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSummary } from '@/lib/hooks/queries';
 import { useAgent } from '@/lib/hooks/use-agent';
 import { UpgradeModal } from '@/components/dashboard/UpgradeModal';
+import { DashboardListingsView, DashboardInquiriesView } from './interactive-views';
 
 const STATUS_LABELS: Record<string, string> = {
   new: '신규',
@@ -47,6 +48,7 @@ export default function DashboardPage() {
   const { data: summary, isLoading: summaryLoading } = useSummary();
   const { agent } = useAgent();
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [activeView, setActiveView] = useState<'new_listings' | 'total_listings' | 'new_buyers' | 'total_buyers' | null>(null);
   const loading = summaryLoading;
 
   if (loading) {
@@ -96,7 +98,10 @@ export default function DashboardPage() {
           </Link>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Card className="hover:border-primary transition-colors">
+          <Card 
+            className={`cursor-pointer transition-all hover:border-primary hover:shadow-md ${activeView === 'new_listings' ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : ''}`}
+            onClick={() => setActiveView(activeView === 'new_listings' ? null : 'new_listings')}
+          >
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">신규 매물</CardTitle>
             </CardHeader>
@@ -104,7 +109,10 @@ export default function DashboardPage() {
               <div className="text-3xl font-bold text-blue-600">{summary?.listings?.new_count ?? 0}</div>
             </CardContent>
           </Card>
-          <Card className="hover:border-primary transition-colors">
+          <Card 
+            className={`cursor-pointer transition-all hover:border-primary hover:shadow-md ${activeView === 'total_listings' ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : ''}`}
+            onClick={() => setActiveView(activeView === 'total_listings' ? null : 'total_listings')}
+          >
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">총 매물</CardTitle>
             </CardHeader>
@@ -113,6 +121,10 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+        
+        {(activeView === 'new_listings' || activeView === 'total_listings') && (
+          <DashboardListingsView activeView={activeView} />
+        )}
       </section>
 
       {/* 2. 매수 현황 */}
@@ -128,7 +140,10 @@ export default function DashboardPage() {
           </Link>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Card className="hover:border-primary transition-colors">
+          <Card 
+            className={`cursor-pointer transition-all hover:border-primary hover:shadow-md ${activeView === 'new_buyers' ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : ''}`}
+            onClick={() => setActiveView(activeView === 'new_buyers' ? null : 'new_buyers')}
+          >
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">신규 매수 문의</CardTitle>
             </CardHeader>
@@ -136,7 +151,10 @@ export default function DashboardPage() {
               <div className="text-3xl font-bold text-orange-600">{summary?.buyers?.new_count ?? 0}</div>
             </CardContent>
           </Card>
-          <Card className="hover:border-primary transition-colors">
+          <Card 
+            className={`cursor-pointer transition-all hover:border-primary hover:shadow-md ${activeView === 'total_buyers' ? 'border-primary ring-1 ring-primary/20 bg-primary/5' : ''}`}
+            onClick={() => setActiveView(activeView === 'total_buyers' ? null : 'total_buyers')}
+          >
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">매수 고객 전체</CardTitle>
             </CardHeader>
@@ -145,6 +163,10 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {(activeView === 'new_buyers' || activeView === 'total_buyers') && (
+          <DashboardInquiriesView activeView={activeView} />
+        )}
       </section>
 
       {/* Category Summary */}
