@@ -149,7 +149,6 @@ export class InquiriesService {
         complex_name: dto.complex_name ?? null,
         building_num: dto.building_num ?? null,
         room_num: dto.room_num ?? null,
-        area_max: dto.area_max ?? null,
         area_land: dto.area_land ?? null,
         area_building: dto.area_building ?? null,
         area_contract: dto.area_contract ?? null,
