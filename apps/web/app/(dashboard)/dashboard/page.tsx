@@ -123,7 +123,7 @@ export default function DashboardPage() {
         </div>
         
         {(activeView === 'new_listings' || activeView === 'total_listings') && (
-          <DashboardListingsView activeView={activeView} />
+          <DashboardListingsView activeView={activeView} summary={summary} />
         )}
       </section>
 
@@ -165,73 +165,11 @@ export default function DashboardPage() {
         </div>
 
         {(activeView === 'new_buyers' || activeView === 'total_buyers') && (
-          <DashboardInquiriesView activeView={activeView} />
+          <DashboardInquiriesView activeView={activeView} summary={summary} />
         )}
       </section>
 
-      {/* Category Summary */}
-      {agent && summary?.categories && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">나의 전문 분야</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {(['residential', 'commercial', 'industrial', 'land'] as const).map(code => {
-                const isSelected = agent.selected_categories?.includes(code);
-                const catStats = summary.categories?.find(c => c.code === code);
-                const isMinimal = agent.subscription_plan === 'minimal';
-                const wouldExceedLimit = (agent.selected_categories?.length ?? 0) >= (agent.subscription_plan === 'standard' ? 3 : 4); 
-                if (!isSelected && wouldExceedLimit) return null;
 
-                const content = (
-                  <div
-                    key={code}
-                    className={`flex items-center gap-3 rounded-lg border p-3 transition-colors ${
-                      isSelected ? 'hover:border-primary hover:bg-muted/30 cursor-pointer' : 'opacity-60'
-                    }`}
-                  >
-                    <span className="text-2xl">{CATEGORY_ICONS[code]}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-sm font-medium">{CATEGORY_LABELS[code]}</p>
-                        {isSelected && <Badge variant="secondary" className="text-[10px]">전문 분야로 운영 중</Badge>}
-                      </div>
-                      {isSelected ? (
-                        <p className="text-xs text-muted-foreground">
-                          매물 {catStats?.listing_count ?? 0}건 | 고객 {catStats?.inquiry_count ?? 0}명
-                        </p>
-                      ) : (
-                        <button
-                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary relative z-10"
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowUpgrade(true); }}
-                        >
-                          <Lock className="h-3 w-3" />
-                          프로로 해제 가능
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-
-                return isSelected ? (
-                  <Link key={code} href={`/dashboard/listings?category=${code}`}>
-                    {content}
-                  </Link>
-                ) : (
-                  content
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <UpgradeModal
-        open={showUpgrade}
-        onClose={() => setShowUpgrade(false)}
-        feature="추가 카테고리"
-      />
 
       {/* 참고란 (Reference) */}
       <section className="pt-6 border-t space-y-4">

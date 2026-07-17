@@ -36,7 +36,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   land: '토지',
 };
 
-export function DashboardListingsView({ activeView }: { activeView: 'new_listings' | 'total_listings' | null }) {
+const CATEGORY_ICONS: Record<string, string> = {
+  residential: '🏠',
+  commercial: '🏬',
+  industrial: '🏭',
+  land: '🌳',
+};
+
+export function DashboardListingsView({ activeView, summary }: { activeView: 'new_listings' | 'total_listings' | null; summary?: any }) {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   
   const statusParam = activeView === 'new_listings' ? 'new' : undefined;
@@ -70,21 +77,30 @@ export function DashboardListingsView({ activeView }: { activeView: 'new_listing
             variant={activeCategory === 'all' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setActiveCategory('all')}
-            className="whitespace-nowrap"
+            className="whitespace-nowrap flex items-center gap-1.5"
           >
-            전체
+            <span>전체</span>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeCategory === 'all' ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'}`}>
+              {summary?.listings?.total_count ?? 0}
+            </span>
           </Button>
-          {Object.entries(CATEGORY_LABELS).map(([code, label]) => (
-            <Button
-              key={code}
-              variant={activeCategory === code ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveCategory(code)}
-              className="whitespace-nowrap"
-            >
-              {label}
-            </Button>
-          ))}
+          {Object.entries(CATEGORY_LABELS).map(([code, label]) => {
+            const count = summary?.categories?.find((c: any) => c.code === code)?.listing_count ?? 0;
+            return (
+              <Button
+                key={code}
+                variant={activeCategory === code ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveCategory(code)}
+                className="whitespace-nowrap flex items-center gap-1.5"
+              >
+                <span>{CATEGORY_ICONS[code]} {label}</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeCategory === code ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'}`}>
+                  {count}
+                </span>
+              </Button>
+            );
+          })}
         </div>
 
         {isLoading ? (
@@ -171,7 +187,7 @@ function InquiryStatusSelect({ inquiry }: { inquiry: any }) {
   );
 }
 
-export function DashboardInquiriesView({ activeView }: { activeView: 'new_buyers' | 'total_buyers' | null }) {
+export function DashboardInquiriesView({ activeView, summary }: { activeView: 'new_buyers' | 'total_buyers' | null; summary?: any }) {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   
   const statusParam = activeView === 'new_buyers' ? 'new' : undefined;
@@ -206,21 +222,30 @@ export function DashboardInquiriesView({ activeView }: { activeView: 'new_buyers
             variant={activeCategory === 'all' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setActiveCategory('all')}
-            className="whitespace-nowrap"
+            className="whitespace-nowrap flex items-center gap-1.5"
           >
-            전체
+            <span>전체</span>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeCategory === 'all' ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'}`}>
+              {summary?.buyers?.total_count ?? 0}
+            </span>
           </Button>
-          {Object.entries(CATEGORY_LABELS).map(([code, label]) => (
-            <Button
-              key={code}
-              variant={activeCategory === code ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveCategory(code)}
-              className="whitespace-nowrap"
-            >
-              {label}
-            </Button>
-          ))}
+          {Object.entries(CATEGORY_LABELS).map(([code, label]) => {
+            const count = summary?.categories?.find((c: any) => c.code === code)?.inquiry_count ?? 0;
+            return (
+              <Button
+                key={code}
+                variant={activeCategory === code ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveCategory(code)}
+                className="whitespace-nowrap flex items-center gap-1.5"
+              >
+                <span>{CATEGORY_ICONS[code]} {label}</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeCategory === code ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'}`}>
+                  {count}
+                </span>
+              </Button>
+            );
+          })}
         </div>
 
         {isLoading ? (
