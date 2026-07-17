@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useListings, useInquiries, useUpdateInquiry } from '@/lib/hooks/queries';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 
@@ -44,6 +45,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export function DashboardListingsView({ activeView, summary }: { activeView: 'new_listings' | 'total_listings' | null; summary?: any }) {
+  const router = useRouter();
   const [activeCategory, setActiveCategory] = useState<string>('all');
   
   const statusParam = activeView === 'new_listings' ? 'new' : undefined;
@@ -127,7 +129,11 @@ export function DashboardListingsView({ activeView, summary }: { activeView: 'ne
               </TableHeader>
               <TableBody>
                 {data?.items.map((item) => (
-                  <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
+                  <TableRow 
+                    key={item.id} 
+                    className="hover:bg-muted/30 transition-colors cursor-pointer"
+                    onClick={() => router.push(`/dashboard/listings/${item.id}`)}
+                  >
                     <TableCell>
                       <Badge variant="outline" className={STATUS_COLORS[item.status] || ''}>
                         {STATUS_LABELS[item.status] || item.status}
@@ -188,6 +194,7 @@ function InquiryStatusSelect({ inquiry }: { inquiry: any }) {
 }
 
 export function DashboardInquiriesView({ activeView, summary }: { activeView: 'new_buyers' | 'total_buyers' | null; summary?: any }) {
+  const router = useRouter();
   const [activeCategory, setActiveCategory] = useState<string>('all');
   
   const statusParam = activeView === 'new_buyers' ? 'new' : undefined;
@@ -272,7 +279,11 @@ export function DashboardInquiriesView({ activeView, summary }: { activeView: 'n
               </TableHeader>
               <TableBody>
                 {data?.items.map((item) => (
-                  <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
+                  <TableRow 
+                    key={item.id} 
+                    className="hover:bg-muted/30 transition-colors cursor-pointer"
+                    onClick={() => router.push(`/dashboard/inquiries/${item.id}`)}
+                  >
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <InquiryStatusSelect inquiry={item} />
                     </TableCell>
