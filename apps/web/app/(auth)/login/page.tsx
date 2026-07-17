@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -114,20 +113,24 @@ export default function LoginPage() {
           
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Checkbox 
+              <input 
+                type="checkbox"
                 id="rememberEmail" 
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary"
                 checked={rememberEmail}
-                onCheckedChange={(c) => setRememberEmail(c as boolean)}
+                onChange={(e) => setRememberEmail(e.target.checked)}
               />
               <Label htmlFor="rememberEmail" className="text-sm font-normal cursor-pointer">
                 아이디 저장
               </Label>
             </div>
             <div className="flex items-center space-x-2">
-              <Checkbox 
+              <input 
+                type="checkbox"
                 id="keepLoggedIn" 
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary"
                 checked={keepLoggedIn}
-                onCheckedChange={(c) => setKeepLoggedIn(c as boolean)}
+                onChange={(e) => setKeepLoggedIn(e.target.checked)}
               />
               <Label htmlFor="keepLoggedIn" className="text-sm font-normal cursor-pointer">
                 로그인 상태 유지
