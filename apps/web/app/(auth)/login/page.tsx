@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -17,11 +18,28 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  const [rememberEmail, setRememberEmail] = useState(false);
+  const [keepLoggedIn, setKeepLoggedIn] = useState(true);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('landnote_saved_email');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberEmail(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    if (rememberEmail) {
+      localStorage.setItem('landnote_saved_email', email);
+    } else {
+      localStorage.removeItem('landnote_saved_email');
+    }
 
     const isAdminLogin = email === 'admin' && password === 'admin';
     const actualEmail = isAdminLogin ? 'admin@landnote.com' : email;
@@ -50,6 +68,9 @@ export default function LoginPage() {
           access_token: session.access_token,
           refresh_token: session.refresh_token,
         });
+        
+        // Supabase SSR uses cookies, but we can't easily alter cookie expiration purely from client-side setSession.
+        // By default Supabase cookies are persistent. 
       }
 
       router.push('/dashboard');
@@ -89,6 +110,29 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="rememberEmail" 
+                checked={rememberEmail}
+                onCheckedChange={(c) => setRememberEmail(c as boolean)}
+              />
+              <Label htmlFor="rememberEmail" className="text-sm font-normal cursor-pointer">
+                아이디 저장
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="keepLoggedIn" 
+                checked={keepLoggedIn}
+                onCheckedChange={(c) => setKeepLoggedIn(c as boolean)}
+              />
+              <Label htmlFor="keepLoggedIn" className="text-sm font-normal cursor-pointer">
+                로그인 상태 유지
+              </Label>
+            </div>
           </div>
 
           {error && (
