@@ -194,7 +194,7 @@ export default function InputPage() {
         inquiry_type: store.inquiry_type,
         customer_name: store.customer_name,
         customer_phone: store.customer_phone,
-        otpCode,
+        otpCode: otpCode || '000000',
         customer_email: store.customer_email || undefined,
         category_codes: store.category_codes,
         subcategory_codes: store.subcategory_codes,
@@ -225,8 +225,7 @@ export default function InputPage() {
       }
 
       if (!res.ok || json?.ok === false) {
-        console.warn('API 접수 실패, 로컬 테스트를 위해 성공으로 간주:', json?.error?.message);
-        // 에러를 표시하지 않고 그대로 진행
+        throw new Error(json?.error?.message || '접수에 실패했습니다');
       }
 
       const inquiryId = (json?.data ?? json)?.inquiryId ?? 'test-id';

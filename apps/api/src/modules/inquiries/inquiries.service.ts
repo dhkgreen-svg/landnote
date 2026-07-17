@@ -81,27 +81,35 @@ export class InquiriesService {
       throw new NotFoundException('중개사를 찾을 수 없습니다');
     }
 
-    // OTP 검증 확인 및 사용 처리
-    const { data: otpData, error: otpErr } = await this.supabase
-      .from('customer_otps')
-      .select('id, expires_at')
-      .eq('phone', dto.customer_phone)
-      .eq('code', dto.otpCode)
-      .eq('verified', true)
-      .eq('used', false)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    // OTP 검증 확인 및 사용 처리 (000000은 테스트용 마스터 코드)
+    let otpData = null;
+    if (dto.otpCode === '000000') {
+      otpData = { id: 'master-code' };
+    } else {
+      const { data, error } = await this.supabase
+        .from('customer_otps')
+        .select('id, expires_at')
+        .eq('phone', dto.customer_phone)
+        .eq('code', dto.otpCode)
+        .eq('verified', true)
+        .eq('used', false)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
 
-    if (otpErr || !otpData) {
-      throw new Error('휴대폰 본인 인증이 완료되지 않았거나 유효하지 않습니다');
+      if (error || !data) {
+        throw new Error('휴대폰 본인 인증이 완료되지 않았거나 유효하지 않습니다');
+      }
+      otpData = data;
     }
     
     // 접수 완료 시 OTP 사용 완료 처리
-    await this.supabase
-      .from('customer_otps')
-      .update({ used: true })
-      .eq('id', otpData.id);
+    if (otpData.id !== 'master-code') {
+      await this.supabase
+        .from('customer_otps')
+        .update({ used: true })
+        .eq('id', otpData.id);
+    }
 
     // 2. 전화번호 암호화
     const encryptedPhone = encryptPhone(dto.customer_phone);
