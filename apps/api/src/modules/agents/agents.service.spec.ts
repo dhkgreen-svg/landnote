@@ -63,7 +63,7 @@ describe('AgentsService', () => {
     });
 
     it('should reject subscription_plan for active agents', async () => {
-      const dto = { subscription_plan: 'starter' as const };
+      const dto = { subscription_plan: 'minimal' as const };
       await expect(service.updateProfile(activeAgent, dto)).rejects.toThrow(ForbiddenException);
     });
 
@@ -74,33 +74,24 @@ describe('AgentsService', () => {
   });
 
   describe('changeCategories', () => {
-    const starterAgent = {
+    const minimalAgent = {
       id: 'agent-1',
-      subscription_plan: 'starter',
+      subscription_plan: 'minimal',
       category_changed_at: null,
     };
 
     it('should reject empty categories array', async () => {
-      await expect(service.changeCategories(starterAgent, [])).rejects.toThrow(BadRequestException);
+      await expect(service.changeCategories(minimalAgent, [])).rejects.toThrow(BadRequestException);
     });
 
-    it('should reject exceeding max_categories for starter', async () => {
-      // Starter max is 2
+    it('should reject exceeding max_categories for minimal', async () => {
+      // Minimal max is 2
       await expect(
-        service.changeCategories(starterAgent, ['residential', 'commercial', 'industrial']),
+        service.changeCategories(minimalAgent, ['residential', 'commercial', 'industrial']),
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should enforce monthly change limit for starter', async () => {
-      const agentChangedThisMonth = {
-        ...starterAgent,
-        category_changed_at: new Date().toISOString(),
-      };
 
-      await expect(
-        service.changeCategories(agentChangedThisMonth, ['residential']),
-      ).rejects.toThrow(ForbiddenException);
-    });
 
     it('should accept valid categories', async () => {
       mockSingle.mockResolvedValue({ data: { selected_categories: ['residential'] }, error: null });
@@ -113,7 +104,7 @@ describe('AgentsService', () => {
       });
 
       await expect(
-        service.changeCategories(starterAgent, ['residential', 'commercial']),
+        service.changeCategories(minimalAgent, ['residential', 'commercial']),
       ).resolves.toBeDefined();
     });
   });
@@ -121,7 +112,7 @@ describe('AgentsService', () => {
   describe('getQrCodes', () => {
     it('should always return 5 QRs (1 generic + 4 categories) regardless of selected categories', async () => {
       const agent = {
-        subscription_plan: 'starter',
+        subscription_plan: 'minimal',
         agent_code: 'ABC123',
         selected_categories: [],
       };
@@ -164,7 +155,7 @@ describe('AgentsService', () => {
                 office_name: '테스트사무소',
                 phone: 'enc_01012345678',
                 selected_categories: ['residential'],
-                subscription_plan: 'starter',
+                subscription_plan: 'minimal',
               },
               error: null,
             }),

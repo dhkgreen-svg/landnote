@@ -70,22 +70,22 @@ describe('BillingService', () => {
 
   describe('changePlan', () => {
     it('동일 플랜 요청 시 BadRequestException', async () => {
-      const agent = { id: 'a1', subscription_plan: 'starter', subscription_status: 'active', pending_plan: null };
-      await expect(service.changePlan(agent, 'starter')).rejects.toThrow(BadRequestException);
+      const agent = { id: 'a1', subscription_plan: 'minimal', subscription_status: 'active', pending_plan: null };
+      await expect(service.changePlan(agent, 'minimal')).rejects.toThrow(BadRequestException);
     });
 
     it('expired 상태 시 ForbiddenException', async () => {
-      const agent = { id: 'a1', subscription_plan: 'starter', subscription_status: 'expired', pending_plan: null };
+      const agent = { id: 'a1', subscription_plan: 'minimal', subscription_status: 'expired', pending_plan: null };
       await expect(service.changePlan(agent, 'pro')).rejects.toThrow(ForbiddenException);
     });
 
     it('cancelled 상태 시 ForbiddenException', async () => {
-      const agent = { id: 'a1', subscription_plan: 'starter', subscription_status: 'cancelled', pending_plan: null };
+      const agent = { id: 'a1', subscription_plan: 'minimal', subscription_status: 'cancelled', pending_plan: null };
       await expect(service.changePlan(agent, 'pro')).rejects.toThrow(ForbiddenException);
     });
 
     it('trial 상태에서 즉시 반영', async () => {
-      const agent = { id: 'a1', subscription_plan: 'starter', subscription_status: 'trial', pending_plan: null };
+      const agent = { id: 'a1', subscription_plan: 'minimal', subscription_status: 'trial', pending_plan: null };
       await service.changePlan(agent, 'pro');
 
       expect(mockAgentsUpdate).toHaveBeenCalledWith(
@@ -93,8 +93,8 @@ describe('BillingService', () => {
       );
     });
 
-    it('active starter→pro: 즉시 업그레이드', async () => {
-      const agent = { id: 'a1', subscription_plan: 'starter', subscription_status: 'active', pending_plan: null };
+    it('active minimal→pro: 즉시 업그레이드', async () => {
+      const agent = { id: 'a1', subscription_plan: 'minimal', subscription_status: 'active', pending_plan: null };
       await service.changePlan(agent, 'pro');
 
       expect(mockAgentsUpdate).toHaveBeenCalledWith(
@@ -102,17 +102,17 @@ describe('BillingService', () => {
       );
     });
 
-    it('active pro→starter: pending_plan 예약', async () => {
+    it('active pro→minimal: pending_plan 예약', async () => {
       const agent = { id: 'a1', subscription_plan: 'pro', subscription_status: 'active', pending_plan: null };
-      await service.changePlan(agent, 'starter');
+      await service.changePlan(agent, 'minimal');
 
       expect(mockAgentsUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({ pending_plan: 'starter' }),
+        expect.objectContaining({ pending_plan: 'minimal' }),
       );
     });
 
     it('pending_plan 취소 (현재 플랜으로 재요청)', async () => {
-      const agent = { id: 'a1', subscription_plan: 'pro', subscription_status: 'active', pending_plan: 'starter' };
+      const agent = { id: 'a1', subscription_plan: 'pro', subscription_status: 'active', pending_plan: 'minimal' };
       await service.changePlan(agent, 'pro');
 
       expect(mockAgentsUpdate).toHaveBeenCalledWith(
@@ -125,7 +125,7 @@ describe('BillingService', () => {
 
   describe('chargeAgent', () => {
     it('billing_key 없으면 expired 전환', async () => {
-      const agent = { id: 'a1', billing_key: null, subscription_plan: 'starter' };
+      const agent = { id: 'a1', billing_key: null, subscription_plan: 'minimal' };
       await service.chargeAgent(agent);
 
       expect(mockAgentsUpdate).toHaveBeenCalledWith(
@@ -172,7 +172,7 @@ describe('BillingService', () => {
       });
 
       const agent = {
-        id: 'a1', billing_key: 'bk_123', subscription_plan: 'starter',
+        id: 'a1', billing_key: 'bk_123', subscription_plan: 'minimal',
         subscription_status: 'active', billing_day: 15,
       };
       await service.chargeAgent(agent);
@@ -202,7 +202,7 @@ describe('BillingService', () => {
       });
 
       const agent = {
-        id: 'a1', billing_key: 'bk_123', subscription_plan: 'starter',
+        id: 'a1', billing_key: 'bk_123', subscription_plan: 'minimal',
         subscription_status: 'active', billing_day: 15,
       };
       await service.chargeAgent(agent);

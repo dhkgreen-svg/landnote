@@ -7,7 +7,7 @@ interface RegisterStore {
   phone: string;
   license_number: string;
   office_name: string;
-  selected_plan: 'starter' | 'pro' | null;
+  selected_plan: 'minimal' | 'standard' | 'pro' | null;
   setField: <K extends keyof Omit<RegisterStore, 'setField' | 'reset'>>(
     key: K, value: RegisterStore[K]
   ) => void;

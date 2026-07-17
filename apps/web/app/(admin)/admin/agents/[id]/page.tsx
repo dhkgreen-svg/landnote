@@ -11,6 +11,7 @@ import {
   useAdminAgentListings,
   useChangeAgentStatus,
   useChangeAgentPlan,
+  useGrantFreeMonths,
 } from '@/lib/hooks/use-admin-agents';
 import { ArrowLeft } from 'lucide-react';
 
@@ -32,6 +33,7 @@ export default function AdminAgentDetailPage() {
   const { data: listings } = useAdminAgentListings(id);
   const changeStatus = useChangeAgentStatus();
   const changePlan = useChangeAgentPlan();
+  const grantFreeMonths = useGrantFreeMonths();
 
   if (isLoading) {
     return <div className="py-20 text-center text-muted-foreground">로딩 중...</div>;
@@ -47,8 +49,10 @@ export default function AdminAgentDetailPage() {
     if (!confirmAction) return;
     if (confirmAction.type === 'status') {
       await changeStatus.mutateAsync({ id, status: confirmAction.value });
-    } else {
+    } else if (confirmAction.type === 'plan') {
       await changePlan.mutateAsync({ id, plan: confirmAction.value });
+    } else if (confirmAction.type === 'free-months') {
+      await grantFreeMonths.mutateAsync({ id, months: parseInt(confirmAction.value) });
     }
     setConfirmAction(null);
   };
@@ -87,7 +91,9 @@ export default function AdminAgentDetailPage() {
             <span className="text-sm">
               {confirmAction.type === 'status'
                 ? `구독 상태를 "${STATUS_LABELS[confirmAction.value] ?? confirmAction.value}"(으)로 변경하시겠습니까?`
-                : `플랜을 "${confirmAction.value}"(으)로 변경하시겠습니까?`}
+                : confirmAction.type === 'plan'
+                ? `플랜을 "${confirmAction.value}"(으)로 변경하시겠습니까?`
+                : `${confirmAction.value}개월 무료 혜택을 부여하시겠습니까?`}
             </span>
             <Button size="sm" onClick={handleConfirm}>확인</Button>
             <Button size="sm" variant="outline" onClick={() => setConfirmAction(null)}>취소</Button>
@@ -133,8 +139,13 @@ export default function AdminAgentDetailPage() {
               <div className="flex gap-2 pt-4">
                 <select
                   className="rounded-md border px-2 py-1 text-xs"
-                  onChange={(e) => e.target.value && setConfirmAction({ type: 'status', value: e.target.value })}
-                  defaultValue=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setConfirmAction({ type: 'status', value: e.target.value });
+                      e.target.value = '';
+                    }
+                  }}
+                  value=""
                 >
                   <option value="" disabled>상태 변경</option>
                   <option value="trial">체험판</option>
@@ -144,12 +155,34 @@ export default function AdminAgentDetailPage() {
                 </select>
                 <select
                   className="rounded-md border px-2 py-1 text-xs"
-                  onChange={(e) => e.target.value && setConfirmAction({ type: 'plan', value: e.target.value })}
-                  defaultValue=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setConfirmAction({ type: 'plan', value: e.target.value });
+                      e.target.value = '';
+                    }
+                  }}
+                  value=""
                 >
                   <option value="" disabled>플랜 변경</option>
-                  <option value="starter">Starter</option>
+                  <option value="minimal">Minimal</option>
+                  <option value="standard">Standard</option>
                   <option value="pro">Pro</option>
+                </select>
+                <select
+                  className="rounded-md border px-2 py-1 text-xs"
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setConfirmAction({ type: 'free-months', value: e.target.value });
+                      e.target.value = '';
+                    }
+                  }}
+                  value=""
+                >
+                  <option value="" disabled>기간 연장</option>
+                  <option value="1">1개월 무료</option>
+                  <option value="3">3개월 무료</option>
+                  <option value="6">6개월 무료</option>
+                  <option value="12">12개월 무료</option>
                 </select>
               </div>
             </CardContent>

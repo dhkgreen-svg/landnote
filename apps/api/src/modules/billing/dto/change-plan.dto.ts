@@ -5,5 +5,5 @@ const planValues = Object.values(SUBSCRIPTION_PLAN);
 
 export class ChangePlanDto {
   @IsIn(planValues)
-  plan: 'starter' | 'pro';
+  plan: 'minimal' | 'standard' | 'pro';
 }

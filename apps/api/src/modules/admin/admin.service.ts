@@ -197,7 +197,7 @@ export class AdminService {
   }
 
   async changeAgentPlan(adminId: string, agentId: string, newPlan: string) {
-    const validPlans = ['starter', 'pro'];
+    const validPlans = ['minimal', 'standard', 'pro'];
     if (!validPlans.includes(newPlan)) {
       throw new BadRequestException(`유효하지 않은 플랜입니다: ${newPlan}`);
     }
@@ -227,6 +227,57 @@ export class AdminService {
       after_value: afterValue,
     });
   }
+
+  async grantFreeMonths(adminId: string, agentId: string, months: number) {
+    if (![1, 3, 6, 12].includes(months)) {
+      throw new BadRequestException(`유효하지 않은 개월 수입니다: ${months}`);
+    }
+
+    const { data: agent } = await this.supabase
+      .from('agents')
+      .select('id, subscription_status, trial_ends_at, next_billing_date')
+      .eq('id', agentId)
+      .single();
+
+    if (!agent) throw new BadRequestException('중개사를 찾을 수 없습니다');
+
+    let updateData: Record<string, any> = {};
+    const beforeValue = { 
+      subscription_status: agent.subscription_status,
+      trial_ends_at: agent.trial_ends_at,
+      next_billing_date: agent.next_billing_date
+    };
+
+    if (agent.subscription_status === 'trial') {
+      const currentEnd = agent.trial_ends_at ? new Date(agent.trial_ends_at) : new Date();
+      const newEnd = new Date(Math.max(currentEnd.getTime(), Date.now()));
+      newEnd.setMonth(newEnd.getMonth() + months);
+      updateData = { trial_ends_at: newEnd.toISOString() };
+    } else {
+      const currentEnd = agent.next_billing_date ? new Date(agent.next_billing_date) : new Date();
+      const newEnd = new Date(Math.max(currentEnd.getTime(), Date.now()));
+      newEnd.setMonth(newEnd.getMonth() + months);
+      updateData = { 
+        subscription_status: 'active',
+        next_billing_date: newEnd.toISOString() 
+      };
+    }
+
+    await this.supabase
+      .from('agents')
+      .update(updateData)
+      .eq('id', agentId);
+
+    await this.supabase.from('admin_audit_logs').insert({
+      admin_id: adminId,
+      action: 'grant_free_months',
+      target_type: 'agent',
+      target_id: agentId,
+      before_value: beforeValue,
+      after_value: updateData,
+    });
+  }
+
 
   // ── 수익 관리 ──────────────────────────────────────────
 

@@ -205,9 +205,9 @@ export default function DashboardPage() {
               {(['residential', 'commercial', 'industrial', 'land'] as const).map(code => {
                 const isSelected = agent.selected_categories?.includes(code);
                 const catStats = summary.categories?.find(c => c.code === code);
-                const isStarter = agent.subscription_plan === 'starter';
-
-                if (!isSelected && !isStarter) return null;
+                const isMinimal = agent.subscription_plan === 'minimal';
+                const wouldExceedLimit = (agent.selected_categories?.length ?? 0) >= (agent.subscription_plan === 'standard' ? 3 : 4); 
+                if (!isSelected && wouldExceedLimit) return null;
 
                 const content = (
                   <div

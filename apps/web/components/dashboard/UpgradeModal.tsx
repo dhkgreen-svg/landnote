@@ -45,7 +45,7 @@ export function UpgradeModal({ open, onClose, feature }: UpgradeModalProps) {
               window.location.href = '/dashboard/settings';
             }}
           >
-            월 {(PLAN_PRICE.pro - PLAN_PRICE.starter).toLocaleString()}원 더 내고 해제
+            업그레이드하고 해제하기
           </Button>
         </div>
       </DialogContent>

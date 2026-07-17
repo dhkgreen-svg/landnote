@@ -28,7 +28,8 @@ function Section({
 }
 
 export default function TermsPage() {
-  const starterPrice = PLAN_PRICE.starter.toLocaleString('ko-KR');
+  const minimalPrice = PLAN_PRICE.minimal.toLocaleString('ko-KR');
+  const standardPrice = PLAN_PRICE.standard.toLocaleString('ko-KR');
   const proPrice = PLAN_PRICE.pro.toLocaleString('ko-KR');
 
   return (
@@ -143,8 +144,7 @@ export default function TermsPage() {
         <Section title="제6조 (요금 및 결제)">
           <ol className="list-decimal space-y-1.5 pl-5">
             <li>
-              서비스는 유료 구독제로 운영되며, 요금제는 스타터(월{' '}
-              {starterPrice}원)와 PRO(월 {proPrice}원)로 구분됩니다.
+              서비스는 유료 구독제로 운영되며, 요금제는 미니멀(월 {minimalPrice}원), 스탠다드(월 {standardPrice}원), PRO(월 {proPrice}원)로 구분됩니다.
             </li>
             <li>
               모든 요금제는 최초 가입 시 {TRIAL_DAYS}일간 무료 체험 기간을

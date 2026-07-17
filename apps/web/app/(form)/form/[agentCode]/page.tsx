@@ -25,7 +25,7 @@ async function getAgent(agentCode: string) {
       office_name: string;
       phone: string;
       selected_categories: any[];
-      subscription_plan: 'starter' | 'pro';
+      subscription_plan: 'minimal' | 'standard' | 'pro';
     };
   } catch (e) {
     console.error("Fetch failed, using mock data", e);

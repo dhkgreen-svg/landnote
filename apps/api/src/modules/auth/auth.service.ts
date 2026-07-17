@@ -55,7 +55,7 @@ export class AuthService {
         phone: encryptPhone(body.phone),
         license_number: body.license_number,
         office_name: body.office_name ?? null,
-        subscription_plan: 'starter',
+        subscription_plan: 'minimal',
         subscription_status: 'trial',
       })
       .select()

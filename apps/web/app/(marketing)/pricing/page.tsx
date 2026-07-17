@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 
 export const metadata: Metadata = {
   title: '요금제 - 랜드노트',
-  description: '랜드노트 스타터 및 PRO 요금제를 비교하고 나에게 맞는 플랜을 선택하세요.',
+  description: '랜드노트 미니멀, 스탠다드 및 PRO 요금제를 비교하고 나에게 맞는 플랜을 선택하세요.',
 };
 
 function formatPrice(price: number): string {
@@ -16,59 +16,64 @@ function formatPrice(price: number): string {
 
 interface ComparisonRow {
   label: string;
-  starter: string;
+  minimal: string;
+  standard: string;
   pro: string;
 }
 
 const comparisonRows: ComparisonRow[] = [
   {
     label: '월 요금',
-    starter: `${formatPrice(PLAN_PRICE.starter)}원`,
+    minimal: `${formatPrice(PLAN_PRICE.minimal)}원`,
+    standard: `${formatPrice(PLAN_PRICE.standard)}원`,
     pro: `${formatPrice(PLAN_PRICE.pro)}원`,
   },
   {
     label: '카테고리',
-    starter: `${PLAN_LIMITS.starter.max_categories}개 제한`,
+    minimal: `${PLAN_LIMITS.minimal.max_categories}개 제한`,
+    standard: `${PLAN_LIMITS.standard.max_categories}개 제한`,
     pro: `${PLAN_LIMITS.pro.max_categories}개 전체`,
   },
   {
     label: '매물 등록',
-    starter: '무제한',
+    minimal: '무제한',
+    standard: '무제한',
     pro: '무제한',
   },
   {
     label: 'QR코드',
-    starter: `${PLAN_LIMITS.starter.max_qr_codes}개`,
-    pro: `${PLAN_LIMITS.pro.max_qr_codes}개 (카테고리별)`,
+    minimal: `${PLAN_LIMITS.minimal.max_qr_codes}개`,
+    standard: `${PLAN_LIMITS.standard.max_qr_codes}개`,
+    pro: `${PLAN_LIMITS.pro.max_qr_codes}개`,
   },
   {
     label: '이미지 업로드',
-    starter: `${PLAN_LIMITS.starter.max_images_per_listing}장/매물`,
+    minimal: `${PLAN_LIMITS.minimal.max_images_per_listing}장/매물`,
+    standard: `${PLAN_LIMITS.standard.max_images_per_listing}장/매물`,
     pro: `${PLAN_LIMITS.pro.max_images_per_listing}장/매물`,
   },
   {
-    label: '카테고리 변경',
-    starter: `월 ${PLAN_LIMITS.starter.category_changes_per_month}회`,
-    pro: '무제한',
-  },
-  {
     label: '고객 접수 관리',
-    starter: '가능',
+    minimal: '가능',
+    standard: '가능',
     pro: '가능',
   },
   {
     label: '스마트 매칭',
-    starter: '가능',
+    minimal: '가능',
+    standard: '가능',
     pro: '가능',
   },
   {
     label: '통계 대시보드',
-    starter: '가능',
+    minimal: '가능',
+    standard: '가능',
     pro: '가능',
   },
   {
     label: '데이터 격리',
-    starter: '가능',
+    minimal: '가능',
+    standard: '가능',
     pro: '가능',
   },
 ];
@@ -106,29 +111,57 @@ export default function PricingPage() {
 
       {/* Plan Cards */}
       <section className="py-12 sm:py-16">
-        <div className="mx-auto grid max-w-4xl gap-8 px-4 sm:px-6 md:grid-cols-2 lg:px-8">
-          {/* Starter */}
+        <div className="mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 md:grid-cols-3 lg:px-8">
+          {/* Minimal */}
           <Card className="relative flex flex-col">
             <CardHeader>
-              <CardTitle className="text-2xl">스타터</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">
-                가볍게 시작
-              </p>
+              <CardTitle className="text-2xl">미니멀</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">특정 분야만 다루는 분들께</p>
               <div className="mt-4">
-                <span className="text-5xl font-extrabold text-foreground">
-                  {formatPrice(PLAN_PRICE.starter)}
+                <span className="text-4xl font-extrabold text-foreground">
+                  {formatPrice(PLAN_PRICE.minimal)}
                 </span>
                 <span className="text-xl text-muted-foreground">원/월</span>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">하루 {Math.round(PLAN_PRICE.starter / 30)}원</p>
+              <p className="mt-2 text-sm text-muted-foreground">하루 {Math.round(PLAN_PRICE.minimal / 30)}원</p>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col">
               <ul className="flex-1 space-y-4">
-                <FeatureItem text={`카테고리 최대 ${PLAN_LIMITS.starter.max_categories}개 선택`} />
+                <FeatureItem text={`카테고리 최대 ${PLAN_LIMITS.minimal.max_categories}개 선택`} />
                 <FeatureItem text="매물 무제한 등록" />
-                <FeatureItem text={`QR코드 ${PLAN_LIMITS.starter.max_qr_codes}개 발급`} />
-                <FeatureItem text={`매물당 이미지 ${PLAN_LIMITS.starter.max_images_per_listing}장`} />
-                <FeatureItem text={`카테고리 변경 월 ${PLAN_LIMITS.starter.category_changes_per_month}회`} />
+                <FeatureItem text={`QR코드 ${PLAN_LIMITS.minimal.max_qr_codes}개 발급`} />
+                <FeatureItem text={`매물당 이미지 ${PLAN_LIMITS.minimal.max_images_per_listing}장`} />
+                <FeatureItem text="고객 접수 관리" />
+                <FeatureItem text="스마트 매칭" />
+                <FeatureItem text="통계 대시보드" />
+              </ul>
+              <div className="mt-8">
+                <Button asChild variant="outline" className="w-full" size="lg">
+                  <Link href="/register">무료 체험 시작</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Standard */}
+          <Card className="relative flex flex-col">
+            <CardHeader>
+              <CardTitle className="text-2xl">스탠다드</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">다양한 분야를 취급한다면</p>
+              <div className="mt-4">
+                <span className="text-4xl font-extrabold text-foreground">
+                  {formatPrice(PLAN_PRICE.standard)}
+                </span>
+                <span className="text-xl text-muted-foreground">원/월</span>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">하루 {Math.round(PLAN_PRICE.standard / 30)}원</p>
+            </CardHeader>
+            <CardContent className="flex flex-1 flex-col">
+              <ul className="flex-1 space-y-4">
+                <FeatureItem text={`카테고리 최대 ${PLAN_LIMITS.standard.max_categories}개 선택`} />
+                <FeatureItem text="매물 무제한 등록" />
+                <FeatureItem text={`QR코드 ${PLAN_LIMITS.standard.max_qr_codes}개 발급`} />
+                <FeatureItem text={`매물당 이미지 ${PLAN_LIMITS.standard.max_images_per_listing}장`} />
                 <FeatureItem text="고객 접수 관리" />
                 <FeatureItem text="스마트 매칭" />
                 <FeatureItem text="통계 대시보드" />
@@ -148,11 +181,9 @@ export default function PricingPage() {
             </div>
             <CardHeader>
               <CardTitle className="text-2xl">PRO</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">
-                실사용 권장
-              </p>
+              <p className="mt-1 text-sm text-muted-foreground">전문 중개사를 위한 무제한 플랜</p>
               <div className="mt-4">
-                <span className="text-5xl font-extrabold text-primary">
+                <span className="text-4xl font-extrabold text-primary">
                   {formatPrice(PLAN_PRICE.pro)}
                 </span>
                 <span className="text-xl text-muted-foreground">원/월</span>
@@ -163,9 +194,8 @@ export default function PricingPage() {
               <ul className="flex-1 space-y-4">
                 <FeatureItem text={`카테고리 ${PLAN_LIMITS.pro.max_categories}개 전체 사용`} highlighted />
                 <FeatureItem text="매물 무제한 등록" highlighted />
-                <FeatureItem text={`QR코드 ${PLAN_LIMITS.pro.max_qr_codes}개 (카테고리별)`} highlighted />
+                <FeatureItem text={`QR코드 ${PLAN_LIMITS.pro.max_qr_codes}개 발급`} highlighted />
                 <FeatureItem text={`매물당 이미지 ${PLAN_LIMITS.pro.max_images_per_listing}장`} highlighted />
-                <FeatureItem text="카테고리 변경 무제한" highlighted />
                 <FeatureItem text="고객 접수 관리" highlighted />
                 <FeatureItem text="스마트 매칭" highlighted />
                 <FeatureItem text="통계 대시보드" highlighted />
@@ -180,13 +210,13 @@ export default function PricingPage() {
         </div>
 
         <p className="mx-auto mt-6 max-w-4xl text-center text-sm text-muted-foreground">
-          월 {(PLAN_PRICE.pro - PLAN_PRICE.starter).toLocaleString()}원 차이로 카테고리 2개, QR 3개, 이미지 15장 추가
+          월 5,000원의 차이마다 카테고리, QR코드, 이미지 한도가 증가합니다.
         </p>
       </section>
 
       {/* Comparison Table */}
       <section className="bg-muted/30 py-20 sm:py-28">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <h2 className="mb-12 text-center text-3xl font-bold tracking-tight text-foreground">
             상세 비교
           </h2>
@@ -196,12 +226,9 @@ export default function PricingPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">
-                    기능
-                  </th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">
-                    스타터
-                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">기능</th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">미니멀</th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">스탠다드</th>
                   <th className="px-6 py-4 text-center text-sm font-semibold text-primary">
                     PRO <Badge className="ml-1 text-xs">추천</Badge>
                   </th>
@@ -213,15 +240,10 @@ export default function PricingPage() {
                     key={row.label}
                     className={i < comparisonRows.length - 1 ? 'border-b' : ''}
                   >
-                    <td className="px-6 py-4 text-sm font-medium text-foreground">
-                      {row.label}
-                    </td>
-                    <td className="px-6 py-4 text-center text-sm text-muted-foreground">
-                      {row.starter}
-                    </td>
-                    <td className="px-6 py-4 text-center text-sm font-medium text-foreground">
-                      {row.pro}
-                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-foreground">{row.label}</td>
+                    <td className="px-6 py-4 text-center text-sm text-muted-foreground">{row.minimal}</td>
+                    <td className="px-6 py-4 text-center text-sm text-muted-foreground">{row.standard}</td>
+                    <td className="px-6 py-4 text-center text-sm font-medium text-foreground">{row.pro}</td>
                   </tr>
                 ))}
               </tbody>
@@ -233,14 +255,18 @@ export default function PricingPage() {
             {comparisonRows.map((row) => (
               <div key={row.label} className="rounded-lg border bg-background p-4">
                 <p className="mb-2 text-sm font-semibold text-foreground">{row.label}</p>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <p className="text-xs text-muted-foreground">스타터</p>
-                    <p className="text-sm">{row.starter}</p>
+                    <p className="text-[10px] text-muted-foreground">미니멀</p>
+                    <p className="text-xs">{row.minimal}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-primary">PRO</p>
-                    <p className="text-sm font-medium">{row.pro}</p>
+                    <p className="text-[10px] text-muted-foreground">스탠다드</p>
+                    <p className="text-xs">{row.standard}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-primary">PRO</p>
+                    <p className="text-xs font-medium">{row.pro}</p>
                   </div>
                 </div>
               </div>
@@ -263,7 +289,7 @@ export default function PricingPage() {
               },
               {
                 q: '플랜을 변경할 수 있나요?',
-                a: '언제든 변경 가능합니다. 스타터에서 PRO로 업그레이드하면 즉시 반영됩니다. PRO에서 스타터로 다운그레이드하면 다음 결제일부터 적용됩니다.',
+                a: '언제든 변경 가능합니다. 더 높은 단계로 업그레이드하면 즉시 반영됩니다. 낮은 단계로 다운그레이드하면 다음 결제일부터 적용됩니다.',
               },
               {
                 q: '해지 후 재구독이 가능한가요?',

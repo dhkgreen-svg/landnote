@@ -19,7 +19,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const PLAN_LABELS: Record<string, string> = {
-  starter: '스타터', pro: '프로',
+  minimal: '미니멀', standard: '스탠다드', pro: '프로',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -60,7 +60,7 @@ export default function SettingsPage() {
     );
   }
 
-  const plan = agent.subscription_plan as 'starter' | 'pro';
+  const plan = (agent.subscription_plan as 'minimal' | 'standard' | 'pro') || 'minimal';
   const limits = PLAN_LIMITS[plan];
 
   const handleProfileSave = async () => {
@@ -117,7 +117,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handlePlanChange = async (newPlan: 'starter' | 'pro') => {
+  const handlePlanChange = async (newPlan: 'minimal' | 'standard' | 'pro') => {
     setPlanChanging(true);
     setPlanMsg('');
     try {
@@ -195,7 +195,7 @@ export default function SettingsPage() {
               const isSelected = selectedCats.includes(code);
               
               const wouldExceedLimit = !isSelected && selectedCats.length >= limits.max_categories;
-              const isLocked = wouldExceedLimit && plan === 'starter';
+              const isLocked = wouldExceedLimit && plan !== 'pro';
 
               return (
                 <Button
@@ -228,7 +228,7 @@ export default function SettingsPage() {
           <Separator />
           
           <div className="space-y-1 text-xs text-muted-foreground mt-4">
-            <p>※ Starter 요금제는 최대 2개, PRO 요금제는 4개 전체 선택 가능합니다.</p>
+            <p>※ 현재 {PLAN_LABELS[plan]} 요금제는 최대 {limits.max_categories}개 선택 가능합니다. (Pro는 4개 전체 가능)</p>
           </div>
           <div className="flex items-center gap-3">
             <Button onClick={handleCategorySave} disabled={catSaving}>
@@ -281,19 +281,23 @@ export default function SettingsPage() {
 
           <Separator />
 
-          {plan === 'starter' ? (
+          {plan === 'minimal' ? (
             <div className="space-y-1 text-sm text-muted-foreground">
-              <p>현재 Starter: 카테고리 {limits.max_categories}개, QR {limits.max_qr_codes}개</p>
-              <p className="text-xs">PRO로 바꾸면 4개 전체와 카테고리별 QR이 즉시 열립니다</p>
+              <p>현재 미니멀: 카테고리 {limits.max_categories}개, QR {limits.max_qr_codes}개</p>
+            </div>
+          ) : plan === 'standard' ? (
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <p>현재 스탠다드: 카테고리 {limits.max_categories}개, QR {limits.max_qr_codes}개</p>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              현재 PRO: 카테고리 4개, QR 4개, 등록 무제한
+              현재 프로: 카테고리 4개, QR 4개, 매물 등록 무제한
             </p>
           )}
 
           {['trial', 'active'].includes(agent.subscription_status) && (
             <>
+              <Separator />
               <Separator />
               <div className="space-y-2">
                 {agent.pending_plan ? (
@@ -305,23 +309,25 @@ export default function SettingsPage() {
                   >
                     {planChanging ? '처리 중...' : '플랜 변경 예약 취소'}
                   </Button>
-                ) : plan === 'starter' ? (
-                  <Button
-                    className="w-full"
-                    disabled={planChanging}
-                    onClick={() => handlePlanChange('pro')}
-                  >
-                    {planChanging ? '처리 중...' : 'PRO로 업그레이드'}
-                  </Button>
                 ) : (
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    disabled={planChanging}
-                    onClick={() => handlePlanChange('starter')}
-                  >
-                    {planChanging ? '처리 중...' : 'Starter로 변경 예약'}
-                  </Button>
+                  <div className="flex gap-2">
+                    {['minimal', 'standard', 'pro'].filter(p => p !== plan).map(p => {
+                      const newPrice = p === 'pro' ? 20000 : p === 'standard' ? 15000 : 10000;
+                      const currentPrice = plan === 'pro' ? 20000 : plan === 'standard' ? 15000 : 10000;
+                      const isUpgrade = newPrice > currentPrice;
+                      return (
+                        <Button
+                          key={p}
+                          variant={isUpgrade ? 'default' : 'outline'}
+                          className="flex-1"
+                          disabled={planChanging}
+                          onClick={() => handlePlanChange(p as any)}
+                        >
+                          {PLAN_LABELS[p]}로 {isUpgrade ? '업그레이드' : '변경 예약'}
+                        </Button>
+                      );
+                    })}
+                  </div>
                 )}
                 {planMsg && (
                   <p className={`text-sm ${planMsg.includes('완료') ? 'text-green-600' : 'text-red-500'}`}>

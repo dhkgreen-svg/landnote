@@ -12,7 +12,8 @@ export const ACCESS_LOG_RETENTION_DAYS = 90;
 // ── 4-1. 구독 플랜 ──────────────────────────────────────────────
 
 export const SUBSCRIPTION_PLAN = {
-  STARTER: 'starter',
+  MINIMAL: 'minimal',
+  STANDARD: 'standard',
   PRO: 'pro',
 } as const;
 
@@ -24,16 +25,24 @@ export const SUBSCRIPTION_STATUS = {
 } as const;
 
 export const PLAN_PRICE: Record<string, number> = {
-  starter: 10000,
-  pro: 15000,
+  minimal: 10000,
+  standard: 15000,
+  pro: 20000,
 };
 
 export const PLAN_LIMITS = {
-  starter: {
+  minimal: {
     max_categories: 2,
     max_listings_per_month: 0,
     max_qr_codes: 1,
     max_images_per_listing: 5,
+    category_changes_per_month: 0,
+  },
+  standard: {
+    max_categories: 3,
+    max_listings_per_month: 0,
+    max_qr_codes: 2,
+    max_images_per_listing: 10,
     category_changes_per_month: 0,
   },
   pro: {

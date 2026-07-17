@@ -90,3 +90,18 @@ export function useChangeAgentPlan() {
     },
   });
 }
+
+export function useGrantFreeMonths() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, months }: { id: string; months: number }) =>
+      apiFetch(`/admin/agents/${id}/grant-free-months`, {
+        method: 'PATCH',
+        body: JSON.stringify({ months }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-agents'] });
+      qc.invalidateQueries({ queryKey: ['admin-agent-detail'] });
+    },
+  });
+}

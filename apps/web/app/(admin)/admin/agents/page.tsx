@@ -16,7 +16,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const PLAN_LABELS: Record<string, string> = {
-  starter: 'Starter',
+  minimal: 'Minimal',
+  standard: 'Standard',
   pro: 'Pro',
 };
 
@@ -67,7 +68,8 @@ export default function AdminAgentsPage() {
             className="rounded-md border px-3 py-2 text-sm"
           >
             <option value="">전체 플랜</option>
-            <option value="starter">Starter</option>
+            <option value="minimal">Minimal</option>
+            <option value="standard">Standard</option>
             <option value="pro">Pro</option>
           </select>
         </CardContent>

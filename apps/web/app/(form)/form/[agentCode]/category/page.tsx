@@ -32,7 +32,7 @@ export default function CategoryPage() {
   const agentCode = params.agentCode as string;
   const store = useFormStore();
   const [agentCategories, setAgentCategories] = useState<CategoryCode[]>([]);
-  const [subscriptionPlan, setSubscriptionPlan] = useState<string>('starter');
+  const [subscriptionPlan, setSubscriptionPlan] = useState<string>('minimal');
 
   useEffect(() => {
     if (!store.inquiry_type) {
@@ -43,7 +43,7 @@ export default function CategoryPage() {
     if (stored) {
       const parsed = JSON.parse(stored);
       const cats: CategoryCode[] = parsed.selectedCategories ?? [];
-      const plan = parsed.subscriptionPlan ?? 'starter';
+      const plan = parsed.subscriptionPlan ?? 'minimal';
       setAgentCategories(cats);
       setSubscriptionPlan(plan);
 

@@ -52,7 +52,7 @@ export class ListingsController {
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    const plan = agent.subscription_plan as 'starter' | 'pro';
+    const plan = agent.subscription_plan as 'minimal' | 'standard' | 'pro';
     const maxImages = PLAN_LIMITS[plan].max_images_per_listing;
     const currentImages = await this.listingsService.getImages(agent.id, id);
 

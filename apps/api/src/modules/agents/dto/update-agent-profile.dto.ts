@@ -31,5 +31,5 @@ export class UpdateAgentProfileDto {
   // trial 상태 에이전트의 온보딩 플랜 선택용. 서비스 레이어에서 trial 전용 검증.
   @IsOptional()
   @IsIn(planValues)
-  subscription_plan?: 'starter' | 'pro';
+  subscription_plan?: 'minimal' | 'standard' | 'pro';
 }

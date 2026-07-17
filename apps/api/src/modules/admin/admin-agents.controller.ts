@@ -70,4 +70,14 @@ export class AdminAgentsController {
     await this.adminService.changeAgentPlan(admin.id, id, body.plan);
     return { message: '플랜이 변경되었습니다' };
   }
+
+  @Patch(':id/grant-free-months')
+  async grantFreeMonths(
+    @CurrentAdmin() admin: any,
+    @Param('id') id: string,
+    @Body() body: { months: number },
+  ) {
+    await this.adminService.grantFreeMonths(admin.id, id, body.months);
+    return { message: `${body.months}개월 무료 혜택이 부여되었습니다` };
+  }
 }

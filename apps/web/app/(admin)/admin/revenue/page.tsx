@@ -30,7 +30,7 @@ export default function AdminRevenuePage() {
 
   const pieData = planDist
     ? Object.entries(planDist).map(([plan, statuses]) => ({
-        name: plan === 'pro' ? 'Pro' : 'Starter',
+        name: plan === 'pro' ? 'Pro' : plan === 'standard' ? 'Standard' : 'Minimal',
         value: Object.values(statuses).reduce((a, b) => a + b, 0),
       }))
     : [];

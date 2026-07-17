@@ -49,7 +49,7 @@ export class AgentsService {
       throw new BadRequestException('최소 1개 분야를 선택해야 합니다');
     }
 
-    const limits = PLAN_LIMITS[agent.subscription_plan as 'starter' | 'pro'];
+    const limits = PLAN_LIMITS[agent.subscription_plan as 'minimal' | 'standard' | 'pro'];
 
     if (newCategories.length > limits.max_categories) {
       throw new BadRequestException(`최대 ${limits.max_categories}개까지만 선택 가능합니다`);

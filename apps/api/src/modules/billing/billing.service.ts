@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { EmailService } from '../email/email.service';
-import { clampBillingDay, PLAN_LIMITS } from '@landnote/shared';
+import { clampBillingDay, PLAN_LIMITS, PLAN_PRICE } from '@landnote/shared';
 
 @Injectable()
 export class BillingService {
@@ -42,7 +42,7 @@ export class BillingService {
     }).eq('id', agent.id);
   }
 
-  async changePlan(agent: any, newPlan: 'starter' | 'pro'): Promise<void> {
+  async changePlan(agent: any, newPlan: 'minimal' | 'standard' | 'pro'): Promise<void> {
     if (agent.subscription_plan === newPlan && !agent.pending_plan) {
       throw new BadRequestException({ code: 'VALIDATION_ERROR', message: '이미 해당 플랜입니다' });
     }
@@ -65,9 +65,12 @@ export class BillingService {
     }
 
     // active: 업그레이드 즉시, 다운그레이드 예약
-    if (newPlan === 'pro' && agent.subscription_plan === 'starter') {
+    const currentPrice = PLAN_PRICE[agent.subscription_plan] ?? 0;
+    const newPrice = PLAN_PRICE[newPlan] ?? 0;
+
+    if (newPrice > currentPrice) {
       await this.supabase.from('agents').update({
-        subscription_plan: 'pro', pending_plan: null,
+        subscription_plan: newPlan, pending_plan: null,
       }).eq('id', agent.id);
     } else {
       await this.supabase.from('agents').update({
@@ -83,15 +86,16 @@ export class BillingService {
       await this.emailService.sendSubscriptionExpired(agent);
       return;
     }
-    const amount = agent.subscription_plan === 'pro' ? 15000 : 10000;
+    const amount = PLAN_PRICE[agent.subscription_plan] ?? 10000;
     const orderId = `landnote-${agent.id}-${Date.now()}`;
+    const planName = { minimal: '미니멀', standard: '스탠다드', pro: '프로' }[agent.subscription_plan as string] ?? agent.subscription_plan;
 
     const res = await fetch(`${this.TOSS_BASE}/billing/${agent.billing_key}`, {
       method: 'POST',
       headers: this.tossHeader(),
       body: JSON.stringify({
         customerKey: agent.id, amount, orderId,
-        orderName: `랜드노트 ${agent.subscription_plan === 'pro' ? '프로' : '스타터'} 플랜`,
+        orderName: `랜드노트 ${planName} 플랜`,
       }),
       signal: AbortSignal.timeout(65_000),
     });
@@ -126,8 +130,8 @@ export class BillingService {
         planUpdate.subscription_plan = agent.pending_plan;
         planUpdate.pending_plan = null;
 
-        if (agent.pending_plan === 'starter') {
-          const maxCat = PLAN_LIMITS.starter.max_categories;
+        if (agent.pending_plan) {
+          const maxCat = PLAN_LIMITS[agent.pending_plan as keyof typeof PLAN_LIMITS]?.max_categories ?? 2;
           const currentCats: string[] = agent.selected_categories ?? [];
           if (currentCats.length > maxCat) {
             planUpdate.selected_categories = currentCats.slice(0, maxCat);
@@ -169,7 +173,7 @@ export class BillingService {
     await this.supabase.from('billing_histories').insert({
       agent_id: agent.id, order_id: orderId,
       plan: agent.subscription_plan,
-      amount: agent.subscription_plan === 'pro' ? 15000 : 10000,
+      amount: PLAN_PRICE[agent.subscription_plan] ?? 10000,
       status: 'failed', failure_reason: reason,
     });
 
