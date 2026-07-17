@@ -19,10 +19,10 @@ export class CreateInquiryDto {
   @IsString()
   customer_phone: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @Length(6, 6)
-  otpCode: string;
+  otpCode?: string;
 
   @IsOptional()
   @IsEmail()

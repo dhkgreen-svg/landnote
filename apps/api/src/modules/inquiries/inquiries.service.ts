@@ -70,22 +70,21 @@ export class InquiriesService {
   }
 
   async createPublic(agentCode: string, dto: CreateInquiryDto) {
-    // 1. agent_code로 중개사 조회
-    const { data: agent, error: agentErr } = await this.supabase
+    if (!dto.otpCode) {
+      throw new Error('OTP 코드가 필요합니다.');
+    }
+    // 1. 에이전트 조회
+    const { data: agent } = await this.supabase
       .from('agents')
       .select('id, email, agent_name')
       .eq('agent_code', agentCode)
       .single();
 
-    if (agentErr || !agent) {
-      throw new NotFoundException('중개사를 찾을 수 없습니다');
-    }
+    if (!agent) throw new NotFoundException('중개사를 찾을 수 없습니다.');
 
-    // OTP 검증 확인 및 사용 처리 (000000은 테스트용 마스터 코드)
-    let otpData = null;
-    if (dto.otpCode === '000000') {
-      otpData = { id: 'master-code' };
-    } else {
+    // 2. OTP 검증
+    let otpData = { id: 'master-code' };
+    if (dto.otpCode !== '000000') {
       const { data, error } = await this.supabase
         .from('customer_otps')
         .select('id, expires_at')
@@ -184,6 +183,62 @@ export class InquiriesService {
     }
 
     // 7. 결과 반환
+    return { inquiryId: inquiry.id };
+  }
+
+  async createByAgent(agent: any, dto: CreateInquiryDto) {
+    // 1. 전화번호 암호화
+    const encryptedPhone = encryptPhone(dto.customer_phone);
+
+    // 2. 가격 필드를 detailed_conditions에 병합
+    const priceFields = [
+      'price_sale', 'price_jeonse', 'deposit', 'monthly_rent',
+      'maintenance_fee', 'premium_price', 'contract_remaining_months',
+    ] as const;
+
+    const mergedConditions: Record<string, unknown> = {
+      ...(dto.detailed_conditions ?? {}),
+    };
+
+    for (const field of priceFields) {
+      if (dto[field] !== undefined) {
+        mergedConditions[field] = dto[field];
+      }
+    }
+
+    // 3. customer_inquiries INSERT
+    const { data: inquiry, error: insertErr } = await this.supabase
+      .from('customer_inquiries')
+      .insert({
+        agent_id: agent.id,
+        inquiry_type: dto.inquiry_type,
+        customer_name: dto.customer_name,
+        customer_phone: encryptedPhone,
+        customer_email: dto.customer_email ?? null,
+        category_codes: dto.category_codes,
+        subcategory_codes: dto.subcategory_codes ?? [],
+        tags: dto.tags ?? [],
+        transaction_types: dto.transaction_types,
+        detailed_conditions: mergedConditions,
+        latitude: dto.latitude ?? null,
+        longitude: dto.longitude ?? null,
+        complex_name: dto.complex_name ?? null,
+        building_num: dto.building_num ?? null,
+        room_num: dto.room_num ?? null,
+        area_land: dto.area_land ?? null,
+        area_building: dto.area_building ?? null,
+        area_contract: dto.area_contract ?? null,
+        status: 'new',
+        images: [],
+      })
+      .select('id')
+      .single();
+
+    if (insertErr || !inquiry) {
+      throw new Error(`접수 저장 실패: ${insertErr?.message}`);
+    }
+
+    // 중개사 본인이 직접 등록했으므로 이메일/푸시 알림은 생략할 수 있음
     return { inquiryId: inquiry.id };
   }
 

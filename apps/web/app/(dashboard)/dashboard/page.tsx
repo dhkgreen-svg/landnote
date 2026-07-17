@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { MessageSquare, Building2, FileCheck, Shuffle, TrendingUp, TrendingDown, Plus, QrCode, Lock, Link2, Copy } from 'lucide-react';
+import { Building2, Users, FileCheck, Lock, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSummary, useRecentInquiries } from '@/lib/hooks/queries';
+import { useSummary } from '@/lib/hooks/queries';
 import { useAgent } from '@/lib/hooks/use-agent';
 import { UpgradeModal } from '@/components/dashboard/UpgradeModal';
 
@@ -45,22 +45,9 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 export default function DashboardPage() {
   const { data: summary, isLoading: summaryLoading } = useSummary();
-  const { data: inquiriesData, isLoading: inquiriesLoading } = useRecentInquiries();
   const { agent } = useAgent();
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [formUrl, setFormUrl] = useState('');
-  const recentInquiries = inquiriesData?.items ?? [];
-  const loading = summaryLoading || inquiriesLoading;
-
-  useEffect(() => {
-    if (agent?.agent_code) {
-      setFormUrl(`${window.location.origin}/form/${agent.agent_code}`);
-    }
-  }, [agent?.agent_code]);
-
-  const copyLink = () => {
-    if (formUrl) navigator.clipboard.writeText(formUrl);
-  };
+  const loading = summaryLoading;
 
   if (loading) {
     return (
@@ -92,107 +79,73 @@ export default function DashboardPage() {
     );
   }
 
-  const cards = [
-    {
-      title: '신규 문의',
-      value: summary?.new_inquiries?.count ?? 0,
-      diff: summary?.new_inquiries?.diff_from_last_period,
-      diffLabel: '지난 주 대비',
-      icon: MessageSquare,
-      color: 'text-blue-600',
-      href: '/dashboard/inquiries?status=new',
-    },
-    {
-      title: '이번 달 계약 완료',
-      value: summary?.contracts_this_month?.count ?? 0,
-      diff: summary?.contracts_this_month?.diff_from_last_month,
-      diffLabel: '지난 달 대비',
-      icon: Building2,
-      color: 'text-green-600',
-      href: '/dashboard/listings?status=contracted&period=month',
-    },
-    {
-      title: '올해 계약 완료',
-      value: summary?.contracts_this_year?.count ?? 0,
-      icon: FileCheck,
-      color: 'text-orange-600',
-      href: '/dashboard/listings?status=contracted&period=year',
-    },
-    {
-      title: '미확인 매칭',
-      value: summary?.pending_matches?.count ?? 0,
-      icon: Shuffle,
-      color: 'text-purple-600',
-      href: '/dashboard/matching',
-    },
-  ];
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <h1 className="text-2xl font-bold">대시보드</h1>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map(card => {
-          const Icon = card.icon;
-          return (
-            <Link key={card.title} href={card.href} className="block group">
-              <Card className="transition-all hover:border-primary hover:shadow-md h-full">
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors">
-                    {card.title}
-                  </CardTitle>
-                  <Icon className={`h-4 w-4 ${card.color}`} />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{card.value}</div>
-                  {card.diff !== undefined && (
-                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                      {card.diff > 0 ? (
-                        <TrendingUp className="h-3 w-3 text-green-500" />
-                      ) : card.diff < 0 ? (
-                        <TrendingDown className="h-3 w-3 text-red-500" />
-                      ) : null}
-                      <span className={card.diff > 0 ? 'text-green-600' : card.diff < 0 ? 'text-red-600' : ''}>
-                        {card.diff > 0 ? '+' : ''}{card.diff}
-                      </span>
-                      {' '}{card.diffLabel}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
-      </div>
+      {/* 1. 매물 현황 */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-primary" /> 매물 현황
+          </h2>
+          <Link href="/dashboard/listings/new">
+            <Button size="sm" className="gap-2">
+              <Plus className="h-4 w-4" /> 매물 입력하기
+            </Button>
+          </Link>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card className="hover:border-primary transition-colors">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">신규 매물</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-600">{summary?.listings?.new_count ?? 0}</div>
+            </CardContent>
+          </Card>
+          <Card className="hover:border-primary transition-colors">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">총 매물</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{summary?.listings?.total_count ?? 0}</div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
 
-      {/* Quick Actions */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Link href="/dashboard/listings/new">
-          <Card className="cursor-pointer transition-colors hover:border-primary">
-            <CardContent className="flex items-center gap-3 p-4">
-              <Plus className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium">매물 등록</span>
+      {/* 2. 매수 현황 */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" /> 매수 현황
+          </h2>
+          <Link href="/dashboard/inquiries/new">
+            <Button size="sm" className="gap-2">
+              <Plus className="h-4 w-4" /> 매수 입력하기
+            </Button>
+          </Link>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card className="hover:border-primary transition-colors">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">신규 매수 문의</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-orange-600">{summary?.buyers?.new_count ?? 0}</div>
             </CardContent>
           </Card>
-        </Link>
-        <Link href="/dashboard/matching">
-          <Card className="cursor-pointer transition-colors hover:border-primary">
-            <CardContent className="flex items-center gap-3 p-4">
-              <Shuffle className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium">매칭 확인</span>
+          <Card className="hover:border-primary transition-colors">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">매수 고객 전체</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{summary?.buyers?.total_count ?? 0}</div>
             </CardContent>
           </Card>
-        </Link>
-        <Link href="/dashboard/links">
-          <Card className="cursor-pointer transition-colors hover:border-primary">
-            <CardContent className="flex items-center gap-3 p-4">
-              <QrCode className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium">QR/링크 관리</span>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
+        </div>
+      </section>
 
       {/* Category Summary */}
       {agent && summary?.categories && (
@@ -252,89 +205,36 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Intake Link */}
-      {agent && formUrl && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-lg">나의 접수 링크</CardTitle>
-              <p className="text-sm text-muted-foreground">고객에게 공유하는 내 전용 접수 링크</p>
-            </div>
-            <Link href="/dashboard/links" className="text-sm text-primary hover:underline">
-              전체 QR 관리
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <code className="flex-1 truncate rounded bg-muted px-2 py-1 text-xs">
-                {formUrl}
-              </code>
-              <Button variant="ghost" size="icon" onClick={copyLink}>
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       <UpgradeModal
         open={showUpgrade}
         onClose={() => setShowUpgrade(false)}
         feature="추가 카테고리"
       />
 
-      {/* Recent Inquiries */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">최근 문의</CardTitle>
-          <Link
-            href="/dashboard/inquiries"
-            className="text-sm text-primary hover:underline"
-          >
-            전체 보기
-          </Link>
-        </CardHeader>
-        <CardContent>
-          {recentInquiries.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              아직 접수된 문의가 없습니다
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {recentInquiries.map(inq => (
-                <Link
-                  key={inq.id}
-                  href={`/dashboard/inquiries/${inq.id}`}
-                  className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
-                >
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      variant="secondary"
-                      className={STATUS_COLORS[inq.status] ?? ''}
-                    >
-                      {STATUS_LABELS[inq.status] ?? inq.status}
-                    </Badge>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {inq.customer_name ?? '이름 없음'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {inq.inquiry_type === 'looking_for' ? '매물 찾기' : '매물 내놓기'}
-                        {' · '}
-                        {inq.category_codes.map(c => CATEGORY_LABELS[c] ?? c).join(', ')}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(inq.created_at).toLocaleDateString('ko-KR')}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* 참고란 (Reference) */}
+      <section className="pt-6 border-t space-y-4">
+        <h3 className="text-base font-bold text-muted-foreground flex items-center gap-2">
+          <FileCheck className="h-4 w-4" /> 참고 (계약 완료 통계)
+        </h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card className="bg-muted/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">이번 달 계약 완료</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-700">{summary?.contracts_this_month?.count ?? 0}</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-muted/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">올해 계약 완료</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-700">{summary?.contracts_this_year?.count ?? 0}</div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
     </div>
   );
 }

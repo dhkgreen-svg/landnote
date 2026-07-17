@@ -24,6 +24,11 @@ export class InquiriesController {
     return this.inquiriesService.list(agent.id, query);
   }
 
+  @Post()
+  async createByAgent(@CurrentAgent() agent: any, @Body() dto: CreateInquiryDto) {
+    return this.inquiriesService.createByAgent(agent, dto);
+  }
+
   @Get(':id')
   async detail(@CurrentAgent() agent: any, @Param('id') id: string) {
     return this.inquiriesService.detail(agent.id, id);

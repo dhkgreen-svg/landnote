@@ -9,85 +9,65 @@ export class StatsService {
   );
 
   async summary(agentId: string) {
-    const [newInquiries, activeListings, contractsThisMonth, pendingMatches, categories] =
+    const [listings, buyers, contractsThisMonth, contractsThisYear, categories] =
       await Promise.all([
-        this.getNewInquiriesStats(agentId),
-        this.getActiveListingsStats(agentId),
+        this.getListingsStats(agentId),
+        this.getBuyersStats(agentId),
         this.getContractsThisMonthStats(agentId),
-        this.getPendingMatchesCount(agentId),
+        this.getContractsThisYearStats(agentId),
         this.getCategorySummary(agentId),
       ]);
 
     return {
-      new_inquiries: newInquiries,
-      active_listings: activeListings,
+      listings,
+      buyers,
       contracts_this_month: contractsThisMonth,
-      pending_matches: pendingMatches,
+      contracts_this_year: contractsThisYear,
       categories,
     };
   }
 
-  private async getNewInquiriesStats(agentId: string) {
-    const { count: currentCount } = await this.supabase
-      .from('customer_inquiries')
-      .select('id', { count: 'exact', head: true })
-      .eq('agent_id', agentId)
-      .eq('status', 'new');
-
-    const now = new Date();
-    const startOfThisWeek = new Date(now);
-    startOfThisWeek.setDate(now.getDate() - now.getDay());
-    startOfThisWeek.setHours(0, 0, 0, 0);
-
-    const startOfLastWeek = new Date(startOfThisWeek);
-    startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
-
-    const { count: thisWeekCount } = await this.supabase
-      .from('customer_inquiries')
-      .select('id', { count: 'exact', head: true })
-      .eq('agent_id', agentId)
-      .gte('created_at', startOfThisWeek.toISOString());
-
-    const { count: lastWeekCount } = await this.supabase
-      .from('customer_inquiries')
-      .select('id', { count: 'exact', head: true })
-      .eq('agent_id', agentId)
-      .gte('created_at', startOfLastWeek.toISOString())
-      .lt('created_at', startOfThisWeek.toISOString());
-
-    return {
-      count: currentCount ?? 0,
-      diff_from_last_period: (thisWeekCount ?? 0) - (lastWeekCount ?? 0),
-    };
-  }
-
-  private async getActiveListingsStats(agentId: string) {
-    const { count: currentCount } = await this.supabase
+  private async getListingsStats(agentId: string) {
+    const { count: totalCount } = await this.supabase
       .from('property_listings')
       .select('id', { count: 'exact', head: true })
       .eq('agent_id', agentId)
       .eq('status', 'active');
 
     const now = new Date();
-    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const startOfThisWeek = new Date(now);
+    startOfThisWeek.setDate(now.getDate() - now.getDay());
+    startOfThisWeek.setHours(0, 0, 0, 0);
 
-    const { count: thisMonthCount } = await this.supabase
+    const { count: newCount } = await this.supabase
       .from('property_listings')
       .select('id', { count: 'exact', head: true })
       .eq('agent_id', agentId)
-      .gte('created_at', startOfThisMonth.toISOString());
-
-    const { count: lastMonthCount } = await this.supabase
-      .from('property_listings')
-      .select('id', { count: 'exact', head: true })
-      .eq('agent_id', agentId)
-      .gte('created_at', startOfLastMonth.toISOString())
-      .lt('created_at', startOfThisMonth.toISOString());
+      .gte('created_at', startOfThisWeek.toISOString());
 
     return {
-      count: currentCount ?? 0,
-      diff_from_last_month: (thisMonthCount ?? 0) - (lastMonthCount ?? 0),
+      new_count: newCount ?? 0,
+      total_count: totalCount ?? 0,
+    };
+  }
+
+  private async getBuyersStats(agentId: string) {
+    const { count: totalCount } = await this.supabase
+      .from('customer_inquiries')
+      .select('id', { count: 'exact', head: true })
+      .eq('agent_id', agentId)
+      .eq('inquiry_type', 'looking_for');
+
+    const { count: newCount } = await this.supabase
+      .from('customer_inquiries')
+      .select('id', { count: 'exact', head: true })
+      .eq('agent_id', agentId)
+      .eq('inquiry_type', 'looking_for')
+      .eq('status', 'new');
+
+    return {
+      new_count: newCount ?? 0,
+      total_count: totalCount ?? 0,
     };
   }
 
@@ -105,13 +85,16 @@ export class StatsService {
     return { count: count ?? 0 };
   }
 
-  private async getPendingMatchesCount(agentId: string) {
+  private async getContractsThisYearStats(agentId: string) {
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
     const { count } = await this.supabase
-      .from('matches')
+      .from('customer_inquiries')
       .select('id', { count: 'exact', head: true })
       .eq('agent_id', agentId)
-      .gte('score', 0.6)
-      .eq('is_shown', false);
+      .eq('status', 'contracted')
+      .gte('updated_at', startOfYear.toISOString());
 
     return { count: count ?? 0 };
   }
