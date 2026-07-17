@@ -1,7 +1,7 @@
 'use client'; // trigger fast refresh 10
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -80,7 +80,7 @@ interface ImagePreview {
   name: string;
 }
 
-export default function NewListingPage() {
+function NewListingForm() {
   const router = useRouter();
   const { agent } = useAgent();
 
@@ -117,6 +117,31 @@ export default function NewListingPage() {
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  const searchParams = useSearchParams();
+  const aiDraftId = searchParams.get('aiDraft');
+
+  useEffect(() => {
+    if (aiDraftId) {
+      const draftStr = sessionStorage.getItem(aiDraftId);
+      if (draftStr) {
+        try {
+          const draft = JSON.parse(draftStr);
+          if (draft.category_codes) setCategoryCodes(draft.category_codes);
+          if (draft.transaction_types) setTransactionTypes(draft.transaction_types);
+          if (draft.address_full) setAddressFull(draft.address_full);
+          if (draft.agent_memo) setMemo(draft.agent_memo);
+          if (draft.area_exclusive) setAreaExclusive(draft.area_exclusive.toString());
+
+          const newPrices = { ...prices };
+          if (draft.price_sale) newPrices.price_sale = draft.price_sale.toString();
+          if (draft.deposit) newPrices.deposit = draft.deposit.toString();
+          if (draft.monthly_rent) newPrices.monthly_rent = draft.monthly_rent.toString();
+          setPrices(newPrices);
+        } catch (e) {}
+      }
+    }
+  }, [aiDraftId]);
 
   const agentCategories = agent?.selected_categories ?? [];
 
@@ -625,5 +650,13 @@ export default function NewListingPage() {
         </Button>
       </div>
     </div>
+  );
+}
+
+export default function NewListingPage() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <NewListingForm />
+    </Suspense>
   );
 }

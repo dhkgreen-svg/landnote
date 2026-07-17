@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,7 +26,7 @@ const TX_LABELS: Record<TransactionType, string> = {
   premium_transfer: '권리금양도',
 };
 
-export default function NewInquiryPage() {
+function NewInquiryForm() {
   const router = useRouter();
   const { agent } = useAgent();
   const [loading, setLoading] = useState(false);
@@ -40,6 +40,25 @@ export default function NewInquiryPage() {
   const [subcategoryCodes, setSubcategoryCodes] = useState<string[]>([]);
   const [transactionTypes, setTransactionTypes] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
+
+  const searchParams = useSearchParams();
+  const aiDraftId = searchParams.get('aiDraft');
+
+  useEffect(() => {
+    if (aiDraftId) {
+      const draftStr = sessionStorage.getItem(aiDraftId);
+      if (draftStr) {
+        try {
+          const draft = JSON.parse(draftStr);
+          if (draft.customer_name) setCustomerName(draft.customer_name);
+          if (draft.customer_phone) setCustomerPhone(draft.customer_phone);
+          if (draft.category_codes) setCategoryCodes(draft.category_codes);
+          if (draft.transaction_types) setTransactionTypes(draft.transaction_types);
+          if (draft.agent_memo) setNotes(draft.agent_memo);
+        } catch (e) {}
+      }
+    }
+  }, [aiDraftId]);
 
   const toggleArray = (arr: string[], val: string, setter: (a: string[]) => void) => {
     if (arr.includes(val)) {
@@ -197,5 +216,13 @@ export default function NewInquiryPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function NewInquiryPage() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <NewInquiryForm />
+    </Suspense>
   );
 }

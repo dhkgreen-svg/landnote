@@ -19,6 +19,7 @@ import { StorageModule } from './modules/storage/storage.module';
 import { EmailModule } from './modules/email/email.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { AdminModule } from './modules/admin/admin.module';
     EmailModule,
     NotificationsModule,
     AdminModule,
+    AiModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
