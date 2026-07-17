@@ -11,6 +11,7 @@ import {
   useListingCategories,
   useContractsDuration,
 } from '@/lib/hooks/queries';
+import { Building2, Users } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
@@ -148,90 +149,103 @@ export default function StatsPage() {
         </Tabs>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* 1) 문의 유입 추이 — LineChart */}
-        <ChartCard title="문의 유입 추이" loading={periodLoading} empty={inquiryData.length === 0}>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={inquiryData}>
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="looking_for" name="찾는 분"
-                stroke="#6366f1" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="listing" name="내놓는 분"
-                stroke="#f59e0b" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
+      <div className="space-y-8 mt-6">
+        {/* 매물 통계 Section */}
+        <section className="space-y-4">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-primary" /> 매물 통계
+          </h2>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* 매물 상태 분포 */}
+            <ChartCard title="매물 상태 분포" loading={staticLoading} empty={statusData.length === 0}>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={statusData}
+                    dataKey="count"
+                    nameKey="status"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="60%"
+                    outerRadius="80%"
+                    label={({ status, count }: { status: string; count: number }) =>
+                      `${STATUS_LABELS_LISTING[status] ?? status} ${count}`
+                    }
+                  >
+                    {statusData.map((entry) => (
+                      <Cell key={entry.status} fill={STATUS_COLORS[entry.status] ?? '#9ca3af'} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number, name: string) => [value, STATUS_LABELS_LISTING[name] ?? name]} />
+                </PieChart>
+              </ResponsiveContainer>
+            </ChartCard>
 
-        {/* 2) 매물 상태 분포 — PieChart 도넛 */}
-        <ChartCard title="매물 상태 분포" loading={staticLoading} empty={statusData.length === 0}>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie
-                data={statusData}
-                dataKey="count"
-                nameKey="status"
-                cx="50%"
-                cy="50%"
-                innerRadius="60%"
-                outerRadius="80%"
-                label={({ status, count }: { status: string; count: number }) =>
-                  `${STATUS_LABELS_LISTING[status] ?? status} ${count}`
-                }
-              >
-                {statusData.map((entry) => (
-                  <Cell key={entry.status} fill={STATUS_COLORS[entry.status] ?? '#9ca3af'} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value: number, name: string) => [value, STATUS_LABELS_LISTING[name] ?? name]} />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
+            {/* 카테고리별 등록 */}
+            <ChartCard title="카테고리별 매물 등록" loading={periodLoading} empty={categoryData.length === 0}>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={pivotedCategories}>
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                  <Tooltip formatter={(value: number, name: string) => [value, CATEGORY_LABELS[name] ?? name]} />
+                  <Legend formatter={(value: string) => CATEGORY_LABELS[value] ?? value} />
+                  {categoryKeys.map(key => (
+                    <Bar key={key} dataKey={key} fill={CATEGORY_COLORS[key] ?? '#9ca3af'} radius={[2, 2, 0, 0]} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </div>
+        </section>
 
-        {/* 3) 문의 전환 퍼널 — BarChart */}
-        <ChartCard title="문의 전환 퍼널" loading={periodLoading} empty={funnelData.length === 0}>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={funnelData.map(d => ({ ...d, label: STATUS_LABELS[d.status] ?? d.status }))}>
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-              <Tooltip
-                formatter={(value: number) => [`${value}건`, '문의 수']}
-              />
-              <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]}
-                label={{ position: 'top', fontSize: 10, formatter: (v: number) => v > 0 ? v : '' }}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+        {/* 매수 통계 Section */}
+        <section className="space-y-4">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" /> 매수 통계
+          </h2>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* 신규 매수 고객 유입 추이 */}
+            <ChartCard title="신규 매수 고객 유입 추이" loading={periodLoading} empty={inquiryData.length === 0}>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={inquiryData}>
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                  <Tooltip formatter={(value: number) => [`${value}명`, '신규 매수']} />
+                  <Line type="monotone" dataKey="looking_for" name="신규 매수 고객"
+                    stroke="#6366f1" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
 
-        {/* 4) 카테고리별 등록 — BarChart */}
-        <ChartCard title="카테고리별 매물 등록" loading={periodLoading} empty={categoryData.length === 0}>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={pivotedCategories}>
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
-              <Tooltip formatter={(value: number, name: string) => [value, CATEGORY_LABELS[name] ?? name]} />
-              <Legend formatter={(value: string) => CATEGORY_LABELS[value] ?? value} />
-              {categoryKeys.map(key => (
-                <Bar key={key} dataKey={key} fill={CATEGORY_COLORS[key] ?? '#9ca3af'} radius={[2, 2, 0, 0]} />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+            {/* 매수 전환 퍼널 */}
+            <ChartCard title="매수 전환 퍼널" loading={periodLoading} empty={funnelData.length === 0}>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={funnelData.map(d => ({ ...d, label: STATUS_LABELS[d.status] ?? d.status }))}>
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                  <Tooltip
+                    formatter={(value: number) => [`${value}명`, '고객 수']}
+                  />
+                  <Bar dataKey="count" fill="#f59e0b" radius={[4, 4, 0, 0]}
+                    label={{ position: 'top', fontSize: 10, formatter: (v: number) => v > 0 ? v : '' }}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
 
-        {/* 5) 계약 소요 기간 — BarChart 수평 */}
-        <ChartCard title="계약 소요 기간 분포" loading={staticLoading} empty={durationData.length === 0}>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={durationData} layout="vertical">
-              <XAxis type="number" tick={{ fontSize: 12 }} allowDecimals={false} />
-              <YAxis type="category" dataKey="duration_range" tick={{ fontSize: 11 }} width={80} />
-              <Tooltip formatter={(value: number) => [`${value}건`, '계약 수']} />
-              <Bar dataKey="count" fill="#14b8a6" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+            {/* 계약 소요 기간 */}
+            <ChartCard title="계약 소요 기간 분포" loading={staticLoading} empty={durationData.length === 0}>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={durationData} layout="vertical">
+                  <XAxis type="number" tick={{ fontSize: 12 }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="duration_range" tick={{ fontSize: 11 }} width={80} />
+                  <Tooltip formatter={(value: number) => [`${value}건`, '계약 수']} />
+                  <Bar dataKey="count" fill="#14b8a6" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </div>
+        </section>
       </div>
     </div>
   );
