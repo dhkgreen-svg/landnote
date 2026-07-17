@@ -86,9 +86,9 @@ export default function AdminAgentsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      <th className="px-4 py-3 text-left font-medium">사무소</th>
                       <th className="px-4 py-3 text-left font-medium">이름</th>
                       <th className="px-4 py-3 text-left font-medium">이메일</th>
-                      <th className="px-4 py-3 text-left font-medium">사무소</th>
                       <th className="px-4 py-3 text-left font-medium">플랜</th>
                       <th className="px-4 py-3 text-left font-medium">상태</th>
                       <th className="px-4 py-3 text-left font-medium">가입일</th>
@@ -99,11 +99,11 @@ export default function AdminAgentsPage() {
                       <tr key={agent.id} className="border-b hover:bg-muted/30">
                         <td className="px-4 py-3">
                           <Link href={`/admin/agents/${agent.id}`} className="text-blue-600 hover:underline font-medium">
-                            {agent.agent_name}
+                            {agent.office_name || '-'}
                           </Link>
                         </td>
+                        <td className="px-4 py-3">{agent.agent_name}</td>
                         <td className="px-4 py-3 text-muted-foreground">{agent.email}</td>
-                        <td className="px-4 py-3">{agent.office_name || '-'}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                             agent.subscription_plan === 'pro'
