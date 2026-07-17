@@ -37,10 +37,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export function DashboardListingsView({ activeView }: { activeView: 'new_listings' | 'total_listings' | null }) {
-  const [activeCategory, setActiveCategory] = useState<string>('residential');
+  const [activeCategory, setActiveCategory] = useState<string>('all');
   
   const statusParam = activeView === 'new_listings' ? 'new' : undefined;
-  const categoryParam = activeView === 'total_listings' ? activeCategory : undefined;
+  const categoryParam = activeCategory === 'all' ? undefined : activeCategory;
 
   const { data, isLoading } = useListings({
     page: 1,
@@ -65,21 +65,27 @@ export function DashboardListingsView({ activeView }: { activeView: 'new_listing
           </Link>
         </div>
 
-        {activeView === 'total_listings' && (
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {Object.entries(CATEGORY_LABELS).map(([code, label]) => (
-              <Button
-                key={code}
-                variant={activeCategory === code ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveCategory(code)}
-                className="whitespace-nowrap"
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-        )}
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          <Button
+            variant={activeCategory === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setActiveCategory('all')}
+            className="whitespace-nowrap"
+          >
+            전체
+          </Button>
+          {Object.entries(CATEGORY_LABELS).map(([code, label]) => (
+            <Button
+              key={code}
+              variant={activeCategory === code ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveCategory(code)}
+              className="whitespace-nowrap"
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
 
         {isLoading ? (
           <div className="space-y-2">
@@ -166,12 +172,10 @@ function InquiryStatusSelect({ inquiry }: { inquiry: any }) {
 }
 
 export function DashboardInquiriesView({ activeView }: { activeView: 'new_buyers' | 'total_buyers' | null }) {
-  const [activeCategory, setActiveCategory] = useState<string>('residential');
+  const [activeCategory, setActiveCategory] = useState<string>('all');
   
   const statusParam = activeView === 'new_buyers' ? 'new' : undefined;
-  // If 'new_buyers', we might want to filter by category or just show all new. Let's filter by category for 'new_buyers' too, or maybe not. 
-  // User: "신규 매수 문의 누르면은 어떤 4개 카테고리에서 문의가 있다 아니면은 그 매물을 보여줘야지 되고" -> We'll show category tabs for both views to allow filtering.
-  const categoryParam = activeCategory;
+  const categoryParam = activeCategory === 'all' ? undefined : activeCategory;
 
   const { data, isLoading } = useInquiries({
     page: 1,
@@ -198,6 +202,14 @@ export function DashboardInquiriesView({ activeView }: { activeView: 'new_buyers
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-2">
+          <Button
+            variant={activeCategory === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setActiveCategory('all')}
+            className="whitespace-nowrap"
+          >
+            전체
+          </Button>
           {Object.entries(CATEGORY_LABELS).map(([code, label]) => (
             <Button
               key={code}
