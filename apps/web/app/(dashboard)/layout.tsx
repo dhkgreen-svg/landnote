@@ -18,8 +18,6 @@ import { usePush } from '@/lib/hooks/use-push';
 
 const NAV_ITEMS = [
   { label: '현황', href: '/dashboard', icon: LayoutDashboard },
-  { label: '문의', href: '/dashboard/inquiries', icon: MessageSquare },
-  { label: '매물', href: '/dashboard/listings', icon: Building2 },
   { label: '매칭', href: '/dashboard/matching', icon: Shuffle },
   { label: '통계', href: '/dashboard/stats', icon: BarChart3 },
   { label: '링크/QR', href: '/dashboard/links', icon: QrCode },
