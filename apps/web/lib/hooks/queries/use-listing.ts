@@ -19,6 +19,9 @@ interface ListingDetail {
   address_full: string | null;
   address_road: string | null;
   dong_name: string | null;
+  complex_name: string | null;
+  building_num: string | null;
+  room_num: string | null;
   latitude: number | null;
   longitude: number | null;
   price_sale: number | null;
@@ -29,6 +32,8 @@ interface ListingDetail {
   contract_remaining_months: number | null;
   area_supply: number | null;
   area_exclusive: number | null;
+  area_land: number | null;
+  area_building: number | null;
   floor_current: number | null;
   floor_total: number | null;
   built_year: number | null;
@@ -38,6 +43,7 @@ interface ListingDetail {
   agent_memo: string | null;
   owner_phone: string | null;
   contract_party_phone: string | null;
+  detail_info: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }

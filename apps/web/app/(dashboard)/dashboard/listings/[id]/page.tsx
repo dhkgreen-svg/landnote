@@ -55,6 +55,7 @@ interface ListingDetail {
   address_full: string | null;
   address_road: string | null;
   dong_name: string | null;
+  complex_name: string | null;
   latitude: number | null;
   longitude: number | null;
   price_sale: number | null;
@@ -65,6 +66,8 @@ interface ListingDetail {
   contract_remaining_months: number | null;
   area_supply: number | null;
   area_exclusive: number | null;
+  area_land: number | null;
+  area_building: number | null;
   floor_current: number | null;
   floor_total: number | null;
   built_year: number | null;
@@ -74,6 +77,7 @@ interface ListingDetail {
   agent_memo: string | null;
   owner_phone: string | null;
   contract_party_phone: string | null;
+  detail_info: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -128,6 +132,9 @@ export default function ListingDetailPage() {
   const [editAddressRoad, setEditAddressRoad] = useState('');
   const [editAddressJibun, setEditAddressJibun] = useState('');
   const [editDongName, setEditDongName] = useState('');
+  const [editComplexName, setEditComplexName] = useState('');
+  const [editBuildingNum, setEditBuildingNum] = useState('');
+  const [editRoomNum, setEditRoomNum] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
   const [contractPartyPhone, setContractPartyPhone] = useState('');
 
@@ -138,6 +145,9 @@ export default function ListingDetailPage() {
       setEditAddressFull(listing.address_full ?? '');
       setEditAddressRoad(listing.address_road ?? '');
       setEditDongName(listing.dong_name ?? '');
+      setEditComplexName(listing.complex_name ?? '');
+      setEditBuildingNum(listing.building_num ?? '');
+      setEditRoomNum(listing.room_num ?? '');
       setOwnerPhone(listing.owner_phone ?? '');
       setContractPartyPhone(listing.contract_party_phone ?? '');
     }
@@ -152,6 +162,9 @@ export default function ListingDetailPage() {
         address_road: editAddressRoad || null,
         address_jibun: editAddressJibun || null,
         dong_name: editDongName || null,
+        complex_name: editComplexName || null,
+        building_num: editBuildingNum || null,
+        room_num: editRoomNum || null,
         owner_phone: ownerPhone || null,
         contract_party_phone: status === 'contracted' ? (contractPartyPhone || null) : null,
       },
@@ -288,19 +301,50 @@ export default function ListingDetailPage() {
                 <div>
                   <Label>주소</Label>
                   <AddressSearch
-                    value={editAddressFull}
+                    value={editComplexName ? `${editAddressFull} (${editComplexName})` : editAddressFull}
                     onComplete={(result) => {
                       setEditAddressFull(result.address_full);
                       setEditAddressRoad(result.address_road);
                       setEditAddressJibun(result.address_jibun);
                       setEditDongName(result.dong_name);
+                      if (result.building_name) {
+                        setEditComplexName(result.building_name);
+                      }
                     }}
                   />
                 </div>
-                <div>
-                  <Label>동/읍/면</Label>
-                  <Input value={editDongName} onChange={e => setEditDongName(e.target.value)} placeholder="동 이름" />
-                </div>
+                {!(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge'))) && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>단지명 / 건물명</Label>
+                        <Input value={editComplexName} onChange={e => setEditComplexName(e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>동/읍/면</Label>
+                        <Input value={editDongName} onChange={e => setEditDongName(e.target.value)} placeholder="동 이름" />
+                      </div>
+                    </div>
+                    {!listing.subcategory_codes.some(c => ['building', 'lodging', 'house', 'other_commercial'].includes(c)) && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>동</Label>
+                          <Input value={editBuildingNum} onChange={e => setEditBuildingNum(e.target.value)} placeholder="예: 101" />
+                        </div>
+                        <div>
+                          <Label>호수</Label>
+                          <Input value={editRoomNum} onChange={e => setEditRoomNum(e.target.value)} placeholder="예: 1502" />
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+                {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge'))) && (
+                  <div>
+                    <Label>동/읍/면</Label>
+                    <Input value={editDongName} onChange={e => setEditDongName(e.target.value)} placeholder="동 이름" />
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -312,6 +356,28 @@ export default function ListingDetailPage() {
                   <span className="text-sm text-muted-foreground">동</span>
                   <span className="text-sm">{listing.dong_name || '-'}</span>
                 </div>
+                {listing.complex_name && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">단지/건물명</span>
+                    <span className="text-sm">{listing.complex_name}</span>
+                  </div>
+                )}
+                {!listing.subcategory_codes.some(c => ['building', 'lodging', 'house', 'other_commercial'].includes(c)) && (
+                  <>
+                    {listing.building_num && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">동</span>
+                        <span className="text-sm">{listing.building_num}</span>
+                      </div>
+                    )}
+                    {listing.room_num && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">호수</span>
+                        <span className="text-sm">{listing.room_num}</span>
+                      </div>
+                    )}
+                  </>
+                )}
                 {listing.latitude && listing.longitude && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">좌표</span>
@@ -327,35 +393,109 @@ export default function ListingDetailPage() {
         <Card>
           <CardHeader><CardTitle className="text-lg">매물 정보</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {listing.area_supply && (
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">공급면적</span>
-                <span className="text-sm">{listing.area_supply}m2</span>
-              </div>
+            {/* 1. 면적 정보 */}
+            {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
+              <>
+                {listing.area_land != null && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">대지면적</span>
+                    <span className="text-sm">{listing.area_land}m2</span>
+                  </div>
+                )}
+                {listing.area_building != null && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">연면적/건평</span>
+                    <span className="text-sm">{listing.area_building}m2</span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {listing.area_supply != null && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">공급면적</span>
+                    <span className="text-sm">{listing.area_supply}m2</span>
+                  </div>
+                )}
+                {listing.area_exclusive != null && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">전용면적</span>
+                    <span className="text-sm">{listing.area_exclusive}m2</span>
+                  </div>
+                )}
+              </>
             )}
-            {listing.area_exclusive && (
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">전용면적</span>
-                <span className="text-sm">{listing.area_exclusive}m2</span>
-              </div>
+
+            {/* 2. 토지/용도 정보 */}
+            {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) && (
+              <>
+                {listing.detail_info?.zoning && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">용도지역</span>
+                    <span className="text-sm">{listing.detail_info.zoning as string}</span>
+                  </div>
+                )}
+                {listing.detail_info?.jimok && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">지목</span>
+                    <span className="text-sm">{listing.detail_info.jimok as string}</span>
+                  </div>
+                )}
+                {listing.detail_info?.current_usage && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">현재용도 (선택)</span>
+                    <span className="text-sm">{listing.detail_info.current_usage as string}</span>
+                  </div>
+                )}
+              </>
             )}
-            {listing.floor_current != null && (
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">층</span>
-                <span className="text-sm">{listing.floor_current}/{listing.floor_total ?? '-'}층</span>
-              </div>
+
+            {/* 3. 산업용 특화 필드 */}
+            {listing.category_codes.includes('industrial') && (
+              <>
+                {listing.detail_info?.factory_usage && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">{listing.subcategory_codes.includes('warehouse') ? '창고 용도' : listing.subcategory_codes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '건물 용도' : '공장 용도'}</span>
+                    <span className="text-sm">{listing.detail_info.factory_usage as string}</span>
+                  </div>
+                )}
+                {listing.detail_info?.business_type && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">업종</span>
+                    <span className="text-sm">{listing.detail_info.business_type as string}</span>
+                  </div>
+                )}
+                {listing.detail_info?.recommended_usage && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">추천 용도</span>
+                    <span className="text-sm">{listing.detail_info.recommended_usage as string}</span>
+                  </div>
+                )}
+              </>
             )}
-            {listing.built_year && (
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">준공년도</span>
-                <span className="text-sm">{listing.built_year}년</span>
-              </div>
-            )}
-            {listing.direction && (
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">방향</span>
-                <span className="text-sm">{listing.direction}</span>
-              </div>
+
+            {/* 4. 건물/층/방향 정보 */}
+            {!listing.category_codes.includes('land') && (
+              <>
+                {listing.floor_current != null && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">층</span>
+                    <span className="text-sm">{listing.floor_current}/{listing.floor_total ?? '-'}층</span>
+                  </div>
+                )}
+                {listing.built_year != null && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">준공년도</span>
+                    <span className="text-sm">{listing.built_year}년</span>
+                  </div>
+                )}
+                {listing.direction && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">방향</span>
+                    <span className="text-sm">{listing.direction}</span>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

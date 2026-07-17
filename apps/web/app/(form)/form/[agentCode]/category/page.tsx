@@ -9,7 +9,7 @@ import { FormProgress } from '../Step1Client';
 import { type CategoryCode } from '@landnote/shared';
 
 const CATEGORY_LABELS: Record<CategoryCode, { label: string; icon: string; desc: string }> = {
-  residential: { label: '주거용 부동산', icon: '🏠', desc: '아파트·빌라·단독주택·원룸' },
+  residential: { label: '주거용 부동산', icon: '🏠', desc: '아파트·빌라/다세대·원/투룸·주택/다가구' },
   commercial: { label: '상업용 부동산', icon: '🏬', desc: '상가·사무실·빌딩·가게양도' },
   industrial: { label: '산업용 부동산', icon: '🏭', desc: '공장·창고·물류센터·지식산업센터' },
   land: { label: '토지 및 기타', icon: '🌳', desc: '대지·농지·임야·특수목적부동산' },

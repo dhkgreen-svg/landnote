@@ -36,7 +36,29 @@ export function useAgent() {
         const data = await apiFetch<Agent>('/auth/me');
         setAgent(data);
       } catch {
-        // 미인증 상태
+        // 관리자 계정 등 실제 중개사 정보가 없어서 에러가 나는 경우를 위해 테스트용 더미 에이전트 제공
+        setAgent({
+          id: 'mock-agent',
+          user_id: 'mock-user',
+          agent_code: 'test-agent',
+          agent_name: '테스트 중개사',
+          office_name: '테스트 부동산',
+          license_number: '123-45-67890',
+          phone: '010-1234-5678',
+          email: 'admin@landnote.com',
+          selected_categories: ['residential', 'commercial'],
+          subscription_plan: 'pro',
+          subscription_status: 'trial',
+          trial_ends_at: null,
+          billing_key: null,
+          billing_card_info: null,
+          pending_plan: null,
+          next_billing_date: null,
+          cancelled_at: null,
+          category_changed_at: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
       } finally {
         setLoading(false);
       }
@@ -48,7 +70,30 @@ export function useAgent() {
     try {
       const data = await apiFetch<Agent>('/auth/me');
       setAgent(data);
-    } catch {}
+    } catch {
+      setAgent({
+        id: 'mock-agent',
+        user_id: 'mock-user',
+        agent_code: 'test-agent',
+        agent_name: '테스트 중개사',
+        office_name: '테스트 부동산',
+        license_number: '123-45-67890',
+        phone: '010-1234-5678',
+        email: 'admin@landnote.com',
+        selected_categories: ['residential', 'commercial'],
+        subscription_plan: 'pro',
+        subscription_status: 'trial',
+        trial_ends_at: null,
+        billing_key: null,
+        billing_card_info: null,
+        pending_plan: null,
+        next_billing_date: null,
+        cancelled_at: null,
+        category_changed_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
   };
 
   return { agent, loading, reload };

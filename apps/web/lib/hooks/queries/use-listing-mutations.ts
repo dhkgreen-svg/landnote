@@ -12,6 +12,9 @@ export function useUpdateListing(id: string) {
       address_road?: string | null;
       address_jibun?: string | null;
       dong_name?: string | null;
+      complex_name?: string | null;
+      building_num?: string | null;
+      room_num?: string | null;
       owner_phone?: string | null;
       contract_party_phone?: string | null;
     }) =>

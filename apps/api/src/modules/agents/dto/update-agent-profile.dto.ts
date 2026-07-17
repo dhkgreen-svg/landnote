@@ -23,6 +23,11 @@ export class UpdateAgentProfileDto {
   @IsString()
   profile_image_url?: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  license_number?: string;
+
   // trial 상태 에이전트의 온보딩 플랜 선택용. 서비스 레이어에서 trial 전용 검증.
   @IsOptional()
   @IsIn(planValues)

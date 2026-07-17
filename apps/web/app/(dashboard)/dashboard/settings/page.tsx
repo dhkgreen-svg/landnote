@@ -72,6 +72,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           agent_name: name,
           office_name: office,
+          license_number: license,
         }),
       });
       await reload();
@@ -157,7 +158,7 @@ export default function SettingsPage() {
         <CardHeader><CardTitle className="text-lg">프로필</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label>중개사명</Label>
+            <Label>성명 (또는 중개사명)</Label>
             <Input value={name} onChange={e => setName(e.target.value)} />
           </div>
           <div>
@@ -165,8 +166,12 @@ export default function SettingsPage() {
             <Input value={office} onChange={e => setOffice(e.target.value)} />
           </div>
           <div>
-            <Label>자격증번호</Label>
-            <Input value={license} readOnly className="bg-muted" />
+            <Label>자격증번호 (또는 개설등록번호)</Label>
+            <Input 
+              value={license} 
+              onChange={e => setLicense(e.target.value)} 
+              placeholder="선택사항 (나중에 입력 가능)" 
+            />
           </div>
           <div className="flex items-center gap-3">
             <Button onClick={handleProfileSave} disabled={profileSaving}>

@@ -5,11 +5,13 @@ import { useEffect, useState, useRef } from 'react';
 import { useFormStore } from '@/lib/stores/form-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AreaInput } from '@/components/ui/AreaInput';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormProgress } from '../Step1Client';
 import { AddressSearch } from '@/components/address-search';
-import { TRANSACTION_TYPE, REQUIRED_PRICE_FIELDS, PRICE_LABELS, SUBCATEGORY_LABELS, SUBCATEGORIES } from '@landnote/shared';
+import { TRANSACTION_TYPE, REQUIRED_PRICE_FIELDS, PRICE_LABELS, SUBCATEGORY_LABELS, SUBCATEGORIES, ZONING_OPTIONS, JIMOK_OPTIONS } from '@landnote/shared';
 import type { TransactionType } from '@landnote/shared';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -488,88 +490,242 @@ export default function InputPage() {
               );
             })()}
 
-            {store.complex_name && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>동</Label>
+            {!(store.category_codes.includes('land') || (store.category_codes.includes('industrial') && !store.subcategory_codes.includes('knowledge'))) && (
+              <>
+                <div className="space-y-1.5 mt-3">
+                  <Label>단지명 / 건물명</Label>
                   <Input
                     type="text"
-                    placeholder="예: 101"
-                    value={store.building_num ?? ''}
-                    onChange={e => store.setStoreValue('building_num', e.target.value)}
+                    placeholder="예: 푸르지오 아파트 (주소 검색 시 자동 입력)"
+                    value={store.complex_name ?? ''}
+                    onChange={e => store.setStoreValue('complex_name', e.target.value)}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>호수</Label>
-                  <Input
-                    type="text"
-                    placeholder="예: 1502"
-                    value={store.room_num ?? ''}
-                    onChange={e => store.setStoreValue('room_num', e.target.value)}
-                  />
-                </div>
-              </div>
+
+                {!store.subcategory_codes.some(c => ['building', 'lodging', 'house', 'other_commercial'].includes(c)) && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>동</Label>
+                      <Input
+                        type="text"
+                        placeholder="예: 101"
+                        value={store.building_num ?? ''}
+                        onChange={e => store.setStoreValue('building_num', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>호수</Label>
+                      <Input
+                        type="text"
+                        placeholder="예: 1502"
+                        value={store.room_num ?? ''}
+                        onChange={e => store.setStoreValue('room_num', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             {(() => {
+              if (store.category_codes.includes('land')) {
+                return (
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <AreaInput
+                      label="면적 (대지면적)"
+                      value={store.area_land ?? ''}
+                      onChange={val => store.setStoreValue('area_land', val)}
+                    />
+                    <div className="space-y-1.5">
+                      <Label>용도지역</Label>
+                      <Select
+                        value={(store.detailed_conditions.zoning as string) || 'none'}
+                        onValueChange={v => store.setCondition('zoning', v === 'none' ? '' : v)}
+                      >
+                        <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">선택 안함</SelectItem>
+                          {ZONING_OPTIONS.map((z: string) => <SelectItem key={z} value={z}>{z}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>지목</Label>
+                      <Select
+                        value={(store.detailed_conditions.jimok as string) || 'none'}
+                        onValueChange={v => store.setCondition('jimok', v === 'none' ? '' : v)}
+                      >
+                        <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">선택 안함</SelectItem>
+                          {JIMOK_OPTIONS.map((j: string) => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>현재용도 (선택)</Label>
+                      <Input
+                        type="text"
+                        placeholder="예: 잡종지, 나대지"
+                        value={(store.detailed_conditions.current_usage as string) ?? ''}
+                        onChange={e => store.setCondition('current_usage', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                );
+              }
+
+              if (store.category_codes.includes('industrial') && !store.subcategory_codes.includes('knowledge')) {
+                return (
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <AreaInput
+                      label="대지면적"
+                      value={store.area_land ?? ''}
+                      onChange={val => store.setStoreValue('area_land', val)}
+                    />
+                    <AreaInput
+                      label="연면적/건평"
+                      value={store.area_building ?? ''}
+                      onChange={val => store.setStoreValue('area_building', val)}
+                    />
+                    <div className="space-y-1.5">
+                      <Label>용도</Label>
+                      <Input
+                        type="text"
+                        placeholder="예: 공장, 창고"
+                        value={(store.detailed_conditions.current_usage as string) ?? ''}
+                        onChange={e => store.setCondition('current_usage', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>지목</Label>
+                      <Select
+                        value={(store.detailed_conditions.jimok as string) || 'none'}
+                        onValueChange={v => store.setCondition('jimok', v === 'none' ? '' : v)}
+                      >
+                        <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">선택 안함</SelectItem>
+                          {JIMOK_OPTIONS.map((j: string) => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{store.subcategory_codes.includes('warehouse') ? '창고 용도' : store.subcategory_codes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '건물 용도' : '공장 용도'}</Label>
+                      <Input
+                        type="text"
+                        placeholder={store.subcategory_codes.includes('warehouse') ? '예: 일반창고, 물류센터' : store.subcategory_codes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '예: 자동차정비, 야적장, 고물상' : '예: 일반공장, 식품공장'}
+                        value={(store.detailed_conditions.factory_usage as string) ?? ''}
+                        onChange={e => store.setCondition('factory_usage', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>업종</Label>
+                      <Input
+                        type="text"
+                        placeholder="예: 반도체, 제조업"
+                        value={(store.detailed_conditions.business_type as string) ?? ''}
+                        onChange={e => store.setCondition('business_type', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>추천 용도</Label>
+                      <Input
+                        type="text"
+                        placeholder="예: 창고용, 단순조립"
+                        value={(store.detailed_conditions.recommended_usage as string) ?? ''}
+                        onChange={e => store.setCondition('recommended_usage', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                );
+              }
+
               const needsLandArea = store.subcategory_codes.some(c =>
                 ['house', 'oneroom', 'building', 'factory', 'warehouse', 'farm', 'lodging', 'other_commercial'].includes(c)
+              );
+
+              const needsLandInfo = store.subcategory_codes.some(c =>
+                ['house', 'building', 'lodging', 'other_commercial'].includes(c)
               );
 
               return (
                 <div className="grid grid-cols-2 gap-3">
                   {needsLandArea ? (
                     <>
-                      <div className="space-y-1.5">
-                        <Label>대지면적 (m²)</Label>
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={store.area_land ?? ''}
-                          onChange={e => store.setStoreValue('area_land', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>연면적/건평 (m²)</Label>
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={store.area_building ?? ''}
-                          onChange={e => store.setStoreValue('area_building', e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label>전용면적 (m²) <span className="text-xs font-normal text-muted-foreground ml-1">(원룸만 해당 시)</span></Label>
-                        <Input
-                          type="number"
-                          placeholder="0"
+                      <AreaInput
+                        label="대지면적"
+                        value={store.area_land ?? ''}
+                        onChange={val => store.setStoreValue('area_land', val)}
+                      />
+                      <AreaInput
+                        label="연면적/건평"
+                        value={store.area_building ?? ''}
+                        onChange={val => store.setStoreValue('area_building', val)}
+                      />
+                      {!store.subcategory_codes.some(c => ['building', 'lodging', 'house', 'other_commercial'].includes(c)) && (
+                        <AreaInput
+                          label="전용면적 (원/투룸만 해당 시)"
                           value={(store.detailed_conditions.area_exclusive as string) ?? ''}
-                          onChange={e => store.setCondition('area_exclusive', e.target.value)}
+                          onChange={val => store.setCondition('area_exclusive', val)}
                         />
-                      </div>
+                      )}
                     </>
                   ) : (
                     <>
+                      <AreaInput
+                        label="계약면적"
+                        value={store.area_contract ?? ''}
+                        onChange={val => store.setStoreValue('area_contract', val)}
+                      />
+                      <AreaInput
+                        label="전용면적"
+                        value={(store.detailed_conditions.area_exclusive as string) ?? ''}
+                        onChange={val => store.setCondition('area_exclusive', val)}
+                      />
+                    </>
+                  )}
+
+                  {needsLandInfo && (
+                    <>
                       <div className="space-y-1.5">
-                        <Label>계약면적 (m²)</Label>
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={store.area_contract ?? ''}
-                          onChange={e => store.setStoreValue('area_contract', e.target.value)}
-                        />
+                        <Label>용도지역</Label>
+                        <Select
+                          value={(store.detailed_conditions.zoning as string) || 'none'}
+                          onValueChange={v => store.setCondition('zoning', v === 'none' ? '' : v)}
+                        >
+                          <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">선택 안함</SelectItem>
+                            {ZONING_OPTIONS.map((z: string) => <SelectItem key={z} value={z}>{z}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-1.5">
-                        <Label>전용면적 (m²)</Label>
+                        <Label>지목</Label>
+                        <Select
+                          value={(store.detailed_conditions.jimok as string) || 'none'}
+                          onValueChange={v => store.setCondition('jimok', v === 'none' ? '' : v)}
+                        >
+                          <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">선택 안함</SelectItem>
+                            {JIMOK_OPTIONS.map((j: string) => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>현재용도 (선택)</Label>
                         <Input
-                          type="number"
-                          placeholder="0"
-                          value={(store.detailed_conditions.area_exclusive as string) ?? ''}
-                          onChange={e => store.setCondition('area_exclusive', e.target.value)}
+                          type="text"
+                          placeholder="예: 잡종지, 근린생활시설"
+                          value={(store.detailed_conditions.current_usage as string) ?? ''}
+                          onChange={e => store.setCondition('current_usage', e.target.value)}
                         />
                       </div>
                     </>
                   )}
+
                   <div className="space-y-1.5">
                     <Label>층수</Label>
                     <Input

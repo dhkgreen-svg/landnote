@@ -44,12 +44,24 @@ export const useFormStore = create<FormStore>((set, get) => ({
 
   toggleCategory: (code, max = 1) => {
     const prev = get().category_codes;
+    let next: CategoryCode[];
     if (prev.includes(code)) {
-      set({ category_codes: prev.filter(c => c !== code) });
+      next = prev.filter(c => c !== code);
     } else if (max === 1) {
-      set({ category_codes: [code] });
+      next = [code];
     } else if (prev.length < max) {
-      set({ category_codes: [...prev, code] });
+      next = [...prev, code];
+    } else {
+      next = prev;
+    }
+
+    set({ category_codes: next });
+
+    if (!next.includes('commercial')) {
+      const currentTx = get().transaction_types;
+      if (currentTx.includes('premium_transfer')) {
+        set({ transaction_types: currentTx.filter(t => t !== 'premium_transfer') });
+      }
     }
   },
 

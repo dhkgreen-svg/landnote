@@ -8,26 +8,28 @@ let mockInquiries: any[] = [];
 let mockMatchingInquiries: any[] = [];
 let mockMatchingResults: any[] = [];
 let nextId = 1;
+let mockAgent: any = {
+  id: 'mock-agent',
+  agent_code: 'test-agent',
+  agent_name: '테스트 중개사',
+  office_name: '테스트 부동산',
+  license_number: '123-45-67890',
+  phone: '010-1234-5678',
+  selected_categories: [
+    'residential',
+    'commercial',
+    'industrial',
+  ],
+  subscription_plan: 'pro'
+};
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const method = options?.method || 'GET';
   
   if (process.env.NEXT_PUBLIC_USE_MOCK === 'true') {
     if (path === '/auth/me') {
-    return {
-      id: 'mock-agent',
-      agent_code: 'test-agent',
-      agent_name: '테스트 중개사',
-      office_name: '테스트 부동산',
-      phone: '010-1234-5678',
-      selected_categories: [
-        '아파트 (주상복합 포함)',
-        '요식업',
-        '일반사무실',
-      ],
-      subscription_plan: 'pro'
-    } as any;
-  }
+      return mockAgent as any;
+    }
 
   if (path.startsWith('/stats/summary')) {
     return {
@@ -180,6 +182,42 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
         total: 2
       } as any;
     }
+
+    if (path.startsWith('/agents/me/qr')) {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const agentCode = 'test-agent';
+      return [
+        { url: `${baseUrl}/form/${agentCode}`, label: '전체', category: null },
+        { url: `${baseUrl}/form/${agentCode}?cat=residential`, label: '주거용', category: 'residential' },
+        { url: `${baseUrl}/form/${agentCode}?cat=commercial`, label: '상업용', category: 'commercial' },
+        { url: `${baseUrl}/form/${agentCode}?cat=industrial`, label: '산업용', category: 'industrial' },
+        { url: `${baseUrl}/form/${agentCode}?cat=land`, label: '토지', category: 'land' }
+      ] as any;
+    }
+
+    if (path === '/agents/me' && method === 'PATCH') {
+      const body = JSON.parse(options?.body as string);
+      mockAgent = { ...mockAgent, ...body };
+      return { success: true } as any;
+    }
+
+    if (path === '/agents/me/categories' && method === 'PATCH') {
+      const body = JSON.parse(options?.body as string);
+      mockAgent.selected_categories = body.categories;
+      return { success: true } as any;
+    }
+
+    if (path === '/billing/plan' && method === 'PATCH') {
+      const body = JSON.parse(options?.body as string);
+      mockAgent.subscription_plan = body.plan;
+      return { success: true } as any;
+    }
+
+    if (path === '/billing/cancel' && method === 'POST') {
+      mockAgent.subscription_status = 'cancelled';
+      return { success: true } as any;
+    }
+
   }
 
   // If not mock, pass to real API

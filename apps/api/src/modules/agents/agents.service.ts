@@ -21,7 +21,7 @@ export class AgentsService {
     }
 
     // DTO + allowlist 이중 방어: 안전한 필드만 업데이트
-    const safeFields = ['agent_name', 'phone', 'office_name', 'profile_image_url', 'subscription_plan'] as const;
+    const safeFields = ['agent_name', 'phone', 'office_name', 'profile_image_url', 'subscription_plan', 'license_number'] as const;
     const updates: Record<string, unknown> = {};
     for (const field of safeFields) {
       if (dto[field] !== undefined) {
@@ -78,7 +78,7 @@ export class AgentsService {
   async getQrCodes(agent: any) {
     const baseUrl = process.env.APP_URL ?? 'http://localhost:3000';
 
-    const qrCodes = [
+    const qrCodes: { url: string; label: string; category: CategoryCode | null }[] = [
       {
         url: `${baseUrl}/form/${agent.agent_code}`,
         label: '전체',

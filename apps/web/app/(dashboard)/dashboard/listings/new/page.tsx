@@ -1,10 +1,11 @@
-'use client';
+'use client'; // trigger fast refresh 10
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AreaInput } from '@/components/ui/AreaInput';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,7 +15,7 @@ import { apiFetch, apiUpload } from '@/lib/api';
 import { useAgent } from '@/lib/hooks/use-agent';
 import {
   CATEGORY_CODE, SUBCATEGORIES, SUBCATEGORY_LABELS, TRANSACTION_TYPE,
-  REQUIRED_PRICE_FIELDS,
+  REQUIRED_PRICE_FIELDS, ZONING_OPTIONS, JIMOK_OPTIONS,
 } from '@landnote/shared';
 import type { CategoryCode, TransactionType } from '@landnote/shared';
 import { X, Upload, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
@@ -92,10 +93,21 @@ export default function NewListingPage() {
   const [addressRoad, setAddressRoad] = useState('');
   const [addressJibun, setAddressJibun] = useState('');
   const [dongName, setDongName] = useState('');
+  const [complexName, setComplexName] = useState('');
+  const [buildingNum, setBuildingNum] = useState('');
+  const [roomNum, setRoomNum] = useState('');
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [areaSupply, setAreaSupply] = useState('');
   const [areaExclusive, setAreaExclusive] = useState('');
+  const [areaLand, setAreaLand] = useState('');
+  const [areaBuilding, setAreaBuilding] = useState('');
+  const [zoning, setZoning] = useState('');
+  const [jimok, setJimok] = useState('');
+  const [currentUsage, setCurrentUsage] = useState('');
+  const [factoryUsage, setFactoryUsage] = useState('');
+  const [businessType, setBusinessType] = useState('');
+  const [recommendedUsage, setRecommendedUsage] = useState('');
   const [floorCurrent, setFloorCurrent] = useState('');
   const [floorTotal, setFloorTotal] = useState('');
   const [builtYear, setBuiltYear] = useState('');
@@ -176,16 +188,29 @@ export default function NewListingPage() {
         address_road: addressRoad || undefined,
         address_jibun: addressJibun || undefined,
         dong_name: dongName || undefined,
+        complex_name: complexName || undefined,
+        building_num: buildingNum || undefined,
+        room_num: roomNum || undefined,
         latitude: latitude ? parseFloat(latitude) : undefined,
         longitude: longitude ? parseFloat(longitude) : undefined,
         area_supply: areaSupply ? parseFloat(areaSupply) : undefined,
         area_exclusive: areaExclusive ? parseFloat(areaExclusive) : undefined,
+        area_land: areaLand ? parseFloat(areaLand) : undefined,
+        area_building: areaBuilding ? parseFloat(areaBuilding) : undefined,
         floor_current: floorCurrent ? parseInt(floorCurrent) : undefined,
         floor_total: floorTotal ? parseInt(floorTotal) : undefined,
         built_year: builtYear ? parseInt(builtYear) : undefined,
         direction: direction || undefined,
         owner_phone: ownerPhone.trim(),
         agent_memo: memo || undefined,
+        detail_info: (zoning || jimok || currentUsage || factoryUsage || businessType || recommendedUsage) ? {
+          zoning: zoning || undefined,
+          jimok: jimok || undefined,
+          current_usage: currentUsage || undefined,
+          factory_usage: factoryUsage || undefined,
+          business_type: businessType || undefined,
+          recommended_usage: recommendedUsage || undefined,
+        } : undefined,
       };
 
       for (const field of uniquePriceFields) {
@@ -356,29 +381,49 @@ export default function NewListingPage() {
           <div>
             <Label>주소</Label>
             <AddressSearch
-              value={addressFull}
+              value={complexName ? `${addressFull} (${complexName})` : addressFull}
               onComplete={(result) => {
                 setAddressFull(result.address_full);
                 setAddressRoad(result.address_road);
                 setAddressJibun(result.address_jibun);
                 setDongName(result.dong_name);
+                if (result.building_name) {
+                  setComplexName(result.building_name);
+                }
               }}
             />
           </div>
-          <div>
-            <Label>동/읍/면</Label>
-            <Input value={dongName} onChange={e => setDongName(e.target.value)} placeholder="동 이름" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+          {!(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge'))) && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>단지명 / 건물명</Label>
+                  <Input value={complexName} onChange={e => setComplexName(e.target.value)} placeholder="예: 푸르지오 아파트" />
+                </div>
+                <div>
+                  <Label>동/읍/면</Label>
+                  <Input value={dongName} onChange={e => setDongName(e.target.value)} placeholder="동 이름" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>동</Label>
+                  <Input value={buildingNum} onChange={e => setBuildingNum(e.target.value)} placeholder="예: 101" />
+                </div>
+                <div>
+                  <Label>호수</Label>
+                  <Input value={roomNum} onChange={e => setRoomNum(e.target.value)} placeholder="예: 1502" />
+                </div>
+              </div>
+            </>
+          )}
+          {(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge'))) && (
             <div>
-              <Label>위도</Label>
-              <Input type="number" step="any" value={latitude} onChange={e => setLatitude(e.target.value)} placeholder="37.5" />
+              <Label>동/읍/면</Label>
+              <Input value={dongName} onChange={e => setDongName(e.target.value)} placeholder="동 이름" />
             </div>
-            <div>
-              <Label>경도</Label>
-              <Input type="number" step="any" value={longitude} onChange={e => setLongitude(e.target.value)} placeholder="127.0" />
-            </div>
-          </div>
+          )}
+
         </CardContent>
       </Card>
 
@@ -386,42 +431,108 @@ export default function NewListingPage() {
       <Card>
         <CardHeader><CardTitle className="text-lg">매물 정보</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>공급면적 (m2)</Label>
-              <Input type="number" step="0.01" value={areaSupply} onChange={e => setAreaSupply(e.target.value)} />
+          {/* 1. 면적 정보 */}
+          {(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge')) || subcategoryCodes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
+            <div className="grid grid-cols-2 gap-3">
+              <AreaInput label="대지면적" value={areaLand} onChange={setAreaLand} />
+              <AreaInput label="연면적/건평" value={areaBuilding} onChange={setAreaBuilding} />
             </div>
-            <div>
-              <Label>전용면적 (m2)</Label>
-              <Input type="number" step="0.01" value={areaExclusive} onChange={e => setAreaExclusive(e.target.value)} />
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <AreaInput label="공급면적" value={areaSupply} onChange={setAreaSupply} />
+              <AreaInput label="전용면적" value={areaExclusive} onChange={setAreaExclusive} />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>현재 층</Label>
-              <Input type="number" value={floorCurrent} onChange={e => setFloorCurrent(e.target.value)} />
+          )}
+
+          {/* 2. 토지/용도 정보 */}
+          {(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge')) || subcategoryCodes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) && (
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label>용도지역</Label>
+                <Select value={zoning || 'none'} onValueChange={v => setZoning(v === 'none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">선택 안함</SelectItem>
+                    {ZONING_OPTIONS.map((z: string) => <SelectItem key={z} value={z}>{z}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>지목</Label>
+                <Select value={jimok || 'none'} onValueChange={v => setJimok(v === 'none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">선택 안함</SelectItem>
+                    {JIMOK_OPTIONS.map((j: string) => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>현재용도 (선택)</Label>
+                <Input value={currentUsage} onChange={e => setCurrentUsage(e.target.value)} placeholder="예: 잡종지, 나대지" />
+              </div>
             </div>
-            <div>
-              <Label>총 층</Label>
-              <Input type="number" value={floorTotal} onChange={e => setFloorTotal(e.target.value)} />
+          )}
+
+          {/* 3. 산업용 특화 필드 */}
+          {categoryCodes.includes('industrial') && (
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <Label>지목</Label>
+                <Select value={jimok || 'none'} onValueChange={v => setJimok(v === 'none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">선택 안함</SelectItem>
+                    {JIMOK_OPTIONS.map((j: string) => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>{subcategoryCodes.includes('warehouse') ? '창고 용도' : subcategoryCodes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '건물 용도' : '공장 용도'}</Label>
+                <Input value={factoryUsage} onChange={e => setFactoryUsage(e.target.value)} placeholder={subcategoryCodes.includes('warehouse') ? '예: 일반창고, 물류센터' : subcategoryCodes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '예: 자동차정비, 야적장, 고물상' : '예: 일반공장, 식품공장'} />
+              </div>
+              <div>
+                <Label>업종</Label>
+                <Input value={businessType} onChange={e => setBusinessType(e.target.value)} placeholder="예: 반도체, 제조업" />
+              </div>
+              <div>
+                <Label>추천 용도</Label>
+                <Input value={recommendedUsage} onChange={e => setRecommendedUsage(e.target.value)} placeholder="예: 창고용, 단순조립" />
+              </div>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>준공년도</Label>
-              <Input type="number" value={builtYear} onChange={e => setBuiltYear(e.target.value)} placeholder="2020" />
-            </div>
-            <div>
-              <Label>방향</Label>
-              <Select value={direction || 'none'} onValueChange={v => setDirection(v === 'none' ? '' : v)}>
-                <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">선택 안함</SelectItem>
-                  {DIRECTION_OPTIONS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          )}
+
+          {/* 4. 건물/층/방향 정보 */}
+          {!categoryCodes.includes('land') && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>현재 층</Label>
+                  <Input type="number" value={floorCurrent} onChange={e => setFloorCurrent(e.target.value)} />
+                </div>
+                <div>
+                  <Label>총 층</Label>
+                  <Input type="number" value={floorTotal} onChange={e => setFloorTotal(e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>준공년도</Label>
+                  <Input type="number" value={builtYear} onChange={e => setBuiltYear(e.target.value)} placeholder="2020" />
+                </div>
+                <div>
+                  <Label>방향</Label>
+                  <Select value={direction || 'none'} onValueChange={v => setDirection(v === 'none' ? '' : v)}>
+                    <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">선택 안함</SelectItem>
+                      {DIRECTION_OPTIONS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
