@@ -16,7 +16,7 @@ import {
   useDeleteListingImage,
   useDeleteListing,
 } from '@/lib/hooks/queries';
-import { SUBCATEGORY_LABELS } from '@landnote/shared';
+import { SUBCATEGORY_LABELS, SUBCATEGORIES } from '@landnote/shared';
 import { ArrowLeft, Pencil, X, Upload, Camera, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { AddressSearch } from '@/components/address-search';
@@ -165,6 +165,10 @@ export default function ListingDetailPage() {
         built_year: listing.built_year,
         direction: listing.direction ?? '',
         detail_info: listing.detail_info ?? {},
+        category_codes: listing.category_codes ?? [],
+        subcategory_codes: listing.subcategory_codes ?? [],
+        transaction_types: listing.transaction_types ?? [],
+        tags: listing.tags ?? [],
       });
     }
   }, [listing, editing]); // Reset form when editing is toggled or listing changes
@@ -209,6 +213,10 @@ export default function ListingDetailPage() {
         built_year: editForm.built_year ? Number(editForm.built_year) : null,
         direction: editForm.direction || null,
         detail_info: editForm.detail_info || null,
+        category_codes: editForm.category_codes,
+        subcategory_codes: editForm.subcategory_codes,
+        transaction_types: editForm.transaction_types,
+        tags: editForm.tags,
       },
       { onSuccess: () => setEditing(false) },
     );
@@ -298,33 +306,113 @@ export default function ListingDetailPage() {
         {/* Basic Info */}
         <Card>
           <CardHeader><CardTitle className="text-lg">기본 정보</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">카테고리</span>
-              <span className="text-sm">{listing.category_codes.map(c => CATEGORY_LABELS[c] ?? c).join(', ')}</span>
-            </div>
-            {listing.subcategory_codes.length > 0 && (
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">세부 분류</span>
-                <span className="text-sm">{listing.subcategory_codes.map(c => SUBCATEGORY_LABELS[c] ?? c).join(', ')}</span>
+          <CardContent className="space-y-4">
+            {editing ? (
+              <div className="space-y-5">
+                <div>
+                  <Label className="mb-2 block">카테고리 (다중 선택 가능)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(CATEGORY_LABELS).map(([code, label]) => (
+                      <Badge
+                        key={code}
+                        variant={editForm.category_codes?.includes(code) ? 'default' : 'outline'}
+                        className="cursor-pointer px-3 py-1.5 text-sm transition-colors"
+                        onClick={() => {
+                          const current = editForm.category_codes || [];
+                          const next = current.includes(code) 
+                            ? current.filter(c => c !== code)
+                            : [...current, code];
+                          handleChange('category_codes', next);
+                        }}
+                      >
+                        {label}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {editForm.category_codes && editForm.category_codes.length > 0 && (
+                  <div>
+                    <Label className="mb-2 block">세부 분류</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {editForm.category_codes.map(cat => {
+                        const groups = SUBCATEGORIES[cat as keyof typeof SUBCATEGORIES] || {};
+                        return Object.keys(groups).map(subCode => (
+                          <Badge
+                            key={subCode}
+                            variant={editForm.subcategory_codes?.includes(subCode) ? 'secondary' : 'outline'}
+                            className="cursor-pointer px-3 py-1.5 text-sm transition-colors"
+                            onClick={() => {
+                              const current = editForm.subcategory_codes || [];
+                              const next = current.includes(subCode) 
+                                ? current.filter(c => c !== subCode)
+                                : [...current, subCode];
+                              handleChange('subcategory_codes', next);
+                            }}
+                          >
+                            {SUBCATEGORY_LABELS[subCode] || subCode}
+                          </Badge>
+                        ));
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <Label className="mb-2 block">거래 유형 (다중 선택 가능)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(TX_LABELS).map(([code, label]) => {
+                      const isSelected = editForm.transaction_types?.includes(code);
+                      return (
+                        <Badge
+                          key={code}
+                          variant="outline"
+                          className={`cursor-pointer px-3 py-1.5 text-sm transition-colors border-none ${isSelected ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-blue-50 text-blue-800 hover:bg-blue-100'}`}
+                          onClick={() => {
+                            const current = editForm.transaction_types || [];
+                            const next = current.includes(code) 
+                              ? current.filter(c => c !== code)
+                              : [...current, code];
+                            handleChange('transaction_types', next);
+                          }}
+                        >
+                          {label}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            )}
-            {listing.tags.length > 0 && (
-              <div>
-                <span className="mb-1 block text-sm text-muted-foreground">태그</span>
-                <div className="flex flex-wrap gap-1">
-                  {listing.tags.map(t => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}
+            ) : (
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">카테고리</span>
+                  <span className="text-sm">{listing.category_codes.map(c => CATEGORY_LABELS[c] ?? c).join(', ')}</span>
+                </div>
+                {listing.subcategory_codes.length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">세부 분류</span>
+                    <span className="text-sm">{listing.subcategory_codes.map(c => SUBCATEGORY_LABELS[c] ?? c).join(', ')}</span>
+                  </div>
+                )}
+                {listing.tags.length > 0 && (
+                  <div>
+                    <span className="mb-1 block text-sm text-muted-foreground">태그</span>
+                    <div className="flex flex-wrap gap-1">
+                      {listing.tags.map(t => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}
+                    </div>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">거래유형</span>
+                  <span className="text-sm">{listing.transaction_types.map(t => TX_LABELS[t] ?? t).join(', ')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">등록일</span>
+                  <span className="text-sm">{new Date(listing.created_at).toLocaleString('ko-KR')}</span>
                 </div>
               </div>
             )}
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">거래유형</span>
-              <span className="text-sm">{listing.transaction_types.map(t => TX_LABELS[t] ?? t).join(', ')}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">등록일</span>
-              <span className="text-sm">{new Date(listing.created_at).toLocaleString('ko-KR')}</span>
-            </div>
           </CardContent>
         </Card>
 
