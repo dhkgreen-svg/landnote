@@ -21,6 +21,7 @@ import { ArrowLeft, Pencil, X, Upload, Camera, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { AddressSearch } from '@/components/address-search';
 import { AreaInput } from '@/components/ui/AreaInput';
+import { formatKoreanCurrency } from '@/lib/utils';
 
 const STATUS_LABELS: Record<string, string> = {
   active: '활성', pending: '대기', contracted: '계약완료', closed: '종료',
@@ -385,7 +386,7 @@ export default function ListingDetailPage() {
                   <span className="text-sm font-medium">
                     {key === 'contract_remaining_months'
                       ? `${(listing as any)[key]}개월`
-                      : `${Number((listing as any)[key]).toLocaleString('ko-KR')}원`}
+                      : formatKoreanCurrency(Number((listing as any)[key]))}
                   </span>
                 </div>
               ))

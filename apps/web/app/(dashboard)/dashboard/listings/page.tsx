@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useListings } from '@/lib/hooks/queries';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SUBCATEGORY_LABELS } from '@landnote/shared';
+import { formatKoreanCurrency } from '@/lib/utils';
 
 interface ListingItem {
   id: string;
@@ -188,10 +189,10 @@ function ListingsContent() {
                     const subcatStr = item.subcategory_codes?.map(c => SUBCATEGORY_LABELS[c] || c).join(', ') || '';
 
                     let priceStr = [];
-                    if (item.price_sale) priceStr.push(`매매 ${item.price_sale}만`);
-                    if (item.price_jeonse) priceStr.push(`전세 ${item.price_jeonse}만`);
-                    if (item.deposit || item.monthly_rent) priceStr.push(`월세 ${item.deposit || 0}만/${item.monthly_rent || 0}만`);
-                    if (item.premium_price) priceStr.push(`권리금 ${item.premium_price}만`);
+                    if (item.price_sale) priceStr.push(`매매 ${formatKoreanCurrency(item.price_sale)}`);
+                    if (item.price_jeonse) priceStr.push(`전세 ${formatKoreanCurrency(item.price_jeonse)}`);
+                    if (item.deposit || item.monthly_rent) priceStr.push(`월세 ${item.deposit ? formatKoreanCurrency(item.deposit) : '0만'}/${item.monthly_rent ? formatKoreanCurrency(item.monthly_rent) : '0만'}`);
+                    if (item.premium_price) priceStr.push(`권리금 ${formatKoreanCurrency(item.premium_price)}`);
                     const finalPriceStr = priceStr.join(' | ') || '-';
 
                     let addressParts = [];
