@@ -288,13 +288,31 @@ export default function ListingDetailPage() {
   const handleShareKakao = async () => {
     const text = generateShareText();
     if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      alert('매물 정보가 복사되었습니다. 카카오톡에 붙여넣기 해주세요.');
-      window.location.href = 'kakaotalk://';
-    } catch (e) {
-      alert('복사에 실패했습니다.');
+    
+    if (!(window as any).Kakao) {
+      alert('카카오톡 공유 기능을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.');
+      return;
     }
+
+    const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+    if (!kakaoKey) {
+      alert('카카오 앱 키가 설정되지 않았습니다. 관리자에게 문의하세요.');
+      return;
+    }
+
+    if (!(window as any).Kakao.isInitialized()) {
+      (window as any).Kakao.init(kakaoKey);
+    }
+
+    (window as any).Kakao.Share.sendDefault({
+      objectType: 'text',
+      text: text,
+      link: {
+        mobileWebUrl: window.location.origin,
+        webUrl: window.location.origin,
+      },
+      buttonTitle: '앱에서 보기',
+    });
   };
 
   const handleShareSMS = () => {
