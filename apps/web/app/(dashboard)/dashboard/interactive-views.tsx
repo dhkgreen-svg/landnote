@@ -11,6 +11,14 @@ import { useListings, useInquiries, useUpdateInquiry } from '@/lib/hooks/queries
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
+import { SUBCATEGORY_LABELS } from '@landnote/shared';
+
+const TRANSACTION_LABELS: Record<string, string> = {
+  sale: '매매',
+  jeonse: '전세',
+  monthly_rent: '월세',
+  premium_transfer: '권리양도',
+};
 
 const STATUS_LABELS: Record<string, string> = {
   new: '신규',
@@ -122,43 +130,51 @@ export function DashboardListingsView({ activeView, summary }: { activeView: 'ne
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableHead className="w-[100px]">상태</TableHead>
-                  <TableHead>매물 구분</TableHead>
-                  <TableHead>유형</TableHead>
-                  <TableHead>금액/보증금</TableHead>
-                  <TableHead>면적</TableHead>
+                  <TableHead className="w-[180px]">매물 구분</TableHead>
+                  <TableHead>주소</TableHead>
+                  <TableHead>금액내역</TableHead>
+                  <TableHead className="w-[80px]">면적</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data?.items.map((item) => (
-                  <TableRow 
-                    key={item.id} 
-                    className="hover:bg-muted/30 transition-colors cursor-pointer"
-                    onClick={() => router.push(`/dashboard/listings/${item.id}`)}
-                  >
-                    <TableCell>
-                      <Badge variant="outline" className={STATUS_COLORS[item.status] || ''}>
-                        {STATUS_LABELS[item.status] || item.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 flex-wrap">
-                        {item.category_codes?.map(c => (
-                          <Badge key={c} variant="secondary" className="text-xs">{CATEGORY_LABELS[c]}</Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {item.transaction_types?.join(', ') || '-'}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {item.price_sale ? `${item.price_sale}만` : (item.deposit ? `${item.deposit}만` : '-')}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {item.area_exclusive ? `${item.area_exclusive}㎡` : '-'}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {data?.items.map((item) => {
+                  const txTypeStr = item.transaction_types?.map((t: string) => TRANSACTION_LABELS[t] || t).join(', ') || '';
+                  const catStr = item.category_codes?.map((c: string) => CATEGORY_LABELS[c]).join(', ') || '';
+                  const subcatStr = item.subcategory_codes?.map((c: string) => SUBCATEGORY_LABELS[c] || c).join(', ') || '';
+                  
+                  let priceStr = [];
+                  if (item.price_sale) priceStr.push(`매매 ${item.price_sale}만`);
+                  if (item.price_jeonse) priceStr.push(`전세 ${item.price_jeonse}만`);
+                  if (item.deposit || item.monthly_rent) priceStr.push(`월세 ${item.deposit || 0}만/${item.monthly_rent || 0}만`);
+                  if (item.premium_price) priceStr.push(`권리금 ${item.premium_price}만`);
+                  const finalPriceStr = priceStr.join(' | ') || '-';
+
+                  return (
+                    <TableRow 
+                      key={item.id} 
+                      className="hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={() => router.push(`/dashboard/listings/${item.id}`)}
+                    >
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <span className="font-bold text-primary">[{txTypeStr}]</span>
+                          <span className="text-xs text-muted-foreground font-medium">
+                            {catStr} {subcatStr ? `> ${subcatStr}` : ''}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm font-medium">
+                        {item.address_full || item.dong_name || item.address_road || '주소 미상'}
+                      </TableCell>
+                      <TableCell className="text-sm font-medium">
+                        {finalPriceStr}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {item.area_exclusive ? `${item.area_exclusive}㎡` : '-'}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
