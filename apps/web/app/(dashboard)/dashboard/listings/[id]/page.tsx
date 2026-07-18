@@ -20,6 +20,7 @@ import { SUBCATEGORY_LABELS } from '@landnote/shared';
 import { ArrowLeft, Pencil, X, Upload, Camera, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { AddressSearch } from '@/components/address-search';
+import { AreaInput } from '@/components/ui/AreaInput';
 
 const STATUS_LABELS: Record<string, string> = {
   active: '활성', pending: '대기', contracted: '계약완료', closed: '종료',
@@ -121,6 +122,9 @@ export default function ListingDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+
+  const toPyung = (m2: number | null | undefined) => m2 ? Number((m2 * 0.3025).toFixed(1)) : '';
+  const toM2 = (pyung: string | number) => pyung ? Number((Number(pyung) / 0.3025).toFixed(2)) : null;
 
   const { data: listing, isLoading: loading } = useListing(id);
   const updateMutation = useUpdateListing(id);
@@ -499,25 +503,13 @@ export default function ListingDetailPage() {
                   <div className="grid grid-cols-2 gap-4">
                     {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
                       <>
-                        <div>
-                          <Label>대지면적 (m²)</Label>
-                          <Input type="number" value={editForm.area_land || ''} onChange={e => handleChange('area_land', e.target.value)} />
-                        </div>
-                        <div>
-                          <Label>연면적/건평 (m²)</Label>
-                          <Input type="number" value={editForm.area_building || ''} onChange={e => handleChange('area_building', e.target.value)} />
-                        </div>
+                        <AreaInput label="대지면적" value={String(editForm.area_land || '')} onChange={val => handleChange('area_land', val ? Number(val) : null)} />
+                        <AreaInput label="연면적/건평" value={String(editForm.area_building || '')} onChange={val => handleChange('area_building', val ? Number(val) : null)} />
                       </>
                     ) : (
                       <>
-                        <div>
-                          <Label>공급면적 (m²)</Label>
-                          <Input type="number" value={editForm.area_supply || ''} onChange={e => handleChange('area_supply', e.target.value)} />
-                        </div>
-                        <div>
-                          <Label>전용면적 (m²)</Label>
-                          <Input type="number" value={editForm.area_exclusive || ''} onChange={e => handleChange('area_exclusive', e.target.value)} />
-                        </div>
+                        <AreaInput label="공급면적" value={String(editForm.area_supply || '')} onChange={val => handleChange('area_supply', val ? Number(val) : null)} />
+                        <AreaInput label="전용면적" value={String(editForm.area_exclusive || '')} onChange={val => handleChange('area_exclusive', val ? Number(val) : null)} />
                       </>
                     )}
                   </div>
@@ -605,13 +597,13 @@ export default function ListingDetailPage() {
                     {listing.area_land != null && (
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">대지면적</span>
-                        <span className="text-sm">{listing.area_land}m2</span>
+                        <span className="text-sm">{toPyung(listing.area_land)}평 ({listing.area_land}m²)</span>
                       </div>
                     )}
                     {listing.area_building != null && (
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">연면적/건평</span>
-                        <span className="text-sm">{listing.area_building}m2</span>
+                        <span className="text-sm">{toPyung(listing.area_building)}평 ({listing.area_building}m²)</span>
                       </div>
                     )}
                   </>
@@ -620,13 +612,13 @@ export default function ListingDetailPage() {
                     {listing.area_supply != null && (
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">공급면적</span>
-                        <span className="text-sm">{listing.area_supply}m2</span>
+                        <span className="text-sm">{toPyung(listing.area_supply)}평 ({listing.area_supply}m²)</span>
                       </div>
                     )}
                     {listing.area_exclusive != null && (
                       <div className="flex justify-between">
                         <span className="text-sm text-muted-foreground">전용면적</span>
-                        <span className="text-sm">{listing.area_exclusive}m2</span>
+                        <span className="text-sm">{toPyung(listing.area_exclusive)}평 ({listing.area_exclusive}m²)</span>
                       </div>
                     )}
                   </>

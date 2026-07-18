@@ -19,6 +19,8 @@ interface ListingItem {
   premium_price?: number | null;
   area_exclusive: number | null;
   area_land?: number | null;
+  area_building?: number | null;
+  area_supply?: number | null;
   status: string;
   created_at: string;
 }

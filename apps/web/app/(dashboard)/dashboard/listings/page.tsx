@@ -30,6 +30,8 @@ interface ListingItem {
   premium_price?: number | null;
   area_exclusive: number | null;
   area_land?: number | null;
+  area_building?: number | null;
+  area_supply?: number | null;
   status: string;
   created_at: string;
 }
@@ -204,7 +206,7 @@ function ListingsContent() {
 
                     const formatPyung = (sqm: number | null | undefined) => sqm ? Math.round(sqm * 0.3025) : 0;
                     const landPyung = formatPyung(item.area_land);
-                    const exclPyung = formatPyung(item.area_exclusive);
+                    const buildPyung = formatPyung(item.area_building || item.area_exclusive || item.area_supply);
 
                     return (
                       <TableRow
@@ -229,8 +231,8 @@ function ListingsContent() {
                         <TableCell className="text-sm">
                           <div className="flex flex-col gap-0.5 text-xs">
                             {landPyung > 0 && <span className="text-muted-foreground">대지 {landPyung}평</span>}
-                            {exclPyung > 0 && <span>건평 {exclPyung}평</span>}
-                            {landPyung === 0 && exclPyung === 0 && <span>-</span>}
+                            {buildPyung > 0 && <span>건평 {buildPyung}평</span>}
+                            {landPyung === 0 && buildPyung === 0 && <span>-</span>}
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
