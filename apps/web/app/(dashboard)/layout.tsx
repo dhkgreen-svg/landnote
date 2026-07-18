@@ -15,6 +15,7 @@ import { useAgent } from '@/lib/hooks/use-agent';
 import { createClient } from '@/lib/supabase/client';
 import { PushPrompt } from '@/components/dashboard/push-prompt';
 import { usePush } from '@/lib/hooks/use-push';
+import { InstallAppButton } from '@/components/install-app-button';
 
 const NAV_ITEMS = [
   { label: '현황', href: '/dashboard', icon: LayoutDashboard },
@@ -89,6 +90,9 @@ export default function DashboardLayout({
             <NavLink key={item.href} item={item} pathname={pathname} />
           ))}
         </nav>
+        <div className="px-3 pt-2">
+          <InstallAppButton variant="outline" className="w-full justify-start rounded-lg border-primary/20 text-primary hover:bg-primary/5 h-9 text-sm" />
+        </div>
         <div className="absolute bottom-0 left-0 right-0 border-t p-3">
           <Button
             variant="ghost"
@@ -129,6 +133,9 @@ export default function DashboardLayout({
                   />
                 ))}
               </nav>
+              <div className="px-3 pb-3">
+                <InstallAppButton variant="outline" className="w-full justify-start rounded-lg border-primary/20 text-primary hover:bg-primary/5 h-9 text-sm" />
+              </div>
               <Separator />
               <div className="p-3">
                 <Button
@@ -144,6 +151,7 @@ export default function DashboardLayout({
           </Sheet>
 
           <div className="flex-1" />
+          <InstallAppButton variant="outline" className="hidden sm:flex rounded-lg h-8 px-3 text-xs font-medium border-primary/20 text-primary hover:bg-primary/5" />
           {agent && (
             <span className="text-sm text-muted-foreground">
               {agent.agent_name} ({agent.office_name})

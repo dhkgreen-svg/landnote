@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { InstallAppButton } from '@/components/install-app-button';
 
 const navLinks = [
   { label: '기능', href: '/#features' },
@@ -40,6 +41,7 @@ export function Header() {
 
         {/* Desktop CTA */}
         <div className="hidden items-center gap-3 md:flex">
+          <InstallAppButton variant="outline" className="rounded-lg h-9 px-4 text-sm font-medium border-primary/20 text-primary hover:bg-primary/5" />
           <Button asChild variant="ghost" size="sm" className="text-sm font-medium">
             <Link href="/login">로그인</Link>
           </Button>
@@ -86,6 +88,7 @@ export function Header() {
             </Link>
           ))}
           <div className="flex flex-col gap-2 pt-3">
+            <InstallAppButton variant="outline" className="w-full rounded-lg border-primary/20 text-primary hover:bg-primary/5" />
             <Button asChild variant="outline" className="w-full rounded-lg">
               <Link href="/login">로그인</Link>
             </Button>
