@@ -36,7 +36,7 @@ export function AreaInput({ label, value, onChange }: AreaInputProps) {
   }, [value, unit]);
 
   const handleLocalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
+    const raw = e.target.value.replace(/[^0-9.]/g, '');
     setLocalValue(raw);
 
     if (raw === '') {
@@ -100,8 +100,8 @@ export function AreaInput({ label, value, onChange }: AreaInputProps) {
       </div>
       <div className="relative">
         <Input
-          type="number"
-          step="0.01"
+          type="text"
+          inputMode="numeric"
           value={localValue}
           onChange={handleLocalChange}
           className="pr-12"

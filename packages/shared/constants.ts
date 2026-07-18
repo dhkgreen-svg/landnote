@@ -157,12 +157,11 @@ export const TRANSACTION_TYPE = {
 export type TransactionType = typeof TRANSACTION_TYPE[keyof typeof TRANSACTION_TYPE];
 
 export const PRICE_LABELS: Record<string, string> = {
-  price_sale: '매매가 (만원)',
-  price_jeonse: '전세금 (만원)',
-  deposit: '월세 보증금 (만원)',
-  monthly_rent: '월세 (만원)',
-  maintenance_fee: '관리비 (만원)',
-  premium_price: '권리금 (만원)',
+  price_sale: '매매가 (만 원)',
+  deposit: '보증금 (만 원)',
+  monthly_rent: '월세 (만 원)',
+  maintenance_fee: '관리비 (만 원)',
+  premium_price: '권리금 (만 원)',
   contract_remaining_months: '잔여 계약기간 (개월)',
 };
 

@@ -21,6 +21,8 @@ export class AiService {
         ? imageBase64 
         : `data:image/jpeg;base64,${imageBase64}`;
 
+      console.log('dataUri prefix:', dataUri.substring(0, 50));
+
       const response = await this.openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [

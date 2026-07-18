@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase/client';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+let API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+if (typeof window !== 'undefined' && API_URL.includes('localhost') && window.location.hostname !== 'localhost') {
+  API_URL = `${window.location.protocol}//${window.location.hostname}:3001`;
+}
 
 // --- IN-MEMORY DB ---
 let mockListings: any[] = [];

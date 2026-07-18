@@ -30,8 +30,8 @@ const TX_LABELS: Record<string, string> = {
 };
 
 const PRICE_LABELS: Record<string, string> = {
-  price_sale: '매매가 (원)', deposit: '보증금 (원)', monthly_rent: '월세 (원)',
-  maintenance_fee: '관리비 (원)', premium_price: '권리금 (원)',
+  price_sale: '매매가 (만 원)', deposit: '보증금 (만 원)', monthly_rent: '월세 (만 원)',
+  maintenance_fee: '관리비 (만 원)', premium_price: '권리금 (만 원)',
   contract_remaining_months: '잔여 계약기간 (개월)',
 };
 
@@ -389,9 +389,13 @@ function NewListingForm() {
             <div key={field}>
               <Label>{PRICE_LABELS[field] ?? field}</Label>
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={prices[field] ?? ''}
-                onChange={e => setPrices(prev => ({ ...prev, [field]: e.target.value }))}
+                onChange={e => {
+                  const val = e.target.value.replace(/[^0-9.]/g, '');
+                  setPrices(prev => ({ ...prev, [field]: val }));
+                }}
                 placeholder="0"
               />
             </div>
@@ -533,17 +537,17 @@ function NewListingForm() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>현재 층</Label>
-                  <Input type="number" value={floorCurrent} onChange={e => setFloorCurrent(e.target.value)} />
+                  <Input type="text" inputMode="numeric" value={floorCurrent} onChange={e => setFloorCurrent(e.target.value.replace(/[^0-9.-]/g, ''))} />
                 </div>
                 <div>
                   <Label>총 층</Label>
-                  <Input type="number" value={floorTotal} onChange={e => setFloorTotal(e.target.value)} />
+                  <Input type="text" inputMode="numeric" value={floorTotal} onChange={e => setFloorTotal(e.target.value.replace(/[^0-9.-]/g, ''))} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>준공년도</Label>
-                  <Input type="number" value={builtYear} onChange={e => setBuiltYear(e.target.value)} placeholder="2020" />
+                  <Input type="text" inputMode="numeric" value={builtYear} onChange={e => setBuiltYear(e.target.value.replace(/[^0-9]/g, ''))} placeholder="2020" />
                 </div>
                 <div>
                   <Label>방향</Label>

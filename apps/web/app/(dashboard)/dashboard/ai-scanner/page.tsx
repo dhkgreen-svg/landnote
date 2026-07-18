@@ -6,11 +6,11 @@ import { Camera, UploadCloud, Loader2, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { apiFetch } from '@/lib/api';
 
 export default function AiInputPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -31,29 +31,36 @@ export default function AiInputPage() {
     if (!preview) return;
 
     setIsLoading(true);
+    setStatusMsg('AI 분석 요청 중...');
     try {
-      // preview is already a base64 data URI
-      const response = await apiFetch<{
-        type: 'listing' | 'looking_for';
-        category_codes?: string[];
-        transaction_types?: string[];
-        price_sale?: number;
-        deposit?: number;
-        monthly_rent?: number;
-        area_exclusive?: number;
-        address_full?: string;
-        customer_name?: string;
-        customer_phone?: string;
-        agent_memo?: string;
-      }>('/ai/extract', {
+      // Use Next.js API route proxy (server-side) to bypass firewall/CORS
+      setStatusMsg('서버로 이미지 전송 중...');
+      const res = await fetch('/api/ai-extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: preview }),
       });
 
+      setStatusMsg(`서버 응답 수신 (${res.status})...`);
+      const json = await res.json();
+
+      if (!json.ok) {
+        const errMsg = json.error?.message || 'AI 분석 오류';
+        setStatusMsg(`오류: ${errMsg}`);
+        toast({
+          title: '분석 실패',
+          description: errMsg,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const data = json.data;
+      setStatusMsg('분석 완료! 페이지 이동 중...');
+
       // Save to sessionStorage
       const draftId = `ai_draft_${Date.now()}`;
-      sessionStorage.setItem(draftId, JSON.stringify(response));
+      sessionStorage.setItem(draftId, JSON.stringify(data));
 
       toast({
         title: '분석 완료',
@@ -61,16 +68,19 @@ export default function AiInputPage() {
       });
 
       // Redirect based on inferred type
-      if (response.type === 'looking_for') {
+      if (data.type === 'looking_for') {
         router.push(`/dashboard/inquiries/new?aiDraft=${draftId}`);
       } else {
         router.push(`/dashboard/listings/new?aiDraft=${draftId}`);
       }
     } catch (error) {
-      console.error(error);
+      console.error('processImage error:', error);
+      const msg = error instanceof Error ? error.message : String(error);
+      setStatusMsg(`예외: ${msg}`);
+      window.alert(`AI 분석 오류:\n${msg}`);
       toast({
         title: '분석 실패',
-        description: '사진 분석 중 오류가 발생했습니다. 다시 시도해주세요.',
+        description: msg || '사진 분석 중 오류가 발생했습니다.',
         variant: 'destructive',
       });
     } finally {
@@ -86,6 +96,12 @@ export default function AiInputPage() {
           수기 매물장, 전단지, 고객 명함 등을 촬영하면 AI가 알아서 입력 양식을 채워줍니다.
         </p>
       </div>
+
+      {statusMsg && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+          ⏳ {statusMsg}
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -140,7 +156,7 @@ export default function AiInputPage() {
                 <img src={preview} alt="Preview" className="object-contain max-h-64" />
               </div>
               <div className="flex gap-3">
-                <Button variant="outline" className="w-full" onClick={() => setPreview(null)} disabled={isLoading}>
+                <Button variant="outline" className="w-full" onClick={() => { setPreview(null); setStatusMsg(''); }} disabled={isLoading}>
                   취소
                 </Button>
                 <Button className="w-full" onClick={processImage} disabled={isLoading}>

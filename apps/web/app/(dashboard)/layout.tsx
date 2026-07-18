@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { label: '현황', href: '/dashboard', icon: LayoutDashboard },
   { label: '매칭', href: '/dashboard/matching', icon: Shuffle },
   { label: '통계', href: '/dashboard/stats', icon: BarChart3 },
-  { label: 'AI 입력', href: '/dashboard/ai-input', icon: Camera },
+  { label: 'AI 스캐너 (New)', href: '/dashboard/ai-scanner', icon: Camera },
   { label: '링크/QR', href: '/dashboard/links', icon: QrCode },
   { label: '설정', href: '/dashboard/settings', icon: Settings },
 ];

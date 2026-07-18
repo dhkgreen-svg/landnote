@@ -25,7 +25,10 @@ export class JwtAuthGuard implements CanActivate {
     );
 
     const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) throw new UnauthorizedException('유효하지 않은 토큰입니다');
+    if (error || !user) {
+      console.error('JwtAuthGuard Error:', error, 'Token:', token?.substring(0, 10) + '...');
+      throw new UnauthorizedException('유효하지 않은 토큰입니다');
+    }
 
     const { data: agent } = await supabase
       .from('agents')

@@ -11,6 +11,14 @@ const withPWA = withPWAInit({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ['@landnote/shared'],
+  async rewrites() {
+    return [
+      {
+        source: '/api-proxy/:path*',
+        destination: 'http://127.0.0.1:3001/:path*',
+      },
+    ];
+  },
 };
 
 export default withPWA(nextConfig);

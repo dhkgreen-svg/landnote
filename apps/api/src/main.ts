@@ -4,15 +4,21 @@ config({ path: resolve(__dirname, '..', '.env') });
 
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bodyParser: false,
+  });
 
   app.set('trust proxy', 1);
 
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ extended: true, limit: '50mb' }));
+
   app.enableCors({
-    origin: process.env.APP_URL ?? 'http://localhost:3000',
+    origin: true, // Allow all origins during dev
     credentials: true,
   });
 

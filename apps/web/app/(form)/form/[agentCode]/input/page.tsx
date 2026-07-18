@@ -399,10 +399,11 @@ export default function InputPage() {
               <div key={field} className="space-y-1.5">
                 <Label>{PRICE_LABELS[field] ?? field} *</Label>
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   placeholder="0"
                   value={(store.detailed_conditions[field] as string) ?? ''}
-                  onChange={e => store.setCondition(field, e.target.value)}
+                  onChange={e => store.setCondition(field, e.target.value.replace(/[^0-9]/g, ''))}
                 />
               </div>
             ))}
@@ -728,10 +729,11 @@ export default function InputPage() {
                   <div className="space-y-1.5">
                     <Label>층수</Label>
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       placeholder="0"
                       value={(store.detailed_conditions.floor_current as string) ?? ''}
-                      onChange={e => store.setCondition('floor_current', e.target.value)}
+                      onChange={e => store.setCondition('floor_current', e.target.value.replace(/[^0-9.-]/g, ''))}
                     />
                   </div>
                 </div>
