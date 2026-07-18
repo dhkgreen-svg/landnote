@@ -56,9 +56,12 @@ interface ListingDetail {
   address_road: string | null;
   dong_name: string | null;
   complex_name: string | null;
+  building_num?: string | null;
+  room_num?: string | null;
   latitude: number | null;
   longitude: number | null;
   price_sale: number | null;
+  price_jeonse?: number | null;
   deposit: number | null;
   monthly_rent: number | null;
   maintenance_fee: number | null;
@@ -126,47 +129,81 @@ export default function ListingDetailPage() {
   const deleteListingMutation = useDeleteListing();
 
   const [editing, setEditing] = useState(false);
-  const [status, setStatus] = useState('');
-  const [memo, setMemo] = useState('');
-  const [editAddressFull, setEditAddressFull] = useState('');
-  const [editAddressRoad, setEditAddressRoad] = useState('');
-  const [editAddressJibun, setEditAddressJibun] = useState('');
-  const [editDongName, setEditDongName] = useState('');
-  const [editComplexName, setEditComplexName] = useState('');
-  const [editBuildingNum, setEditBuildingNum] = useState('');
-  const [editRoomNum, setEditRoomNum] = useState('');
-  const [ownerPhone, setOwnerPhone] = useState('');
-  const [contractPartyPhone, setContractPartyPhone] = useState('');
+  const [editForm, setEditForm] = useState<Partial<ListingDetail>>({});
 
   useEffect(() => {
     if (listing) {
-      setStatus(listing.status);
-      setMemo(listing.agent_memo ?? '');
-      setEditAddressFull(listing.address_full ?? '');
-      setEditAddressRoad(listing.address_road ?? '');
-      setEditDongName(listing.dong_name ?? '');
-      setEditComplexName(listing.complex_name ?? '');
-      setEditBuildingNum(listing.building_num ?? '');
-      setEditRoomNum(listing.room_num ?? '');
-      setOwnerPhone(listing.owner_phone ?? '');
-      setContractPartyPhone(listing.contract_party_phone ?? '');
+      setEditForm({
+        status: listing.status,
+        agent_memo: listing.agent_memo ?? '',
+        address_full: listing.address_full ?? '',
+        address_road: listing.address_road ?? '',
+        dong_name: listing.dong_name ?? '',
+        complex_name: listing.complex_name ?? '',
+        building_num: listing.building_num ?? '',
+        room_num: listing.room_num ?? '',
+        owner_phone: listing.owner_phone ?? '',
+        contract_party_phone: listing.contract_party_phone ?? '',
+        price_sale: listing.price_sale,
+        price_jeonse: listing.price_jeonse,
+        deposit: listing.deposit,
+        monthly_rent: listing.monthly_rent,
+        premium_price: listing.premium_price,
+        maintenance_fee: listing.maintenance_fee,
+        contract_remaining_months: listing.contract_remaining_months,
+        area_supply: listing.area_supply,
+        area_exclusive: listing.area_exclusive,
+        area_land: listing.area_land,
+        area_building: listing.area_building,
+        floor_current: listing.floor_current,
+        floor_total: listing.floor_total,
+        built_year: listing.built_year,
+        direction: listing.direction ?? '',
+        detail_info: listing.detail_info ?? {},
+      });
     }
-  }, [listing]);
+  }, [listing, editing]); // Reset form when editing is toggled or listing changes
+
+  const handleChange = (field: keyof ListingDetail, value: any) => {
+    setEditForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleDetailInfoChange = (field: string, value: any) => {
+    setEditForm(prev => ({
+      ...prev,
+      detail_info: { ...(prev.detail_info as Record<string, unknown>), [field]: value }
+    }));
+  };
 
   const handleSave = () => {
     updateMutation.mutate(
       {
-        status,
-        agent_memo: memo,
-        address_full: editAddressFull || null,
-        address_road: editAddressRoad || null,
-        address_jibun: editAddressJibun || null,
-        dong_name: editDongName || null,
-        complex_name: editComplexName || null,
-        building_num: editBuildingNum || null,
-        room_num: editRoomNum || null,
-        owner_phone: ownerPhone || null,
-        contract_party_phone: status === 'contracted' ? (contractPartyPhone || null) : null,
+        status: editForm.status,
+        agent_memo: editForm.agent_memo || undefined,
+        address_full: editForm.address_full || null,
+        address_road: editForm.address_road || null,
+        dong_name: editForm.dong_name || null,
+        complex_name: editForm.complex_name || null,
+        building_num: editForm.building_num || null,
+        room_num: editForm.room_num || null,
+        owner_phone: editForm.owner_phone || null,
+        contract_party_phone: editForm.status === 'contracted' ? (editForm.contract_party_phone || null) : null,
+        price_sale: editForm.price_sale ? Number(editForm.price_sale) : null,
+        price_jeonse: editForm.price_jeonse ? Number(editForm.price_jeonse) : null,
+        deposit: editForm.deposit ? Number(editForm.deposit) : null,
+        monthly_rent: editForm.monthly_rent ? Number(editForm.monthly_rent) : null,
+        premium_price: editForm.premium_price ? Number(editForm.premium_price) : null,
+        maintenance_fee: editForm.maintenance_fee ? Number(editForm.maintenance_fee) : null,
+        contract_remaining_months: editForm.contract_remaining_months ? Number(editForm.contract_remaining_months) : null,
+        area_supply: editForm.area_supply ? Number(editForm.area_supply) : null,
+        area_exclusive: editForm.area_exclusive ? Number(editForm.area_exclusive) : null,
+        area_land: editForm.area_land ? Number(editForm.area_land) : null,
+        area_building: editForm.area_building ? Number(editForm.area_building) : null,
+        floor_current: editForm.floor_current ? Number(editForm.floor_current) : null,
+        floor_total: editForm.floor_total ? Number(editForm.floor_total) : null,
+        built_year: editForm.built_year ? Number(editForm.built_year) : null,
+        direction: editForm.direction || null,
+        detail_info: editForm.detail_info || null,
       },
       { onSuccess: () => setEditing(false) },
     );
@@ -228,14 +265,27 @@ export default function ListingDetailPage() {
           <h1 className="text-2xl font-bold">매물 상세</h1>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setEditing(!editing)}>
-            <Pencil className="mr-1 h-3 w-3" />
-            {editing ? '취소' : '수정'}
-          </Button>
-          <Button variant="destructive" size="sm" onClick={handleDelete}>
-            <Trash2 className="mr-1 h-3 w-3" />
-            삭제
-          </Button>
+          {editing ? (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
+                취소
+              </Button>
+              <Button variant="default" size="sm" onClick={handleSave} disabled={saving}>
+                {saving ? '저장 중...' : '저장'}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                <Pencil className="mr-1 h-3 w-3" />
+                수정
+              </Button>
+              <Button variant="destructive" size="sm" onClick={handleDelete}>
+                <Trash2 className="mr-1 h-3 w-3" />
+                삭제
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -277,18 +327,65 @@ export default function ListingDetailPage() {
         <Card>
           <CardHeader><CardTitle className="text-lg">가격 정보</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {priceEntries.length === 0 ? (
-              <p className="text-sm text-muted-foreground">가격 정보 없음</p>
-            ) : priceEntries.map(([key, label]) => (
-              <div key={key} className="flex justify-between">
-                <span className="text-sm text-muted-foreground">{label}</span>
-                <span className="text-sm font-medium">
-                  {key === 'contract_remaining_months'
-                    ? `${(listing as any)[key]}개월`
-                    : `${Number((listing as any)[key]).toLocaleString('ko-KR')}원`}
-                </span>
+            {editing ? (
+              <div className="grid grid-cols-2 gap-4">
+                {listing.transaction_types.includes('sale') && (
+                  <div>
+                    <Label>매매가 (원)</Label>
+                    <Input type="number" value={editForm.price_sale || ''} onChange={e => handleChange('price_sale', e.target.value)} />
+                  </div>
+                )}
+                {listing.transaction_types.includes('jeonse') && (
+                  <div>
+                    <Label>전세보증금 (원)</Label>
+                    <Input type="number" value={editForm.price_jeonse || ''} onChange={e => handleChange('price_jeonse', e.target.value)} />
+                  </div>
+                )}
+                {['monthly_rent', 'premium_transfer'].some(t => listing.transaction_types.includes(t)) && (
+                  <div>
+                    <Label>보증금 (원)</Label>
+                    <Input type="number" value={editForm.deposit || ''} onChange={e => handleChange('deposit', e.target.value)} />
+                  </div>
+                )}
+                {['monthly_rent', 'premium_transfer'].some(t => listing.transaction_types.includes(t)) && (
+                  <div>
+                    <Label>월세 (원)</Label>
+                    <Input type="number" value={editForm.monthly_rent || ''} onChange={e => handleChange('monthly_rent', e.target.value)} />
+                  </div>
+                )}
+                {['jeonse', 'monthly_rent', 'premium_transfer'].some(t => listing.transaction_types.includes(t)) && (
+                  <div>
+                    <Label>관리비 (원)</Label>
+                    <Input type="number" value={editForm.maintenance_fee || ''} onChange={e => handleChange('maintenance_fee', e.target.value)} />
+                  </div>
+                )}
+                {listing.transaction_types.includes('premium_transfer') && (
+                  <>
+                    <div>
+                      <Label>권리금 (원)</Label>
+                      <Input type="number" value={editForm.premium_price || ''} onChange={e => handleChange('premium_price', e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>잔여 계약기간 (개월)</Label>
+                      <Input type="number" value={editForm.contract_remaining_months || ''} onChange={e => handleChange('contract_remaining_months', e.target.value)} />
+                    </div>
+                  </>
+                )}
               </div>
-            ))}
+            ) : (
+              priceEntries.length === 0 ? (
+                <p className="text-sm text-muted-foreground">가격 정보 없음</p>
+              ) : priceEntries.map(([key, label]) => (
+                <div key={key} className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">{label}</span>
+                  <span className="text-sm font-medium">
+                    {key === 'contract_remaining_months'
+                      ? `${(listing as any)[key]}개월`
+                      : `${Number((listing as any)[key]).toLocaleString('ko-KR')}원`}
+                  </span>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
 
@@ -301,15 +398,16 @@ export default function ListingDetailPage() {
                 <div>
                   <Label>주소</Label>
                   <AddressSearch
-                    value={editComplexName ? `${editAddressFull} (${editComplexName})` : editAddressFull}
+                    value={editForm.complex_name ? `${editForm.address_full} (${editForm.complex_name})` : editForm.address_full || ''}
                     onComplete={(result) => {
-                      setEditAddressFull(result.address_full);
-                      setEditAddressRoad(result.address_road);
-                      setEditAddressJibun(result.address_jibun);
-                      setEditDongName(result.dong_name);
-                      if (result.building_name) {
-                        setEditComplexName(result.building_name);
-                      }
+                      setEditForm(prev => ({
+                        ...prev,
+                        address_full: result.address_full,
+                        address_road: result.address_road,
+                        address_jibun: result.address_jibun,
+                        dong_name: result.dong_name,
+                        ...(result.building_name ? { complex_name: result.building_name } : {})
+                      }));
                     }}
                   />
                 </div>
@@ -318,22 +416,22 @@ export default function ListingDetailPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label>단지명 / 건물명</Label>
-                        <Input value={editComplexName} onChange={e => setEditComplexName(e.target.value)} />
+                        <Input value={editForm.complex_name || ''} onChange={e => handleChange('complex_name', e.target.value)} />
                       </div>
                       <div>
                         <Label>동/읍/면</Label>
-                        <Input value={editDongName} onChange={e => setEditDongName(e.target.value)} placeholder="동 이름" />
+                        <Input value={editForm.dong_name || ''} onChange={e => handleChange('dong_name', e.target.value)} placeholder="동 이름" />
                       </div>
                     </div>
                     {!listing.subcategory_codes.some(c => ['building', 'lodging', 'house', 'other_commercial'].includes(c)) && (
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <Label>동</Label>
-                          <Input value={editBuildingNum} onChange={e => setEditBuildingNum(e.target.value)} placeholder="예: 101" />
+                          <Input value={editForm.building_num || ''} onChange={e => handleChange('building_num', e.target.value)} placeholder="예: 101" />
                         </div>
                         <div>
                           <Label>호수</Label>
-                          <Input value={editRoomNum} onChange={e => setEditRoomNum(e.target.value)} placeholder="예: 1502" />
+                          <Input value={editForm.room_num || ''} onChange={e => handleChange('room_num', e.target.value)} placeholder="예: 1502" />
                         </div>
                       </div>
                     )}
@@ -342,7 +440,7 @@ export default function ListingDetailPage() {
                 {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge'))) && (
                   <div>
                     <Label>동/읍/면</Label>
-                    <Input value={editDongName} onChange={e => setEditDongName(e.target.value)} placeholder="동 이름" />
+                    <Input value={editForm.dong_name || ''} onChange={e => handleChange('dong_name', e.target.value)} placeholder="동 이름" />
                   </div>
                 )}
               </>
@@ -393,107 +491,217 @@ export default function ListingDetailPage() {
         <Card>
           <CardHeader><CardTitle className="text-lg">매물 정보</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {/* 1. 면적 정보 */}
-            {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
-              <>
-                {listing.area_land != null && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">대지면적</span>
-                    <span className="text-sm">{listing.area_land}m2</span>
+            {editing ? (
+              <div className="space-y-6">
+                {/* 1. Area Edit */}
+                <div>
+                  <h4 className="font-semibold text-sm mb-3">면적 정보</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
+                      <>
+                        <div>
+                          <Label>대지면적 (m²)</Label>
+                          <Input type="number" value={editForm.area_land || ''} onChange={e => handleChange('area_land', e.target.value)} />
+                        </div>
+                        <div>
+                          <Label>연면적/건평 (m²)</Label>
+                          <Input type="number" value={editForm.area_building || ''} onChange={e => handleChange('area_building', e.target.value)} />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <Label>공급면적 (m²)</Label>
+                          <Input type="number" value={editForm.area_supply || ''} onChange={e => handleChange('area_supply', e.target.value)} />
+                        </div>
+                        <div>
+                          <Label>전용면적 (m²)</Label>
+                          <Input type="number" value={editForm.area_exclusive || ''} onChange={e => handleChange('area_exclusive', e.target.value)} />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Land/Usage Edit */}
+                {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) && (
+                  <div>
+                    <h4 className="font-semibold text-sm mb-3">토지/용도 정보</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>용도지역</Label>
+                        <Input value={editForm.detail_info?.zoning as string || ''} onChange={e => handleDetailInfoChange('zoning', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>지목</Label>
+                        <Input value={editForm.detail_info?.jimok as string || ''} onChange={e => handleDetailInfoChange('jimok', e.target.value)} />
+                      </div>
+                      <div className="col-span-2">
+                        <Label>현재용도</Label>
+                        <Input value={editForm.detail_info?.current_usage as string || ''} onChange={e => handleDetailInfoChange('current_usage', e.target.value)} />
+                      </div>
+                    </div>
                   </div>
                 )}
-                {listing.area_building != null && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">연면적/건평</span>
-                    <span className="text-sm">{listing.area_building}m2</span>
+
+                {/* 3. Industrial Edit */}
+                {listing.category_codes.includes('industrial') && (
+                  <div>
+                    <h4 className="font-semibold text-sm mb-3">산업용 특화</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>{listing.subcategory_codes.includes('warehouse') ? '창고 용도' : listing.subcategory_codes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '건물 용도' : '공장 용도'}</Label>
+                        <Input value={editForm.detail_info?.factory_usage as string || ''} onChange={e => handleDetailInfoChange('factory_usage', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>업종</Label>
+                        <Input value={editForm.detail_info?.business_type as string || ''} onChange={e => handleDetailInfoChange('business_type', e.target.value)} />
+                      </div>
+                      <div className="col-span-2">
+                        <Label>추천 용도</Label>
+                        <Input value={editForm.detail_info?.recommended_usage as string || ''} onChange={e => handleDetailInfoChange('recommended_usage', e.target.value)} />
+                      </div>
+                    </div>
                   </div>
                 )}
-              </>
+
+                {/* 4. Building Edit */}
+                {!listing.category_codes.includes('land') && (
+                  <div>
+                    <h4 className="font-semibold text-sm mb-3">건물/층/방향 정보</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>해당 층</Label>
+                        <Input type="number" value={editForm.floor_current || ''} onChange={e => handleChange('floor_current', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>전체 층</Label>
+                        <Input type="number" value={editForm.floor_total || ''} onChange={e => handleChange('floor_total', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>준공년도</Label>
+                        <Input type="number" value={editForm.built_year || ''} onChange={e => handleChange('built_year', e.target.value)} />
+                      </div>
+                      <div>
+                        <Label>방향</Label>
+                        <Select value={editForm.direction || ''} onValueChange={v => handleChange('direction', v)}>
+                          <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                          <SelectContent>
+                            {['남향','남동향','남서향','동향','서향','북향','북동향','북서향'].map(d => (
+                              <SelectItem key={d} value={d}>{d}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <>
-                {listing.area_supply != null && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">공급면적</span>
-                    <span className="text-sm">{listing.area_supply}m2</span>
-                  </div>
+                {/* 1. 면적 정보 */}
+                {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
+                  <>
+                    {listing.area_land != null && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">대지면적</span>
+                        <span className="text-sm">{listing.area_land}m2</span>
+                      </div>
+                    )}
+                    {listing.area_building != null && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">연면적/건평</span>
+                        <span className="text-sm">{listing.area_building}m2</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {listing.area_supply != null && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">공급면적</span>
+                        <span className="text-sm">{listing.area_supply}m2</span>
+                      </div>
+                    )}
+                    {listing.area_exclusive != null && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">전용면적</span>
+                        <span className="text-sm">{listing.area_exclusive}m2</span>
+                      </div>
+                    )}
+                  </>
                 )}
-                {listing.area_exclusive != null && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">전용면적</span>
-                    <span className="text-sm">{listing.area_exclusive}m2</span>
-                  </div>
-                )}
-              </>
-            )}
 
-            {/* 2. 토지/용도 정보 */}
-            {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) && (
-              <>
-                {listing.detail_info?.zoning && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">용도지역</span>
-                    <span className="text-sm">{listing.detail_info.zoning as string}</span>
-                  </div>
+                {/* 2. 토지/용도 정보 */}
+                {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) && (
+                  <>
+                    {listing.detail_info?.zoning && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">용도지역</span>
+                        <span className="text-sm">{listing.detail_info.zoning as string}</span>
+                      </div>
+                    )}
+                    {listing.detail_info?.jimok && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">지목</span>
+                        <span className="text-sm">{listing.detail_info.jimok as string}</span>
+                      </div>
+                    )}
+                    {listing.detail_info?.current_usage && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">현재용도 (선택)</span>
+                        <span className="text-sm">{listing.detail_info.current_usage as string}</span>
+                      </div>
+                    )}
+                  </>
                 )}
-                {listing.detail_info?.jimok && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">지목</span>
-                    <span className="text-sm">{listing.detail_info.jimok as string}</span>
-                  </div>
-                )}
-                {listing.detail_info?.current_usage && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">현재용도 (선택)</span>
-                    <span className="text-sm">{listing.detail_info.current_usage as string}</span>
-                  </div>
-                )}
-              </>
-            )}
 
-            {/* 3. 산업용 특화 필드 */}
-            {listing.category_codes.includes('industrial') && (
-              <>
-                {listing.detail_info?.factory_usage && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">{listing.subcategory_codes.includes('warehouse') ? '창고 용도' : listing.subcategory_codes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '건물 용도' : '공장 용도'}</span>
-                    <span className="text-sm">{listing.detail_info.factory_usage as string}</span>
-                  </div>
+                {/* 3. 산업용 특화 필드 */}
+                {listing.category_codes.includes('industrial') && (
+                  <>
+                    {listing.detail_info?.factory_usage && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">{listing.subcategory_codes.includes('warehouse') ? '창고 용도' : listing.subcategory_codes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '건물 용도' : '공장 용도'}</span>
+                        <span className="text-sm">{listing.detail_info.factory_usage as string}</span>
+                      </div>
+                    )}
+                    {listing.detail_info?.business_type && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">업종</span>
+                        <span className="text-sm">{listing.detail_info.business_type as string}</span>
+                      </div>
+                    )}
+                    {listing.detail_info?.recommended_usage && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">추천 용도</span>
+                        <span className="text-sm">{listing.detail_info.recommended_usage as string}</span>
+                      </div>
+                    )}
+                  </>
                 )}
-                {listing.detail_info?.business_type && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">업종</span>
-                    <span className="text-sm">{listing.detail_info.business_type as string}</span>
-                  </div>
-                )}
-                {listing.detail_info?.recommended_usage && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">추천 용도</span>
-                    <span className="text-sm">{listing.detail_info.recommended_usage as string}</span>
-                  </div>
-                )}
-              </>
-            )}
 
-            {/* 4. 건물/층/방향 정보 */}
-            {!listing.category_codes.includes('land') && (
-              <>
-                {listing.floor_current != null && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">층</span>
-                    <span className="text-sm">{listing.floor_current}/{listing.floor_total ?? '-'}층</span>
-                  </div>
-                )}
-                {listing.built_year != null && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">준공년도</span>
-                    <span className="text-sm">{listing.built_year}년</span>
-                  </div>
-                )}
-                {listing.direction && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">방향</span>
-                    <span className="text-sm">{listing.direction}</span>
-                  </div>
+                {/* 4. 건물/층/방향 정보 */}
+                {!listing.category_codes.includes('land') && (
+                  <>
+                    {listing.floor_current != null && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">층</span>
+                        <span className="text-sm">{listing.floor_current}/{listing.floor_total ?? '-'}층</span>
+                      </div>
+                    )}
+                    {listing.built_year != null && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">준공년도</span>
+                        <span className="text-sm">{listing.built_year}년</span>
+                      </div>
+                    )}
+                    {listing.direction && (
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">방향</span>
+                        <span className="text-sm">{listing.direction}</span>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -505,38 +713,40 @@ export default function ListingDetailPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">이미지</CardTitle>
-          <div className="flex items-center gap-2">
-            <label className="cursor-pointer">
-              <Button variant="outline" size="sm" asChild>
-                <span>
-                  <Upload className="mr-1 h-3 w-3" />
-                  앨범
-                </span>
-              </Button>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic"
-                multiple
-                className="hidden"
-                onChange={handleAddImage}
-              />
-            </label>
-            <label className="cursor-pointer">
-              <Button variant="outline" size="sm" asChild>
-                <span>
-                  <Camera className="mr-1 h-3 w-3" />
-                  카메라
-                </span>
-              </Button>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic"
-                capture="environment"
-                className="hidden"
-                onChange={handleAddImage}
-              />
-            </label>
-          </div>
+          {editing && (
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer">
+                <Button variant="outline" size="sm" asChild>
+                  <span>
+                    <Upload className="mr-1 h-3 w-3" />
+                    앨범
+                  </span>
+                </Button>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic"
+                  multiple
+                  className="hidden"
+                  onChange={handleAddImage}
+                />
+              </label>
+              <label className="cursor-pointer">
+                <Button variant="outline" size="sm" asChild>
+                  <span>
+                    <Camera className="mr-1 h-3 w-3" />
+                    카메라
+                  </span>
+                </Button>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleAddImage}
+                />
+              </label>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {listing.images.length === 0 ? (
@@ -554,12 +764,14 @@ export default function ListingDetailPage() {
                       이미지 로드 실패
                     </div>
                   )}
-                  <button
-                    onClick={() => handleDeleteImage(img.path)}
-                    className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+                  {editing && (
+                    <button
+                      onClick={() => handleDeleteImage(img.path)}
+                      className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
                   {img.is_representative && (
                     <span className="absolute bottom-1 left-1 rounded bg-primary px-1.5 py-0.5 text-[10px] text-white">
                       대표
@@ -578,7 +790,7 @@ export default function ListingDetailPage() {
         <CardContent className="space-y-4">
           <div>
             <Label>상태</Label>
-            <Select value={status} onValueChange={setStatus} disabled={!editing}>
+            <Select value={editForm.status || ''} onValueChange={v => handleChange('status', v)} disabled={!editing}>
               <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Object.entries(STATUS_LABELS).map(([k, v]) => (
@@ -591,8 +803,8 @@ export default function ListingDetailPage() {
             <Label>임대인/매도인 연락처</Label>
             {editing ? (
               <Input
-                value={ownerPhone}
-                onChange={e => setOwnerPhone(e.target.value)}
+                value={editForm.owner_phone || ''}
+                onChange={e => handleChange('owner_phone', e.target.value)}
                 placeholder="예: 010-1234-5678"
                 className="max-w-[300px] mt-1"
               />
@@ -600,13 +812,13 @@ export default function ListingDetailPage() {
               <div className="text-sm mt-1">{listing.owner_phone || '-'}</div>
             )}
           </div>
-          {status === 'contracted' && (
+          {editForm.status === 'contracted' && (
             <div className="p-4 border rounded-md bg-blue-50/50">
               <Label className="text-blue-900 font-semibold">계약 당사자 연락처 (임차인/매수인)</Label>
               {editing ? (
                 <Input
-                  value={contractPartyPhone}
-                  onChange={e => setContractPartyPhone(e.target.value)}
+                  value={editForm.contract_party_phone || ''}
+                  onChange={e => handleChange('contract_party_phone', e.target.value)}
                   placeholder="예: 010-9876-5432"
                   className="max-w-[300px] mt-2 border-blue-200"
                 />
@@ -618,18 +830,13 @@ export default function ListingDetailPage() {
           <div>
             <Label>메모</Label>
             <Textarea
-              value={memo}
-              onChange={e => setMemo(e.target.value)}
+              value={editForm.agent_memo || ''}
+              onChange={e => handleChange('agent_memo', e.target.value)}
               placeholder="이 매물에 대한 메모"
               rows={4}
               disabled={!editing}
             />
           </div>
-          {editing && (
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? '저장 중...' : '저장'}
-            </Button>
-          )}
         </CardContent>
       </Card>
     </div>

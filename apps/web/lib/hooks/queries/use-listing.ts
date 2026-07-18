@@ -25,6 +25,7 @@ interface ListingDetail {
   latitude: number | null;
   longitude: number | null;
   price_sale: number | null;
+  price_jeonse: number | null;
   deposit: number | null;
   monthly_rent: number | null;
   maintenance_fee: number | null;

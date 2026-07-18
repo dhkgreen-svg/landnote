@@ -17,6 +17,26 @@ export function useUpdateListing(id: string) {
       room_num?: string | null;
       owner_phone?: string | null;
       contract_party_phone?: string | null;
+      price_sale?: number | null;
+      price_jeonse?: number | null;
+      deposit?: number | null;
+      monthly_rent?: number | null;
+      maintenance_fee?: number | null;
+      premium_price?: number | null;
+      contract_remaining_months?: number | null;
+      area_supply?: number | null;
+      area_exclusive?: number | null;
+      area_land?: number | null;
+      area_building?: number | null;
+      floor_current?: number | null;
+      floor_total?: number | null;
+      built_year?: number | null;
+      direction?: string | null;
+      detail_info?: Record<string, unknown> | null;
+      category_codes?: string[];
+      subcategory_codes?: string[];
+      transaction_types?: string[];
+      tags?: string[];
     }) =>
       apiFetch(`/listings/${id}`, {
         method: 'PATCH',
