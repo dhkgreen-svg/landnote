@@ -65,36 +65,32 @@ export default function LoginPage() {
     const actualPassword = isAdminLogin ? 'admin1234!' : loginPass;
 
     try {
-      if (isAdminLogin) {
-        // 백엔드 없이 프론트엔드 단독 테스트 시 admin 모의 로그인을 바로 통과시킵니다.
-        router.push('/dashboard');
-        return;
-      }
-
-      // 일반 로그인은 먼저 Supabase 직접 로그인을 시도합니다.
-      const supabase = createClient();
-      const { data, error: sbError } = await supabase.auth.signInWithPassword({
-        email: actualEmail,
-        password: actualPassword,
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: actualEmail, password: actualPassword }),
       });
 
-      if (sbError) {
-        // 백엔드 의존성을 없애기 위해 Supabase 에러를 바로 표시합니다.
-        const errorMsg = sbError.message === 'Invalid login credentials' 
-          ? '아이디 또는 비밀번호가 잘못되었습니다.' 
-          : sbError.message;
-        setError(errorMsg);
+      const json = await res.json();
+
+      if (!res.ok || json.ok === false) {
+        setError(json.error?.message ?? '로그인에 실패했습니다');
         setLoading(false);
         return;
       }
 
-      if (data?.session) {
-        router.push('/dashboard');
-        return;
+      const data = json.data ?? json;
+      const session = data.session;
+
+      if (session) {
+        const supabase = createClient();
+        await supabase.auth.setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        });
       }
 
-      setError('로그인 응답에 세션이 없습니다.');
-      setLoading(false);
+      router.push('/dashboard');
     } catch {
       setError('네트워크 오류가 발생했습니다');
       setLoading(false);
