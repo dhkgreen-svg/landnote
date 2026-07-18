@@ -310,7 +310,7 @@ export default function ListingDetailPage() {
             {editing ? (
               <div className="space-y-5">
                 <div>
-                  <Label className="mb-2 block">카테고리 (다중 선택 가능)</Label>
+                  <Label className="mb-2 block">카테고리</Label>
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(CATEGORY_LABELS).map(([code, label]) => (
                       <Badge
@@ -318,11 +318,9 @@ export default function ListingDetailPage() {
                         variant={editForm.category_codes?.includes(code) ? 'default' : 'outline'}
                         className="cursor-pointer px-3 py-1.5 text-sm transition-colors"
                         onClick={() => {
-                          const current = editForm.category_codes || [];
-                          const next = current.includes(code) 
-                            ? current.filter(c => c !== code)
-                            : [...current, code];
-                          handleChange('category_codes', next);
+                          handleChange('category_codes', [code]);
+                          // Clear subcategories since category changed
+                          handleChange('subcategory_codes', []);
                         }}
                       >
                         {label}
@@ -370,9 +368,17 @@ export default function ListingDetailPage() {
                           className={`cursor-pointer px-3 py-1.5 text-sm transition-colors border-none ${isSelected ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-blue-50 text-blue-800 hover:bg-blue-100'}`}
                           onClick={() => {
                             const current = editForm.transaction_types || [];
-                            const next = current.includes(code) 
-                              ? current.filter(c => c !== code)
-                              : [...current, code];
+                            let next;
+                            if (code === 'premium_transfer') {
+                              // 권리금 양도는 단독 선택
+                              next = current.includes(code) ? [] : [code];
+                            } else {
+                              // 다른 것들을 선택할 땐 권리금 양도를 해제
+                              const withoutPremium = current.filter(c => c !== 'premium_transfer');
+                              next = withoutPremium.includes(code) 
+                                ? withoutPremium.filter(c => c !== code)
+                                : [...withoutPremium, code];
+                            }
                             handleChange('transaction_types', next);
                           }}
                         >
