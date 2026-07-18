@@ -65,6 +65,25 @@ export default function LoginPage() {
     const actualPassword = isAdminLogin ? 'admin1234!' : loginPass;
 
     try {
+      if (isAdminLogin) {
+        // 백엔드 없이 프론트엔드 단독 테스트 시 admin 모의 로그인을 바로 통과시킵니다.
+        router.push('/dashboard');
+        return;
+      }
+
+      // 일반 로그인은 먼저 Supabase 직접 로그인을 시도합니다.
+      const supabase = createClient();
+      const { data, error: sbError } = await supabase.auth.signInWithPassword({
+        email: actualEmail,
+        password: actualPassword,
+      });
+
+      if (!sbError && data?.session) {
+        router.push('/dashboard');
+        return;
+      }
+
+      // Supabase 직접 로그인이 실패하거나 설정이 안 되어있을 경우 백엔드를 호출합니다. (로컬 호환 유지)
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -79,11 +98,8 @@ export default function LoginPage() {
         return;
       }
 
-      const data = json.data ?? json;
-      const session = data.session;
-
+      const session = json.data?.session ?? json.session;
       if (session) {
-        const supabase = createClient();
         await supabase.auth.setSession({
           access_token: session.access_token,
           refresh_token: session.refresh_token,
