@@ -14,6 +14,7 @@ import { ChevronRight } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = {
   new: '신규',
+  active: '진행중',
   contacted: '연락완료',
   viewing: '방문예정',
   negotiating: '협상중',
@@ -23,6 +24,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   new: 'bg-blue-100 text-blue-700',
+  active: 'bg-blue-100 text-blue-700',
   contacted: 'bg-yellow-100 text-yellow-700',
   viewing: 'bg-purple-100 text-purple-700',
   negotiating: 'bg-orange-100 text-orange-700',
@@ -48,7 +50,7 @@ export function DashboardListingsView({ activeView, summary }: { activeView: 'ne
   const router = useRouter();
   const [activeCategory, setActiveCategory] = useState<string>('all');
   
-  const statusParam = activeView === 'new_listings' ? 'new' : undefined;
+  const statusParam = activeView === 'new_listings' ? 'active' : undefined;
   const categoryParam = activeCategory === 'all' ? undefined : activeCategory;
 
   const { data, isLoading } = useListings({
