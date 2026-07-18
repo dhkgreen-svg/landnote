@@ -137,7 +137,7 @@ export function DashboardListingsView({ activeView, summary }: { activeView: 'ne
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data?.items.map((item) => {
+                {data?.items.map((item: any) => {
                   const txTypeStr = item.transaction_types?.map((t: string) => TRANSACTION_LABELS[t] || t).join(', ') || '';
                   const catStr = item.category_codes?.map((c: string) => CATEGORY_LABELS[c]).join(', ') || '';
                   const subcatStr = item.subcategory_codes?.map((c: string) => SUBCATEGORY_LABELS[c] || c).join(', ') || '';
@@ -148,6 +148,20 @@ export function DashboardListingsView({ activeView, summary }: { activeView: 'ne
                   if (item.deposit || item.monthly_rent) priceStr.push(`월세 ${item.deposit || 0}만/${item.monthly_rent || 0}만`);
                   if (item.premium_price) priceStr.push(`권리금 ${item.premium_price}만`);
                   const finalPriceStr = priceStr.join(' | ') || '-';
+
+                  let addressParts = [];
+                  if (item.dong_name) addressParts.push(item.dong_name);
+                  else if (item.address_full) {
+                    const parts = item.address_full.split(' ');
+                    addressParts.push(parts.length >= 3 ? parts[2] : parts.join(' '));
+                  }
+                  if (item.complex_name) addressParts.push(item.complex_name);
+                  if (item.room_num) addressParts.push(`${item.room_num}호`);
+                  const addressDisplay = addressParts.join(' ') || '주소 미상';
+
+                  const formatPyung = (sqm: number | null | undefined) => sqm ? Math.round(sqm * 0.3025) : 0;
+                  const landPyung = formatPyung(item.area_land);
+                  const exclPyung = formatPyung(item.area_exclusive);
 
                   return (
                     <TableRow 
@@ -164,13 +178,17 @@ export function DashboardListingsView({ activeView, summary }: { activeView: 'ne
                         </div>
                       </TableCell>
                       <TableCell className="text-sm font-medium">
-                        {item.address_full || item.dong_name || item.address_road || '주소 미상'}
+                        {addressDisplay}
                       </TableCell>
                       <TableCell className="text-sm font-medium">
                         {finalPriceStr}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {item.area_exclusive ? `${item.area_exclusive}㎡` : '-'}
+                        <div className="flex flex-col gap-0.5 text-xs">
+                          {landPyung > 0 && <span className="text-muted-foreground">대지 {landPyung}평</span>}
+                          {exclPyung > 0 && <span>건평 {exclPyung}평</span>}
+                          {landPyung === 0 && exclPyung === 0 && <span>-</span>}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

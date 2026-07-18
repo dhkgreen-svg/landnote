@@ -10,12 +10,15 @@ interface ListingItem {
   address_full: string | null;
   address_road?: string | null;
   dong_name: string | null;
+  complex_name?: string | null;
+  room_num?: string | null;
   price_sale: number | null;
   price_jeonse?: number | null;
   deposit: number | null;
   monthly_rent: number | null;
   premium_price?: number | null;
   area_exclusive: number | null;
+  area_land?: number | null;
   status: string;
   created_at: string;
 }

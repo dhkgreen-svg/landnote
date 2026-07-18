@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useListings } from '@/lib/hooks/queries';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SUBCATEGORY_LABELS } from '@landnote/shared';
 
 interface ListingItem {
   id: string;
@@ -20,12 +21,15 @@ interface ListingItem {
   address_full: string | null;
   address_road?: string | null;
   dong_name: string | null;
+  complex_name?: string | null;
+  room_num?: string | null;
   price_sale: number | null;
   price_jeonse?: number | null;
   deposit: number | null;
   monthly_rent: number | null;
   premium_price?: number | null;
   area_exclusive: number | null;
+  area_land?: number | null;
   status: string;
   created_at: string;
 }
@@ -165,52 +169,79 @@ function ListingsContent() {
                 <Button variant="outline" className="mt-3">첫 매물 등록하기</Button>
               </Link>
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>상태</TableHead>
-                  <TableHead>카테고리</TableHead>
-                  <TableHead>거래유형</TableHead>
-                  <TableHead>주소</TableHead>
-                  <TableHead>가격</TableHead>
-                  <TableHead>면적</TableHead>
-                  <TableHead>등록일</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map(item => (
-                  <TableRow
-                    key={item.id}
-                    className="cursor-pointer"
-                    onClick={() => router.push(`/dashboard/listings/${item.id}`)}
-                  >
-                    <TableCell>
-                      <Badge variant="secondary" className={STATUS_COLORS[item.status] ?? ''}>
-                        {STATUS_LABELS[item.status] ?? item.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {item.category_codes.map(c => CATEGORY_LABELS[c] ?? c).join(', ')}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {item.transaction_types.map(t => TX_LABELS[t] ?? t).join(', ')}
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate text-sm">
-                      {item.address_full || item.dong_name || '-'}
-                    </TableCell>
-                    <TableCell className="text-sm font-medium">{formatPrice(item)}</TableCell>
-                    <TableCell className="text-sm">
-                      {item.area_exclusive ? `${item.area_exclusive}m²` : '-'}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(item.created_at).toLocaleDateString('ko-KR')}
-                    </TableCell>
+          ) : <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[180px]">매물 구분</TableHead>
+                    <TableHead>주소</TableHead>
+                    <TableHead>금액내역</TableHead>
+                    <TableHead className="w-[80px]">면적</TableHead>
+                    <TableHead>등록일</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+                </TableHeader>
+                <TableBody>
+                  {items.map(item => {
+                    const txTypeStr = item.transaction_types?.map(t => TX_LABELS[t] || t).join(', ') || '';
+                    const catStr = item.category_codes?.map(c => CATEGORY_LABELS[c]).join(', ') || '';
+                    const subcatStr = item.subcategory_codes?.map(c => SUBCATEGORY_LABELS[c] || c).join(', ') || '';
+
+                    let priceStr = [];
+                    if (item.price_sale) priceStr.push(`매매 ${item.price_sale}만`);
+                    if (item.price_jeonse) priceStr.push(`전세 ${item.price_jeonse}만`);
+                    if (item.deposit || item.monthly_rent) priceStr.push(`월세 ${item.deposit || 0}만/${item.monthly_rent || 0}만`);
+                    if (item.premium_price) priceStr.push(`권리금 ${item.premium_price}만`);
+                    const finalPriceStr = priceStr.join(' | ') || '-';
+
+                    let addressParts = [];
+                    if (item.dong_name) addressParts.push(item.dong_name);
+                    else if (item.address_full) {
+                      const parts = item.address_full.split(' ');
+                      addressParts.push(parts.length >= 3 ? parts[2] : parts.join(' '));
+                    }
+                    if (item.complex_name) addressParts.push(item.complex_name);
+                    if (item.room_num) addressParts.push(`${item.room_num}호`);
+                    const addressDisplay = addressParts.join(' ') || '주소 미상';
+
+                    const formatPyung = (sqm: number | null | undefined) => sqm ? Math.round(sqm * 0.3025) : 0;
+                    const landPyung = formatPyung(item.area_land);
+                    const exclPyung = formatPyung(item.area_exclusive);
+
+                    return (
+                      <TableRow
+                        key={item.id}
+                        className="cursor-pointer"
+                        onClick={() => router.push(`/dashboard/listings/${item.id}`)}
+                      >
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <span className="font-bold text-primary">[{txTypeStr}]</span>
+                            <span className="text-xs text-muted-foreground font-medium">
+                              {catStr} {subcatStr ? `> ${subcatStr}` : ''}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm font-medium">
+                          {addressDisplay}
+                        </TableCell>
+                        <TableCell className="text-sm font-medium">
+                          {finalPriceStr}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          <div className="flex flex-col gap-0.5 text-xs">
+                            {landPyung > 0 && <span className="text-muted-foreground">대지 {landPyung}평</span>}
+                            {exclPyung > 0 && <span>건평 {exclPyung}평</span>}
+                            {landPyung === 0 && exclPyung === 0 && <span>-</span>}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {new Date(item.created_at).toLocaleDateString('ko-KR')}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+          }
         </CardContent>
       </Card>
 
