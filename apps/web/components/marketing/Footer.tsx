@@ -14,7 +14,7 @@ export function Footer() {
               <span className="text-base font-bold text-foreground">랜드노트</span>
             </div>
             <p className="mt-4 max-w-sm text-sm text-muted-foreground">
-              공인중개사 전용 스마트 고객·매물 관리 앱
+              공인중개사 매물·고객 스마트 매칭 앱
             </p>
           </div>
 
