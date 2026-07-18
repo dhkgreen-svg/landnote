@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: '랜드노트 - 공인중개사 매물·고객 스마트 매칭 앱',
+  title: '랜드노트 - 공인중개사 스마트 매칭 앱',
   description: '고객과 매물을 효율적으로 연결하는 공인중개사 전용 관리 솔루션',
   manifest: '/manifest.json',
   appleWebApp: {
