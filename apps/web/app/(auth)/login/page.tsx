@@ -78,35 +78,23 @@ export default function LoginPage() {
         password: actualPassword,
       });
 
-      if (!sbError && data?.session) {
-        router.push('/dashboard');
-        return;
-      }
-
-      // Supabase 직접 로그인이 실패하거나 설정이 안 되어있을 경우 백엔드를 호출합니다. (로컬 호환 유지)
-      const res = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: actualEmail, password: actualPassword }),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok || json.ok === false) {
-        setError(json.error?.message ?? '로그인에 실패했습니다');
+      if (sbError) {
+        // 백엔드 의존성을 없애기 위해 Supabase 에러를 바로 표시합니다.
+        const errorMsg = sbError.message === 'Invalid login credentials' 
+          ? '아이디 또는 비밀번호가 잘못되었습니다.' 
+          : sbError.message;
+        setError(errorMsg);
         setLoading(false);
         return;
       }
 
-      const session = json.data?.session ?? json.session;
-      if (session) {
-        await supabase.auth.setSession({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-        });
+      if (data?.session) {
+        router.push('/dashboard');
+        return;
       }
 
-      router.push('/dashboard');
+      setError('로그인 응답에 세션이 없습니다.');
+      setLoading(false);
     } catch {
       setError('네트워크 오류가 발생했습니다');
       setLoading(false);
