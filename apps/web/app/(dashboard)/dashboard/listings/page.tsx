@@ -15,12 +15,16 @@ import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 interface ListingItem {
   id: string;
   category_codes: string[];
+  subcategory_codes?: string[];
   transaction_types: string[];
   address_full: string | null;
+  address_road?: string | null;
   dong_name: string | null;
   price_sale: number | null;
+  price_jeonse?: number | null;
   deposit: number | null;
   monthly_rent: number | null;
+  premium_price?: number | null;
   area_exclusive: number | null;
   status: string;
   created_at: string;
