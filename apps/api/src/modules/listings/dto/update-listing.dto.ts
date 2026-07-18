@@ -90,6 +90,16 @@ export class UpdateListingDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(20)
+  owner_phone?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  contract_party_phone?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(100)
   complex_name?: string;
 

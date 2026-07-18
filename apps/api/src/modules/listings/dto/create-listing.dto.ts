@@ -94,6 +94,15 @@ export class CreateListingDto {
   @IsOptional() @IsString() agent_memo?: string;
   @IsOptional() @IsString() source_inquiry_id?: string;
 
+  @IsString()
+  @MaxLength(20)
+  owner_phone: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  contract_party_phone?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(100)
