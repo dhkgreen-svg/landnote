@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   useListing,
   useUpdateListing,
@@ -17,7 +18,7 @@ import {
   useDeleteListing,
 } from '@/lib/hooks/queries';
 import { SUBCATEGORY_LABELS, SUBCATEGORIES } from '@landnote/shared';
-import { ArrowLeft, Pencil, X, Upload, Camera, Trash2, Share2 } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Upload, Camera, Trash2, Share2, MessageCircle, MessageSquare } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { AddressSearch } from '@/components/address-search';
 import { AreaInput } from '@/components/ui/AreaInput';
@@ -247,8 +248,8 @@ export default function ListingDetailPage() {
     });
   };
 
-  const handleShare = async () => {
-    if (!listing) return;
+  const generateShareText = () => {
+    if (!listing) return '';
 
     const title = `[매물 추천] ${listing.address_full || ''} ${listing.complex_name || ''}`.trim();
     
@@ -281,21 +282,25 @@ export default function ListingDetailPage() {
 
     textParts.push(`\n*자세한 사항은 문의 바랍니다.*`);
     
-    const text = textParts.join('\n');
+    return textParts.join('\n');
+  };
 
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: '매물 정보 공유',
-          text: text,
-        });
-      } catch (err) {
-        console.error('Share failed:', err);
-      }
-    } else {
+  const handleShareKakao = async () => {
+    const text = generateShareText();
+    if (!text) return;
+    try {
       await navigator.clipboard.writeText(text);
-      alert('매물 정보가 클립보드에 복사되었습니다.');
+      alert('매물 정보가 복사되었습니다. 카카오톡에 붙여넣기 해주세요.');
+      window.location.href = 'kakaotalk://';
+    } catch (e) {
+      alert('복사에 실패했습니다.');
     }
+  };
+
+  const handleShareSMS = () => {
+    const text = generateShareText();
+    if (!text) return;
+    window.location.href = `sms:?body=${encodeURIComponent(text)}`;
   };
 
   if (loading) {
@@ -340,10 +345,24 @@ export default function ListingDetailPage() {
             </>
           ) : (
             <>
-              <Button variant="outline" size="sm" onClick={handleShare}>
-                <Share2 className="mr-1 h-3 w-3" />
-                공유
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Share2 className="mr-1 h-3 w-3" />
+                    공유
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleShareKakao} className="cursor-pointer">
+                    <MessageCircle className="mr-2 h-4 w-4 text-yellow-500" />
+                    카카오톡
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleShareSMS} className="cursor-pointer">
+                    <MessageSquare className="mr-2 h-4 w-4 text-blue-500" />
+                    문자 전송
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                 <Pencil className="mr-1 h-3 w-3" />
                 수정
