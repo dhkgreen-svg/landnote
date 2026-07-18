@@ -174,11 +174,11 @@ function ListingsContent() {
           ) : <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[180px]">매물 구분</TableHead>
-                    <TableHead>주소</TableHead>
-                    <TableHead>금액내역</TableHead>
-                    <TableHead className="w-[80px]">면적</TableHead>
-                    <TableHead>등록일</TableHead>
+                    <TableHead className="w-[120px]">매물 구분</TableHead>
+                    <TableHead className="min-w-[200px] w-auto">주소</TableHead>
+                    <TableHead className="w-[220px]">금액내역</TableHead>
+                    <TableHead className="w-[140px]">면적</TableHead>
+                    <TableHead className="w-[100px]">등록일</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
