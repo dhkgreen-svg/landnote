@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { SUBCATEGORY_LABELS } from '@landnote/shared';
+import { formatKoreanCurrency } from '@/lib/utils';
 
 const TRANSACTION_LABELS: Record<string, string> = {
   sale: '매매',
@@ -130,10 +131,10 @@ export function DashboardListingsView({ activeView, summary }: { activeView: 'ne
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableHead className="w-[180px]">매물 구분</TableHead>
-                  <TableHead>주소</TableHead>
-                  <TableHead>금액내역</TableHead>
-                  <TableHead className="w-[80px]">면적</TableHead>
+                  <TableHead className="w-[120px]">매물 구분</TableHead>
+                  <TableHead className="min-w-[200px] w-auto">주소</TableHead>
+                  <TableHead className="w-[220px]">금액내역</TableHead>
+                  <TableHead className="w-[140px]">면적</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -143,10 +144,10 @@ export function DashboardListingsView({ activeView, summary }: { activeView: 'ne
                   const subcatStr = item.subcategory_codes?.map((c: string) => SUBCATEGORY_LABELS[c] || c).join(', ') || '';
                   
                   let priceStr = [];
-                  if (item.price_sale) priceStr.push(`매매 ${item.price_sale}만`);
-                  if (item.price_jeonse) priceStr.push(`전세 ${item.price_jeonse}만`);
-                  if (item.deposit || item.monthly_rent) priceStr.push(`월세 ${item.deposit || 0}만/${item.monthly_rent || 0}만`);
-                  if (item.premium_price) priceStr.push(`권리금 ${item.premium_price}만`);
+                  if (item.price_sale) priceStr.push(`매매 ${formatKoreanCurrency(item.price_sale)}`);
+                  if (item.price_jeonse) priceStr.push(`전세 ${formatKoreanCurrency(item.price_jeonse)}`);
+                  if (item.deposit || item.monthly_rent) priceStr.push(`월세 ${item.deposit ? formatKoreanCurrency(item.deposit) : '0만'}/${item.monthly_rent ? formatKoreanCurrency(item.monthly_rent) : '0만'}`);
+                  if (item.premium_price) priceStr.push(`권리금 ${formatKoreanCurrency(item.premium_price)}`);
                   const finalPriceStr = priceStr.join(' | ') || '-';
 
                   let addressParts = [];
@@ -161,7 +162,7 @@ export function DashboardListingsView({ activeView, summary }: { activeView: 'ne
 
                   const formatPyung = (sqm: number | null | undefined) => sqm ? Math.round(sqm * 0.3025) : 0;
                   const landPyung = formatPyung(item.area_land);
-                  const exclPyung = formatPyung(item.area_exclusive);
+                  const buildPyung = formatPyung(item.area_building || item.area_exclusive || item.area_supply);
 
                   return (
                     <TableRow 
@@ -186,8 +187,8 @@ export function DashboardListingsView({ activeView, summary }: { activeView: 'ne
                       <TableCell className="text-sm">
                         <div className="flex flex-col gap-0.5 text-xs">
                           {landPyung > 0 && <span className="text-muted-foreground">대지 {landPyung}평</span>}
-                          {exclPyung > 0 && <span>건평 {exclPyung}평</span>}
-                          {landPyung === 0 && exclPyung === 0 && <span>-</span>}
+                          {buildPyung > 0 && <span>건평 {buildPyung}평</span>}
+                          {landPyung === 0 && buildPyung === 0 && <span>-</span>}
                         </div>
                       </TableCell>
                     </TableRow>
