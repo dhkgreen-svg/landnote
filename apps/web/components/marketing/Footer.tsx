@@ -13,8 +13,8 @@ export function Footer() {
               </div>
               <span className="text-base font-bold text-foreground">랜드노트</span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              공인중개사 전용 스마트 부동산 CRM
+            <p className="mt-4 max-w-sm text-sm text-muted-foreground">
+              공인중개사 전용 스마트 고객·매물 관리 앱
             </p>
           </div>
 

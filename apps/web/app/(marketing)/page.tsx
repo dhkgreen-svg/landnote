@@ -28,10 +28,10 @@ function HeroSection() {
           </div>
 
           <h1 className="max-w-4xl text-4xl font-extrabold leading-[1.15] text-foreground sm:text-5xl md:text-6xl lg:text-[3.75rem]">
-            공인중개사 전용,
+            공인중개사 전용 스마트 앱, 랜드노트
             <br />
             <span className="bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">
-              내 고객과 매물을 내 방식으로 관리하는 CRM
+              내 고객과 매물을 내 방식대로 가장 편하게
             </span>
           </h1>
 
