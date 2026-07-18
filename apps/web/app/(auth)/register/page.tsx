@@ -99,15 +99,20 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">비밀번호 *</Label>
+              <Label htmlFor="password">
+                비밀번호 * <span className="text-xs font-normal text-muted-foreground ml-1">(6~8자리 숫자만 가능)</span>
+              </Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="비밀번호를 입력하세요"
+                placeholder="6~8자리 숫자를 입력하세요"
                 value={store.password}
                 onChange={(e) => store.setField('password', e.target.value)}
                 required
                 minLength={6}
+                maxLength={8}
+                pattern="\d{6,8}"
+                title="6자리에서 8자리 사이의 숫자만 입력 가능합니다."
               />
             </div>
 
@@ -124,11 +129,11 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="license_number">자격증번호 *</Label>
+              <Label htmlFor="license_number">자격증 번호 또는 개설 등록 번호 *</Label>
               <Input
                 id="license_number"
                 type="text"
-                placeholder="공인중개사 자격증 번호"
+                placeholder="공인중개사 자격증 번호 또는 개설 등록 번호"
                 value={store.license_number}
                 onChange={(e) => store.setField('license_number', e.target.value)}
                 required
