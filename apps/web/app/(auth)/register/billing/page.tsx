@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { BillingRegisterButton } from '@/components/dashboard/BillingRegisterButton';
 import { StepIndicator } from '../step-indicator';
 
@@ -58,7 +60,12 @@ export default function BillingPage() {
               <p className="text-sm text-muted-foreground">로딩 중...</p>
             </div>
           ) : agentId ? (
-            <BillingRegisterButton agentId={agentId} returnPath="register" />
+            <div className="flex flex-col gap-3">
+              <BillingRegisterButton agentId={agentId} returnPath="register" />
+              <Button asChild variant="outline" className="w-full text-muted-foreground hover:text-foreground">
+                <Link href="/register/done">결제 수단은 나중에 등록할게요 (7일 무료 체험 바로 시작)</Link>
+              </Button>
+            </div>
           ) : (
             <p className="text-center text-sm text-destructive">
               세션 정보를 불러올 수 없습니다. 다시 로그인해주세요.

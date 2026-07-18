@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 interface Props {
   agentId: string;
   returnPath: 'register' | 'settings';
+  hasCard?: boolean;
 }
 
-export function BillingRegisterButton({ agentId, returnPath }: Props) {
+export function BillingRegisterButton({ agentId, returnPath, hasCard }: Props) {
   const [loading, setLoading] = useState(false);
 
   const successUrl =
@@ -46,7 +47,7 @@ export function BillingRegisterButton({ agentId, returnPath }: Props) {
       onClick={handleRegister}
       disabled={loading}
     >
-      {loading ? '카드 등록 중...' : '카드 등록하기'}
+      {loading ? '처리 중...' : hasCard ? '결제 카드 변경하기' : '카드 등록하기'}
     </Button>
   );
 }

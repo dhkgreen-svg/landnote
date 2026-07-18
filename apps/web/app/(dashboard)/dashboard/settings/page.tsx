@@ -348,7 +348,7 @@ export default function SettingsPage() {
               </span>
             </div>
           )}
-          <BillingRegisterButton agentId={agent.id} returnPath="settings" />
+          <BillingRegisterButton agentId={agent.id} returnPath="settings" hasCard={!!agent.billing_card_info} />
 
           {['trial', 'active'].includes(agent.subscription_status) && (
             <>
