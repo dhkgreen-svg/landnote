@@ -17,7 +17,7 @@ import {
   useDeleteListing,
 } from '@/lib/hooks/queries';
 import { SUBCATEGORY_LABELS, SUBCATEGORIES } from '@landnote/shared';
-import { ArrowLeft, Pencil, X, Upload, Camera, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Upload, Camera, Trash2, Share2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { AddressSearch } from '@/components/address-search';
 import { AreaInput } from '@/components/ui/AreaInput';
@@ -247,6 +247,57 @@ export default function ListingDetailPage() {
     });
   };
 
+  const handleShare = async () => {
+    if (!listing) return;
+
+    const title = `[매물 추천] ${listing.address_full || ''} ${listing.complex_name || ''}`.trim();
+    
+    const prices = [];
+    if (listing.transaction_types.includes('sale') && listing.price_sale) prices.push(`매매: ${formatKoreanCurrency(listing.price_sale)}`);
+    if (listing.transaction_types.includes('jeonse') && listing.price_jeonse) prices.push(`전세: ${formatKoreanCurrency(listing.price_jeonse)}`);
+    if (listing.transaction_types.includes('monthly_rent') && listing.deposit) prices.push(`월세: ${formatKoreanCurrency(listing.deposit)}/${formatKoreanCurrency(listing.monthly_rent || 0)}`);
+    if (listing.transaction_types.includes('premium_transfer') && listing.premium_price) prices.push(`권리금: ${formatKoreanCurrency(listing.premium_price)}`);
+
+    const areaParts = [];
+    if (listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) {
+      if (listing.area_land) areaParts.push(`대지 ${toPyung(listing.area_land)}평`);
+      if (listing.area_building) areaParts.push(`연면적 ${toPyung(listing.area_building)}평`);
+    } else {
+      if (listing.area_exclusive) areaParts.push(`전용 ${toPyung(listing.area_exclusive)}평`);
+      if (listing.area_supply) areaParts.push(`공급 ${toPyung(listing.area_supply)}평`);
+    }
+
+    const textParts = [title];
+    const locParts = [listing.address_full || ''];
+    if (listing.dong_name) locParts.push(listing.dong_name);
+    if (listing.building_num) locParts.push(`${listing.building_num}동`);
+    if (listing.room_num) locParts.push(`${listing.room_num}호`);
+    textParts.push(`📍 위치: ${locParts.join(' ')}`);
+
+    if (prices.length > 0) textParts.push(`💰 가격: ${prices.join(', ')}`);
+    if (areaParts.length > 0) textParts.push(`📏 면적: ${areaParts.join(' / ')}`);
+    if (listing.floor_current) textParts.push(`🏢 층수: ${listing.floor_current}/${listing.floor_total || '?'}층`);
+    if (listing.agent_memo) textParts.push(`\n📝 특징:\n${listing.agent_memo}`);
+
+    textParts.push(`\n*자세한 사항은 문의 바랍니다.*`);
+    
+    const text = textParts.join('\n');
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: '매물 정보 공유',
+          text: text,
+        });
+      } catch (err) {
+        console.error('Share failed:', err);
+      }
+    } else {
+      await navigator.clipboard.writeText(text);
+      alert('매물 정보가 클립보드에 복사되었습니다.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -289,6 +340,10 @@ export default function ListingDetailPage() {
             </>
           ) : (
             <>
+              <Button variant="outline" size="sm" onClick={handleShare}>
+                <Share2 className="mr-1 h-3 w-3" />
+                공유
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                 <Pencil className="mr-1 h-3 w-3" />
                 수정
