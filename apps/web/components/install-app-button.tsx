@@ -19,6 +19,8 @@ export function InstallAppButton({ className, variant = 'default' }: { className
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+  const [showAndroidFallbackPrompt, setShowAndroidFallbackPrompt] = useState(false);
+  const [isInAppBrowser, setIsInAppBrowser] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -33,6 +35,10 @@ export function InstallAppButton({ className, variant = 'default' }: { className
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(isIosDevice);
+
+    // Check if In-App Browser (Kakao, Naver, Instagram, etc)
+    const inAppBrowser = /kakaotalk|naver|instagram|fbav|line|daum/.test(userAgent);
+    setIsInAppBrowser(inAppBrowser);
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
@@ -63,8 +69,9 @@ export function InstallAppButton({ className, variant = 'default' }: { className
         setDeferredPrompt(null);
       }
     } else {
-      // Fallback for browsers that don't support beforeinstallprompt but are not iOS (e.g. some desktop browsers)
-      alert("현재 브라우저에서는 주소창 우측의 '앱 설치' 아이콘을 누르거나, 브라우저 메뉴에서 '앱 설치' 또는 '홈 화면에 추가'를 선택해 주세요.");
+      // Fallback for browsers that don't support beforeinstallprompt but are not iOS 
+      // (e.g. In-App browsers like KakaoTalk, or some desktop browsers)
+      setShowAndroidFallbackPrompt(true);
     }
   };
 
@@ -98,6 +105,44 @@ export function InstallAppButton({ className, variant = 'default' }: { className
             </div>
           </div>
           <Button onClick={() => setShowIOSPrompt(false)} className="w-full">
+            확인했습니다
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showAndroidFallbackPrompt} onOpenChange={setShowAndroidFallbackPrompt}>
+        <DialogContent className="sm:max-w-md text-center">
+          <DialogHeader>
+            <DialogTitle>앱 설치 안내</DialogTitle>
+            <DialogDescription>
+              {isInAppBrowser 
+                ? '현재 카카오톡 등 앱 내 브라우저를 사용 중이어서 바로 설치가 불가능합니다.' 
+                : '현재 브라우저에서는 자동 설치 기능이 지원되지 않습니다.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4">
+            {isInAppBrowser ? (
+              <>
+                <div className="flex items-center gap-3 p-4 bg-muted rounded-lg text-sm text-left">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground font-bold shrink-0">1</span>
+                  <span>화면 우측 하단(또는 상단)의 <strong>더보기(⋮ 또는 ...)</strong> 버튼을 누르세요.</span>
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-muted rounded-lg text-sm text-left">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground font-bold shrink-0">2</span>
+                  <span><strong>[다른 브라우저로 열기]</strong>를 선택하여 인터넷 창(크롬, 삼성인터넷 등)으로 이동하세요.</span>
+                </div>
+                <div className="flex items-center gap-3 p-4 bg-muted rounded-lg text-sm text-left">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground font-bold shrink-0">3</span>
+                  <span>새로 열린 브라우저 화면에서 다시 <strong>[앱 설치하기]</strong>를 누르시면 됩니다!</span>
+                </div>
+              </>
+            ) : (
+              <div className="p-4 bg-muted rounded-lg text-sm text-left leading-relaxed">
+                현재 사용 중인 브라우저 우측 상단의 <strong>메뉴(⋮)</strong>를 누르신 후, <strong>[홈 화면에 추가]</strong> 또는 <strong>[앱 설치]</strong> 버튼을 직접 눌러주세요.
+              </div>
+            )}
+          </div>
+          <Button onClick={() => setShowAndroidFallbackPrompt(false)} className="w-full">
             확인했습니다
           </Button>
         </DialogContent>
