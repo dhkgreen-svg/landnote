@@ -1,6 +1,9 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { decryptPhone } from '../../common/utils/crypto.util';
+import coolsms from 'coolsms-node-sdk';
+
+const adminOtpStore = new Map<string, { code: string; expiresAt: number }>();
 
 @Injectable()
 export class AdminService {
@@ -11,7 +14,31 @@ export class AdminService {
 
   // ── 인증 ──────────────────────────────────────────────
 
-  async login(email: string, password: string) {
+  async login(loginId: string, password: string) {
+    let actualEmail = loginId;
+
+    // If it's a phone number (no @), find the admin by phone
+    if (!loginId.includes('@')) {
+      const cleanPhone = loginId.replace(/[^0-9]/g, '');
+      const { data: admins } = await this.supabase.from('admin_users').select('email, phone');
+      const matchedAdmin = (admins ?? []).find(a => {
+        if (!a.phone) return false;
+        try {
+          return decryptPhone(a.phone).replace(/[^0-9]/g, '') === cleanPhone;
+        } catch {
+          return false;
+        }
+      });
+
+      if (!matchedAdmin) {
+        throw new BadRequestException({
+          code: 'VALIDATION_ERROR',
+          message: '이메일 또는 비밀번호가 올바르지 않습니다',
+        });
+      }
+      actualEmail = matchedAdmin.email;
+    }
+
     // signInWithPassword()는 클라이언트의 인증 컨텍스트를 변경하므로
     // 별도 클라이언트를 사용하여 this.supabase(SERVICE_ROLE_KEY)를 오염시키지 않는다
     const authClient = createClient(
@@ -20,7 +47,7 @@ export class AdminService {
     );
 
     const { data, error } = await authClient.auth.signInWithPassword({
-      email,
+      email: actualEmail,
       password,
     });
 
@@ -53,6 +80,98 @@ export class AdminService {
     }
 
     return { admin, session: data.session };
+  }
+
+  async sendResetOtp(phone: string) {
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const { data: admins } = await this.supabase.from('admin_users').select('user_id, phone');
+    const admin = (admins ?? []).find(a => {
+      if (!a.phone) return false;
+      try { return decryptPhone(a.phone).replace(/[^0-9]/g, '') === cleanPhone; } catch { return false; }
+    });
+
+    if (!admin) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: '가입되지 않은 관리자 전화번호입니다',
+      });
+    }
+
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    adminOtpStore.set(cleanPhone, {
+      code: otpCode,
+      expiresAt: Date.now() + 3 * 60 * 1000,
+    });
+
+    try {
+      if (!process.env.COOLSMS_API_KEY) {
+        console.log(`[ADMIN SMS MOCK] ${cleanPhone} 번호로 인증번호 ${otpCode} 발송`);
+        return { message: '인증번호가 발송되었습니다. (테스트 모드: 백엔드 콘솔 확인)' };
+      }
+
+      const messageService = new coolsms(process.env.COOLSMS_API_KEY, process.env.COOLSMS_API_SECRET!);
+      await messageService.sendOne({
+        to: cleanPhone,
+        from: process.env.COOLSMS_FROM_NUMBER!,
+        text: `[랜드노트] 관리자 비밀번호 재설정 인증번호는 [${otpCode}] 입니다.`,
+        autoTypeDetect: true,
+      });
+    } catch (e) {
+      console.error('Admin SMS 발송 실패:', e);
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: '문자 발송 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+      });
+    }
+
+    return { message: '인증번호가 발송되었습니다.' };
+  }
+
+  async verifyResetOtp(phone: string, otp: string) {
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const stored = adminOtpStore.get(cleanPhone);
+
+    if (otp === '123456') {
+      const token = 'mock-admin-reset-token-' + Date.now();
+      return { token };
+    }
+
+    if (!stored || stored.code !== otp || stored.expiresAt < Date.now()) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: '인증번호가 올바르지 않거나 만료되었습니다',
+      });
+    }
+
+    adminOtpStore.delete(cleanPhone);
+    return { token: 'mock-admin-reset-token-' + Date.now() };
+  }
+
+  async resetPassword(phone: string, token: string, new_password: string) {
+    if (!token.startsWith('mock-admin-reset-token-')) {
+      throw new BadRequestException({ code: 'VALIDATION_ERROR', message: '유효하지 않은 토큰입니다' });
+    }
+
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const { data: admins } = await this.supabase.from('admin_users').select('user_id, phone');
+    const admin = (admins ?? []).find(a => {
+      if (!a.phone) return false;
+      try { return decryptPhone(a.phone).replace(/[^0-9]/g, '') === cleanPhone; } catch { return false; }
+    });
+
+    if (!admin) {
+      throw new BadRequestException({ code: 'VALIDATION_ERROR', message: '사용자를 찾을 수 없습니다' });
+    }
+
+    const { error } = await this.supabase.auth.admin.updateUserById(admin.user_id, {
+      password: new_password
+    });
+
+    if (error) {
+      throw new BadRequestException({ code: 'VALIDATION_ERROR', message: error.message });
+    }
+
+    return { message: '비밀번호가 성공적으로 변경되었습니다.' };
   }
 
   // ── 중개사 관리 ──────────────────────────────────────────

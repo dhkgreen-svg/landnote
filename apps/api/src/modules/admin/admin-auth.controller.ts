@@ -25,4 +25,19 @@ export class AdminAuthController {
   async logout() {
     return { message: '로그아웃 되었습니다' };
   }
+
+  @Post('reset-password/send')
+  async sendResetOtp(@Body('phone') phone: string) {
+    return this.adminService.sendResetOtp(phone);
+  }
+
+  @Post('reset-password/verify')
+  async verifyResetOtp(@Body() body: { phone: string; otp: string }) {
+    return this.adminService.verifyResetOtp(body.phone, body.otp);
+  }
+
+  @Post('reset-password/reset')
+  async resetPassword(@Body() body: { phone: string; token: string; new_password: string }) {
+    return this.adminService.resetPassword(body.phone, body.token, body.new_password);
+  }
 }
