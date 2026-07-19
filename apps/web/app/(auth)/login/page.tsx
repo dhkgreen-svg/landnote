@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { formatPhoneNumber } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -126,7 +127,14 @@ export default function LoginPage() {
               type="text"
               placeholder="010-0000-0000 (체험은 admin 입력)"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (/^[0-9-]*$/.test(val)) {
+                  setEmail(formatPhoneNumber(val));
+                } else {
+                  setEmail(val);
+                }
+              }}
               required
             />
           </div>

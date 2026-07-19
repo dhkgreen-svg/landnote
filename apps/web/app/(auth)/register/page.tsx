@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { StepIndicator } from './step-indicator';
+import { formatPhoneNumber } from '@/lib/utils';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -112,7 +113,14 @@ export default function RegisterPage() {
                 type="tel"
                 placeholder="010-0000-0000"
                 value={store.phone}
-                onChange={(e) => store.setField('phone', e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (/^[0-9-]*$/.test(val)) {
+                    store.setField('phone', formatPhoneNumber(val));
+                  } else {
+                    store.setField('phone', val);
+                  }
+                }}
                 required
               />
             </div>
