@@ -110,7 +110,7 @@ export default function LoginPage() {
             <Input
               id="email"
               type="text"
-              placeholder="010-0000-0000 (체험은 admin 입력)"
+              placeholder="010-0000-0000"
               value={email}
               onChange={(e) => {
                 const val = e.target.value;
