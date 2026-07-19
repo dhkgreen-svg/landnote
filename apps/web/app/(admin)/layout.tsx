@@ -62,6 +62,14 @@ export default function AdminLayout({
     return <QueryProvider>{children}</QueryProvider>;
   }
 
+  // 세션 만료 시 로그인 페이지로 리다이렉트
+  if (!loading && !admin) {
+    if (typeof window !== 'undefined') {
+      window.location.href = '/admin/login';
+    }
+    return null;
+  }
+
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
