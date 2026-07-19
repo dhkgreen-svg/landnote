@@ -367,7 +367,7 @@ export default function ListingDetailPage() {
             <>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button variant="default" size="sm" className="bg-yellow-500 hover:bg-yellow-600 text-white border-none">
                     <Share2 className="mr-1 h-3 w-3" />
                     공유
                   </Button>
