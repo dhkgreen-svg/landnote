@@ -578,7 +578,7 @@ export const SUBSCRIPTION_STATUS = {
   TRIAL: 'trial',         // 가입 후 7일 무료 체험
   ACTIVE: 'active',
   EXPIRED: 'expired',
-  CANCELLED: 'cancelled', // 해지 요청 완료 (데이터 30일 보존 후 삭제)
+  CANCELLED: 'cancelled', // 해지 요청 완료 (데이터 영구 보존)
 } as const;
 
 export const PLAN_PRICE: Record<string, number> = {
@@ -728,7 +728,7 @@ export interface Agent {
   pending_plan: 'starter' | 'pro' | null;       // 다운그레이드 예약
   category_changed_at: string | null;           // 카테고리 마지막 변경일 (월 1회 제한용)
   trial_ends_at: string | null;
-  cancelled_at: string | null;                  // 해지 시각 (30일 후 데이터 삭제)
+  cancelled_at: string | null;                  // 해지 시각
 
   // 결제
   billing_key: string | null;
@@ -1617,7 +1617,7 @@ Base URL: `https://api.landnote.app` (개발: `http://localhost:3001`)
 | GET    | /billing/subscription | 필요 | 현재 구독 정보 |
 | POST   | /billing/register | 필요 | 빌링키 발급 (가입 시 또는 카드 변경 시 공용) |
 | PATCH  | /billing/plan | 필요 | 플랜 변경 (v3.2: 업/다운그레이드 규칙 아래 참조) |
-| POST   | /billing/cancel | 필요 | 구독 해지 (cancelled 상태로 변경, 30일 후 데이터 삭제) |
+| POST   | /billing/cancel | 필요 | 구독 해지 (cancelled 상태로 변경, 데이터 영구 보존) |
 | GET    | /billing/histories | 필요 | 결제 이력 |
 
 #### 플랜 변경 비즈니스 로직 (v3.2 신규)
@@ -2431,7 +2431,7 @@ AppModule
   A. 카드를 등록해도 7일간 결제되지 않습니다. 체험 종료 후 자동 결제됩니다.
 
   Q. 구독을 해지하면 데이터는 어떻게 되나요?
-  A. 해지 후 30일간 보존됩니다. 재구독 시 그대로 복구됩니다.
+  A. 해지하더라도 회원님의 매물과 데이터는 영구적으로 안전하게 보존됩니다. 언제든 다시 구독하시면 모든 데이터를 그대로 이어서 사용하실 수 있습니다.
 
 [하단 CTA]
   "지금 바로 시작해보세요"  [7일 무료 체험 시작]
@@ -3364,7 +3364,7 @@ export class BillingService {
       subscription_status: 'cancelled',
       cancelled_at: new Date().toISOString(),
     }).eq('id', agent.id);
-    // billing_key는 유지 — 30일 내 재구독 시 재사용 가능
+    // billing_key는 유지 — 언제든 재구독 시 재사용 가능
   }
 
   // 스케줄러에서 호출 (EmailService 직접 참조 없이 BillingService 경유)
@@ -3513,12 +3513,7 @@ export class BillingScheduler {
     }
   }
 
-  // ── 해지 후 30일 경과 데이터 삭제 (매일 새벽 1시) ─────────────────
-  @Cron('0 1 * * *', { timeZone: 'Asia/Seoul' })
-  async cleanupCancelledAgents() {
-    const { data } = await this.supabase.rpc('cleanup_cancelled_agents');
-    if (data > 0) console.log(`해지 계정 ${data}건 삭제 완료`);
-  }
+
 }
 ```
 
@@ -3535,7 +3530,7 @@ export class BillingScheduler {
 | 결제 성공 | 중개사 | 결제가 완료되었습니다 |
 | 결제 실패 (1~2회) | 중개사 | 결제에 실패했습니다. 카드를 확인해주세요 |
 | 구독 만료 | 중개사 | 구독이 만료되었습니다 |
-| 구독 해지 완료 | 중개사 | 해지가 완료되었습니다 (30일 후 데이터 삭제) |
+| 구독 해지 완료 | 중개사 | 해지가 완료되었습니다 (데이터는 안전하게 영구 보존됩니다) |
 | 신규 문의 접수 | 중개사 | 새로운 문의가 접수되었습니다 |
 
 ### EmailService
@@ -3781,7 +3776,7 @@ export class EmailService {
    - [ ] trial → 카드 미등록 → 7일 후 → expired
    - [ ] active → 결제 실패 1회 → 3일 후 재시도
    - [ ] active → 결제 실패 3회 → expired + 이메일
-   - [ ] active → 해지 → cancelled → 30일 후 데이터 삭제
+   - [ ] active → 해지 → cancelled → 데이터 영구 보존
    - [ ] starter → pro 업그레이드 → 즉시 반영 확인
    - [ ] pro → starter 다운그레이드 → pending_plan 설정 → 다음 결제 시 적용 확인
    - [ ] 다운그레이드 적용 시 카테고리 3~4개 → 2개로 자동 축소 확인

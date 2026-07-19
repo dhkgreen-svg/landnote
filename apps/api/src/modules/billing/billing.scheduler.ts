@@ -77,12 +77,6 @@ export class BillingScheduler {
     }
   }
 
-  @Cron('0 1 * * *', { timeZone: 'Asia/Seoul' })
-  async cleanupCancelledAgents() {
-    const { data } = await this.supabase.rpc('cleanup_cancelled_agents');
-    if (data > 0) console.log(`해지 계정 ${data}건 삭제 완료`);
-  }
-
   @Cron('30 1 * * *', { timeZone: 'Asia/Seoul' })
   async cleanupOldAccessLogs() {
     const { data } = await this.supabase.rpc('cleanup_old_access_logs', { retention_days: 90 });
