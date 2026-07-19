@@ -449,39 +449,7 @@ function FAQSection() {
 
 /* ─────────────────── Bottom CTA ─────────────────── */
 
-function BottomCTASection() {
-  return (
-    <section className="py-20 sm:py-28">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-blue-600 to-blue-700 px-8 py-16 text-center shadow-2xl sm:px-16 sm:py-20">
-          {/* Decorative elements */}
-          <div className="absolute -left-20 -top-20 h-60 w-60 rounded-full bg-white/10 blur-3xl" />
-          <div className="absolute -bottom-20 -right-20 h-60 w-60 rounded-full bg-white/10 blur-3xl" />
 
-          <div className="relative">
-            <h2 className="text-3xl font-bold text-white sm:text-4xl">
-              지금 바로 시작해보세요
-            </h2>
-            <p className="mx-auto mt-4 max-w-lg text-lg text-white/80">
-              {TRIAL_DAYS}일 무료 체험으로 랜드노트의 모든 기능을 경험해 보세요.
-              <br />
-              언제든 해지 가능합니다.
-            </p>
-            <div className="mt-8">
-              <Button
-                asChild
-                size="lg"
-                className="h-12 rounded-xl bg-white px-8 text-base font-semibold text-primary shadow-lg transition-all hover:bg-white/90 hover:shadow-xl"
-              >
-                <Link href="/register">{TRIAL_DAYS}일 무료 체험 시작</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 /* ─────────────────── Page ─────────────────── */
 
@@ -494,7 +462,6 @@ export default function MarketingPage() {
       <FeatureShowcaseSection />
       <PricingSection />
       <FAQSection />
-      <BottomCTASection />
     </>
   );
 }
