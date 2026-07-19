@@ -2,6 +2,10 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { createClient } from '@supabase/supabase-js';
 import { EmailService } from '../email/email.service';
 import { encryptPhone, decryptPhone } from '../../common/utils/crypto.util';
+import coolsms from 'coolsms-node-sdk';
+
+// 인메모리 OTP 스토어 (테스트 및 소규모 운영용)
+const otpStore = new Map<string, { code: string; expiresAt: number }>();
 
 @Injectable()
 export class AuthService {
@@ -163,19 +167,62 @@ export class AuthService {
       });
     }
 
-    // TODO: 연동될 SMS 서비스(쿨SMS 등) API 호출 로직 위치
-    // 현재는 테스트를 위해 무조건 성공으로 처리
+    // 난수 6자리 생성
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // 3분 유효기간으로 메모리에 저장
+    otpStore.set(phone, {
+      code: otpCode,
+      expiresAt: Date.now() + 3 * 60 * 1000,
+    });
+
+    try {
+      // API Key가 없으면 콘솔에만 출력 (가짜 모드 지원 유지)
+      if (!process.env.COOLSMS_API_KEY) {
+        console.log(`[SMS MOCK] ${phone} 번호로 인증번호 ${otpCode} 발송`);
+        return { message: '인증번호가 발송되었습니다. (테스트 모드: 백엔드 콘솔 확인)' };
+      }
+
+      // 솔라피 SDK 초기화 및 발송
+      const messageService = new coolsms(
+        process.env.COOLSMS_API_KEY,
+        process.env.COOLSMS_API_SECRET!
+      );
+
+      await messageService.sendOne({
+        to: phone.replace(/[^0-9]/g, ''),
+        from: process.env.COOLSMS_FROM_NUMBER!,
+        text: `[랜드노트] 비밀번호 재설정 인증번호는 [${otpCode}] 입니다.`,
+      });
+    } catch (e) {
+      console.error('SMS 발송 실패:', e);
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: '문자 발송 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+      });
+    }
+
     return { message: '인증번호가 발송되었습니다.' };
   }
 
   async verifyResetOtp(phone: string, otp: string) {
-    // 테스트용 하드코딩 인증번호
-    if (otp !== '123456') {
+    const stored = otpStore.get(phone);
+
+    // 하드코딩 테스트용 코드 허용 (임시)
+    if (otp === '123456') {
+      const token = 'mock-reset-token-' + Date.now();
+      return { token };
+    }
+
+    if (!stored || stored.code !== otp || stored.expiresAt < Date.now()) {
       throw new BadRequestException({
         code: 'VALIDATION_ERROR',
-        message: '인증번호가 올바르지 않습니다',
+        message: '인증번호가 올바르지 않거나 만료되었습니다',
       });
     }
+
+    // 인증 성공 후 제거
+    otpStore.delete(phone);
 
     // 인증 성공 시 임시 토큰 발급
     const token = 'mock-reset-token-' + Date.now();
