@@ -276,7 +276,7 @@ function PricingSection() {
             </div>
             <div className="mt-8">
               <Button asChild className="w-full rounded-xl shadow-lg shadow-primary/25" size="lg">
-                <Link href="/register">PRO로 시작하기</Link>
+                <Link href="/register">회원가입 후 무료 체험</Link>
               </Button>
             </div>
           </div>
