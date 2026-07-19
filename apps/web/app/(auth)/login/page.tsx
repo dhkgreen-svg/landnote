@@ -20,12 +20,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   
   const [rememberCredentials, setRememberCredentials] = useState(false);
-  const [autoLogin, setAutoLogin] = useState(false);
-
   useEffect(() => {
     const savedEmail = localStorage.getItem('landnote_saved_email');
     const savedPassword = localStorage.getItem('landnote_saved_password');
-    const isAutoLogin = localStorage.getItem('landnote_auto_login') === 'true';
 
     if (savedEmail) {
       setEmail(savedEmail);
@@ -34,16 +31,9 @@ export default function LoginPage() {
     if (savedPassword) {
       setPassword(savedPassword);
     }
-    if (isAutoLogin) {
-      setAutoLogin(true);
-    }
-
-    if (isAutoLogin && savedEmail && savedPassword) {
-      performLogin(savedEmail, savedPassword, true, true);
-    }
   }, []);
 
-  const performLogin = async (loginEmail: string, loginPass: string, saveCreds: boolean, isAuto: boolean) => {
+  const performLogin = async (loginEmail: string, loginPass: string, saveCreds: boolean) => {
     setError('');
     setLoading(true);
 
@@ -54,12 +44,7 @@ export default function LoginPage() {
       localStorage.removeItem('landnote_saved_email');
       localStorage.removeItem('landnote_saved_password');
     }
-
-    if (isAuto) {
-      localStorage.setItem('landnote_auto_login', 'true');
-    } else {
-      localStorage.removeItem('landnote_auto_login');
-    }
+    localStorage.removeItem('landnote_auto_login');
 
     const isAdminLogin = loginEmail === 'admin' && loginPass === 'admin';
     
@@ -108,7 +93,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    performLogin(email, password, rememberCredentials, autoLogin);
+    performLogin(email, password, rememberCredentials);
   };
 
 
@@ -121,7 +106,7 @@ export default function LoginPage() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">전화번호 (아이디)</Label>
+            <Label htmlFor="email">전화번호</Label>
             <Input
               id="email"
               type="text"
@@ -164,21 +149,7 @@ export default function LoginPage() {
                 아이디/비밀번호 저장
               </Label>
             </div>
-            <div className="flex items-center space-x-2">
-              <input 
-                type="checkbox"
-                id="autoLogin" 
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary"
-                checked={autoLogin}
-                onChange={(e) => {
-                  setAutoLogin(e.target.checked);
-                  if (e.target.checked) setRememberCredentials(true);
-                }}
-              />
-              <Label htmlFor="autoLogin" className="text-sm font-normal cursor-pointer">
-                자동 로그인
-              </Label>
-            </div>
+
           </div>
 
           {error && (
