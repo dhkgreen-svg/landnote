@@ -243,6 +243,7 @@ export default function ListingDetailPage() {
 
   const handleDelete = () => {
     if (!confirm('이 매물을 삭제하시겠습니까?')) return;
+    if (!confirm('정말로 삭제하시겠습니까? 삭제된 데이터는 절대 복구할 수 없습니다.')) return;
     deleteListingMutation.mutate(id, {
       onSuccess: () => router.push('/dashboard/listings'),
     });
@@ -382,7 +383,7 @@ export default function ListingDetailPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+              <Button variant="default" size="sm" onClick={() => setEditing(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
                 <Pencil className="mr-1 h-3 w-3" />
                 수정
               </Button>
