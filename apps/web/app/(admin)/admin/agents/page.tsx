@@ -22,7 +22,17 @@ const PLAN_LABELS: Record<string, string> = {
   pro: 'Pro',
 };
 
+import { Suspense } from 'react';
+
 export default function AdminAgentsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-20 text-muted-foreground">로딩 중...</div>}>
+      <AdminAgentsContent />
+    </Suspense>
+  );
+}
+
+function AdminAgentsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState('');
