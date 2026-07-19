@@ -10,7 +10,7 @@ export default function InvitePage() {
   const [inviteUrl, setInviteUrl] = useState('');
 
   useEffect(() => {
-    setInviteUrl(`${window.location.origin}/register`);
+    setInviteUrl(`${window.location.origin}/`);
   }, []);
 
   const handleCopy = () => {
