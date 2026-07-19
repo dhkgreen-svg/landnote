@@ -5,7 +5,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import {
   LayoutDashboard, Users, DollarSign, BarChart3,
-  LogOut, Menu,
+  LogOut, Menu, Link as LinkIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { label: '중개사 관리', href: '/admin/agents', icon: Users },
   { label: '수익 관리', href: '/admin/revenue', icon: DollarSign },
   { label: '접속 통계', href: '/admin/stats', icon: BarChart3 },
+  { label: '초대 링크', href: '/admin/invite', icon: LinkIcon },
 ];
 
 function NavLink({ item, pathname, onClick }: {
