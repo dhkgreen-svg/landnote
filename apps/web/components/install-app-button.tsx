@@ -70,7 +70,7 @@ export function InstallAppButton({ className, variant = 'default' }: { className
     <>
       <Button onClick={() => setShowGuide(true)} className={className} variant={variant}>
         <Download className="w-4 h-4 mr-2" />
-        앱 설치 안내
+        앱 설치하기
       </Button>
 
       <Dialog open={showGuide} onOpenChange={setShowGuide}>
@@ -115,7 +115,7 @@ export function InstallAppButton({ className, variant = 'default' }: { className
                 </div>
                 <div className="flex items-center gap-3 p-4 bg-muted rounded-lg text-sm text-left">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground font-bold shrink-0">3</span>
-                  <span>새로 열린 브라우저 화면에서 다시 <strong>[앱 설치 안내]</strong>를 누르시면 됩니다!</span>
+                  <span>새로 열린 브라우저 화면에서 다시 <strong>[앱 설치하기]</strong>를 누르시면 됩니다!</span>
                 </div>
               </>
             ) : deferredPrompt ? (
