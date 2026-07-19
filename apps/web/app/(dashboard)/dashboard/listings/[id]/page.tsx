@@ -376,7 +376,7 @@ export default function ListingDetailPage() {
                     <MessageCircle className="mr-2 h-4 w-4 text-yellow-500" />
                     카카오톡
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleShareSMS} className="cursor-pointer">
+                  <DropdownMenuItem onClick={() => handleShareSMS()} className="cursor-pointer">
                     <MessageSquare className="mr-2 h-4 w-4 text-blue-500" />
                     문자 전송
                   </DropdownMenuItem>
