@@ -94,6 +94,7 @@ describe('InquiriesService', () => {
       category_codes: ['residential'],
       transaction_types: ['sale'],
       detailed_conditions: {},
+      otpCode: '123456',
     };
 
     it('존재하지 않는 agentCode → NotFoundException', async () => {

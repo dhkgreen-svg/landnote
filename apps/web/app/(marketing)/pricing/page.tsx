@@ -14,69 +14,7 @@ function formatPrice(price: number): string {
   return price.toLocaleString('ko-KR');
 }
 
-interface ComparisonRow {
-  label: string;
-  minimal: string;
-  standard: string;
-  pro: string;
-}
 
-const comparisonRows: ComparisonRow[] = [
-  {
-    label: '월 요금',
-    minimal: `${formatPrice(PLAN_PRICE.minimal)}원`,
-    standard: `${formatPrice(PLAN_PRICE.standard)}원`,
-    pro: `${formatPrice(PLAN_PRICE.pro)}원`,
-  },
-  {
-    label: '카테고리',
-    minimal: `${PLAN_LIMITS.minimal.max_categories}개 제한`,
-    standard: `${PLAN_LIMITS.standard.max_categories}개 제한`,
-    pro: `${PLAN_LIMITS.pro.max_categories}개 전체`,
-  },
-  {
-    label: '매물 등록',
-    minimal: '무제한',
-    standard: '무제한',
-    pro: '무제한',
-  },
-  {
-    label: 'QR코드',
-    minimal: `${PLAN_LIMITS.minimal.max_qr_codes}개`,
-    standard: `${PLAN_LIMITS.standard.max_qr_codes}개`,
-    pro: `${PLAN_LIMITS.pro.max_qr_codes}개`,
-  },
-  {
-    label: '이미지 업로드',
-    minimal: `${PLAN_LIMITS.minimal.max_images_per_listing}장/매물`,
-    standard: `${PLAN_LIMITS.standard.max_images_per_listing}장/매물`,
-    pro: `${PLAN_LIMITS.pro.max_images_per_listing}장/매물`,
-  },
-  {
-    label: '고객 접수 관리',
-    minimal: '가능',
-    standard: '가능',
-    pro: '가능',
-  },
-  {
-    label: '스마트 매칭',
-    minimal: '가능',
-    standard: '가능',
-    pro: '가능',
-  },
-  {
-    label: '통계 대시보드',
-    minimal: '가능',
-    standard: '가능',
-    pro: '가능',
-  },
-  {
-    label: '데이터 격리',
-    minimal: '가능',
-    standard: '가능',
-    pro: '가능',
-  },
-];
 
 function CheckIcon({ className }: { className?: string }) {
   return (
@@ -111,71 +49,10 @@ export default function PricingPage() {
 
       {/* Plan Cards */}
       <section className="py-12 sm:py-16">
-        <div className="mx-auto grid max-w-6xl gap-8 px-4 sm:px-6 md:grid-cols-3 lg:px-8">
-          {/* Minimal */}
-          <Card className="relative flex flex-col">
-            <CardHeader>
-              <CardTitle className="text-2xl">미니멀</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">특정 분야만 다루는 분들께</p>
-              <div className="mt-4">
-                <span className="text-4xl font-extrabold text-foreground">
-                  {formatPrice(PLAN_PRICE.minimal)}
-                </span>
-                <span className="text-xl text-muted-foreground">원/월</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">하루 {Math.round(PLAN_PRICE.minimal / 30)}원</p>
-            </CardHeader>
-            <CardContent className="flex flex-1 flex-col">
-              <ul className="flex-1 space-y-4">
-                <FeatureItem text={`카테고리 최대 ${PLAN_LIMITS.minimal.max_categories}개 선택`} />
-                <FeatureItem text="매물 무제한 등록" />
-                <FeatureItem text={`QR코드 ${PLAN_LIMITS.minimal.max_qr_codes}개 발급`} />
-                <FeatureItem text={`매물당 이미지 ${PLAN_LIMITS.minimal.max_images_per_listing}장`} />
-                <FeatureItem text="고객 접수 관리" />
-                <FeatureItem text="스마트 매칭" />
-                <FeatureItem text="통계 대시보드" />
-              </ul>
-              <div className="mt-8">
-                <Button asChild variant="outline" className="w-full" size="lg">
-                  <Link href="/register">무료 체험 시작</Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="mx-auto flex justify-center max-w-6xl px-4 sm:px-6 lg:px-8">
 
-          {/* Standard */}
-          <Card className="relative flex flex-col">
-            <CardHeader>
-              <CardTitle className="text-2xl">스탠다드</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">다양한 분야를 취급한다면</p>
-              <div className="mt-4">
-                <span className="text-4xl font-extrabold text-foreground">
-                  {formatPrice(PLAN_PRICE.standard)}
-                </span>
-                <span className="text-xl text-muted-foreground">원/월</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">하루 {Math.round(PLAN_PRICE.standard / 30)}원</p>
-            </CardHeader>
-            <CardContent className="flex flex-1 flex-col">
-              <ul className="flex-1 space-y-4">
-                <FeatureItem text={`카테고리 최대 ${PLAN_LIMITS.standard.max_categories}개 선택`} />
-                <FeatureItem text="매물 무제한 등록" />
-                <FeatureItem text={`QR코드 ${PLAN_LIMITS.standard.max_qr_codes}개 발급`} />
-                <FeatureItem text={`매물당 이미지 ${PLAN_LIMITS.standard.max_images_per_listing}장`} />
-                <FeatureItem text="고객 접수 관리" />
-                <FeatureItem text="스마트 매칭" />
-                <FeatureItem text="통계 대시보드" />
-              </ul>
-              <div className="mt-8">
-                <Button asChild variant="outline" className="w-full" size="lg">
-                  <Link href="/register">무료 체험 시작</Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Pro */}
-          <Card className="relative flex flex-col border-2 border-primary shadow-lg">
+        {/* Pro Plan */}
+          <Card className="relative w-full max-w-sm flex flex-col border-2 border-primary shadow-lg">
             <div className="absolute -top-3 left-1/2 -translate-x-1/2">
               <Badge className="px-4 py-1 text-sm">추천</Badge>
             </div>
@@ -207,71 +84,6 @@ export default function PricingPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        <p className="mx-auto mt-6 max-w-4xl text-center text-sm text-muted-foreground">
-          월 5,000원의 차이마다 카테고리, QR코드, 이미지 한도가 증가합니다.
-        </p>
-      </section>
-
-      {/* Comparison Table */}
-      <section className="bg-muted/30 py-20 sm:py-28">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          <h2 className="mb-12 text-center text-3xl font-bold tracking-tight text-foreground">
-            상세 비교
-          </h2>
-
-          {/* Desktop Table */}
-          <div className="hidden overflow-hidden rounded-xl border bg-background shadow-sm md:block">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">기능</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">미니멀</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">스탠다드</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-primary">
-                    PRO <Badge className="ml-1 text-xs">추천</Badge>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparisonRows.map((row, i) => (
-                  <tr
-                    key={row.label}
-                    className={i < comparisonRows.length - 1 ? 'border-b' : ''}
-                  >
-                    <td className="px-6 py-4 text-sm font-medium text-foreground">{row.label}</td>
-                    <td className="px-6 py-4 text-center text-sm text-muted-foreground">{row.minimal}</td>
-                    <td className="px-6 py-4 text-center text-sm text-muted-foreground">{row.standard}</td>
-                    <td className="px-6 py-4 text-center text-sm font-medium text-foreground">{row.pro}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Cards */}
-          <div className="space-y-4 md:hidden">
-            {comparisonRows.map((row) => (
-              <div key={row.label} className="rounded-lg border bg-background p-4">
-                <p className="mb-2 text-sm font-semibold text-foreground">{row.label}</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground">미니멀</p>
-                    <p className="text-xs">{row.minimal}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground">스탠다드</p>
-                    <p className="text-xs">{row.standard}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-primary">PRO</p>
-                    <p className="text-xs font-medium">{row.pro}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
