@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,10 +24,19 @@ const PLAN_LABELS: Record<string, string> = {
 
 export default function AdminAgentsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState(searchParams?.get('status') || '');
   const [plan, setPlan] = useState('');
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    const s = searchParams?.get('status');
+    if (s && s !== status) {
+      setStatus(s);
+      setPage(1);
+    }
+  }, [searchParams]);
 
   const { data, isLoading } = useAdminAgents({
     search: search || undefined,

@@ -10,15 +10,16 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
-function KpiCard({ title, value, diff, icon: Icon, prefix }: {
+function KpiCard({ title, value, diff, icon: Icon, prefix, href }: {
   title: string;
   value: number;
   diff?: number;
   icon: any;
   prefix?: string;
+  href?: string;
 }) {
-  return (
-    <Card>
+  const cardContent = (
+    <Card className={href ? "hover:border-primary/50 transition-colors cursor-pointer" : ""}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />
@@ -35,6 +36,12 @@ function KpiCard({ title, value, diff, icon: Icon, prefix }: {
       </CardContent>
     </Card>
   );
+
+  if (href) {
+    return <Link href={href} className="block">{cardContent}</Link>;
+  }
+
+  return cardContent;
 }
 
 export default function AdminDashboardPage() {
@@ -57,11 +64,13 @@ export default function AdminDashboardPage() {
           title="총 중개사"
           value={kpis?.total_agents ?? 0}
           icon={Users}
+          href="/admin/agents"
         />
         <KpiCard
           title="활성 중개사"
           value={kpis?.active_agents ?? 0}
           icon={UserCheck}
+          href="/admin/agents?status=active"
         />
         <KpiCard
           title="이번달 신규"
