@@ -34,9 +34,7 @@ function HeroSection() {
             <Button asChild size="lg" className="h-12 rounded-xl px-8 text-base font-semibold shadow-lg shadow-primary/25 transition-shadow hover:shadow-xl hover:shadow-primary/30">
               <Link href="/register">회원가입 후 무료 체험</Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="h-12 rounded-xl px-8 text-base font-medium">
-              <Link href="/#features">기능 살펴보기</Link>
-            </Button>
+
           </div>
 
 
