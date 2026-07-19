@@ -6,11 +6,6 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { InstallAppButton } from '@/components/install-app-button';
 
-const navLinks = [
-  { label: '기능', href: '/#features' },
-  { label: '요금제', href: '/#pricing' },
-  { label: 'FAQ', href: '/#faq' },
-];
 
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -26,18 +21,7 @@ export function Header() {
           <span className="text-lg font-bold text-foreground">랜드노트</span>
         </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden items-center gap-8 md:flex">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+
 
         {/* Desktop CTA */}
         <div className="hidden items-center gap-3 md:flex">
@@ -45,9 +29,7 @@ export function Header() {
           <Button asChild variant="ghost" size="sm" className="text-sm font-medium">
             <Link href="/login">로그인</Link>
           </Button>
-          <Button asChild size="sm" className="rounded-lg px-4 text-sm font-medium shadow-sm shadow-primary/25">
-            <Link href="/register">무료로 시작하기</Link>
-          </Button>
+
         </div>
 
         {/* Mobile Menu Button */}
@@ -77,24 +59,13 @@ export function Header() {
         )}
       >
         <div className="space-y-1 px-4 pb-4 pt-3">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="block rounded-lg px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              onClick={() => setMobileOpen(false)}
-            >
-              {link.label}
-            </Link>
-          ))}
+
           <div className="flex flex-col gap-2 pt-3">
             <InstallAppButton variant="outline" className="w-full rounded-lg border-primary/20 text-primary hover:bg-primary/5" />
             <Button asChild variant="outline" className="w-full rounded-lg">
               <Link href="/login">로그인</Link>
             </Button>
-            <Button asChild className="w-full rounded-lg shadow-sm shadow-primary/25">
-              <Link href="/register">무료로 시작하기</Link>
-            </Button>
+
           </div>
         </div>
       </div>
