@@ -193,6 +193,7 @@ export class AuthService {
         to: phone.replace(/[^0-9]/g, ''),
         from: process.env.COOLSMS_FROM_NUMBER!,
         text: `[랜드노트] 비밀번호 재설정 인증번호는 [${otpCode}] 입니다.`,
+        autoTypeDetect: true,
       });
     } catch (e) {
       console.error('SMS 발송 실패:', e);
