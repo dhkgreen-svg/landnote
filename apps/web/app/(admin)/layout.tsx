@@ -54,7 +54,7 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { admin } = useAdmin();
+  const { admin, loading } = useAdmin();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // 로그인 페이지는 레이아웃 미적용
