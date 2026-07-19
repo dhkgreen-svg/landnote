@@ -20,6 +20,7 @@ import {
 import type { CategoryCode, TransactionType } from '@landnote/shared';
 import { X, Upload, Camera, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { AddressSearch } from '@/components/address-search';
+import { formatPhoneNumber } from '@/lib/utils';
 
 const CATEGORY_LABELS: Record<string, string> = {
   residential: '주거', commercial: '상업', industrial: '산업', land: '토지',
@@ -623,7 +624,7 @@ function NewListingForm() {
             <Label>임대인/매도인 연락처 <span className="text-red-500">*</span></Label>
             <Input 
               value={ownerPhone}
-              onChange={e => setOwnerPhone(e.target.value)}
+              onChange={e => setOwnerPhone(formatPhoneNumber(e.target.value))}
               placeholder="예: 010-1234-5678"
             />
           </div>

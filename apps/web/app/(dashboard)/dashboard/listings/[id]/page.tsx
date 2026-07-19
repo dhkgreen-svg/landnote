@@ -22,7 +22,7 @@ import { ArrowLeft, Pencil, X, Upload, Camera, Trash2, Share2, MessageCircle, Me
 import { Input } from '@/components/ui/input';
 import { AddressSearch } from '@/components/address-search';
 import { AreaInput } from '@/components/ui/AreaInput';
-import { formatKoreanCurrency } from '@/lib/utils';
+import { formatKoreanCurrency, formatPhoneNumber } from '@/lib/utils';
 
 const STATUS_LABELS: Record<string, string> = {
   active: '활성', pending: '대기', contracted: '계약완료', closed: '종료',
@@ -995,7 +995,7 @@ export default function ListingDetailPage() {
             {editing ? (
               <Input
                 value={editForm.owner_phone || ''}
-                onChange={e => handleChange('owner_phone', e.target.value)}
+                onChange={e => handleChange('owner_phone', formatPhoneNumber(e.target.value))}
                 placeholder="예: 010-1234-5678"
                 className="max-w-[300px] mt-1"
               />
@@ -1026,7 +1026,7 @@ export default function ListingDetailPage() {
               {editing ? (
                 <Input
                   value={editForm.contract_party_phone || ''}
-                  onChange={e => handleChange('contract_party_phone', e.target.value)}
+                  onChange={e => handleChange('contract_party_phone', formatPhoneNumber(e.target.value))}
                   placeholder="예: 010-9876-5432"
                   className="max-w-[300px] mt-2 border-blue-200"
                 />
