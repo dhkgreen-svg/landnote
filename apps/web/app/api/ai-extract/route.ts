@@ -34,17 +34,36 @@ export async function POST(request: NextRequest) {
     }
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const imageBase64 = body.imageBase64;
-    const dataUri = imageBase64.startsWith('data:image') 
-        ? imageBase64 
-        : `data:image/jpeg;base64,${imageBase64}`;
+    const { imageBase64, textContent } = body;
+    
+    if (!imageBase64 && !textContent) {
+      return NextResponse.json(
+        { ok: false, error: { code: 'BAD_REQUEST', message: '이미지나 텍스트 내용 중 하나는 필수입니다.' } },
+        { status: 400 }
+      );
+    }
+
+    const userMessageContent: any[] = [];
+    
+    if (textContent) {
+      userMessageContent.push({ type: 'text', text: `Extract real estate information from the following text:\n\n${textContent}` });
+    } else {
+      userMessageContent.push({ type: 'text', text: 'Extract real estate information from this image.' });
+    }
+
+    if (imageBase64) {
+      const dataUri = imageBase64.startsWith('data:image') 
+          ? imageBase64 
+          : `data:image/jpeg;base64,${imageBase64}`;
+      userMessageContent.push({ type: 'image_url', image_url: { url: dataUri } });
+    }
 
     const aiResponse = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
-            content: `You are an AI assistant that extracts real estate information from an image (business card, handwritten note, or flyer). 
+            content: `You are an AI assistant that extracts real estate information from an image or text (business card, handwritten note, flyer, KakaoTalk/SMS messages). 
 Return ONLY a valid JSON object matching the following structure without markdown formatting or comments.
 Structure:
 {
@@ -58,15 +77,12 @@ Structure:
   "address_full": "서울시 강남구...", // Full address string
   "customer_name": "홍길동", // Extracted customer/contact name
   "customer_phone": "010-1234-5678", // Extracted phone number
-  "agent_memo": "Any other additional information found on the image." // Extra details
+  "agent_memo": "Any other additional information found on the image or text." // Extra details
 }`
           },
           {
             role: 'user',
-            content: [
-              { type: 'text', text: 'Extract real estate information from this image.' },
-              { type: 'image_url', image_url: { url: dataUri } },
-            ],
+            content: userMessageContent,
           },
         ],
         max_tokens: 500,

@@ -2,15 +2,19 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Camera, UploadCloud, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Camera, UploadCloud, Loader2, ImageIcon, Type } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function AiInputPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [textContent, setTextContent] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
+  const [mode, setMode] = useState<'image' | 'text'>('image');
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -27,18 +31,26 @@ export default function AiInputPage() {
     reader.readAsDataURL(file);
   };
 
-  const processImage = async () => {
-    if (!preview) return;
+  const processInput = async () => {
+    if (mode === 'image' && !preview) return;
+    if (mode === 'text' && !textContent.trim()) return;
 
     setIsLoading(true);
     setStatusMsg('AI 분석 요청 중...');
     try {
-      // Use Next.js API route proxy (server-side) to bypass firewall/CORS
-      setStatusMsg('서버로 이미지 전송 중...');
+      setStatusMsg('서버로 데이터 전송 중...');
+      const payload: any = {};
+      
+      if (mode === 'image' && preview) {
+        payload.imageBase64 = preview;
+      } else if (mode === 'text' && textContent.trim()) {
+        payload.textContent = textContent.trim();
+      }
+
       const res = await fetch('/api/ai-extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: preview }),
+        body: JSON.stringify(payload),
       });
 
       setStatusMsg(`서버 응답 수신 (${res.status})...`);
@@ -74,13 +86,13 @@ export default function AiInputPage() {
         router.push(`/dashboard/listings/new?aiDraft=${draftId}`);
       }
     } catch (error) {
-      console.error('processImage error:', error);
+      console.error('processInput error:', error);
       const msg = error instanceof Error ? error.message : String(error);
       setStatusMsg(`예외: ${msg}`);
       window.alert(`AI 분석 오류:\n${msg}`);
       toast({
         title: '분석 실패',
-        description: msg || '사진 분석 중 오류가 발생했습니다.',
+        description: msg || '분석 중 오류가 발생했습니다.',
         variant: 'destructive',
       });
     } finally {
@@ -93,7 +105,7 @@ export default function AiInputPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">AI 간편 입력</h1>
         <p className="text-muted-foreground">
-          수기 매물장, 전단지, 고객 명함 등을 촬영하면 AI가 알아서 입력 양식을 채워줍니다.
+          수기 매물장, 고객 문자 메시지 등을 넣으면 AI가 알아서 입력 양식을 채워줍니다.
         </p>
       </div>
 
@@ -103,73 +115,122 @@ export default function AiInputPage() {
         </div>
       )}
 
+      <div className="flex rounded-lg border bg-muted p-1">
+        <Button
+          variant={mode === 'image' ? 'default' : 'ghost'}
+          className="w-1/2"
+          onClick={() => setMode('image')}
+          disabled={isLoading}
+        >
+          <Camera className="mr-2 h-4 w-4" />
+          사진으로 입력
+        </Button>
+        <Button
+          variant={mode === 'text' ? 'default' : 'ghost'}
+          className="w-1/2"
+          onClick={() => setMode('text')}
+          disabled={isLoading}
+        >
+          <Type className="mr-2 h-4 w-4" />
+          문자로 입력
+        </Button>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>사진 업로드</CardTitle>
-          <CardDescription>분석할 이미지를 선택하거나 카메라로 촬영해주세요.</CardDescription>
+          <CardTitle>{mode === 'image' ? '사진 업로드' : '문자 붙여넣기'}</CardTitle>
+          <CardDescription>
+            {mode === 'image' 
+              ? '분석할 이미지를 선택하거나 카메라로 촬영해주세요.' 
+              : '카카오톡이나 문자로 받은 매물 정보를 그대로 붙여넣어주세요.'}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <Button
-              variant="outline"
-              className="h-32 flex flex-col items-center justify-center gap-2"
-              onClick={() => cameraInputRef.current?.click()}
-              disabled={isLoading}
-            >
-              <Camera className="h-8 w-8 text-muted-foreground" />
-              <span>사진 촬영</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-32 flex flex-col items-center justify-center gap-2"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading}
-            >
-              <UploadCloud className="h-8 w-8 text-muted-foreground" />
-              <span>갤러리 선택</span>
-            </Button>
-            
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              ref={cameraInputRef}
-              onChange={handleFileSelect}
-            />
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-            />
-          </div>
+          {mode === 'image' ? (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <Button
+                  variant="outline"
+                  className="h-32 flex flex-col items-center justify-center gap-2"
+                  onClick={() => cameraInputRef.current?.click()}
+                  disabled={isLoading}
+                >
+                  <Camera className="h-8 w-8 text-muted-foreground" />
+                  <span>사진 촬영</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-32 flex flex-col items-center justify-center gap-2"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading}
+                >
+                  <UploadCloud className="h-8 w-8 text-muted-foreground" />
+                  <span>갤러리 선택</span>
+                </Button>
+                
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  ref={cameraInputRef}
+                  onChange={handleFileSelect}
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                />
+              </div>
 
-          {preview && (
-            <div className="space-y-4 border rounded-lg p-4">
-              <h3 className="font-medium flex items-center gap-2">
-                <ImageIcon className="h-4 w-4" />
-                선택된 이미지 미리보기
-              </h3>
-              <div className="relative aspect-video rounded-md overflow-hidden bg-muted flex items-center justify-center">
-                <img src={preview} alt="Preview" className="object-contain max-h-64" />
-              </div>
-              <div className="flex gap-3">
-                <Button variant="outline" className="w-full" onClick={() => { setPreview(null); setStatusMsg(''); }} disabled={isLoading}>
-                  취소
-                </Button>
-                <Button className="w-full" onClick={processImage} disabled={isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      AI 분석 중...
-                    </>
-                  ) : (
-                    '이 사진으로 분석하기'
-                  )}
-                </Button>
-              </div>
+              {preview && (
+                <div className="space-y-4 border rounded-lg p-4">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    선택된 이미지 미리보기
+                  </h3>
+                  <div className="relative aspect-video rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                    <img src={preview} alt="Preview" className="object-contain max-h-64" />
+                  </div>
+                  <div className="flex gap-3">
+                    <Button variant="outline" className="w-full" onClick={() => { setPreview(null); setStatusMsg(''); }} disabled={isLoading}>
+                      취소
+                    </Button>
+                    <Button className="w-full" onClick={processInput} disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          AI 분석 중...
+                        </>
+                      ) : (
+                        '이 사진으로 분석하기'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="space-y-4">
+              <Textarea 
+                placeholder="예: [매물 추천] 서울시 강남구 역삼동 상가 월세 100/10..." 
+                className="min-h-[200px]"
+                value={textContent}
+                onChange={(e) => setTextContent(e.target.value)}
+                disabled={isLoading}
+              />
+              <Button className="w-full" onClick={processInput} disabled={isLoading || !textContent.trim()}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    AI 분석 중...
+                  </>
+                ) : (
+                  '이 문자로 분석하기'
+                )}
+              </Button>
             </div>
           )}
         </CardContent>
