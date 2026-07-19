@@ -88,7 +88,7 @@ export default function AdminAgentsPage() {
                     <tr className="border-b bg-muted/50">
                       <th className="px-4 py-3 text-left font-medium">사무소</th>
                       <th className="px-4 py-3 text-left font-medium">이름</th>
-                      <th className="px-4 py-3 text-left font-medium">이메일</th>
+                      <th className="px-4 py-3 text-left font-medium">전화번호(이메일)</th>
                       <th className="px-4 py-3 text-left font-medium">플랜</th>
                       <th className="px-4 py-3 text-left font-medium">상태</th>
                       <th className="px-4 py-3 text-left font-medium">가입일</th>
@@ -103,7 +103,9 @@ export default function AdminAgentsPage() {
                           </Link>
                         </td>
                         <td className="px-4 py-3">{agent.agent_name}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{agent.email}</td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {agent.phone ? `${agent.phone} (${agent.email})` : agent.email}
+                        </td>
                         <td className="px-4 py-3">
                           <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                             agent.subscription_plan === 'pro'
