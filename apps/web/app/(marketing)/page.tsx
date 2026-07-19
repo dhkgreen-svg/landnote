@@ -50,62 +50,7 @@ function HeroSection() {
             </Button>
           </div>
 
-          <p className="mt-4 text-sm text-muted-foreground">
-            하루 {Math.round(PLAN_PRICE.minimal / 30)}원부터 시작하는 합리적인 가격
-          </p>
 
-          {/* Dashboard Mockup */}
-          <div className="relative mt-16 w-full max-w-4xl sm:mt-20">
-            <div className="absolute -inset-4 rounded-2xl bg-gradient-to-b from-primary/20 via-primary/5 to-transparent blur-2xl" />
-            <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-b from-background to-muted/30 p-1 shadow-2xl">
-              <div className="rounded-xl bg-background p-6 sm:p-8">
-                {/* Top bar */}
-                <div className="flex items-center gap-3">
-                  <div className="h-3 w-3 rounded-full bg-red-400" />
-                  <div className="h-3 w-3 rounded-full bg-yellow-400" />
-                  <div className="h-3 w-3 rounded-full bg-green-400" />
-                  <div className="ml-4 h-4 w-48 rounded-md bg-muted" />
-                </div>
-                {/* Content */}
-                <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                  {[
-                    { label: '나의 전문 분야', value: '4', color: 'bg-blue-500' },
-                    { label: 'QR/링크 관리', value: '4', color: 'bg-emerald-500' },
-                    { label: '잠긴 카테고리', value: '2', color: 'bg-violet-500' },
-                  ].map((card) => (
-                    <div key={card.label} className="rounded-xl border bg-background p-4 shadow-sm">
-                      <div className="flex items-center gap-2">
-                        <div className={`h-2 w-2 rounded-full ${card.color}`} />
-                        <span className="text-xs font-medium text-muted-foreground">{card.label}</span>
-                      </div>
-                      <p className="mt-2 text-2xl font-bold text-foreground">{card.value}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <div className="h-32 rounded-xl border bg-muted/30 p-4">
-                    <div className="h-3 w-24 rounded bg-muted" />
-                    <div className="mt-4 flex items-end gap-1.5">
-                      {[40, 65, 45, 80, 55, 70, 90, 60, 75, 85, 50, 95].map((h, i) => (
-                        <div key={i} className="flex-1 rounded-t bg-primary/20" style={{ height: `${h}%` }} />
-                      ))}
-                    </div>
-                  </div>
-                  <div className="h-32 rounded-xl border bg-muted/30 p-4">
-                    <div className="h-3 w-20 rounded bg-muted" />
-                    <div className="mt-4 space-y-2.5">
-                      {[85, 60, 40].map((w, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <div className="h-2 rounded-full bg-primary/30" style={{ width: `${w}%` }} />
-                          <span className="text-[10px] text-muted-foreground">{w}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </section>
