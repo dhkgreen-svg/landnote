@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ const PLAN_LABELS: Record<string, string> = {
 };
 
 export default function AdminAgentsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [plan, setPlan] = useState('');
@@ -96,11 +98,13 @@ export default function AdminAgentsPage() {
                   </thead>
                   <tbody>
                     {(data?.agents ?? []).map((agent: any) => (
-                      <tr key={agent.id} className="border-b hover:bg-muted/30">
-                        <td className="px-4 py-3">
-                          <Link href={`/admin/agents/${agent.id}`} className="text-blue-600 hover:underline font-medium">
-                            {agent.office_name || '-'}
-                          </Link>
+                      <tr 
+                        key={agent.id} 
+                        className="border-b hover:bg-muted/30 cursor-pointer"
+                        onClick={() => router.push(`/admin/agents/${agent.id}`)}
+                      >
+                        <td className="px-4 py-3 font-medium">
+                          {agent.office_name || '-'}
                         </td>
                         <td className="px-4 py-3">{agent.agent_name}</td>
                         <td className="px-4 py-3 text-muted-foreground">
