@@ -14,18 +14,7 @@ function HeroSection() {
 
       <div className="mx-auto max-w-6xl px-4 pb-20 pt-24 sm:px-6 sm:pb-32 sm:pt-32 lg:px-8">
         <div className="flex flex-col items-center text-center">
-          <div className="mb-6 flex flex-wrap justify-center gap-2">
-            <Badge variant="secondary" className="gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
-              {TRIAL_DAYS}일 무료 체험
-            </Badge>
-            <Badge variant="secondary" className="rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
-              고객 앱 설치 없이 접수
-            </Badge>
-            <Badge variant="secondary" className="rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
-              중개사별 데이터 분리
-            </Badge>
-          </div>
+
 
           <h1 className="max-w-4xl text-4xl font-extrabold leading-[1.15] text-foreground sm:text-5xl md:text-6xl lg:text-[3.75rem]">
             공인중개사 스마트 매칭 앱, 랜드노트
