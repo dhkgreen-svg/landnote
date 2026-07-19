@@ -37,4 +37,22 @@ export class AuthController {
   async me(@CurrentAgent() agent: any) {
     return agent;
   }
+
+  @Public()
+  @Post('reset-password/send')
+  async sendResetOtp(@Body() body: { phone: string }) {
+    return this.authService.sendResetOtp(body.phone);
+  }
+
+  @Public()
+  @Post('reset-password/verify-otp')
+  async verifyResetOtp(@Body() body: { phone: string; otp: string }) {
+    return this.authService.verifyResetOtp(body.phone, body.otp);
+  }
+
+  @Public()
+  @Post('reset-password/reset')
+  async resetPassword(@Body() body: { phone: string; token: string; new_password: string }) {
+    return this.authService.resetPassword(body.phone, body.token, body.new_password);
+  }
 }

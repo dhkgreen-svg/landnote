@@ -147,4 +147,74 @@ export class AuthService {
       session: data.session,
     };
   }
+
+  async sendResetOtp(phone: string) {
+    const generatedEmail = phone.replace(/[^0-9]/g, '') + '@landnote.com';
+    const { data: agent } = await this.supabase
+      .from('agents')
+      .select('user_id')
+      .eq('email', generatedEmail)
+      .maybeSingle();
+
+    if (!agent) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: '가입되지 않은 전화번호입니다',
+      });
+    }
+
+    // TODO: 연동될 SMS 서비스(쿨SMS 등) API 호출 로직 위치
+    // 현재는 테스트를 위해 무조건 성공으로 처리
+    return { message: '인증번호가 발송되었습니다.' };
+  }
+
+  async verifyResetOtp(phone: string, otp: string) {
+    // 테스트용 하드코딩 인증번호
+    if (otp !== '123456') {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: '인증번호가 올바르지 않습니다',
+      });
+    }
+
+    // 인증 성공 시 임시 토큰 발급
+    const token = 'mock-reset-token-' + Date.now();
+    return { token };
+  }
+
+  async resetPassword(phone: string, token: string, new_password: string) {
+    if (!token.startsWith('mock-reset-token-')) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: '유효하지 않은 토큰입니다',
+      });
+    }
+
+    const generatedEmail = phone.replace(/[^0-9]/g, '') + '@landnote.com';
+    const { data: agent } = await this.supabase
+      .from('agents')
+      .select('user_id')
+      .eq('email', generatedEmail)
+      .maybeSingle();
+
+    if (!agent) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: '사용자를 찾을 수 없습니다',
+      });
+    }
+
+    const { error } = await this.supabase.auth.admin.updateUserById(agent.user_id, {
+      password: new_password
+    });
+
+    if (error) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: error.message,
+      });
+    }
+
+    return { message: '비밀번호가 성공적으로 변경되었습니다.' };
+  }
 }
