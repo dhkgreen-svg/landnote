@@ -74,17 +74,13 @@ export default function LinksPage() {
     async function load() {
       try {
         const entries = await apiFetch<QrEntry[]>('/agents/me/qr');
-        setQrEntries(entries);
+        setQrEntries(entries.filter(e => e.category === null));
       } catch {
         // 관리자 계정 등 실제 중개사 정보가 없어서 에러가 나는 경우를 위해 테스트용 화면 제공
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const agentCode = 'test-agent';
         setQrEntries([
           { url: `${baseUrl}/form/${agentCode}`, label: '전체', category: null },
-          { url: `${baseUrl}/form/${agentCode}?cat=residential`, label: '주거용', category: 'residential' },
-          { url: `${baseUrl}/form/${agentCode}?cat=commercial`, label: '상업용', category: 'commercial' },
-          { url: `${baseUrl}/form/${agentCode}?cat=industrial`, label: '산업용', category: 'industrial' },
-          { url: `${baseUrl}/form/${agentCode}?cat=land`, label: '토지', category: 'land' }
         ]);
       } finally {
         setLoading(false);
