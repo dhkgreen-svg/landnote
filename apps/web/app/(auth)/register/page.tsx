@@ -32,7 +32,7 @@ export default function RegisterPage() {
           password: store.password,
           agent_name: store.agent_name,
           phone: store.phone,
-          license_number: store.license_number,
+          license_number: store.license_number || ('TEMP_' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 5).toUpperCase()),
           office_name: store.office_name || undefined,
         }),
       });
@@ -128,17 +128,7 @@ export default function RegisterPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="license_number">자격증 번호 또는 개설 등록 번호 *</Label>
-              <Input
-                id="license_number"
-                type="text"
-                placeholder="공인중개사 자격증 번호 또는 개설 등록 번호"
-                value={store.license_number}
-                onChange={(e) => store.setField('license_number', e.target.value)}
-                required
-              />
-            </div>
+
 
             <div className="space-y-2">
               <Label htmlFor="office_name">사무소명 (선택)</Label>
