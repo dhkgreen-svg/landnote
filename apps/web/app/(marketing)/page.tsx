@@ -237,8 +237,6 @@ function formatPrice(price: number): string {
 }
 
 function PricingSection() {
-  const minLimits = PLAN_LIMITS.minimal;
-  const stdLimits = PLAN_LIMITS.standard;
   const proLimits = PLAN_LIMITS.pro;
 
   return (
@@ -254,68 +252,9 @@ function PricingSection() {
           </p>
         </div>
 
-        <div className="mx-auto mt-14 grid max-w-5xl gap-6 md:grid-cols-3">
-          {/* Minimal Plan */}
-          <div className="relative flex flex-col rounded-2xl border bg-background p-8 shadow-sm">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">미니멀</h3>
-              <p className="mt-1 text-sm text-muted-foreground">특정 분야만 다루는 분들께</p>
-              <div className="mt-5">
-                <span className="text-4xl font-extrabold text-foreground">
-                  {formatPrice(PLAN_PRICE.minimal)}
-                </span>
-                <span className="text-base text-muted-foreground">원/월</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">하루 {Math.round(PLAN_PRICE.minimal / 30)}원</p>
-            </div>
-            <div className="mt-8 flex-1">
-              <ul className="space-y-3.5">
-                <PricingFeatureItem text={`카테고리 ${minLimits.max_categories}개`} />
-                <PricingFeatureItem text="매물 등록 무제한" />
-                <PricingFeatureItem text={`QR코드 ${minLimits.max_qr_codes}개`} />
-                <PricingFeatureItem text={`이미지 ${minLimits.max_images_per_listing}장/매물`} />
-              </ul>
-            </div>
-            <div className="mt-8">
-              <Button asChild variant="outline" className="w-full rounded-xl" size="lg">
-                <Link href="/register">무료 체험 시작</Link>
-              </Button>
-            </div>
-          </div>
-
-          {/* Standard Plan */}
-          <div className="relative flex flex-col rounded-2xl border bg-background p-8 shadow-sm">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">스탠다드</h3>
-              <p className="mt-1 text-sm text-muted-foreground">조금 더 넓은 분야를 다루신다면</p>
-              <div className="mt-5">
-                <span className="text-4xl font-extrabold text-foreground">
-                  {formatPrice(PLAN_PRICE.standard)}
-                </span>
-                <span className="text-base text-muted-foreground">원/월</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">하루 {Math.round(PLAN_PRICE.standard / 30)}원</p>
-            </div>
-            <div className="mt-8 flex-1">
-              <ul className="space-y-3.5">
-                <PricingFeatureItem text={`카테고리 ${stdLimits.max_categories}개`} />
-                <PricingFeatureItem text="매물 등록 무제한" />
-                <PricingFeatureItem text={`QR코드 ${stdLimits.max_qr_codes}개`} />
-                <PricingFeatureItem text={`이미지 ${stdLimits.max_images_per_listing}장/매물`} />
-              </ul>
-            </div>
-            <div className="mt-8">
-              <Button asChild variant="outline" className="w-full rounded-xl" size="lg">
-                <Link href="/register">무료 체험 시작</Link>
-              </Button>
-            </div>
-          </div>
-
+        <div className="mx-auto mt-14 max-w-md">
           {/* Pro Plan */}
           <div className="relative flex flex-col rounded-2xl border-2 border-primary bg-background p-8 shadow-lg shadow-primary/10">
-            <div className="absolute -top-3.5 left-6">
-              <Badge className="rounded-full px-3 py-1 text-xs font-semibold shadow-sm">추천</Badge>
-            </div>
             <div>
               <h3 className="text-lg font-semibold text-foreground">프로</h3>
               <p className="mt-1 text-sm text-muted-foreground">전문 중개사를 위한 무제한 플랜</p>
