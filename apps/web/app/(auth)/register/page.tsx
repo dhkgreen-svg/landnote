@@ -23,12 +23,20 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
 
+    if (store.password !== store.password_confirm) {
+      setError('비밀번호가 일치하지 않습니다.');
+      setLoading(false);
+      return;
+    }
+
+    const generatedEmail = store.phone.replace(/[^0-9]/g, '') + '@landnote.com';
+
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: store.email,
+          email: generatedEmail,
           password: store.password,
           agent_name: store.agent_name,
           phone: store.phone,
@@ -75,6 +83,17 @@ export default function RegisterPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="office_name">사무소명 (선택)</Label>
+              <Input
+                id="office_name"
+                type="text"
+                placeholder="사무소명"
+                value={store.office_name}
+                onChange={(e) => store.setField('office_name', e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="agent_name">이름 *</Label>
               <Input
                 id="agent_name"
@@ -87,13 +106,13 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">이메일 *</Label>
+              <Label htmlFor="phone">전화번호 *</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="example@email.com"
-                value={store.email}
-                onChange={(e) => store.setField('email', e.target.value)}
+                id="phone"
+                type="tel"
+                placeholder="010-0000-0000"
+                value={store.phone}
+                onChange={(e) => store.setField('phone', e.target.value)}
                 required
               />
             </div>
@@ -117,27 +136,17 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">전화번호 *</Label>
+              <Label htmlFor="password_confirm">비밀번호 확인 *</Label>
               <Input
-                id="phone"
-                type="tel"
-                placeholder="010-0000-0000"
-                value={store.phone}
-                onChange={(e) => store.setField('phone', e.target.value)}
+                id="password_confirm"
+                type="password"
+                placeholder="비밀번호를 다시 한 번 입력하세요"
+                value={store.password_confirm}
+                onChange={(e) => store.setField('password_confirm', e.target.value)}
                 required
-              />
-            </div>
-
-
-
-            <div className="space-y-2">
-              <Label htmlFor="office_name">사무소명 (선택)</Label>
-              <Input
-                id="office_name"
-                type="text"
-                placeholder="사무소명"
-                value={store.office_name}
-                onChange={(e) => store.setField('office_name', e.target.value)}
+                minLength={6}
+                maxLength={8}
+                pattern="\d{6,8}"
               />
             </div>
 

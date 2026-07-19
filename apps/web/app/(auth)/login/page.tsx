@@ -61,7 +61,15 @@ export default function LoginPage() {
     }
 
     const isAdminLogin = loginEmail === 'admin' && loginPass === 'admin';
-    const actualEmail = isAdminLogin ? 'admin@landnote.com' : loginEmail;
+    
+    let actualEmail = loginEmail;
+    if (isAdminLogin) {
+      actualEmail = 'admin@landnote.com';
+    } else if (!loginEmail.includes('@')) {
+      // If no @ is present, assume it's a phone number and strip hyphens/non-digits
+      actualEmail = loginEmail.replace(/[^0-9]/g, '') + '@landnote.com';
+    }
+
     const actualPassword = isAdminLogin ? 'admin1234!' : loginPass;
 
     try {
@@ -112,11 +120,11 @@ export default function LoginPage() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">이메일 또는 아이디</Label>
+            <Label htmlFor="email">전화번호 (아이디)</Label>
             <Input
               id="email"
               type="text"
-              placeholder="example@email.com (체험은 admin 입력)"
+              placeholder="010-0000-0000 (체험은 admin 입력)"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
