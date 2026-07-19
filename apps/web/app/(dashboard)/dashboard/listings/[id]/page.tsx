@@ -970,7 +970,17 @@ export default function ListingDetailPage() {
         <CardContent className="space-y-4">
           <div>
             <Label>상태</Label>
-            <Select value={editForm.status || ''} onValueChange={v => handleChange('status', v)} disabled={!editing}>
+            <Select 
+              value={editing ? (editForm.status || '') : (listing.status || '')} 
+              onValueChange={v => {
+                if (editing) {
+                  handleChange('status', v);
+                } else {
+                  updateMutation.mutate({ status: v });
+                }
+              }} 
+              disabled={!editing && saving}
+            >
               <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Object.entries(STATUS_LABELS).map(([k, v]) => (
