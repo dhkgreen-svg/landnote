@@ -18,7 +18,7 @@ import {
   useDeleteListing,
 } from '@/lib/hooks/queries';
 import { SUBCATEGORY_LABELS, SUBCATEGORIES } from '@landnote/shared';
-import { ArrowLeft, Pencil, X, Upload, Camera, Trash2, Share2, MessageCircle, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Upload, Camera, Trash2, Share2, MessageCircle, MessageSquare, Phone } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { AddressSearch } from '@/components/address-search';
 import { AreaInput } from '@/components/ui/AreaInput';
@@ -315,10 +315,11 @@ export default function ListingDetailPage() {
     });
   };
 
-  const handleShareSMS = () => {
+  const handleShareSMS = (phone?: string) => {
     const text = generateShareText();
     if (!text) return;
-    window.location.href = `sms:?body=${encodeURIComponent(text)}`;
+    const cleanPhone = phone ? phone.replace(/[^0-9]/g, '') : '';
+    window.location.href = `sms:${cleanPhone}?body=${encodeURIComponent(text)}`;
   };
 
   if (loading) {
@@ -988,7 +989,24 @@ export default function ListingDetailPage() {
                 className="max-w-[300px] mt-1"
               />
             ) : (
-              <div className="text-sm mt-1">{listing.owner_phone || '-'}</div>
+              <div className="mt-2 space-y-2">
+                <div className="text-sm font-medium">{listing.owner_phone || '등록된 번호가 없습니다'}</div>
+                {listing.owner_phone && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={`tel:${listing.owner_phone.replace(/[^0-9]/g, '')}`}>
+                        <Phone className="mr-1 h-3 w-3" /> 전화걸기
+                      </a>
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleShareSMS(listing.owner_phone!)}>
+                      <MessageSquare className="mr-1 h-3 w-3 text-blue-500" /> 문자전송
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleShareKakao}>
+                      <MessageCircle className="mr-1 h-3 w-3 text-yellow-500" /> 카톡공유
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
           {editForm.status === 'contracted' && (
@@ -1002,7 +1020,24 @@ export default function ListingDetailPage() {
                   className="max-w-[300px] mt-2 border-blue-200"
                 />
               ) : (
-                <div className="text-sm mt-2 text-blue-800">{listing.contract_party_phone || '-'}</div>
+                <div className="mt-2 space-y-2">
+                  <div className="text-sm font-medium text-blue-800">{listing.contract_party_phone || '등록된 번호가 없습니다'}</div>
+                  {listing.contract_party_phone && (
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={`tel:${listing.contract_party_phone.replace(/[^0-9]/g, '')}`}>
+                          <Phone className="mr-1 h-3 w-3" /> 전화걸기
+                        </a>
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleShareSMS(listing.contract_party_phone!)}>
+                        <MessageSquare className="mr-1 h-3 w-3 text-blue-500" /> 문자전송
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleShareKakao}>
+                        <MessageCircle className="mr-1 h-3 w-3 text-yellow-500" /> 카톡공유
+                      </Button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
