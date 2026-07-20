@@ -43,6 +43,10 @@ export class JwtAuthGuard implements CanActivate {
       try { agent.phone = decryptPhone(agent.phone); } catch { /* 이미 평문인 경우 무시 */ }
     }
 
+    if (!agent.selected_categories || agent.selected_categories.length === 0) {
+      agent.selected_categories = ['residential', 'commercial', 'industrial', 'land'];
+    }
+
     req.agent = agent;
     return true;
   }

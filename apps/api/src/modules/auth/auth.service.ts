@@ -61,6 +61,7 @@ export class AuthService {
         office_name: body.office_name ?? null,
         subscription_plan: 'starter',
         subscription_status: 'trial',
+        selected_categories: ['residential', 'commercial', 'industrial', 'land'],
       })
       .select()
       .single();
