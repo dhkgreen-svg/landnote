@@ -79,31 +79,31 @@ export class CreateInquiryDto {
 
   // ── listing 타입 가격 필드 (조건부 검증) ──
 
-  @ValidateIf(o => o.inquiry_type === 'listing' && o.transaction_types?.includes('sale'))
+  @ValidateIf(o => (o.inquiry_type === 'listing' && o.transaction_types?.includes('sale')) || (o.inquiry_type === 'looking_for' && o.price_sale !== undefined))
   @IsNumber() @Min(1) @Type(() => Number)
   price_sale?: number;
 
-  @ValidateIf(o => o.inquiry_type === 'listing' && o.transaction_types?.includes('jeonse'))
+  @ValidateIf(o => (o.inquiry_type === 'listing' && o.transaction_types?.includes('jeonse')) || (o.inquiry_type === 'looking_for' && o.price_jeonse !== undefined))
   @IsNumber() @Min(1) @Type(() => Number)
   price_jeonse?: number;
 
-  @ValidateIf(o => o.inquiry_type === 'listing' && ['monthly_rent', 'premium_transfer'].some(t => o.transaction_types?.includes(t)))
+  @ValidateIf(o => (o.inquiry_type === 'listing' && ['monthly_rent', 'premium_transfer'].some(t => o.transaction_types?.includes(t))) || (o.inquiry_type === 'looking_for' && o.deposit !== undefined))
   @IsNumber() @Min(0) @Type(() => Number)
   deposit?: number;
 
-  @ValidateIf(o => o.inquiry_type === 'listing' && ['monthly_rent', 'premium_transfer'].some(t => o.transaction_types?.includes(t)))
+  @ValidateIf(o => (o.inquiry_type === 'listing' && ['monthly_rent', 'premium_transfer'].some(t => o.transaction_types?.includes(t))) || (o.inquiry_type === 'looking_for' && o.monthly_rent !== undefined))
   @IsNumber() @Min(1) @Type(() => Number)
   monthly_rent?: number;
 
-  @ValidateIf(o => o.inquiry_type === 'listing' && ['jeonse', 'monthly_rent', 'premium_transfer'].some(t => o.transaction_types?.includes(t)))
+  @ValidateIf(o => (o.inquiry_type === 'listing' && ['jeonse', 'monthly_rent', 'premium_transfer'].some(t => o.transaction_types?.includes(t))) || (o.inquiry_type === 'looking_for' && o.maintenance_fee !== undefined))
   @IsNumber() @Min(0) @Type(() => Number)
   maintenance_fee?: number;
 
-  @ValidateIf(o => o.inquiry_type === 'listing' && o.transaction_types?.includes('premium_transfer'))
+  @ValidateIf(o => (o.inquiry_type === 'listing' && o.transaction_types?.includes('premium_transfer')) || (o.inquiry_type === 'looking_for' && o.premium_price !== undefined))
   @IsNumber() @Min(0) @Type(() => Number)
   premium_price?: number;
 
-  @ValidateIf(o => o.inquiry_type === 'listing' && o.transaction_types?.includes('premium_transfer'))
+  @ValidateIf(o => (o.inquiry_type === 'listing' && o.transaction_types?.includes('premium_transfer')) || (o.inquiry_type === 'looking_for' && o.contract_remaining_months !== undefined))
   @IsNumber() @Min(1) @Type(() => Number)
   contract_remaining_months?: number;
 
