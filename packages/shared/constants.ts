@@ -185,10 +185,12 @@ export const INQUIRY_STATUS = {
 } as const;
 
 export const LISTING_STATUS = {
-  ACTIVE:     'active',
-  PENDING:    'pending',
-  CONTRACTED: 'contracted',
-  CLOSED:     'closed',
+  ACTIVE:      'active',
+  PREMIUM:     'premium',
+  IN_PROGRESS: 'in_progress',
+  ERROR:       'error',
+  CONTRACTED:  'contracted',
+  CLOSED:      'closed',
 } as const;
 
 // ── 4-5. 용도지역 (Zoning) ──────────────────────────────────────────────

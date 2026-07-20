@@ -92,7 +92,7 @@ export interface PropertyListing {
   direction: string | null;
   images: ListingImage[];
   detail_info: Record<string, unknown>;
-  status: 'active' | 'pending' | 'contracted' | 'closed';
+  status: 'active' | 'premium' | 'in_progress' | 'error' | 'contracted' | 'closed';
   agent_memo: string | null;
   source_inquiry_id: string | null;
   created_at: string;

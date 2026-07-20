@@ -25,7 +25,9 @@ const INQUIRY_STATUS_LABEL: Record<string, string> = {
 
 const LISTING_STATUS_LABEL: Record<string, string> = {
   active: '활성',
-  pending: '대기',
+  premium: '우수',
+  in_progress: '진행 중',
+  error: '오류',
   contracted: '계약완료',
   closed: '종료',
 };

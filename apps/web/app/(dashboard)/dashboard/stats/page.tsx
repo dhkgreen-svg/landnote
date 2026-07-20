@@ -33,11 +33,11 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  active: '#22c55e', pending: '#eab308', contracted: '#3b82f6', closed: '#6b7280',
+  active: '#22c55e', premium: '#a855f7', in_progress: '#eab308', error: '#ef4444', contracted: '#3b82f6', closed: '#6b7280',
 };
 
 const STATUS_LABELS_LISTING: Record<string, string> = {
-  active: '활성', pending: '대기', contracted: '계약', closed: '종료',
+  active: '활성', premium: '우수', in_progress: '진행 중', error: '오류', contracted: '계약', closed: '종료',
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
