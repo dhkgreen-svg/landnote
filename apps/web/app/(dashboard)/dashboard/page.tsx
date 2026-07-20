@@ -12,11 +12,20 @@ import { useAgent } from '@/lib/hooks/use-agent';
 import { UpgradeModal } from '@/components/dashboard/UpgradeModal';
 import { DashboardListingsView, DashboardInquiriesView } from './interactive-views';
 
-const STATUS_LABELS: Record<string, string> = {
+const INQUIRY_STATUS_LABELS: Record<string, string> = {
   new: '신규',
   contacted: '연락완료',
   viewing: '방문예정',
   negotiating: '협상중',
+  contracted: '계약완료',
+  closed: '종료',
+};
+
+const LISTING_STATUS_LABELS: Record<string, string> = {
+  active: '활성',
+  premium: '우수',
+  in_progress: '진행중',
+  hold: '보류',
   contracted: '계약완료',
   closed: '종료',
 };
@@ -116,8 +125,17 @@ export default function DashboardPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">총 매물</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <div className="text-3xl font-bold">{summary?.listings?.total_count ?? 0}</div>
+              {summary?.listings?.by_status && (
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(summary.listings.by_status).map(([status, count]) => (
+                    <Badge key={status} variant="outline" className="text-xs">
+                      {LISTING_STATUS_LABELS[status] || status} {count}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -158,8 +176,17 @@ export default function DashboardPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">매수 고객 전체</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <div className="text-3xl font-bold">{summary?.buyers?.total_count ?? 0}</div>
+              {summary?.buyers?.by_status && (
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(summary.buyers.by_status).map(([status, count]) => (
+                    <Badge key={status} variant="outline" className="text-xs">
+                      {INQUIRY_STATUS_LABELS[status] || status} {count}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

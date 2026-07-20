@@ -28,46 +28,62 @@ export class StatsService {
   }
 
   private async getListingsStats(agentId: string) {
-    const { count: totalCount } = await this.supabase
+    const { data } = await this.supabase
       .from('property_listings')
-      .select('id', { count: 'exact', head: true })
-      .eq('agent_id', agentId)
-      .eq('status', 'active');
+      .select('status, created_at')
+      .eq('agent_id', agentId);
 
     const now = new Date();
     const startOfThisWeek = new Date(now);
     startOfThisWeek.setDate(now.getDate() - now.getDay());
     startOfThisWeek.setHours(0, 0, 0, 0);
 
-    const { count: newCount } = await this.supabase
-      .from('property_listings')
-      .select('id', { count: 'exact', head: true })
-      .eq('agent_id', agentId)
-      .gte('created_at', startOfThisWeek.toISOString());
+    let totalCount = 0;
+    let newCount = 0;
+    const byStatus: Record<string, number> = {};
+
+    if (data) {
+      totalCount = data.length;
+      for (const item of data) {
+        byStatus[item.status] = (byStatus[item.status] || 0) + 1;
+        if (new Date(item.created_at) >= startOfThisWeek) {
+          newCount++;
+        }
+      }
+    }
 
     return {
-      new_count: newCount ?? 0,
-      total_count: totalCount ?? 0,
+      new_count: newCount,
+      total_count: totalCount,
+      by_status: byStatus,
     };
   }
 
   private async getBuyersStats(agentId: string) {
-    const { count: totalCount } = await this.supabase
+    const { data } = await this.supabase
       .from('customer_inquiries')
-      .select('id', { count: 'exact', head: true })
+      .select('status')
       .eq('agent_id', agentId)
       .eq('inquiry_type', 'looking_for');
 
-    const { count: newCount } = await this.supabase
-      .from('customer_inquiries')
-      .select('id', { count: 'exact', head: true })
-      .eq('agent_id', agentId)
-      .eq('inquiry_type', 'looking_for')
-      .eq('status', 'new');
+    let totalCount = 0;
+    let newCount = 0;
+    const byStatus: Record<string, number> = {};
+
+    if (data) {
+      totalCount = data.length;
+      for (const item of data) {
+        byStatus[item.status] = (byStatus[item.status] || 0) + 1;
+        if (item.status === 'new') {
+          newCount++;
+        }
+      }
+    }
 
     return {
-      new_count: newCount ?? 0,
-      total_count: totalCount ?? 0,
+      new_count: newCount,
+      total_count: totalCount,
+      by_status: byStatus,
     };
   }
 
