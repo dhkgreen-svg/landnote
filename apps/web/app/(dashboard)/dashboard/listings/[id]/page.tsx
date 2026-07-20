@@ -18,7 +18,7 @@ import {
   useDeleteListing,
 } from '@/lib/hooks/queries';
 import { SUBCATEGORY_LABELS, SUBCATEGORIES } from '@landnote/shared';
-import { ArrowLeft, Pencil, X, Upload, Camera, Trash2, Share2, MessageCircle, MessageSquare, Phone } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Upload, Camera, Trash2, Share2, MessageCircle, MessageSquare, Phone, Shuffle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { AddressSearch } from '@/components/address-search';
 import { AreaInput } from '@/components/ui/AreaInput';
@@ -383,13 +383,13 @@ export default function ListingDetailPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <Button variant="default" size="sm" onClick={() => router.push(`/dashboard/matching?listingId=${listing.id}`)} className="bg-green-600 hover:bg-green-700 text-white border-none">
+                <Shuffle className="mr-1 h-3 w-3" />
+                매칭
+              </Button>
               <Button variant="default" size="sm" onClick={() => setEditing(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
                 <Pencil className="mr-1 h-3 w-3" />
                 수정
-              </Button>
-              <Button variant="destructive" size="sm" onClick={handleDelete}>
-                <Trash2 className="mr-1 h-3 w-3" />
-                삭제
               </Button>
             </>
           )}
@@ -1064,6 +1064,15 @@ export default function ListingDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {!editing && (
+        <div className="flex justify-end pt-4">
+          <Button variant="destructive" onClick={handleDelete}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            매물 삭제
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

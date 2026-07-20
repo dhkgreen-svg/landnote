@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useInquiry, useUpdateInquiry } from '@/lib/hooks/queries';
+import { useInquiry, useUpdateInquiry, useDeleteInquiry } from '@/lib/hooks/queries';
 import { SUBCATEGORY_LABELS } from '@landnote/shared';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Shuffle, Trash2 } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = {
   new: '신규', contacted: '연락완료', viewing: '방문예정',
@@ -46,6 +46,7 @@ export default function InquiryDetailPage() {
 
   const { data: inquiry, isLoading: loading } = useInquiry(id);
   const updateMutation = useUpdateInquiry(id);
+  const deleteMutation = useDeleteInquiry();
   const [memo, setMemo] = useState('');
   const [status, setStatus] = useState('');
 
@@ -60,6 +61,14 @@ export default function InquiryDetailPage() {
     updateMutation.mutate({ status, agent_memo: memo });
   };
   const saving = updateMutation.isPending;
+
+  const handleDelete = () => {
+    if (!confirm('이 매수 고객을 삭제하시겠습니까?')) return;
+    if (!confirm('정말로 삭제하시겠습니까? 삭제된 데이터는 절대 복구할 수 없습니다.')) return;
+    deleteMutation.mutate(id, {
+      onSuccess: () => router.push('/dashboard/inquiries'),
+    });
+  };
 
   if (loading) {
     return (
@@ -84,11 +93,19 @@ export default function InquiryDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.push('/dashboard/inquiries')}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-2xl font-bold">문의 상세</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => router.push('/dashboard/inquiries')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-2xl font-bold">문의 상세</h1>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="default" size="sm" onClick={() => router.push(`/dashboard/matching?inquiryId=${inquiry.id}`)} className="bg-green-600 hover:bg-green-700 text-white border-none">
+            <Shuffle className="mr-1 h-3 w-3" />
+            매칭
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -293,6 +310,13 @@ export default function InquiryDetailPage() {
           </Button>
         </CardContent>
       </Card>
+
+      <div className="flex justify-end pt-4">
+        <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
+          <Trash2 className="mr-2 h-4 w-4" />
+          {deleteMutation.isPending ? '삭제 중...' : '고객 삭제'}
+        </Button>
+      </div>
     </div>
   );
 }

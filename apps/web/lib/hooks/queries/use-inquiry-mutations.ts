@@ -23,3 +23,18 @@ export function useUpdateInquiry(id: string) {
     },
   });
 }
+
+export function useDeleteInquiry() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/inquiries/${id}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.inquiries.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.stats.summary() });
+    },
+  });
+}
