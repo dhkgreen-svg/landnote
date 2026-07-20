@@ -117,17 +117,34 @@ export class StatsService {
 
   private async getCategorySummary(agentId: string) {
     const [{ data: listings }, { data: inquiries }] = await Promise.all([
-      this.supabase.from('property_listings').select('category_codes')
-        .eq('agent_id', agentId).eq('status', 'active'),
-      this.supabase.from('customer_inquiries').select('category_codes')
-        .eq('agent_id', agentId).neq('status', 'closed'),
+      this.supabase.from('property_listings').select('status, category_codes')
+        .eq('agent_id', agentId),
+      this.supabase.from('customer_inquiries').select('status, category_codes')
+        .eq('agent_id', agentId),
     ]);
     const cats = ['residential', 'commercial', 'industrial', 'land'];
-    return cats.map(code => ({
-      code,
-      listing_count: (listings ?? []).filter((l: any) => l.category_codes?.includes(code)).length,
-      inquiry_count: (inquiries ?? []).filter((i: any) => i.category_codes?.includes(code)).length,
-    }));
+    return cats.map(code => {
+      const catListings = (listings ?? []).filter((l: any) => l.category_codes?.includes(code));
+      const catInquiries = (inquiries ?? []).filter((i: any) => i.category_codes?.includes(code));
+      
+      const listing_by_status: Record<string, number> = {};
+      catListings.forEach((l: any) => {
+        if (l.status) listing_by_status[l.status] = (listing_by_status[l.status] || 0) + 1;
+      });
+
+      const inquiry_by_status: Record<string, number> = {};
+      catInquiries.forEach((i: any) => {
+        if (i.status) inquiry_by_status[i.status] = (inquiry_by_status[i.status] || 0) + 1;
+      });
+
+      return {
+        code,
+        listing_count: catListings.length,
+        inquiry_count: catInquiries.length,
+        listing_by_status,
+        inquiry_by_status
+      };
+    });
   }
 
   async inquiries(agentId: string, start: string, end: string) {

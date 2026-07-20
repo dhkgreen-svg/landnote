@@ -136,11 +136,16 @@ export function DashboardListingsView({ activeView, summary }: { activeView: 'ne
           >
             <span>전체</span>
             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeCategory === 'all' ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'}`}>
-              {summary?.listings?.total_count ?? 0}
+              {activeStatus === 'all' 
+                ? (summary?.listings?.total_count ?? 0) 
+                : (summary?.listings?.by_status?.[activeStatus] ?? 0)}
             </span>
           </Button>
           {Object.entries(CATEGORY_LABELS).map(([code, label]) => {
-            const count = summary?.categories?.find((c: any) => c.code === code)?.listing_count ?? 0;
+            const cat = summary?.categories?.find((c: any) => c.code === code);
+            const count = activeStatus === 'all' 
+              ? (cat?.listing_count ?? 0) 
+              : (cat?.listing_by_status?.[activeStatus] ?? 0);
             return (
               <Button
                 key={code}
@@ -346,11 +351,16 @@ export function DashboardInquiriesView({ activeView, summary }: { activeView: 'n
           >
             <span>전체</span>
             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeCategory === 'all' ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'}`}>
-              {summary?.buyers?.total_count ?? 0}
+              {activeStatus === 'all' 
+                ? (summary?.buyers?.total_count ?? 0) 
+                : (summary?.buyers?.by_status?.[activeStatus] ?? 0)}
             </span>
           </Button>
           {Object.entries(CATEGORY_LABELS).map(([code, label]) => {
-            const count = summary?.categories?.find((c: any) => c.code === code)?.inquiry_count ?? 0;
+            const cat = summary?.categories?.find((c: any) => c.code === code);
+            const count = activeStatus === 'all' 
+              ? (cat?.inquiry_count ?? 0) 
+              : (cat?.inquiry_by_status?.[activeStatus] ?? 0);
             return (
               <Button
                 key={code}

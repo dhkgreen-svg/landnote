@@ -7,7 +7,13 @@ interface SummaryStats {
   buyers: { new_count: number; total_count: number; by_status: Record<string, number> };
   contracts_this_month: { count: number };
   contracts_this_year: { count: number };
-  categories?: { code: string; listing_count: number; inquiry_count: number }[];
+  categories?: { 
+    code: string; 
+    listing_count: number; 
+    inquiry_count: number;
+    listing_by_status?: Record<string, number>;
+    inquiry_by_status?: Record<string, number>;
+  }[];
 }
 
 export function useSummary() {
