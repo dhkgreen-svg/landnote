@@ -21,12 +21,20 @@ const TRANSACTION_LABELS: Record<string, string> = {
   premium_transfer: '권리양도',
 };
 
-const STATUS_LABELS: Record<string, string> = {
+const INQUIRY_STATUS_LABELS: Record<string, string> = {
   new: '신규',
-  active: '진행중',
   contacted: '연락완료',
   viewing: '방문예정',
   negotiating: '협상중',
+  contracted: '계약완료',
+  closed: '종료',
+};
+
+const LISTING_STATUS_LABELS: Record<string, string> = {
+  active: '활성',
+  premium: '우수',
+  in_progress: '진행중',
+  hold: '보류',
   contracted: '계약완료',
   closed: '종료',
 };
@@ -58,8 +66,9 @@ const CATEGORY_ICONS: Record<string, string> = {
 export function DashboardListingsView({ activeView, summary }: { activeView: 'new_listings' | 'total_listings' | null; summary?: any }) {
   const router = useRouter();
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [activeStatus, setActiveStatus] = useState<string>('all');
   
-  const statusParam = activeView === 'new_listings' ? 'active' : undefined;
+  const statusParam = activeView === 'new_listings' ? 'active' : (activeStatus === 'all' ? undefined : activeStatus);
   const categoryParam = activeCategory === 'all' ? undefined : activeCategory;
 
   const { data, isLoading } = useListings({
@@ -84,6 +93,39 @@ export function DashboardListingsView({ activeView, summary }: { activeView: 'ne
             </Button>
           </Link>
         </div>
+
+        {activeView === 'total_listings' && (
+          <div className="flex gap-2 overflow-x-auto pb-2 border-b mb-2">
+            <Button
+              variant={activeStatus === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveStatus('all')}
+              className="whitespace-nowrap flex items-center gap-1.5"
+            >
+              <span>전체 상태</span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeStatus === 'all' ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'}`}>
+                {summary?.listings?.total_count ?? 0}
+              </span>
+            </Button>
+            {Object.entries(LISTING_STATUS_LABELS).map(([code, label]) => {
+              const count = summary?.listings?.by_status?.[code] ?? 0;
+              return (
+                <Button
+                  key={code}
+                  variant={activeStatus === code ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setActiveStatus(code)}
+                  className="whitespace-nowrap flex items-center gap-1.5"
+                >
+                  <span>{label}</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeStatus === code ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'}`}>
+                    {count}
+                  </span>
+                </Button>
+              );
+            })}
+          </div>
+        )}
 
         <div className="flex gap-2 overflow-x-auto pb-2">
           <Button
@@ -220,7 +262,7 @@ function InquiryStatusSelect({ inquiry }: { inquiry: any }) {
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {Object.entries(STATUS_LABELS).map(([val, label]) => (
+        {Object.entries(INQUIRY_STATUS_LABELS).map(([val, label]) => (
           <SelectItem key={val} value={val} className="text-xs">
             {label}
           </SelectItem>
@@ -233,8 +275,9 @@ function InquiryStatusSelect({ inquiry }: { inquiry: any }) {
 export function DashboardInquiriesView({ activeView, summary }: { activeView: 'new_buyers' | 'total_buyers' | null; summary?: any }) {
   const router = useRouter();
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [activeStatus, setActiveStatus] = useState<string>('all');
   
-  const statusParam = activeView === 'new_buyers' ? 'new' : undefined;
+  const statusParam = activeView === 'new_buyers' ? 'new' : (activeStatus === 'all' ? undefined : activeStatus);
   const categoryParam = activeCategory === 'all' ? undefined : activeCategory;
 
   const { data, isLoading } = useInquiries({
@@ -256,10 +299,43 @@ export function DashboardInquiriesView({ activeView, summary }: { activeView: 'n
           </h3>
           <Link href={activeView === 'new_buyers' ? "/dashboard/inquiries?status=new&inquiry_type=looking_for" : "/dashboard/inquiries?inquiry_type=looking_for"}>
             <Button variant="ghost" size="sm" className="gap-1 text-primary">
-              전체보기 <ChevronRight className="h-4 w-4" />
+              더보기 <ChevronRight className="h-4 w-4" />
             </Button>
           </Link>
         </div>
+
+        {activeView === 'total_buyers' && (
+          <div className="flex gap-2 overflow-x-auto pb-2 border-b mb-2">
+            <Button
+              variant={activeStatus === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveStatus('all')}
+              className="whitespace-nowrap flex items-center gap-1.5"
+            >
+              <span>전체 상태</span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeStatus === 'all' ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'}`}>
+                {summary?.buyers?.total_count ?? 0}
+              </span>
+            </Button>
+            {Object.entries(INQUIRY_STATUS_LABELS).map(([code, label]) => {
+              const count = summary?.buyers?.by_status?.[code] ?? 0;
+              return (
+                <Button
+                  key={code}
+                  variant={activeStatus === code ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setActiveStatus(code)}
+                  className="whitespace-nowrap flex items-center gap-1.5"
+                >
+                  <span>{label}</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeStatus === code ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'}`}>
+                    {count}
+                  </span>
+                </Button>
+              );
+            })}
+          </div>
+        )}
 
         <div className="flex gap-2 overflow-x-auto pb-2">
           <Button
