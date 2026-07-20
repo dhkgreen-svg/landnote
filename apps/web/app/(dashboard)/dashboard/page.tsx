@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Building2, Users, FileCheck, Lock, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,6 +55,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { data: summary, isLoading: summaryLoading } = useSummary();
   const { agent } = useAgent();
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -130,7 +132,15 @@ export default function DashboardPage() {
               {summary?.listings?.by_status && (
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(summary.listings.by_status).map(([status, count]) => (
-                    <Badge key={status} variant="outline" className="text-xs">
+                    <Badge 
+                      key={status} 
+                      variant="outline" 
+                      className="text-xs bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 cursor-pointer transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/dashboard/listings?status=${status}`);
+                      }}
+                    >
                       {LISTING_STATUS_LABELS[status] || status} {count}
                     </Badge>
                   ))}
@@ -181,7 +191,15 @@ export default function DashboardPage() {
               {summary?.buyers?.by_status && (
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(summary.buyers.by_status).map(([status, count]) => (
-                    <Badge key={status} variant="outline" className="text-xs">
+                    <Badge 
+                      key={status} 
+                      variant="outline" 
+                      className="text-xs bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 cursor-pointer transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/dashboard/inquiries?inquiry_type=looking_for&status=${status}`);
+                      }}
+                    >
                       {INQUIRY_STATUS_LABELS[status] || status} {count}
                     </Badge>
                   ))}
