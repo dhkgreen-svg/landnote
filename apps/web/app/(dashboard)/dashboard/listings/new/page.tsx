@@ -273,7 +273,21 @@ function NewListingForm() {
 
       {/* Category Selection */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">카테고리</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">기본 정보</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>임대인/매도인 연락처 <span className="text-red-500">*</span></Label>
+            <Input 
+              value={ownerPhone}
+              onChange={e => setOwnerPhone(formatPhoneNumber(e.target.value))}
+              placeholder="예: 010-1234-5678"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-lg">카테고리 및 거래유형</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <Tabs defaultValue="residential" className="w-full">
             <TabsList className="w-full flex">
@@ -360,7 +374,7 @@ function NewListingForm() {
 
       {/* Transaction Type & Price */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">거래 정보</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">가격 조건</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div>
             <Label>거래유형</Label>
@@ -459,7 +473,7 @@ function NewListingForm() {
 
       {/* Property Details */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">매물 정보</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">매물 상세 정보</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {/* 1. 면적 정보 */}
           {(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge')) || subcategoryCodes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
@@ -618,22 +632,14 @@ function NewListingForm() {
 
       {/* 연락처 및 메모 */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">연락처 및 기타</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">메모</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>임대인/매도인 연락처 <span className="text-red-500">*</span></Label>
-            <Input 
-              value={ownerPhone}
-              onChange={e => setOwnerPhone(formatPhoneNumber(e.target.value))}
-              placeholder="예: 010-1234-5678"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>메모</Label>
             <Textarea
               value={memo}
               onChange={e => setMemo(e.target.value)}
               placeholder="중개사님만 볼 수 있는 메모를 입력하세요 (방문 가능 시간, 특이사항 등)"
+              className="min-h-[100px]"
             />
           </div>
         </CardContent>
