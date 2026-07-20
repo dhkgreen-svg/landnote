@@ -174,57 +174,57 @@ export default function InquiryDetailPage() {
               </div>
             ))}
             
-            {inquiry.detailed_conditions.address_full && (
+            {(inquiry as any).detailed_conditions.address_full && (
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">희망 주소</span>
                 <span className="text-sm">
-                  {inquiry.detailed_conditions.address_full} {inquiry.complex_name && `(${inquiry.complex_name})`}
+                  {(inquiry as any).detailed_conditions.address_full} {(inquiry as any).complex_name && `(${(inquiry as any).complex_name})`}
                 </span>
               </div>
             )}
-            {inquiry.detailed_conditions.dong_name && (
+            {(inquiry as any).detailed_conditions.dong_name && (
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">선호 동/읍/면</span>
-                <span className="text-sm">{inquiry.detailed_conditions.dong_name}</span>
+                <span className="text-sm">{(inquiry as any).detailed_conditions.dong_name}</span>
               </div>
             )}
-            {inquiry.building_num && (
+            {(inquiry as any).building_num && (
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">선호 동/호수</span>
-                <span className="text-sm">{inquiry.building_num}동 {inquiry.room_num ? `${inquiry.room_num}호` : ''}</span>
+                <span className="text-sm">{(inquiry as any).building_num}동 {(inquiry as any).room_num ? `${(inquiry as any).room_num}호` : ''}</span>
               </div>
             )}
             
-            {(inquiry.area_land || inquiry.area_building) ? (
+            {((inquiry as any).area_land || (inquiry as any).area_building) ? (
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">희망 면적</span>
                 <span className="text-sm">
-                  {inquiry.area_land ? `대지 ${inquiry.area_land}㎡` : ''} {inquiry.area_building ? `연면적 ${inquiry.area_building}㎡` : ''}
+                  {(inquiry as any).area_land ? `대지 ${(inquiry as any).area_land}㎡` : ''} {(inquiry as any).area_building ? `연면적 ${(inquiry as any).area_building}㎡` : ''}
                 </span>
               </div>
-            ) : (inquiry.detailed_conditions.area_supply || inquiry.detailed_conditions.area_exclusive) ? (
+            ) : ((inquiry as any).detailed_conditions.area_supply || (inquiry as any).detailed_conditions.area_exclusive) ? (
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">희망 면적</span>
                 <span className="text-sm">
-                  {inquiry.detailed_conditions.area_supply ? `공급 ${inquiry.detailed_conditions.area_supply}㎡` : ''} {inquiry.detailed_conditions.area_exclusive ? `전용 ${inquiry.detailed_conditions.area_exclusive}㎡` : ''}
+                  {(inquiry as any).detailed_conditions.area_supply ? `공급 ${(inquiry as any).detailed_conditions.area_supply}㎡` : ''} {(inquiry as any).detailed_conditions.area_exclusive ? `전용 ${(inquiry as any).detailed_conditions.area_exclusive}㎡` : ''}
                 </span>
               </div>
             ) : null}
 
-            {inquiry.detailed_conditions.zoning && (
+            {(inquiry as any).detailed_conditions.zoning && (
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">용도지역/지목</span>
                 <span className="text-sm">
-                  {inquiry.detailed_conditions.zoning} / {inquiry.detailed_conditions.jimok || '-'}
+                  {(inquiry as any).detailed_conditions.zoning} / {(inquiry as any).detailed_conditions.jimok || '-'}
                 </span>
               </div>
             )}
             
-            {inquiry.detailed_conditions.floor_current && (
+            {(inquiry as any).detailed_conditions.floor_current && (
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">층수/방향</span>
                 <span className="text-sm">
-                  {inquiry.detailed_conditions.floor_current}층 {inquiry.detailed_conditions.floor_total ? `(총 ${inquiry.detailed_conditions.floor_total}층)` : ''} / {inquiry.detailed_conditions.direction || '-'}
+                  {(inquiry as any).detailed_conditions.floor_current}층 {(inquiry as any).detailed_conditions.floor_total ? `(총 ${(inquiry as any).detailed_conditions.floor_total}층)` : ''} / {(inquiry as any).detailed_conditions.direction || '-'}
                 </span>
               </div>
             )}

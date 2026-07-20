@@ -1,4 +1,4 @@
-'use client';
+'use client'; // trigger fast refresh
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -31,9 +31,9 @@ const TX_LABELS: Record<string, string> = {
 };
 
 const PRICE_LABELS: Record<string, string> = {
-  price_sale: '희망 매매가 (만 원)', deposit: '희망 보증금 (만 원)', monthly_rent: '희망 월세 (만 원)',
-  maintenance_fee: '관리비 (만 원)', premium_price: '희망 권리금 (만 원)',
-  contract_remaining_months: '희망 잔여 계약기간 (개월)',
+  price_sale: '매매가 (만 원)', deposit: '보증금 (만 원)', monthly_rent: '월세 (만 원)',
+  maintenance_fee: '관리비 (만 원)', premium_price: '권리금 (만 원)',
+  contract_remaining_months: '잔여 계약기간 (개월)',
 };
 
 const DIRECTION_OPTIONS = ['남향','남동향','남서향','동향','서향','북향','북동향','북서향'];
@@ -152,7 +152,7 @@ function NewInquiryForm() {
   const agentCategories = agent?.selected_categories ?? [];
 
   const toggleCategorySelection = (mainCode: string, subCode: string, item: string) => {
-    // Single selection to match unified layout
+    // Single selection
     setCategoryCodes([mainCode]);
     setSubcategoryCodes([subCode]);
     setTags([item]);
@@ -202,19 +202,18 @@ function NewInquiryForm() {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setError('');
-    if (!customerName || !customerPhone) { setError('고객 이름과 연락처를 입력하세요'); return; }
     if (categoryCodes.length === 0) { setError('카테고리를 선택하세요'); return; }
     if (transactionTypes.length === 0) { setError('거래유형을 선택하세요'); return; }
+    if (!customerName.trim() || !customerPhone.trim()) { setError('고객 이름과 연락처를 입력하세요'); return; }
 
     setSubmitting(true);
     try {
       const body: Record<string, unknown> = {
         inquiry_type: 'looking_for',
-        customer_name: customerName,
-        customer_phone: customerPhone,
+        customer_name: customerName.trim(),
+        customer_phone: customerPhone.trim(),
         category_codes: categoryCodes,
         subcategory_codes: subcategoryCodes,
         tags,
@@ -276,410 +275,399 @@ function NewInquiryForm() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">매수 고객 등록</h1>
-        <p className="text-muted-foreground mt-1">사무소에 방문하거나 연락한 매수 고객을 상세 조건과 함께 등록합니다.</p>
-      </div>
+      <h1 className="text-2xl font-bold">매수 고객 등록</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* 고객 정보 */}
-        <Card>
-          <CardHeader><CardTitle className="text-lg">고객 정보</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">이름 (또는 가명) <span className="text-red-500">*</span></Label>
-              <Input
-                id="name"
-                value={customerName}
-                onChange={e => setCustomerName(e.target.value)}
-                placeholder="예: 홍길동"
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="phone">연락처 <span className="text-red-500">*</span></Label>
-              <Input
-                id="phone"
-                value={customerPhone}
-                onChange={e => setCustomerPhone(formatPhoneNumber(e.target.value))}
-                placeholder="예: 010-1234-5678"
-                required
-              />
-            </div>
-          </CardContent>
-        </Card>
+      {/* Category Selection */}
+      <Card>
+        <CardHeader><CardTitle className="text-lg">카테고리</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <Tabs defaultValue="residential" className="w-full">
+            <TabsList className="w-full flex">
+              {Object.entries(CATEGORY_LABELS).map(([mainCode, mainLabel]) => (
+                <TabsTrigger key={mainCode} value={mainCode} className="flex-1">
+                  {mainLabel}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-        {/* Category Selection */}
-        <Card>
-          <CardHeader><CardTitle className="text-lg">찾는 매물 종류</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <Tabs defaultValue="residential" className="w-full">
-              <TabsList className="w-full flex">
-                {Object.entries(CATEGORY_LABELS).map(([mainCode, mainLabel]) => (
-                  <TabsTrigger key={mainCode} value={mainCode} className="flex-1">
-                    {mainLabel}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+            {Object.entries(CATEGORY_LABELS).map(([mainCode]) => {
+              const groups = SUBCATEGORIES[mainCode as keyof typeof SUBCATEGORIES] || {};
 
-              {Object.entries(CATEGORY_LABELS).map(([mainCode]) => {
-                const groups = SUBCATEGORIES[mainCode as keyof typeof SUBCATEGORIES] || {};
-
-                return (
-                  <TabsContent key={mainCode} value={mainCode} className="mt-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {Object.entries(groups).map(([subCode, subItems]) => {
-                        const isExpanded = !!expandedGroups[subCode];
-                        const hasSelectedItems = subItems.some(item => tags.includes(item));
-                        
-                        return (
-                          <div key={subCode} className="bg-white rounded-lg border shadow-sm overflow-hidden transition-all duration-200">
-                            <button
-                              type="button"
-                              onClick={() => toggleExpandedGroup(subCode)}
-                              className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/30 transition-colors"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-foreground/90 text-sm">
-                                  {SUBCATEGORY_LABELS[subCode] || subCode}
+              return (
+                <TabsContent key={mainCode} value={mainCode} className="mt-6 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {Object.entries(groups).map(([subCode, subItems]) => {
+                      const isExpanded = !!expandedGroups[subCode];
+                      const hasSelectedItems = subItems.some(item => tags.includes(item));
+                      
+                      return (
+                        <div key={subCode} className="bg-white rounded-lg border shadow-sm overflow-hidden transition-all duration-200">
+                          <button
+                            type="button"
+                            onClick={() => toggleExpandedGroup(subCode)}
+                            className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-foreground/90 text-sm">
+                                {SUBCATEGORY_LABELS[subCode] || subCode}
+                              </span>
+                              {hasSelectedItems && (
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                                  ✓
                                 </span>
-                                {hasSelectedItems && (
-                                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                                    ✓
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-muted-foreground transition-transform duration-200">
-                                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                              </div>
-                            </button>
+                              )}
+                            </div>
+                            <div className="text-muted-foreground transition-transform duration-200">
+                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            </div>
+                          </button>
 
-                            {isExpanded && (
-                              <div className="p-4 pt-0 border-t bg-muted/10">
-                                <div className="flex flex-wrap gap-2 mt-4">
-                                  {subItems.map((item) => {
-                                    const isSelected = tags.includes(item);
-                                    return (
-                                      <Button
-                                        key={item}
-                                        variant={isSelected ? 'default' : 'outline'}
-                                        size="sm"
-                                        type="button"
-                                        className={`rounded-lg transition-all duration-150 ${
-                                          isSelected 
-                                            ? 'shadow-sm ring-2 ring-primary ring-offset-1' 
-                                            : 'bg-white hover:bg-muted/50 hover:shadow-sm'
-                                        }`}
-                                        onClick={() => toggleCategorySelection(mainCode, subCode, item)}
-                                      >
-                                        {item}
-                                      </Button>
-                                    );
-                                  })}
-                                </div>
+                          {isExpanded && (
+                            <div className="p-4 pt-0 border-t bg-muted/10">
+                              <div className="flex flex-wrap gap-2 mt-4">
+                                {subItems.map((item) => {
+                                  const isSelected = tags.includes(item);
+                                  return (
+                                    <Button
+                                      key={item}
+                                      variant={isSelected ? 'default' : 'outline'}
+                                      size="sm"
+                                      type="button"
+                                      className={`rounded-lg transition-all duration-150 ${
+                                        isSelected 
+                                          ? 'shadow-sm ring-2 ring-primary ring-offset-1' 
+                                          : 'bg-white hover:bg-muted/50 hover:shadow-sm'
+                                      }`}
+                                      onClick={() => toggleCategorySelection(mainCode, subCode, item)}
+                                    >
+                                      {item}
+                                    </Button>
+                                  );
+                                })}
                               </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </TabsContent>
-                );
-              })}
-            </Tabs>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </TabsContent>
+              );
+            })}
+          </Tabs>
 
-            {agentCategories.length === 0 && (
-              <div className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg text-center">
-                대시보드 환경설정에서 취급 카테고리를 먼저 설정해주세요.
+          {agentCategories.length === 0 && (
+            <div className="text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg text-center">
+              대시보드 환경설정에서 취급 카테고리를 먼저 설정해주세요.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Transaction Type & Price */}
+      <Card>
+        <CardHeader><CardTitle className="text-lg">거래 정보</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label>거래유형</Label>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {Object.entries(TX_LABELS)
+                .filter(([key]) => {
+                  if (key === 'premium_transfer') {
+                    return categoryCodes.includes('commercial');
+                  }
+                  return true;
+                })
+                .map(([key, label]) => (
+                  <Button
+                    key={key}
+                    variant={transactionTypes.includes(key) ? 'default' : 'outline'}
+                    size="sm"
+                    type="button"
+                    onClick={() => toggleTransactionType(key)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+            </div>
+          </div>
+
+          {uniquePriceFields.length > 0 && uniquePriceFields.map(field => (
+            <div key={field}>
+              <Label>{PRICE_LABELS[field] ?? field}</Label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={prices[field] ?? ''}
+                onChange={e => {
+                  const val = e.target.value.replace(/[^0-9.]/g, '');
+                  setPrices(prev => ({ ...prev, [field]: val }));
+                }}
+                placeholder="0"
+              />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Address & Location */}
+      <Card>
+        <CardHeader><CardTitle className="text-lg">위치</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label>주소</Label>
+            <AddressSearch
+              value={complexName ? `${addressFull} (${complexName})` : addressFull}
+              onComplete={(result) => {
+                setAddressFull(result.address_full);
+                setAddressRoad(result.address_road);
+                setAddressJibun(result.address_jibun);
+                setDongName(result.dong_name);
+                if (result.building_name) {
+                  setComplexName(result.building_name);
+                }
+              }}
+            />
+          </div>
+          {!(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge'))) && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>단지명 / 건물명</Label>
+                  <Input value={complexName} onChange={e => setComplexName(e.target.value)} placeholder="예: 푸르지오 아파트" />
+                </div>
+                <div>
+                  <Label>동/읍/면</Label>
+                  <Input value={dongName} onChange={e => setDongName(e.target.value)} placeholder="동 이름" />
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Transaction Type & Price */}
-        <Card>
-          <CardHeader><CardTitle className="text-lg">희망 거래 조건</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>동</Label>
+                  <Input value={buildingNum} onChange={e => setBuildingNum(e.target.value)} placeholder="예: 101" />
+                </div>
+                <div>
+                  <Label>호수</Label>
+                  <Input value={roomNum} onChange={e => setRoomNum(e.target.value)} placeholder="예: 1502" />
+                </div>
+              </div>
+            </>
+          )}
+          {(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge'))) && (
             <div>
-              <Label>거래유형</Label>
-              <div className="mt-1 flex flex-wrap gap-2">
-                {Object.entries(TX_LABELS)
-                  .filter(([key]) => {
-                    if (key === 'premium_transfer') {
-                      return categoryCodes.includes('commercial');
-                    }
-                    return true;
-                  })
-                  .map(([key, label]) => (
-                    <Button
-                      key={key}
-                      variant={transactionTypes.includes(key) ? 'default' : 'outline'}
-                      size="sm"
-                      type="button"
-                      onClick={() => toggleTransactionType(key)}
-                    >
-                      {label}
-                    </Button>
-                  ))}
+              <Label>동/읍/면</Label>
+              <Input value={dongName} onChange={e => setDongName(e.target.value)} placeholder="동 이름" />
+            </div>
+          )}
+
+        </CardContent>
+      </Card>
+
+      {/* Property Details */}
+      <Card>
+        <CardHeader><CardTitle className="text-lg">매물 정보</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {/* 1. 면적 정보 */}
+          {(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge')) || subcategoryCodes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
+            <div className="grid grid-cols-2 gap-3">
+              <AreaInput label="대지면적" value={areaLand} onChange={setAreaLand} />
+              <AreaInput label="연면적/건평" value={areaBuilding} onChange={setAreaBuilding} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <AreaInput label="공급면적" value={areaSupply} onChange={setAreaSupply} />
+              <AreaInput label="전용면적" value={areaExclusive} onChange={setAreaExclusive} />
+            </div>
+          )}
+
+          {/* 2. 토지/용도 정보 */}
+          {(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge')) || subcategoryCodes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) && (
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label>용도지역</Label>
+                <Select value={zoning || 'none'} onValueChange={v => setZoning(v === 'none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">선택 안함</SelectItem>
+                    {ZONING_OPTIONS.map((z: string) => <SelectItem key={z} value={z}>{z}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>지목</Label>
+                <Select value={jimok || 'none'} onValueChange={v => setJimok(v === 'none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">선택 안함</SelectItem>
+                    {JIMOK_OPTIONS.map((j: string) => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>현재용도 (선택)</Label>
+                <Input value={currentUsage} onChange={e => setCurrentUsage(e.target.value)} placeholder="예: 잡종지, 나대지" />
               </div>
             </div>
+          )}
 
-            {uniquePriceFields.length > 0 && uniquePriceFields.map(field => (
-              <div key={field}>
-                <Label>{PRICE_LABELS[field] ?? field}</Label>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  value={prices[field] ?? ''}
-                  onChange={e => {
-                    const val = e.target.value.replace(/[^0-9.]/g, '');
-                    setPrices(prev => ({ ...prev, [field]: val }));
-                  }}
-                  placeholder="예산 입력 (최대 금액)"
-                />
+          {/* 3. 산업용 특화 필드 */}
+          {categoryCodes.includes('industrial') && (
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <Label>지목</Label>
+                <Select value={jimok || 'none'} onValueChange={v => setJimok(v === 'none' ? '' : v)}>
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">선택 안함</SelectItem>
+                    {JIMOK_OPTIONS.map((j: string) => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>{subcategoryCodes.includes('warehouse') ? '창고 용도' : subcategoryCodes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '건물 용도' : '공장 용도'}</Label>
+                <Input value={factoryUsage} onChange={e => setFactoryUsage(e.target.value)} placeholder={subcategoryCodes.includes('warehouse') ? '예: 일반창고, 물류센터' : subcategoryCodes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '예: 자동차정비, 야적장, 고물상' : '예: 일반공장, 식품공장'} />
+              </div>
+              <div>
+                <Label>업종</Label>
+                <Input value={businessType} onChange={e => setBusinessType(e.target.value)} placeholder="예: 반도체, 제조업" />
+              </div>
+              <div>
+                <Label>추천 용도</Label>
+                <Input value={recommendedUsage} onChange={e => setRecommendedUsage(e.target.value)} placeholder="예: 창고용, 단순조립" />
+              </div>
+            </div>
+          )}
+
+          {/* 4. 건물/층/방향 정보 */}
+          {!categoryCodes.includes('land') && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>현재 층</Label>
+                  <Input type="text" inputMode="numeric" value={floorCurrent} onChange={e => setFloorCurrent(e.target.value.replace(/[^0-9.-]/g, ''))} />
+                </div>
+                <div>
+                  <Label>총 층</Label>
+                  <Input type="text" inputMode="numeric" value={floorTotal} onChange={e => setFloorTotal(e.target.value.replace(/[^0-9.-]/g, ''))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>준공년도</Label>
+                  <Input type="text" inputMode="numeric" value={builtYear} onChange={e => setBuiltYear(e.target.value.replace(/[^0-9]/g, ''))} placeholder="2020" />
+                </div>
+                <div>
+                  <Label>방향</Label>
+                  <Select value={direction || 'none'} onValueChange={v => setDirection(v === 'none' ? '' : v)}>
+                    <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">선택 안함</SelectItem>
+                      {DIRECTION_OPTIONS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Images */}
+      <Card>
+        <CardHeader><CardTitle className="text-lg">이미지</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+            {images.map((img, i) => (
+              <div key={i} className="relative overflow-hidden rounded-lg border">
+                <img src={img.dataUrl} alt={`이미지 ${i + 1}`} className="aspect-square w-full object-cover" />
+                <button
+                  onClick={() => removeImage(i)}
+                  className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                {i === 0 && (
+                  <span className="absolute bottom-1 left-1 rounded bg-primary px-1.5 py-0.5 text-[10px] text-white">
+                    대표
+                  </span>
+                )}
               </div>
             ))}
-          </CardContent>
-        </Card>
-
-        {/* Address & Location */}
-        <Card>
-          <CardHeader><CardTitle className="text-lg">희망 위치</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <Label>주소 또는 구역</Label>
-              <AddressSearch
-                value={complexName ? `${addressFull} (${complexName})` : addressFull}
-                onComplete={(result) => {
-                  setAddressFull(result.address_full);
-                  setAddressRoad(result.address_road);
-                  setAddressJibun(result.address_jibun);
-                  setDongName(result.dong_name);
-                  if (result.building_name) {
-                    setComplexName(result.building_name);
-                  }
-                }}
+            <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed text-muted-foreground transition-colors hover:border-primary hover:text-primary">
+              <Upload className="mb-1 h-5 w-5" />
+              <span className="text-xs">앨범</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic"
+                multiple
+                className="hidden"
+                onChange={handleImageAdd}
               />
-            </div>
-            {!(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge'))) && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>선호 단지명 / 건물명</Label>
-                    <Input value={complexName} onChange={e => setComplexName(e.target.value)} placeholder="예: 푸르지오 아파트" />
-                  </div>
-                  <div>
-                    <Label>선호 동/읍/면</Label>
-                    <Input value={dongName} onChange={e => setDongName(e.target.value)} placeholder="동 이름" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>특정 동</Label>
-                    <Input value={buildingNum} onChange={e => setBuildingNum(e.target.value)} placeholder="예: 101" />
-                  </div>
-                  <div>
-                    <Label>특정 호수 (해당 시)</Label>
-                    <Input value={roomNum} onChange={e => setRoomNum(e.target.value)} placeholder="예: 1502" />
-                  </div>
-                </div>
-              </>
-            )}
-            {(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge'))) && (
-              <div>
-                <Label>선호 동/읍/면</Label>
-                <Input value={dongName} onChange={e => setDongName(e.target.value)} placeholder="동 이름" />
-              </div>
-            )}
-
-          </CardContent>
-        </Card>
-
-        {/* Property Details */}
-        <Card>
-          <CardHeader><CardTitle className="text-lg">희망 매물 상세 조건</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {/* 1. 면적 정보 */}
-            {(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge')) || subcategoryCodes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
-              <div className="grid grid-cols-2 gap-3">
-                <AreaInput label="희망 대지면적" value={areaLand} onChange={setAreaLand} />
-                <AreaInput label="희망 연면적/건평" value={areaBuilding} onChange={setAreaBuilding} />
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <AreaInput label="희망 공급면적" value={areaSupply} onChange={setAreaSupply} />
-                <AreaInput label="희망 전용면적" value={areaExclusive} onChange={setAreaExclusive} />
-              </div>
-            )}
-
-            {/* 2. 토지/용도 정보 */}
-            {(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge')) || subcategoryCodes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) && (
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label>용도지역</Label>
-                  <Select value={zoning || 'none'} onValueChange={v => setZoning(v === 'none' ? '' : v)}>
-                    <SelectTrigger><SelectValue placeholder="상관없음" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">상관없음</SelectItem>
-                      {ZONING_OPTIONS.map((z: string) => <SelectItem key={z} value={z}>{z}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>지목</Label>
-                  <Select value={jimok || 'none'} onValueChange={v => setJimok(v === 'none' ? '' : v)}>
-                    <SelectTrigger><SelectValue placeholder="상관없음" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">상관없음</SelectItem>
-                      {JIMOK_OPTIONS.map((j: string) => <SelectItem key={j} value={j}>{j}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>현재용도 (선택)</Label>
-                  <Input value={currentUsage} onChange={e => setCurrentUsage(e.target.value)} placeholder="예: 나대지" />
-                </div>
-              </div>
-            )}
-
-            {/* 3. 산업용 특화 필드 */}
-            {categoryCodes.includes('industrial') && (
-              <div className="grid grid-cols-2 gap-3 mt-3">
-                <div>
-                  <Label>지목</Label>
-                  <Select value={jimok || 'none'} onValueChange={v => setJimok(v === 'none' ? '' : v)}>
-                    <SelectTrigger><SelectValue placeholder="상관없음" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">상관없음</SelectItem>
-                      {JIMOK_OPTIONS.map((j: string) => <SelectItem key={j} value={j}>{j}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>{subcategoryCodes.includes('warehouse') ? '희망 창고 용도' : subcategoryCodes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '희망 건물 용도' : '희망 공장 용도'}</Label>
-                  <Input value={factoryUsage} onChange={e => setFactoryUsage(e.target.value)} placeholder="예: 일반창고, 물류센터" />
-                </div>
-                <div>
-                  <Label>희망 업종</Label>
-                  <Input value={businessType} onChange={e => setBusinessType(e.target.value)} placeholder="예: 제조업" />
-                </div>
-                <div>
-                  <Label>추천 용도</Label>
-                  <Input value={recommendedUsage} onChange={e => setRecommendedUsage(e.target.value)} placeholder="예: 창고용" />
-                </div>
-              </div>
-            )}
-
-            {/* 4. 건물/층/방향 정보 */}
-            {!categoryCodes.includes('land') && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>희망 층</Label>
-                    <Input type="text" inputMode="numeric" value={floorCurrent} onChange={e => setFloorCurrent(e.target.value.replace(/[^0-9.-]/g, ''))} />
-                  </div>
-                  <div>
-                    <Label>총 층수 제한</Label>
-                    <Input type="text" inputMode="numeric" value={floorTotal} onChange={e => setFloorTotal(e.target.value.replace(/[^0-9.-]/g, ''))} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>희망 준공년도 (이후)</Label>
-                    <Input type="text" inputMode="numeric" value={builtYear} onChange={e => setBuiltYear(e.target.value.replace(/[^0-9]/g, ''))} placeholder="2020" />
-                  </div>
-                  <div>
-                    <Label>희망 방향</Label>
-                    <Select value={direction || 'none'} onValueChange={v => setDirection(v === 'none' ? '' : v)}>
-                      <SelectTrigger><SelectValue placeholder="상관없음" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">상관없음</SelectItem>
-                        {DIRECTION_OPTIONS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Images */}
-        <Card>
-          <CardHeader><CardTitle className="text-lg">참고 이미지</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-              {images.map((img, i) => (
-                <div key={i} className="relative overflow-hidden rounded-lg border">
-                  <img src={img.dataUrl} alt={`이미지 ${i + 1}`} className="aspect-square w-full object-cover" />
-                  <button
-                    onClick={() => removeImage(i)}
-                    className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-              <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed text-muted-foreground transition-colors hover:border-primary hover:text-primary">
-                <Upload className="mb-1 h-5 w-5" />
-                <span className="text-xs">앨범</span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/heic"
-                  multiple
-                  className="hidden"
-                  onChange={handleImageAdd}
-                />
-              </label>
-              <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed text-muted-foreground transition-colors hover:border-primary hover:text-primary">
-                <Camera className="mb-1 h-5 w-5" />
-                <span className="text-xs">카메라</span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/heic"
-                  capture="environment"
-                  className="hidden"
-                  onChange={handleImageAdd}
-                />
-              </label>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              고객이 원하는 스타일 등 참고용 이미지를 등록할 수 있습니다.
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* 메모 */}
-        <Card>
-          <CardHeader><CardTitle className="text-lg">기타 메모</CardTitle></CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Label>메모</Label>
-              <Textarea
-                value={memo}
-                onChange={e => setMemo(e.target.value)}
-                placeholder="중개사님만 볼 수 있는 메모를 입력하세요 (방문 가능 시간, 추가 요청사항 등)"
+            </label>
+            <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed text-muted-foreground transition-colors hover:border-primary hover:text-primary">
+              <Camera className="mb-1 h-5 w-5" />
+              <span className="text-xs">카메라</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic"
+                capture="environment"
+                className="hidden"
+                onChange={handleImageAdd}
               />
-            </div>
-          </CardContent>
-        </Card>
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            JPEG, PNG, WebP 파일. 최대 10MB. 첫 번째 이미지가 대표 이미지가 됩니다.
+          </p>
+        </CardContent>
+      </Card>
 
-        {/* Submit */}
-        {error && (
-          <p className="text-sm text-red-500 font-medium">{error}</p>
-        )}
-        <div className="flex gap-3">
-          <Button type="button" variant="outline" onClick={() => router.back()} className="w-full">취소</Button>
-          <Button type="submit" disabled={submitting} className="w-full">
-            {submitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                등록 중...
-              </>
-            ) : '매수 고객 등록'}
-          </Button>
-        </div>
-      </form>
+      {/* 연락처 및 메모 */}
+      <Card>
+        <CardHeader><CardTitle className="text-lg">연락처 및 기타</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>고객 이름 <span className="text-red-500">*</span></Label>
+            <Input 
+              value={customerName}
+              onChange={e => setCustomerName(e.target.value)}
+              placeholder="예: 홍길동"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>고객 연락처 <span className="text-red-500">*</span></Label>
+            <Input 
+              value={customerPhone}
+              onChange={e => setCustomerPhone(formatPhoneNumber(e.target.value))}
+              placeholder="예: 010-1234-5678"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>메모</Label>
+            <Textarea
+              value={memo}
+              onChange={e => setMemo(e.target.value)}
+              placeholder="중개사님만 볼 수 있는 메모를 입력하세요 (방문 가능 시간, 특이사항 등)"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Submit */}
+      {error && (
+        <p className="text-sm text-red-500">{error}</p>
+      )}
+      <div className="flex gap-3">
+        <Button variant="outline" onClick={() => router.back()}>취소</Button>
+        <Button onClick={handleSubmit} disabled={submitting} className="flex-1">
+          {submitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              등록 중...
+            </>
+          ) : '매수 고객 등록'}
+        </Button>
+      </div>
     </div>
   );
 }
