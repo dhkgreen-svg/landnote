@@ -5,7 +5,7 @@
 ALTER TYPE listing_status_t RENAME TO listing_status_t_old;
 
 -- 2. Create new ENUM
-CREATE TYPE listing_status_t AS ENUM ('active', 'premium', 'in_progress', 'error', 'contracted', 'closed');
+CREATE TYPE listing_status_t AS ENUM ('active', 'premium', 'in_progress', 'hold', 'contracted', 'closed');
 
 -- 3. Alter table to use the new ENUM with mapping
 ALTER TABLE property_listings

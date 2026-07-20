@@ -25,7 +25,7 @@ import { AreaInput } from '@/components/ui/AreaInput';
 import { formatKoreanCurrency, formatPhoneNumber } from '@/lib/utils';
 
 const STATUS_LABELS: Record<string, string> = {
-  active: '활성', premium: '우수', in_progress: '진행 중', error: '오류', contracted: '계약완료', closed: '종료',
+  active: '활성', premium: '우수', in_progress: '진행 중', hold: '보류', contracted: '계약완료', closed: '종료',
 };
 
 const CATEGORY_LABELS: Record<string, string> = {

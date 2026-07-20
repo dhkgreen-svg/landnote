@@ -188,7 +188,7 @@ export const LISTING_STATUS = {
   ACTIVE:      'active',
   PREMIUM:     'premium',
   IN_PROGRESS: 'in_progress',
-  ERROR:       'error',
+  HOLD:        'hold',
   CONTRACTED:  'contracted',
   CLOSED:      'closed',
 } as const;

@@ -38,14 +38,14 @@ interface ListingItem {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  active: '활성', premium: '우수', in_progress: '진행 중', error: '오류', contracted: '계약완료', closed: '종료',
+  active: '활성', premium: '우수', in_progress: '진행 중', hold: '보류', contracted: '계약완료', closed: '종료',
 };
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-100 text-green-700',
   premium: 'bg-purple-100 text-purple-700',
   in_progress: 'bg-yellow-100 text-yellow-700',
-  error: 'bg-red-100 text-red-700',
+  hold: 'bg-red-100 text-red-700',
   contracted: 'bg-blue-100 text-blue-700',
   closed: 'bg-gray-100 text-gray-500',
 };
