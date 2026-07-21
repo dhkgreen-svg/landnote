@@ -41,12 +41,13 @@ export const CATEGORY_LABELS: Record<string, string> = {
 interface QuickTemplateButtonsProps {
   onSelect: (text: string) => void;
   fixedCategory?: string | null; // e.g. 'residential'
+  syncCategory?: string | null;
   onCategoryChange?: (category: string) => void;
   hideTemplates?: boolean;
 }
 
-export function QuickTemplateButtons({ onSelect, fixedCategory, onCategoryChange, hideTemplates }: QuickTemplateButtonsProps) {
-  const [selectedCategory, setSelectedCategory] = useState<string>(fixedCategory || 'residential');
+export function QuickTemplateButtons({ onSelect, fixedCategory, syncCategory, onCategoryChange, hideTemplates }: QuickTemplateButtonsProps) {
+  const [selectedCategory, setSelectedCategory] = useState<string>(fixedCategory || syncCategory || 'residential');
   const { agent } = useAgent();
   const updateTemplates = useUpdateAgentTemplates();
   const [isManageOpen, setIsManageOpen] = useState(false);
@@ -91,6 +92,12 @@ export function QuickTemplateButtons({ onSelect, fixedCategory, onCategoryChange
       }
     }
   }, [fixedCategory, selectedCategory]);
+
+  useEffect(() => {
+    if (syncCategory && QUICK_TEMPLATES[syncCategory]) {
+      setSelectedCategory(syncCategory);
+    }
+  }, [syncCategory]);
 
   const handleCategoryChange = (cat: string) => {
     setSelectedCategory(cat);

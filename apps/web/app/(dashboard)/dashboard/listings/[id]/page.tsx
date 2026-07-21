@@ -1057,6 +1057,7 @@ export default function ListingDetailPage() {
             <Label>메모</Label>
             {editing && (
               <QuickTemplateButtons 
+                syncCategory={editForm.category_codes?.[0]}
                 onSelect={(text) => handleChange('agent_memo', (editForm.agent_memo || '') ? editForm.agent_memo + '\n' + text : text)}
               />
             )}

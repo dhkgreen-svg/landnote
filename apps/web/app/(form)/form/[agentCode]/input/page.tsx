@@ -744,6 +744,7 @@ export default function InputPage() {
             <div className="space-y-2">
               <Label>메모</Label>
               <QuickTemplateButtons 
+                syncCategory={store.category_codes?.[0]}
                 onSelect={(text) => store.setCondition('memo', ((store.detailed_conditions.memo as string) || '') ? (store.detailed_conditions.memo as string) + '\n' + text : text)}
               />
               <textarea

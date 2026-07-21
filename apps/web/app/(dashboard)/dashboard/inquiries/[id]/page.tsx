@@ -523,6 +523,7 @@ export default function InquiryDetailPage() {
             {editing && (
               <div className="mb-2">
                 <QuickTemplateButtons 
+                  syncCategory={editForm.category_codes?.[0]}
                   onSelect={(text) => setMemo(prev => prev ? prev + '\n' + text : text)}
                 />
               </div>

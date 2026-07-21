@@ -723,6 +723,7 @@ function NewInquiryForm() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <QuickTemplateButtons 
+              syncCategory={categoryCodes[0]}
               onSelect={(text) => setMemo(prev => prev ? prev + '\n' + text : text)}
             />
             <Textarea
