@@ -102,14 +102,10 @@ export class MatchingService {
     if (listing.latitude && listing.longitude && inquiries && inquiries.length > 0) {
       for (const inq of inquiries) {
         if (inq.latitude && inq.longitude) {
-          const R = 6371e3;
-          const lat1 = listing.latitude * Math.PI / 180;
-          const lat2 = inq.latitude * Math.PI / 180;
-          const dLat = (inq.latitude - listing.latitude) * Math.PI / 180;
-          const dLon = (inq.longitude - listing.longitude) * Math.PI / 180;
-          const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon/2) * Math.sin(dLon/2);
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-          distanceMap.set(inq.id, R * c);
+          distanceMap.set(inq.id, this.haversineDistance(
+            listing.latitude, listing.longitude,
+            inq.latitude, inq.longitude,
+          ));
         }
       }
     }
@@ -344,5 +340,16 @@ export class MatchingService {
 
     if (error || !data) throw new NotFoundException('매칭을 찾을 수 없습니다');
     return data;
+  }
+
+  /** Haversine 공식으로 두 좌표 간 거리(m) 계산 */
+  private haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371e3;
+    const toRad = (v: number) => v * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 }

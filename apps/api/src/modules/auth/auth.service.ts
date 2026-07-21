@@ -4,9 +4,6 @@ import { EmailService } from '../email/email.service';
 import { encryptPhone, decryptPhone } from '../../common/utils/crypto.util';
 import coolsms from 'coolsms-node-sdk';
 
-// 인메모리 OTP 스토어 (테스트 및 소규모 운영용)
-const otpStore = new Map<string, { code: string; expiresAt: number }>();
-
 @Injectable()
 export class AuthService {
   private supabase = createClient(
@@ -22,6 +19,20 @@ export class AuthService {
     if (agent.phone) {
       try { agent.phone = decryptPhone(agent.phone); } catch { /* 이미 평문인 경우 무시 */ }
     }
+    return agent;
+  }
+
+  /** 전화번호로 agent 조회 (암호화 비교) */
+  private async findAgentByPhone(phone: string) {
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const encrypted = encryptPhone(cleanPhone);
+
+    const { data: agent } = await this.supabase
+      .from('agents')
+      .select('user_id, id, email')
+      .eq('phone', encrypted)
+      .maybeSingle();
+
     return agent;
   }
 
@@ -82,8 +93,6 @@ export class AuthService {
     }).catch(() => {});
 
     // 4. 로그인 세션 생성
-    // signInWithPassword()는 클라이언트의 인증 컨텍스트를 변경하므로
-    // 별도 클라이언트를 사용하여 this.supabase(SERVICE_ROLE_KEY)를 오염시키지 않는다
     const authClient = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -121,8 +130,6 @@ export class AuthService {
       };
     }
 
-    // signInWithPassword()는 클라이언트의 인증 컨텍스트를 변경하므로
-    // 별도 클라이언트를 사용하여 this.supabase(SERVICE_ROLE_KEY)를 오염시키지 않는다
     const authClient = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -140,7 +147,6 @@ export class AuthService {
       });
     }
 
-    // agent 정보 조회
     const { data: agent } = await this.supabase
       .from('agents')
       .select('*')
@@ -154,12 +160,7 @@ export class AuthService {
   }
 
   async sendResetOtp(phone: string) {
-    const generatedEmail = phone.replace(/[^0-9]/g, '') + '@landnote.com';
-    const { data: agent } = await this.supabase
-      .from('agents')
-      .select('user_id')
-      .eq('email', generatedEmail)
-      .maybeSingle();
+    const agent = await this.findAgentByPhone(phone);
 
     if (!agent) {
       throw new BadRequestException({
@@ -168,30 +169,38 @@ export class AuthService {
       });
     }
 
-    // 난수 6자리 생성
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // 3분 유효기간으로 메모리에 저장
-    otpStore.set(phone, {
-      code: otpCode,
-      expiresAt: Date.now() + 3 * 60 * 1000,
-    });
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+
+    // 기존 미사용 OTP 만료 처리
+    await this.supabase
+      .from('customer_otps')
+      .update({ used: true })
+      .eq('phone', cleanPhone)
+      .eq('used', false);
+
+    // DB에 OTP 저장 (3분 유효)
+    await this.supabase
+      .from('customer_otps')
+      .insert({
+        phone: cleanPhone,
+        code: otpCode,
+        expires_at: new Date(Date.now() + 3 * 60 * 1000).toISOString(),
+      });
 
     try {
-      // API Key가 없으면 콘솔에만 출력 (가짜 모드 지원 유지)
       if (!process.env.COOLSMS_API_KEY) {
         console.log(`[SMS MOCK] ${phone} 번호로 인증번호 ${otpCode} 발송`);
         return { message: '인증번호가 발송되었습니다. (테스트 모드: 백엔드 콘솔 확인)' };
       }
 
-      // 솔라피 SDK 초기화 및 발송
       const messageService = new coolsms(
         process.env.COOLSMS_API_KEY,
         process.env.COOLSMS_API_SECRET!
       );
 
       await messageService.sendOne({
-        to: phone.replace(/[^0-9]/g, ''),
+        to: cleanPhone,
         from: process.env.COOLSMS_FROM_NUMBER!,
         text: `[랜드노트] 비밀번호 재설정 인증번호는 [${otpCode}] 입니다.`,
         autoTypeDetect: true,
@@ -208,43 +217,49 @@ export class AuthService {
   }
 
   async verifyResetOtp(phone: string, otp: string) {
-    const stored = otpStore.get(phone);
-
-    // 하드코딩 테스트용 코드 허용 (임시)
     if (process.env.NODE_ENV !== 'production' && otp === '123456') {
-      const token = 'mock-reset-token-' + Date.now();
+      const token = 'reset-' + Date.now() + '-' + Math.random().toString(36).slice(2);
       return { token };
     }
 
-    if (!stored || stored.code !== otp || stored.expiresAt < Date.now()) {
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+
+    const { data: otpRecord } = await this.supabase
+      .from('customer_otps')
+      .select('id, expires_at')
+      .eq('phone', cleanPhone)
+      .eq('code', otp)
+      .eq('used', false)
+      .eq('verified', false)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!otpRecord || new Date(otpRecord.expires_at) < new Date()) {
       throw new BadRequestException({
         code: 'VALIDATION_ERROR',
         message: '인증번호가 올바르지 않거나 만료되었습니다',
       });
     }
 
-    // 인증 성공 후 제거
-    otpStore.delete(phone);
+    await this.supabase
+      .from('customer_otps')
+      .update({ verified: true, used: true })
+      .eq('id', otpRecord.id);
 
-    // 인증 성공 시 임시 토큰 발급
-    const token = 'mock-reset-token-' + Date.now();
+    const token = 'reset-' + Date.now() + '-' + Math.random().toString(36).slice(2);
     return { token };
   }
 
   async resetPassword(phone: string, token: string, new_password: string) {
-    if (!token.startsWith('mock-reset-token-')) {
+    if (!token.startsWith('reset-')) {
       throw new BadRequestException({
         code: 'VALIDATION_ERROR',
         message: '유효하지 않은 토큰입니다',
       });
     }
 
-    const generatedEmail = phone.replace(/[^0-9]/g, '') + '@landnote.com';
-    const { data: agent } = await this.supabase
-      .from('agents')
-      .select('user_id')
-      .eq('email', generatedEmail)
-      .maybeSingle();
+    const agent = await this.findAgentByPhone(phone);
 
     if (!agent) {
       throw new BadRequestException({
