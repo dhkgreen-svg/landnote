@@ -10,7 +10,7 @@ const withPWA = withPWAInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@landnote/shared'],
+  transpilePackages: ['@landnote/shared', 'zustand', 'use-sync-external-store'],
   async rewrites() {
     return [
       {
