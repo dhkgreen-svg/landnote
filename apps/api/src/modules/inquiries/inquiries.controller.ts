@@ -1,7 +1,7 @@
 import {
   Controller, Get, Post, Patch, Delete,
   Param, Query, Body, UseInterceptors, UploadedFile,
-  NotFoundException, UseGuards,
+  NotFoundException, UseGuards, BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { createClient } from '@supabase/supabase-js';
@@ -91,6 +91,16 @@ export class PublicInquiriesController {
 
     if (!agent) {
       throw new NotFoundException('중개사를 찾을 수 없습니다');
+    }
+
+    const { data: inquiry } = await this.supabase
+      .from('customer_inquiries')
+      .select('images')
+      .eq('id', inquiryId)
+      .single();
+
+    if (inquiry && inquiry.images && Array.isArray(inquiry.images) && inquiry.images.length >= 10) {
+      throw new BadRequestException('이미지는 최대 10장까지 업로드 가능합니다');
     }
 
     return this.storageService.uploadInquiryImage(agent.id, inquiryId, file);

@@ -101,7 +101,7 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    if (email === 'admin@landnote.com' && password === 'admin1234!') {
+    if (process.env.NODE_ENV !== 'production' && email === 'admin@landnote.com' && password === 'admin1234!') {
       return {
         agent: {
           id: 'mock-agent',
@@ -211,7 +211,7 @@ export class AuthService {
     const stored = otpStore.get(phone);
 
     // 하드코딩 테스트용 코드 허용 (임시)
-    if (otp === '123456') {
+    if (process.env.NODE_ENV !== 'production' && otp === '123456') {
       const token = 'mock-reset-token-' + Date.now();
       return { token };
     }

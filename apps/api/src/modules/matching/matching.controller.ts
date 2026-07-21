@@ -13,14 +13,6 @@ export class MatchingController {
     return this.matchingService.getInquiriesWithMatches(agent.id);
   }
 
-  @Get(':inquiryId')
-  async matchesByInquiry(
-    @CurrentAgent() agent: any,
-    @Param('inquiryId') inquiryId: string,
-  ) {
-    return this.matchingService.getMatchesByInquiry(agent.id, inquiryId);
-  }
-
   @Get('listings')
   async listingsWithMatches(@CurrentAgent() agent: any) {
     return this.matchingService.getListingsWithMatches(agent.id);
@@ -32,6 +24,14 @@ export class MatchingController {
     @Param('listingId') listingId: string,
   ) {
     return this.matchingService.getMatchesByListing(agent.id, listingId);
+  }
+
+  @Get(':inquiryId')
+  async matchesByInquiry(
+    @CurrentAgent() agent: any,
+    @Param('inquiryId') inquiryId: string,
+  ) {
+    return this.matchingService.getMatchesByInquiry(agent.id, inquiryId);
   }
 
   @Post('run/:inquiryId')

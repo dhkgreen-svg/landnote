@@ -199,20 +199,20 @@ export default function ListingDetailPage() {
         room_num: editForm.room_num || null,
         owner_phone: editForm.owner_phone || null,
         contract_party_phone: editForm.status === 'contracted' ? (editForm.contract_party_phone || null) : null,
-        price_sale: editForm.price_sale ? Number(editForm.price_sale) : null,
-        price_jeonse: editForm.price_jeonse ? Number(editForm.price_jeonse) : null,
-        deposit: editForm.deposit ? Number(editForm.deposit) : null,
-        monthly_rent: editForm.monthly_rent ? Number(editForm.monthly_rent) : null,
-        premium_price: editForm.premium_price ? Number(editForm.premium_price) : null,
-        maintenance_fee: editForm.maintenance_fee ? Number(editForm.maintenance_fee) : null,
-        contract_remaining_months: editForm.contract_remaining_months ? Number(editForm.contract_remaining_months) : null,
-        area_supply: editForm.area_supply ? Number(editForm.area_supply) : null,
-        area_exclusive: editForm.area_exclusive ? Number(editForm.area_exclusive) : null,
-        area_land: editForm.area_land ? Number(editForm.area_land) : null,
-        area_building: editForm.area_building ? Number(editForm.area_building) : null,
-        floor_current: editForm.floor_current ? Number(editForm.floor_current) : null,
-        floor_total: editForm.floor_total ? Number(editForm.floor_total) : null,
-        built_year: editForm.built_year ? Number(editForm.built_year) : null,
+        price_sale: editForm.price_sale == null ? null : Number(editForm.price_sale),
+        price_jeonse: editForm.price_jeonse == null ? null : Number(editForm.price_jeonse),
+        deposit: editForm.deposit == null ? null : Number(editForm.deposit),
+        monthly_rent: editForm.monthly_rent == null ? null : Number(editForm.monthly_rent),
+        premium_price: editForm.premium_price == null ? null : Number(editForm.premium_price),
+        maintenance_fee: editForm.maintenance_fee == null ? null : Number(editForm.maintenance_fee),
+        contract_remaining_months: editForm.contract_remaining_months == null ? null : Number(editForm.contract_remaining_months),
+        area_supply: editForm.area_supply == null ? null : Number(editForm.area_supply),
+        area_exclusive: editForm.area_exclusive == null ? null : Number(editForm.area_exclusive),
+        area_land: editForm.area_land == null ? null : Number(editForm.area_land),
+        area_building: editForm.area_building == null ? null : Number(editForm.area_building),
+        floor_current: editForm.floor_current == null ? null : Number(editForm.floor_current),
+        floor_total: editForm.floor_total == null ? null : Number(editForm.floor_total),
+        built_year: editForm.built_year == null ? null : Number(editForm.built_year),
         direction: editForm.direction || null,
         detail_info: editForm.detail_info || null,
         category_codes: editForm.category_codes,
@@ -522,7 +522,7 @@ export default function ListingDetailPage() {
           <CardHeader><CardTitle className="text-lg">가격 정보</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {editing ? (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {listing.transaction_types.includes('sale') && (
                   <div>
                     <Label>매매가 (원)</Label>
@@ -607,7 +607,7 @@ export default function ListingDetailPage() {
                 </div>
                 {!(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge'))) && (
                   <>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <Label>단지명 / 건물명</Label>
                         <Input value={editForm.complex_name || ''} onChange={e => handleChange('complex_name', e.target.value)} />
@@ -618,7 +618,7 @@ export default function ListingDetailPage() {
                       </div>
                     </div>
                     {!listing.subcategory_codes.some(c => ['building', 'lodging', 'house', 'other_commercial'].includes(c)) && (
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <Label>동</Label>
                           <Input value={editForm.building_num || ''} onChange={e => handleChange('building_num', e.target.value)} placeholder="예: 101" />
@@ -690,7 +690,7 @@ export default function ListingDetailPage() {
                 {/* 1. Area Edit */}
                 <div>
                   <h4 className="font-semibold text-sm mb-3">면적 정보</h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
                       <>
                         <AreaInput label="대지면적" value={String(editForm.area_land || '')} onChange={val => handleChange('area_land', val ? Number(val) : null)} />
@@ -709,7 +709,7 @@ export default function ListingDetailPage() {
                 {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) && (
                   <div>
                     <h4 className="font-semibold text-sm mb-3">토지/용도 정보</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label>용도지역</Label>
                         <Input value={editForm.detail_info?.zoning as string || ''} onChange={e => handleDetailInfoChange('zoning', e.target.value)} />
@@ -730,7 +730,7 @@ export default function ListingDetailPage() {
                 {listing.category_codes.includes('industrial') && (
                   <div>
                     <h4 className="font-semibold text-sm mb-3">산업용 특화</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label>{listing.subcategory_codes.includes('warehouse') ? '창고 용도' : listing.subcategory_codes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '건물 용도' : '공장 용도'}</Label>
                         <Input value={editForm.detail_info?.factory_usage as string || ''} onChange={e => handleDetailInfoChange('factory_usage', e.target.value)} />
@@ -751,7 +751,7 @@ export default function ListingDetailPage() {
                 {!listing.category_codes.includes('land') && (
                   <div>
                     <h4 className="font-semibold text-sm mb-3">건물/층/방향 정보</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label>해당 층</Label>
                         <Input type="number" value={editForm.floor_current || ''} onChange={e => handleChange('floor_current', e.target.value)} />

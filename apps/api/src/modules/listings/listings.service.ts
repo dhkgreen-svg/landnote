@@ -160,7 +160,8 @@ export class ListingsService {
       if (data.status === 'active') {
         await this.matchingService.runReverseMatching(agentId, id);
       }
-    } catch {
+    } catch (e) {
+      console.error('역방향 매칭 실행 실패:', e);
       // 매칭 실패는 업데이트 자체를 실패시키지 않음
     }
 

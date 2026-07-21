@@ -12,10 +12,10 @@ export interface Agent {
   profile_image_url: string | null;
 
   // 구독
-  subscription_plan: 'starter' | 'pro';
+  subscription_plan: 'minimal' | 'standard' | 'pro';
   subscription_status: 'trial' | 'active' | 'expired' | 'cancelled';
   selected_categories: CategoryCode[];
-  pending_plan: 'starter' | 'pro' | null;
+  pending_plan: 'minimal' | 'standard' | 'pro' | null;
   category_changed_at: string | null;
   trial_ends_at: string | null;
   cancelled_at: string | null;

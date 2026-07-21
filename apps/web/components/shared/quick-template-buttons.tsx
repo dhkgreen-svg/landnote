@@ -48,7 +48,7 @@ interface QuickTemplateButtonsProps {
 
 export function QuickTemplateButtons({ onSelect, fixedCategory, syncCategory, onCategoryChange, hideTemplates }: QuickTemplateButtonsProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>(fixedCategory || syncCategory || 'residential');
-  const { agent } = useAgent();
+  const { agent, reload } = useAgent();
   const updateTemplates = useUpdateAgentTemplates();
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [newTemplate, setNewTemplate] = useState('');
@@ -72,8 +72,8 @@ export function QuickTemplateButtons({ onSelect, fixedCategory, syncCategory, on
     // NOTE: useAgent currently doesn't use react-query, so we will reload window as a fallback if needed,
     // but let's just let it be. If they refresh it'll appear, or we can mutate local state.
     // To cleanly update local state without reloading, we'd need useAgent to return a mutate function.
-    // For now, window.location.reload() can be a simple workaround if state doesn't sync.
-    window.location.reload(); 
+    // We now have reload() exposed from useAgent.
+    await reload();
   };
 
   const handleDeleteTemplate = async (templateToDelete: string) => {
@@ -82,7 +82,7 @@ export function QuickTemplateButtons({ onSelect, fixedCategory, syncCategory, on
       [selectedCategory]: customTemplates.filter(t => t !== templateToDelete),
     };
     await updateTemplates.mutateAsync(updated);
-    window.location.reload();
+    await reload();
   };
 
   useEffect(() => {

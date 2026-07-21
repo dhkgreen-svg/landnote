@@ -414,17 +414,17 @@ export default function InquiryDetailPage() {
                 </div>
                 <div>
                   <Label className="mb-2 block">희망 가격조건</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input type="number" placeholder="매매가 (만 원)" value={editForm.detailed_conditions?.price_sale || ''} onChange={e => handleConditionChange('price_sale', Number(e.target.value) || undefined)} />
-                    <Input type="number" placeholder="보증금 (만 원)" value={editForm.detailed_conditions?.deposit || ''} onChange={e => handleConditionChange('deposit', Number(e.target.value) || undefined)} />
-                    <Input type="number" placeholder="월세 (만 원)" value={editForm.detailed_conditions?.monthly_rent || ''} onChange={e => handleConditionChange('monthly_rent', Number(e.target.value) || undefined)} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Input type="number" placeholder="매매가 (만 원)" value={editForm.detailed_conditions?.price_sale ?? ''} onChange={e => handleConditionChange('price_sale', e.target.value === '' ? undefined : Number(e.target.value))} />
+                    <Input type="number" placeholder="보증금 (만 원)" value={editForm.detailed_conditions?.deposit ?? ''} onChange={e => handleConditionChange('deposit', e.target.value === '' ? undefined : Number(e.target.value))} />
+                    <Input type="number" placeholder="월세 (만 원)" value={editForm.detailed_conditions?.monthly_rent ?? ''} onChange={e => handleConditionChange('monthly_rent', e.target.value === '' ? undefined : Number(e.target.value))} />
                   </div>
                 </div>
                 <div>
                   <Label className="mb-2 block">희망 면적/상세 (텍스트)</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Input placeholder="선호 동/읍/면" value={editForm.detailed_conditions?.dong_name || ''} onChange={e => handleConditionChange('dong_name', e.target.value)} />
-                    <Input type="number" placeholder="공급 면적 (㎡)" value={editForm.detailed_conditions?.area_supply || ''} onChange={e => handleConditionChange('area_supply', Number(e.target.value) || undefined)} />
+                    <Input type="number" placeholder="공급 면적 (㎡)" value={editForm.detailed_conditions?.area_supply ?? ''} onChange={e => handleConditionChange('area_supply', e.target.value === '' ? undefined : Number(e.target.value))} />
                   </div>
                 </div>
               </div>

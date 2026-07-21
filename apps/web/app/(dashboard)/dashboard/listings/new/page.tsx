@@ -220,13 +220,13 @@ function NewListingForm() {
         room_num: roomNum || undefined,
         latitude: latitude ? parseFloat(latitude) : undefined,
         longitude: longitude ? parseFloat(longitude) : undefined,
-        area_supply: areaSupply ? parseFloat(areaSupply) : undefined,
-        area_exclusive: areaExclusive ? parseFloat(areaExclusive) : undefined,
-        area_land: areaLand ? parseFloat(areaLand) : undefined,
-        area_building: areaBuilding ? parseFloat(areaBuilding) : undefined,
-        floor_current: floorCurrent ? parseInt(floorCurrent) : undefined,
-        floor_total: floorTotal ? parseInt(floorTotal) : undefined,
-        built_year: builtYear ? parseInt(builtYear) : undefined,
+        area_supply: areaSupply === '' ? undefined : parseFloat(areaSupply),
+        area_exclusive: areaExclusive === '' ? undefined : parseFloat(areaExclusive),
+        area_land: areaLand === '' ? undefined : parseFloat(areaLand),
+        area_building: areaBuilding === '' ? undefined : parseFloat(areaBuilding),
+        floor_current: floorCurrent === '' ? undefined : parseInt(floorCurrent),
+        floor_total: floorTotal === '' ? undefined : parseInt(floorTotal),
+        built_year: builtYear === '' ? undefined : parseInt(builtYear),
         direction: direction || undefined,
         owner_phone: ownerPhone.trim(),
         agent_memo: memo || undefined,
@@ -241,7 +241,7 @@ function NewListingForm() {
       };
 
       for (const field of uniquePriceFields) {
-        if (prices[field]) {
+        if (prices[field] !== undefined && prices[field] !== '') {
           body[field] = parseFloat(prices[field]);
         }
       }
@@ -505,7 +505,7 @@ function NewListingForm() {
           </div>
           {!(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge'))) && (
             <>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>단지명 / 건물명</Label>
                   <Input value={complexName} onChange={e => setComplexName(e.target.value)} placeholder="예: 푸르지오 아파트" />
@@ -515,7 +515,7 @@ function NewListingForm() {
                   <Input value={dongName} onChange={e => setDongName(e.target.value)} placeholder="동 이름" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>동</Label>
                   <Input value={buildingNum} onChange={e => setBuildingNum(e.target.value)} placeholder="예: 101" />
@@ -543,12 +543,12 @@ function NewListingForm() {
         <CardContent className="space-y-3">
           {/* 1. 면적 정보 */}
           {(categoryCodes.includes('land') || (categoryCodes.includes('industrial') && !subcategoryCodes.includes('knowledge')) || subcategoryCodes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <AreaInput label="대지면적" value={areaLand} onChange={setAreaLand} />
               <AreaInput label="연면적/건평" value={areaBuilding} onChange={setAreaBuilding} />
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <AreaInput label="공급면적" value={areaSupply} onChange={setAreaSupply} />
               <AreaInput label="전용면적" value={areaExclusive} onChange={setAreaExclusive} />
             </div>
@@ -586,7 +586,7 @@ function NewListingForm() {
 
           {/* 3. 산업용 특화 필드 */}
           {categoryCodes.includes('industrial') && (
-            <div className="grid grid-cols-2 gap-3 mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               <div>
                 <Label>지목</Label>
                 <Select value={jimok || 'none'} onValueChange={v => setJimok(v === 'none' ? '' : v)}>
@@ -615,7 +615,7 @@ function NewListingForm() {
           {/* 4. 건물/층/방향 정보 */}
           {!categoryCodes.includes('land') && (
             <>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>현재 층</Label>
                   <Input type="text" inputMode="numeric" value={floorCurrent} onChange={e => setFloorCurrent(e.target.value.replace(/[^0-9.-]/g, ''))} />
@@ -625,7 +625,7 @@ function NewListingForm() {
                   <Input type="text" inputMode="numeric" value={floorTotal} onChange={e => setFloorTotal(e.target.value.replace(/[^0-9.-]/g, ''))} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label>준공년도</Label>
                   <Input type="text" inputMode="numeric" value={builtYear} onChange={e => setBuiltYear(e.target.value.replace(/[^0-9]/g, ''))} placeholder="2020" />

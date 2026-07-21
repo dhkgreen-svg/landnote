@@ -86,7 +86,7 @@ export class InquiriesService {
 
     // 2. OTP 검증
     let otpData = { id: 'master-code' };
-    if (dto.otpCode !== '000000') {
+    if (!(process.env.NODE_ENV !== 'production' && dto.otpCode === '000000')) {
       const { data, error } = await this.supabase
         .from('customer_otps')
         .select('id, expires_at')
@@ -169,7 +169,8 @@ export class InquiriesService {
         { email: agent.email, agent_name: agent.agent_name },
         inquiry.id,
       );
-    } catch {
+    } catch (e) {
+      console.error('이메일 알림 발송 실패:', e);
       // 이메일 실패는 접수 자체를 실패시키지 않음
     }
 
@@ -180,7 +181,8 @@ export class InquiriesService {
         body: `${dto.customer_name}님이 조건을 접수했습니다`,
         url: `/dashboard/inquiries/${inquiry.id}`,
       });
-    } catch {
+    } catch (e) {
+      console.error('푸시 알림 발송 실패:', e);
       // 푸시 실패는 접수 자체를 실패시키지 않음
     }
 
@@ -189,7 +191,8 @@ export class InquiriesService {
       if (dto.inquiry_type === 'looking_for') {
         await this.matchingService.runMatching(agent.id, inquiry.id);
       }
-    } catch {
+    } catch (e) {
+      console.error('자동 매칭 실행 실패:', e);
       // 매칭 실패는 접수 자체를 실패시키지 않음
     }
 
@@ -254,7 +257,8 @@ export class InquiriesService {
       if (dto.inquiry_type === 'looking_for') {
         await this.matchingService.runMatching(agent.id, inquiry.id);
       }
-    } catch {
+    } catch (e) {
+      console.error('자동 매칭 실행 실패:', e);
       // 매칭 실패는 접수 자체를 실패시키지 않음
     }
 
@@ -340,7 +344,8 @@ export class InquiriesService {
       if (data.inquiry_type === 'looking_for') {
         await this.matchingService.runMatching(agentId, id);
       }
-    } catch {
+    } catch (e) {
+      console.error('매칭 점수 재계산 실패:', e);
       // 매칭 실패는 업데이트 자체를 실패시키지 않음
     }
 
