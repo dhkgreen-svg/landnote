@@ -335,6 +335,15 @@ export class InquiriesService {
       throw new NotFoundException('접수를 찾을 수 없습니다');
     }
 
+    // 변경 시 자동으로 매칭 점수 재계산 (비차단)
+    try {
+      if (data.inquiry_type === 'looking_for') {
+        await this.matchingService.runMatching(agentId, id);
+      }
+    } catch {
+      // 매칭 실패는 업데이트 자체를 실패시키지 않음
+    }
+
     return data;
   }
 
