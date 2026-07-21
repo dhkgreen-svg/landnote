@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { PLAN_LIMITS, CATEGORY_LABELS } from '@landnote/shared';
 import type { CategoryCode } from '@landnote/shared';
 import { encryptPhone, decryptPhone } from '../../common/utils/crypto.util';
+import type { UpdateAgentTemplatesDto } from './dto/update-agent-templates.dto';
 
 @Injectable()
 export class AgentsService {
@@ -75,8 +76,20 @@ export class AgentsService {
     return data;
   }
 
+  async updateTemplates(agent: any, dto: UpdateAgentTemplatesDto) {
+    const { error } = await this.supabase
+      .from('agents')
+      .update({ custom_templates: dto.custom_templates })
+      .eq('id', agent.id);
+
+    if (error) {
+      throw new BadRequestException('문구 설정 변경에 실패했습니다: ' + error.message);
+    }
+    return { ok: true };
+  }
+
   async getQrCodes(agent: any) {
-    const baseUrl = process.env.APP_URL ?? 'http://localhost:3000';
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
 
     const qrCodes: { url: string; label: string; category: CategoryCode | null }[] = [
       {

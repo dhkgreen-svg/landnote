@@ -22,6 +22,7 @@ interface Agent {
   next_billing_date: string | null;
   cancelled_at: string | null;
   category_changed_at: string | null;
+  custom_templates?: Record<string, string[]>;
   created_at: string;
   updated_at: string;
 }

@@ -4,6 +4,7 @@ import { CurrentAgent } from '../../common/decorators/current-agent.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { UpdateAgentProfileDto } from './dto/update-agent-profile.dto';
 import { ChangeCategoriesDto } from './dto/change-categories.dto';
+import { UpdateAgentTemplatesDto } from './dto/update-agent-templates.dto';
 
 @Controller('agents')
 export class AgentsController {
@@ -23,6 +24,14 @@ export class AgentsController {
     @Body() dto: ChangeCategoriesDto,
   ) {
     return this.agentsService.changeCategories(agent, dto.categories as any);
+  }
+
+  @Patch('me/templates')
+  async updateTemplates(
+    @CurrentAgent() agent: any,
+    @Body() dto: UpdateAgentTemplatesDto,
+  ) {
+    return this.agentsService.updateTemplates(agent, dto);
   }
 
   @Get('me/qr')

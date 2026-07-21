@@ -32,6 +32,9 @@ export interface Agent {
   next_billing_date: string | null;
   billing_day: number;
 
+  // 설정
+  custom_templates?: Record<string, string[]>;
+
   created_at: string;
   updated_at: string;
 }

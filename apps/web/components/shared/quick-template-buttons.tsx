@@ -1,4 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, X, Settings2, Mic, MicOff } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useAgent } from '@/lib/hooks/use-agent';
+import { useUpdateAgentTemplates } from '@/lib/hooks/queries';
+import { useSpeechRecognition } from '@/lib/hooks/use-speech-recognition';
 
 export const QUICK_TEMPLATES: Record<string, string[]> = {
   residential: [
@@ -40,6 +47,52 @@ interface QuickTemplateButtonsProps {
 
 export function QuickTemplateButtons({ onSelect, fixedCategory, onCategoryChange, hideTemplates }: QuickTemplateButtonsProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>(fixedCategory || 'residential');
+  const { agent } = useAgent();
+  const updateTemplates = useUpdateAgentTemplates();
+  const [isManageOpen, setIsManageOpen] = useState(false);
+  const [newTemplate, setNewTemplate] = useState('');
+  
+  const { isListening, isSupported, toggleListening, transcript } = useSpeechRecognition();
+
+  // If transcript stops and it's no longer listening, we can append it.
+  // Actually, wait: we want to append the FINAL transcript.
+  // We can just use useEffect to watch `isListening`. If it turns false, and `transcript` has text, we append it.
+  const prevListeningRef = useRef(isListening);
+  useEffect(() => {
+    if (prevListeningRef.current && !isListening && transcript.trim()) {
+      onSelect(transcript.trim());
+    }
+    prevListeningRef.current = isListening;
+  }, [isListening, transcript, onSelect]);
+
+  const customTemplates = agent?.custom_templates?.[selectedCategory] || [];
+  const allTemplates = [...(QUICK_TEMPLATES[selectedCategory] || []), ...customTemplates];
+
+  const handleAddTemplate = async () => {
+    if (!newTemplate.trim()) return;
+    const updated = {
+      ...(agent?.custom_templates || {}),
+      [selectedCategory]: [...customTemplates, newTemplate.trim()],
+    };
+    await updateTemplates.mutateAsync(updated);
+    setNewTemplate('');
+    // For immediate UI update, we might need to rely on react-query invalidation or page reload,
+    // but agent will update when the hook re-fetches if it's connected, else the user can refresh.
+    // NOTE: useAgent currently doesn't use react-query, so we will reload window as a fallback if needed,
+    // but let's just let it be. If they refresh it'll appear, or we can mutate local state.
+    // To cleanly update local state without reloading, we'd need useAgent to return a mutate function.
+    // For now, window.location.reload() can be a simple workaround if state doesn't sync.
+    window.location.reload(); 
+  };
+
+  const handleDeleteTemplate = async (templateToDelete: string) => {
+    const updated = {
+      ...(agent?.custom_templates || {}),
+      [selectedCategory]: customTemplates.filter(t => t !== templateToDelete),
+    };
+    await updateTemplates.mutateAsync(updated);
+    window.location.reload();
+  };
 
   useEffect(() => {
     if (fixedCategory && fixedCategory !== selectedCategory) {
@@ -86,11 +139,77 @@ export function QuickTemplateButtons({ onSelect, fixedCategory, onCategoryChange
 
       {!hideTemplates && (
         <div>
-          <h3 className="text-sm font-semibold text-blue-900 mb-2 mt-2">
-            자주 쓰는 문구 (터치해서 추가)
-          </h3>
+          <div className="flex items-center justify-between mb-2 mt-2">
+            <h3 className="text-sm font-semibold text-blue-900">
+              자주 쓰는 문구 (터치해서 추가)
+            </h3>
+            <div className="flex items-center gap-2">
+              {isSupported && (
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  className={`text-xs flex items-center gap-1 transition-colors px-2 py-1 rounded-md ${
+                    isListening 
+                      ? 'bg-red-100 text-red-600 animate-pulse' 
+                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                  }`}
+                >
+                  {isListening ? (
+                    <><MicOff className="w-3.5 h-3.5" /> 듣는 중...</>
+                  ) : (
+                    <><Mic className="w-3.5 h-3.5" /> 음성 입력</>
+                  )}
+                </button>
+              )}
+              <Dialog open={isManageOpen} onOpenChange={setIsManageOpen}>
+                <DialogTrigger asChild>
+                  <button
+                    type="button"
+                    className="text-xs flex items-center gap-1 text-gray-500 hover:text-blue-600 transition-colors"
+                  >
+                    <Settings2 className="w-3.5 h-3.5" /> 설정
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>자주 쓰는 문구 설정 ({CATEGORY_LABELS[selectedCategory]})</DialogTitle>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="새로운 문구를 입력하세요" 
+                      value={newTemplate}
+                      onChange={(e) => setNewTemplate(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddTemplate();
+                        }
+                      }}
+                    />
+                    <Button onClick={handleAddTemplate} disabled={updateTemplates.isPending || !newTemplate.trim()}>추가</Button>
+                  </div>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {customTemplates.length === 0 ? (
+                      <p className="text-sm text-gray-500 text-center py-4">추가된 커스텀 문구가 없습니다.</p>
+                    ) : (
+                      customTemplates.map((text, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-md border">
+                          <span className="text-sm">{text}</span>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteTemplate(text)} disabled={updateTemplates.isPending}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            </div>
+          </div>
           <div className="flex flex-wrap gap-2">
-            {QUICK_TEMPLATES[selectedCategory]?.map((text, idx) => (
+            {allTemplates.map((text, idx) => (
               <button
                 type="button"
                 key={idx}
@@ -101,6 +220,11 @@ export function QuickTemplateButtons({ onSelect, fixedCategory, onCategoryChange
               </button>
             ))}
           </div>
+          {isListening && transcript && (
+            <div className="mt-2 p-2 bg-blue-50 rounded-md border border-blue-200 text-sm text-blue-800 animate-in fade-in">
+              {transcript}
+            </div>
+          )}
           <p className="text-xs text-blue-600/80 mt-2">
             * ( ) 안의 단위에 유의하여 숫자만 편하게 입력하세요.
           </p>
