@@ -13,7 +13,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInquiry, useUpdateInquiry, useDeleteInquiry } from '@/lib/hooks/queries';
 import { SUBCATEGORY_LABELS, SUBCATEGORIES } from '@landnote/shared';
-import { ArrowLeft, Shuffle, Trash2, Share2, MessageCircle, MessageSquare, Pencil } from 'lucide-react';
+import { QuickTemplateButtons } from '@/components/shared/quick-template-buttons';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, Shuffle, Trash2, Share2, MessageCircle, MessageSquare, Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = {
   new: '신규', contacted: '연락완료', viewing: '방문예정',
@@ -68,6 +70,39 @@ export default function InquiryDetailPage() {
 
   const handleChange = (key: string, value: any) => {
     setEditForm((prev: any) => ({ ...prev, [key]: value }));
+  };
+
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  const toggleExpandedGroup = (subCode: string) => {
+    setExpandedGroups(prev => ({ ...prev, [subCode]: !prev[subCode] }));
+  };
+
+  const toggleCategorySelection = (mainCode: string, subCode: string, item: string) => {
+    setEditForm((prev: any) => {
+      const currentTags = prev.tags || [];
+      const isSelected = currentTags.includes(item);
+      let newTags;
+      
+      if (isSelected) {
+        newTags = currentTags.filter((t: string) => t !== item);
+      } else {
+        newTags = [...currentTags, item];
+      }
+      
+      const currentCats = prev.category_codes || [];
+      const currentSubCats = prev.subcategory_codes || [];
+      
+      const newCats = currentCats.includes(mainCode) ? currentCats : [...currentCats, mainCode];
+      const newSubCats = currentSubCats.includes(subCode) ? currentSubCats : [...currentSubCats, subCode];
+      
+      return {
+        ...prev,
+        tags: newTags,
+        category_codes: newCats,
+        subcategory_codes: newSubCats,
+      };
+    });
   };
 
   const handleConditionChange = (key: string, value: any) => {
@@ -287,43 +322,84 @@ export default function InquiryDetailPage() {
                   </div>
                 </div>
                 <div>
-                  <Label className="mb-2 block">희망 카테고리</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(CATEGORY_LABELS).map(([code, label]) => (
-                      <Badge
-                        key={code}
-                        variant={editForm.category_codes?.includes(code) ? 'default' : 'outline'}
-                        className="cursor-pointer"
-                        onClick={() => {
-                          handleChange('category_codes', [code]);
-                          handleChange('subcategory_codes', []);
-                        }}
-                      >{label}</Badge>
-                    ))}
-                  </div>
+                  <Label className="mb-2 block">희망 카테고리 및 세부 분류</Label>
+                  <Tabs defaultValue={editForm.category_codes?.[0] || 'residential'} className="w-full">
+                    <TabsList className="w-full flex">
+                      {Object.entries(CATEGORY_LABELS).map(([mainCode, mainLabel]) => (
+                        <TabsTrigger key={mainCode} value={mainCode} className="flex-1">
+                          {mainLabel}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+
+                    {Object.entries(CATEGORY_LABELS).map(([mainCode]) => {
+                      const groups = (SUBCATEGORIES as any)[mainCode] || {};
+
+                      return (
+                        <TabsContent key={mainCode} value={mainCode} className="mt-4 space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {Object.entries(groups).map(([subCode, subItems]) => {
+                              const typedSubItems = subItems as string[];
+                              const isExpanded = !!expandedGroups[subCode];
+                              const tags = editForm.tags || [];
+                              const hasSelectedItems = typedSubItems.some(item => tags.includes(item));
+                              
+                              return (
+                                <div key={subCode} className="bg-white rounded-lg border shadow-sm overflow-hidden transition-all duration-200">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleExpandedGroup(subCode)}
+                                    className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/30 transition-colors"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-semibold text-foreground/90 text-sm">
+                                        {SUBCATEGORY_LABELS[subCode as keyof typeof SUBCATEGORY_LABELS] || subCode}
+                                      </span>
+                                      {hasSelectedItems && (
+                                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                                          ✓
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-muted-foreground transition-transform duration-200">
+                                      {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                    </div>
+                                  </button>
+
+                                  {isExpanded && (
+                                    <div className="p-4 pt-0 border-t bg-muted/10">
+                                      <div className="flex flex-wrap gap-2 mt-4">
+                                        {typedSubItems.map((item) => {
+                                          const isSelected = tags.includes(item);
+                                          return (
+                                            <Button
+                                              key={item}
+                                              variant={isSelected ? 'default' : 'outline'}
+                                              size="sm"
+                                              type="button"
+                                              className={`rounded-lg transition-all duration-150 ${
+                                                isSelected 
+                                                  ? 'shadow-sm ring-2 ring-primary ring-offset-1' 
+                                                  : 'bg-white hover:bg-muted/50 hover:shadow-sm'
+                                              }`}
+                                              onClick={() => toggleCategorySelection(mainCode, subCode, item)}
+                                            >
+                                              {item}
+                                            </Button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </TabsContent>
+                      );
+                    })}
+                  </Tabs>
                 </div>
-                {editForm.category_codes?.length > 0 && (
-                  <div>
-                    <Label className="mb-2 block">세부 분류</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {editForm.category_codes.map((cat: string) => {
-                        const groups = (SUBCATEGORIES as any)[cat] || {};
-                        return Object.keys(groups).map(subCode => (
-                          <Badge
-                            key={subCode}
-                            variant={editForm.subcategory_codes?.includes(subCode) ? 'secondary' : 'outline'}
-                            className="cursor-pointer"
-                            onClick={() => {
-                              const current = editForm.subcategory_codes || [];
-                              const next = current.includes(subCode) ? current.filter((c: string) => c !== subCode) : [...current, subCode];
-                              handleChange('subcategory_codes', next);
-                            }}
-                          >{SUBCATEGORY_LABELS[subCode as keyof typeof SUBCATEGORY_LABELS] || subCode}</Badge>
-                        ));
-                      })}
-                    </div>
-                  </div>
-                )}
                 <div>
                   <Label className="mb-2 block">희망 가격조건</Label>
                   <div className="grid grid-cols-2 gap-2">
@@ -358,6 +434,16 @@ export default function InquiryDetailPage() {
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">세부 분류</span>
                     <span className="text-sm">{inquiry.subcategory_codes.map(c => SUBCATEGORY_LABELS[c as keyof typeof SUBCATEGORY_LABELS] ?? c).join(', ')}</span>
+                  </div>
+                )}
+                {inquiry.tags?.length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">상세 항목</span>
+                    <div className="flex flex-wrap gap-1 justify-end max-w-[250px]">
+                      {inquiry.tags.map(t => (
+                        <Badge key={t} variant="secondary" className="font-normal">{t}</Badge>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {priceKeys.length > 0 && priceKeys.map(key => (
@@ -422,11 +508,19 @@ export default function InquiryDetailPage() {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium">메모</label>
+            {editing && (
+              <div className="mb-2">
+                <QuickTemplateButtons 
+                  onSelect={(text) => setMemo(prev => prev ? prev + '\n' + text : text)}
+                />
+              </div>
+            )}
             <Textarea
               value={memo}
               onChange={e => setMemo(e.target.value)}
               placeholder="이 문의에 대한 메모를 작성하세요"
               rows={4}
+              disabled={!editing}
             />
           </div>
           
