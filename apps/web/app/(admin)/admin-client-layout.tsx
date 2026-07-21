@@ -9,8 +9,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
-import { QueryProvider } from '@/components/providers/query-provider';
 import { useAdmin } from '@/lib/hooks/use-admin';
 import { createClient } from '@/lib/supabase/client';
 
@@ -59,7 +57,7 @@ export default function AdminLayout({
 
   // 로그인 페이지는 레이아웃 미적용
   if (pathname === '/admin/login') {
-    return <QueryProvider>{children}</QueryProvider>;
+    return <>{children}</>;
   }
 
   // 세션 만료 시 로그인 페이지로 리다이렉트
@@ -77,7 +75,6 @@ export default function AdminLayout({
   };
 
   return (
-    <QueryProvider>
     <div className="min-h-screen bg-gray-50">
       {/* Desktop Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 bg-gray-900 lg:block">
@@ -131,8 +128,7 @@ export default function AdminLayout({
                   />
                 ))}
               </nav>
-              <Separator className="bg-gray-800" />
-              <div className="p-3">
+              <div className="border-t border-gray-800 p-3">
                 <Button
                   variant="ghost"
                   className="w-full justify-start gap-3 text-gray-400 hover:bg-white/5 hover:text-gray-200"
@@ -157,6 +153,5 @@ export default function AdminLayout({
         <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>
-    </QueryProvider>
   );
 }

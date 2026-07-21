@@ -10,7 +10,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
-import { QueryProvider } from '@/components/providers/query-provider';
 import { useAgent } from '@/lib/hooks/use-agent';
 import { createClient } from '@/lib/supabase/client';
 import { PushPrompt } from '@/components/dashboard/push-prompt';
@@ -76,7 +75,6 @@ export default function DashboardLayout({
   };
 
   return (
-    <QueryProvider>
     <div className="min-h-screen bg-background">
       {/* Desktop Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r bg-white lg:block">
@@ -165,6 +163,5 @@ export default function DashboardLayout({
         <main className="p-4 lg:p-6">{children}</main>
       </div>
     </div>
-    </QueryProvider>
   );
 }

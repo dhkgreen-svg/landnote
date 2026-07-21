@@ -21,6 +21,7 @@ export const viewport: Viewport = {
 };
 
 import { Toaster } from '@/components/ui/toaster';
+import { QueryProvider } from '@/components/providers/query-provider';
 
 import Script from 'next/script';
 
@@ -61,7 +62,9 @@ export default function RootLayout({
             `,
           }}
         />
-        {children}
+        <QueryProvider>
+          {children}
+        </QueryProvider>
         <Toaster />
       </body>
     </html>
