@@ -51,19 +51,9 @@ export function QuickTemplateButtons({ onSelect, fixedCategory, onCategoryChange
   const updateTemplates = useUpdateAgentTemplates();
   const [isManageOpen, setIsManageOpen] = useState(false);
   const [newTemplate, setNewTemplate] = useState('');
+  const [isSTTOpen, setIsSTTOpen] = useState(false);
   
-  const { isListening, isSupported, toggleListening, transcript } = useSpeechRecognition();
-
-  // If transcript stops and it's no longer listening, we can append it.
-  // Actually, wait: we want to append the FINAL transcript.
-  // We can just use useEffect to watch `isListening`. If it turns false, and `transcript` has text, we append it.
-  const prevListeningRef = useRef(isListening);
-  useEffect(() => {
-    if (prevListeningRef.current && !isListening && transcript.trim()) {
-      onSelect(transcript.trim());
-    }
-    prevListeningRef.current = isListening;
-  }, [isListening, transcript, onSelect]);
+  const { isListening, isSupported, toggleListening, transcript, interimTranscript, resetTranscript, updateTranscript } = useSpeechRecognition();
 
   const customTemplates = agent?.custom_templates?.[selectedCategory] || [];
   const allTemplates = [...(QUICK_TEMPLATES[selectedCategory] || []), ...customTemplates];
@@ -145,21 +135,66 @@ export function QuickTemplateButtons({ onSelect, fixedCategory, onCategoryChange
             </h3>
             <div className="flex items-center gap-2">
               {isSupported && (
-                <button
-                  type="button"
-                  onClick={toggleListening}
-                  className={`text-xs flex items-center gap-1 transition-colors px-2 py-1 rounded-md ${
-                    isListening 
-                      ? 'bg-red-100 text-red-600 animate-pulse' 
-                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                  }`}
-                >
-                  {isListening ? (
-                    <><MicOff className="w-3.5 h-3.5" /> 듣는 중...</>
-                  ) : (
-                    <><Mic className="w-3.5 h-3.5" /> 음성 입력</>
-                  )}
-                </button>
+                <Dialog open={isSTTOpen} onOpenChange={(open) => {
+                  setIsSTTOpen(open);
+                  if (!open) {
+                    if (isListening) toggleListening();
+                    resetTranscript();
+                  }
+                }}>
+                  <DialogTrigger asChild>
+                    <button
+                      type="button"
+                      className="text-xs flex items-center gap-1 transition-colors px-2 py-1 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100"
+                    >
+                      <Mic className="w-3.5 h-3.5" /> 음성 입력
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>음성 메모 입력</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                      <div className="flex justify-center mb-4">
+                        <button
+                          type="button"
+                          onClick={toggleListening}
+                          className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+                            isListening
+                              ? 'bg-red-100 text-red-600 animate-pulse ring-4 ring-red-100'
+                              : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                          }`}
+                        >
+                          {isListening ? <MicOff className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
+                        </button>
+                      </div>
+                      <div className="text-center text-sm font-medium text-gray-500 min-h-[1.25rem]">
+                        {isListening ? '말씀을 듣고 있습니다...' : '마이크를 눌러 입력을 시작하세요'}
+                      </div>
+                      <div className="relative">
+                        <textarea
+                          className="w-full h-32 p-3 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-gray-50"
+                          placeholder="여기에 인식된 텍스트가 나타납니다. 직접 수정할 수도 있습니다."
+                          value={transcript + (interimTranscript ? (transcript ? ' ' : '') + interimTranscript : '')}
+                          onChange={(e) => updateTranscript(e.target.value)}
+                        />
+                      </div>
+                      <Button 
+                        className="w-full"
+                        onClick={() => {
+                          if (transcript.trim() || interimTranscript.trim()) {
+                            onSelect((transcript + (interimTranscript ? ' ' + interimTranscript : '')).trim());
+                          }
+                          setIsSTTOpen(false);
+                          if (isListening) toggleListening();
+                          resetTranscript();
+                        }}
+                      >
+                        메모에 추가
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               )}
               <Dialog open={isManageOpen} onOpenChange={setIsManageOpen}>
                 <DialogTrigger asChild>
