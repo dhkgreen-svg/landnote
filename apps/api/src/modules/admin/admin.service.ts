@@ -680,7 +680,25 @@ export class AdminService {
     return results;
   }
 
-  // ── 유틸 ──────────────────────────────────────────────
+  // ==========================================
+  // Moderation (Agent)
+  // ==========================================
+
+  async deleteAgent(adminId: string, agentId: string) {
+    const { error } = await this.supabase
+      .from('agents')
+      .delete()
+      .eq('id', agentId);
+    if (error) throw new Error(`회원 삭제 실패: ${error.message}`);
+    
+    await this.supabase.from('admin_audit_logs').insert({
+      admin_id: adminId, action: 'delete_agent', target_type: 'agent', target_id: agentId, after_value: 'deleted'
+    });
+  }
+
+  // ==========================================
+  // 유틸리티
+  // ==========================================
 
   private sanitizeAgent(agent: any) {
     if (!agent) return agent;

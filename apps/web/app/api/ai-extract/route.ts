@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const { imageBase64, textContent } = body;
+    const { imageBase64, textContent, categoryHint } = body;
     
     if (!imageBase64 && !textContent) {
       return NextResponse.json(
@@ -45,11 +45,15 @@ export async function POST(request: NextRequest) {
 
     const userMessageContent: any[] = [];
     
-    if (textContent) {
-      userMessageContent.push({ type: 'text', text: `Extract real estate information from the following text:\n\n${textContent}` });
-    } else {
-      userMessageContent.push({ type: 'text', text: 'Extract real estate information from this image.' });
+    let basePrompt = textContent 
+      ? `Extract real estate information from the following text:\n\n${textContent}` 
+      : 'Extract real estate information from this image.';
+
+    if (categoryHint) {
+      basePrompt += `\n\nHint: The user indicated that this property is likely a "${categoryHint}". Please use this context to accurately determine category_codes and parse details.`;
     }
+
+    userMessageContent.push({ type: 'text', text: basePrompt });
 
     if (imageBase64) {
       const dataUri = imageBase64.startsWith('data:image') 

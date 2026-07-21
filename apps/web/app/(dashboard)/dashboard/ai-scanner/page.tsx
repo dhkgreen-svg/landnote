@@ -14,11 +14,34 @@ export default function AiInputPage() {
   const [textContent, setTextContent] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
   const [mode, setMode] = useState<'image' | 'text'>('image');
+  const [selectedCategory, setSelectedCategory] = useState<string>('아파트/주택');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { toast } = useToast();
+
+  const QUICK_TEMPLATES: Record<string, string[]> = {
+    '아파트/주택': [
+      '매매가 000만원', '보증금 000만원 / 월세 00만원',
+      '공급면적 00㎡ / 전용 00㎡', '방 0개 / 화 0개',
+      '해당층 / 총층', '정남향', '올수리됨', '즉시입주 가능', '주차 1대 무료'
+    ],
+    '상가/사무실': [
+      '보증금 000만원 / 월세 00만원 (부가세별도)', '권리금 000만원',
+      '전용면적 00㎡', '현재업종: ', '추천업종: ',
+      '엘리베이터 있음', '무료주차 1대', '내부 화장실', '수도/도시가스 인입'
+    ],
+    '공장/토지': [
+      '매매가 000만원', '보증금 000만원 / 월세 00만원',
+      '대지 00㎡ / 연면적 00㎡', '층고 00m', '동력 00kw',
+      '호이스트 00톤', '대형 트레일러 진입가능', '단독 마당 사용'
+    ]
+  };
+
+  const appendTemplate = (text: string) => {
+    setTextContent(prev => prev ? prev + '\n- ' + text : '- ' + text);
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -46,6 +69,8 @@ export default function AiInputPage() {
       } else if (mode === 'text' && textContent.trim()) {
         payload.textContent = textContent.trim();
       }
+      
+      payload.categoryHint = selectedCategory;
 
       const res = await fetch('/api/ai-extract', {
         method: 'POST',
@@ -146,6 +171,29 @@ export default function AiInputPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="rounded-lg border bg-blue-50/50 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-blue-900 mb-2">💡 어떤 종류의 매물인가요?</h3>
+            
+            <div className="flex flex-wrap gap-2 mb-3">
+              {Object.keys(QUICK_TEMPLATES).map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                    selectedCategory === cat 
+                      ? 'bg-blue-600 text-white border-blue-600' 
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-blue-600/80 mt-1">
+              * 카테고리를 미리 선택하시면 AI가 더 빠르고 정확하게 구분합니다.
+            </p>
+          </div>
+
           {mode === 'image' ? (
             <>
               <div className="grid grid-cols-2 gap-4">
@@ -214,9 +262,27 @@ export default function AiInputPage() {
             </>
           ) : (
             <div className="space-y-4">
+              <div className="rounded-lg border border-dashed border-blue-200 p-4 space-y-3">
+                <h3 className="text-sm font-semibold text-blue-900 mb-2">자주 쓰는 문구 (터치해서 추가)</h3>
+                <div className="flex flex-wrap gap-2">
+                  {QUICK_TEMPLATES[selectedCategory].map((text, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => appendTemplate(text)}
+                      className="px-2.5 py-1.5 text-xs bg-white border border-blue-200 text-blue-700 rounded-md hover:bg-blue-100 transition-colors text-left"
+                    >
+                      {text}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-blue-600/80 mt-2">
+                  * 00으로 표시된 부분을 실제 정보로 수정해주시면 AI가 더 정확하게 인식합니다.
+                </p>
+              </div>
+
               <Textarea 
-                placeholder="예: [매물 추천] 서울시 강남구 역삼동 상가 월세 100/10..." 
-                className="min-h-[200px]"
+                placeholder="버튼을 눌러 템플릿을 입력하거나, 복사한 매물 정보를 그대로 붙여넣어주세요." 
+                className="min-h-[250px] font-mono text-sm"
                 value={textContent}
                 onChange={(e) => setTextContent(e.target.value)}
                 disabled={isLoading}

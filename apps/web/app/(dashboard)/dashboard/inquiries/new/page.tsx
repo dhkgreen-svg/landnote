@@ -120,6 +120,7 @@ function NewInquiryForm() {
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [createdInquiryId, setCreatedInquiryId] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
   const aiDraftId = searchParams.get('aiDraft');
@@ -253,16 +254,26 @@ function NewInquiryForm() {
         }
       }
 
-      const inquiry = await apiFetch<{ inquiryId: string }>('/inquiries', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
+      let targetId = createdInquiryId;
+      if (!targetId) {
+        const inquiry = await apiFetch<{ inquiryId: string }>('/inquiries', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        targetId = inquiry.inquiryId;
+        setCreatedInquiryId(targetId);
+      } else {
+        await apiFetch(`/inquiries/${targetId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(body),
+        });
+      }
 
       for (const img of images) {
         const blob = dataUrlToBlob(img.dataUrl);
         const formData = new FormData();
         formData.append('file', blob, img.name || 'image.jpg');
-        await apiUpload(`/inquiries/${inquiry.inquiryId}/images`, formData);
+        await apiUpload(`/inquiries/${targetId}/images`, formData);
       }
 
       router.push('/dashboard');
@@ -272,6 +283,65 @@ function NewInquiryForm() {
       setSubmitting(false);
     }
   };
+
+  const handleSaveDraft = () => {
+    const draft = {
+      customer_name: customerName, customer_phone: customerPhone,
+      category_codes: categoryCodes, subcategory_codes: subcategoryCodes, tags, transaction_types: transactionTypes,
+      prices, address_full: addressFull, address_road: addressRoad, address_jibun: addressJibun,
+      dong_name: dongName, complex_name: complexName, building_num: buildingNum, room_num: roomNum,
+      latitude, longitude, area_supply: areaSupply, area_exclusive: areaExclusive, area_land: areaLand,
+      area_building: areaBuilding, zoning, jimok, current_usage: currentUsage, factory_usage: factoryUsage,
+      business_type: businessType, recommended_usage: recommendedUsage, floor_current: floorCurrent,
+      floor_total: floorTotal, built_year: builtYear, direction, agent_memo: memo,
+    };
+    localStorage.setItem('landnote_inquiry_draft', JSON.stringify(draft));
+    alert('임시 저장되었습니다.');
+  };
+
+  const handleLoadDraft = () => {
+    const str = localStorage.getItem('landnote_inquiry_draft');
+    if (!str) { alert('저장된 임시 데이터가 없습니다.'); return; }
+    try {
+      if (!confirm('임시 저장된 데이터를 불러오시겠습니까? 현재 입력된 내용은 덮어씌워집니다.')) return;
+      const draft = JSON.parse(str);
+      if (draft.customer_name) setCustomerName(draft.customer_name);
+      if (draft.customer_phone) setCustomerPhone(draft.customer_phone);
+      if (draft.category_codes) setCategoryCodes(draft.category_codes);
+      if (draft.subcategory_codes) setSubcategoryCodes(draft.subcategory_codes);
+      if (draft.tags) setTags(draft.tags);
+      if (draft.transaction_types) setTransactionTypes(draft.transaction_types);
+      if (draft.prices) setPrices(draft.prices);
+      if (draft.address_full) setAddressFull(draft.address_full);
+      if (draft.address_road) setAddressRoad(draft.address_road);
+      if (draft.address_jibun) setAddressJibun(draft.address_jibun);
+      if (draft.dong_name) setDongName(draft.dong_name);
+      if (draft.complex_name) setComplexName(draft.complex_name);
+      if (draft.building_num) setBuildingNum(draft.building_num);
+      if (draft.room_num) setRoomNum(draft.room_num);
+      if (draft.latitude) setLatitude(draft.latitude);
+      if (draft.longitude) setLongitude(draft.longitude);
+      if (draft.area_supply) setAreaSupply(draft.area_supply);
+      if (draft.area_exclusive) setAreaExclusive(draft.area_exclusive);
+      if (draft.area_land) setAreaLand(draft.area_land);
+      if (draft.area_building) setAreaBuilding(draft.area_building);
+      if (draft.zoning) setZoning(draft.zoning);
+      if (draft.jimok) setJimok(draft.jimok);
+      if (draft.current_usage) setCurrentUsage(draft.current_usage);
+      if (draft.factory_usage) setFactoryUsage(draft.factory_usage);
+      if (draft.business_type) setBusinessType(draft.business_type);
+      if (draft.recommended_usage) setRecommendedUsage(draft.recommended_usage);
+      if (draft.floor_current) setFloorCurrent(draft.floor_current);
+      if (draft.floor_total) setFloorTotal(draft.floor_total);
+      if (draft.built_year) setBuiltYear(draft.built_year);
+      if (draft.direction) setDirection(draft.direction);
+      if (draft.agent_memo) setMemo(draft.agent_memo);
+      alert('임시 저장된 데이터를 불러왔습니다.');
+    } catch (e) {
+      alert('데이터를 불러오는데 실패했습니다.');
+    }
+  };
+
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -665,8 +735,10 @@ function NewInquiryForm() {
       {error && (
         <p className="text-sm text-red-500">{error}</p>
       )}
-      <div className="flex gap-3">
+      <div className="flex gap-4 pt-4 pb-12">
         <Button variant="outline" onClick={() => router.back()}>취소</Button>
+        <Button variant="secondary" onClick={handleSaveDraft}>임시저장</Button>
+        <Button variant="secondary" onClick={handleLoadDraft}>불러오기</Button>
         <Button onClick={handleSubmit} disabled={submitting} className="flex-1">
           {submitting ? (
             <>

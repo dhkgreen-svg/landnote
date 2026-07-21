@@ -105,3 +105,16 @@ export function useGrantFreeMonths() {
     },
   });
 }
+
+export function useAdminDeleteAgent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (agentId: string) =>
+      apiFetch(`/admin/agents/${agentId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-agents'] });
+    },
+  });
+}

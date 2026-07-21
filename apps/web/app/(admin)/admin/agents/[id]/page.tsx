@@ -7,15 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   useAdminAgentDetail,
-  useAdminAgentInquiries,
-  useAdminAgentListings,
   useChangeAgentStatus,
   useChangeAgentPlan,
   useGrantFreeMonths,
+  useAdminDeleteAgent,
 } from '@/lib/hooks/use-admin-agents';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-const TABS = ['기본정보', '문의', '매물', '결제이력', '활동로그'] as const;
+const TABS = ['기본정보', '결제이력', '활동로그'] as const;
 type Tab = typeof TABS[number];
 
 const STATUS_LABELS: Record<string, string> = {
@@ -27,13 +27,13 @@ export default function AdminAgentDetailPage() {
   const id = params.id as string;
   const [tab, setTab] = useState<Tab>('기본정보');
   const [confirmAction, setConfirmAction] = useState<{ type: string; value: string } | null>(null);
+  const router = useRouter();
 
   const { data, isLoading } = useAdminAgentDetail(id);
-  const { data: inquiries } = useAdminAgentInquiries(id);
-  const { data: listings } = useAdminAgentListings(id);
   const changeStatus = useChangeAgentStatus();
   const changePlan = useChangeAgentPlan();
   const grantFreeMonths = useGrantFreeMonths();
+  const deleteAgent = useAdminDeleteAgent();
 
   if (isLoading) {
     return <div className="py-20 text-center text-muted-foreground">로딩 중...</div>;
@@ -55,6 +55,16 @@ export default function AdminAgentDetailPage() {
       await grantFreeMonths.mutateAsync({ id, months: parseInt(confirmAction.value) });
     }
     setConfirmAction(null);
+  };
+
+  const handleDeleteAgent = async () => {
+    if (confirm('정말로 이 회원을 삭제하시겠습니까?\n이 작업은 취소할 수 없으며 관련된 모든 데이터가 영구 삭제됩니다.')) {
+      if (confirm('한 번 더 확인합니다. 정말 삭제하시겠습니까?')) {
+        await deleteAgent.mutateAsync(id);
+        alert('회원이 삭제되었습니다.');
+        router.push('/admin/agents');
+      }
+    }
   };
 
   return (
@@ -185,70 +195,19 @@ export default function AdminAgentDetailPage() {
                   <option value="12">12개월 무료</option>
                 </select>
               </div>
+
+              <div className="pt-6 border-t mt-6">
+                <Button variant="destructive" className="w-full" onClick={handleDeleteAgent}>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  회원 영구 삭제
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2 text-center">이 작업은 되돌릴 수 없으며, 모든 관련 데이터가 삭제됩니다.</p>
+              </div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {tab === '문의' && (
-        <Card>
-          <CardContent className="p-0">
-            <table className="w-full text-sm">
-              <thead><tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left">고객명</th>
-                <th className="px-4 py-3 text-left">유형</th>
-                <th className="px-4 py-3 text-left">카테고리</th>
-                <th className="px-4 py-3 text-left">상태</th>
-                <th className="px-4 py-3 text-left">접수일</th>
-              </tr></thead>
-              <tbody>
-                {(inquiries ?? []).map((inq: any) => (
-                  <tr key={inq.id} className="border-b">
-                    <td className="px-4 py-3">{inq.customer_name || '-'}</td>
-                    <td className="px-4 py-3">{inq.inquiry_type}</td>
-                    <td className="px-4 py-3">{(inq.category_codes ?? []).join(', ')}</td>
-                    <td className="px-4 py-3">{inq.status}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{new Date(inq.created_at).toLocaleDateString('ko-KR')}</td>
-                  </tr>
-                ))}
-                {(inquiries ?? []).length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">문의 없음</td></tr>
-                )}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-      )}
-
-      {tab === '매물' && (
-        <Card>
-          <CardContent className="p-0">
-            <table className="w-full text-sm">
-              <thead><tr className="border-b bg-muted/50">
-                <th className="px-4 py-3 text-left">주소</th>
-                <th className="px-4 py-3 text-left">카테고리</th>
-                <th className="px-4 py-3 text-left">거래유형</th>
-                <th className="px-4 py-3 text-left">상태</th>
-                <th className="px-4 py-3 text-left">등록일</th>
-              </tr></thead>
-              <tbody>
-                {(listings ?? []).map((l: any) => (
-                  <tr key={l.id} className="border-b">
-                    <td className="px-4 py-3">{l.address_full || l.dong_name || '-'}</td>
-                    <td className="px-4 py-3">{(l.category_codes ?? []).join(', ')}</td>
-                    <td className="px-4 py-3">{(l.transaction_types ?? []).join(', ')}</td>
-                    <td className="px-4 py-3">{l.status}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{new Date(l.created_at).toLocaleDateString('ko-KR')}</td>
-                  </tr>
-                ))}
-                {(listings ?? []).length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">매물 없음</td></tr>
-                )}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-      )}
 
       {tab === '결제이력' && (
         <Card>

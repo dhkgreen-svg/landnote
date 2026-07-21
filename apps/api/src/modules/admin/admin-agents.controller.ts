@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Query, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Param, Query, Body, UseGuards } from '@nestjs/common';
 import { Public } from '../../common/decorators/public.decorator';
 import { AdminAuthGuard } from '../../common/guards/admin-auth.guard';
 import { CurrentAdmin } from '../../common/decorators/current-admin.decorator';
@@ -79,5 +79,14 @@ export class AdminAgentsController {
   ) {
     await this.adminService.grantFreeMonths(admin.id, id, body.months);
     return { message: `${body.months}개월 무료 혜택이 부여되었습니다` };
+  }
+
+  @Delete(':id')
+  async deleteAgent(
+    @CurrentAdmin() admin: any,
+    @Param('id') id: string,
+  ) {
+    await this.adminService.deleteAgent(admin.id, id);
+    return { message: '회원이 삭제되었습니다' };
   }
 }
