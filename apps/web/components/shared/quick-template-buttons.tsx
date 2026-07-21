@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export const QUICK_TEMPLATES: Record<string, string[]> = {
   residential: [
@@ -35,9 +35,10 @@ interface QuickTemplateButtonsProps {
   onSelect: (text: string) => void;
   fixedCategory?: string | null; // e.g. 'residential'
   onCategoryChange?: (category: string) => void;
+  hideTemplates?: boolean;
 }
 
-export function QuickTemplateButtons({ onSelect, fixedCategory, onCategoryChange }: QuickTemplateButtonsProps) {
+export function QuickTemplateButtons({ onSelect, fixedCategory, onCategoryChange, hideTemplates }: QuickTemplateButtonsProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>(fixedCategory || 'residential');
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export function QuickTemplateButtons({ onSelect, fixedCategory, onCategoryChange
   };
 
   return (
-    <div className="rounded-lg border bg-blue-50/50 p-4 space-y-3 mb-4 w-full">
+    <div className={`rounded-lg border bg-blue-50/50 p-4 w-full ${hideTemplates && fixedCategory ? 'hidden' : 'mb-4 space-y-3'}`}>
       {!fixedCategory ? (
         <>
           <h3 className="text-sm font-semibold text-blue-900 mb-2">💡 어떤 종류의 매물인가요?</h3>
@@ -79,30 +80,32 @@ export function QuickTemplateButtons({ onSelect, fixedCategory, onCategoryChange
           <p className="text-xs text-blue-600/80 mt-1 mb-2">
             * 카테고리를 미리 선택하시면 AI가 더 빠르고 정확하게 구분합니다.
           </p>
-          <hr className="border-blue-100" />
+          {!hideTemplates && <hr className="border-blue-100" />}
         </>
       ) : null}
 
-      <div>
-        <h3 className="text-sm font-semibold text-blue-900 mb-2 mt-2">
-          자주 쓰는 문구 (터치해서 추가)
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          {QUICK_TEMPLATES[selectedCategory]?.map((text, idx) => (
-            <button
-              type="button"
-              key={idx}
-              onClick={() => onSelect(text)}
-              className="px-2.5 py-1.5 text-xs bg-white border border-blue-200 text-blue-700 rounded-md hover:bg-blue-100 transition-colors text-left"
-            >
-              {text}
-            </button>
-          ))}
+      {!hideTemplates && (
+        <div>
+          <h3 className="text-sm font-semibold text-blue-900 mb-2 mt-2">
+            자주 쓰는 문구 (터치해서 추가)
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {QUICK_TEMPLATES[selectedCategory]?.map((text, idx) => (
+              <button
+                type="button"
+                key={idx}
+                onClick={() => onSelect(text)}
+                className="px-2.5 py-1.5 text-xs bg-white border border-blue-200 text-blue-700 rounded-md hover:bg-blue-100 transition-colors text-left"
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-blue-600/80 mt-2">
+            * ( ) 안의 단위에 유의하여 숫자만 편하게 입력하세요.
+          </p>
         </div>
-        <p className="text-xs text-blue-600/80 mt-2">
-          * ( ) 안의 단위에 유의하여 숫자만 편하게 입력하세요.
-        </p>
-      </div>
+      )}
     </div>
   );
 }

@@ -157,6 +157,7 @@ export default function AiInputPage() {
           <QuickTemplateButtons 
             onSelect={appendTemplate} 
             onCategoryChange={setSelectedCategory} 
+            hideTemplates={mode === 'image'}
           />
 
           {mode === 'image' ? (
