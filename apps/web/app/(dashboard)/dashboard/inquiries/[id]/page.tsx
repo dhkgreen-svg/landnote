@@ -307,17 +307,29 @@ export default function InquiryDetailPage() {
                 <div>
                   <Label className="mb-2 block">희망 거래유형</Label>
                   <div className="flex flex-wrap gap-2">
-                    {Object.entries(TX_LABELS).map(([code, label]) => (
-                      <Badge
-                        key={code}
-                        variant={editForm.transaction_types?.includes(code) ? 'default' : 'outline'}
-                        className="cursor-pointer"
-                        onClick={() => {
-                          const current = editForm.transaction_types || [];
-                          const next = current.includes(code) ? current.filter((c: string) => c !== code) : [...current, code];
-                          handleChange('transaction_types', next);
-                        }}
-                      >{label}</Badge>
+                    {Object.entries(TX_LABELS)
+                      .filter(([code]) => {
+                        if (code === 'premium_transfer') {
+                          return editForm.category_codes?.includes('commercial');
+                        }
+                        return true;
+                      })
+                      .map(([code, label]) => (
+                        <Badge
+                          key={code}
+                          variant={editForm.transaction_types?.includes(code) ? 'default' : 'outline'}
+                          className="cursor-pointer"
+                          onClick={() => {
+                            const current = editForm.transaction_types || [];
+                            let next = current.includes(code) ? current.filter((c: string) => c !== code) : [...current, code];
+                            if (code === 'premium_transfer' && !current.includes(code)) {
+                              next = ['premium_transfer'];
+                            } else if (code !== 'premium_transfer' && !current.includes(code)) {
+                              next = next.filter((t: string) => t !== 'premium_transfer');
+                            }
+                            handleChange('transaction_types', next);
+                          }}
+                        >{label}</Badge>
                     ))}
                   </div>
                 </div>
