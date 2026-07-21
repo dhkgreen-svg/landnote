@@ -37,7 +37,7 @@ describe('ListingsController — PATCH DTO 검증', () => {
   });
 
   it('유효한 status로 update 호출 시 서비스가 호출된다', async () => {
-    const dto = plainToInstance(UpdateListingDto, { status: 'pending' });
+    const dto = plainToInstance(UpdateListingDto, { status: 'hold' });
     const errors = await validate(dto);
     expect(errors.length).toBe(0);
 
