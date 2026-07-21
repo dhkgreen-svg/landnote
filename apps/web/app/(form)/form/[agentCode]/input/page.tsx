@@ -13,6 +13,7 @@ import { FormProgress } from '../Step1Client';
 import { AddressSearch } from '@/components/address-search';
 import { TRANSACTION_TYPE, REQUIRED_PRICE_FIELDS, PRICE_LABELS, SUBCATEGORY_LABELS, SUBCATEGORIES, ZONING_OPTIONS, JIMOK_OPTIONS } from '@landnote/shared';
 import type { TransactionType } from '@landnote/shared';
+import { QuickTemplateButtons } from '@/components/shared/quick-template-buttons';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -740,8 +741,11 @@ export default function InputPage() {
               );
             })()}
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label>메모</Label>
+              <QuickTemplateButtons 
+                onSelect={(text) => store.setCondition('memo', ((store.detailed_conditions.memo as string) || '') ? (store.detailed_conditions.memo as string) + '\n' + text : text)}
+              />
               <textarea
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 rows={3}

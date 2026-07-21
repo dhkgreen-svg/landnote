@@ -19,6 +19,7 @@ import {
 } from '@/lib/hooks/queries';
 import { SUBCATEGORY_LABELS, SUBCATEGORIES } from '@landnote/shared';
 import { ArrowLeft, Pencil, X, Upload, Camera, Trash2, Share2, MessageCircle, MessageSquare, Phone, Shuffle } from 'lucide-react';
+import { QuickTemplateButtons } from '@/components/shared/quick-template-buttons';
 import { Input } from '@/components/ui/input';
 import { AddressSearch } from '@/components/address-search';
 import { AreaInput } from '@/components/ui/AreaInput';
@@ -1052,10 +1053,15 @@ export default function ListingDetailPage() {
               )}
             </div>
           )}
-          <div>
+          <div className="space-y-2 mt-4">
             <Label>메모</Label>
+            {editing && (
+              <QuickTemplateButtons 
+                onSelect={(text) => handleChange('agent_memo', (editForm.agent_memo || '') ? editForm.agent_memo + '\n' + text : text)}
+              />
+            )}
             <Textarea
-              value={editForm.agent_memo || ''}
+              value={editing ? editForm.agent_memo || '' : listing.agent_memo || ''}
               onChange={e => handleChange('agent_memo', e.target.value)}
               placeholder="이 매물에 대한 메모"
               rows={4}

@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { apiFetch, apiUpload } from '@/lib/api';
 import { useAgent } from '@/lib/hooks/use-agent';
+import { QuickTemplateButtons } from '@/components/shared/quick-template-buttons';
 import {
   CATEGORY_CODE, SUBCATEGORIES, SUBCATEGORY_LABELS, TRANSACTION_TYPE,
   REQUIRED_PRICE_FIELDS, ZONING_OPTIONS, JIMOK_OPTIONS,
@@ -700,6 +701,9 @@ function NewListingForm() {
         <CardHeader><CardTitle className="text-lg">메모</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
+            <QuickTemplateButtons 
+              onSelect={(text) => setMemo(prev => prev ? prev + '\n' + text : text)}
+            />
             <Textarea
               value={memo}
               onChange={e => setMemo(e.target.value)}
