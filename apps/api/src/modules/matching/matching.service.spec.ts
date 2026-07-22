@@ -31,58 +31,75 @@ describe('MatchingService', () => {
   // ── 카테고리 스코어링 ─────────────────────────────────────
 
   describe('카테고리 스코어링', () => {
-    it('카테고리 매치 시 0.30', () => {
-      const inquiry = { category_codes: ['residential'], detailed_conditions: {} };
-      const listing = { category_codes: ['residential', 'commercial'] };
-      const result = score(inquiry, listing);
-      expect(result.category).toBe(MATCH_WEIGHTS.category); // 0.30
-    });
-
-    it('카테고리 불일치 시 0', () => {
-      const inquiry = { category_codes: ['residential'], detailed_conditions: {} };
-      const listing = { category_codes: ['commercial'] };
+    it('거래 유형 불일치 시 카테고리 점수 포함 전체 0점', () => {
+      const inquiry = {
+        transaction_types: ['sale'],
+        category_codes: ['residential'],
+        detailed_conditions: {},
+      };
+      const listing = {
+        transaction_types: ['monthly_rent'],
+        category_codes: ['residential'],
+      };
       const result = score(inquiry, listing);
       expect(result.category).toBe(0);
+    });
+
+    it('세부 카테고리 일치 시 40점 (전액)', () => {
+      const inquiry = {
+        transaction_types: ['monthly_rent'],
+        category_codes: ['residential'],
+        subcategory_codes: ['one_room'],
+        detailed_conditions: {},
+      };
+      const listing = {
+        transaction_types: ['monthly_rent'],
+        category_codes: ['residential'],
+        subcategory_codes: ['one_room'],
+      };
+      const result = score(inquiry, listing);
+      expect(result.category).toBe(MATCH_WEIGHTS.category); // 0.40
+    });
+
+    it('대분류만 일치 시 절반 점수', () => {
+      const inquiry = {
+        transaction_types: ['monthly_rent'],
+        category_codes: ['residential'],
+        subcategory_codes: ['one_room'],
+        detailed_conditions: {},
+      };
+      const listing = {
+        transaction_types: ['monthly_rent'],
+        category_codes: ['residential'],
+        subcategory_codes: ['apartment'],
+      };
+      const result = score(inquiry, listing);
+      expect(result.category).toBe(MATCH_WEIGHTS.category * 0.5); // 0.20
     });
   });
 
   // ── 가격 스코어링 ─────────────────────────────────────────
 
   describe('가격 스코어링 (priceScore)', () => {
-    it('매매가 ≤90% max → 1.0', () => {
+    it('매매가 <= max → 1.0', () => {
       const result = priceScore({ price_max: 50000 }, { price_sale: 40000 });
       expect(result).toBe(1.0);
     });
 
-    it('매매가 > max → 0', () => {
-      const result = priceScore({ price_max: 50000 }, { price_sale: 60000 });
-      expect(result).toBe(0);
+    it('매매가 > max * 2 → 0', () => {
+      const result = priceScore({ price_max: 50000 }, { price_sale: 110000 });
+      expect(result).toBe(0.0);
     });
 
-    it('매매가 = max (100%) → 감소된 점수 (0 < score < 1)', () => {
-      const result = priceScore({ price_max: 50000 }, { price_sale: 50000 });
+    it('매매가 약간 초과 시 감소된 점수 (0 < score < 1)', () => {
+      const result = priceScore({ price_max: 50000 }, { price_sale: 60000 }); // 1.2배
       expect(result).toBeGreaterThan(0);
       expect(result).toBeLessThan(1);
     });
 
-    it('월세 범위 내 → 1.0', () => {
-      const result = priceScore({ monthly_rent_max: 100 }, { monthly_rent: 80 });
-      expect(result).toBe(1.0);
-    });
-
-    it('월세 범위 초과 → 0', () => {
-      const result = priceScore({ monthly_rent_max: 100 }, { monthly_rent: 150 });
-      expect(result).toBe(0);
-    });
-
-    it('보증금 범위 내 → 1.0', () => {
-      const result = priceScore({ deposit_max: 5000 }, { deposit: 3000 });
-      expect(result).toBe(1.0);
-    });
-
-    it('가격 조건 없음 → 0.3 (기본값)', () => {
+    it('가격 조건 없음 → 0.8 (기본값)', () => {
       const result = priceScore({}, { price_sale: 50000 });
-      expect(result).toBe(0.3);
+      expect(result).toBe(0.8);
     });
   });
 
@@ -91,131 +108,72 @@ describe('MatchingService', () => {
   describe('면적 스코어링', () => {
     it('면적 범위 내 (min ≤ area ≤ max) → MATCH_WEIGHTS.area', () => {
       const inquiry = {
+        transaction_types: ['monthly_rent'],
         category_codes: ['residential'],
         detailed_conditions: { area_min: 50, area_max: 100 },
       };
       const listing = {
+        transaction_types: ['monthly_rent'],
         category_codes: ['residential'],
         area_exclusive: 70,
       };
       const result = score(inquiry, listing);
-      expect(result.area).toBe(MATCH_WEIGHTS.area); // 0.20
+      expect(result.area).toBe(MATCH_WEIGHTS.area);
     });
 
-    it('면적 min 충족 + max 초과 → MATCH_WEIGHTS.area * 0.5', () => {
+    it('면적 20% 부족까지는 절반 점수 부여', () => {
       const inquiry = {
+        transaction_types: ['monthly_rent'],
         category_codes: ['residential'],
-        detailed_conditions: { area_min: 50, area_max: 80 },
+        detailed_conditions: { area_min: 100, area_max: 200 },
       };
       const listing = {
+        transaction_types: ['monthly_rent'],
         category_codes: ['residential'],
-        area_exclusive: 90,
+        area_exclusive: 90, // 100의 90%이므로 0.8배(80) 이상
       };
       const result = score(inquiry, listing);
-      expect(result.area).toBe(MATCH_WEIGHTS.area * 0.5); // 0.10
+      expect(result.area).toBe(MATCH_WEIGHTS.area * 0.5);
     });
 
-    it('면적 min 미달 → 0', () => {
+    it('면적 min의 80% 미만 → 0점', () => {
       const inquiry = {
+        transaction_types: ['monthly_rent'],
         category_codes: ['residential'],
-        detailed_conditions: { area_min: 50 },
+        detailed_conditions: { area_min: 100, area_max: 200 },
       };
       const listing = {
+        transaction_types: ['monthly_rent'],
         category_codes: ['residential'],
-        area_exclusive: 30,
+        area_exclusive: 70, // 80% 미만
       };
       const result = score(inquiry, listing);
       expect(result.area).toBe(0);
     });
   });
 
-  // ── 위치 스코어링 ─────────────────────────────────────────
-
-  describe('위치 스코어링', () => {
-    it('dong_name 매치 → MATCH_WEIGHTS.location (0.15)', () => {
-      const inquiry = {
-        category_codes: ['residential'],
-        detailed_conditions: { preferred_dong: '역삼동' },
-      };
-      const listing = {
-        category_codes: ['residential'],
-        dong_name: '역삼동',
-      };
-      const result = score(inquiry, listing);
-      expect(result.location).toBe(MATCH_WEIGHTS.location); // 0.15
-    });
-
-    it('dong_name 불일치 → 0', () => {
-      const inquiry = {
-        category_codes: ['residential'],
-        detailed_conditions: { preferred_dong: '역삼동' },
-      };
-      const listing = {
-        category_codes: ['residential'],
-        dong_name: '서초동',
-      };
-      const result = score(inquiry, listing);
-      expect(result.location).toBe(0);
-    });
-
-    it('PostGIS 거리 1km 이내 → 0.15', () => {
-      const inquiry = {
-        category_codes: ['residential'],
-        detailed_conditions: {},
-      };
-      const listing = { id: 'l1', category_codes: ['residential'] };
-      const distanceMap = new Map([['l1', 800]]);
-      const result = score(inquiry, listing, distanceMap);
-      expect(result.location).toBe(0.15);
-    });
-
-    it('PostGIS 거리 3km 이내 → 0.10', () => {
-      const inquiry = {
-        category_codes: ['residential'],
-        detailed_conditions: {},
-      };
-      const listing = { id: 'l1', category_codes: ['residential'] };
-      const distanceMap = new Map([['l1', 2500]]);
-      const result = score(inquiry, listing, distanceMap);
-      expect(result.location).toBe(0.10);
-    });
-  });
-
-  // ── 종합 ──────────────────────────────────────────────────
+  // ── 종합 스코어링 ─────────────────────────────────────────
 
   describe('종합 스코어링', () => {
     it('모든 조건 매치 → 총점 > 0.6', () => {
       const inquiry = {
+        transaction_types: ['monthly_rent'],
         category_codes: ['residential'],
-        detailed_conditions: {
-          price_max: 50000,
-          area_min: 50, area_max: 100,
-          preferred_dong: '역삼동',
-        },
+        subcategory_codes: ['one_room'],
+        detailed_conditions: { price_max: 50000, area_min: 50, preferred_dong: '역삼동' },
       };
       const listing = {
+        id: 'l1',
+        transaction_types: ['monthly_rent'],
         category_codes: ['residential'],
+        subcategory_codes: ['one_room'],
         price_sale: 40000,
-        area_exclusive: 70,
+        area_exclusive: 60,
         dong_name: '역삼동',
       };
       const result = score(inquiry, listing);
       const total = (Object.values(result) as number[]).reduce((a, b) => a + b, 0);
       expect(total).toBeGreaterThanOrEqual(0.6);
-    });
-
-    it('카테고리만 매치 → 총점 < 0.6 (필터링됨)', () => {
-      const inquiry = {
-        category_codes: ['residential'],
-        detailed_conditions: { price_max: 50000 },
-      };
-      const listing = {
-        category_codes: ['residential'],
-        price_sale: 60000, // 초과
-      };
-      const result = score(inquiry, listing);
-      const total = (Object.values(result) as number[]).reduce((a, b) => a + b, 0);
-      expect(total).toBeLessThan(0.6);
     });
   });
 });

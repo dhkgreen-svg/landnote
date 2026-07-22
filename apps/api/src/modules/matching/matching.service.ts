@@ -2,9 +2,9 @@ import { Injectable, NotFoundException, InternalServerErrorException } from '@ne
 import { createClient } from '@supabase/supabase-js';
 
 export const MATCH_WEIGHTS = {
-  category: 0.30,
-  price:    0.35,
-  area:     0.20,
+  category: 0.40,
+  price:    0.30,
+  area:     0.15,
   location: 0.15,
 } as const;
 
@@ -145,16 +145,32 @@ export class MatchingService {
     const cond = inquiry.detailed_conditions;
     const bd = { category: 0, price: 0, area: 0, location: 0 };
 
-    if (inquiry.category_codes.some((c: string) => listing.category_codes.includes(c))) {
-      bd.category = MATCH_WEIGHTS.category;
+    // 1. 거래 유형 일치 확인 (필수)
+    const txMatch = inquiry.transaction_types?.some((t: string) => listing.transaction_types?.includes(t));
+    if (!txMatch) return bd; // 거래 유형이 다르면 0점 처리 (매칭 실패)
+
+    // 2. 카테고리 세부 일치 확인
+    const subcatMatch = inquiry.subcategory_codes?.some((c: string) => listing.subcategory_codes?.includes(c));
+    const catMatch = inquiry.category_codes?.some((c: string) => listing.category_codes?.includes(c));
+
+    if (subcatMatch) {
+      bd.category = MATCH_WEIGHTS.category; // 세부 종류 일치 시 40점
+    } else if (catMatch) {
+      bd.category = MATCH_WEIGHTS.category * 0.5; // 대분류만 일치 시 20점
+    } else {
+      return bd; // 카테고리가 아예 다르면 탈락
     }
 
+    // 3. 가격 (유동성 반영)
     bd.price = this.priceScore(cond, listing) * MATCH_WEIGHTS.price;
 
+    // 4. 면적
     if (cond?.area_min && listing.area_exclusive) {
       if (listing.area_exclusive >= cond.area_min) {
         const withinMax = !cond.area_max || listing.area_exclusive <= cond.area_max;
         bd.area = withinMax ? MATCH_WEIGHTS.area : MATCH_WEIGHTS.area * 0.5;
+      } else if (listing.area_exclusive >= cond.area_min * 0.8) {
+        bd.area = MATCH_WEIGHTS.area * 0.5; // 20% 부족한 평형까지는 절반 점수 부여
       }
     }
 
@@ -174,18 +190,33 @@ export class MatchingService {
   }
 
   private priceScore(cond: any, listing: any): number {
+    let score = 0;
+    let checked = 0;
+
+    const calcFlexibleScore = (actual: number, max: number) => {
+      if (actual <= max) return 1.0;
+      if (actual > max * 2) return 0.0;
+      // 예산 초과 비율에 따라 1.0에서 0.0으로 선형 감소 (예: 1.5배 초과 시 0.5점)
+      return 1.0 - ((actual - max) / max);
+    };
+
     if (listing.price_sale && cond?.price_max) {
-      if (listing.price_sale > cond.price_max) return 0;
-      const ratio = listing.price_sale / cond.price_max;
-      return ratio <= 0.9 ? 1.0 : 1.0 - (ratio - 0.9) * 2;
+      score += calcFlexibleScore(listing.price_sale, cond.price_max);
+      checked++;
     }
     if (listing.monthly_rent && cond?.monthly_rent_max) {
-      return listing.monthly_rent <= cond.monthly_rent_max ? 1.0 : 0;
+      score += calcFlexibleScore(listing.monthly_rent, cond.monthly_rent_max);
+      checked++;
     }
     if (listing.deposit && cond?.deposit_max) {
-      return listing.deposit <= cond.deposit_max ? 1.0 : 0;
+      score += calcFlexibleScore(listing.deposit, cond.deposit_max);
+      checked++;
     }
-    return 0.3;
+
+    // 가격 조건이 없으면 매칭을 떨어뜨리지 않기 위해 기본 0.8 부여
+    if (checked === 0) return 0.8;
+    
+    return score / checked;
   }
 
   /** 매칭이 존재하는 문의 목록 (미검토 우선 정렬) */
