@@ -9,7 +9,7 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "paths": {
-      "@landnote/shared": ["../../packages/shared"]
+      "@landnote/shared": ["../../packages/shared/dist"]
     }
   },
   "include": ["src/**/*.ts"]
