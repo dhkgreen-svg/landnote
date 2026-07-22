@@ -259,6 +259,7 @@ export default function ListingDetailPage() {
     const subs = listing.subcategory_codes || [];
     const tx = listing.transaction_types || [];
     
+    const prices: string[] = [];
     if (tx.includes('sale') && listing.price_sale) prices.push(`매매: ${formatKoreanCurrency(listing.price_sale)}`);
     if (tx.includes('jeonse') && listing.price_jeonse) prices.push(`전세: ${formatKoreanCurrency(listing.price_jeonse)}`);
     if (tx.includes('monthly_rent') && listing.deposit) prices.push(`월세: ${formatKoreanCurrency(listing.deposit)}/${formatKoreanCurrency(listing.monthly_rent || 0)}`);
