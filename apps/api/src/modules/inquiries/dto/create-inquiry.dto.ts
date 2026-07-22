@@ -12,9 +12,10 @@ export class CreateInquiryDto {
   @IsIn(['looking_for', 'listing'])
   inquiry_type: 'looking_for' | 'listing';
 
+  @IsOptional()
   @IsString()
   @MaxLength(50)
-  customer_name: string;
+  customer_name?: string;
 
   @IsString()
   customer_phone: string;

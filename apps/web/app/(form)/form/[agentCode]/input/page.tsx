@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormProgress } from '../Step1Client';
 import { AddressSearch } from '@/components/address-search';
+import { DictationButton } from '@/components/shared/dictation-button';
 import { TRANSACTION_TYPE, REQUIRED_PRICE_FIELDS, PRICE_LABELS, SUBCATEGORY_LABELS, SUBCATEGORIES, ZONING_OPTIONS, JIMOK_OPTIONS } from '@landnote/shared';
 import type { TransactionType } from '@landnote/shared';
 
@@ -69,6 +70,7 @@ export default function InputPage() {
 
   const isListing = store.inquiry_type === 'listing';
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     if (!store.inquiry_type || store.category_codes.length === 0) {
@@ -392,6 +394,39 @@ export default function InputPage() {
           </div>
         </div>
 
+        {/* 메모 (공통 - 상단 배치) */}
+        <div className="space-y-3 rounded-xl bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-foreground">메모</h3>
+            <DictationButton 
+              buttonText="마이크 음성으로 입력하기"
+              onSelect={(text) => {
+                const current = (store.detailed_conditions.memo as string) || '';
+                store.setCondition('memo', current ? `${current}\n${text}` : text);
+              }}
+            />
+          </div>
+          <textarea
+            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            rows={4}
+            placeholder={isListing ? "매물에 대해 추가 설명이 있으면 적어주세요" : "원하시는 방 개수나 조건 등을 음성으로 편하게 남겨주세요."}
+            value={(store.detailed_conditions.memo as string) ?? ''}
+            onChange={e => store.setCondition('memo', e.target.value)}
+          />
+        </div>
+
+        {/* 상세 정보 (매수의 경우 기본 숨김) */}
+        {!isListing && !showDetails ? (
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="w-full py-6 mt-2 bg-white shadow-sm border-dashed text-muted-foreground hover:text-foreground font-semibold" 
+            onClick={() => setShowDetails(true)}
+          >
+            상세 정보 추가하기 (선택) ▼
+          </Button>
+        ) : (
+          <>
         {/* 가격 필드 (공통) */}
         {requiredPriceFields.size > 0 && (
           <div className="space-y-3 rounded-xl bg-white p-4 shadow-sm">
@@ -742,17 +777,9 @@ export default function InputPage() {
               );
             })()}
 
-            <div className="space-y-2">
-              <Label>메모</Label>
-              <textarea
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                rows={3}
-                placeholder="매물에 대해 추가 설명이 있으면 적어주세요"
-                value={(store.detailed_conditions.memo as string) ?? ''}
-                onChange={e => store.setCondition('memo', e.target.value)}
-              />
-            </div>
           </div>
+        </>
+        )}
 
         {/* 이미지 첨부 (listing만) */}
         {isListing && (

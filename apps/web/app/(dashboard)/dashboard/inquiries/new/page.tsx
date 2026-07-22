@@ -208,7 +208,7 @@ function NewInquiryForm() {
     setError('');
     if (categoryCodes.length === 0) { setError('카테고리를 선택하세요'); return; }
     if (transactionTypes.length === 0) { setError('거래유형을 선택하세요'); return; }
-    if (!customerName.trim() || !customerPhone.trim()) { setError('고객 이름과 연락처를 입력하세요'); return; }
+    if (!customerPhone.trim()) { setError('고객 연락처를 입력하세요'); return; }
 
     setSubmitting(true);
     try {
@@ -354,7 +354,7 @@ function NewInquiryForm() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>고객 이름 <span className="text-red-500">*</span></Label>
+              <Label>고객 이름 (선택)</Label>
               <Input 
                 value={customerName}
                 onChange={e => setCustomerName(e.target.value)}

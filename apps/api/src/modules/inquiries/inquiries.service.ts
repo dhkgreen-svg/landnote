@@ -178,7 +178,7 @@ export class InquiriesService {
     try {
       await this.notificationsService.sendPush(agent.id, {
         title: '새로운 문의가 접수되었습니다',
-        body: `${dto.customer_name}님이 조건을 접수했습니다`,
+        body: `${dto.customer_name ?? '고객'}님이 조건을 접수했습니다`,
         url: `/dashboard/inquiries/${inquiry.id}`,
       });
     } catch (e) {

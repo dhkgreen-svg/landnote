@@ -52,6 +52,9 @@ export function useSpeechRecognition() {
 
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error', event.error);
+        if (event.error === 'not-allowed') {
+          alert('마이크 접근 권한이 거부되었습니다. 브라우저 설정에서 마이크를 허용하거나, HTTPS(보안 연결) 환경인지 확인해 주세요.');
+        }
         if (event.error !== 'no-speech') {
           setIsListening(false);
           isListeningRef.current = false;
