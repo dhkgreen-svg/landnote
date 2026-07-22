@@ -119,10 +119,26 @@ export default function InquiryDetailPage() {
         status,
         agent_memo: memo,
       }, {
-        onSuccess: () => setEditing(false)
+        onSuccess: () => {
+          alert('성공적으로 수정되었습니다.');
+          router.back();
+        },
+        onError: (err: any) => {
+          console.error(err);
+          alert(`수정 중 오류가 발생했습니다: ${err.message || '다시 시도해주세요.'}`);
+        }
       });
     } else {
-      updateMutation.mutate({ status, agent_memo: memo });
+      updateMutation.mutate({ status, agent_memo: memo }, {
+        onSuccess: () => {
+          alert('성공적으로 수정되었습니다.');
+          router.back();
+        },
+        onError: (err: any) => {
+          console.error(err);
+          alert(`수정 중 오류가 발생했습니다: ${err.message || '다시 시도해주세요.'}`);
+        }
+      });
     }
   };
   const saving = updateMutation.isPending;

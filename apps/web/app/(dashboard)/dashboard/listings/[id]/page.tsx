@@ -199,20 +199,20 @@ export default function ListingDetailPage() {
         room_num: editForm.room_num || null,
         owner_phone: editForm.owner_phone || null,
         contract_party_phone: editForm.status === 'contracted' ? (editForm.contract_party_phone || null) : null,
-        price_sale: editForm.price_sale == null ? null : Number(editForm.price_sale),
-        price_jeonse: editForm.price_jeonse == null ? null : Number(editForm.price_jeonse),
-        deposit: editForm.deposit == null ? null : Number(editForm.deposit),
-        monthly_rent: editForm.monthly_rent == null ? null : Number(editForm.monthly_rent),
-        premium_price: editForm.premium_price == null ? null : Number(editForm.premium_price),
-        maintenance_fee: editForm.maintenance_fee == null ? null : Number(editForm.maintenance_fee),
-        contract_remaining_months: editForm.contract_remaining_months == null ? null : Number(editForm.contract_remaining_months),
-        area_supply: editForm.area_supply == null ? null : Number(editForm.area_supply),
-        area_exclusive: editForm.area_exclusive == null ? null : Number(editForm.area_exclusive),
-        area_land: editForm.area_land == null ? null : Number(editForm.area_land),
-        area_building: editForm.area_building == null ? null : Number(editForm.area_building),
-        floor_current: editForm.floor_current == null ? null : Number(editForm.floor_current),
-        floor_total: editForm.floor_total == null ? null : Number(editForm.floor_total),
-        built_year: editForm.built_year == null ? null : Number(editForm.built_year),
+        price_sale: !editForm.price_sale ? null : Number(editForm.price_sale),
+        price_jeonse: !editForm.price_jeonse ? null : Number(editForm.price_jeonse),
+        deposit: !editForm.deposit && editForm.deposit !== 0 ? null : Number(editForm.deposit),
+        monthly_rent: !editForm.monthly_rent ? null : Number(editForm.monthly_rent),
+        premium_price: !editForm.premium_price ? null : Number(editForm.premium_price),
+        maintenance_fee: !editForm.maintenance_fee && editForm.maintenance_fee !== 0 ? null : Number(editForm.maintenance_fee),
+        contract_remaining_months: !editForm.contract_remaining_months ? null : Number(editForm.contract_remaining_months),
+        area_supply: !editForm.area_supply ? null : Number(editForm.area_supply),
+        area_exclusive: !editForm.area_exclusive ? null : Number(editForm.area_exclusive),
+        area_land: !editForm.area_land ? null : Number(editForm.area_land),
+        area_building: !editForm.area_building ? null : Number(editForm.area_building),
+        floor_current: !editForm.floor_current && editForm.floor_current !== 0 ? null : Number(editForm.floor_current),
+        floor_total: !editForm.floor_total && editForm.floor_total !== 0 ? null : Number(editForm.floor_total),
+        built_year: !editForm.built_year ? null : Number(editForm.built_year),
         direction: editForm.direction || null,
         detail_info: editForm.detail_info || null,
         category_codes: editForm.category_codes,
@@ -220,7 +220,16 @@ export default function ListingDetailPage() {
         transaction_types: editForm.transaction_types,
         tags: editForm.tags,
       },
-      { onSuccess: () => setEditing(false) },
+      { 
+        onSuccess: () => {
+          alert('성공적으로 수정되었습니다.');
+          router.back();
+        },
+        onError: (err: any) => {
+          console.error(err);
+          alert(`수정 중 오류가 발생했습니다: ${err.message || '다시 시도해주세요.'}`);
+        }
+      },
     );
   };
   const saving = updateMutation.isPending;
