@@ -328,8 +328,27 @@ export default function InputPage() {
           />
         </div>
 
-        {/* 상세 정보 (매수의 경우 기본 숨김) */}
-        {!isListing && !showDetails ? (
+        {/* 가격 필드 (매도의 경우 기본 노출) */}
+        {isListing && requiredPriceFields.size > 0 && (
+          <div className="space-y-3 rounded-xl bg-white p-4 shadow-sm">
+            <h3 className="text-base font-bold text-foreground">가격 정보</h3>
+            {Array.from(requiredPriceFields).map(field => (
+              <div key={field} className="space-y-1.5">
+                <Label>{PRICE_LABELS[field] ?? field} *</Label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={(store.detailed_conditions[field] as string) ?? ''}
+                  onChange={e => store.setCondition(field, e.target.value.replace(/[^0-9]/g, ''))}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 상세 정보 (공통 기본 숨김) */}
+        {!showDetails ? (
           <Button 
             type="button" 
             variant="outline" 
@@ -340,8 +359,8 @@ export default function InputPage() {
           </Button>
         ) : (
           <>
-        {/* 가격 필드 (공통) */}
-        {requiredPriceFields.size > 0 && (
+        {/* 가격 필드 (매수의 경우 아코디언 내부에 노출) */}
+        {!isListing && requiredPriceFields.size > 0 && (
           <div className="space-y-3 rounded-xl bg-white p-4 shadow-sm">
             <h3 className="text-base font-bold text-foreground">가격 정보</h3>
             {Array.from(requiredPriceFields).map(field => (
