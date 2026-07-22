@@ -136,7 +136,13 @@ export class ListingsService {
   async update(agentId: string, id: string, dto: UpdateListingDto) {
     const updates: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(dto)) {
-      if (value !== undefined) updates[key] = value;
+      if (value !== undefined) {
+        if (key === 'owner_phone' && value === null) {
+          updates[key] = '';
+        } else {
+          updates[key] = value;
+        }
+      }
     }
 
     if (Object.keys(updates).length === 0) {
