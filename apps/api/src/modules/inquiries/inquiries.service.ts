@@ -72,9 +72,6 @@ export class InquiriesService {
   }
 
   async createPublic(agentCode: string, dto: CreateInquiryDto) {
-    if (!dto.otpCode) {
-      throw new Error('OTP 코드가 필요합니다.');
-    }
     // 1. 에이전트 조회
     const { data: agent } = await this.supabase
       .from('agents')
@@ -84,33 +81,10 @@ export class InquiriesService {
 
     if (!agent) throw new NotFoundException('중개사를 찾을 수 없습니다.');
 
-    // 2. OTP 검증
-    let otpData = { id: 'master-code' };
-    if (!(process.env.NODE_ENV !== 'production' && dto.otpCode === '000000')) {
-      const { data, error } = await this.supabase
-        .from('customer_otps')
-        .select('id, expires_at')
-        .eq('phone', dto.customer_phone)
-        .eq('code', dto.otpCode)
-        .eq('verified', true)
-        .eq('used', false)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error || !data) {
-        throw new Error('휴대폰 본인 인증이 완료되지 않았거나 유효하지 않습니다');
-      }
-      otpData = data;
-    }
+    // 2. OTP 검증 (제거됨 - 대표님 요청)
+    let otpData = { id: 'skipped' };
     
-    // 접수 완료 시 OTP 사용 완료 처리
-    if (otpData.id !== 'master-code') {
-      await this.supabase
-        .from('customer_otps')
-        .update({ used: true })
-        .eq('id', otpData.id);
-    }
+    // 2. 전화번호 암호화
 
     // 2. 전화번호 암호화
     const encryptedPhone = encryptPhone(dto.customer_phone);
