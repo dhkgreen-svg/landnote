@@ -64,10 +64,6 @@ export default function InputPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
 
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpVerified, setOtpVerified] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-
   const isListing = store.inquiry_type === 'listing';
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -114,49 +110,6 @@ export default function InputPage() {
     e.target.value = '';
   };
 
-  const handleSendOtp = async () => {
-    if (!store.customer_phone) {
-      setError('전화번호를 입력해주세요');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/public/otp/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: store.customer_phone }),
-      });
-      if (!res.ok) throw new Error();
-      setOtpSent(true);
-      setError('');
-      alert('인증번호가 발송되었습니다. (테스트 환경: 백엔드 콘솔 확인)');
-    } catch {
-      setError('인증번호 발송에 실패했습니다');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!otpCode) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/public/otp/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: store.customer_phone, code: otpCode }),
-      });
-      if (!res.ok) throw new Error();
-      setOtpVerified(true);
-      setError('');
-      alert('인증이 완료되었습니다.');
-    } catch {
-      setError('올바르지 않은 인증번호입니다');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async () => {
     if (!store.customer_name || !store.customer_phone) {
       setError('이름과 전화번호를 입력해주세요');
@@ -197,7 +150,6 @@ export default function InputPage() {
         inquiry_type: store.inquiry_type,
         customer_name: store.customer_name,
         customer_phone: store.customer_phone,
-        otpCode: otpCode || '000000',
         customer_email: store.customer_email || undefined,
         category_codes: store.category_codes,
         subcategory_codes: store.subcategory_codes,
@@ -299,55 +251,16 @@ export default function InputPage() {
 
           <div className="space-y-1.5">
             <Label htmlFor="phone">전화번호 *</Label>
-            <div className="flex gap-2">
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="010-0000-0000"
-                value={store.customer_phone}
-                onChange={e =>
-                  useFormStore.setState({ customer_phone: e.target.value })
-                }
-                disabled={otpVerified || otpSent}
-                className="flex-1"
-              />
-              {!otpVerified && (
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handleSendOtp} 
-                  disabled={loading || !store.customer_phone}
-                >
-                  {otpSent ? '재발송' : '인증받기'}
-                </Button>
-              )}
-            </div>
+            <Input
+              id="phone"
+              type="tel"
+              placeholder="010-0000-0000"
+              value={store.customer_phone}
+              onChange={e =>
+                useFormStore.setState({ customer_phone: e.target.value })
+              }
+            />
           </div>
-
-          {otpSent && !otpVerified && (
-            <div className="space-y-1.5 mt-2">
-              <Label htmlFor="otpCode">인증번호 *</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="otpCode"
-                  type="text"
-                  placeholder="6자리 숫자"
-                  maxLength={6}
-                  value={otpCode}
-                  onChange={e => setOtpCode(e.target.value)}
-                  className="flex-1"
-                />
-                <Button 
-                  type="button" 
-                  variant="default" 
-                  onClick={handleVerifyOtp} 
-                  disabled={loading || otpCode.length < 6}
-                >
-                  확인
-                </Button>
-              </div>
-            </div>
-          )}
 
         </div>
 
