@@ -12,9 +12,6 @@ importers:
         specifier: ^25.3.0
         version: 25.3.0
     devDependencies:
-      next:
-        specifier: ^14.2.0
-        version: 14.2.35(@babel/core@7.29.0)(@playwright/test@1.58.2)(react-dom@18.3.1)(react@18.3.1)
       turbo:
         specifier: ^2.0.0
         version: 2.8.13
