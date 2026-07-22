@@ -88,7 +88,7 @@ export default function InputPage() {
   // 선택된 거래 유형에 따른 필수 가격 필드 계산
   const requiredPriceFields = new Set<string>();
   if (isListing) {
-    store.transaction_types.forEach(t => {
+    (store.transaction_types || []).forEach(t => {
       (REQUIRED_PRICE_FIELDS[t as TransactionType] ?? []).forEach(f =>
         requiredPriceFields.add(f),
       );
@@ -160,7 +160,7 @@ export default function InputPage() {
       setError('이름과 전화번호를 입력해주세요');
       return;
     }
-    if (store.transaction_types.length === 0) {
+    if ((store.transaction_types || []).length === 0) {
       setError('거래 유형을 선택해주세요');
       return;
     }
@@ -358,12 +358,12 @@ export default function InputPage() {
             {Object.entries(TRANSACTION_TYPE)
               .filter(([, value]) => {
                 if (value === 'premium_transfer') {
-                  return store.category_codes.includes('commercial');
+                  return (store.category_codes || []).includes('commercial');
                 }
                 return true;
               })
               .map(([, value]) => {
-              const isSelected = store.transaction_types.includes(value);
+              const isSelected = (store.transaction_types || []).includes(value);
               return (
                 <Badge
                   key={value}
@@ -414,25 +414,25 @@ export default function InputPage() {
         {/* 추가 필드 (공통) */}
         <div className="space-y-3 rounded-xl bg-white p-4 shadow-sm">
             <h3 className="text-base font-bold text-foreground">
-              {store.subcategory_codes.length > 0 
-                ? `${SUBCATEGORY_LABELS[store.subcategory_codes[0]]} 매물 정보 (선택)`
+              {(store.subcategory_codes || []).length > 0 
+                ? `${SUBCATEGORY_LABELS[(store.subcategory_codes || [])[0]]} 매물 정보 (선택)`
                 : '매물 정보 (선택)'}
             </h3>
 
-            {store.subcategory_codes.map(subcatCode => {
+            {(store.subcategory_codes || []).map(subcatCode => {
               const tags = Object.values(SUBCATEGORIES).flatMap(c => Object.entries(c)).find(([k]) => k === subcatCode)?.[1] || [];
               if (tags.length === 0) return null;
               return (
                 <div key={subcatCode} className="mb-4">
                   <div className="flex flex-wrap gap-2">
                     {tags.map(tag => {
-                      const isTagSelected = store.tags.includes(tag);
+                      const isTagSelected = (store.tags || []).includes(tag);
                       return (
                         <Badge
                           key={tag}
                           variant={isTagSelected ? 'default' : 'outline'}
                           className={`cursor-pointer px-3 py-1 text-xs ${isTagSelected ? 'border-transparent text-white bg-primary' : ''}`}
-                          onClick={() => store.toggleTag(tag, store.subcategory_codes[0] === 'store')}
+                          onClick={() => store.toggleTag(tag, (store.subcategory_codes || [])[0] === 'store')}
                         >
                           {tag}
                         </Badge>
@@ -448,27 +448,28 @@ export default function InputPage() {
               let addressPlaceholder = '주소를 검색하세요';
               let addressBtn = '주소 검색';
 
-              if (store.subcategory_codes.includes('apartment')) {
+              const subcats = store.subcategory_codes || [];
+              if (subcats.includes('apartment')) {
                 addressLabel = '주소 (아파트 단지명 검색)';
                 addressPlaceholder = '아파트 단지명 또는 주소 검색';
                 addressBtn = '단지/주소 검색';
-              } else if (store.subcategory_codes.includes('officetel') || store.subcategory_codes.includes('officetel_biz')) {
+              } else if (subcats.includes('officetel') || subcats.includes('officetel_biz')) {
                 addressLabel = '주소 (오피스텔명 검색)';
                 addressPlaceholder = '오피스텔명 또는 주소 검색';
                 addressBtn = '단지/주소 검색';
-              } else if (store.subcategory_codes.includes('villa')) {
+              } else if (subcats.includes('villa')) {
                 addressLabel = '주소 (빌라명 검색)';
                 addressPlaceholder = '빌라명 또는 주소 검색';
                 addressBtn = '건물/주소 검색';
-              } else if (store.subcategory_codes.includes('oneroom')) {
+              } else if (subcats.includes('oneroom')) {
                 addressLabel = '주소 (원룸/건물명 검색)';
                 addressPlaceholder = '건물명 또는 주소 검색';
                 addressBtn = '건물/주소 검색';
               } else if (
-                store.subcategory_codes.includes('knowledge') ||
-                store.subcategory_codes.includes('house') ||
-                store.subcategory_codes.includes('lodging') ||
-                store.subcategory_codes.includes('building')
+                subcats.includes('knowledge') ||
+                subcats.includes('house') ||
+                subcats.includes('lodging') ||
+                subcats.includes('building')
               ) {
                 addressLabel = '주소 (건물명 검색)';
                 addressPlaceholder = '건물명 또는 주소 검색';
@@ -491,7 +492,7 @@ export default function InputPage() {
               );
             })()}
 
-            {!(store.category_codes.includes('land') || (store.category_codes.includes('industrial') && !store.subcategory_codes.includes('knowledge'))) && (
+            {!((store.category_codes || []).includes('land') || ((store.category_codes || []).includes('industrial') && !(store.subcategory_codes || []).includes('knowledge'))) && (
               <>
                 <div className="space-y-1.5 mt-3">
                   <Label>단지명 / 건물명</Label>
@@ -503,7 +504,7 @@ export default function InputPage() {
                   />
                 </div>
 
-                {!store.subcategory_codes.some(c => ['building', 'lodging', 'house', 'other_commercial'].includes(c)) && (
+                {!(store.subcategory_codes || []).some(c => ['building', 'lodging', 'house', 'other_commercial'].includes(c)) && (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label>동</Label>
@@ -529,7 +530,7 @@ export default function InputPage() {
             )}
 
             {(() => {
-              if (store.category_codes.includes('land')) {
+              if ((store.category_codes || []).includes('land')) {
                 return (
                   <div className="grid grid-cols-2 gap-3 mt-3">
                     <AreaInput
@@ -576,7 +577,7 @@ export default function InputPage() {
                 );
               }
 
-              if (store.category_codes.includes('industrial') && !store.subcategory_codes.includes('knowledge')) {
+              if ((store.category_codes || []).includes('industrial') && !(store.subcategory_codes || []).includes('knowledge')) {
                 return (
                   <div className="grid grid-cols-2 gap-3 mt-3">
                     <AreaInput
@@ -612,10 +613,10 @@ export default function InputPage() {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>{store.subcategory_codes.includes('warehouse') ? '창고 용도' : store.subcategory_codes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '건물 용도' : '공장 용도'}</Label>
+                      <Label>{(store.subcategory_codes || []).includes('warehouse') ? '창고 용도' : (store.subcategory_codes || []).some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '건물 용도' : '공장 용도'}</Label>
                       <Input
                         type="text"
-                        placeholder={store.subcategory_codes.includes('warehouse') ? '예: 일반창고, 물류센터' : store.subcategory_codes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '예: 자동차정비, 야적장, 고물상' : '예: 일반공장, 식품공장'}
+                        placeholder={(store.subcategory_codes || []).includes('warehouse') ? '예: 일반창고, 물류센터' : (store.subcategory_codes || []).some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '예: 자동차정비, 야적장, 고물상' : '예: 일반공장, 식품공장'}
                         value={(store.detailed_conditions.factory_usage as string) ?? ''}
                         onChange={e => store.setCondition('factory_usage', e.target.value)}
                       />
@@ -642,11 +643,11 @@ export default function InputPage() {
                 );
               }
 
-              const needsLandArea = store.subcategory_codes.some(c =>
+              const needsLandArea = (store.subcategory_codes || []).some(c =>
                 ['house', 'oneroom', 'building', 'factory', 'warehouse', 'farm', 'lodging', 'other_commercial'].includes(c)
               );
 
-              const needsLandInfo = store.subcategory_codes.some(c =>
+              const needsLandInfo = (store.subcategory_codes || []).some(c =>
                 ['house', 'building', 'lodging', 'other_commercial'].includes(c)
               );
 
@@ -664,7 +665,7 @@ export default function InputPage() {
                         value={store.area_building ?? ''}
                         onChange={val => store.setStoreValue('area_building', val)}
                       />
-                      {!store.subcategory_codes.some(c => ['building', 'lodging', 'house', 'other_commercial'].includes(c)) && (
+                      {!(store.subcategory_codes || []).some(c => ['building', 'lodging', 'house', 'other_commercial'].includes(c)) && (
                         <AreaInput
                           label="전용면적 (원/투룸만 해당 시)"
                           value={(store.detailed_conditions.area_exclusive as string) ?? ''}

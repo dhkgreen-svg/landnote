@@ -50,7 +50,7 @@ export default function DetailPage() {
   };
 
   useEffect(() => {
-    if (!store.inquiry_type || store.category_codes.length === 0) {
+    if (!store.inquiry_type || (store.category_codes || []).length === 0) {
       router.replace(`/form/${agentCode}`);
     }
   }, [agentCode, store.inquiry_type, store.category_codes, router]);
@@ -69,7 +69,7 @@ export default function DetailPage() {
       </p>
 
       <div className="space-y-4">
-        {store.category_codes.map(catCode => {
+        {(store.category_codes || []).map(catCode => {
           const groups = SUBCATEGORIES[catCode as CategoryCode];
           if (!groups) return null;
           const colors = CATEGORY_STYLES[catCode as CategoryCode];
@@ -93,7 +93,7 @@ export default function DetailPage() {
 
               {Object.entries(groups).map(([subcatCode, subItems]) => {
                 const isExpanded = !!expandedGroups[subcatCode];
-                const hasSelectedItems = subItems.some(item => store.tags.includes(item));
+                const hasSelectedItems = subItems.some(item => (store.tags || []).includes(item));
                 
                 return (
                   <div key={subcatCode} className="mb-4 bg-white rounded-lg border shadow-sm overflow-hidden transition-all duration-200">
@@ -108,7 +108,7 @@ export default function DetailPage() {
                         </span>
                         {hasSelectedItems && (
                           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                            {subItems.filter(item => store.tags.includes(item)).length}
+                            {subItems.filter(item => (store.tags || []).includes(item)).length}
                           </span>
                         )}
                       </div>
@@ -121,7 +121,7 @@ export default function DetailPage() {
                       <div className="p-4 pt-0 border-t bg-muted/10">
                         <div className="flex flex-wrap gap-2 mt-4">
                           {subItems.map(item => {
-                            const isSubcatSelected = store.tags.includes(item);
+                            const isSubcatSelected = (store.tags || []).includes(item);
                             return (
                               <button
                                 key={item}

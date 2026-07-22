@@ -43,12 +43,12 @@ export default function Step1Client({ agentCode, agentName, officeName, phone, s
     const isSingleCategory = safeCats.length === 1;
 
     if (isValidCat) {
-      if (!store.category_codes.includes(catParam)) {
+      if (!(store.category_codes || []).includes(catParam)) {
         store.toggleCategory(catParam, maxSelectable);
       }
       router.push(`/form/${agentCode}/detail`);
     } else if (isSingleCategory) {
-      if (!store.category_codes.includes(safeCats[0])) {
+      if (!(store.category_codes || []).includes(safeCats[0])) {
         store.toggleCategory(safeCats[0], maxSelectable);
       }
       router.push(`/form/${agentCode}/detail`);
