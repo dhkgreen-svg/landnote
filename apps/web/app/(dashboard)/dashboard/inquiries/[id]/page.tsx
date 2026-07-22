@@ -59,11 +59,11 @@ export default function InquiryDetailPage() {
         customer_phone: inquiry.customer_phone || '',
         customer_email: inquiry.customer_email || '',
         inquiry_type: inquiry.inquiry_type || 'looking_for',
-        category_codes: [...inquiry.category_codes],
-        subcategory_codes: [...inquiry.subcategory_codes],
-        transaction_types: [...inquiry.transaction_types],
-        tags: [...inquiry.tags],
-        detailed_conditions: { ...inquiry.detailed_conditions }
+        category_codes: [...(inquiry.category_codes || [])],
+        subcategory_codes: [...(inquiry.subcategory_codes || [])],
+        transaction_types: [...(inquiry.transaction_types || [])],
+        tags: [...(inquiry.tags || [])],
+        detailed_conditions: { ...(inquiry.detailed_conditions || {}) }
       });
     }
   }, [inquiry]);
@@ -140,19 +140,20 @@ export default function InquiryDetailPage() {
     const parts = [];
     parts.push(`[매수/임차 희망 고객] `);
     
-    let cats = inquiry.category_codes.map(c => CATEGORY_LABELS[c] ?? c).join(', ');
-    let subs = inquiry.subcategory_codes.map(c => SUBCATEGORY_LABELS[c as keyof typeof SUBCATEGORY_LABELS] ?? c).join(', ');
+    let cats = (inquiry.category_codes || []).map(c => CATEGORY_LABELS[c] ?? c).join(', ');
+    let subs = (inquiry.subcategory_codes || []).map(c => SUBCATEGORY_LABELS[c as keyof typeof SUBCATEGORY_LABELS] ?? c).join(', ');
     parts.push(`🏠 희망 종류: ${cats}${subs ? ` (${subs})` : ''}`);
     
-    let tx = inquiry.transaction_types.map(t => TX_LABELS[t] ?? t).join(', ');
+    let tx = (inquiry.transaction_types || []).map(t => TX_LABELS[t] ?? t).join(', ');
     parts.push(`💰 희망 거래: ${tx}`);
     
-    if (inquiry.detailed_conditions.address_full || inquiry.detailed_conditions.dong_name) {
-      parts.push(`📍 희망 위치: ${(inquiry.detailed_conditions.address_full || inquiry.detailed_conditions.dong_name)}`);
+    const conditions = inquiry.detailed_conditions || {};
+    if (conditions.address_full || conditions.dong_name) {
+      parts.push(`📍 희망 위치: ${(conditions.address_full || conditions.dong_name)}`);
     }
     
-    if (inquiry.detailed_conditions.area_supply || inquiry.detailed_conditions.area_exclusive) {
-      parts.push(`📏 희망 면적: ${inquiry.detailed_conditions.area_supply ? `공급 ${inquiry.detailed_conditions.area_supply}㎡ ` : ''}${inquiry.detailed_conditions.area_exclusive ? `전용 ${inquiry.detailed_conditions.area_exclusive}㎡` : ''}`);
+    if (conditions.area_supply || conditions.area_exclusive) {
+      parts.push(`📏 희망 면적: ${conditions.area_supply ? `공급 ${conditions.area_supply}㎡ ` : ''}${conditions.area_exclusive ? `전용 ${conditions.area_exclusive}㎡` : ''}`);
     }
 
     if (inquiry.agent_memo) parts.push(`\n📝 기타사항:\n${inquiry.agent_memo}`);
@@ -436,48 +437,51 @@ export default function InquiryDetailPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">거래유형</span>
-                  <span className="text-sm">{inquiry.transaction_types.map(t => TX_LABELS[t] ?? t).join(', ')}</span>
+                  <span className="text-sm">{(inquiry.transaction_types || []).map(t => TX_LABELS[t] ?? t).join(', ')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">카테고리</span>
-                  <span className="text-sm">{inquiry.category_codes.map(c => CATEGORY_LABELS[c] ?? c).join(', ')}</span>
+                  <span className="text-sm">{(inquiry.category_codes || []).map(c => CATEGORY_LABELS[c] ?? c).join(', ')}</span>
                 </div>
-                {inquiry.subcategory_codes.length > 0 && (
+                {(inquiry.subcategory_codes || []).length > 0 && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">세부 분류</span>
-                    <span className="text-sm">{inquiry.subcategory_codes.map(c => SUBCATEGORY_LABELS[c as keyof typeof SUBCATEGORY_LABELS] ?? c).join(', ')}</span>
+                    <span className="text-sm">{(inquiry.subcategory_codes || []).map(c => SUBCATEGORY_LABELS[c as keyof typeof SUBCATEGORY_LABELS] ?? c).join(', ')}</span>
                   </div>
                 )}
-                {inquiry.tags?.length > 0 && (
+                {(inquiry.tags || []).length > 0 && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">상세 항목</span>
                     <div className="flex flex-wrap gap-1 justify-end max-w-[250px]">
-                      {inquiry.tags.map(t => (
+                      {(inquiry.tags || []).map(t => (
                         <Badge key={t} variant="secondary" className="font-normal">{t}</Badge>
                       ))}
                     </div>
                   </div>
                 )}
-                {priceKeys.length > 0 && priceKeys.map(key => (
-                  <div key={key} className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">{PRICE_LABELS[key]}</span>
-                    <span className="text-sm font-medium">
-                      {typeof inquiry.detailed_conditions[key] === 'number' ? Number(inquiry.detailed_conditions[key]).toLocaleString('ko-KR') + '만 원' : String(inquiry.detailed_conditions[key])}
-                    </span>
-                  </div>
-                ))}
-                {(inquiry.detailed_conditions.address_full || inquiry.detailed_conditions.dong_name) && (
+                {priceKeys.length > 0 && priceKeys.map(key => {
+                  const conditions = inquiry.detailed_conditions || {};
+                  return (
+                    <div key={key} className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">{PRICE_LABELS[key]}</span>
+                      <span className="text-sm font-medium">
+                        {typeof conditions[key] === 'number' ? Number(conditions[key]).toLocaleString('ko-KR') + '만 원' : String(conditions[key])}
+                      </span>
+                    </div>
+                  );
+                })}
+                {((inquiry.detailed_conditions || {}).address_full || (inquiry.detailed_conditions || {}).dong_name) && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">희망 위치</span>
-                    <span className="text-sm">{String(inquiry.detailed_conditions.address_full || inquiry.detailed_conditions.dong_name || '')}</span>
+                    <span className="text-sm">{String((inquiry.detailed_conditions || {}).address_full || (inquiry.detailed_conditions || {}).dong_name || '')}</span>
                   </div>
                 )}
-                {(inquiry.detailed_conditions.area_supply || inquiry.detailed_conditions.area_exclusive) && (
+                {((inquiry.detailed_conditions || {}).area_supply || (inquiry.detailed_conditions || {}).area_exclusive) && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">희망 면적</span>
                     <span className="text-sm">
-                      {inquiry.detailed_conditions.area_supply ? `공급 ${inquiry.detailed_conditions.area_supply}㎡ ` : ''}
-                      {inquiry.detailed_conditions.area_exclusive ? `전용 ${inquiry.detailed_conditions.area_exclusive}㎡` : ''}
+                      {(inquiry.detailed_conditions || {}).area_supply ? `공급 ${(inquiry.detailed_conditions || {}).area_supply}㎡ ` : ''}
+                      {(inquiry.detailed_conditions || {}).area_exclusive ? `전용 ${(inquiry.detailed_conditions || {}).area_exclusive}㎡` : ''}
                     </span>
                   </div>
                 )}

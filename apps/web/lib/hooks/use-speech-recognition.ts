@@ -8,6 +8,7 @@ export function useSpeechRecognition() {
   const [interimTranscript, setInterimTranscript] = useState('');
   const [isSupported, setIsSupported] = useState(true);
   const recognitionRef = useRef<any>(null);
+  const isListeningRef = useRef(false);
   
   // We need a ref for the final transcript to avoid stale closures in onresult
   const finalTranscriptRef = useRef('');
@@ -27,6 +28,7 @@ export function useSpeechRecognition() {
 
       recognition.onstart = () => {
         setIsListening(true);
+        isListeningRef.current = true;
       };
 
       recognition.onresult = (event: any) => {
@@ -52,14 +54,23 @@ export function useSpeechRecognition() {
         console.error('Speech recognition error', event.error);
         if (event.error !== 'no-speech') {
           setIsListening(false);
+          isListeningRef.current = false;
         }
       };
 
       recognition.onend = () => {
-        setIsListening(false);
-        setInterimTranscript('');
-        // Mobile browsers often stop recognition automatically on pause.
-        // We do not auto-restart here to let the user manually control it via Dialog.
+        if (isListeningRef.current) {
+          try {
+            recognition.start();
+          } catch (e) {
+            console.error('Failed to restart recognition', e);
+            setIsListening(false);
+            isListeningRef.current = false;
+          }
+        } else {
+          setIsListening(false);
+          setInterimTranscript('');
+        }
       };
 
       recognitionRef.current = recognition;
@@ -67,28 +78,32 @@ export function useSpeechRecognition() {
   }, []);
 
   const startListening = useCallback(() => {
-    if (recognitionRef.current && !isListening) {
+    if (recognitionRef.current && !isListeningRef.current) {
       try {
+        isListeningRef.current = true;
         recognitionRef.current.start();
+        setIsListening(true);
       } catch (err) {
         console.error(err);
       }
     }
-  }, [isListening]);
+  }, []);
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current && isListening) {
+    if (recognitionRef.current && isListeningRef.current) {
+      isListeningRef.current = false;
       recognitionRef.current.stop();
+      setIsListening(false);
     }
-  }, [isListening]);
+  }, []);
 
   const toggleListening = useCallback(() => {
-    if (isListening) {
+    if (isListeningRef.current) {
       stopListening();
     } else {
       startListening();
     }
-  }, [isListening, startListening, stopListening]);
+  }, [startListening, stopListening]);
 
   const resetTranscript = useCallback(() => {
     finalTranscriptRef.current = '';

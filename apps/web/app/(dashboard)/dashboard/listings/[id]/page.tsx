@@ -167,10 +167,10 @@ export default function ListingDetailPage() {
         built_year: listing.built_year,
         direction: listing.direction ?? '',
         detail_info: listing.detail_info ?? {},
-        category_codes: listing.category_codes ?? [],
-        subcategory_codes: listing.subcategory_codes ?? [],
-        transaction_types: listing.transaction_types ?? [],
-        tags: listing.tags ?? [],
+        category_codes: listing.category_codes || [],
+        subcategory_codes: listing.subcategory_codes || [],
+        transaction_types: listing.transaction_types || [],
+        tags: listing.tags || [],
       });
     }
   }, [listing, editing]); // Reset form when editing is toggled or listing changes
@@ -255,14 +255,17 @@ export default function ListingDetailPage() {
 
     const title = `[매물 추천] ${listing.address_full || ''} ${listing.complex_name || ''}`.trim();
     
-    const prices = [];
-    if (listing.transaction_types.includes('sale') && listing.price_sale) prices.push(`매매: ${formatKoreanCurrency(listing.price_sale)}`);
-    if (listing.transaction_types.includes('jeonse') && listing.price_jeonse) prices.push(`전세: ${formatKoreanCurrency(listing.price_jeonse)}`);
-    if (listing.transaction_types.includes('monthly_rent') && listing.deposit) prices.push(`월세: ${formatKoreanCurrency(listing.deposit)}/${formatKoreanCurrency(listing.monthly_rent || 0)}`);
-    if (listing.transaction_types.includes('premium_transfer') && listing.premium_price) prices.push(`권리금: ${formatKoreanCurrency(listing.premium_price)}`);
+    const cats = listing.category_codes || [];
+    const subs = listing.subcategory_codes || [];
+    const tx = listing.transaction_types || [];
+    
+    if (tx.includes('sale') && listing.price_sale) prices.push(`매매: ${formatKoreanCurrency(listing.price_sale)}`);
+    if (tx.includes('jeonse') && listing.price_jeonse) prices.push(`전세: ${formatKoreanCurrency(listing.price_jeonse)}`);
+    if (tx.includes('monthly_rent') && listing.deposit) prices.push(`월세: ${formatKoreanCurrency(listing.deposit)}/${formatKoreanCurrency(listing.monthly_rent || 0)}`);
+    if (tx.includes('premium_transfer') && listing.premium_price) prices.push(`권리금: ${formatKoreanCurrency(listing.premium_price)}`);
 
     const areaParts = [];
-    if (listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) {
+    if (cats.includes('land') || (cats.includes('industrial') && !subs.includes('knowledge')) || subs.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) {
       if (listing.area_land) areaParts.push(`대지 ${toPyung(listing.area_land)}평`);
       if (listing.area_building) areaParts.push(`연면적 ${toPyung(listing.area_building)}평`);
     } else {
@@ -488,25 +491,25 @@ export default function ListingDetailPage() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">카테고리</span>
-                  <span className="text-sm">{listing.category_codes.map(c => CATEGORY_LABELS[c] ?? c).join(', ')}</span>
+                  <span className="text-sm">{(listing.category_codes || []).map(c => CATEGORY_LABELS[c] ?? c).join(', ')}</span>
                 </div>
-                {listing.subcategory_codes.length > 0 && (
+                {(listing.subcategory_codes || []).length > 0 && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">세부 분류</span>
-                    <span className="text-sm">{listing.subcategory_codes.map(c => SUBCATEGORY_LABELS[c] ?? c).join(', ')}</span>
+                    <span className="text-sm">{(listing.subcategory_codes || []).map(c => SUBCATEGORY_LABELS[c] ?? c).join(', ')}</span>
                   </div>
                 )}
-                {listing.tags.length > 0 && (
+                {(listing.tags || []).length > 0 && (
                   <div>
                     <span className="mb-1 block text-sm text-muted-foreground">태그</span>
                     <div className="flex flex-wrap gap-1">
-                      {listing.tags.map(t => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}
+                      {(listing.tags || []).map(t => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}
                     </div>
                   </div>
                 )}
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">거래유형</span>
-                  <span className="text-sm">{listing.transaction_types.map(t => TX_LABELS[t] ?? t).join(', ')}</span>
+                  <span className="text-sm">{(listing.transaction_types || []).map(t => TX_LABELS[t] ?? t).join(', ')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">등록일</span>
@@ -605,7 +608,7 @@ export default function ListingDetailPage() {
                     }}
                   />
                 </div>
-                {!(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge'))) && (
+                {!((listing.category_codes || []).includes('land') || ((listing.category_codes || []).includes('industrial') && !(listing.subcategory_codes || []).includes('knowledge'))) && (
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
@@ -617,7 +620,7 @@ export default function ListingDetailPage() {
                         <Input value={editForm.dong_name || ''} onChange={e => handleChange('dong_name', e.target.value)} placeholder="동 이름" />
                       </div>
                     </div>
-                    {!listing.subcategory_codes.some(c => ['building', 'lodging', 'house', 'other_commercial'].includes(c)) && (
+                    {!(listing.subcategory_codes || []).some(c => ['building', 'lodging', 'house', 'other_commercial'].includes(c)) && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <Label>동</Label>
@@ -631,7 +634,7 @@ export default function ListingDetailPage() {
                     )}
                   </>
                 )}
-                {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge'))) && (
+                {((listing.category_codes || []).includes('land') || ((listing.category_codes || []).includes('industrial') && !(listing.subcategory_codes || []).includes('knowledge'))) && (
                   <div>
                     <Label>동/읍/면</Label>
                     <Input value={editForm.dong_name || ''} onChange={e => handleChange('dong_name', e.target.value)} placeholder="동 이름" />
@@ -654,7 +657,7 @@ export default function ListingDetailPage() {
                     <span className="text-sm">{listing.complex_name}</span>
                   </div>
                 )}
-                {!listing.subcategory_codes.some(c => ['building', 'lodging', 'house', 'other_commercial'].includes(c)) && (
+                {!(listing.subcategory_codes || []).some(c => ['building', 'lodging', 'house', 'other_commercial'].includes(c)) && (
                   <>
                     {listing.building_num && (
                       <div className="flex justify-between">
@@ -691,7 +694,7 @@ export default function ListingDetailPage() {
                 <div>
                   <h4 className="font-semibold text-sm mb-3">면적 정보</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
+                    {((listing.category_codes || []).includes('land') || ((listing.category_codes || []).includes('industrial') && !(listing.subcategory_codes || []).includes('knowledge')) || (listing.subcategory_codes || []).some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
                       <>
                         <AreaInput label="대지면적" value={String(editForm.area_land || '')} onChange={val => handleChange('area_land', val ? Number(val) : null)} />
                         <AreaInput label="연면적/건평" value={String(editForm.area_building || '')} onChange={val => handleChange('area_building', val ? Number(val) : null)} />
@@ -706,7 +709,7 @@ export default function ListingDetailPage() {
                 </div>
 
                 {/* 2. Land/Usage Edit */}
-                {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) && (
+                {((listing.category_codes || []).includes('land') || ((listing.category_codes || []).includes('industrial') && !(listing.subcategory_codes || []).includes('knowledge')) || (listing.subcategory_codes || []).some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) && (
                   <div>
                     <h4 className="font-semibold text-sm mb-3">토지/용도 정보</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -727,12 +730,12 @@ export default function ListingDetailPage() {
                 )}
 
                 {/* 3. Industrial Edit */}
-                {listing.category_codes.includes('industrial') && (
+                {(listing.category_codes || []).includes('industrial') && (
                   <div>
                     <h4 className="font-semibold text-sm mb-3">산업용 특화</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <Label>{listing.subcategory_codes.includes('warehouse') ? '창고 용도' : listing.subcategory_codes.some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '건물 용도' : '공장 용도'}</Label>
+                        <Label>{(listing.subcategory_codes || []).includes('warehouse') ? '창고 용도' : (listing.subcategory_codes || []).some(c => ['workshop', 'yard', 'other_industrial'].includes(c)) ? '건물 용도' : '공장 용도'}</Label>
                         <Input value={editForm.detail_info?.factory_usage as string || ''} onChange={e => handleDetailInfoChange('factory_usage', e.target.value)} />
                       </div>
                       <div>
@@ -748,7 +751,7 @@ export default function ListingDetailPage() {
                 )}
 
                 {/* 4. Building Edit */}
-                {!listing.category_codes.includes('land') && (
+                {!(listing.category_codes || []).includes('land') && (
                   <div>
                     <h4 className="font-semibold text-sm mb-3">건물/층/방향 정보</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -782,7 +785,7 @@ export default function ListingDetailPage() {
             ) : (
               <>
                 {/* 1. 면적 정보 */}
-                {(listing.category_codes.includes('land') || (listing.category_codes.includes('industrial') && !listing.subcategory_codes.includes('knowledge')) || listing.subcategory_codes.some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
+                {((listing.category_codes || []).includes('land') || ((listing.category_codes || []).includes('industrial') && !(listing.subcategory_codes || []).includes('knowledge')) || (listing.subcategory_codes || []).some(c => ['building', 'lodging', 'other_commercial', 'house'].includes(c))) ? (
                   <>
                     {listing.area_land != null && (
                       <div className="flex justify-between">
