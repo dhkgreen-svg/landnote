@@ -3,5 +3,6 @@
   "buildCommand": "pnpm turbo build --filter=@landnote/web...",
   "outputDirectory": "apps/web/.next",
   "installCommand": "pnpm install",
+  "framework": "nextjs",
   "ignoreCommand": "npx turbo-ignore"
 }
