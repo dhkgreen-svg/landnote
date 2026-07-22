@@ -263,7 +263,7 @@ function InquiryStatusSelect({ inquiry }: { inquiry: any }) {
       }}
       disabled={mutation.isPending}
     >
-      <SelectTrigger className={`h-8 w-[110px] text-xs font-medium border-0 ${STATUS_COLORS[inquiry.status] || ''}`}>
+      <SelectTrigger className={`h-8 w-[85px] px-2 text-[11px] font-medium border-0 ${STATUS_COLORS[inquiry.status] || ''}`}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -393,11 +393,11 @@ export function DashboardInquiriesView({ activeView, summary }: { activeView: 'n
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableHead className="w-[120px]">상태변경</TableHead>
-                  <TableHead>고객명</TableHead>
-                  <TableHead>연락처</TableHead>
-                  <TableHead>카테고리</TableHead>
-                  <TableHead>등록일</TableHead>
+                  <TableHead className="w-[100px] px-2 text-center">상태변경</TableHead>
+                  <TableHead className="w-[70px] px-2">고객명</TableHead>
+                  <TableHead className="w-[100px] px-2">연락처</TableHead>
+                  <TableHead className="min-w-[120px] px-2">카테고리</TableHead>
+                  <TableHead className="w-[85px] px-2 text-right">등록일</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -407,24 +407,29 @@ export function DashboardInquiriesView({ activeView, summary }: { activeView: 'n
                     className="hover:bg-muted/30 transition-colors cursor-pointer"
                     onClick={() => router.push(`/dashboard/inquiries/${item.id}`)}
                   >
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell className="px-2 text-center" onClick={(e) => e.stopPropagation()}>
                       <InquiryStatusSelect inquiry={item} />
                     </TableCell>
-                    <TableCell className="font-medium text-sm">
+                    <TableCell className="font-medium text-xs px-2 truncate max-w-[70px]" title={item.customer_name || '미상'}>
                       {item.customer_name || '미상'}
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-xs px-2">
                       {item.customer_phone || '-'}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1 flex-wrap">
-                        {item.category_codes?.map(c => (
-                          <Badge key={c} variant="secondary" className="text-[10px]">{CATEGORY_LABELS[c]}</Badge>
-                        ))}
+                    <TableCell className="px-2">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[11px] font-bold text-foreground">
+                          {item.subcategory_codes?.length > 0 
+                            ? item.subcategory_codes.map((c: string) => SUBCATEGORY_LABELS[c] || c).join(', ')
+                            : item.category_codes?.map((c: string) => CATEGORY_LABELS[c] || c).join(', ')}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-medium">
+                          {item.transaction_types?.map((t: string) => TRANSACTION_LABELS[t] || t).join(', ') || '-'}
+                        </span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(item.created_at).toLocaleDateString()}
+                    <TableCell className="text-[11px] text-muted-foreground px-2 text-right">
+                      {new Date(item.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
                     </TableCell>
                   </TableRow>
                 ))}

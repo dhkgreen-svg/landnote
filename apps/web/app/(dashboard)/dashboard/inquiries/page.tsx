@@ -11,6 +11,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useInquiries } from '@/lib/hooks/queries';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
+import { SUBCATEGORY_LABELS } from '@landnote/shared';
+
 const STATUS_LABELS: Record<string, string> = {
   new: '신규', contacted: '연락완료', viewing: '방문예정',
   negotiating: '협상중', contracted: '계약완료', closed: '종료',
@@ -27,6 +29,13 @@ const STATUS_COLORS: Record<string, string> = {
 
 const CATEGORY_LABELS: Record<string, string> = {
   residential: '주거', commercial: '상업', industrial: '산업', land: '토지',
+};
+
+const TRANSACTION_LABELS: Record<string, string> = {
+  sale: '매매',
+  jeonse: '전세',
+  monthly_rent: '월세',
+  premium_transfer: '권리양도',
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -111,44 +120,53 @@ export default function InquiriesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>상태</TableHead>
-                  <TableHead>유형</TableHead>
-                  <TableHead>카테고리</TableHead>
-                  <TableHead>고객명</TableHead>
-                  <TableHead>전화번호</TableHead>
-                  <TableHead>접수일</TableHead>
+                  <TableHead className="w-[100px] px-2 text-center">상태</TableHead>
+                  <TableHead className="w-[80px] px-2">유형</TableHead>
+                  <TableHead className="min-w-[120px] px-2">카테고리</TableHead>
+                  <TableHead className="w-[80px] px-2">고객명</TableHead>
+                  <TableHead className="w-[110px] px-2">전화번호</TableHead>
+                  <TableHead className="w-[90px] px-2 text-right">접수일</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.map(item => (
                   <TableRow
                     key={item.id}
-                    className="cursor-pointer"
+                    className="cursor-pointer hover:bg-muted/30 transition-colors"
                     onClick={() => router.push(`/dashboard/inquiries/${item.id}`)}
                   >
-                    <TableCell>
-                      <Badge variant="secondary" className={STATUS_COLORS[item.status] ?? ''}>
+                    <TableCell className="px-2 text-center">
+                      <Badge variant="secondary" className={`${STATUS_COLORS[item.status] ?? ''} px-2 py-0.5 text-[11px]`}>
                         {STATUS_LABELS[item.status] ?? item.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-xs px-2 font-medium">
                       {TYPE_LABELS[item.inquiry_type] ?? item.inquiry_type}
                     </TableCell>
-                    <TableCell className="text-sm">
-                      {item.category_codes.map(c => CATEGORY_LABELS[c] ?? c).join(', ')}
+                    <TableCell className="px-2">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[11px] font-bold text-foreground">
+                          {item.subcategory_codes?.length > 0 
+                            ? item.subcategory_codes.map((c: string) => SUBCATEGORY_LABELS[c] || c).join(', ')
+                            : item.category_codes?.map((c: string) => CATEGORY_LABELS[c] || c).join(', ')}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-medium">
+                          {item.transaction_types?.map((t: string) => TRANSACTION_LABELS[t] || t).join(', ') || '-'}
+                        </span>
+                      </div>
                     </TableCell>
-                    <TableCell className="text-sm font-medium">
-                      {item.customer_name ?? '-'}
+                    <TableCell className="text-xs font-medium px-2 truncate max-w-[80px]" title={item.customer_name ?? '미상'}>
+                      {item.customer_name ?? '미상'}
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-xs px-2">
                       {item.customer_phone ? (
                         <a href={`tel:${item.customer_phone}`} className="text-blue-600 underline">
                           {item.customer_phone}
                         </a>
                       ) : '-'}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(item.created_at).toLocaleDateString('ko-KR')}
+                    <TableCell className="text-[11px] text-muted-foreground px-2 text-right">
+                      {new Date(item.created_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
                     </TableCell>
                   </TableRow>
                 ))}

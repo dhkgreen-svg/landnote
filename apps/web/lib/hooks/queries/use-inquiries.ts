@@ -8,6 +8,8 @@ interface InquiryItem {
   customer_name: string | null;
   customer_phone: string | null;
   category_codes: string[];
+  subcategory_codes: string[];
+  transaction_types: string[];
   status: string;
   created_at: string;
 }
