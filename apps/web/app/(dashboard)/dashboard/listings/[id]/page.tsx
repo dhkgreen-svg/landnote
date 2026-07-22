@@ -437,7 +437,7 @@ export default function ListingDetailPage() {
                         return Object.keys(groups).map(subCode => (
                           <Badge
                             key={subCode}
-                            variant={editForm.subcategory_codes?.includes(subCode) ? 'secondary' : 'outline'}
+                            variant={editForm.subcategory_codes?.includes(subCode) ? 'default' : 'outline'}
                             className="cursor-pointer px-3 py-1.5 text-sm transition-colors"
                             onClick={() => {
                               const current = editForm.subcategory_codes || [];
