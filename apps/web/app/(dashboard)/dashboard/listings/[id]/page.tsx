@@ -197,7 +197,7 @@ export default function ListingDetailPage() {
         complex_name: editForm.complex_name || null,
         building_num: editForm.building_num || null,
         room_num: editForm.room_num || null,
-        owner_phone: editForm.owner_phone || null,
+        owner_phone: editForm.owner_phone || '',
         contract_party_phone: editForm.status === 'contracted' ? (editForm.contract_party_phone || null) : null,
         price_sale: !editForm.price_sale ? null : Number(editForm.price_sale),
         price_jeonse: !editForm.price_jeonse ? null : Number(editForm.price_jeonse),
