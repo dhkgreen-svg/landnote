@@ -151,7 +151,12 @@ export class ListingsService {
       .select()
       .single();
 
-    if (error || !data) {
+    if (error) {
+      console.error('Supabase update error:', error);
+      throw new BadRequestException(`DB 수정 실패: ${error.message}`);
+    }
+    
+    if (!data) {
       throw new NotFoundException('매물을 찾을 수 없습니다');
     }
 
