@@ -327,26 +327,32 @@ export default function InputPage() {
         </div>
 
         {/* 가격 필드 (매도의 경우 기본 노출) */}
-        {isListing && requiredPriceFields.size > 0 && (
+        {isListing && (
           <div className="space-y-3 rounded-xl bg-white p-4 shadow-sm">
-            <h3 className="text-base font-bold text-foreground">가격 정보</h3>
-            {Array.from(requiredPriceFields).map(field => (
-              <div key={field} className="space-y-1.5">
-                <Label>{PRICE_LABELS[field] ?? field} *</Label>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={(store.detailed_conditions[field] as string) ?? ''}
-                  onChange={e => store.setCondition(field, e.target.value.replace(/[^0-9]/g, ''))}
-                />
-              </div>
-            ))}
+            <h3 className="text-base font-bold text-foreground">가격 정보 *</h3>
+            {requiredPriceFields.size === 0 ? (
+              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md text-center">
+                상단의 <strong className="text-foreground">거래 유형</strong>(매매, 전세, 월세 등)을 먼저 선택해주세요.
+              </p>
+            ) : (
+              Array.from(requiredPriceFields).map(field => (
+                <div key={field} className="space-y-1.5">
+                  <Label>{PRICE_LABELS[field] ?? field} *</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={(store.detailed_conditions[field] as string) ?? ''}
+                    onChange={e => store.setCondition(field, e.target.value.replace(/[^0-9]/g, ''))}
+                  />
+                </div>
+              ))
+            )}
           </div>
         )}
 
-        {/* 상세 정보 (공통 기본 숨김) */}
-        {!showDetails ? (
+        {/* 상세 정보 (매수는 기본 숨김, 매도는 항상 노출) */}
+        {!showDetails && !isListing ? (
           <Button 
             type="button" 
             variant="outline" 
@@ -358,21 +364,27 @@ export default function InputPage() {
         ) : (
           <>
         {/* 가격 필드 (매수의 경우 아코디언 내부에 노출) */}
-        {!isListing && requiredPriceFields.size > 0 && (
+        {!isListing && (
           <div className="space-y-3 rounded-xl bg-white p-4 shadow-sm">
-            <h3 className="text-base font-bold text-foreground">가격 정보</h3>
-            {Array.from(requiredPriceFields).map(field => (
-              <div key={field} className="space-y-1.5">
-                <Label>{PRICE_LABELS[field] ?? field} *</Label>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={(store.detailed_conditions[field] as string) ?? ''}
-                  onChange={e => store.setCondition(field, e.target.value.replace(/[^0-9]/g, ''))}
-                />
-              </div>
-            ))}
+            <h3 className="text-base font-bold text-foreground">희망 가격조건 (선택)</h3>
+            {requiredPriceFields.size === 0 ? (
+              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md text-center">
+                상단의 <strong className="text-foreground">거래 유형</strong>을 선택하면 가격을 입력할 수 있습니다.
+              </p>
+            ) : (
+              Array.from(requiredPriceFields).map(field => (
+                <div key={field} className="space-y-1.5">
+                  <Label>{PRICE_LABELS[field] ?? field}</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={(store.detailed_conditions[field] as string) ?? ''}
+                    onChange={e => store.setCondition(field, e.target.value.replace(/[^0-9]/g, ''))}
+                  />
+                </div>
+              ))
+            )}
           </div>
         )}
 
