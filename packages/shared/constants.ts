@@ -158,6 +158,7 @@ export type TransactionType = typeof TRANSACTION_TYPE[keyof typeof TRANSACTION_T
 
 export const PRICE_LABELS: Record<string, string> = {
   price_sale: '매매가 (만 원)',
+  price_jeonse: '전세금 (만 원)',
   deposit: '보증금 (만 원)',
   monthly_rent: '월세 (만 원)',
   maintenance_fee: '관리비 (만 원)',
