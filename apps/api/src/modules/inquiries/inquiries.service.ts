@@ -5,6 +5,7 @@ import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { MatchingService } from '../matching/matching.service';
+import { AiService } from '../ai/ai.service';
 import { CreateInquiryDto } from './dto/create-inquiry.dto';
 import { UpdateInquiryDto } from './dto/update-inquiry.dto';
 
@@ -20,6 +21,7 @@ export class InquiriesService {
     private readonly emailService: EmailService,
     private readonly notificationsService: NotificationsService,
     private readonly matchingService: MatchingService,
+    private readonly aiService: AiService,
   ) {}
 
   async sendOtp(phone: string) {
@@ -102,6 +104,24 @@ export class InquiriesService {
     for (const field of priceFields) {
       if (dto[field] !== undefined) {
         mergedConditions[field] = dto[field];
+      }
+    }
+
+    // 3.5. AI 텍스트 자동 추출 (메모가 있을 경우 빈 필드 자동 채움)
+    if (mergedConditions.memo && typeof mergedConditions.memo === 'string') {
+      try {
+        const extracted = await this.aiService.extractDataFromText(mergedConditions.memo, (dto.subcategory_codes ?? []).join(', '));
+        if (extracted) {
+          // 비어있는 가격 및 면적 필드 채우기
+          if (!mergedConditions.price_sale && extracted.price_sale) mergedConditions.price_sale = extracted.price_sale;
+          if (!mergedConditions.price_jeonse && extracted.price_jeonse) mergedConditions.price_jeonse = extracted.price_jeonse;
+          if (!mergedConditions.deposit && extracted.deposit) mergedConditions.deposit = extracted.deposit;
+          if (!mergedConditions.monthly_rent && extracted.monthly_rent) mergedConditions.monthly_rent = extracted.monthly_rent;
+          
+          if (!mergedConditions.area_exclusive && extracted.area_exclusive) mergedConditions.area_exclusive = extracted.area_exclusive;
+        }
+      } catch (e) {
+        console.error('AI 메모 자동 추출 실패 (진행은 계속됨):', e);
       }
     }
 

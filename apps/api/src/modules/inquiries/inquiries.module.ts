@@ -5,9 +5,10 @@ import { StorageModule } from '../storage/storage.module';
 import { EmailModule } from '../email/email.module';
 import { MatchingModule } from '../matching/matching.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
-  imports: [StorageModule, EmailModule, MatchingModule, NotificationsModule],
+  imports: [StorageModule, EmailModule, MatchingModule, NotificationsModule, AiModule],
   controllers: [InquiriesController, PublicInquiriesController],
   providers: [InquiriesService],
 })

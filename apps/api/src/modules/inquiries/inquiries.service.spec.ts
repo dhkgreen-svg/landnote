@@ -66,6 +66,10 @@ const mockMatchingService = {
   runMatching: jest.fn(),
 };
 
+const mockAiService = {
+  extractDataFromText: jest.fn(),
+};
+
 describe('InquiriesService', () => {
   let service: InquiriesService;
 
@@ -75,6 +79,7 @@ describe('InquiriesService', () => {
       mockEmailService as any,
       mockNotificationsService as any,
       mockMatchingService as any,
+      mockAiService as any,
     );
     jest.clearAllMocks();
     mockUpdate.mockReturnValue({
@@ -107,8 +112,6 @@ describe('InquiriesService', () => {
       // agent 조회 성공
       mockSingle
         .mockResolvedValueOnce({ data: { id: 'agent-1', email: 'a@b.com', agent_name: '김중개' }, error: null })
-        // otp 검증 성공
-        .mockResolvedValueOnce({ data: { id: 'otp-1', expires_at: new Date(Date.now() + 10000).toISOString() }, error: null })
         // inquiry insert 성공
         .mockResolvedValueOnce({ data: { id: 'inquiry-1' }, error: null });
 
@@ -138,7 +141,6 @@ describe('InquiriesService', () => {
 
       mockSingle
         .mockResolvedValueOnce({ data: { id: 'agent-1', email: 'a@b.com', agent_name: '김중개' }, error: null })
-        .mockResolvedValueOnce({ data: { id: 'otp-1', expires_at: new Date(Date.now() + 10000).toISOString() }, error: null })
         .mockResolvedValueOnce({ data: { id: 'inquiry-2' }, error: null });
 
       mockInsert.mockImplementation((data: any) => {
@@ -151,13 +153,12 @@ describe('InquiriesService', () => {
         };
       });
 
-      await service.createPublic('A1234', dto);
+      await service.createPublic('A1234', dto as any);
     });
 
     it('이메일 발송 실패해도 접수 성공', async () => {
       mockSingle
         .mockResolvedValueOnce({ data: { id: 'agent-1', email: 'a@b.com', agent_name: '김중개' }, error: null })
-        .mockResolvedValueOnce({ data: { id: 'otp-1', expires_at: new Date(Date.now() + 10000).toISOString() }, error: null })
         .mockResolvedValueOnce({ data: { id: 'inquiry-3' }, error: null });
 
       mockInsert.mockReturnValue({
