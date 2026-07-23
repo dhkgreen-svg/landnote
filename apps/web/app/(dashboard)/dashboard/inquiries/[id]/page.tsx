@@ -504,8 +504,8 @@ export default function InquiryDetailPage() {
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">희망 면적</span>
                     <span className="text-sm">
-                      {(inquiry.detailed_conditions || {}).area_supply ? `공급 ${(inquiry.detailed_conditions || {}).area_supply}㎡ ` : ''}
-                      {(inquiry.detailed_conditions || {}).area_exclusive ? `전용 ${(inquiry.detailed_conditions || {}).area_exclusive}㎡` : ''}
+                      {(inquiry.detailed_conditions || {}).area_supply ? `공급 ${((inquiry.detailed_conditions || {}).area_supply as number * 0.3025).toFixed(1)}평 (${(inquiry.detailed_conditions || {}).area_supply}㎡) ` : ''}
+                      {(inquiry.detailed_conditions || {}).area_exclusive ? `전용 ${((inquiry.detailed_conditions || {}).area_exclusive as number * 0.3025).toFixed(1)}평 (${(inquiry.detailed_conditions || {}).area_exclusive}㎡)` : ''}
                     </span>
                   </div>
                 )}

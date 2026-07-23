@@ -117,6 +117,7 @@ export class InquiriesService {
           if (!mergedConditions.price_jeonse && extracted.price_jeonse) mergedConditions.price_jeonse = extracted.price_jeonse;
           if (!mergedConditions.deposit && extracted.deposit) mergedConditions.deposit = extracted.deposit;
           if (!mergedConditions.monthly_rent && extracted.monthly_rent) mergedConditions.monthly_rent = extracted.monthly_rent;
+          if (!mergedConditions.premium_price && extracted.premium_price) mergedConditions.premium_price = extracted.premium_price;
           
           if (!mergedConditions.area_exclusive && extracted.area_exclusive) mergedConditions.area_exclusive = extracted.area_exclusive;
         }

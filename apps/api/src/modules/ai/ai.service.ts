@@ -38,6 +38,7 @@ Structure:
   "price_sale": 50000, // Number in 10,000 KRW (만 원). e.g., 5억 = 50000. null if not found.
   "deposit": 1000, // Deposit in 10,000 KRW
   "monthly_rent": 50, // Monthly rent in 10,000 KRW
+  "premium_price": 2000, // Premium price (권리금) in 10,000 KRW. null if not found.
   "area_exclusive": 84, // Area in square meters (㎡). Pyeong (평) should be converted to ㎡ (* 3.3058). null if not found.
   "address_full": "서울시 강남구...", // Full address string
   "customer_name": "홍길동", // Extracted customer/contact name
@@ -91,6 +92,7 @@ Structure:
   "price_sale": 50000, // Number in 10,000 KRW (만 원). e.g., 5억 = 50000. null if not found.
   "deposit": 1000, // Deposit in 10,000 KRW
   "monthly_rent": 50, // Monthly rent in 10,000 KRW
+  "premium_price": 2000, // Premium price (권리금) in 10,000 KRW. null if not found.
   "area_exclusive": 84, // Area in square meters (㎡). Pyeong (평) should be converted to ㎡ (* 3.3058). null if not found.
   "address_full": "서울시 강남구...", // Full address string
   "customer_name": "홍길동", // Extracted customer/contact name

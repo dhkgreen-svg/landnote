@@ -85,13 +85,11 @@ export default function InputPage() {
 
   // 선택된 거래 유형에 따른 필수 가격 필드 계산
   const requiredPriceFields = new Set<string>();
-  if (isListing) {
-    (store.transaction_types || []).forEach(t => {
-      (REQUIRED_PRICE_FIELDS[t as TransactionType] ?? []).forEach(f =>
-        requiredPriceFields.add(f),
-      );
-    });
-  }
+  (store.transaction_types || []).forEach(t => {
+    (REQUIRED_PRICE_FIELDS[t as TransactionType] ?? []).forEach(f =>
+      requiredPriceFields.add(f),
+    );
+  });
 
   const handleImageAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;

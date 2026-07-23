@@ -79,7 +79,7 @@ export function AreaInput({ label, value, onChange }: AreaInputProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label>{label}</Label>
+        <Label>{label} {unit === 'py' ? '(평)' : '(m²)'}</Label>
         <div className="flex gap-2 text-xs">
           <button 
             type="button" 
