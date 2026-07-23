@@ -311,6 +311,14 @@ export default function InquiryDetailPage() {
           <CardContent className="space-y-4">
             {editing ? (
               <div className="space-y-4">
+                {(inquiry.detailed_conditions || {}).memo && (
+                  <div className="mb-4 rounded-lg bg-blue-50/50 p-4 border border-blue-100">
+                    <span className="mb-2 block text-sm font-bold text-blue-800">고객 전달사항 (참고용)</span>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-blue-900">
+                      {String((inquiry.detailed_conditions || {}).memo)}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <Label className="mb-2 block">유형</Label>
                   <Select value={editForm.inquiry_type} onValueChange={v => handleChange('inquiry_type', v)}>
