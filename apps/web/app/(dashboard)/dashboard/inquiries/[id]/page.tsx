@@ -262,65 +262,37 @@ export default function InquiryDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle className="text-lg">고객 정보</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            {editing ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>이름</Label>
-                  <Input value={editForm.customer_name} onChange={e => handleChange('customer_name', e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>전화번호</Label>
-                  <Input value={editForm.customer_phone} onChange={e => handleChange('customer_phone', e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>이메일</Label>
-                  <Input value={editForm.customer_email} onChange={e => handleChange('customer_email', e.target.value)} />
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">이름</span>
-                  <span className="text-sm font-medium">{inquiry.customer_name ?? '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">전화번호</span>
-                  {inquiry.customer_phone ? (
-                    <a href={`tel:${inquiry.customer_phone}`} className="text-sm font-medium text-blue-600 underline">{inquiry.customer_phone}</a>
-                  ) : <span className="text-sm font-medium">-</span>}
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">이메일</span>
-                  <span className="text-sm font-medium">{inquiry.customer_email ?? '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">접수일</span>
-                  <span className="text-sm">{new Date(inquiry.created_at).toLocaleString('ko-KR')}</span>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+      {/* 메모 고정 영역 (Full Width) */}
+      {(editing || !!(inquiry.detailed_conditions || {}).memo) && (
+        <div className="rounded-xl bg-blue-50 p-5 border border-blue-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <MessageSquare className="h-5 w-5 text-blue-700" />
+            <h3 className="font-bold text-blue-900">고객 전달사항 (고객 직접 작성)</h3>
+          </div>
+          {editing ? (
+            <Textarea
+              value={editForm.detailed_conditions?.memo || ''}
+              onChange={e => handleConditionChange('memo', e.target.value)}
+              placeholder="고객 메모 (상담 내용 등 기록)"
+              rows={3}
+              className="bg-white/80 border-blue-200 focus-visible:ring-blue-500"
+            />
+          ) : (
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-blue-800">
+              {String((inquiry.detailed_conditions || {}).memo || '등록된 메모가 없습니다.')}
+            </p>
+          )}
+        </div>
+      )}
 
+      <div className="grid gap-6 lg:grid-cols-2 items-start">
         <Card>
-          <CardHeader><CardTitle className="text-lg">희망 접수 조건</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg">고객 및 기본 정보</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {editing ? (
               <div className="space-y-4">
-                {!!(inquiry.detailed_conditions || {}).memo && (
-                  <div className="mb-4 rounded-lg bg-blue-50/50 p-4 border border-blue-100">
-                    <span className="mb-2 block text-sm font-bold text-blue-800">고객 전달사항 (참고용)</span>
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-blue-900">
-                      {String((inquiry.detailed_conditions || {}).memo)}
-                    </p>
-                  </div>
-                )}
                 <div>
-                  <Label className="mb-2 block">유형</Label>
+                  <Label className="mb-2 block">접수 유형</Label>
                   <Select value={editForm.inquiry_type} onValueChange={v => handleChange('inquiry_type', v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -328,6 +300,20 @@ export default function InquiryDetailPage() {
                       <SelectItem value="offering">매물 내놓기 (매도/임대)</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>이름</Label>
+                    <Input value={editForm.customer_name} onChange={e => handleChange('customer_name', e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>전화번호</Label>
+                    <Input value={editForm.customer_phone} onChange={e => handleChange('customer_phone', e.target.value)} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>이메일</Label>
+                  <Input value={editForm.customer_email} onChange={e => handleChange('customer_email', e.target.value)} />
                 </div>
                 <div>
                   <Label className="mb-2 block">희망 거래유형</Label>
@@ -437,27 +423,30 @@ export default function InquiryDetailPage() {
                     })}
                   </Tabs>
                 </div>
-                <div>
-                  <Label className="mb-2 block">희망 가격조건</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <Input type="number" placeholder="매매가 (만 원)" value={editForm.detailed_conditions?.price_sale ?? ''} onChange={e => handleConditionChange('price_sale', e.target.value === '' ? undefined : Number(e.target.value))} />
-                    <Input type="number" placeholder="보증금 (만 원)" value={editForm.detailed_conditions?.deposit ?? ''} onChange={e => handleConditionChange('deposit', e.target.value === '' ? undefined : Number(e.target.value))} />
-                    <Input type="number" placeholder="월세 (만 원)" value={editForm.detailed_conditions?.monthly_rent ?? ''} onChange={e => handleConditionChange('monthly_rent', e.target.value === '' ? undefined : Number(e.target.value))} />
-                  </div>
-                </div>
-                <div>
-                  <Label className="mb-2 block">희망 면적/상세 (텍스트)</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <Input placeholder="선호 동/읍/면" value={editForm.detailed_conditions?.dong_name || ''} onChange={e => handleConditionChange('dong_name', e.target.value)} />
-                    <Input type="number" placeholder="공급 면적 (㎡)" value={editForm.detailed_conditions?.area_supply ?? ''} onChange={e => handleConditionChange('area_supply', e.target.value === '' ? undefined : Number(e.target.value))} />
-                  </div>
-                </div>
               </div>
             ) : (
               <>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">유형</span>
-                  <span className="text-sm font-medium">{inquiry.inquiry_type === 'looking_for' ? '매물 찾기' : '매물 내놓기'}</span>
+                  <span className="text-sm text-muted-foreground">접수 유형</span>
+                  <span className="text-sm font-medium">{inquiry.inquiry_type === 'looking_for' ? '매물 찾기 (매수/임차)' : '매물 내놓기 (매도/임대)'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">이름</span>
+                  <span className="text-sm font-medium">{inquiry.customer_name ?? '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">전화번호</span>
+                  {inquiry.customer_phone ? (
+                    <a href={`tel:${inquiry.customer_phone}`} className="text-sm font-medium text-blue-600 underline">{inquiry.customer_phone}</a>
+                  ) : <span className="text-sm font-medium">-</span>}
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">이메일</span>
+                  <span className="text-sm font-medium">{inquiry.customer_email ?? '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">접수일</span>
+                  <span className="text-sm">{new Date(inquiry.created_at).toLocaleString('ko-KR')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">거래유형</span>
@@ -467,6 +456,37 @@ export default function InquiryDetailPage() {
                   <span className="text-sm text-muted-foreground">카테고리</span>
                   <span className="text-sm">{(inquiry.category_codes || []).map(c => CATEGORY_LABELS[c] ?? c).join(', ')}</span>
                 </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-lg">상세 희망 조건</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            {editing ? (
+              <div className="space-y-4">
+                <div>
+                  <Label className="mb-2 block">희망 가격조건</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Input type="number" placeholder="매매가 (만 원)" value={editForm.detailed_conditions?.price_sale ?? ''} onChange={e => handleConditionChange('price_sale', e.target.value === '' ? undefined : Number(e.target.value))} />
+                    <Input type="number" placeholder="보증금 (만 원)" value={editForm.detailed_conditions?.deposit ?? ''} onChange={e => handleConditionChange('deposit', e.target.value === '' ? undefined : Number(e.target.value))} />
+                    <Input type="number" placeholder="월세 (만 원)" value={editForm.detailed_conditions?.monthly_rent ?? ''} onChange={e => handleConditionChange('monthly_rent', e.target.value === '' ? undefined : Number(e.target.value))} />
+                    {editForm.transaction_types?.includes('premium_transfer') && (
+                      <Input type="number" placeholder="권리금 (만 원)" value={editForm.detailed_conditions?.premium_price ?? ''} onChange={e => handleConditionChange('premium_price', e.target.value === '' ? undefined : Number(e.target.value))} />
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Label className="mb-2 block">희망 면적/위치 (텍스트)</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Input placeholder="선호 동/읍/면" value={editForm.detailed_conditions?.dong_name || ''} onChange={e => handleConditionChange('dong_name', e.target.value)} />
+                    <Input type="number" placeholder="공급 면적 (㎡)" value={editForm.detailed_conditions?.area_supply ?? ''} onChange={e => handleConditionChange('area_supply', e.target.value === '' ? undefined : Number(e.target.value))} />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
                 {(inquiry.subcategory_codes || []).length > 0 && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">세부 분류</span>
@@ -507,14 +527,6 @@ export default function InquiryDetailPage() {
                       {(inquiry.detailed_conditions || {}).area_supply ? `공급 ${((inquiry.detailed_conditions || {}).area_supply as number * 0.3025).toFixed(1)}평 (${(inquiry.detailed_conditions || {}).area_supply}㎡) ` : ''}
                       {(inquiry.detailed_conditions || {}).area_exclusive ? `전용 ${((inquiry.detailed_conditions || {}).area_exclusive as number * 0.3025).toFixed(1)}평 (${(inquiry.detailed_conditions || {}).area_exclusive}㎡)` : ''}
                     </span>
-                  </div>
-                )}
-                {!!(inquiry.detailed_conditions || {}).memo && (
-                  <div className="mt-4 rounded-lg bg-blue-50/50 p-4 border border-blue-100">
-                    <span className="mb-2 block text-sm font-bold text-blue-800">고객 전달사항 (고객 직접 작성)</span>
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-blue-900">
-                      {String((inquiry.detailed_conditions || {}).memo)}
-                    </p>
                   </div>
                 )}
               </>

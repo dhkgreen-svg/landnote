@@ -74,23 +74,6 @@ export default function Step1Client({ agentCode, agentName, officeName, phone, s
 
       <div className="space-y-4 mt-8">
         <Card
-          className="cursor-pointer border-transparent bg-primary text-primary-foreground shadow-md transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-          onClick={() => handleSelect('looking_for')}
-        >
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-3xl shadow-sm">
-              🔍
-            </div>
-            <div>
-              <p className="text-lg font-bold">원하는 매물을 찾고 있어요</p>
-              <p className="mt-1 text-sm text-primary-foreground/80 font-medium">
-                조건을 남기면 맞는 매물을 찾아드립니다
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card
           className="cursor-pointer border-transparent bg-indigo-600 text-white shadow-md transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
           onClick={() => handleSelect('listing')}
         >
@@ -99,9 +82,26 @@ export default function Step1Client({ agentCode, agentName, officeName, phone, s
               🏠
             </div>
             <div>
-              <p className="text-lg font-bold">매물을 접수하고 싶어요</p>
+              <p className="text-xl font-bold tracking-tight">매물 접수</p>
               <p className="mt-1 text-sm text-indigo-100 font-medium">
                 가지고 계신 매물을 빠르게 거래해 드립니다
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card
+          className="cursor-pointer border-transparent bg-primary text-primary-foreground shadow-md transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
+          onClick={() => handleSelect('looking_for')}
+        >
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-3xl shadow-sm">
+              🔍
+            </div>
+            <div>
+              <p className="text-xl font-bold tracking-tight">매수 / 임대</p>
+              <p className="mt-1 text-sm text-primary-foreground/80 font-medium">
+                조건을 남기면 맞는 매물을 찾아드립니다
               </p>
             </div>
           </CardContent>

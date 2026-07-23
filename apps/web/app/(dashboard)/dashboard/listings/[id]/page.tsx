@@ -410,21 +410,80 @@ export default function ListingDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Basic Info */}
+      {/* 메모 고정 영역 (Full Width) */}
+      {(editing || !!listing.detail_info?.memo) && (
+        <div className="rounded-xl bg-blue-50 p-5 border border-blue-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <MessageSquare className="h-5 w-5 text-blue-700" />
+            <h3 className="font-bold text-blue-900">고객 전달사항 (고객 직접 작성)</h3>
+          </div>
+          {editing ? (
+            <Textarea
+              value={editForm.detail_info?.memo as string || ''}
+              onChange={e => handleDetailInfoChange('memo', e.target.value)}
+              placeholder="고객 메모 (상담 내용 등 기록)"
+              rows={3}
+              className="bg-white/80 border-blue-200 focus-visible:ring-blue-500"
+            />
+          ) : (
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-blue-800">
+              {String(listing.detail_info?.memo || '등록된 메모가 없습니다.')}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-2 items-start">
+        {/* Left: 고객 및 기본 정보 */}
         <Card>
-          <CardHeader><CardTitle className="text-lg">기본 정보</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg">고객 및 기본 정보</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {editing ? (
               <div className="space-y-5">
-                {!!listing.detail_info?.memo && (
-                  <div className="mb-4 rounded-lg bg-blue-50/50 p-4 border border-blue-100">
-                    <span className="mb-2 block text-sm font-bold text-blue-800">고객 전달사항 (참고용)</span>
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-blue-900">
-                      {String(listing.detail_info.memo)}
-                    </p>
+                <div>
+                  <Label className="mb-2 block">접수 유형</Label>
+                  <Input value="매물 내놓기 (매도/임대)" disabled className="bg-muted" />
+                </div>
+                <div>
+                  <Label className="mb-2 block">임대인/매도인 연락처</Label>
+                  <Input
+                    value={editForm.owner_phone || ''}
+                    onChange={e => handleChange('owner_phone', formatPhoneNumber(e.target.value))}
+                    placeholder="예: 010-1234-5678"
+                  />
+                </div>
+                <div>
+                  <Label className="mb-2 block">거래 유형 (다중 선택 가능)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(TX_LABELS).map(([code, label]) => {
+                      const isSelected = editForm.transaction_types?.includes(code);
+                      return (
+                        <Badge
+                          key={code}
+                          variant="outline"
+                          className={`cursor-pointer px-3 py-1.5 text-sm transition-colors border-none ${isSelected ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-blue-50 text-blue-800 hover:bg-blue-100'}`}
+                          onClick={() => {
+                            const current = editForm.transaction_types || [];
+                            let next;
+                            if (code === 'premium_transfer') {
+                              // 권리금 양도는 단독 선택
+                              next = current.includes(code) ? [] : [code];
+                            } else {
+                              // 다른 것들을 선택할 땐 권리금 양도를 해제
+                              const withoutPremium = current.filter(c => c !== 'premium_transfer');
+                              next = withoutPremium.includes(code) 
+                                ? withoutPremium.filter(c => c !== code)
+                                : [...withoutPremium, code];
+                            }
+                            handleChange('transaction_types', next);
+                          }}
+                        >
+                          {label}
+                        </Badge>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
                 <div>
                   <Label className="mb-2 block">카테고리</Label>
                   <div className="flex flex-wrap gap-2">
@@ -471,42 +530,40 @@ export default function ListingDetailPage() {
                     </div>
                   </div>
                 )}
-
-                <div>
-                  <Label className="mb-2 block">거래 유형 (다중 선택 가능)</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(TX_LABELS).map(([code, label]) => {
-                      const isSelected = editForm.transaction_types?.includes(code);
-                      return (
-                        <Badge
-                          key={code}
-                          variant="outline"
-                          className={`cursor-pointer px-3 py-1.5 text-sm transition-colors border-none ${isSelected ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-blue-50 text-blue-800 hover:bg-blue-100'}`}
-                          onClick={() => {
-                            const current = editForm.transaction_types || [];
-                            let next;
-                            if (code === 'premium_transfer') {
-                              // 권리금 양도는 단독 선택
-                              next = current.includes(code) ? [] : [code];
-                            } else {
-                              // 다른 것들을 선택할 땐 권리금 양도를 해제
-                              const withoutPremium = current.filter(c => c !== 'premium_transfer');
-                              next = withoutPremium.includes(code) 
-                                ? withoutPremium.filter(c => c !== code)
-                                : [...withoutPremium, code];
-                            }
-                            handleChange('transaction_types', next);
-                          }}
-                        >
-                          {label}
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">접수 유형</span>
+                  <span className="text-sm font-medium">매물 내놓기 (매도/임대)</span>
+                </div>
+                <div className="space-y-2 pb-2 border-b border-muted/50">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">연락처</span>
+                    <span className="text-sm font-medium">{listing.owner_phone || '-'}</span>
+                  </div>
+                  {listing.owner_phone && (
+                    <div className="flex flex-wrap gap-2 justify-end">
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={`tel:${listing.owner_phone.replace(/[^0-9]/g, '')}`}><Phone className="mr-1 h-3 w-3" /> 전화걸기</a>
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleShareSMS(listing.owner_phone!)}>
+                        <MessageSquare className="mr-1 h-3 w-3 text-blue-500" /> 문자전송
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleShareKakao}>
+                        <MessageCircle className="mr-1 h-3 w-3 text-yellow-500" /> 카톡공유
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">등록일</span>
+                  <span className="text-sm">{new Date(listing.created_at).toLocaleString('ko-KR')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">거래유형</span>
+                  <span className="text-sm">{(listing.transaction_types || []).map(t => TX_LABELS[t] ?? t).join(', ')}</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">카테고리</span>
                   <span className="text-sm">{(listing.category_codes || []).map(c => CATEGORY_LABELS[c] ?? c).join(', ')}</span>
@@ -525,18 +582,13 @@ export default function ListingDetailPage() {
                     </div>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">거래유형</span>
-                  <span className="text-sm">{(listing.transaction_types || []).map(t => TX_LABELS[t] ?? t).join(', ')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">등록일</span>
-                  <span className="text-sm">{new Date(listing.created_at).toLocaleString('ko-KR')}</span>
-                </div>
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Right: 가격, 위치, 매물 정보 */}
+        <div className="space-y-6">
 
         {/* Price */}
         <Card>
@@ -906,19 +958,12 @@ export default function ListingDetailPage() {
                     )}
                   </>
                 )}
-                {!!listing.detail_info?.memo && (
-                  <div className="mt-4 rounded-lg bg-blue-50/50 p-4 border border-blue-100">
-                    <span className="mb-2 block text-sm font-bold text-blue-800">고객 전달사항 (고객 직접 작성)</span>
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-blue-900">
-                      {String(listing.detail_info.memo)}
-                    </p>
-                  </div>
-                )}
               </>
             )}
           </CardContent>
         </Card>
       </div>
+    </div>
 
       {/* Images */}
       <Card>
@@ -1019,36 +1064,6 @@ export default function ListingDetailPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div>
-            <Label>임대인/매도인 연락처</Label>
-            {editing ? (
-              <Input
-                value={editForm.owner_phone || ''}
-                onChange={e => handleChange('owner_phone', formatPhoneNumber(e.target.value))}
-                placeholder="예: 010-1234-5678"
-                className="max-w-[300px] mt-1"
-              />
-            ) : (
-              <div className="mt-2 space-y-2">
-                <div className="text-sm font-medium">{listing.owner_phone || '등록된 번호가 없습니다'}</div>
-                {listing.owner_phone && (
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={`tel:${listing.owner_phone.replace(/[^0-9]/g, '')}`}>
-                        <Phone className="mr-1 h-3 w-3" /> 전화걸기
-                      </a>
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleShareSMS(listing.owner_phone!)}>
-                      <MessageSquare className="mr-1 h-3 w-3 text-blue-500" /> 문자전송
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handleShareKakao}>
-                      <MessageCircle className="mr-1 h-3 w-3 text-yellow-500" /> 카톡공유
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
           {editForm.status === 'contracted' && (
             <div className="p-4 border rounded-md bg-blue-50/50">
