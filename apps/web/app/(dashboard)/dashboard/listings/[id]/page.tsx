@@ -417,7 +417,7 @@ export default function ListingDetailPage() {
           <CardContent className="space-y-4">
             {editing ? (
               <div className="space-y-5">
-                {listing.detail_info?.memo && (
+                {!!listing.detail_info?.memo && (
                   <div className="mb-4 rounded-lg bg-blue-50/50 p-4 border border-blue-100">
                     <span className="mb-2 block text-sm font-bold text-blue-800">고객 전달사항 (참고용)</span>
                     <p className="whitespace-pre-wrap text-sm leading-relaxed text-blue-900">
@@ -906,7 +906,7 @@ export default function ListingDetailPage() {
                     )}
                   </>
                 )}
-                {listing.detail_info?.memo && (
+                {!!listing.detail_info?.memo && (
                   <div className="mt-4 rounded-lg bg-blue-50/50 p-4 border border-blue-100">
                     <span className="mb-2 block text-sm font-bold text-blue-800">고객 전달사항 (고객 직접 작성)</span>
                     <p className="whitespace-pre-wrap text-sm leading-relaxed text-blue-900">
