@@ -898,6 +898,14 @@ export default function ListingDetailPage() {
                     )}
                   </>
                 )}
+                {listing.detail_info?.memo && (
+                  <div className="mt-4 rounded-lg bg-blue-50/50 p-4 border border-blue-100">
+                    <span className="mb-2 block text-sm font-bold text-blue-800">고객 전달사항 (고객 직접 작성)</span>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-blue-900">
+                      {String(listing.detail_info.memo)}
+                    </p>
+                  </div>
+                )}
               </>
             )}
           </CardContent>
@@ -1067,7 +1075,7 @@ export default function ListingDetailPage() {
             </div>
           )}
           <div className="space-y-2 mt-4">
-            <Label>메모</Label>
+            <Label className="text-primary font-bold">중개사 전용 메모</Label>
             {editing && (
               <QuickTemplateButtons 
                 syncCategory={editForm.category_codes?.[0]}

@@ -501,6 +501,14 @@ export default function InquiryDetailPage() {
                     </span>
                   </div>
                 )}
+                {(inquiry.detailed_conditions || {}).memo && (
+                  <div className="mt-4 rounded-lg bg-blue-50/50 p-4 border border-blue-100">
+                    <span className="mb-2 block text-sm font-bold text-blue-800">고객 전달사항 (고객 직접 작성)</span>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-blue-900">
+                      {String((inquiry.detailed_conditions || {}).memo)}
+                    </p>
+                  </div>
+                )}
               </>
             )}
           </CardContent>
@@ -539,7 +547,7 @@ export default function InquiryDetailPage() {
             </Select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium">메모</label>
+            <label className="mb-1 block text-sm font-bold text-primary">중개사 전용 메모</label>
             {editing && (
               <div className="mb-2">
                 <QuickTemplateButtons 
