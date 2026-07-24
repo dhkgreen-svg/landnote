@@ -109,9 +109,9 @@ export default function StandaloneBeomeoBuildingPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <a href="tel:010-0000-0000" className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg">
+            <a href="tel:010-9999-3399" className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 border border-amber-500/40 px-3 py-2 rounded-lg shadow-sm">
               <Phone className="w-3.5 h-3.5 text-amber-400" />
-              유선 문의
+              <span>010-9999-3399</span>
             </a>
             <button onClick={handleCopyLink} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 px-3.5 py-2 rounded-lg transition-colors shadow-sm">
               {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
@@ -550,7 +550,12 @@ export default function StandaloneBeomeoBuildingPage() {
             <p>대구 수성구 범어동 160억 통빌딩 매매 전용 프라이빗 브리핑 웹사이트</p>
           </div>
           <div className="text-right">
-            <p className="text-amber-400 font-bold text-sm">유선 문의 및 프라이빗 안내</p>
+            <p className="text-amber-400 font-bold text-sm mb-0.5">
+              <a href="tel:010-9999-3399" className="hover:underline inline-flex items-center justify-end gap-1">
+                <Phone className="w-3.5 h-3.5 text-amber-400" />
+                <span>유선 문의: 010-9999-3399</span>
+              </a>
+            </p>
             <p>상세 프라이빗 브리핑은 유선 또는 내방 시 서류 검토 가능합니다.</p>
           </div>
         </div>
