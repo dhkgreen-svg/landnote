@@ -15,6 +15,7 @@ export function useUpdateListing(id: string) {
       complex_name?: string | null;
       building_num?: string | null;
       room_num?: string | null;
+      owner_name?: string | null;
       owner_phone?: string | null;
       contract_party_phone?: string | null;
       price_sale?: number | null;

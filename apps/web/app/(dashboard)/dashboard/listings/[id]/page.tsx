@@ -199,7 +199,6 @@ export default function ListingDetailPage() {
         complex_name: editForm.complex_name || null,
         building_num: editForm.building_num || null,
         room_num: editForm.room_num || null,
-        direction: editForm.direction || undefined,
         owner_phone: editForm.owner_phone || '',
         owner_name: editForm.owner_name?.trim() || undefined,
         contract_party_phone: editForm.status === 'contracted' ? (editForm.contract_party_phone || null) : null,
