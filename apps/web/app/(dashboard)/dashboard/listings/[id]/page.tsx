@@ -150,6 +150,7 @@ export default function ListingDetailPage() {
         building_num: listing.building_num ?? '',
         room_num: listing.room_num ?? '',
         owner_phone: listing.owner_phone ?? '',
+        owner_name: listing.owner_name ?? '',
         contract_party_phone: listing.contract_party_phone ?? '',
         price_sale: listing.price_sale,
         price_jeonse: listing.price_jeonse,
@@ -197,7 +198,9 @@ export default function ListingDetailPage() {
         complex_name: editForm.complex_name || null,
         building_num: editForm.building_num || null,
         room_num: editForm.room_num || null,
+        direction: editForm.direction || undefined,
         owner_phone: editForm.owner_phone || '',
+        owner_name: editForm.owner_name?.trim() || undefined,
         contract_party_phone: editForm.status === 'contracted' ? (editForm.contract_party_phone || null) : null,
         price_sale: !editForm.price_sale ? null : Number(editForm.price_sale),
         price_jeonse: !editForm.price_jeonse ? null : Number(editForm.price_jeonse),
@@ -444,13 +447,23 @@ export default function ListingDetailPage() {
                   <Label className="mb-2 block">접수 유형</Label>
                   <Input value="매물 내놓기 (매도/임대)" disabled className="bg-muted" />
                 </div>
-                <div>
-                  <Label className="mb-2 block">임대인/매도인 연락처</Label>
-                  <Input
-                    value={editForm.owner_phone || ''}
-                    onChange={e => handleChange('owner_phone', formatPhoneNumber(e.target.value))}
-                    placeholder="예: 010-1234-5678"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="mb-2 block">성명 (선택)</Label>
+                    <Input
+                      value={editForm.owner_name || ''}
+                      onChange={e => handleChange('owner_name', e.target.value)}
+                      placeholder="예: 홍길동"
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-2 block">임대인/매도인 연락처</Label>
+                    <Input
+                      value={editForm.owner_phone || ''}
+                      onChange={e => handleChange('owner_phone', formatPhoneNumber(e.target.value))}
+                      placeholder="예: 010-1234-5678"
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label className="mb-2 block">거래 유형 (다중 선택 가능)</Label>
@@ -539,6 +552,10 @@ export default function ListingDetailPage() {
                 </div>
                 <div className="space-y-2 pb-2 border-b border-muted/50">
                   <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">성명</span>
+                    <span className="text-sm font-medium">{listing.owner_name || '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-center mt-2">
                     <span className="text-sm text-muted-foreground">연락처</span>
                     <span className="text-sm font-medium">{listing.owner_phone || '-'}</span>
                   </div>

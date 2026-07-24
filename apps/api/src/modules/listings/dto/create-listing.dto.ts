@@ -100,6 +100,11 @@ export class CreateListingDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(50)
+  owner_name?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(20)
   contract_party_phone?: string;
 

@@ -117,6 +117,7 @@ function NewListingForm() {
   const [builtYear, setBuiltYear] = useState('');
   const [direction, setDirection] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
+  const [ownerName, setOwnerName] = useState('');
   const [memo, setMemo] = useState('');
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -229,6 +230,7 @@ function NewListingForm() {
         built_year: builtYear === '' ? undefined : parseInt(builtYear),
         direction: direction || undefined,
         owner_phone: ownerPhone.trim(),
+        owner_name: ownerName.trim() || undefined,
         agent_memo: memo || undefined,
         detail_info: (zoning || jimok || currentUsage || factoryUsage || businessType || recommendedUsage) ? {
           zoning: zoning || undefined,
@@ -341,13 +343,23 @@ function NewListingForm() {
       <Card>
         <CardHeader><CardTitle className="text-lg">기본 정보</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>임대인/매도인 연락처 <span className="text-red-500">*</span></Label>
-            <Input 
-              value={ownerPhone}
-              onChange={e => setOwnerPhone(formatPhoneNumber(e.target.value))}
-              placeholder="예: 010-1234-5678"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>성명 (선택)</Label>
+              <Input 
+                value={ownerName}
+                onChange={e => setOwnerName(e.target.value)}
+                placeholder="예: 홍길동"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>임대인/매도인 연락처 <span className="text-red-500">*</span></Label>
+              <Input 
+                value={ownerPhone}
+                onChange={e => setOwnerPhone(formatPhoneNumber(e.target.value))}
+                placeholder="예: 010-1234-5678"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
