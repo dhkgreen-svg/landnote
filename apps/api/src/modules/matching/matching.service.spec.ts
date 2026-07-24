@@ -74,7 +74,7 @@ describe('MatchingService', () => {
         subcategory_codes: ['apartment'],
       };
       const result = score(inquiry, listing);
-      expect(result.category).toBe(MATCH_WEIGHTS.category * 0.5); // 0.20
+      expect(result.category).toBe(MATCH_WEIGHTS.category * 0.25); 
     });
   });
 

@@ -58,7 +58,7 @@ export class MatchingService {
         const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
         return { listing, score: total, breakdown };
       })
-      .filter(m => m.score >= 0.25)
+      .filter(m => m.score > 0)
       .sort((a, b) => b.score - a.score);
 
     if (scored.length > 0) {
@@ -119,7 +119,7 @@ export class MatchingService {
         const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
         return { inquiry, score: total, breakdown };
       })
-      .filter(m => m.score >= 0.25)
+      .filter(m => m.score > 0)
       .sort((a, b) => b.score - a.score);
 
     if (scored.length > 0) {
