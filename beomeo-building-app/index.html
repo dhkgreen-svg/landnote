@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[나우공인중개사] 대구 범어동 160억 원대 준신축 빌딩 프라이빗 브리핑</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800;900&display=swap');
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      background-color: #f59e0b;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 selection:bg-amber-500 selection:text-slate-950 min-h-screen">
+
+  <!-- ────────────────────── STANDALONE HEADER ────────────────────── -->
+  <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800" style="position: sticky; top: 0; z-index: 50; backdrop-filter: blur(12px); background-color: rgba(2, 6, 23, 0.9); border-bottom: 1px solid #1e293b;">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center font-black text-slate-950 text-base shadow-md">
+          나우
+        </div>
+        <div>
+          <span class="font-bold text-white text-base sm:text-lg block leading-none">나우공인중개사사무소</span>
+          <span class="text-[11px] text-amber-400 font-medium">검증된 수성구 전문 프라이빗 매물</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="tel:010-0000-0000" class="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 border border-slate-800 px-3 py-2 rounded-lg">
+          <i data-lucide="phone" class="w-3.5 h-3.5 text-amber-400"></i>
+          유선 문의
+        </a>
+        <button onclick="copyKakaoTeaser()" id="copy-btn" class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 px-3.5 py-2 rounded-lg transition-colors shadow-sm">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+          <span id="copy-btn-text">카톡 공유 문구 복사</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ────────────────────── HERO SECTION ────────────────────── -->
+  <section class="relative overflow-hidden border-b border-slate-800 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 pt-12 pb-16 md:pt-20 md:pb-28">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs sm:text-sm font-medium mb-6">
+        <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
+        <span>대구 수성구 범어동 160억 통빌딩 전용 브리핑</span>
+      </div>
+
+      <h1 class="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight text-white leading-[1.2] mb-6">
+        대구 수성구의 심장, 범어동 대로변
+        <br />
+        <span class="bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent">
+          160억 원대 준신축 메디컬·학원 빌딩
+        </span>
+      </h1>
+
+      <p class="text-slate-300 text-base sm:text-xl max-w-3xl leading-relaxed mb-8">
+        수성구청역 도보 1분 초역세권. 공실 스트레스 없는 <strong class="text-white font-semibold">‘똘똘한 한 채’</strong>의 표본.<br class="hidden sm:inline" />
+        2019년 준신축, 전 층 우량 임차인 입점 완료 및 주차 25대 완비.
+      </p>
+
+      <!-- Core Specs Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-4xl mb-10">
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md">
+          <span class="text-xs text-slate-400 block mb-1">매매 희망가</span>
+          <span class="text-xl sm:text-2xl font-extrabold text-amber-400">160억 원</span>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md">
+          <span class="text-xs text-slate-400 block mb-1">대지 / 연면적</span>
+          <span class="text-lg sm:text-xl font-bold text-white">127평 / 840평</span>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md">
+          <span class="text-xs text-slate-400 block mb-1">현 보증금 / 월세</span>
+          <span class="text-lg sm:text-xl font-bold text-emerald-400">9.5억 / 4,040만</span>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md">
+          <span class="text-xs text-slate-400 block mb-1">준공 / 주차</span>
+          <span class="text-lg sm:text-xl font-bold text-white">2019년 / 25대</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-col sm:flex-row gap-4">
+        <a href="#calculator" class="inline-flex items-center justify-center h-13 px-8 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-base transition-all shadow-lg shadow-amber-500/20">
+          <i data-lucide="calculator" class="w-5 h-5 mr-2"></i>
+          실시간 투자 수익률 계산하기
+        </a>
+        <a href="#lead-form" class="inline-flex items-center justify-center h-13 px-6 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-base transition-all">
+          <i data-lucide="download" class="w-5 h-5 mr-2 text-amber-400"></i>
+          상세 임대 내역서(PDF) 신청
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────────── FINANCIAL CALCULATOR ────────────────────── -->
+  <section id="calculator" class="py-16 md:py-24 bg-slate-900/50 border-b border-slate-800">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="text-center max-w-3xl mx-auto mb-12">
+        <span class="inline-block bg-amber-500/10 text-amber-400 border border-amber-500/30 mb-3 px-3 py-1 rounded-full text-xs font-semibold">
+          FINANCIAL SIMULATOR
+        </span>
+        <h2 class="text-2xl sm:text-4xl font-extrabold text-white mb-4">
+          슬라이더를 조절하여 <span class="text-amber-400">필요 실투자금 & 월 순수익</span>을 확인하세요
+        </h2>
+        <p class="text-slate-400 text-sm sm:text-base">
+          보증금 9.5억 원 승계 조건. 대출 비율과 금리를 조절하면 실시간으로 내 손에 남는 월 순수수익이 계산됩니다.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        <!-- Controls Column -->
+        <div class="lg:col-span-6 bg-slate-900 p-6 sm:p-8 rounded-2xl border border-slate-800 space-y-6">
+          <h3 class="text-lg font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-4">
+            <i data-lucide="calculator" class="w-5 h-5 text-amber-400"></i>
+            금융 조건 설정
+          </h3>
+
+          <!-- LTV Slider -->
+          <div class="space-y-2">
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-slate-300 font-medium">대출 비율 (LTV)</span>
+              <span id="ltv-display" class="font-bold text-amber-400 text-base">60% (96억 원)</span>
+            </div>
+            <input id="ltv-slider" type="range" min="40" max="70" step="5" value="60" oninput="calculateFinancials()" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-400" />
+            <div class="flex justify-between text-[11px] text-slate-500">
+              <span>보수적 (40%)</span>
+              <span>권장 (60%)</span>
+              <span>최대 (70%)</span>
+            </div>
+          </div>
+
+          <!-- Interest Rate Slider -->
+          <div class="space-y-2">
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-slate-300 font-medium">대출 예상 금리</span>
+              <span id="rate-display" class="font-bold text-amber-400 text-base">3.8%</span>
+            </div>
+            <input id="rate-slider" type="range" min="3.0" max="5.5" step="0.1" value="3.8" oninput="calculateFinancials()" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-400" />
+            <div class="flex justify-between text-[11px] text-slate-500">
+              <span>최저 3.0%</span>
+              <span>평균 3.8%</span>
+              <span>상한 5.5%</span>
+            </div>
+          </div>
+
+          <!-- Upside Slider -->
+          <div class="space-y-2 pt-2 border-t border-slate-800">
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-slate-300 font-medium">만기 시 임대료 인상 예상치 (Upside)</span>
+              <span id="upside-display" class="font-bold text-emerald-400 text-base">+25%</span>
+            </div>
+            <input id="upside-slider" type="range" min="0" max="40" step="5" value="25" oninput="calculateFinancials()" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-400" />
+            <p class="text-xs text-slate-400">
+              💡 2022~2023년 계약층(4~10층) 만기 시 정상화 시 인상 가능 폭
+            </p>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 space-y-1">
+            <p class="font-semibold text-slate-300">📌 고정 적용 데이터</p>
+            <p>• 매매 희망가: 160억 원</p>
+            <p>• 인수 보증금: 9억 5,000만 원 (승계)</p>
+            <p>• 현 임대료: 월 4,040만 원 (관리비 1,010만 원 별도)</p>
+          </div>
+        </div>
+
+        <!-- Calculated Results Column -->
+        <div class="lg:col-span-6 space-y-6">
+          <div class="bg-slate-900 p-6 sm:p-8 rounded-2xl border border-amber-500/30 shadow-2xl relative overflow-hidden">
+            <h4 class="text-sm font-semibold text-amber-400 tracking-wider uppercase mb-6">
+              현재 기준 실투자금 및 월 순수익
+            </h4>
+
+            <div class="space-y-4 mb-6">
+              <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+                <span class="text-slate-400 text-sm">필요 실투자금 (자기자본)</span>
+                <span id="equity-result" class="text-2xl font-black text-white">54.5억 원</span>
+              </div>
+
+              <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+                <span class="text-slate-400 text-sm">월 임대 수입 (월세)</span>
+                <span class="text-lg font-bold text-slate-200">4,040만 원</span>
+              </div>
+
+              <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+                <span class="text-slate-400 text-sm">월 대출 이자 지출</span>
+                <span id="interest-result" class="text-lg font-bold text-red-400">-3,040만 원</span>
+              </div>
+
+              <div class="flex justify-between items-center pt-2">
+                <div>
+                  <span class="text-slate-200 font-bold block">월 순수수익 (차감 후)</span>
+                  <span class="text-xs text-slate-400">대출 이자 제하고 내 손에 남는 돈</span>
+                </div>
+                <span id="net-result" class="text-3xl font-black text-emerald-400">
+                  +1,000만 원
+                </span>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex justify-between items-center">
+              <span class="text-sm font-medium text-amber-300">자기자본 수익률 (ROE)</span>
+              <span id="roe-result" class="text-2xl font-black text-amber-400">2.20%</span>
+            </div>
+          </div>
+
+          <div class="bg-gradient-to-r from-emerald-950/40 to-slate-900 p-6 rounded-2xl border border-emerald-500/30">
+            <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm mb-3">
+              <i data-lucide="trending-up" class="w-5 h-5"></i>
+              <span>만기 후 임대료 정상화 시 시나리오</span>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <span class="text-xs text-slate-400 block mb-1">예상 월 순수수익</span>
+                <span id="future-net-result" class="text-xl sm:text-2xl font-black text-white">
+                  +2,010만 원
+                </span>
+              </div>
+              <div>
+                <span class="text-xs text-slate-400 block mb-1">예상 ROE</span>
+                <span id="future-roe-result" class="text-xl sm:text-2xl font-black text-emerald-400">
+                  4.43%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────────── RENT ROLL TABLE ────────────────────── -->
+  <section class="py-16 md:py-24 border-b border-slate-800">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+        <div>
+          <span class="inline-block bg-blue-500/10 text-blue-400 border border-blue-500/30 mb-3 px-3 py-1 rounded-full text-xs font-semibold">
+            RENT ROLL BREAKDOWN
+          </span>
+          <h2 class="text-2xl sm:text-3xl font-bold text-white">
+            1층 ~ 10층 전체 임대차 상세 현황표
+          </h2>
+        </div>
+        <p class="text-slate-400 text-sm max-w-md">
+          전 층 우량 임차인 입점 완료. 총 보증금 <strong class="text-white">9억 5,000만 원</strong> / 총 월세 <strong class="text-emerald-400">4,040만 원</strong> (관리비 1,010만 원 별도)
+        </p>
+      </div>
+
+      <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-800/80 text-slate-300 text-xs uppercase tracking-wider border-b border-slate-700">
+              <tr>
+                <th class="py-4 px-4 font-semibold">층수</th>
+                <th class="py-4 px-4 font-semibold">계약면적</th>
+                <th class="py-4 px-4 font-semibold">보증금</th>
+                <th class="py-4 px-4 font-semibold">월세</th>
+                <th class="py-4 px-4 font-semibold">월 관리비</th>
+                <th class="py-4 px-4 font-semibold">계약기간</th>
+                <th class="py-4 px-4 font-semibold text-right">비고</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800 text-slate-200">
+              <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="py-3.5 px-4 font-bold text-white">1층</td>
+                <td class="py-3.5 px-4 text-slate-300">26.6평</td>
+                <td class="py-3.5 px-4 font-semibold">10,000만 원</td>
+                <td class="py-3.5 px-4 font-bold text-emerald-400">260만 원</td>
+                <td class="py-3.5 px-4 text-slate-400">29.26만 원</td>
+                <td class="py-3.5 px-4 text-xs text-slate-400">2024.11.25 ~ 2027.11.30</td>
+                <td class="py-3.5 px-4 text-right"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-xs">입점완료</span></td>
+              </tr>
+              <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="py-3.5 px-4 font-bold text-white">2층</td>
+                <td class="py-3.5 px-4 text-slate-300">99.6평</td>
+                <td class="py-3.5 px-4 font-semibold">10,000만 원</td>
+                <td class="py-3.5 px-4 font-bold text-emerald-400">490만 원</td>
+                <td class="py-3.5 px-4 text-slate-400">109.56만 원</td>
+                <td class="py-3.5 px-4 text-xs text-slate-400">2023.12.15 ~ 2028.12.14</td>
+                <td class="py-3.5 px-4 text-right"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-xs">입점완료</span></td>
+              </tr>
+              <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="py-3.5 px-4 font-bold text-white">3층</td>
+                <td class="py-3.5 px-4 text-slate-300">99.6평</td>
+                <td class="py-3.5 px-4 font-semibold">10,000만 원</td>
+                <td class="py-3.5 px-4 font-bold text-emerald-400">470만 원</td>
+                <td class="py-3.5 px-4 text-slate-400">109.56만 원</td>
+                <td class="py-3.5 px-4 text-xs text-slate-400">2025.04.01 ~ 2028.03.31</td>
+                <td class="py-3.5 px-4 text-right"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-xs">입점완료</span></td>
+              </tr>
+              <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="py-3.5 px-4 font-bold text-white">4층</td>
+                <td class="py-3.5 px-4 text-slate-300">99.6평</td>
+                <td class="py-3.5 px-4 font-semibold">10,000만 원</td>
+                <td class="py-3.5 px-4 font-bold text-emerald-400">400만 원</td>
+                <td class="py-3.5 px-4 text-slate-400">109.56만 원</td>
+                <td class="py-3.5 px-4 text-xs text-slate-400">2022.10.11 ~ 2024.10.11</td>
+                <td class="py-3.5 px-4 text-right"><span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs">재계약/정상화 대상</span></td>
+              </tr>
+              <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="py-3.5 px-4 font-bold text-white">5층</td>
+                <td class="py-3.5 px-4 text-slate-300">99.6평</td>
+                <td class="py-3.5 px-4 font-semibold">10,000만 원</td>
+                <td class="py-3.5 px-4 font-bold text-emerald-400">400만 원</td>
+                <td class="py-3.5 px-4 text-slate-400">109.56만 원</td>
+                <td class="py-3.5 px-4 text-xs text-slate-400">2022.10.20 ~ 2024.10.19</td>
+                <td class="py-3.5 px-4 text-right"><span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs">재계약/정상화 대상</span></td>
+              </tr>
+              <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="py-3.5 px-4 font-bold text-white">6층</td>
+                <td class="py-3.5 px-4 text-slate-300">99.6평</td>
+                <td class="py-3.5 px-4 font-semibold">10,000만 원</td>
+                <td class="py-3.5 px-4 font-bold text-emerald-400">400만 원</td>
+                <td class="py-3.5 px-4 text-slate-400">109.56만 원</td>
+                <td class="py-3.5 px-4 text-xs text-slate-400">2022.08.30 ~ 2024.08.29</td>
+                <td class="py-3.5 px-4 text-right"><span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs">재계약/정상화 대상</span></td>
+              </tr>
+              <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="py-3.5 px-4 font-bold text-white">7층</td>
+                <td class="py-3.5 px-4 text-slate-300">99.6평</td>
+                <td class="py-3.5 px-4 font-semibold">7,000만 원</td>
+                <td class="py-3.5 px-4 font-bold text-emerald-400">400만 원</td>
+                <td class="py-3.5 px-4 text-slate-400">109.56만 원</td>
+                <td class="py-3.5 px-4 text-xs text-slate-400">2023.08.16 ~ 2025.08.15</td>
+                <td class="py-3.5 px-4 text-right"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-xs">입점완료</span></td>
+              </tr>
+              <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="py-3.5 px-4 font-bold text-white">8층</td>
+                <td class="py-3.5 px-4 text-slate-300">99.6평</td>
+                <td class="py-3.5 px-4 font-semibold">10,000만 원</td>
+                <td class="py-3.5 px-4 font-bold text-emerald-400">400만 원</td>
+                <td class="py-3.5 px-4 text-slate-400">109.56만 원</td>
+                <td class="py-3.5 px-4 text-xs text-slate-400">사용승인일 ~ 2026년</td>
+                <td class="py-3.5 px-4 text-right"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-xs">입점완료</span></td>
+              </tr>
+              <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="py-3.5 px-4 font-bold text-white">9층</td>
+                <td class="py-3.5 px-4 text-slate-300">99.6평</td>
+                <td class="py-3.5 px-4 font-semibold">10,000만 원</td>
+                <td class="py-3.5 px-4 font-bold text-emerald-400">400만 원</td>
+                <td class="py-3.5 px-4 text-slate-400">109.56만 원</td>
+                <td class="py-3.5 px-4 text-xs text-slate-400">2022.09 ~ 2024.09</td>
+                <td class="py-3.5 px-4 text-right"><span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs">재계약/정상화 대상</span></td>
+              </tr>
+              <tr class="hover:bg-slate-800/50 transition-colors">
+                <td class="py-3.5 px-4 font-bold text-white">10층</td>
+                <td class="py-3.5 px-4 text-slate-300">95평</td>
+                <td class="py-3.5 px-4 font-semibold">8,000만 원</td>
+                <td class="py-3.5 px-4 font-bold text-emerald-400">420만 원</td>
+                <td class="py-3.5 px-4 text-slate-400">104.5만 원</td>
+                <td class="py-3.5 px-4 text-xs text-slate-400">2022.10.23 ~ 2024.10.22</td>
+                <td class="py-3.5 px-4 text-right"><span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs">재계약/정상화 대상</span></td>
+              </tr>
+            </tbody>
+            <tfoot class="bg-slate-800/90 font-bold text-white border-t-2 border-slate-700">
+              <tr>
+                <td class="py-4 px-4">합계 (전층)</td>
+                <td class="py-4 px-4 text-slate-300">918평</td>
+                <td class="py-4 px-4 text-amber-400">9억 5,000만 원</td>
+                <td class="py-4 px-4 text-emerald-400">4,040만 원/월</td>
+                <td class="py-4 px-4 text-slate-300">1,010만 원/월</td>
+                <td colspan="2" class="py-4 px-4 text-right text-xs text-slate-400 font-normal">
+                  * 월 총 수입: 5,050만 원
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ────────────────────── LEAD FORM SECTION ────────────────────── -->
+  <section id="lead-form" class="py-16 md:py-24 bg-slate-950">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="bg-slate-900 p-8 sm:p-12 rounded-3xl border border-amber-500/30 shadow-2xl relative overflow-hidden">
+        <div class="text-center max-w-2xl mx-auto mb-8">
+          <span class="inline-block bg-amber-500/20 text-amber-300 border border-amber-500/40 mb-3 px-3 py-1 rounded-full text-xs font-semibold">
+            PRIVATE BRIEFING REQUEST
+          </span>
+          <h2 class="text-2xl sm:text-3xl font-extrabold text-white mb-3">
+            상세 투자 제안서 (PDF & 임대차 계약서) 신청
+          </h2>
+          <p class="text-slate-400 text-sm">
+            본 매물은 보안상 전체 공개하지 않으며, 성함과 연락처를 남겨주시면 담당 중개사가 확인 후 프라이빗 제안서를 발송해 드립니다.
+          </p>
+        </div>
+
+        <div id="lead-form-box">
+          <form onsubmit="handleLeadForm(event)" class="space-y-4 max-w-md mx-auto">
+            <div>
+              <label class="text-slate-300 text-sm mb-1.5 block font-medium">성함 / 법인명</label>
+              <input type="text" id="lead-name" placeholder="예: 홍길동 (또는 OO자산운용)" required class="w-full h-12 px-4 bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 rounded-xl focus:outline-none focus:border-amber-400" />
+            </div>
+
+            <div>
+              <label class="text-slate-300 text-sm mb-1.5 block font-medium">연락처 (휴대폰 번호)</label>
+              <input type="tel" id="lead-phone" placeholder="010-0000-0000" required class="w-full h-12 px-4 bg-slate-950 border border-slate-800 text-white placeholder:text-slate-600 rounded-xl focus:outline-none focus:border-amber-400" />
+            </div>
+
+            <button type="submit" class="w-full h-13 py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-base rounded-xl shadow-lg shadow-amber-500/20 transition-colors">
+              <i data-lucide="download" class="w-5 h-5 inline mr-1"></i>
+              프라이빗 상세 제안서 신청하기
+            </button>
+
+            <p class="text-[11px] text-center text-slate-500">
+              🔒 개인정보는 범어동 매물 상세 안내 목적으로만 안전하게 사용됩니다.
+            </p>
+          </form>
+        </div>
+
+        <div id="lead-success-box" class="hidden p-8 rounded-2xl bg-emerald-950/50 border border-emerald-500/40 text-center space-y-3">
+          <i data-lucide="check-circle-2" class="w-12 h-12 text-emerald-400 mx-auto"></i>
+          <h3 class="text-xl font-bold text-white">상세 브리핑 신청이 완료되었습니다!</h3>
+          <p class="text-slate-300 text-sm">
+            입력해주신 연락처로 담당 중개사가 확인 후 제안서를 발송해 드리겠습니다.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ────────────────────── STANDALONE FOOTER ────────────────────── -->
+  <footer class="border-t border-slate-800 py-10 bg-slate-950 text-slate-400 text-xs">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div>
+        <p class="font-bold text-slate-200 text-sm mb-1">나우공인중개사사무소 (신속중개 나우부동산)</p>
+        <p>대구 수성구 범어동 160억 통빌딩 매매 전용 프라이빗 브리핑 웹사이트</p>
+      </div>
+      <div class="text-right">
+        <p class="text-amber-400 font-bold text-sm">유선 문의 및 프라이빗 안내</p>
+        <p>상세 프라이빗 브리핑은 유선 또는 내방 시 서류 검토 가능합니다.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Financial Calculation & Logic Scripts -->
+  <script>
+    lucide.createIcons();
+
+    function calculateFinancials() {
+      const price = 16000000000;
+      const deposit = 950000000;
+      const currentRent = 40400000;
+
+      const ltv = parseInt(document.getElementById('ltv-slider').value);
+      const rate = parseFloat(document.getElementById('rate-slider').value);
+      const upside = parseInt(document.getElementById('upside-slider').value);
+
+      const loan = price * (ltv / 100);
+      const equity = price - loan - deposit;
+      const annualInterest = loan * (rate / 100);
+      const monthlyInterest = annualInterest / 12;
+      const netIncome = currentRent - monthlyInterest;
+      const annualNet = netIncome * 12;
+      const roe = equity > 0 ? ((annualNet / equity) * 100).toFixed(2) : 0;
+
+      const futureRent = currentRent * (1 + upside / 100);
+      const futureNet = futureRent - monthlyInterest;
+      const futureAnnualNet = futureNet * 12;
+      const futureRoe = equity > 0 ? ((futureAnnualNet / equity) * 100).toFixed(2) : 0;
+
+      // Update UI
+      document.getElementById('ltv-display').innerText = ltv + '% (' + (loan / 100000000).toFixed(0) + '억 원)';
+      document.getElementById('rate-display').innerText = rate.toFixed(1) + '%';
+      document.getElementById('upside-display').innerText = '+' + upside + '%';
+
+      document.getElementById('equity-result').innerText = (equity / 100000000).toFixed(1) + '억 원';
+      document.getElementById('interest-result').innerText = '-' + Math.floor(monthlyInterest / 10000).toLocaleString() + '만 원';
+      document.getElementById('net-result').innerText = '+' + Math.floor(netIncome / 10000).toLocaleString() + '만 원';
+      document.getElementById('roe-result').innerText = roe + '%';
+
+      document.getElementById('future-net-result').innerText = '+' + Math.floor(futureNet / 10000).toLocaleString() + '만 원';
+      document.getElementById('future-roe-result').innerText = futureRoe + '%';
+    }
+
+    function copyKakaoTeaser() {
+      const teaserText = `[VIP 프라이빗 브리핑] 대구 수성구청역 도보 1분, 160억 준신축 통빌딩 매매\n\n- 매매가: 160억 원 (보증금 9.5억 / 월세 4,040만)\n- 대지 127평 / 연면적 840평 / 주차 25대\n- 전 층 우량 임차인 입점 완료 (공실 ZERO)\n- 나우부동산 전용 브리핑 웹사이트 보기:\nhttp://localhost:3090`;
+      navigator.clipboard.writeText(teaserText);
+      
+      const btnText = document.getElementById('copy-btn-text');
+      btnText.innerText = '문구 복사 완료!';
+      setTimeout(() => {
+        btnText.innerText = '카톡 공유 문구 복사';
+      }, 3000);
+    }
+
+    function handleLeadForm(e) {
+      e.preventDefault();
+      document.getElementById('lead-form-box').classList.add('hidden');
+      document.getElementById('lead-success-box').classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
