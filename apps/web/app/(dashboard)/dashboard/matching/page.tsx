@@ -85,21 +85,23 @@ export default function MatchingPage() {
   const handleToggleLiked = (matchId: string, currentLiked: boolean) => toggleLiked.mutate({ matchId, currentLiked });
   const handleToggleContract = (matchId: string, currentContracted: boolean) => toggleContract.mutate({ matchId, currentContracted });
 
-  const handleRunMatch = async () => {
-    const id = activeTab === 'inquiries' ? selectedInquiryId : selectedListingId;
-    if (!id) return;
-    try {
-      setIsRefreshing(true);
-      const endpoint = activeTab === 'inquiries' ? `/matching/run/${id}` : `/matching/run/listings/${id}`;
-      await apiFetch(endpoint, { method: 'POST' });
-      await queryClient.invalidateQueries({ queryKey: ['matching'] });
-      toast({ title: '매칭이 완료되었습니다', description: '추천 리스트가 갱신되었습니다.' });
-    } catch (err) {
-      toast({ title: '매칭 실패', description: '다시 시도해 주세요.', variant: 'destructive' });
-    } finally {
-      setIsRefreshing(false);
+  // 고객 선택 시 자동 매칭 (사용자 경험 개선)
+  useEffect(() => {
+    if (activeTab === 'inquiries' && selectedInquiryId) {
+      apiFetch(`/matching/run/${selectedInquiryId}`, { method: 'POST' })
+        .then(() => queryClient.invalidateQueries({ queryKey: ['matching'] }))
+        .catch(() => {});
     }
-  };
+  }, [selectedInquiryId, activeTab, queryClient]);
+
+  // 매물 선택 시 자동 매칭 (사용자 경험 개선)
+  useEffect(() => {
+    if (activeTab === 'listings' && selectedListingId) {
+      apiFetch(`/matching/run/listings/${selectedListingId}`, { method: 'POST' })
+        .then(() => queryClient.invalidateQueries({ queryKey: ['matching'] }))
+        .catch(() => {});
+    }
+  }, [selectedListingId, activeTab, queryClient]);
 
   return (
     <div className="space-y-4">
@@ -205,16 +207,6 @@ export default function MatchingPage() {
                         <CardTitle className="text-sm font-medium text-muted-foreground">
                           고객 조건
                         </CardTitle>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleRunMatch}
-                          disabled={isRefreshing}
-                          className="h-8 text-xs px-2"
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                          매칭 새로고침
-                        </Button>
                       </CardHeader>
                       <CardContent className="text-sm">
                         <div className="flex flex-wrap gap-1.5">
@@ -409,16 +401,6 @@ export default function MatchingPage() {
                         <CardTitle className="text-sm font-medium text-muted-foreground">
                           선택한 매물 정보
                         </CardTitle>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleRunMatch}
-                          disabled={isRefreshing}
-                          className="h-8 text-xs px-2"
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                          매칭 새로고침
-                        </Button>
                       </CardHeader>
                       <CardContent className="text-sm">
                         <div className="flex flex-wrap gap-1.5">
