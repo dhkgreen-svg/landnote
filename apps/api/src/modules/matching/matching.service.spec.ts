@@ -42,7 +42,7 @@ describe('MatchingService', () => {
         category_codes: ['residential'],
       };
       const result = score(inquiry, listing);
-      expect(result.category).toBe(0);
+      expect(result.category).toBe(MATCH_WEIGHTS.category * 0.25);
     });
 
     it('세부 카테고리 일치 시 40점 (전액)', () => {

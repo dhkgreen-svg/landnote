@@ -145,7 +145,7 @@ export class MatchingService {
 
     // 1. 거래 유형 일치 확인 (필수)
     const txMatch = inquiry.transaction_types?.some((t: string) => listing.transaction_types?.includes(t));
-    if (!txMatch) return bd; // 거래 유형이 다르면 0점 처리 (매칭 실패)
+    // 거래 유형이 다르면 점수를 깎지만, 카테고리가 같으면 0점 처리는 하지 않음
 
     // 2. 카테고리 세부 일치 확인 (subcategory_codes 또는 tags 필드 사용)
     const subcatMatch = inquiry.subcategory_codes?.some((c: string) => listing.subcategory_codes?.includes(c)) || 
