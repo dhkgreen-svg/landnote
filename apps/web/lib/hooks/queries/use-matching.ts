@@ -74,7 +74,7 @@ export function useMatchingInquiries() {
   return useQuery({
     queryKey: queryKeys.matching.inquiries(),
     queryFn: () => apiFetch<InquiryWithMatches[]>('/matching'),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0,
   });
 }
 
@@ -82,7 +82,7 @@ export function useMatchResults(inquiryId: string | null) {
   return useQuery({
     queryKey: queryKeys.matching.results(inquiryId!),
     queryFn: () => apiFetch<MatchItem[]>(`/matching/${inquiryId}`),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0,
     enabled: !!inquiryId,
   });
 }
@@ -91,7 +91,7 @@ export function useMatchingListings() {
   return useQuery({
     queryKey: queryKeys.matching.listings(),
     queryFn: () => apiFetch<ListingWithMatches[]>('/matching/listings'),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0,
   });
 }
 
@@ -99,7 +99,7 @@ export function useMatchResultsForListing(listingId: string | null) {
   return useQuery({
     queryKey: queryKeys.matching.resultsForListing(listingId!),
     queryFn: () => apiFetch<MatchItem[]>(`/matching/listings/${listingId}`),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0,
     enabled: !!listingId,
   });
 }

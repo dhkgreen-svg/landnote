@@ -54,7 +54,7 @@ export class MatchingController {
   async update(
     @CurrentAgent() agent: any,
     @Param('matchId') matchId: string,
-    @Body() body: { is_shown?: boolean; is_liked?: boolean },
+    @Body() body: { is_shown?: boolean; is_liked?: boolean; is_contracted?: boolean },
   ) {
     return this.matchingService.updateMatch(agent.id, matchId, body);
   }

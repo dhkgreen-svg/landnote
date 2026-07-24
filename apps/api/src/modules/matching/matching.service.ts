@@ -69,7 +69,6 @@ export class MatchingService {
           property_id: m.listing.id,
           score: Math.round(m.score * 1000) / 1000,
           score_breakdown: m.breakdown,
-          is_shown: false,
           is_liked: false,
         })),
         { onConflict: 'inquiry_id,property_id' },
@@ -131,7 +130,6 @@ export class MatchingService {
           property_id: listing.id,
           score: Math.round(m.score * 1000) / 1000,
           score_breakdown: m.breakdown,
-          is_shown: false,
           is_liked: false,
         })),
         { onConflict: 'inquiry_id,property_id' },
@@ -224,14 +222,14 @@ export class MatchingService {
   async getInquiriesWithMatches(agentId: string) {
     const { data: matches } = await this.supabase
       .from('matches')
-      .select('inquiry_id, is_shown')
+      .select('inquiry_id, shown_count')
       .eq('agent_id', agentId);
 
     const inquiryMap = new Map<string, { pending: number; total: number }>();
     for (const m of matches ?? []) {
       const entry = inquiryMap.get(m.inquiry_id) ?? { pending: 0, total: 0 };
       entry.total++;
-      if (!m.is_shown) entry.pending++;
+      if (m.shown_count === 0) entry.pending++;
       inquiryMap.set(m.inquiry_id, entry);
     }
 
@@ -281,9 +279,9 @@ export class MatchingService {
       property_id: m.property_id,
       score: m.score,
       score_breakdown: m.score_breakdown,
-      is_shown: m.is_shown,
+      is_shown: m.shown_count > 0,
       is_liked: m.is_liked,
-      created_at: m.created_at,
+      is_contracted: m.is_contracted || false,
       property: listingMap.get(m.property_id) ?? null,
     }));
   }
@@ -292,14 +290,14 @@ export class MatchingService {
   async getListingsWithMatches(agentId: string) {
     const { data: matches } = await this.supabase
       .from('matches')
-      .select('property_id, is_shown')
+      .select('property_id, shown_count')
       .eq('agent_id', agentId);
 
     const listingMap = new Map<string, { pending: number; total: number }>();
     for (const m of matches ?? []) {
       const entry = listingMap.get(m.property_id) ?? { pending: 0, total: 0 };
       entry.total++;
-      if (!m.is_shown) entry.pending++;
+      if (m.shown_count === 0) entry.pending++;
       listingMap.set(m.property_id, entry);
     }
 
@@ -349,18 +347,21 @@ export class MatchingService {
       property_id: m.property_id,
       score: m.score,
       score_breakdown: m.score_breakdown,
-      is_shown: m.is_shown,
+      is_shown: m.shown_count > 0,
       is_liked: m.is_liked,
-      created_at: m.created_at,
+      is_contracted: m.is_contracted || false,
       inquiry: inquiryMap.get(m.inquiry_id) ?? null,
     }));
   }
 
-  /** 매칭 상태 업데이트 (is_shown / is_liked) */
-  async updateMatch(agentId: string, matchId: string, body: { is_shown?: boolean; is_liked?: boolean }) {
-    const updateData: Record<string, boolean> = {};
-    if (body.is_shown !== undefined) updateData.is_shown = body.is_shown;
+  /** 매칭 상태 업데이트 (is_shown / is_liked / is_contracted) */
+  async updateMatch(agentId: string, matchId: string, body: { is_shown?: boolean; is_liked?: boolean; is_contracted?: boolean }) {
+    const updateData: Record<string, any> = {};
+    // is_shown은 shown_count로 맵핑 처리
+    if (body.is_shown === true) updateData.shown_count = 1;
+    if (body.is_shown === false) updateData.shown_count = 0;
     if (body.is_liked !== undefined) updateData.is_liked = body.is_liked;
+    if (body.is_contracted !== undefined) updateData.is_contracted = body.is_contracted;
 
     const { data, error } = await this.supabase
       .from('matches')
