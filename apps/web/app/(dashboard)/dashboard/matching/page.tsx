@@ -18,7 +18,7 @@ import { Star, ExternalLink, Eye, StarOff, CheckCircle2 } from 'lucide-react';
 
 // ── 상수 ──────────────────────────────────────────────
 
-const WEIGHT_MAX = { category: 0.30, price: 0.35, area: 0.20, location: 0.15 };
+const WEIGHT_MAX = { category: 0.60, price: 0.20, area: 0.10, location: 0.10 };
 
 const CATEGORY_LABELS: Record<string, string> = {
   residential: '주거', commercial: '상업', industrial: '산업', land: '토지',

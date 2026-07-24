@@ -2,10 +2,10 @@ import { Injectable, NotFoundException, InternalServerErrorException } from '@ne
 import { createClient } from '@supabase/supabase-js';
 
 export const MATCH_WEIGHTS = {
-  category: 0.40,
-  price:    0.30,
-  area:     0.15,
-  location: 0.15,
+  category: 0.60,
+  price:    0.20,
+  area:     0.10,
+  location: 0.10,
 } as const;
 
 @Injectable()
@@ -154,9 +154,9 @@ export class MatchingService {
     const catMatch = inquiry.category_codes?.some((c: string) => listing.category_codes?.includes(c));
 
     if (subcatMatch) {
-      bd.category = MATCH_WEIGHTS.category; // 세부 종류 일치 시 40점
+      bd.category = MATCH_WEIGHTS.category; // 세부 종류 일치 시 60점 (만점)
     } else if (catMatch) {
-      bd.category = MATCH_WEIGHTS.category * 0.5; // 대분류만 일치 시 20점
+      bd.category = MATCH_WEIGHTS.category * 0.25; // 대분류만 일치 시 15점
     } else {
       return bd; // 카테고리가 아예 다르면 탈락
     }
