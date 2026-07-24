@@ -207,6 +207,28 @@ export default function MatchingPage() {
                         <CardTitle className="text-sm font-medium text-muted-foreground">
                           고객 조건
                         </CardTitle>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs flex items-center gap-1"
+                          onClick={async () => {
+                            if (!selectedInquiryId) return;
+                            setIsRefreshing(true);
+                            try {
+                              await apiFetch(`/matching/run/${selectedInquiryId}`, { method: 'POST' });
+                              await queryClient.invalidateQueries({ queryKey: ['matching'] });
+                              toast({ title: '매칭 완료', description: '최신 조건으로 다시 매칭되었습니다.' });
+                            } catch (e) {
+                              toast({ title: '매칭 실패', description: '매칭 실행 중 오류가 발생했습니다.', variant: 'destructive' });
+                            } finally {
+                              setIsRefreshing(false);
+                            }
+                          }}
+                          disabled={isRefreshing}
+                        >
+                          <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                          다시 매칭 (캐시 무시)
+                        </Button>
                       </CardHeader>
                       <CardContent className="text-sm">
                         <div className="flex flex-wrap gap-1.5">
@@ -401,6 +423,28 @@ export default function MatchingPage() {
                         <CardTitle className="text-sm font-medium text-muted-foreground">
                           선택한 매물 정보
                         </CardTitle>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs flex items-center gap-1"
+                          onClick={async () => {
+                            if (!selectedListingId) return;
+                            setIsRefreshing(true);
+                            try {
+                              await apiFetch(`/matching/run/listings/${selectedListingId}`, { method: 'POST' });
+                              await queryClient.invalidateQueries({ queryKey: ['matching'] });
+                              toast({ title: '매칭 완료', description: '최신 조건으로 다시 매칭되었습니다.' });
+                            } catch (e) {
+                              toast({ title: '매칭 실패', description: '매칭 실행 중 오류가 발생했습니다.', variant: 'destructive' });
+                            } finally {
+                              setIsRefreshing(false);
+                            }
+                          }}
+                          disabled={isRefreshing}
+                        >
+                          <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                          다시 매칭 (캐시 무시)
+                        </Button>
                       </CardHeader>
                       <CardContent className="text-sm">
                         <div className="flex flex-wrap gap-1.5">
