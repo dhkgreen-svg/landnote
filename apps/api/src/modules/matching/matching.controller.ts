@@ -42,6 +42,14 @@ export class MatchingController {
     return this.matchingService.runMatching(agent.id, inquiryId);
   }
 
+  @Post('run/listings/:listingId')
+  async runReverse(
+    @CurrentAgent() agent: any,
+    @Param('listingId') listingId: string,
+  ) {
+    return this.matchingService.runReverseMatching(agent.id, listingId);
+  }
+
   @Patch(':matchId')
   async update(
     @CurrentAgent() agent: any,
