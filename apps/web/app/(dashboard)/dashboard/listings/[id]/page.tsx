@@ -82,6 +82,7 @@ interface ListingDetail {
   images: ListingImage[];
   status: string;
   agent_memo: string | null;
+  owner_name: string | null;
   owner_phone: string | null;
   contract_party_phone: string | null;
   detail_info: Record<string, unknown> | null;
