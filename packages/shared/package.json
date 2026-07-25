@@ -12,8 +12,7 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "dev": "tsc -b --watch",
-    "postinstall": "tsc -b"
+    "dev": "tsc -b --watch"
   },
   "dependencies": {
     "typescript": "^5.4.0"

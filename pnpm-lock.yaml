@@ -25,8 +25,8 @@ importers:
   apps/api:
     dependencies:
       '@landnote/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
+        specifier: file:../../packages/shared
+        version: file:packages/shared
       '@nestjs/common':
         specifier: ^10.0.0
         version: 10.4.22(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -72,6 +72,9 @@ importers:
       rxjs:
         specifier: ^7.8.0
         version: 7.8.2
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
       web-push:
         specifier: ^3.6.7
         version: 3.6.7
@@ -106,9 +109,6 @@ importers:
       ts-jest:
         specifier: ^29.0.0
         version: 29.4.6(@babel/core@7.29.0)(jest@29.7.0)(typescript@5.9.3)
-      typescript:
-        specifier: ^5.4.0
-        version: 5.9.3
 
   apps/web:
     dependencies:
@@ -220,7 +220,7 @@ importers:
         version: 5.9.3
 
   packages/shared:
-    devDependencies:
+    dependencies:
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
@@ -8646,7 +8646,6 @@ packages:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
     hasBin: true
-    dev: true
 
   /uglify-js@3.19.3:
     resolution: {integrity: sha512-v3Xu+yuwBXisp6QYTcH4UbH+xYJXqnq2m/LtQVWKWzYc1iehYnLixoQDN9FH6/j9/oybfd6W9Ghwkl8+UMKTKQ==}
@@ -9390,4 +9389,11 @@ packages:
       '@types/react': 18.3.28
       react: 18.3.1
       use-sync-external-store: 1.6.0(react@18.3.1)
+    dev: false
+
+  file:packages/shared:
+    resolution: {directory: packages/shared, type: directory}
+    name: '@landnote/shared'
+    dependencies:
+      typescript: 5.9.3
     dev: false
