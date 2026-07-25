@@ -206,8 +206,8 @@ export class MatchingService {
     const hasSubcatMismatch = inqSub.length > 0 && listSub.length > 0 && !subcatMatch;
 
     if (hasCatMismatch || hasSubcatMismatch) {
-      // 대분류가 아예 다르거나, 중분류가 완전히 엇갈리면 완전히 제외
-      return { category: -100, price: 0, area: 0, location: 0 };
+      // 대분류, 중분류가 맞지 않으면 무조건 매칭 점수에 곱하기 0을 적용 (전체 0점 처리)
+      return { category: 0, price: 0, area: 0, location: 0 };
     }
 
     if (subcatMatch) {
