@@ -95,18 +95,18 @@ function MatchingPageContent() {
     if (activeTab === 'inquiries' && selectedInquiryId) {
       apiFetch(`/matching/run/${selectedInquiryId}`, { method: 'POST' })
         .then(() => queryClient.invalidateQueries({ queryKey: ['matching'] }))
-        .catch(() => {});
+        .catch((e) => console.error('[matching/run] failed:', e));
     }
-  }, [selectedInquiryId, activeTab, queryClient]);
+  }, [selectedInquiryId, activeTab]);
 
   // 매물 선택 시 자동 매칭 (사용자 경험 개선)
   useEffect(() => {
     if (activeTab === 'listings' && selectedListingId) {
       apiFetch(`/matching/run/listings/${selectedListingId}`, { method: 'POST' })
         .then(() => queryClient.invalidateQueries({ queryKey: ['matching'] }))
-        .catch(() => {});
+        .catch((e) => console.error('[matching/run/listings] failed:', e));
     }
-  }, [selectedListingId, activeTab, queryClient]);
+  }, [selectedListingId, activeTab]);
 
   return (
     <div className="space-y-4">

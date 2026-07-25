@@ -74,7 +74,6 @@ export class MatchingService {
           property_id: m.listing.id,
           score: Math.round(m.score * 1000) / 1000,
           score_breakdown: m.breakdown,
-          is_liked: false,
         })),
         { onConflict: 'inquiry_id,property_id' },
       );
@@ -135,7 +134,6 @@ export class MatchingService {
           property_id: listing.id,
           score: Math.round(m.score * 1000) / 1000,
           score_breakdown: m.breakdown,
-          is_liked: false,
         })),
         { onConflict: 'inquiry_id,property_id' },
       );
@@ -315,7 +313,9 @@ export class MatchingService {
       is_shown: m.shown_count > 0,
       is_liked: m.is_liked,
       is_contracted: m.is_contracted || false,
+      created_at: m.created_at,
       property: listingMap.get(m.property_id) ?? null,
+      inquiry: null,
     }));
   }
 
@@ -380,6 +380,8 @@ export class MatchingService {
       is_shown: m.shown_count > 0,
       is_liked: m.is_liked,
       is_contracted: m.is_contracted || false,
+      created_at: m.created_at,
+      property: null,
       inquiry: inquiryMap.get(m.inquiry_id) ?? null,
     }));
   }

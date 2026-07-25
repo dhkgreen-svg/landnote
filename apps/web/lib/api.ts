@@ -237,8 +237,10 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
   });
 
   const json: any = await res.json();
-  if (!json.ok) throw new Error(json.error?.message || 'API 오류');
-  return json.data as T;
+  if (!res.ok) throw new Error(json?.error?.message || json?.message || 'API 오류');
+  return (json && typeof json === 'object' && 'ok' in json && 'data' in json)
+    ? (json.data as T)
+    : (json as T);
 }
 
 export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
