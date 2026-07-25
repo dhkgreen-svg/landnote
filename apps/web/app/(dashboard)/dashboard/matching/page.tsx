@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,7 +55,7 @@ function scoreIcon(actual: number, max: number) {
 
 // ── 컴포넌트 ──────────────────────────────────────────
 
-export default function MatchingPage() {
+function MatchingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryInquiryId = searchParams.get('inquiryId');
@@ -560,5 +560,13 @@ export default function MatchingPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function MatchingPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">매칭 데이터를 불러오는 중...</div>}>
+      <MatchingPageContent />
+    </Suspense>
   );
 }
