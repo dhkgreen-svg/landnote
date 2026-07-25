@@ -210,7 +210,8 @@ export class MatchingService {
     } else if (inqCat.length === 0 || listCat.length === 0) {
       bd.category = MATCH_WEIGHTS.category * 0.50; // 카테고리 미지정 시 0.30점 기본 부여
     } else {
-      bd.category = MATCH_WEIGHTS.category * 0.25; // 살짝 엇갈려도 0.15점 부여하여 가격/위치 매칭 지원!
+      // 카테고리가 아예 다르면 완전히 제외 (점수를 음수로 강제 할당하여 0.15 미만으로 드랍)
+      return { category: -100, price: 0, area: 0, location: 0 };
     }
 
     // 3. 가격 (유동성 반영)
