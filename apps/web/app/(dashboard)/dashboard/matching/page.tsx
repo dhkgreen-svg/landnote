@@ -95,7 +95,10 @@ function MatchingPageContent() {
     if (activeTab === 'inquiries' && selectedInquiryId) {
       apiFetch(`/matching/run/${selectedInquiryId}`, { method: 'POST' })
         .then(() => queryClient.invalidateQueries({ queryKey: ['matching'] }))
-        .catch((e) => console.error('[matching/run] failed:', e));
+        .catch((e) => {
+          console.error('[matching/run] failed:', e);
+          toast({ title: '자동 매칭 실패', description: String(e), variant: 'destructive' });
+        });
     }
   }, [selectedInquiryId, activeTab]);
 
@@ -104,7 +107,10 @@ function MatchingPageContent() {
     if (activeTab === 'listings' && selectedListingId) {
       apiFetch(`/matching/run/listings/${selectedListingId}`, { method: 'POST' })
         .then(() => queryClient.invalidateQueries({ queryKey: ['matching'] }))
-        .catch((e) => console.error('[matching/run/listings] failed:', e));
+        .catch((e) => {
+          console.error('[matching/run/listings] failed:', e);
+          toast({ title: '자동 매칭 실패', description: String(e), variant: 'destructive' });
+        });
     }
   }, [selectedListingId, activeTab]);
 
