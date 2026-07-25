@@ -67,16 +67,31 @@ export class MatchingService {
       .sort((a, b) => b.score - a.score);
 
     if (scored.length > 0) {
-      await this.supabase.from('matches').upsert(
-        scored.map(m => ({
-          agent_id: agentId,
-          inquiry_id: inquiryId,
-          property_id: m.listing.id,
-          score: Math.round(m.score * 1000) / 1000,
-          score_breakdown: m.breakdown,
-        })),
-        { onConflict: 'inquiry_id,property_id' },
-      );
+      const { data: upsertData, error: upsertErr } = await this.supabase
+        .from('matches')
+        .upsert(
+          scored.map(m => ({
+            agent_id: agentId,
+            inquiry_id: inquiryId,
+            property_id: m.listing.id,
+            score: Math.round(m.score * 1000) / 1000,
+            score_breakdown: m.breakdown,
+          })),
+          { onConflict: 'inquiry_id,property_id' },
+        ).select();
+
+      if (upsertErr) {
+        console.error('[matches upsert] FAILED', {
+          code: upsertErr.code,
+          message: upsertErr.message,
+          inquiryId, agentId,
+          candidateCount: scored.length,
+        });
+        throw new InternalServerErrorException(
+          `매칭 저장 실패 [${upsertErr.code}]: ${upsertErr.message}`,
+        );
+      }
+      console.log(`[matches upsert] wrote ${upsertData?.length ?? 0} rows for inquiry ${inquiryId}`);
     }
 
     return scored;
@@ -127,16 +142,31 @@ export class MatchingService {
       .sort((a, b) => b.score - a.score);
 
     if (scored.length > 0) {
-      await this.supabase.from('matches').upsert(
-        scored.map(m => ({
-          agent_id: agentId,
-          inquiry_id: m.inquiry.id,
-          property_id: listing.id,
-          score: Math.round(m.score * 1000) / 1000,
-          score_breakdown: m.breakdown,
-        })),
-        { onConflict: 'inquiry_id,property_id' },
-      );
+      const { data: upsertData, error: upsertErr } = await this.supabase
+        .from('matches')
+        .upsert(
+          scored.map(m => ({
+            agent_id: agentId,
+            inquiry_id: m.inquiry.id,
+            property_id: listing.id,
+            score: Math.round(m.score * 1000) / 1000,
+            score_breakdown: m.breakdown,
+          })),
+          { onConflict: 'inquiry_id,property_id' },
+        ).select();
+
+      if (upsertErr) {
+        console.error('[matches upsert] FAILED', {
+          code: upsertErr.code,
+          message: upsertErr.message,
+          listingId: listing.id, agentId,
+          candidateCount: scored.length,
+        });
+        throw new InternalServerErrorException(
+          `매칭 저장 실패 [${upsertErr.code}]: ${upsertErr.message}`,
+        );
+      }
+      console.log(`[matches upsert] wrote ${upsertData?.length ?? 0} rows for listing ${listing.id}`);
     }
 
     return scored;
