@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,20 +57,25 @@ function scoreIcon(actual: number, max: number) {
 
 export default function MatchingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryInquiryId = searchParams.get('inquiryId');
+  const queryListingId = searchParams.get('listingId');
+  
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('inquiries');
+  
+  const [activeTab, setActiveTab] = useState(queryListingId ? 'listings' : 'inquiries');
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Tab 1: 고객 중심
-  const [selectedInquiryId, setSelectedInquiryId] = useState<string | null>(null);
+  const [selectedInquiryId, setSelectedInquiryId] = useState<string | null>(queryInquiryId);
   const { data: inquiries = [], isLoading: loadingInquiries } = useMatchingInquiries();
   const { data: inquiryMatches = [], isLoading: loadingInquiryMatches } = useMatchResults(selectedInquiryId);
   const selectedInquiry = inquiries.find(inq => inq.id === selectedInquiryId);
   const totalInquiryPending = inquiries.reduce((sum, inq) => sum + inq.pending_count, 0);
 
   // Tab 2: 매물 중심
-  const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+  const [selectedListingId, setSelectedListingId] = useState<string | null>(queryListingId);
   const { data: listings = [], isLoading: loadingListings } = useMatchingListings();
   const { data: listingMatches = [], isLoading: loadingListingMatches } = useMatchResultsForListing(selectedListingId);
   const selectedListing = listings.find(l => l.id === selectedListingId);
