@@ -169,6 +169,18 @@ export class MatchingService {
       console.log(`[matches upsert] wrote ${upsertData?.length ?? 0} rows for listing ${listing.id}`);
     }
 
+    // 🔥 점수 미달로 탈락한 기존 매칭 기록들 데이터베이스에서 삭제 처리
+    const validInquiryIds = scored.map(m => m.inquiry.id);
+    if (validInquiryIds.length > 0) {
+      await this.supabase
+        .from('matches')
+        .delete()
+        .eq('property_id', listing.id)
+        .not('inquiry_id', 'in', `(${validInquiryIds.join(',')})`);
+    } else {
+      await this.supabase.from('matches').delete().eq('property_id', listing.id);
+    }
+
     return scored;
   }
 
