@@ -348,7 +348,7 @@ export class MatchingService {
 
     const { data: inquiries } = await this.supabase
       .from('customer_inquiries')
-      .select('id, customer_name, inquiry_type, category_codes, transaction_types, detailed_conditions, status, created_at')
+      .select('id, customer_name, inquiry_type, category_codes, subcategory_codes, transaction_types, detailed_conditions, status, created_at')
       .eq('agent_id', agentId)
       .eq('inquiry_type', 'looking_for')
       .neq('status', 'closed');
@@ -416,7 +416,7 @@ export class MatchingService {
 
     const { data: listings } = await this.supabase
       .from('property_listings')
-      .select('id, address_full, dong_name, category_codes, transaction_types, price_sale, deposit, monthly_rent, area_exclusive, floor_current, direction, status, created_at')
+      .select('id, address_full, dong_name, category_codes, subcategory_codes, transaction_types, price_sale, deposit, monthly_rent, area_exclusive, floor_current, direction, status, created_at')
       .eq('agent_id', agentId)
       .eq('status', 'active');
 

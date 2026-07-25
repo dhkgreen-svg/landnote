@@ -18,14 +18,11 @@ import {
 import { useMarkShown, useToggleLiked, useToggleContract } from '@/lib/hooks/queries/use-matching-mutations';
 import { Star, ExternalLink, Eye, StarOff, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { CATEGORY_LABELS, SUBCATEGORY_LABELS, SUBCATEGORIES, CategoryCode } from '@landnote/shared';
 
 // ── 상수 ──────────────────────────────────────────────
 
 const WEIGHT_MAX = { category: 0.60, price: 0.20, area: 0.10, location: 0.10 };
-
-const CATEGORY_LABELS: Record<string, string> = {
-  residential: '주거', commercial: '상업', industrial: '산업', land: '토지',
-};
 
 const TYPE_LABELS: Record<string, string> = {
   looking_for: '매수/임차 찾기', listing: '매물 내놓기',
@@ -80,6 +77,23 @@ function MatchingPageContent() {
   const { data: listingMatches = [], isLoading: loadingListingMatches } = useMatchResultsForListing(selectedListingId);
   const selectedListing = listings.find(l => l.id === selectedListingId);
   const totalListingPending = listings.reduce((sum, l) => sum + l.pending_count, 0);
+
+  // Filters
+  const [catFilter, setCatFilter] = useState<string | null>(null);
+  const [subFilter, setSubFilter] = useState<string | null>(null);
+
+  // Apply Filters
+  const filteredInquiries = inquiries.filter(inq => {
+    if (catFilter && !(inq.category_codes || []).includes(catFilter)) return false;
+    if (subFilter && !(inq.subcategory_codes || []).includes(subFilter)) return false;
+    return true;
+  });
+
+  const filteredListings = listings.filter(l => {
+    if (catFilter && !(l.category_codes || []).includes(catFilter)) return false;
+    if (subFilter && !(l.subcategory_codes || []).includes(subFilter)) return false;
+    return true;
+  });
 
   // Mutations
   const markShown = useMarkShown(activeTab === 'inquiries' ? (selectedInquiryId ?? '') : (selectedListingId ?? ''));
@@ -140,22 +154,68 @@ function MatchingPageContent() {
           </TabsTrigger>
         </TabsList>
 
+        {/* 대분류 필터 */}
+        <div className="flex flex-wrap gap-2 mb-2">
+          <Button
+            variant={catFilter === null ? "default" : "outline"}
+            size="sm"
+            onClick={() => { setCatFilter(null); setSubFilter(null); }}
+          >
+            전체
+          </Button>
+          {Object.entries(CATEGORY_LABELS).map(([code, label]) => (
+            <Button
+              key={code}
+              variant={catFilter === code ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setCatFilter(code); setSubFilter(null); }}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+
+        {/* 중분류 필터 (대분류가 선택되었을 때만 표시) */}
+        {catFilter && (
+          <div className="flex flex-wrap gap-2 mb-4 bg-muted/30 p-2 rounded-md">
+            <Button
+              variant={subFilter === null ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setSubFilter(null)}
+            >
+              전체
+            </Button>
+            {Object.keys(SUBCATEGORIES[catFilter as CategoryCode] || {}).map(subCode => (
+              <Button
+                key={subCode}
+                variant={subFilter === subCode ? "default" : "outline"}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setSubFilter(subCode)}
+              >
+                {SUBCATEGORY_LABELS[subCode] ?? subCode}
+              </Button>
+            ))}
+          </div>
+        )}
+
         <TabsContent value="inquiries" className="mt-0 outline-none">
           <div className="lg:grid lg:grid-cols-[360px_1fr] gap-4">
             {/* 왼쪽: 문의 목록 */}
             <div className="space-y-2 mb-4 lg:mb-0">
               {loadingInquiries ? (
                 [...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
-              ) : inquiries.length === 0 ? (
+              ) : filteredInquiries.length === 0 ? (
                 <Card>
                   <CardContent className="py-12">
                     <p className="text-center text-sm text-muted-foreground">
-                      매칭 결과가 있는 문의가 없습니다
+                      조건에 맞는 매칭 결과가 있는 문의가 없습니다
                     </p>
                   </CardContent>
                 </Card>
               ) : (
-                inquiries.map(inq => (
+                filteredInquiries.map(inq => (
                   <Card
                     key={inq.id}
                     className={`cursor-pointer transition-colors ${
@@ -182,7 +242,7 @@ function MatchingPageContent() {
                       <p className="text-xs text-muted-foreground">
                         {TYPE_LABELS[inq.inquiry_type] ?? inq.inquiry_type}
                         {' · '}
-                        {inq.category_codes.map(c => CATEGORY_LABELS[c] ?? c).join(', ')}
+                        {inq.category_codes.map(c => CATEGORY_LABELS[c as CategoryCode] ?? c).join(', ')}
                         {' · '}
                         {inq.transaction_types.map(t => TRANSACTION_LABELS[t] ?? t).join('/')}
                       </p>
@@ -244,7 +304,7 @@ function MatchingPageContent() {
                       <CardContent className="text-sm">
                         <div className="flex flex-wrap gap-1.5">
                           {selectedInquiry.category_codes.map(c => (
-                            <Badge key={c} variant="outline">{CATEGORY_LABELS[c] ?? c}</Badge>
+                            <Badge key={c} variant="outline">{CATEGORY_LABELS[c as CategoryCode] ?? c}</Badge>
                           ))}
                           {selectedInquiry.transaction_types.map(t => (
                             <Badge key={t} variant="outline">{TRANSACTION_LABELS[t] ?? t}</Badge>
@@ -364,16 +424,16 @@ function MatchingPageContent() {
             <div className="space-y-2 mb-4 lg:mb-0">
               {loadingListings ? (
                 [...Array(4)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
-              ) : listings.length === 0 ? (
+              ) : filteredListings.length === 0 ? (
                 <Card>
                   <CardContent className="py-12">
                     <p className="text-center text-sm text-muted-foreground">
-                      매칭 결과가 있는 매물이 없습니다
+                      조건에 맞는 매칭 결과가 있는 매물이 없습니다
                     </p>
                   </CardContent>
                 </Card>
               ) : (
-                listings.map(listing => (
+                filteredListings.map(listing => (
                   <Card
                     key={listing.id}
                     className={`cursor-pointer transition-colors ${
@@ -398,7 +458,7 @@ function MatchingPageContent() {
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {listing.category_codes.map(c => CATEGORY_LABELS[c] ?? c).join(', ')}
+                        {listing.category_codes.map(c => CATEGORY_LABELS[c as CategoryCode] ?? c).join(', ')}
                         {' · '}
                         {listing.transaction_types.map(t => TRANSACTION_LABELS[t] ?? t).join('/')}
                       </p>
@@ -460,7 +520,7 @@ function MatchingPageContent() {
                       <CardContent className="text-sm">
                         <div className="flex flex-wrap gap-1.5">
                           {selectedListing.category_codes.map(c => (
-                            <Badge key={c} variant="outline">{CATEGORY_LABELS[c] ?? c}</Badge>
+                            <Badge key={c} variant="outline">{CATEGORY_LABELS[c as CategoryCode] ?? c}</Badge>
                           ))}
                           {selectedListing.transaction_types.map(t => (
                             <Badge key={t} variant="outline">{TRANSACTION_LABELS[t] ?? t}</Badge>

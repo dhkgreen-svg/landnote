@@ -7,6 +7,7 @@ interface InquiryWithMatches {
   customer_name: string | null;
   inquiry_type: string;
   category_codes: string[];
+  subcategory_codes: string[];
   transaction_types: string[];
   detailed_conditions: Record<string, unknown>;
   status: string;
@@ -20,6 +21,7 @@ interface ListingWithMatches {
   address_full: string | null;
   dong_name: string | null;
   category_codes: string[];
+  subcategory_codes: string[];
   transaction_types: string[];
   price_sale: number | null;
   deposit: number | null;
