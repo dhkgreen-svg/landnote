@@ -201,17 +201,19 @@ export class MatchingService {
 
     const inqCat = ensureArray(inquiry.category_codes).map((c: string) => c.toLowerCase());
     const listCat = ensureArray(listing.category_codes).map((c: string) => c.toLowerCase());
-    const catMatch = inqCat.some((c: string) => listCat.includes(c));
+    const hasCatMismatch = inqCat.length > 0 && listCat.length > 0 && !inqCat.some((c: string) => listCat.includes(c));
+
+    const hasSubcatMismatch = inqSub.length > 0 && listSub.length > 0 && !subcatMatch;
+
+    if (hasCatMismatch || hasSubcatMismatch) {
+      // 대분류가 아예 다르거나, 중분류가 완전히 엇갈리면 완전히 제외
+      return { category: -100, price: 0, area: 0, location: 0 };
+    }
 
     if (subcatMatch) {
       bd.category = MATCH_WEIGHTS.category; // 0.60 만점
-    } else if (catMatch) {
-      bd.category = MATCH_WEIGHTS.category; // 0.60 만점 (카테고리만 일치해도 무조건 뜨도록 만점 부여!)
-    } else if (inqCat.length === 0 || listCat.length === 0) {
-      bd.category = MATCH_WEIGHTS.category * 0.50; // 카테고리 미지정 시 0.30점 기본 부여
     } else {
-      // 카테고리가 아예 다르면 완전히 제외 (점수를 음수로 강제 할당하여 0.15 미만으로 드랍)
-      return { category: -100, price: 0, area: 0, location: 0 };
+      bd.category = MATCH_WEIGHTS.category * 0.50; // 한쪽이 비어있어서 통과된 경우 기본 점수
     }
 
     // 3. 가격 (유동성 반영)
