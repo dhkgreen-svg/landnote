@@ -190,31 +190,34 @@ export class MatchingService {
       }
     }
 
-    // 2. 카테고리 세부 및 대분류 일치 확인 (유연 매칭)
+    // 2. 카테고리 세부 및 대분류 일치 확인 (유연 매칭 -> 완전 엄격 매칭으로 변경)
     const inqSub = ensureArray(inquiry.subcategory_codes).map((s: string) => s.toLowerCase());
     const listSub = ensureArray(listing.subcategory_codes).map((s: string) => s.toLowerCase());
     const inqTags = ensureArray(inquiry.tags).map((t: string) => t.toLowerCase());
     const listTags = ensureArray(listing.tags).map((t: string) => t.toLowerCase());
 
-    const subcatMatch = inqSub.some((c: string) => listSub.includes(c)) ||
-                        inqTags.some((t: string) => listTags.includes(t));
-
     const inqCat = ensureArray(inquiry.category_codes).map((c: string) => c.toLowerCase());
     const listCat = ensureArray(listing.category_codes).map((c: string) => c.toLowerCase());
-    const hasCatMismatch = inqCat.length > 0 && listCat.length > 0 && !inqCat.some((c: string) => listCat.includes(c));
 
-    const hasSubcatMismatch = inqSub.length > 0 && listSub.length > 0 && !subcatMatch;
-
-    if (hasCatMismatch || hasSubcatMismatch) {
-      // 대분류, 중분류가 맞지 않으면 무조건 매칭 점수에 곱하기 0을 적용 (전체 0점 처리)
+    // 대분류(주거, 상업, 산업, 토지) 무조건 교집합 확인
+    const hasCatMatch = inqCat.some((c: string) => listCat.includes(c));
+    if (!hasCatMatch) {
+      // 대분류가 안 맞으면 무조건 매칭 점수에 곱하기 0 (0점 처리)
       return { category: 0, price: 0, area: 0, location: 0 };
     }
 
-    if (subcatMatch) {
-      bd.category = MATCH_WEIGHTS.category; // 0.60 만점
-    } else {
-      bd.category = MATCH_WEIGHTS.category * 0.50; // 한쪽이 비어있어서 통과된 경우 기본 점수
+    // 중분류(아파트, 상가, 공장 등) 무조건 교집합 확인
+    // 어느 한쪽이라도 중분류가 존재한다면 반드시 겹치는 게 있어야 함
+    if (inqSub.length > 0 || listSub.length > 0 || inqTags.length > 0 || listTags.length > 0) {
+      const hasSubcatMatch = inqSub.some((c: string) => listSub.includes(c)) || inqTags.some((t: string) => listTags.includes(t));
+      if (!hasSubcatMatch) {
+        // 중분류가 안 맞으면 무조건 매칭 점수에 곱하기 0 (0점 처리)
+        return { category: 0, price: 0, area: 0, location: 0 };
+      }
     }
+
+    // 여기까지 통과했으면 대분류, 중분류가 모두 완벽히 일치하는 상태임!
+    bd.category = MATCH_WEIGHTS.category; // 만점 부여
 
     // 3. 가격 (유동성 반영)
     bd.price = this.priceScore(cond, listing) * MATCH_WEIGHTS.price;
