@@ -158,7 +158,6 @@ export type TransactionType = typeof TRANSACTION_TYPE[keyof typeof TRANSACTION_T
 
 export const PRICE_LABELS: Record<string, string> = {
   price_sale: '매매가 (만 원)',
-  price_jeonse: '전세금 (만 원)',
   deposit: '보증금 (만 원)',
   monthly_rent: '월세 (만 원)',
   maintenance_fee: '관리비 (만 원)',
@@ -186,12 +185,10 @@ export const INQUIRY_STATUS = {
 } as const;
 
 export const LISTING_STATUS = {
-  ACTIVE:      'active',
-  PREMIUM:     'premium',
-  IN_PROGRESS: 'in_progress',
-  HOLD:        'hold',
-  CONTRACTED:  'contracted',
-  CLOSED:      'closed',
+  ACTIVE:     'active',
+  PENDING:    'pending',
+  CONTRACTED: 'contracted',
+  CLOSED:     'closed',
 } as const;
 
 // ── 4-5. 용도지역 (Zoning) ──────────────────────────────────────────────

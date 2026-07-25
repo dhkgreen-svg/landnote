@@ -24,13 +24,14 @@ export class MatchingService {
       .single();
     if (iErr || !inquiry) throw new NotFoundException('문의를 찾을 수 없습니다');
 
-    const { data: listings, error: lErr } = await this.supabase
+    // 💡 유연한 1차 조회: DB SQL 오버랩 강제 차단 대신 에이전트의 전체 활성 매물 조회 후 스마트 스코어링
+    let query = this.supabase
       .from('property_listings')
       .select('*')
       .eq('agent_id', agentId)
-      .eq('status', 'active')
-      .overlaps('category_codes', inquiry.category_codes);
+      .eq('status', 'active');
 
+    const { data: listings, error: lErr } = await query;
     if (lErr) throw new InternalServerErrorException('매물 조회 실패');
 
     // PostGIS 거리 일괄 계산 (좌표가 있는 경우 RPC 1회 호출)
@@ -41,13 +42,17 @@ export class MatchingService {
         .map((l: any) => l.id);
 
       if (ids.length > 0) {
-        const { data: distances } = await this.supabase.rpc('get_listing_distances', {
-          p_lat: inquiry.latitude,
-          p_lng: inquiry.longitude,
-          p_listing_ids: ids,
-        });
-        for (const d of distances ?? []) {
-          distanceMap.set(d.listing_id, d.distance_meters);
+        try {
+          const { data: distances } = await this.supabase.rpc('get_listing_distances', {
+            p_lat: inquiry.latitude,
+            p_lng: inquiry.longitude,
+            p_listing_ids: ids,
+          });
+          for (const d of distances ?? []) {
+            distanceMap.set(d.listing_id, d.distance_meters);
+          }
+        } catch (err) {
+          console.warn('RPC get_listing_distances 호출 실패 (거리 계산 폴백 사용):', err);
         }
       }
     }
@@ -58,7 +63,7 @@ export class MatchingService {
         const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
         return { listing, score: total, breakdown };
       })
-      .filter(m => m.score > 0)
+      .filter(m => m.score >= 0.15) // 💡 0.15점 이상이면 매칭 후보로 매칭함 (유연한 추천)
       .sort((a, b) => b.score - a.score);
 
     if (scored.length > 0) {
@@ -87,13 +92,13 @@ export class MatchingService {
       .single();
     if (lErr || !listing) throw new NotFoundException('매물을 찾을 수 없습니다');
 
+    // 💡 역방향 유연 조회
     const { data: inquiries, error: iErr } = await this.supabase
       .from('customer_inquiries')
       .select('*')
       .eq('agent_id', agentId)
       .eq('inquiry_type', 'looking_for')
-      .neq('status', 'completed')
-      .overlaps('category_codes', listing.category_codes);
+      .neq('status', 'closed');
 
     if (iErr) throw new InternalServerErrorException('문의 조회 실패');
 
@@ -119,7 +124,7 @@ export class MatchingService {
         const total = Object.values(breakdown).reduce((a, b) => a + b, 0);
         return { inquiry, score: total, breakdown };
       })
-      .filter(m => m.score > 0)
+      .filter(m => m.score >= 0.15)
       .sort((a, b) => b.score - a.score);
 
     if (scored.length > 0) {
@@ -140,50 +145,83 @@ export class MatchingService {
   }
 
   private score(inquiry: any, listing: any, distanceMap: Map<string, number>) {
-    const cond = inquiry.detailed_conditions;
+    const ensureArray = (arr: any) => Array.isArray(arr) ? arr : (typeof arr === 'string' ? [arr] : []);
+
+    const cond = inquiry.detailed_conditions ?? {};
     const bd = { category: 0, price: 0, area: 0, location: 0 };
 
-    // 1. 거래 유형 일치 확인 (필수)
-    const txMatch = inquiry.transaction_types?.some((t: string) => listing.transaction_types?.includes(t));
-    // 거래 유형이 다르면 점수를 깎지만, 카테고리가 같으면 0점 처리는 하지 않음
+    // 1. 거래 유형 일치 확인
+    let txMultiplier = 1.0;
+    const inqTx = ensureArray(inquiry.transaction_types).map((t: string) => t.toLowerCase());
+    const listTx = ensureArray(listing.transaction_types).map((t: string) => t.toLowerCase());
+    
+    if (inqTx.length > 0 && listTx.length > 0) {
+      const hasTxMatch = inqTx.some((t: string) => listTx.includes(t));
+      if (!hasTxMatch) {
+        txMultiplier = 0.6; // 거래유형 가중치 차감
+      }
+    }
 
-    // 2. 카테고리 세부 일치 확인 (subcategory_codes 또는 tags 필드 사용)
-    const subcatMatch = inquiry.subcategory_codes?.some((c: string) => listing.subcategory_codes?.includes(c)) || 
-                        inquiry.tags?.some((c: string) => listing.tags?.includes(c));
-    const catMatch = inquiry.category_codes?.some((c: string) => listing.category_codes?.includes(c));
+    // 2. 카테고리 세부 및 대분류 일치 확인 (유연 매칭)
+    const inqSub = ensureArray(inquiry.subcategory_codes).map((s: string) => s.toLowerCase());
+    const listSub = ensureArray(listing.subcategory_codes).map((s: string) => s.toLowerCase());
+    const inqTags = ensureArray(inquiry.tags).map((t: string) => t.toLowerCase());
+    const listTags = ensureArray(listing.tags).map((t: string) => t.toLowerCase());
+
+    const subcatMatch = inqSub.some((c: string) => listSub.includes(c)) ||
+                        inqTags.some((t: string) => listTags.includes(t));
+
+    const inqCat = ensureArray(inquiry.category_codes).map((c: string) => c.toLowerCase());
+    const listCat = ensureArray(listing.category_codes).map((c: string) => c.toLowerCase());
+    const catMatch = inqCat.some((c: string) => listCat.includes(c));
 
     if (subcatMatch) {
-      bd.category = MATCH_WEIGHTS.category; // 세부 종류 일치 시 60점 (만점)
+      bd.category = MATCH_WEIGHTS.category; // 0.60 만점
     } else if (catMatch) {
-      bd.category = MATCH_WEIGHTS.category * 0.25; // 대분류만 일치 시 15점
+      bd.category = MATCH_WEIGHTS.category; // 0.60 만점 (카테고리만 일치해도 무조건 뜨도록 만점 부여!)
+    } else if (inqCat.length === 0 || listCat.length === 0) {
+      bd.category = MATCH_WEIGHTS.category * 0.50; // 카테고리 미지정 시 0.30점 기본 부여
     } else {
-      return bd; // 카테고리가 아예 다르면 탈락
+      bd.category = MATCH_WEIGHTS.category * 0.25; // 살짝 엇갈려도 0.15점 부여하여 가격/위치 매칭 지원!
     }
 
     // 3. 가격 (유동성 반영)
     bd.price = this.priceScore(cond, listing) * MATCH_WEIGHTS.price;
 
-    // 4. 면적
+    // 4. 면적 (평수 오차 인정)
     if (cond?.area_min && listing.area_exclusive) {
       if (listing.area_exclusive >= cond.area_min) {
         const withinMax = !cond.area_max || listing.area_exclusive <= cond.area_max;
-        bd.area = withinMax ? MATCH_WEIGHTS.area : MATCH_WEIGHTS.area * 0.5;
-      } else if (listing.area_exclusive >= cond.area_min * 0.8) {
-        bd.area = MATCH_WEIGHTS.area * 0.5; // 20% 부족한 평형까지는 절반 점수 부여
+        bd.area = withinMax ? MATCH_WEIGHTS.area : MATCH_WEIGHTS.area * 0.7;
+      } else if (listing.area_exclusive >= cond.area_min * 0.7) {
+        bd.area = MATCH_WEIGHTS.area * 0.5; // 30% 오차 평형까지 절반 점수 부여
+      } else {
+        bd.area = MATCH_WEIGHTS.area * 0.2;
       }
+    } else {
+      bd.area = MATCH_WEIGHTS.area * 0.8; // 면적 조건 미지정 시 0.08 기본 부여
     }
 
-    // 위치: PostGIS 거리 기반 → dong_name 폴백
+    // 5. 위치: PostGIS 거리 기반 → dong_name 폴백
     const distance = distanceMap.get(listing.id);
     if (distance !== undefined) {
-      if (distance <= 1000)      bd.location = 0.15;  // 1km 이내
-      else if (distance <= 3000) bd.location = 0.10;  // 3km 이내
-      else if (distance <= 5000) bd.location = 0.05;  // 5km 이내
+      if (distance <= 1000)      bd.location = MATCH_WEIGHTS.location * 1.5;  // 1km 이내 150% 우대
+      else if (distance <= 3000) bd.location = MATCH_WEIGHTS.location * 1.0;  // 3km 이내 만점
+      else if (distance <= 5000) bd.location = MATCH_WEIGHTS.location * 0.5;  // 5km 이내
+      else                       bd.location = MATCH_WEIGHTS.location * 0.2;
     } else if (cond?.preferred_dong && listing.dong_name) {
       const preferred: string[] = Array.isArray(cond.preferred_dong)
         ? cond.preferred_dong : [cond.preferred_dong];
-      if (preferred.includes(listing.dong_name)) bd.location = MATCH_WEIGHTS.location;
+      const dongMatch = preferred.some((d: string) => listing.dong_name?.includes(d) || d.includes(listing.dong_name));
+      if (dongMatch) bd.location = MATCH_WEIGHTS.location;
+      else bd.location = MATCH_WEIGHTS.location * 0.3;
+    } else {
+      bd.location = MATCH_WEIGHTS.location * 0.5; // 위치 미지정 시 기본 점수
     }
+
+    // 거래 유형 불일치 시 전체 점수 배율 조율
+    bd.category *= txMultiplier;
+    bd.price *= txMultiplier;
 
     return bd;
   }
@@ -195,7 +233,6 @@ export class MatchingService {
     const calcFlexibleScore = (actual: number, max: number) => {
       if (actual <= max) return 1.0;
       if (actual > max * 2) return 0.0;
-      // 예산 초과 비율에 따라 1.0에서 0.0으로 선형 감소 (예: 1.5배 초과 시 0.5점)
       return 1.0 - ((actual - max) / max);
     };
 
@@ -212,9 +249,7 @@ export class MatchingService {
       checked++;
     }
 
-    // 가격 조건이 없으면 매칭을 떨어뜨리지 않기 위해 기본 0.8 부여
     if (checked === 0) return 0.8;
-    
     return score / checked;
   }
 
@@ -357,7 +392,6 @@ export class MatchingService {
   /** 매칭 상태 업데이트 (is_shown / is_liked / is_contracted) */
   async updateMatch(agentId: string, matchId: string, body: { is_shown?: boolean; is_liked?: boolean; is_contracted?: boolean }) {
     const updateData: Record<string, any> = {};
-    // is_shown은 shown_count로 맵핑 처리
     if (body.is_shown === true) updateData.shown_count = 1;
     if (body.is_shown === false) updateData.shown_count = 0;
     if (body.is_liked !== undefined) updateData.is_liked = body.is_liked;

@@ -12,10 +12,10 @@ export interface Agent {
   profile_image_url: string | null;
 
   // 구독
-  subscription_plan: 'minimal' | 'standard' | 'pro';
+  subscription_plan: 'starter' | 'pro';
   subscription_status: 'trial' | 'active' | 'expired' | 'cancelled';
   selected_categories: CategoryCode[];
-  pending_plan: 'minimal' | 'standard' | 'pro' | null;
+  pending_plan: 'starter' | 'pro' | null;
   category_changed_at: string | null;
   trial_ends_at: string | null;
   cancelled_at: string | null;
@@ -31,9 +31,6 @@ export interface Agent {
   subscription_end: string | null;
   next_billing_date: string | null;
   billing_day: number;
-
-  // 설정
-  custom_templates?: Record<string, string[]>;
 
   created_at: string;
   updated_at: string;
@@ -95,7 +92,7 @@ export interface PropertyListing {
   direction: string | null;
   images: ListingImage[];
   detail_info: Record<string, unknown>;
-  status: 'active' | 'premium' | 'in_progress' | 'hold' | 'contracted' | 'closed';
+  status: 'active' | 'pending' | 'contracted' | 'closed';
   agent_memo: string | null;
   source_inquiry_id: string | null;
   created_at: string;
