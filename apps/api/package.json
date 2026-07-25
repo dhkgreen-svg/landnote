@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "prebuild": "cd ../../packages/shared && npm run build",
+    "prebuild": "npx tsc -b ../../packages/shared",
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/main",
