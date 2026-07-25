@@ -94,6 +94,28 @@ export class MatchingService {
       console.log(`[matches upsert] wrote ${upsertData?.length ?? 0} rows for inquiry ${inquiryId}`);
     }
 
+    // 🔥 점수 미달로 탈락한 기존 매칭 기록들 데이터베이스에서 안전하게 삭제 처리
+    const validListingIds = new Set(scored.map(m => m.listing.id));
+    const { data: existingMatches } = await this.supabase
+      .from('matches')
+      .select('id, property_id')
+      .eq('inquiry_id', inquiryId);
+      
+    if (existingMatches && existingMatches.length > 0) {
+      const invalidMatchIds = existingMatches
+        .filter(m => !validListingIds.has(m.property_id))
+        .map(m => m.id);
+        
+      if (invalidMatchIds.length > 0) {
+        const { error: delErr } = await this.supabase
+          .from('matches')
+          .delete()
+          .in('id', invalidMatchIds);
+        if (delErr) console.error('[matches delete] FAILED', delErr);
+        else console.log(`[matches delete] deleted ${invalidMatchIds.length} stale rows for inquiry ${inquiryId}`);
+      }
+    }
+
     return scored;
   }
 
@@ -169,16 +191,26 @@ export class MatchingService {
       console.log(`[matches upsert] wrote ${upsertData?.length ?? 0} rows for listing ${listing.id}`);
     }
 
-    // 🔥 점수 미달로 탈락한 기존 매칭 기록들 데이터베이스에서 삭제 처리
-    const validInquiryIds = scored.map(m => m.inquiry.id);
-    if (validInquiryIds.length > 0) {
-      await this.supabase
-        .from('matches')
-        .delete()
-        .eq('property_id', listing.id)
-        .not('inquiry_id', 'in', `(${validInquiryIds.join(',')})`);
-    } else {
-      await this.supabase.from('matches').delete().eq('property_id', listing.id);
+    // 🔥 점수 미달로 탈락한 기존 매칭 기록들 데이터베이스에서 안전하게 삭제 처리
+    const validInquiryIds = new Set(scored.map(m => m.inquiry.id));
+    const { data: existingMatches } = await this.supabase
+      .from('matches')
+      .select('id, inquiry_id')
+      .eq('property_id', listing.id);
+      
+    if (existingMatches && existingMatches.length > 0) {
+      const invalidMatchIds = existingMatches
+        .filter(m => !validInquiryIds.has(m.inquiry_id))
+        .map(m => m.id);
+        
+      if (invalidMatchIds.length > 0) {
+        const { error: delErr } = await this.supabase
+          .from('matches')
+          .delete()
+          .in('id', invalidMatchIds);
+        if (delErr) console.error('[matches delete] FAILED', delErr);
+        else console.log(`[matches delete] deleted ${invalidMatchIds.length} stale rows for listing ${listing.id}`);
+      }
     }
 
     return scored;
