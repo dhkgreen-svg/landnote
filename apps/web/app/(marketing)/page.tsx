@@ -246,7 +246,7 @@ function PricingSection() {
             합리적인 요금제
           </h2>
           <p className="mt-3 text-lg text-muted-foreground">
-            {TRIAL_DAYS}일 무료 체험 후 자동 결제 · 언제든 해지 가능
+            {TRIAL_DAYS}일 무료 체험 후 연간 결제 · 언제든 해지 가능 (v1.0.1)
           </p>
         </div>
 
