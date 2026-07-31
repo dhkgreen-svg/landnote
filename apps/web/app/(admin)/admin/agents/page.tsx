@@ -89,9 +89,7 @@ function AdminAgentsContent() {
             className="rounded-md border px-3 py-2 text-sm"
           >
             <option value="">전체 플랜</option>
-            <option value="minimal">Minimal</option>
             <option value="standard">Standard</option>
-            <option value="pro">Pro</option>
           </select>
         </CardContent>
       </Card>

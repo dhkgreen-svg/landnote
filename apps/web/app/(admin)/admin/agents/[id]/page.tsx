@@ -174,9 +174,7 @@ export default function AdminAgentDetailPage() {
                   value=""
                 >
                   <option value="" disabled>플랜 변경</option>
-                  <option value="minimal">Minimal</option>
                   <option value="standard">Standard</option>
-                  <option value="pro">Pro</option>
                 </select>
                 <select
                   className="rounded-md border px-2 py-1 text-xs"
