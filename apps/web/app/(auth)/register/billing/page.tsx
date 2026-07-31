@@ -63,7 +63,7 @@ export default function BillingPage() {
             <div className="flex flex-col gap-3">
               <BillingRegisterButton agentId={agentId} returnPath="register" />
               <Button asChild variant="outline" className="w-full text-muted-foreground hover:text-foreground">
-                <Link href="/register/done">결제 수단은 나중에 등록할게요 (7일 무료 체험 바로 시작)</Link>
+                <Link href="/register/done">결제 수단은 나중에 등록할게요 (1개월 무료 체험 바로 시작)</Link>
               </Button>
             </div>
           ) : (
