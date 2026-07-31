@@ -57,7 +57,7 @@ export default function RegisterDonePage() {
         <CardContent className="space-y-6 text-center">
           <div className="rounded-lg bg-muted p-4">
             <p className="text-sm font-medium">
-              7일 무료 체험이 시작되었습니다
+              1개월 무료 체험이 시작되었습니다
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               체험 기간 동안 모든 기능을 자유롭게 사용해보세요.

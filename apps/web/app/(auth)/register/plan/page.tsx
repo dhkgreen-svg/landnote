@@ -94,7 +94,7 @@ export default function PlanSelectionPage() {
       <div className="mb-6 text-center">
         <h2 className="text-xl font-semibold">플랜을 선택하세요</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          7일 무료 체험 후 자동 결제됩니다. 언제든 해지 가능합니다.
+          1개월 무료 체험 제공 · 언제든 해지 가능합니다.
         </p>
       </div>
 

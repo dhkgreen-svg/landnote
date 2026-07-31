@@ -54,7 +54,7 @@ export const PLAN_LIMITS = {
   },
 } as const;
 
-export const TRIAL_DAYS = 7;
+export const TRIAL_DAYS = 30;
 export const CANCELLED_DATA_RETENTION_DAYS = 30;
 
 export function isUnlimited(limit: number): boolean {

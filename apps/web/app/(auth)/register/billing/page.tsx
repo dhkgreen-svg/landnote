@@ -48,7 +48,7 @@ export default function BillingPage() {
         <CardContent className="space-y-6">
           <div className="rounded-lg bg-muted p-4 text-center">
             <p className="text-sm font-medium text-muted-foreground">
-              7일 무료 체험 후 자동 결제됩니다
+              1개월 무료 체험 후 결제됩니다
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               체험 기간 중에는 결제가 발생하지 않으며, 언제든 해지할 수 있습니다.
