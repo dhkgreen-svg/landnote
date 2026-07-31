@@ -110,7 +110,7 @@ export default function PlanSelectionPage() {
             <CardTitle className="text-lg">프로</CardTitle>
             <p className="text-2xl font-bold">
               {formatPrice(PLAN_PRICE.pro)}
-              <span className="text-sm font-normal text-muted-foreground">원/월</span>
+              <span className="text-sm font-normal text-muted-foreground">원/년 (연간 요금제)</span>
             </p>
             <p className="mt-2 text-xs text-muted-foreground">모든 분야를 다루는 경우</p>
           </CardHeader>

@@ -63,9 +63,9 @@ export default function PricingPage() {
                 <span className="text-4xl font-extrabold text-primary">
                   {formatPrice(PLAN_PRICE.pro)}
                 </span>
-                <span className="text-xl text-muted-foreground">원/월</span>
+                <span className="text-xl text-muted-foreground">원/년</span>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">하루 {Math.round(PLAN_PRICE.pro / 30)}원</p>
+              <p className="mt-2 text-sm text-muted-foreground">월 환산 약 {Math.round(PLAN_PRICE.pro / 12).toLocaleString('ko-KR')}원 (하루 약 {Math.round(PLAN_PRICE.pro / 365).toLocaleString('ko-KR')}원)</p>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col">
               <ul className="flex-1 space-y-4">

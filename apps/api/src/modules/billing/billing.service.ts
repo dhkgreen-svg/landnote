@@ -86,7 +86,7 @@ export class BillingService {
       await this.emailService.sendSubscriptionExpired(agent);
       return;
     }
-    const amount = PLAN_PRICE[agent.subscription_plan] ?? 10000;
+    const amount = PLAN_PRICE[agent.subscription_plan] ?? 100000;
     const orderId = `landnote-${agent.id}-${Date.now()}`;
     const planName = { minimal: '미니멀', standard: '스탠다드', pro: '프로' }[agent.subscription_plan as string] ?? agent.subscription_plan;
 
@@ -95,7 +95,7 @@ export class BillingService {
       headers: this.tossHeader(),
       body: JSON.stringify({
         customerKey: agent.id, amount, orderId,
-        orderName: `랜드노트 ${planName} 플랜`,
+        orderName: `랜드노트 ${planName} 연간 플랜`,
       }),
       signal: AbortSignal.timeout(65_000),
     });
@@ -173,7 +173,7 @@ export class BillingService {
     await this.supabase.from('billing_histories').insert({
       agent_id: agent.id, order_id: orderId,
       plan: agent.subscription_plan,
-      amount: PLAN_PRICE[agent.subscription_plan] ?? 10000,
+      amount: PLAN_PRICE[agent.subscription_plan] ?? 100000,
       status: 'failed', failure_reason: reason,
     });
 
@@ -194,7 +194,7 @@ export class BillingService {
 
   private nextBillingDate(billingDay: number): Date {
     const now = new Date();
-    const next = new Date(now.getFullYear(), now.getMonth() + 1, billingDay);
+    const next = new Date(now.getFullYear() + 1, now.getMonth(), billingDay);
     const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
     next.setDate(Math.min(billingDay, lastDay));
     return next;

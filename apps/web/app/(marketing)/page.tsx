@@ -260,9 +260,9 @@ function PricingSection() {
                 <span className="text-4xl font-extrabold text-primary">
                   {formatPrice(PLAN_PRICE.pro)}
                 </span>
-                <span className="text-base text-muted-foreground">원/월</span>
+                <span className="text-base text-muted-foreground">원/년</span>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">하루 {Math.round(PLAN_PRICE.pro / 30)}원</p>
+              <p className="mt-2 text-sm text-muted-foreground">월 환산 약 {Math.round(PLAN_PRICE.pro / 12).toLocaleString('ko-KR')}원 (하루 약 {Math.round(PLAN_PRICE.pro / 365).toLocaleString('ko-KR')}원)</p>
             </div>
             <div className="mt-8 flex-1">
               <ul className="space-y-3.5">

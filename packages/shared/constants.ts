@@ -25,9 +25,9 @@ export const SUBSCRIPTION_STATUS = {
 } as const;
 
 export const PLAN_PRICE: Record<string, number> = {
-  minimal: 10000,
-  standard: 15000,
-  pro: 20000,
+  minimal: 50000,
+  standard: 75000,
+  pro: 100000,
 };
 
 export const PLAN_LIMITS = {

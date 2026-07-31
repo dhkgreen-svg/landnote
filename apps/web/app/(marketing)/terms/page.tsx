@@ -143,7 +143,7 @@ export default function TermsPage() {
         <Section title="제6조 (요금 및 결제)">
           <ol className="list-decimal space-y-1.5 pl-5">
             <li>
-              서비스는 유료 구독제로 운영되며, 요금제는 미니멀(월 {minimalPrice}원), 스탠다드(월 {standardPrice}원), PRO(월 {proPrice}원)로 구분됩니다.
+              서비스는 유료 구독제로 운영되며, 요금제는 미니멀(연 {minimalPrice}원), 스탠다드(연 {standardPrice}원), PRO(연 {proPrice}원)로 구분됩니다.
             </li>
             <li>
               모든 요금제는 최초 가입 시 {TRIAL_DAYS}일간 무료 체험 기간을
@@ -152,7 +152,7 @@ export default function TermsPage() {
             </li>
             <li>
               결제는 Toss Payments를 통한 신용카드 또는 체크카드 정기결제
-              방식으로 이루어지며, 매월 최초 결제일과 동일한 날짜에 자동
+              방식으로 이루어지며, 매년 최초 결제일과 동일한 날짜에 자동
               갱신·결제됩니다.
             </li>
             <li>
