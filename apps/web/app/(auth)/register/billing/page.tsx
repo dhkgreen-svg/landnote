@@ -45,25 +45,21 @@ export default function BillingPage() {
             결제 수단을 등록해주세요
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="rounded-lg bg-muted p-4 text-center">
-            <p className="text-sm font-medium text-muted-foreground">
-              1개월 무료 체험 후 결제됩니다
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              체험 기간 중에는 결제가 발생하지 않으며, 언제든 해지할 수 있습니다.
-            </p>
-          </div>
-
+        <CardContent className="space-y-4">
           {loading ? (
             <div className="flex justify-center py-4">
               <p className="text-sm text-muted-foreground">로딩 중...</p>
             </div>
           ) : agentId ? (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 pt-2">
               <BillingRegisterButton agentId={agentId} returnPath="register" />
-              <Button asChild variant="outline" className="w-full text-muted-foreground hover:text-foreground">
-                <Link href="/register/done">결제 수단은 나중에 등록할게요 (1개월 무료 체험 바로 시작)</Link>
+              <Button
+                asChild
+                className="w-full bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold text-sm py-6 shadow-md transition-all border-none"
+              >
+                <Link href="/register/done">
+                  결제 수단은 나중에 등록할게요 (30일 무료 체험 후 결제할게요)
+                </Link>
               </Button>
             </div>
           ) : (
