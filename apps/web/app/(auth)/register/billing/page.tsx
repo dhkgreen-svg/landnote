@@ -58,7 +58,7 @@ export default function BillingPage() {
                 className="w-full bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold text-sm py-6 shadow-md transition-all border-none"
               >
                 <Link href="/register/done">
-                  결제 수단은 나중에 등록할게요 (30일 무료 체험 후 결제할게요)
+                  결제 수단은 나중에 등록할게요
                 </Link>
               </Button>
             </div>

@@ -32,7 +32,7 @@ function HeroSection() {
 
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg" className="h-12 rounded-xl px-8 text-base font-semibold shadow-lg shadow-primary/25 transition-shadow hover:shadow-xl hover:shadow-primary/30">
-              <Link href="/register">회원가입 후 무료 체험</Link>
+              <Link href="/register">무료 회원 가입하기</Link>
             </Button>
 
           </div>
@@ -246,7 +246,7 @@ function PricingSection() {
             합리적인 요금제
           </h2>
           <p className="mt-3 text-lg text-muted-foreground">
-            {TRIAL_DAYS}일 무료 체험 후 연간 결제 · 언제든 해지 가능 (v1.0.1)
+            무료 회원 가입 후 무료 사용 (v1.0.1)
           </p>
         </div>
 
@@ -254,15 +254,13 @@ function PricingSection() {
           {/* Pro Plan */}
           <div className="relative flex flex-col rounded-2xl border-2 border-primary bg-background p-8 shadow-lg shadow-primary/10">
             <div>
-              <h3 className="text-lg font-semibold text-foreground">프로</h3>
-              <p className="mt-1 text-sm text-muted-foreground">전문 중개사를 위한 무제한 플랜</p>
+              <h3 className="text-lg font-semibold text-foreground">스탠다드</h3>
+              <p className="mt-1 text-sm text-muted-foreground">전문 중개사를 위한 필수 플랜</p>
               <div className="mt-5">
                 <span className="text-4xl font-extrabold text-primary">
-                  {formatPrice(PLAN_PRICE.pro)}
+                  무료
                 </span>
-                <span className="text-base text-muted-foreground">원/년</span>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">월 환산 약 {Math.round(PLAN_PRICE.pro / 12).toLocaleString('ko-KR')}원 (하루 약 {Math.round(PLAN_PRICE.pro / 365).toLocaleString('ko-KR')}원)</p>
             </div>
             <div className="mt-8 flex-1">
               <ul className="space-y-3.5">
@@ -274,7 +272,7 @@ function PricingSection() {
             </div>
             <div className="mt-8">
               <Button asChild className="w-full rounded-xl shadow-lg shadow-primary/25" size="lg">
-                <Link href="/register">회원가입 후 무료 체험</Link>
+                <Link href="/register">무료로 시작하기</Link>
               </Button>
             </div>
           </div>

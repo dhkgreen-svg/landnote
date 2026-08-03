@@ -41,8 +41,7 @@ export default function PricingPage() {
             나에게 맞는 플랜을 선택하세요
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-            모든 플랜은 {TRIAL_DAYS}일 무료 체험을 제공합니다. 체험 기간 중 언제든 해지할 수 있으며,
-            체험 종료 후 자동 결제됩니다.
+            합리적인 요금제 무료 회원 가입 후 무료 사용
           </p>
         </div>
       </section>
@@ -57,15 +56,13 @@ export default function PricingPage() {
               <Badge className="px-4 py-1 text-sm">추천</Badge>
             </div>
             <CardHeader>
-              <CardTitle className="text-2xl">PRO</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">전문 중개사를 위한 무제한 플랜</p>
+              <CardTitle className="text-2xl">스탠다드</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">전문 중개사를 위한 필수 플랜</p>
               <div className="mt-4">
                 <span className="text-4xl font-extrabold text-primary">
-                  {formatPrice(PLAN_PRICE.pro)}
+                  무료
                 </span>
-                <span className="text-xl text-muted-foreground">원/년</span>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">월 환산 약 {Math.round(PLAN_PRICE.pro / 12).toLocaleString('ko-KR')}원 (하루 약 {Math.round(PLAN_PRICE.pro / 365).toLocaleString('ko-KR')}원)</p>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col">
               <ul className="flex-1 space-y-4">
@@ -79,7 +76,7 @@ export default function PricingPage() {
               </ul>
               <div className="mt-8">
                 <Button asChild className="w-full" size="lg">
-                  <Link href="/register">PRO로 시작하기</Link>
+                  <Link href="/register">무료로 시작하기</Link>
                 </Button>
               </div>
             </CardContent>
@@ -96,8 +93,8 @@ export default function PricingPage() {
           <div className="space-y-4">
             {[
               {
-                q: '무료 체험 기간은 어떻게 되나요?',
-                a: `모든 플랜은 ${TRIAL_DAYS}일 무료 체험을 제공합니다. 카드 등록 후 ${TRIAL_DAYS}일간 무료로 모든 기능을 사용할 수 있으며, 체험 종료 후 자동 결제됩니다.`,
+                q: '이용 요금은 어떻게 되나요?',
+                a: '현재 회원가입 시 무료로 서비스를 제공하고 있습니다. 합리적인 요금제 도입 전까지 부담 없이 사용하세요.',
               },
               {
                 q: '플랜을 변경할 수 있나요?',
@@ -131,7 +128,7 @@ export default function PricingPage() {
               지금 바로 시작해보세요
             </h2>
             <p className="mx-auto mt-4 max-w-lg text-lg text-primary-foreground/80">
-              {TRIAL_DAYS}일 무료 체험으로 모든 기능을 경험해 보세요.
+              합리적인 요금제 무료 회원 가입 후 무료 사용을 시작하세요.
             </p>
             <div className="mt-8">
               <Button
@@ -140,7 +137,7 @@ export default function PricingPage() {
                 variant="secondary"
                 className="px-8 text-base font-semibold"
               >
-                <Link href="/register">{TRIAL_DAYS}일 무료 체험 시작</Link>
+                <Link href="/register">무료 회원 가입하기</Link>
               </Button>
             </div>
           </div>
