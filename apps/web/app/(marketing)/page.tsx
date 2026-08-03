@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { PLAN_LIMITS, PLAN_PRICE, TRIAL_DAYS } from '@landnote/shared';
+import { PLAN_LIMITS } from '@landnote/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
