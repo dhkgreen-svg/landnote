@@ -95,7 +95,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
       return;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'ko-KR';
     recognition.interimResults = false;
