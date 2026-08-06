@@ -32,9 +32,8 @@ function HeroSection() {
 
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg" className="h-12 rounded-xl px-8 text-base font-semibold shadow-lg shadow-primary/25 transition-shadow hover:shadow-xl hover:shadow-primary/30">
-              <Link href="/register">무료 회원 가입하기</Link>
+              <Link href="/register">회원가입 후 무료사용</Link>
             </Button>
-
           </div>
 
 
@@ -272,7 +271,7 @@ function PricingSection() {
             </div>
             <div className="mt-8">
               <Button asChild className="w-full rounded-xl shadow-lg shadow-primary/25" size="lg">
-                <Link href="/register">무료로 시작하기</Link>
+                <Link href="/register">회원가입 후 무료사용</Link>
               </Button>
             </div>
           </div>
