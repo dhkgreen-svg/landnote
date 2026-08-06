@@ -26,6 +26,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid messages array' }, { status: 400 });
     }
 
+    if (!agentId) {
+      return NextResponse.json({ error: 'Agent ID is required' }, { status: 400 });
+    }
+
+    // Verify beta tester authorization
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const agentRes = await fetch(`${apiUrl}/public/agent/${agentId}`);
+    if (!agentRes.ok) {
+      return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+    }
+    const agentData = await agentRes.json();
+    if (!agentData.is_beta_tester) {
+      return NextResponse.json({ error: 'Stealth Mode: Agent is not authorized for beta features' }, { status: 403 });
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ error: 'Gemini API Key missing' }, { status: 500 });

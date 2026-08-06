@@ -11,6 +11,9 @@ interface Message {
 }
 
 export function ChatInterface({ agentId }: { agentId: string }) {
+  const [isBetaTester, setIsBetaTester] = useState<boolean | null>(null);
+  const [checkingBeta, setCheckingBeta] = useState(true);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -24,17 +27,39 @@ export function ChatInterface({ agentId }: { agentId: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Check beta permission on mount
+  useEffect(() => {
+    async function checkBeta() {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const res = await fetch(`${apiUrl}/public/agent/${agentId}`);
+        if (!res.ok) {
+          setIsBetaTester(false);
+        } else {
+          const data = await res.json();
+          setIsBetaTester(!!data.is_beta_tester);
+        }
+      } catch (error) {
+        console.error('Failed to verify beta status:', error);
+        setIsBetaTester(false);
+      } finally {
+        setCheckingBeta(false);
+      }
+    }
+    checkBeta();
+  }, [agentId]);
+
   // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Initial TTS greeting if speaker is on
+  // Initial TTS greeting if speaker is on and verified beta tester
   useEffect(() => {
-    if (isSpeakerOn && messages.length === 1) {
+    if (isSpeakerOn && messages.length === 1 && isBetaTester === true) {
       speak(messages[0].content);
     }
-  }, []);
+  }, [isBetaTester]);
 
   const speak = (text: string) => {
     if (!isSpeakerOn) return;
@@ -121,6 +146,42 @@ export function ChatInterface({ agentId }: { agentId: string }) {
 
     recognition.start();
   };
+
+  if (checkingBeta) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-slate-50 min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-4 text-sm text-slate-500 font-medium">서비스 정보를 불러오는 중입니다...</p>
+      </div>
+    );
+  }
+
+  if (!isBetaTester) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white select-none min-h-screen">
+        <div className="w-full max-w-md p-8 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl flex flex-col items-center text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/20 border border-primary/30 shadow-inner mb-6">
+            <span className="text-xl">🤖</span>
+          </div>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-primary to-indigo-500 text-white shadow-md mb-4 uppercase tracking-wider">
+            Stealth Beta
+          </span>
+          <h2 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent sm:text-3xl">
+            AI 접수 봇 준비 중
+          </h2>
+          <p className="mt-4 text-sm leading-relaxed text-slate-300 font-normal">
+            해당 공인중개사의 대화형 AI 매물 접수 서비스는 현재 비공개 개발(스텔스 모드)로 진행되고 있습니다.
+            <br />
+            <br />
+            정식 출시 이후 사용하실 수 있으며, 베타 테스터 권한이 있는 대표 계정만 접속할 수 있습니다.
+          </p>
+          <div className="mt-8 w-full border-t border-white/10 pt-6">
+            <p className="text-xs text-slate-500 font-medium">© 2026 랜드노트. All rights reserved.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full relative">

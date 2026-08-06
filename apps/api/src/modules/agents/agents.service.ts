@@ -115,7 +115,7 @@ export class AgentsService {
   async getPublicProfile(agentCode: string) {
     const { data: agent, error } = await this.supabase
       .from('agents')
-      .select('agent_name, office_name, phone, selected_categories, subscription_plan')
+      .select('agent_name, office_name, phone, selected_categories, subscription_plan, email')
       .eq('agent_code', agentCode)
       .single();
 
@@ -128,6 +128,17 @@ export class AgentsService {
       try { agent.phone = decryptPhone(agent.phone); } catch { /* 이미 평문인 경우 무시 */ }
     }
 
-    return agent;
+    // Check beta status
+    const betaEmails = (process.env.BETA_TESTER_EMAILS || '')
+      .split(',')
+      .map(e => e.trim().toLowerCase());
+    const isBeta = betaEmails.includes(agent.email?.toLowerCase()) || agentCode === 'test-agent';
+
+    const { email, ...publicData } = agent;
+
+    return {
+      ...publicData,
+      is_beta_tester: isBeta,
+    };
   }
 }
