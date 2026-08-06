@@ -78,7 +78,6 @@ function AdminAgentsContent() {
             className="rounded-md border px-3 py-2 text-sm"
           >
             <option value="">전체 상태</option>
-            <option value="trial">체험판</option>
             <option value="active">활성</option>
             <option value="expired">만료</option>
             <option value="cancelled">해지</option>

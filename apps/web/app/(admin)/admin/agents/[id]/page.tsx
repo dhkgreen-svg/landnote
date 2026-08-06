@@ -142,9 +142,6 @@ export default function AdminAgentDetailPage() {
               <Row label="상태" value={STATUS_LABELS[agent.subscription_status] ?? agent.subscription_status} />
               <Row label="카테고리" value={(agent.selected_categories ?? []).join(', ') || '-'} />
               <Row label="예약 플랜" value={agent.pending_plan || '-'} />
-              <Row label="체험 만료" value={agent.trial_ends_at ? new Date(agent.trial_ends_at).toLocaleDateString('ko-KR') : '-'} />
-              <Row label="다음 결제일" value={agent.next_billing_date ? new Date(agent.next_billing_date).toLocaleDateString('ko-KR') : '-'} />
-              <Row label="카드 정보" value={agent.billing_card_info ? `${agent.billing_card_info.company} ${agent.billing_card_info.number}` : '미등록'} />
 
               <div className="flex gap-2 pt-4">
                 <select
@@ -158,7 +155,6 @@ export default function AdminAgentDetailPage() {
                   value=""
                 >
                   <option value="" disabled>상태 변경</option>
-                  <option value="trial">체험판</option>
                   <option value="active">활성</option>
                   <option value="expired">만료</option>
                   <option value="cancelled">해지</option>
@@ -188,9 +184,7 @@ export default function AdminAgentDetailPage() {
                 >
                   <option value="" disabled>기간 연장</option>
                   <option value="1">1개월 무료</option>
-                  <option value="3">3개월 무료</option>
-                  <option value="6">6개월 무료</option>
-                  <option value="12">12개월 무료</option>
+                  <option value="12">1년 연장</option>
                 </select>
               </div>
 

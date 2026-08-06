@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>민물나라 - 붕어 · 잉어 산지직송 (10kg 11만원 / 20kg 20만원)</title>
+  <meta name="description" content="대한민국 맑은 강 붕어 & 잉어 산지직송 민물나라! 부담없는 10kg(11만원) & 대용량 20kg(20만원). 붕어만, 잉어만, 반반 선택 및 맞춤 가공비 반영.">
+  
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Top Announcement Bar with Multi-Language Switcher -->
+  <div class="top-announcement">
+    <div class="container top-announcement-inner">
+      <div class="announcement-text">
+        <span class="pulse-badge"><i class="fa-solid fa-water"></i> <span id="ann-badge-text">10kg 11만원 / 20kg 20만원</span></span>
+        <span id="ticker-text">민물나라 - 소양호 & 남한강 자연산 붕어 · 잉어! 10kg(11만원) & 20kg(20만원 대용량특가) 전국 100% 무료배송</span>
+      </div>
+      <div class="top-right-links">
+        <div class="lang-switcher">
+          <i class="fa-solid fa-globe"></i>
+          <select id="lang-select" onchange="changeLanguage(this.value)">
+            <option value="ko">🇰🇷 한국어</option>
+            <option value="en">🇺🇸 English</option>
+            <option value="hi">🇮🇳 हिन्दी (Hindi / 인도)</option>
+            <option value="ms">🇲🇾 Bahasa Melayu (말레이시아)</option>
+            <option value="th">🇹🇭 ไทย (Thai / 태국)</option>
+            <option value="mn">🇲🇳 Монгол (Mongolian / 몽골)</option>
+            <option value="vi">🇻🇳 Tiếng Việt (Vietnamese / 베트남)</option>
+            <option value="id">🇮🇩 Bahasa Indonesia (인도네시아)</option>
+            <option value="tl">🇵🇭 Tagalog (Filipino / 필리핀)</option>
+            <option value="la">🇱🇦 ພາສາລາວ (Lao / 라오스)</option>
+            <option value="my">🇲🇲 မြန်မာ (Myanmar / 미얀마)</option>
+            <option value="zh_tw">🇹🇼 繁體中文 (Taiwan / 대만)</option>
+            <option value="zh_cn">🇨🇳 简体中文 (China / 중국)</option>
+            <option value="bn">🇧🇩 বাংলা (Bengali / 방글라데시)</option>
+          </select>
+        </div>
+        <span class="divider">|</span>
+        <a href="#b2b"><i class="fa-solid fa-truck"></i> <span id="link-bulk-text">기숙사/식당 무통장 대량배송</span></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header & Navigation -->
+  <header class="main-header" id="header">
+    <div class="container header-container">
+      <a href="#" class="brand-logo">
+        <div class="logo-mark">
+          <i class="fa-solid fa-fish"></i>
+        </div>
+        <div class="logo-text">
+          <span class="brand-name">민물나라 <span class="brand-en">Minmul Nara</span><span class="accent-dot">.</span></span>
+          <span class="brand-sub" id="brand-sub-text">붕어 · 잉어 산지직송 전문몰 (Freshwater Fish Market)</span>
+        </div>
+      </a>
+
+      <!-- Big Price Banner in Header -->
+      <div class="header-price-tag">
+        <span class="tag-title" id="tag-title-txt">용량별 특가</span>
+        <strong id="tag-price-txt">10kg 11만 / 20kg 20만</strong>
+        <span class="tag-sub" id="tag-sub-txt">(무료배송)</span>
+      </div>
+
+      <!-- Header Actions -->
+      <div class="header-actions">
+        <a href="https://wa.me/" target="_blank" class="action-btn whatsapp-btn" title="WhatsApp 1:1 CS">
+          <i class="fa-brands fa-whatsapp"></i>
+          <span class="action-label">WhatsApp</span>
+        </a>
+        <button class="action-btn cart-btn" id="cart-open-btn" onclick="openCart()">
+          <i class="fa-solid fa-basket-shopping"></i>
+          <span class="action-label" id="lbl-cart">장바구니</span>
+          <span class="cart-badge" id="cart-count">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section with Direct Ordering Panel -->
+  <section class="hero-banner">
+    <div class="hero-backdrop"></div>
+    <div class="container hero-layout">
+      <div class="hero-text-col">
+        <div class="hero-badge">
+          <i class="fa-solid fa-certificate"></i> <span id="hero-badge-txt">100% 맑은 1급수 자연산 | 붕어 · 잉어 전문 [민물나라]</span>
+        </div>
+        <h1 class="hero-heading" id="hero-heading-txt">
+          민물나라 <span class="highlight-text">붕어 & 잉어</span><br>
+          10kg 11만원 / 20kg 20만원!
+        </h1>
+        <p class="hero-desc" id="hero-desc-txt">
+          대한민국 맑은 강과 호수의 신선함 그대로! 부담없는 10kg(11만원)부터 대용량 20kg(20만원)까지 붕어만, 잉어만, 반반 구성과 맞춤 손질로 직송합니다.
+        </p>
+        
+        <div class="hero-trust-row">
+          <div class="trust-item">
+            <i class="fa-solid fa-boxes-packing"></i>
+            <div>
+              <strong>10kg 11만원 / 20kg 20만원</strong>
+              <span>붕어만 / 잉어만 / 반반 선택 가능</span>
+            </div>
+          </div>
+          <div class="trust-item">
+            <i class="fa-solid fa-truck-fast"></i>
+            <div>
+              <strong>전국 100% 무료 배송</strong>
+              <span>산소 이중 포장 신선 직송</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Order Card (10kg / 20kg Dual Builder) -->
+      <div class="hero-card-col">
+        <div class="spotlight-card main-order-card">
+          <div class="spotlight-tag" id="spotlight-tag-txt"><i class="fa-solid fa-bolt"></i> EASY WEIGHT & FISH SELECTION</div>
+          
+          <div class="order-price-bar">
+            <div>
+              <span class="price-label" id="lbl-box-price">최종 결제 금액 (가공비 포함)</span>
+              <div class="big-price" id="calc-display-price">110,000<span class="won" id="txt-won">원</span></div>
+              <span class="price-detail-sub" id="calc-price-detail">(10kg 기본 110,000원 + 가공비 0원)</span>
+            </div>
+            <span class="badge-fresh" id="txt-free-ship">무료배송</span>
+          </div>
+
+          <!-- Step 1: 용량/무게 선택 (10kg vs 20kg) -->
+          <div class="order-step-box">
+            <label class="step-label" id="lbl-step-weight"><i class="fa-solid fa-weight-hanging"></i> 1. 포장 용량 선택 (필수)</label>
+            <div class="weight-toggle-group">
+              <button type="button" class="weight-btn active" onclick="selectWeight('10kg', 110000)">
+                <strong>10kg 박스</strong>
+                <span>110,000원 (부담없는 구성)</span>
+              </button>
+              <button type="button" class="weight-btn" onclick="selectWeight('20kg', 200000)">
+                <strong>20kg 대용량 특가</strong>
+                <span>200,000원 (2만원 할인!)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2: 어종 비율 선택 -->
+          <div class="order-step-box">
+            <label class="step-label" id="lbl-step1"><i class="fa-solid fa-scale-balanced"></i> 2. 어종 구성 선택 (필수)</label>
+            <div class="ratio-options">
+              <label class="ratio-card active" onclick="selectRatio(this, 'half')">
+                <input type="radio" name="ratio-selection" value="half" checked>
+                <div class="ratio-info">
+                  <strong id="opt-half-title">☯️ 반반 혼합 (추천)</strong>
+                  <span id="opt-half-sub">붕어 50% + 잉어 50%</span>
+                </div>
+              </label>
+              <label class="ratio-card" onclick="selectRatio(this, 'crucian')">
+                <input type="radio" name="ratio-selection" value="crucian">
+                <div class="ratio-info">
+                  <strong id="opt-crucian-title">🐟 붕어만 100%</strong>
+                  <span id="opt-crucian-sub">붕어만 구성</span>
+                </div>
+              </label>
+              <label class="ratio-card" onclick="selectRatio(this, 'carp')">
+                <input type="radio" name="ratio-selection" value="carp">
+                <div class="ratio-info">
+                  <strong id="opt-carp-title">🐟 잉어만 100%</strong>
+                  <span id="opt-carp-sub">잉어만 구성</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Step 3: 손질 타입 & 가공비 선택 -->
+          <div class="order-step-box">
+            <label class="step-label" id="lbl-step2"><i class="fa-solid fa-utensils"></i> 3. 손질 및 가공 방식 선택 (가공비 연동)</label>
+            <select id="main-cut-select" class="cut-select-dropdown" onchange="calculateMainPrice()">
+              <option value="raw" id="cut-opt-raw">원물 그대로 (Whole Live / 生物) [가공비: +0원]</option>
+              <option value="curry" id="cut-opt-curry">🇧🇩 커리용 토막 손질 (Rui Curry Cut) [가공비 연동]</option>
+              <option value="clean" id="cut-opt-clean">🇵🇭/🇮🇩 튀김·구이용 통생선 내장세척 (Cleaned Whole) [가공비 연동]</option>
+              <option value="korean" id="cut-opt-korean">🇰🇷 한국인 찌개/보양식 손질 (Korean Stew Cut) [가공비 연동]</option>
+            </select>
+          </div>
+
+          <!-- Step 4: 박스 수량 & 구매 -->
+          <div class="order-bottom-row">
+            <div class="qty-control">
+              <label id="lbl-box-qty">수량:</label>
+              <div class="counter">
+                <button type="button" onclick="changeBoxQty(-1)">-</button>
+                <span id="box-qty-num">1</span>
+                <button type="button" onclick="changeBoxQty(1)">+</button>
+              </div>
+            </div>
+            <button class="btn btn-accent btn-grow btn-lg" onclick="addBoxToCart()">
+              <i class="fa-solid fa-cart-plus"></i> <span id="btn-add-box-txt">장바구니 담기</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Detail Product Selection Section -->
+  <section class="products-section" id="products">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="sub-title">MINMUL NARA CARP & CRUCIAN</span>
+        <h2 id="product-sec-title">민물나라 붕어 · 잉어 추천 상품</h2>
+        <p id="product-sec-sub">10kg(11만원) 및 20kg(20만원) 원하시는 용량과 구성을 선택하세요.</p>
+      </div>
+
+      <div class="products-grid" id="products-grid">
+        <!-- Rendered JS Cards -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Recipe & Global Section -->
+  <section class="journal-section" id="recipes">
+    <div class="container">
+      <div class="section-header text-center">
+        <span class="sub-title">GLOBAL RECIPES & USES</span>
+        <h2 id="recipe-title">민물나라 붕어 · 잉어 이렇게 즐기세요!</h2>
+        <p id="recipe-sub">한국인 보양식부터 아시아 각국의 고향 대표 요리까지</p>
+      </div>
+
+      <div class="journal-grid">
+        <article class="journal-card">
+          <div class="journal-img j-bg-1">
+            <span class="location-tag">🇮🇳 IN / 🇲🇾 MY / 🇧🇩 BD / 🇹🇭 TH</span>
+          </div>
+          <div class="journal-body">
+            <span class="journal-date">Fish Curry & Tom Yum / Sup Ikan</span>
+            <h3 id="rcp-1-h">"전통 민물고기 커리 & 똠얌 수프"</h3>
+            <p id="rcp-1-p">커리용 토막 손질 옵션을 선택하시면 향신료 커리나 매콤한 민물고기 수프를 즉시 조리하실 수 있습니다.</p>
+          </div>
+        </article>
+
+        <article class="journal-card">
+          <div class="journal-img j-bg-2">
+            <span class="location-tag">🇵🇭 PH / 🇮🇩 ID / 🇲🇲 MM / 🇱🇦 LA</span>
+          </div>
+          <div class="journal-body">
+            <span class="journal-date">Fried Fish & Sinigang (Ikan Bakar)</span>
+            <h3>"통생선 바삭 튀김 & 숯불 구이"</h3>
+            <p id="rcp-2-p">통생선 세척 옵션으로 수령 후 소금과 마늘을 쳐 노릇하게 튀기거나 숯불 구이로 동료들과 풍성한 잔치를 즐기세요.</p>
+          </div>
+        </article>
+
+        <article class="journal-card">
+          <div class="journal-img j-bg-3">
+            <span class="location-tag">🇰🇷 KR / 🇲🇳 MN / 🇨🇳 CN / 🇹🇼 TW</span>
+          </div>
+          <div class="journal-body">
+            <span class="journal-date">Korean Stew & Traditional Soup</span>
+            <h3>"한국 전통 붕어 찜 & 약용 곰탕"</h3>
+            <p id="rcp-3-p">붕어 10kg 또는 20kg을 주문하여 건강원에서 약재와 함께 붕어진액으로 내리거나 대형 잉어 곰탕으로 기력을 회복하세요.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- B2B & Dormitory Bulk Order -->
+  <section class="b2b-section" id="b2b">
+    <div class="container b2b-container">
+      <div class="b2b-info">
+        <span class="b2b-badge">BULK ORDER</span>
+        <h2 id="b2b-head-txt">기숙사 · 공단 식당 · 대량 구매<br>무통장 / 가상계좌 주문 문의</h2>
+        <p id="b2b-desc-txt">
+          안산, 시흥, 화성, 김포, 경주 등 외국인 노동자 기숙사 모임이나 민물고기 식당 등<br>
+          10kg 또는 20kg 박스 단위 대량 구매 시 가공비 할인가 및 무료 배송을 지원합니다.
+        </p>
+        <ul class="b2b-benefits">
+          <li><i class="fa-solid fa-check-double"></i> 10kg 11만원 / 20kg 20만원 / 100% 무료 배송</li>
+          <li><i class="fa-solid fa-check-double"></i> 원하는 손질(커리용 토막, 통생선, 생물) 사전 선택</li>
+          <li><i class="fa-solid fa-check-double"></i> WhatsApp / 문자 1:1 상담 및 무통장 입금 계좌 발송</li>
+        </ul>
+      </div>
+
+      <div class="b2b-form-card">
+        <h3><i class="fa-solid fa-file-signature"></i> <span id="b2b-form-title">대량 주문 & 문의 접수</span></h3>
+        <form id="b2b-form" onsubmit="handleB2bSubmit(event)">
+          <div class="form-group">
+            <label for="b2b-company">성함 / 모임명 (Name)</label>
+            <input type="text" id="b2b-company" placeholder="예: Ali / 시흥 기숙사 모임" required>
+          </div>
+          <div class="form-group">
+            <label for="b2b-contact">연락처 (Phone / WhatsApp)</label>
+            <input type="text" id="b2b-contact" placeholder="010-1234-5678" required>
+          </div>
+          <div class="form-group">
+            <label for="b2b-fish">희망 상품 구성 (Selection)</label>
+            <select id="b2b-fish">
+              <option value="10kg 반반 (붕어5kg+잉어5kg) = 11만원">10kg 반반 (붕어 5kg + 잉어 5kg) = 11만원</option>
+              <option value="20kg 반반 (붕어10kg+잉어10kg) = 20만원">20kg 반반 (붕어 10kg + 잉어 10kg) = 20만원 (추천)</option>
+              <option value="10kg 붕어만 = 11만원">10kg 붕어만 = 11만원</option>
+              <option value="20kg 붕어만 = 20만원">20kg 붕어만 = 20만원</option>
+              <option value="10kg 잉어만 = 11만원">10kg 잉어만 = 11만원</option>
+              <option value="20kg 잉어만 = 20만원">20kg 잉어만 = 20만원</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="b2b-memo">요청 사항 (배송일자 / 손질 방식)</label>
+            <textarea id="b2b-memo" rows="3" placeholder="예: 이번주 토요일 금정역 기숙사로 커리용 손질해서 보내주세요."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full"><i class="fa-solid fa-paper-plane"></i> <span id="b2b-btn-txt">주문 문의하기</span></button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="main-footer">
+    <div class="container footer-grid">
+      <div class="footer-col brand-col">
+        <div class="brand-logo footer-logo">
+          <i class="fa-solid fa-fish"></i>
+          <span class="brand-name">민물나라 Minmul Nara</span>
+        </div>
+        <p>대한민국 1급수 붕어 · 잉어 산지직송 전문몰 [민물나라]. 10kg 11만원 / 20kg 20만원 무료배송.</p>
+        <p class="copyright">© 2026 Minmul Nara Carp Market. All rights reserved.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Selection</h4>
+        <ul>
+          <li><a href="#products">10kg 반반 (11만원)</a></li>
+          <li><a href="#products">20kg 반반 (20만원)</a></li>
+          <li><a href="#products">붕어만 / 잉어만 선택</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Customer Support & WhatsApp</h4>
+        <p class="footer-phone">1588-9876</p>
+        <p>WhatsApp / Call: 010-1234-5678</p>
+        <p>강원특별자치도 춘천시 소양강로 123 내수면 유통센터 [민물나라]</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Cart Drawer -->
+  <div class="cart-drawer-overlay" id="cart-drawer">
+    <div class="cart-drawer-content">
+      <div class="drawer-header">
+        <h3><i class="fa-solid fa-basket-shopping"></i> Shopping Cart</h3>
+        <button class="drawer-close" onclick="closeCart()">&times;</button>
+      </div>
+      <div class="drawer-body" id="cart-items-container">
+        <div class="empty-cart-msg">
+          <i class="fa-solid fa-fish"></i>
+          <p>장바구니가 비어있습니다.</p>
+        </div>
+      </div>
+      <div class="drawer-footer">
+        <div class="cart-summary-row">
+          <span>상품 금액</span>
+          <span id="cart-subtotal">0원</span>
+        </div>
+        <div class="cart-summary-row">
+          <span>배송비</span>
+          <span id="cart-shipping">0원 (무료)</span>
+        </div>
+        <div class="cart-summary-row total">
+          <span>최종 결제 금액</span>
+          <strong id="cart-grand-total">0원</strong>
+        </div>
+        <button class="btn btn-accent btn-full btn-lg" onclick="checkoutAlert()">
+          <i class="fa-solid fa-credit-card"></i> 주문하기 (Order Now)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

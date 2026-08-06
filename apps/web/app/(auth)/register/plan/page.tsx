@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRegisterStore } from '@/lib/stores/register-store';
 import { createClient } from '@/lib/supabase/client';
-import { PLAN_LIMITS, PLAN_PRICE } from '@landnote/shared';
+import { PLAN_LIMITS } from '@landnote/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,9 +36,7 @@ const features: PlanFeature[] = [
   },
 ];
 
-function formatPrice(price: number): string {
-  return price.toLocaleString('ko-KR');
-}
+
 
 export default function PlanSelectionPage() {
   const router = useRouter();
@@ -94,7 +92,7 @@ export default function PlanSelectionPage() {
       <div className="mb-6 text-center">
         <h2 className="text-xl font-semibold">플랜을 선택하세요</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          1개월 무료 체험 제공 · 언제든 해지 가능합니다.
+          합리적인 요금제 · 회원 가입 후 무료 사용
         </p>
       </div>
 
@@ -107,10 +105,9 @@ export default function PlanSelectionPage() {
         >
           <Badge className="absolute -top-2.5 right-4">기본 요금제</Badge>
           <CardHeader className="text-center">
-            <CardTitle className="text-lg">프로</CardTitle>
+            <CardTitle className="text-lg">스탠다드</CardTitle>
             <p className="text-2xl font-bold">
-              {formatPrice(PLAN_PRICE.pro)}
-              <span className="text-sm font-normal text-muted-foreground">원/년 (연간 요금제)</span>
+              무료
             </p>
             <p className="mt-2 text-xs text-muted-foreground">모든 분야를 다루는 경우</p>
           </CardHeader>
