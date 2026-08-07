@@ -200,10 +200,9 @@ export async function POST(req: Request) {
       }
     );
 
-    if (!responseGemini.ok) {
       const errText = await responseGemini.text();
       console.error('Gemini API Error details:', errText);
-      throw new Error(`Gemini API Error: ${responseGemini.statusText}`);
+      throw new Error(`Gemini API Error: ${responseGemini.statusText} - Details: ${errText}`);
     }
 
     const data = await responseGemini.json();
