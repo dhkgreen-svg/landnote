@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Mic, Send, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { Mic, Send, Volume2, VolumeX, Loader2, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface Message {
@@ -25,6 +25,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -128,6 +129,13 @@ export function ChatInterface({ agentId }: { agentId: string }) {
       const botMessage: Message = { id: (Date.now() + 1).toString(), role: 'bot', content: data.reply };
       setMessages((prev) => [...prev, botMessage]);
       speak(data.reply);
+
+      if (data.isComplete) {
+        // Switch to the completion page after the bot finishes speaking
+        setTimeout(() => {
+          setIsComplete(true);
+        }, 3500);
+      }
       
     } catch (error) {
       console.error(error);
@@ -244,6 +252,39 @@ export function ChatInterface({ agentId }: { agentId: string }) {
     );
   }
 
+  if (isComplete) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white min-h-screen">
+        <div className="w-full max-w-md p-8 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl flex flex-col items-center text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-green-500/20 border border-green-500/30 shadow-inner mb-6 animate-bounce">
+            <Check className="h-8 w-8 text-green-400" />
+          </div>
+          <h2 className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent sm:text-3xl">
+            매물 접수 완료!
+          </h2>
+          <p className="mt-4 text-sm leading-relaxed text-slate-300 font-normal">
+            중개사님께 정보가 안전하게 전달되었습니다.<br />
+            빠른 시일 내에 확인 후 연락드리겠습니다.
+          </p>
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                if (window.opener) {
+                  window.close();
+                } else {
+                  window.location.href = 'about:blank';
+                }
+              }
+            }}
+            className="mt-8 w-full py-3 px-4 rounded-xl bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-white font-semibold shadow-lg hover:shadow-indigo-500/20 active:scale-[0.98] transition-all"
+          >
+            창 닫기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full relative">
       {/* Header */}
@@ -252,13 +293,30 @@ export function ChatInterface({ agentId }: { agentId: string }) {
           <h1 className="font-semibold text-gray-800">매물 접수 AI 비서</h1>
           <p className="text-xs text-muted-foreground">중개사님께 정보를 안전하게 전달합니다.</p>
         </div>
-        <button
-          onClick={() => setIsSpeakerOn(!isSpeakerOn)}
-          className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-          title={isSpeakerOn ? "음성 안내 끄기" : "음성 안내 켜기"}
-        >
-          {isSpeakerOn ? <Volume2 className="w-5 h-5 text-primary" /> : <VolumeX className="w-5 h-5 text-gray-400" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setIsSpeakerOn(!isSpeakerOn)}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            title={isSpeakerOn ? "음성 안내 끄기" : "음성 안내 켜기"}
+          >
+            {isSpeakerOn ? <Volume2 className="w-5 h-5 text-primary" /> : <VolumeX className="w-5 h-5 text-gray-400" />}
+          </button>
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                if (window.opener) {
+                  window.close();
+                } else {
+                  window.location.href = 'about:blank';
+                }
+              }
+            }}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            title="창 닫기"
+          >
+            <X className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+          </button>
+        </div>
       </header>
 
       {/* Messages */}
