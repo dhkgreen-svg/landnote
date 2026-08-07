@@ -73,9 +73,18 @@ export function ChatInterface({ agentId }: { agentId: string }) {
     }
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
+      
+      // Strip emojis, asterisks, and markdown formatting characters
+      const cleanedText = text
+        .replace(/\*+/g, '') // Remove asterisks
+        .replace(/[-#`_\n]/g, ' ') // Remove markdown bullets/lines
+        .replace(/[\u{1F300}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1F1E6}-\u{1F1FF}]/gu, '') // Remove emojis
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const utterance = new SpeechSynthesisUtterance(cleanedText);
       utterance.lang = 'ko-KR';
-      utterance.rate = 1.25; // Snappy, quick speed
+      utterance.rate = 1.55; // Snappy speed (increased from 1.25)
       utterance.pitch = 1.15; // Energetic, bright pitch
       if (onEndCallback) {
         utterance.onend = () => onEndCallback();
