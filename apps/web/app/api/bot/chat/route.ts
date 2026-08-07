@@ -180,6 +180,7 @@ export async function POST(req: Request) {
     }
 
     const data = await responseGemini.json();
+    console.log('Gemini API Full Response:', JSON.stringify(data, null, 2));
 
     // Check if Gemini returned a function call
     const candidateParts = data.candidates?.[0]?.content?.parts || [];
