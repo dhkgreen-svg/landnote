@@ -289,7 +289,6 @@ export async function POST(req: Request) {
           images: [],
           detail_info: {},
           owner_phone: args.client_phone || '',
-          owner_name: args.client_name || '',
           agent_memo: `[AI 챗봇 자동 접수]\n- 의뢰인 성함: ${args.client_name || '미입력'}\n- 의뢰인 연락처: ${args.client_phone || '미입력'}\n- 매물종류: ${args.property_type}\n- 거래형태: ${args.transaction_type}\n- 주소: ${args.address}\n- 희망가: ${args.price}\n- 면적: ${args.area}\n- 특징: ${args.features || '없음'}`
         };
 
