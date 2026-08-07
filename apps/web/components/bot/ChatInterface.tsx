@@ -126,6 +126,38 @@ function resizeImage(file: File, maxSize: number): Promise<string> {
   });
 }
 
+function toSinoKorean(num: number): string {
+  if (num === 0) return '영';
+  const units = ['', '십', '백', '천'];
+  const largeUnits = ['', '만', '억', '조'];
+  const digits = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+  
+  let result = '';
+  const numStr = num.toString();
+  const len = numStr.length;
+  
+  for (let i = 0; i < len; i++) {
+    const digit = parseInt(numStr[i], 10);
+    const pos = len - 1 - i;
+    
+    if (digit !== 0) {
+      let digitStr = digits[digit];
+      if (digit === 1 && pos % 4 !== 0) {
+        digitStr = '';
+      }
+      result += digitStr + units[pos % 4];
+    }
+    
+    if (pos % 4 === 0) {
+      const sectionValue = parseInt(numStr.slice(Math.max(0, i - 3), i + 1), 10);
+      if (sectionValue !== 0 || pos === 0) {
+        result += largeUnits[pos / 4];
+      }
+    }
+  }
+  return result;
+}
+
 export function ChatInterface({ agentId }: { agentId: string }) {
   const [isBetaTester, setIsBetaTester] = useState<boolean | null>(null);
   const [checkingBeta, setCheckingBeta] = useState(true);
@@ -213,6 +245,18 @@ export function ChatInterface({ agentId }: { agentId: string }) {
 
       // Convert hyphens and slashes between numbers to "다시" for natural Korean speech synthesis
       cleanedText = cleanedText.replace(/(\d+)[-/](\d+)/g, '$1 다시 $2');
+
+      // Convert units like 평, 층, 호, 년 to Sino-Korean text to avoid native Korean read-outs (e.g. 아흔아홉 평 -> 구십구 평)
+      cleanedText = cleanedText.replace(/(\d+)\s*(평|층|호|년)/g, (match, p1, p2) => {
+        return toSinoKorean(parseInt(p1, 10)) + p2;
+      });
+
+      // Convert remaining standalone numbers (like phone numbers, land lot numbers) digit-by-digit
+      const digitMap: Record<string, string> = {
+        '0': '공', '1': '일', '2': '이', '3': '삼', '4': '사',
+        '5': '오', '6': '육', '7': '칠', '8': '팔', '9': '구'
+      };
+      cleanedText = cleanedText.replace(/(\d)/g, (match) => digitMap[match] || match);
 
       // Strip parenthesized text (reference tips), emojis, asterisks, and markdown formatting characters
       cleanedText = cleanedText
