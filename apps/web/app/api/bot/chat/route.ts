@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 const SYSTEM_PROMPT = `당신은 랜드노트의 '부동산 매물 자동 접수 AI 봇'입니다.
 말투는 기계적이거나 지루하지 않고, 생동감 있고 비서처럼 다정하며 친근하고 신속한 말투를 유지해야 합니다. 항상 친절한 느낌의 인사와 공감 표현을 섞어가며 경쾌하게 답변해 주세요!
@@ -112,9 +113,72 @@ export async function POST(req: Request) {
     
     if (functionCallPart) {
       const args = functionCallPart.functionCall.args;
-      // In a real scenario, we would save to Supabase here
       console.log('Received save_property_listing function call:', args);
       
+      try {
+        // 1. Initialize Supabase
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://aoucvlpmhrqymziktevu.supabase.co',
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_LaugXgJoQNozOLkG14J-CQ_i8PJgJ6b'
+        );
+
+        // 2. Fetch agent code
+        const { data: agentData, error: agentError } = await supabase
+          .from('agents')
+          .select('agent_code')
+          .eq('id', agentId)
+          .single();
+
+        if (agentError) {
+          console.error('Error fetching agent code:', agentError);
+        }
+
+        const agentCode = agentData?.agent_code || 'test-agent';
+
+        // 3. Helper functions for mapping
+        const mapPropertyType = (type: string) => {
+          const val = (type || '').toLowerCase();
+          if (val.includes('아파트') || val.includes('주택') || val.includes('빌라') || val.includes('원룸') || val.includes('주거')) return 'residential';
+          if (val.includes('상가') || val.includes('사무실') || val.includes('점포') || val.includes('상업')) return 'commercial';
+          if (val.includes('공장') || val.includes('창고') || val.includes('산업')) return 'industrial';
+          return 'land';
+        };
+
+        const mapTransactionType = (type: string) => {
+          const val = (type || '').toLowerCase();
+          if (val.includes('매매')) return 'sale';
+          if (val.includes('전세')) return 'jeonse';
+          if (val.includes('월세')) return 'monthly_rent';
+          return 'premium_transfer';
+        };
+
+        // 4. Save via Public API call to NestJS backend
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const apiRes = await fetch(`${apiUrl}/public/inquiries/${agentCode}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            inquiry_type: 'listing',
+            customer_name: 'AI 봇 접수 고객',
+            customer_phone: '010-0000-0000', // Default placeholder
+            category_codes: [mapPropertyType(args.property_type)],
+            transaction_types: [mapTransactionType(args.transaction_type)],
+            detailed_conditions: {
+              memo: `[AI 봇 접수]\n- 매물종류: ${args.property_type}\n- 거래형태: ${args.transaction_type}\n- 주소: ${args.address}\n- 희망가: ${args.price}\n- 면적: ${args.area}\n- 특징: ${args.features || '없음'}`
+            }
+          })
+        });
+
+        if (!apiRes.ok) {
+          const err = await apiRes.text();
+          console.error('NestJS public inquiry API failed:', err);
+        } else {
+          console.log('Inquiry successfully created in NestJS database!');
+        }
+      } catch (dbErr) {
+        console.error('Failed to store inquiry in database:', dbErr);
+      }
+
       return NextResponse.json({ 
         reply: "매물 접수가 성공적으로 완료되었습니다! 담당 공인중개사가 곧 확인 후 연락드리겠습니다. 감사합니다.",
         isComplete: true,
