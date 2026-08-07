@@ -59,7 +59,7 @@ export default function DashboardPage() {
   const { data: summary, isLoading: summaryLoading } = useSummary();
   const { agent } = useAgent();
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [activeView, setActiveView] = useState<'new_listings' | 'total_listings' | 'new_buyers' | 'total_buyers' | null>(null);
+  const [activeView, setActiveView] = useState<'new_listings' | 'total_listings' | 'new_buyers' | 'total_buyers' | null>('total_listings');
   const loading = summaryLoading;
 
   if (loading) {
