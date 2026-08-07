@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useFormStore } from '@/lib/stores/form-store';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +13,7 @@ interface Props {
   phone: string | null;
   selectedCategories: CategoryCode[];
   subscriptionPlan: string;
+  isBetaTester?: boolean;
 }
 
 export function FormProgress({ current }: { current: number }) {
@@ -19,12 +21,11 @@ export function FormProgress({ current }: { current: number }) {
   return null;
 }
 
-
-
-export default function Step1Client({ agentCode, agentName, officeName, phone, selectedCategories, subscriptionPlan }: Props) {
+export default function Step1Client({ agentCode, agentName, officeName, phone, selectedCategories, subscriptionPlan, isBetaTester }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const store = useFormStore();
+  const [showMethodModal, setShowMethodModal] = useState(false);
 
   const handleSelect = (type: 'looking_for' | 'listing') => {
     store.setInquiryType(type);
@@ -57,6 +58,14 @@ export default function Step1Client({ agentCode, agentName, officeName, phone, s
     }
   };
 
+  const handleListingClick = () => {
+    if (isBetaTester) {
+      setShowMethodModal(true);
+    } else {
+      handleSelect('listing');
+    }
+  };
+
   return (
     <>
       <FormProgress current={1} />
@@ -75,7 +84,7 @@ export default function Step1Client({ agentCode, agentName, officeName, phone, s
       <div className="space-y-4 mt-8">
         <Card
           className="cursor-pointer border-transparent bg-indigo-600 text-white shadow-md transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]"
-          onClick={() => handleSelect('listing')}
+          onClick={handleListingClick}
         >
           <CardContent className="flex items-center gap-4 p-6">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-3xl shadow-sm">
@@ -108,6 +117,58 @@ export default function Step1Client({ agentCode, agentName, officeName, phone, s
         </Card>
       </div>
 
+      {showMethodModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-zinc-200 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-bold tracking-tight text-zinc-900">접수 방식 선택</h3>
+              <p className="text-xs text-zinc-500 mt-1">편리한 방법으로 매물을 접수해 주세요</p>
+            </div>
+            <div className="space-y-3">
+              <div
+                className="cursor-pointer relative overflow-hidden rounded-2xl border-2 border-indigo-600 bg-gradient-to-br from-indigo-50/50 to-white p-4 transition-all hover:shadow-md hover:scale-[1.01] active:scale-95"
+                onClick={() => router.push(`/bot/${agentCode}`)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white text-xl">
+                    🎙️
+                  </div>
+                  <div>
+                    <p className="font-bold text-zinc-900 text-sm">AI 음성 챗봇으로 접수</p>
+                    <p className="text-[11px] text-indigo-600 font-semibold mt-0.5">말 한마디로 30초 만에 접수 완료 (추천)</p>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className="cursor-pointer rounded-2xl border border-zinc-200 bg-white p-4 transition-all hover:bg-zinc-50 hover:scale-[1.01] active:scale-95"
+                onClick={() => {
+                  setShowMethodModal(false);
+                  handleSelect('listing');
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-700 text-xl">
+                    📝
+                  </div>
+                  <div>
+                    <p className="font-bold text-zinc-800 text-sm">일반 텍스트 입력</p>
+                    <p className="text-[11px] text-zinc-500 mt-0.5">기존 입력 폼을 채워서 접수</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="mt-5 text-center">
+              <button
+                onClick={() => setShowMethodModal(false)}
+                className="text-xs font-semibold text-zinc-400 hover:text-zinc-600 transition-colors py-1 px-4"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

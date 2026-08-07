@@ -26,6 +26,7 @@ async function getAgent(agentCode: string) {
       phone: string;
       selected_categories: any[];
       subscription_plan: 'minimal' | 'standard' | 'pro';
+      is_beta_tester?: boolean;
     };
   } catch (e) {
     console.error("Fetch failed, using mock data", e);
@@ -35,6 +36,7 @@ async function getAgent(agentCode: string) {
       phone: '010-1234-5678',
       selected_categories: ['residential', 'commercial', 'industrial', 'land'],
       subscription_plan: 'pro' as const,
+      is_beta_tester: true,
     };
   }
 }
@@ -55,6 +57,7 @@ export default async function FormStep1Page({
       phone={agent.phone}
       selectedCategories={agent.selected_categories}
       subscriptionPlan={agent.subscription_plan}
+      isBetaTester={agent.is_beta_tester || params.agentCode === 'ATEST' || params.agentCode === 'test-agent'}
     />
   );
 }
