@@ -18,6 +18,8 @@ import { InstallAppButton } from '@/components/install-app-button';
 
 const NAV_ITEMS = [
   { label: '현황', href: '/dashboard', icon: LayoutDashboard },
+  { label: '매물 관리', href: '/dashboard/listings', icon: Building2 },
+  { label: '문의 관리', href: '/dashboard/inquiries', icon: MessageSquare },
   { label: '매칭', href: '/dashboard/matching', icon: Shuffle },
   { label: '통계', href: '/dashboard/stats', icon: BarChart3 },
   { label: 'AI 간편 입력', href: '/dashboard/ai-scanner', icon: Camera },
