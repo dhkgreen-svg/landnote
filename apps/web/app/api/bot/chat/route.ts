@@ -8,20 +8,25 @@ const SYSTEM_PROMPT = `당신은 랜드노트의 '부동산 매물 자동 접수
 1. 답변에 **이모지, 아이콘, 특수 그림 문자(예: 🤖, 👍, ✨ 등)**를 절대 사용하지 마세요. 오직 한글 문자만 출력해야 합니다.
 2. 별표(**, ***), 대시(-), 슬래시 등 일반 마크다운 서식 기호는 가급적 피해주세요. (단, 마지막 단계에서 수집된 매물 내역을 표 형식으로 요약하여 출력하기 위해 마크다운 표(| 항목 | 내용 |) 서식을 사용하는 것은 필수이며 강력하게 권장됩니다.)
 
-[대화 스타일]
-- 생동감 있고 밝은 비서 톤 (예: "~요!", "~해드릴게요!", "~이군요!")
-- 고객의 답변에 신속하고 따뜻하게 공감한 뒤, 군더더기 없이 빠르고 정확하게 다음 핵심 정보만 간단히 유도하세요.
-- '정말 잘 알겠습니다', '네, OO매물이시군요!', '네, OO이시군요!' 같은 불필요한 수식어 및 과장된 리액션은 사용하지 마세요.
-- 고객이 첫 단계에서 매물 종류(예: 아파트, 상가, 공장, 토지)를 선택하거나 언급하면 리액션 없이 바로 "이 매물은 매매인가요, 전세인가요, 아니면 월세인가요?" 라고 핵심을 간결하게 질문해 주세요.
-- 고객이 거래 종류(예: 매매, 전세, 월세)를 선택하거나 언급하면 불필요한 리액션 없이 바로 "[매물종류] 지번은 어떻게 되시나요? (동/리 단위까지만 알려주셔도 접수됩니다.)" 라고 정확하게 괄호를 써서 출력하세요. 임의로 괄호를 빼거나 줄글로 풀어서 출력하면 절대 안 됩니다. (예: 공장의 경우 "공장 지번은 어떻게 되시나요? (동/리 단위까지만 알려주셔도 접수됩니다.)")
+[대화 흐름 단계 - 순서 엄수]
+1단계 (매물 종류 선택): 고객이 아파트, 상가, 공장, 토지 중 하나를 입력/선택합니다.
+2단계 (의뢰인 인적사항): 매물 종류가 입력되자마자, 불필요한 리액션 없이 바로 다음 질문으로 즉시 "성함과 전화번호를 알려주세요. 의뢰하시는 분 전화번호를 부탁드리겠습니다." 라고 명확하게 질문하여 성함과 전화번호를 먼저 획득하세요.
+3단계 (거래 유형): 성함과 전화번호를 획득한 후, 리액션 없이 바로 "이 매물은 매매인가요, 전세인가요, 아니면 월세인가요?" 라고 핵심을 간결하게 질문하세요.
+4단계 (지번): 거래 유형이 정해지면 "[매물종류] 지번은 어떻게 되시나요? (동/리 단위까지만 알려주셔도 접수됩니다.)" 라고 정확하게 괄호를 써서 출력하세요. (예: "공장 지번은 어떻게 되시나요? (동/리 단위까지만 알려주셔도 접수됩니다.)")
+5단계 (희망가격): 지번 획득 후 희망 가격을 유도하세요.
+6단계 (면적): 면적을 유도하세요.
+7단계 (특이사항): 특수 정보 및 특이 사항을 물어보세요.
+8단계 (최종 확인): 모든 정보가 수집되면 2열 요약 표 형식으로 가독성 높게 접수 내역을 확인해 주고 마무리하세요.
 
 [필수 수집 정보]
-- 매물 종류 (예: 아파트, 상가, 공장, 토지 등)
-- 거래 종류 (예: 매매, 전세, 월세)
-- 주소 (대략적인 동/리 단위라도)
-- 희망 가격 (매매가, 보증금, 월세 등)
-- 면적 (대지면적, 전용면적 등)
-- 특수 정보 (공장일 경우 층고, 동력 등 / 상가일 경우 권리금 유무 등)
+- 의뢰인 성함 (client_name)
+- 의뢰인 연락처 (client_phone)
+- 매물 종류 (property_type)
+- 거래 종류 (transaction_type)
+- 주소 (address)
+- 희망 가격 (price)
+- 면적 (area)
+- 특수 정보 (features - 예: 공장의 경우 층고/동력, 상가의 경우 권리금 유무 등)
 
 [대화 수칙]
 1. 한 번에 너무 많은 질문을 하지 마세요. 고객이 피로하지 않도록 한 번에 딱 1~2개씩만 간결하고 정확하게 물어보세요.
@@ -32,6 +37,8 @@ const SYSTEM_PROMPT = `당신은 랜드노트의 '부동산 매물 자동 접수
 
    | 항목 | 내용 |
    | :--- | :--- |
+   | 성함 | [의뢰인 성함] |
+   | 연락처 | [의뢰인 연락처] |
    | 매물 종류 | [수집된 매물 종류] |
    | 거래 종류 | [수집된 거래 종류] |
    | 주소 | [수집된 주소] |
@@ -164,6 +171,8 @@ export async function POST(req: Request) {
               parameters: {
                 type: 'OBJECT',
                 properties: {
+                  client_name: { type: 'STRING', description: '의뢰인 성함' },
+                  client_phone: { type: 'STRING', description: '의뢰인 연락처(전화번호)' },
                   property_type: { type: 'STRING', description: '매물 종류 (아파트, 상가, 공장, 토지 등)' },
                   transaction_type: { type: 'STRING', description: '거래 종류 (매매, 전세, 월세)' },
                   address: { type: 'STRING', description: '매물 주소' },
@@ -171,7 +180,7 @@ export async function POST(req: Request) {
                   area: { type: 'STRING', description: '면적 (대지/연면적 등)' },
                   features: { type: 'STRING', description: '특이 사항 및 기타 조건' },
                 },
-                required: ['property_type', 'transaction_type', 'address', 'price', 'area'],
+                required: ['client_name', 'client_phone', 'property_type', 'transaction_type', 'address', 'price', 'area'],
               },
             },
           ],
@@ -259,7 +268,7 @@ export async function POST(req: Request) {
           status: 'active',
           images: [],
           detail_info: {},
-          agent_memo: `[AI 챗봇 자동 접수]\n- 매물종류: ${args.property_type}\n- 거래형태: ${args.transaction_type}\n- 주소: ${args.address}\n- 희망가: ${args.price}\n- 면적: ${args.area}\n- 특징: ${args.features || '없음'}`
+          agent_memo: `[AI 챗봇 자동 접수]\n- 의뢰인 성함: ${args.client_name || '미입력'}\n- 의뢰인 연락처: ${args.client_phone || '미입력'}\n- 매물종류: ${args.property_type}\n- 거래형태: ${args.transaction_type}\n- 주소: ${args.address}\n- 희망가: ${args.price}\n- 면적: ${args.area}\n- 특징: ${args.features || '없음'}`
         };
 
         // Apply price fields mapping depending on transaction type to satisfy DTO validators
