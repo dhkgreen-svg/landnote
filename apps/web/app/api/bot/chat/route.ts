@@ -107,6 +107,142 @@ export async function POST(req: Request) {
 
     const data = await response.json();
     
+// Helper functions for parsing Korean prices and features
+const parseKoreanPrice = (priceStr: string): number => {
+  if (!priceStr) return 1;
+  const clean = priceStr.replace(/\s/g, '').replace(/,/g, '');
+  
+  let total = 0;
+  const eokMatch = clean.match(/(\d+(?:\.\d+)?)(?:억)/);
+  if (eokMatch) {
+    total += parseFloat(eokMatch[1]) * 10000; // 1억 = 10,000만 원
+  }
+  
+  const afterEok = clean.split('억')[1] || clean;
+  const manMatch = afterEok.match(/(\d+)(?:만)?/);
+  if (manMatch && !afterEok.includes('억')) {
+    total += parseInt(manMatch[1], 10);
+  } else if (manMatch) {
+    let val = parseInt(manMatch[1], 10);
+    if (afterEok.includes('천') && !afterEok.includes('만')) {
+      val = val * 1000;
+    }
+    total += val;
+  }
+  
+  if (total === 0) {
+    const num = parseInt(clean.replace(/[^0-9]/g, ''), 10);
+    if (!isNaN(num) && num > 0) {
+      if (num > 1000000) return Math.floor(num / 10000);
+      return num;
+    }
+  }
+  return total > 0 ? total : 1;
+};
+
+const parseDepositAndRent = (priceStr: string, featuresStr: string = '') => {
+  let deposit = 1000;
+  let monthly_rent = 50;
+  const combined = (priceStr + ' ' + featuresStr).replace(/\s/g, '').replace(/,/g, '');
+  
+  const depositMatch = combined.match(/(?:보증금|보증|보)(\d+(?:\.\d+)?)(?:억|만)?/);
+  if (depositMatch) {
+    let val = parseFloat(depositMatch[1]);
+    if (depositMatch[0].includes('억')) val *= 10000;
+    deposit = val;
+  }
+  
+  const rentMatch = combined.match(/(?:월세|월|세)(\d+(?:\.\d+)?)(?:만)?/);
+  if (rentMatch) {
+    monthly_rent = parseFloat(rentMatch[1]);
+  }
+  
+  const slashMatch = combined.match(/(\d+)\/(\d+)/);
+  if (slashMatch) {
+    deposit = parseInt(slashMatch[1], 10);
+    monthly_rent = parseInt(slashMatch[2], 10);
+  }
+  
+  return { deposit, monthly_rent };
+};
+
+const parsePremiumPrice = (priceStr: string, featuresStr: string = '') => {
+  const combined = (priceStr + ' ' + featuresStr).replace(/\s/g, '').replace(/,/g, '');
+  const premiumMatch = combined.match(/(?:권리금|권리|권)(\d+(?:\.\d+)?)(?:억|만)?/);
+  if (premiumMatch) {
+    let val = parseFloat(premiumMatch[1]);
+    if (premiumMatch[0].includes('억')) val *= 10000;
+    return val;
+  }
+  return 100;
+};
+
+export async function POST(req: Request) {
+  try {
+    const { messages, agentId } = await req.json();
+
+    if (!messages || !Array.isArray(messages)) {
+      return NextResponse.json({ error: 'Invalid messages array' }, { status: 400 });
+    }
+
+    if (!agentId) {
+      return NextResponse.json({ error: 'Agent ID is required' }, { status: 400 });
+    }
+
+    // Call Gemini API with SYSTEM_PROMPT and messages
+    const requestBody = {
+      contents: [
+        { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
+        ...messages.map((m: any) => ({
+          role: m.role === 'bot' ? 'model' : 'user',
+          parts: [{ text: m.content }],
+        })),
+      ],
+      generationConfig: {
+        temperature: 0.1,
+      },
+      tools: [
+        {
+          functionDeclarations: [
+            {
+              name: 'save_property_listing',
+              description: 'Save property listing details collected from the user to the database once the user explicitly agrees to complete the registration.',
+              parameters: {
+                type: 'OBJECT',
+                properties: {
+                  property_type: { type: 'STRING', description: '매물 종류 (아파트, 상가, 공장, 토지 등)' },
+                  transaction_type: { type: 'STRING', description: '거래 종류 (매매, 전세, 월세)' },
+                  address: { type: 'STRING', description: '매물 주소' },
+                  price: { type: 'STRING', description: '희망 가격 (예: 매매가 4억 5천만 원, 보증금 1천 / 월세 80)' },
+                  area: { type: 'STRING', description: '면적 (대지/연면적 등)' },
+                  features: { type: 'STRING', description: '특이 사항 및 기타 조건' },
+                },
+                required: ['property_type', 'transaction_type', 'address', 'price', 'area'],
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    const responseGemini = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      }
+    );
+
+    if (!responseGemini.ok) {
+      const errText = await responseGemini.text();
+      console.error('Gemini API Error details:', errText);
+      throw new Error(`Gemini API Error: ${responseGemini.statusText}`);
+    }
+
+    const data = await responseGemini.json();
+
     // Check if Gemini returned a function call
     const candidateParts = data.candidates?.[0]?.content?.parts || [];
     const functionCallPart = candidateParts.find((p: any) => p.functionCall);
@@ -116,24 +252,24 @@ export async function POST(req: Request) {
       console.log('Received save_property_listing function call:', args);
       
       try {
-        // 1. Initialize Supabase
+        // 1. Initialize Supabase with service role key to bypass RLS in server environment
         const supabase = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://aoucvlpmhrqymziktevu.supabase.co',
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_LaugXgJoQNozOLkG14J-CQ_i8PJgJ6b'
+          process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_LaugXgJoQNozOLkG14J-CQ_i8PJgJ6b'
         );
 
-        // 2. Fetch agent code
+        // 2. Fetch agent code case-insensitively using maybeSingle
         const { data: agentData, error: agentError } = await supabase
           .from('agents')
           .select('agent_code')
-          .eq('agent_code', agentId)
-          .single();
+          .ilike('agent_code', agentId)
+          .maybeSingle();
 
         if (agentError) {
           console.error('Error fetching agent code:', agentError);
         }
 
-        const agentCode = agentData?.agent_code || 'test-agent';
+        const agentCode = agentData?.agent_code || 'ATEST';
 
         // 3. Helper functions for mapping
         const mapPropertyType = (type: string) => {
@@ -152,21 +288,43 @@ export async function POST(req: Request) {
           return 'premium_transfer';
         };
 
-        // 4. Save via Public API call to NestJS backend
+        // 4. Save via Public API call to NestJS backend with correct price validation mapping
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        
+        const mappedTxType = mapTransactionType(args.transaction_type);
+        const parsedPrice = parseKoreanPrice(args.price);
+
+        const bodyPayload: any = {
+          inquiry_type: 'listing',
+          customer_name: 'AI 봇 접수 고객',
+          customer_phone: '010-0000-0000',
+          category_codes: [mapPropertyType(args.property_type)],
+          transaction_types: [mappedTxType],
+          detailed_conditions: {
+            memo: `[AI 봇 접수]\n- 매물종류: ${args.property_type}\n- 거래형태: ${args.transaction_type}\n- 주소: ${args.address}\n- 희망가: ${args.price}\n- 면적: ${args.area}\n- 특징: ${args.features || '없음'}`
+          }
+        };
+
+        // Apply price fields mapping depending on transaction type to satisfy DTO validators
+        if (mappedTxType === 'sale') {
+          bodyPayload.price_sale = parsedPrice;
+        } else if (mappedTxType === 'jeonse') {
+          bodyPayload.price_jeonse = parsedPrice;
+        } else if (mappedTxType === 'monthly_rent') {
+          const { deposit, monthly_rent } = parseDepositAndRent(args.price, args.features);
+          bodyPayload.deposit = deposit;
+          bodyPayload.monthly_rent = monthly_rent;
+        } else if (mappedTxType === 'premium_transfer') {
+          const { deposit, monthly_rent } = parseDepositAndRent(args.price, args.features);
+          bodyPayload.deposit = deposit;
+          bodyPayload.monthly_rent = monthly_rent;
+          bodyPayload.premium_price = parsePremiumPrice(args.price, args.features);
+        }
+
         const apiRes = await fetch(`${apiUrl}/public/inquiries/${agentCode}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            inquiry_type: 'listing',
-            customer_name: 'AI 봇 접수 고객',
-            customer_phone: '010-0000-0000', // Default placeholder
-            category_codes: [mapPropertyType(args.property_type)],
-            transaction_types: [mapTransactionType(args.transaction_type)],
-            detailed_conditions: {
-              memo: `[AI 봇 접수]\n- 매물종류: ${args.property_type}\n- 거래형태: ${args.transaction_type}\n- 주소: ${args.address}\n- 희망가: ${args.price}\n- 면적: ${args.area}\n- 특징: ${args.features || '없음'}`
-            }
-          })
+          body: JSON.stringify(bodyPayload)
         });
 
         if (!apiRes.ok) {
