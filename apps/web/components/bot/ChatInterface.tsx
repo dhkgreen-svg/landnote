@@ -27,6 +27,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Check beta permission on mount
   useEffect(() => {
@@ -56,21 +57,24 @@ export function ChatInterface({ agentId }: { agentId: string }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Auto-resize and auto-scroll textarea on input change
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
+      textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
+    }
+  }, [input]);
+
   // Initial TTS greeting if speaker is on and verified beta tester
   useEffect(() => {
     if (messages.length === 1 && isBetaTester === true) {
-      speak(messages[0].content, () => {
-        // Auto start listening after greeting finishes
-        startListening();
-      });
+      speak(messages[0].content);
     }
   }, [isBetaTester]);
 
-  const speak = (text: string, onEndCallback?: () => void) => {
-    if (!isSpeakerOn) {
-      if (onEndCallback) onEndCallback();
-      return;
-    }
+  const speak = (text: string) => {
+    if (!isSpeakerOn) return;
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       
@@ -86,13 +90,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
       utterance.lang = 'ko-KR';
       utterance.rate = 1.55; // Snappy speed (increased from 1.25)
       utterance.pitch = 1.15; // Energetic, bright pitch
-      if (onEndCallback) {
-        utterance.onend = () => onEndCallback();
-        utterance.onerror = () => onEndCallback();
-      }
       window.speechSynthesis.speak(utterance);
-    } else {
-      if (onEndCallback) onEndCallback();
     }
   };
 
@@ -126,17 +124,13 @@ export function ChatInterface({ agentId }: { agentId: string }) {
       
       const botMessage: Message = { id: (Date.now() + 1).toString(), role: 'bot', content: data.reply };
       setMessages((prev) => [...prev, botMessage]);
-      speak(data.reply, () => {
-        startListening();
-      });
+      speak(data.reply);
       
     } catch (error) {
       console.error(error);
       const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'bot', content: '죄송합니다. 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' };
       setMessages((prev) => [...prev, errorMessage]);
-      speak(errorMessage.content, () => {
-        startListening();
-      });
+      speak(errorMessage.content);
     } finally {
       setIsLoading(false);
     }
@@ -305,6 +299,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
           </button>
           
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
