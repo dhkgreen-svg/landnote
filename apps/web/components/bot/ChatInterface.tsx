@@ -365,6 +365,37 @@ export function ChatInterface({ agentId }: { agentId: string }) {
                 </button>
               </div>
             )}
+
+            {msg.role === 'bot' && messages[messages.length - 1] === msg && (
+              (() => {
+                const content = msg.content;
+                if (content.includes('요약') || content.includes('완료') || content.includes('성공')) return null;
+                const isAskingTx = content.includes('거래 종류') || content.includes('거래 유형') || content.includes('거래 형태') || (content.includes('매매') && content.includes('전세') && content.includes('월세'));
+                if (!isAskingTx) return null;
+                return (
+                  <div className="mt-3 flex flex-wrap gap-2 max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <button
+                      onClick={() => handleSend('매매')}
+                      className="px-4 py-2 text-[13px] font-bold rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+                    >
+                      💰 매매
+                    </button>
+                    <button
+                      onClick={() => handleSend('전세')}
+                      className="px-4 py-2 text-[13px] font-bold rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+                    >
+                      🔑 전세
+                    </button>
+                    <button
+                      onClick={() => handleSend('월세')}
+                      className="px-4 py-2 text-[13px] font-bold rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+                    >
+                      💸 월세
+                    </button>
+                  </div>
+                );
+              })()
+            )}
           </div>
         ))}
         {isLoading && (
