@@ -531,50 +531,51 @@ export function ChatInterface({ agentId }: { agentId: string }) {
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} className="h-4" />
-      </div>
 
-      {/* Input Area */}
-      <div className="p-3 bg-white border-t shrink-0">
-        <div className="flex items-end gap-2 bg-gray-50 p-2 rounded-3xl border focus-within:ring-1 focus-within:ring-primary/50 transition-all">
-          <button
-            onClick={toggleListen}
-            className={`p-3 rounded-full flex-shrink-0 transition-all ${
-              isListening 
-                ? 'bg-red-500 text-white animate-pulse ring-4 ring-red-500/20' 
-                : 'bg-red-50 text-red-500 hover:bg-red-100 border border-red-200'
-            }`}
-          >
-            <Mic className="w-5 h-5" />
-          </button>
-          
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder="여기에 입력하거나 마이크를 누르세요"
-            className="flex-1 bg-transparent border-0 focus:ring-0 resize-none py-3 px-2 min-h-[44px] max-h-[120px] text-[15px]"
-            rows={1}
-            style={{
-              height: 'auto',
-            }}
-          />
-          
-          <Button
-            onClick={() => handleSend()}
-            disabled={!input.trim() || isLoading}
-            size="icon"
-            className="h-[44px] w-[44px] rounded-full flex-shrink-0"
-          >
-            <Send className="w-5 h-5" />
-          </Button>
+        {/* Inline Input Area */}
+        <div className="pt-2 animate-in fade-in duration-300">
+          <div className="flex items-end gap-2 bg-gray-50 p-2 rounded-3xl border focus-within:ring-1 focus-within:ring-primary/50 transition-all shadow-sm">
+            <button
+              onClick={toggleListen}
+              className={`p-3 rounded-full flex-shrink-0 transition-all ${
+                isListening 
+                  ? 'bg-red-500 text-white animate-pulse ring-4 ring-red-500/20' 
+                  : 'bg-red-50 text-red-500 hover:bg-red-100 border border-red-200'
+              }`}
+            >
+              <Mic className="w-5 h-5" />
+            </button>
+            
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder="여기에 입력하거나 마이크를 누르세요"
+              className="flex-1 bg-transparent border-0 focus:ring-0 resize-none py-3 px-2 min-h-[44px] max-h-[120px] text-[15px]"
+              rows={1}
+              style={{
+                height: 'auto',
+              }}
+            />
+            
+            <Button
+              onClick={() => handleSend()}
+              disabled={!input.trim() || isLoading}
+              size="icon"
+              className="h-[44px] w-[44px] rounded-full flex-shrink-0"
+            >
+              <Send className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
+
+        <div ref={messagesEndRef} className="h-4" />
       </div>
     </div>
   );
