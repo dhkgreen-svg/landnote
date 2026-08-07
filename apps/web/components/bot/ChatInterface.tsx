@@ -80,8 +80,9 @@ export function ChatInterface({ agentId }: { agentId: string }) {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       
-      // Strip emojis, asterisks, and markdown formatting characters
+      // Strip parenthesized text (reference tips), emojis, asterisks, and markdown formatting characters
       const cleanedText = text
+        .replace(/\([^)]*\)/g, '') // Remove text inside parentheses (e.g. (동/리 단위...))
         .replace(/\*+/g, '') // Remove asterisks
         .replace(/[-#`_\n]/g, ' ') // Remove markdown bullets/lines
         .replace(/[\u{1F300}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1F1E6}-\u{1F1FF}]/gu, '') // Remove emojis
