@@ -319,10 +319,10 @@ export function ChatInterface({ agentId }: { agentId: string }) {
       }
 
       if (data.isComplete) {
-        // Switch to the completion page after the bot finishes speaking
+        // Switch to the completion page immediately
         setTimeout(() => {
           setIsComplete(true);
-        }, 3500);
+        }, 800);
       }
       
     } catch (error) {
@@ -518,7 +518,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 justify-start">
         {messages.map((msg) => (
           <div
             key={msg.id}

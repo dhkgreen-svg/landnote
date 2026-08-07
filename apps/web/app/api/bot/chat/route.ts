@@ -57,28 +57,39 @@ const parseKoreanPrice = (priceStr: string): number => {
   const clean = priceStr.replace(/\s/g, '').replace(/,/g, '');
   
   let total = 0;
-  const eokMatch = clean.match(/(\d+(?:\.\d+)?)(?:억)/);
-  if (eokMatch) {
-    total += parseFloat(eokMatch[1]) * 10000; // 1억 = 10,000만 원
-  }
-  
-  const afterEok = clean.split('억')[1] || clean;
-  const manMatch = afterEok.match(/(\d+)(?:만)?/);
-  if (manMatch && !afterEok.includes('억')) {
-    total += parseInt(manMatch[1], 10);
-  } else if (manMatch) {
-    let val = parseInt(manMatch[1], 10);
-    if (afterEok.includes('천') && !afterEok.includes('만')) {
-      val = val * 1000;
+  if (clean.includes('억')) {
+    const parts = clean.split('억');
+    const eokPart = parts[0];
+    const restPart = parts[1] || '';
+    const eokVal = parseFloat(eokPart);
+    if (!isNaN(eokVal)) {
+      total += eokVal * 10000;
     }
-    total += val;
-  }
-  
-  if (total === 0) {
-    const num = parseInt(clean.replace(/[^0-9]/g, ''), 10);
-    if (!isNaN(num) && num > 0) {
-      if (num > 1000000) return Math.floor(num / 10000);
-      return num;
+    if (restPart) {
+      if (restPart.includes('천')) {
+        const chunMatch = restPart.match(/(\d+(?:\.\d+)?)(?:천)/);
+        if (chunMatch) {
+          total += parseFloat(chunMatch[1]) * 1000;
+        }
+      } else {
+        const manMatch = restPart.match(/(\d+(?:\.\d+)?)/);
+        if (manMatch) {
+          total += parseFloat(manMatch[1]);
+        }
+      }
+    }
+  } else {
+    if (clean.includes('만')) {
+      const manMatch = clean.match(/(\d+(?:\.\d+)?)(?:만)?/);
+      if (manMatch) {
+        total += parseFloat(manMatch[1]);
+      }
+    } else {
+      const num = parseInt(clean.replace(/[^0-9]/g, ''), 10);
+      if (!isNaN(num) && num > 0) {
+        if (num > 1000000) return Math.floor(num / 10000);
+        return num;
+      }
     }
   }
   return total > 0 ? total : 1;
@@ -290,11 +301,45 @@ export async function POST(req: Request) {
         }
 
         // Apply area mapping (extract numeric value)
-        const areaNum = parseInt((args.area || '').replace(/[^0-9]/g, ''), 10);
-        if (!isNaN(areaNum) && areaNum > 0) {
-          insertData.area_exclusive = areaNum;
-          insertData.area_supply = areaNum;
-        }
+        const parseKoreanArea = (areaStr: string) => {
+          const clean = (areaStr || '').replace(/\s/g, '');
+          let area_land = null;
+          let area_building = null;
+          let area_exclusive = null;
+          let area_supply = null;
+
+          const landMatch = clean.match(/(?:대지면적|대지|토지|땅)(\d+(?:\.\d+)?)/);
+          if (landMatch) area_land = parseFloat(landMatch[1]);
+
+          const buildingMatch = clean.match(/(?:연면적|건평|건물면적|건물|전용면적|전용)(\d+(?:\.\d+)?)/);
+          if (buildingMatch) {
+            area_building = parseFloat(buildingMatch[1]);
+            area_exclusive = area_building;
+            area_supply = area_building;
+          }
+
+          if (area_land === null && area_building === null) {
+            const simpleMatch = clean.match(/(\d+(?:\.\d+)?)/);
+            if (simpleMatch) {
+              const val = parseFloat(simpleMatch[1]);
+              area_exclusive = val;
+              area_supply = val;
+            }
+          }
+
+          if (area_land !== null && area_building === null) {
+            area_exclusive = area_land;
+            area_supply = area_land;
+          }
+
+          return { area_land, area_building, area_exclusive, area_supply };
+        };
+
+        const parsedArea = parseKoreanArea(args.area);
+        if (parsedArea.area_land !== null) insertData.area_land = parsedArea.area_land;
+        if (parsedArea.area_building !== null) insertData.area_building = parsedArea.area_building;
+        if (parsedArea.area_exclusive !== null) insertData.area_exclusive = parsedArea.area_exclusive;
+        if (parsedArea.area_supply !== null) insertData.area_supply = parsedArea.area_supply;
 
         const { data: newListing, error: insertErr } = await supabase
           .from('property_listings')
@@ -304,6 +349,10 @@ export async function POST(req: Request) {
 
         if (insertErr) {
           console.error('Failed to insert listing into property_listings:', insertErr);
+          return NextResponse.json({
+            error: 'Failed to insert listing into database',
+            details: insertErr
+          }, { status: 500 });
         } else {
           console.log('Listing successfully created in property_listings table:', newListing?.id);
           
@@ -368,7 +417,8 @@ export async function POST(req: Request) {
     }
 
     const replyText = candidateParts.find((p: any) => p.text)?.text || '죄송합니다. 답변을 생성하지 못했습니다.';
-    return NextResponse.json({ reply: replyText });
+    const cleanReplyText = replyText.replace(/[\u{1F300}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1F1E6}-\u{1F1FF}]/gu, '').trim();
+    return NextResponse.json({ reply: cleanReplyText });
   } catch (error: any) {
     console.error('Bot Chat API Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
