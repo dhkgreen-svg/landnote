@@ -18,7 +18,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
     {
       id: '1',
       role: 'bot',
-      content: '안녕하세요! 빠르고 정확한 매물 접수 봇입니다. 어떤 매물을 내놓으시겠어요? (예: 아파트, 상가, 공장)',
+      content: '안녕하세요! 빠르고 정확한 매물 접수 봇입니다. 어떤 매물을 내놓으시겠어요?',
     },
   ]);
   const [input, setInput] = useState('');
@@ -95,8 +95,9 @@ export function ChatInterface({ agentId }: { agentId: string }) {
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleSend = async (overrideText?: string) => {
+    const textToSend = (overrideText || input).trim();
+    if (!textToSend || isLoading) return;
 
     // Stop listening if active
     if (recognitionRef.current && isListening) {
@@ -107,7 +108,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
       setIsListening(false);
     }
 
-    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: input.trim() };
+    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: textToSend };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
@@ -324,7 +325,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
           >
             <div
               className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed shadow-sm ${
@@ -335,6 +336,35 @@ export function ChatInterface({ agentId }: { agentId: string }) {
             >
               {msg.content}
             </div>
+
+            {msg.id === '1' && messages.length === 1 && (
+              <div className="mt-3 flex flex-wrap gap-2 max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <button
+                  onClick={() => handleSend('아파트')}
+                  className="px-4 py-2 text-[13px] font-bold rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+                >
+                  🏠 아파트
+                </button>
+                <button
+                  onClick={() => handleSend('상가')}
+                  className="px-4 py-2 text-[13px] font-bold rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+                >
+                  🏬 상가
+                </button>
+                <button
+                  onClick={() => handleSend('공장')}
+                  className="px-4 py-2 text-[13px] font-bold rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+                >
+                  🏭 공장
+                </button>
+                <button
+                  onClick={() => handleSend('토지')}
+                  className="px-4 py-2 text-[13px] font-bold rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+                >
+                  🌳 토지
+                </button>
+              </div>
+            )}
           </div>
         ))}
         {isLoading && (
