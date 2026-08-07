@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { Mic, Send, Volume2, VolumeX, Loader2, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,92 @@ interface Message {
   id: string;
   role: 'user' | 'bot';
   content: string;
+}
+
+// Helper function to parse markdown tables in messages
+function parseMessageContent(content: string) {
+  const lines = content.split('\n');
+  const hasTable = lines.some(line => line.trim().startsWith('|') && line.includes('---'));
+  if (!hasTable) {
+    return <span className="whitespace-pre-line">{content}</span>;
+  }
+
+  const elements: React.ReactNode[] = [];
+  let inTable = false;
+  let tableRows: string[][] = [];
+  let textBuffer: string[] = [];
+
+  const flushTextBuffer = (key: string) => {
+    if (textBuffer.length > 0) {
+      elements.push(
+        <p key={key} className="whitespace-pre-line mb-1">
+          {textBuffer.join('\n')}
+        </p>
+      );
+      textBuffer = [];
+    }
+  };
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('|')) {
+      flushTextBuffer(`text-${index}`);
+      inTable = true;
+      const cells = line.split('|').map(c => c.trim()).filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+      if (!cells.every(cell => /^:?-+:?$/.test(cell))) {
+        tableRows.push(cells);
+      }
+    } else {
+      if (inTable) {
+        elements.push(renderTable(tableRows, `table-${index}`));
+        tableRows = [];
+        inTable = false;
+      }
+      textBuffer.push(line);
+    }
+  });
+
+  flushTextBuffer('text-final');
+  if (inTable && tableRows.length > 0) {
+    elements.push(renderTable(tableRows, 'table-final'));
+  }
+
+  return <div className="space-y-1">{elements}</div>;
+}
+
+function renderTable(rows: string[][], key: string) {
+  if (rows.length === 0) return null;
+  const headers = rows[0];
+  const dataRows = rows.slice(1);
+
+  return (
+    <div key={key} className="my-2.5 overflow-hidden border border-slate-100 rounded-xl bg-slate-50/50">
+      <table className="min-w-full divide-y divide-slate-100 text-sm">
+        {headers && (
+          <thead className="bg-slate-100/80">
+            <tr>
+              {headers.map((h, i) => (
+                <th key={i} className="px-3 py-1.5 text-left font-bold text-slate-700">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+        )}
+        <tbody className="divide-y divide-slate-100 bg-white">
+          {dataRows.map((row, rowIndex) => (
+            <tr key={rowIndex} className="hover:bg-slate-50/40 transition-colors">
+              {row.map((cell, cellIndex) => (
+                <td key={cellIndex} className="px-3 py-1.5 text-slate-600 font-medium whitespace-pre-wrap">
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 export function ChatInterface({ agentId }: { agentId: string }) {
@@ -80,8 +167,11 @@ export function ChatInterface({ agentId }: { agentId: string }) {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       
+      // Remove markdown tables before speaking
+      let cleanedText = text.replace(/\|[^|]*\|/g, '');
+
       // Strip parenthesized text (reference tips), emojis, asterisks, and markdown formatting characters
-      const cleanedText = text
+      cleanedText = cleanedText
         .replace(/\([^)]*\)/g, '') // Remove text inside parentheses (e.g. (동/리 단위...))
         .replace(/\*+/g, '') // Remove asterisks
         .replace(/[-#`_\n]/g, ' ') // Remove markdown bullets/lines
@@ -342,13 +432,13 @@ export function ChatInterface({ agentId }: { agentId: string }) {
             className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
           >
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed shadow-sm ${
+              className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed shadow-sm ${
                 msg.role === 'user'
                   ? 'bg-primary text-primary-foreground rounded-tr-sm'
                   : 'bg-white border text-gray-800 rounded-tl-sm'
               }`}
             >
-              {msg.content}
+              {parseMessageContent(msg.content)}
             </div>
 
             {msg.id === '1' && messages.length === 1 && (
