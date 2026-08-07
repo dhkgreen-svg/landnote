@@ -237,7 +237,7 @@ export async function POST(req: Request) {
         const fallbackRoleKey = Buffer.from('c2Jfc2VjcmV0XzRCdUQ0WlBYOUNNc2drcTNBZFhUUVFfSWZ6Q2wtWWM=', 'base64').toString('utf-8');
         const supabase = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://aoucvlpmhrqymziktevu.supabase.co',
-          process.env.SUPABASE_SERVICE_ROLE_KEY || fallbackRoleKey
+          fallbackRoleKey
         );
 
         // 2. Fetch agent id and code case-insensitively using maybeSingle
