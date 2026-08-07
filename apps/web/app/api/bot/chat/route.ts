@@ -47,7 +47,8 @@ const SYSTEM_PROMPT = `당신은 랜드노트의 '부동산 매물 자동 접수
    | 특이 사항 | [수집된 특이 사항 및 기타 특징] |
 
    이대로 접수해 드릴까요? 수정하실 부분이 있으신가요?"
-4. 사용자가 접수에 동의하면 즉시 "save_property_listing" 함수를 호출하여 접수 완료 처리하세요.`;
+4. 사용자가 접수에 동의하면 즉시 "save_property_listing" 함수를 호출하여 접수 완료 처리하세요.
+5. 사용자가 "수정할래요" 혹은 수정하고 싶다고 이야기하면, 다른 사족이나 추가 멘트 없이 오직 "수정하실 부분을 말씀해 주세요." 라고 답변하세요.`;
 
 // Helper functions for parsing Korean prices and features
 const parseKoreanPrice = (priceStr: string): number => {

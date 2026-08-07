@@ -473,6 +473,27 @@ export function ChatInterface({ agentId }: { agentId: string }) {
             {msg.role === 'bot' && messages[messages.length - 1] === msg && (
               (() => {
                 const content = msg.content;
+                const isFinalConfirmation = content.includes('이대로 접수') || content.includes('수정하실 부분이') || content.includes('매물 정리');
+                
+                if (isFinalConfirmation) {
+                  return (
+                    <div className="mt-3 flex flex-wrap gap-2 max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <button
+                        onClick={() => handleSend('이대로 접수')}
+                        className="px-4 py-2 text-[13px] font-bold rounded-xl border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-300 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+                      >
+                        ✅ 이대로 접수
+                      </button>
+                      <button
+                        onClick={() => handleSend('수정할래요')}
+                        className="px-4 py-2 text-[13px] font-bold rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+                      >
+                        ✏️ 수정
+                      </button>
+                    </div>
+                  );
+                }
+
                 if (content.includes('요약') || content.includes('완료') || content.includes('성공')) return null;
                 const isAskingTx = content.includes('거래 종류') || content.includes('거래 유형') || content.includes('거래 형태') || (content.includes('매매') && content.includes('전세') && content.includes('월세'));
                 if (!isAskingTx) return null;
