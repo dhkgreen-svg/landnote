@@ -170,7 +170,7 @@ export async function POST(req: Request) {
     // Call Gemini API with SYSTEM_PROMPT and messages
     const requestBody = {
       system_instruction: {
-        parts: { text: SYSTEM_PROMPT }
+        parts: [{ text: SYSTEM_PROMPT }]
       },
       contents: contents,
       generationConfig: {
@@ -203,7 +203,7 @@ export async function POST(req: Request) {
     };
 
     const responseGemini = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
