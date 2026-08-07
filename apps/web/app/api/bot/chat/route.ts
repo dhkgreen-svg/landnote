@@ -197,19 +197,19 @@ export async function POST(req: Request) {
           process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_LaugXgJoQNozOLkG14J-CQ_i8PJgJ6b'
         );
 
-        // 2. Fetch agent code case-insensitively using maybeSingle
+        // 2. Fetch agent id and code case-insensitively using maybeSingle
         const { data: agentDbData, error: agentError } = await supabase
           .from('agents')
-          .select('agent_code')
+          .select('id, agent_code')
           .ilike('agent_code', agentId)
           .maybeSingle();
 
         if (agentError) {
-          console.error('Error fetching agent code:', agentError);
+          console.error('Error fetching agent details:', agentError);
         }
 
-        const agentCode = agentDbData?.agent_code || 'ATEST';
-
+        const agentDbId = agentDbData?.id;
+        
         // 3. Helper functions for mapping
         const mapPropertyType = (type: string) => {
           const val = (type || '').toLowerCase();
@@ -227,51 +227,62 @@ export async function POST(req: Request) {
           return 'premium_transfer';
         };
 
-        // 4. Save via Public API call to NestJS backend with correct price validation mapping
+        // 4. Save directly into property_listings table
+        const mappedCategory = mapPropertyType(args.property_type);
         const mappedTxType = mapTransactionType(args.transaction_type);
         const parsedPrice = parseKoreanPrice(args.price);
 
-        const bodyPayload: any = {
-          inquiry_type: 'listing',
-          customer_name: 'AI 봇 접수 고객',
-          customer_phone: '010-0000-0000',
-          category_codes: [mapPropertyType(args.property_type)],
+        const insertData: any = {
+          agent_id: agentDbId,
+          category_codes: [mappedCategory],
+          subcategory_codes: [],
+          tags: ['AI접수'],
           transaction_types: [mappedTxType],
-          detailed_conditions: {
-            memo: `[AI 봇 접수]\n- 매물종류: ${args.property_type}\n- 거래형태: ${args.transaction_type}\n- 주소: ${args.address}\n- 희망가: ${args.price}\n- 면적: ${args.area}\n- 특징: ${args.features || '없음'}`
-          }
+          address_full: args.address || null,
+          address_road: args.address || null,
+          address_jibun: args.address || null,
+          status: 'active',
+          images: [],
+          detail_info: {},
+          agent_memo: `[AI 챗봇 자동 접수]\n- 매물종류: ${args.property_type}\n- 거래형태: ${args.transaction_type}\n- 주소: ${args.address}\n- 희망가: ${args.price}\n- 면적: ${args.area}\n- 특징: ${args.features || '없음'}`
         };
 
         // Apply price fields mapping depending on transaction type to satisfy DTO validators
         if (mappedTxType === 'sale') {
-          bodyPayload.price_sale = parsedPrice;
+          insertData.price_sale = parsedPrice;
         } else if (mappedTxType === 'jeonse') {
-          bodyPayload.price_jeonse = parsedPrice;
+          insertData.price_jeonse = parsedPrice;
         } else if (mappedTxType === 'monthly_rent') {
           const { deposit, monthly_rent } = parseDepositAndRent(args.price, args.features);
-          bodyPayload.deposit = deposit;
-          bodyPayload.monthly_rent = monthly_rent;
+          insertData.deposit = deposit;
+          insertData.monthly_rent = monthly_rent;
         } else if (mappedTxType === 'premium_transfer') {
           const { deposit, monthly_rent } = parseDepositAndRent(args.price, args.features);
-          bodyPayload.deposit = deposit;
-          bodyPayload.monthly_rent = monthly_rent;
-          bodyPayload.premium_price = parsePremiumPrice(args.price, args.features);
+          insertData.deposit = deposit;
+          insertData.monthly_rent = monthly_rent;
+          insertData.premium_price = parsePremiumPrice(args.price, args.features);
         }
 
-        const apiRes = await fetch(`${apiUrl}/public/inquiries/${agentCode}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyPayload)
-        });
+        // Apply area mapping (extract numeric value)
+        const areaNum = parseInt((args.area || '').replace(/[^0-9]/g, ''), 10);
+        if (!isNaN(areaNum) && areaNum > 0) {
+          insertData.area_exclusive = areaNum;
+          insertData.area_supply = areaNum;
+        }
 
-        if (!apiRes.ok) {
-          const err = await apiRes.text();
-          console.error('NestJS public inquiry API failed:', err);
+        const { data: newListing, error: insertErr } = await supabase
+          .from('property_listings')
+          .insert(insertData)
+          .select()
+          .single();
+
+        if (insertErr) {
+          console.error('Failed to insert listing into property_listings:', insertErr);
         } else {
-          console.log('Inquiry successfully created in NestJS database!');
+          console.log('Listing successfully created in property_listings table:', newListing?.id);
         }
       } catch (dbErr) {
-        console.error('Failed to store inquiry in database:', dbErr);
+        console.error('Failed to store listing in database:', dbErr);
       }
 
       return NextResponse.json({ 
