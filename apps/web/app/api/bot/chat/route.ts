@@ -122,7 +122,7 @@ const parsePremiumPrice = (priceStr: string, featuresStr: string = '') => {
 
 export async function POST(req: Request) {
   try {
-    const { messages, agentId } = await req.json();
+    const { messages, agentId, images } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Invalid messages array' }, { status: 400 });
@@ -306,6 +306,55 @@ export async function POST(req: Request) {
           console.error('Failed to insert listing into property_listings:', insertErr);
         } else {
           console.log('Listing successfully created in property_listings table:', newListing?.id);
+          
+          // Image uploading logic
+          const uploadedImages: any[] = [];
+          if (images && Array.isArray(images) && images.length > 0) {
+            for (let i = 0; i < images.length; i++) {
+              const img = images[i];
+              try {
+                const mimeMatch = img.dataUrl.match(/^data:([^;]+);base64,/);
+                if (!mimeMatch) continue;
+                const contentType = mimeMatch[1];
+                const base64Data = img.dataUrl.replace(/^data:[^;]+;base64,/, '');
+                const buffer = Buffer.from(base64Data, 'base64');
+                
+                const ext = img.fileName.split('.').pop() ?? 'jpg';
+                const storagePath = `agents/${agentDbId}/listings/${newListing.id}/${Date.now()}_${i}.${ext}`;
+                
+                const { error: uploadErr } = await supabase.storage
+                  .from('landnote-media')
+                  .upload(storagePath, buffer, { contentType, upsert: false });
+                  
+                if (uploadErr) {
+                  console.error(`Failed to upload chat image ${i}:`, uploadErr);
+                  continue;
+                }
+                
+                uploadedImages.push({
+                  path: storagePath,
+                  is_representative: i === 0,
+                  label: null,
+                  uploaded_at: new Date().toISOString()
+                });
+              } catch (err) {
+                console.error(`Error processing image ${i}:`, err);
+              }
+            }
+            
+            if (uploadedImages.length > 0) {
+              const { error: updateErr } = await supabase
+                .from('property_listings')
+                .update({ images: uploadedImages })
+                .eq('id', newListing.id);
+                
+              if (updateErr) {
+                console.error('Failed to update listing images column:', updateErr);
+              } else {
+                console.log(`Successfully uploaded and linked ${uploadedImages.length} images to listing ${newListing.id}`);
+              }
+            }
+          }
         }
       } catch (dbErr) {
         console.error('Failed to store listing in database:', dbErr);

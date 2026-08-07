@@ -97,6 +97,35 @@ function renderTable(rows: string[][], key: string) {
   );
 }
 
+function resizeImage(file: File, maxSize: number): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        if (width > maxSize || height > maxSize) {
+          if (width > height) {
+            height = (height / width) * maxSize;
+            width = maxSize;
+          } else {
+            width = (width / height) * maxSize;
+            height = maxSize;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = e.target!.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export function ChatInterface({ agentId }: { agentId: string }) {
   const [isBetaTester, setIsBetaTester] = useState<boolean | null>(null);
   const [checkingBeta, setCheckingBeta] = useState(true);
@@ -117,6 +146,18 @@ export function ChatInterface({ agentId }: { agentId: string }) {
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const ignoreSpeechResultsRef = useRef(false);
+
+  const [selectedImages, setSelectedImages] = useState<{ dataUrl: string; fileName: string }[]>([]);
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    for (const file of Array.from(files)) {
+      const dataUrl = await resizeImage(file, 1920);
+      setSelectedImages(prev => [...prev, { dataUrl, fileName: file.name }]);
+    }
+    e.target.value = '';
+  };
 
   // Check beta permission on mount
   useEffect(() => {
@@ -214,6 +255,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
         body: JSON.stringify({
           agentId,
           messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
+          images: textToSend === '이대로 접수' ? selectedImages : []
         }),
       });
 
@@ -224,6 +266,10 @@ export function ChatInterface({ agentId }: { agentId: string }) {
       const botMessage: Message = { id: (Date.now() + 1).toString(), role: 'bot', content: data.reply };
       setMessages((prev) => [...prev, botMessage]);
       speak(data.reply);
+
+      if (textToSend === '이대로 접수') {
+        setSelectedImages([]);
+      }
 
       if (data.isComplete) {
         // Switch to the completion page after the bot finishes speaking
@@ -477,19 +523,73 @@ export function ChatInterface({ agentId }: { agentId: string }) {
                 
                 if (isFinalConfirmation) {
                   return (
-                    <div className="mt-3 flex flex-wrap gap-2 max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-300">
-                      <button
-                        onClick={() => handleSend('이대로 접수')}
-                        className="px-4 py-2 text-[13px] font-bold rounded-xl border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-300 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
-                      >
-                        ✅ 이대로 접수
-                      </button>
-                      <button
-                        onClick={() => handleSend('수정할래요')}
-                        className="px-4 py-2 text-[13px] font-bold rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
-                      >
-                        ✏️ 수정
-                      </button>
+                    <div className="mt-3 space-y-3 w-full max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      {/* Image Upload Area */}
+                      <div className="p-3.5 rounded-xl border border-indigo-100 bg-indigo-50/20 space-y-2">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                          📸 올려주실 사진이 있으면 첨부해 주세요 (선택)
+                        </span>
+                        
+                        {/* Image Previews */}
+                        {selectedImages.length > 0 && (
+                          <div className="flex flex-wrap gap-2 py-1">
+                            {selectedImages.map((img, idx) => (
+                              <div key={idx} className="relative h-14 w-14 rounded-lg overflow-hidden border bg-white shadow-sm">
+                                <img src={img.dataUrl} alt="preview" className="h-full w-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== idx))}
+                                  className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-slate-900/60 text-white hover:bg-slate-900 active:scale-90 transition-all"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Photo/Camera inputs */}
+                        <div className="flex gap-2">
+                          <label className="flex-1 px-3 py-2 text-[12px] font-bold text-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 cursor-pointer active:scale-95 transition-all shadow-sm flex items-center justify-center gap-1">
+                            📁 갤러리 선택
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              className="hidden"
+                              onChange={handleImageSelect}
+                            />
+                          </label>
+                          <label className="flex-1 px-3 py-2 text-[12px] font-bold text-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 cursor-pointer active:scale-95 transition-all shadow-sm flex items-center justify-center gap-1">
+                            📷 사진 촬영
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              className="hidden"
+                              onChange={handleImageSelect}
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => handleSend('이대로 접수')}
+                          disabled={isLoading}
+                          className="px-4 py-2 text-[13px] font-bold rounded-xl border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-300 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+                        >
+                          ✅ {selectedImages.length > 0 ? '사진과 함께 접수' : '이대로 접수'}
+                        </button>
+                        <button
+                          onClick={() => handleSend('수정할래요')}
+                          disabled={isLoading}
+                          className="px-4 py-2 text-[13px] font-bold rounded-xl border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+                        >
+                          ✏️ 수정
+                        </button>
+                      </div>
                     </div>
                   );
                 }
