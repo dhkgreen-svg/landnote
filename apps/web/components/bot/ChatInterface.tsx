@@ -103,7 +103,11 @@ export function ChatInterface({ agentId }: { agentId: string }) {
     // Stop listening if active
     if (recognitionRef.current && isListening) {
       ignoreSpeechResultsRef.current = true;
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {
+        console.error('Failed to stop recognition safely:', err);
+      }
       setIsListening(false);
     }
 
@@ -198,7 +202,11 @@ export function ChatInterface({ agentId }: { agentId: string }) {
 
   const stopListening = () => {
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {
+        console.error('Failed to stop recognition in stopListening:', err);
+      }
     }
     setIsListening(false);
   };
