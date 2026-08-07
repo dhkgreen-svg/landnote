@@ -97,8 +97,8 @@ export function ChatInterface({ agentId }: { agentId: string }) {
     }
   };
 
-  const handleSend = async (overrideText?: string) => {
-    const textToSend = (overrideText || input).trim();
+  const handleSend = async (overrideText?: any) => {
+    const textToSend = (typeof overrideText === 'string' ? overrideText : input).trim();
     if (!textToSend || isLoading) return;
 
     // Stop listening if active
@@ -449,7 +449,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
           />
           
           <Button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!input.trim() || isLoading}
             size="icon"
             className="h-[44px] w-[44px] rounded-full flex-shrink-0"
