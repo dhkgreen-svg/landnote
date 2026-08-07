@@ -126,7 +126,7 @@ export async function POST(req: Request) {
         const { data: agentData, error: agentError } = await supabase
           .from('agents')
           .select('agent_code')
-          .eq('id', agentId)
+          .eq('agent_code', agentId)
           .single();
 
         if (agentError) {
