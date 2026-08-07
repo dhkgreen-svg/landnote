@@ -227,6 +227,10 @@ export async function POST(req: Request) {
       const args = functionCallPart.functionCall.args;
       console.log('Received save_property_listing function call:', args);
       
+      let newListingData: any = null;
+      let resolvedAgentId: any = null;
+      let dbErrorCaught: any = null;
+
       try {
         // 1. Initialize Supabase with service role key to bypass RLS in server environment
         const supabase = createClient(
@@ -246,6 +250,7 @@ export async function POST(req: Request) {
         }
 
         const agentDbId = agentDbData?.id;
+        resolvedAgentId = agentDbId;
         
         // 3. Helper functions for mapping
         const mapPropertyType = (type: string) => {
@@ -354,6 +359,7 @@ export async function POST(req: Request) {
             details: insertErr
           }, { status: 500 });
         } else {
+          newListingData = newListing;
           console.log('Listing successfully created in property_listings table:', newListing?.id);
           
           // Image uploading logic
@@ -405,14 +411,21 @@ export async function POST(req: Request) {
             }
           }
         }
-      } catch (dbErr) {
+      } catch (dbErr: any) {
         console.error('Failed to store listing in database:', dbErr);
+        dbErrorCaught = dbErr.message || String(dbErr);
       }
 
       return NextResponse.json({ 
         reply: "매물 접수가 성공적으로 완료되었습니다! 담당 공인중개사가 곧 확인 후 연락드리겠습니다. 감사합니다.",
         isComplete: true,
-        savedData: args
+        savedData: args,
+        debug: {
+          newListingData,
+          resolvedAgentId,
+          dbErrorCaught,
+          supabaseUrlUsed: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://aoucvlpmhrqymziktevu.supabase.co'
+        }
       });
     }
 
