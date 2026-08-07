@@ -29,6 +29,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const ignoreSpeechResultsRef = useRef(false);
 
   // Check beta permission on mount
   useEffect(() => {
@@ -101,9 +102,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
 
     // Stop listening if active
     if (recognitionRef.current && isListening) {
-      recognitionRef.current.onresult = null;
-      recognitionRef.current.onend = null;
-      recognitionRef.current.onerror = null;
+      ignoreSpeechResultsRef.current = true;
       recognitionRef.current.stop();
       setIsListening(false);
     }
@@ -168,10 +167,12 @@ export function ChatInterface({ agentId }: { agentId: string }) {
 
     recognition.onstart = () => {
       setIsListening(true);
+      ignoreSpeechResultsRef.current = false;
       finalTranscript = '';
     };
 
     recognition.onresult = (event: any) => {
+      if (ignoreSpeechResultsRef.current) return;
       let interimTranscript = '';
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
@@ -197,9 +198,6 @@ export function ChatInterface({ agentId }: { agentId: string }) {
 
   const stopListening = () => {
     if (recognitionRef.current) {
-      recognitionRef.current.onresult = null;
-      recognitionRef.current.onend = null;
-      recognitionRef.current.onerror = null;
       recognitionRef.current.stop();
     }
     setIsListening(false);
