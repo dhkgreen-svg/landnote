@@ -37,8 +37,9 @@ export function ChatInterface({ agentId }: { agentId: string }) {
           setIsBetaTester(false);
         } else {
           const data = await res.json();
-          setIsBetaTester(!!data.is_beta_tester);
+          setIsBetaTester(!!data.data?.is_beta_tester);
         }
+
       } catch (error) {
         console.error('Failed to verify beta status:', error);
         setIsBetaTester(false);

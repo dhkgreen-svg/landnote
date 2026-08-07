@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
     const agentData = await agentRes.json();
-    if (!agentData.is_beta_tester) {
+    if (!agentData.data?.is_beta_tester) {
       return NextResponse.json({ error: 'Stealth Mode: Agent is not authorized for beta features' }, { status: 403 });
     }
 
