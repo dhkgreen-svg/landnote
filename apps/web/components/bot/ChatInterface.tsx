@@ -65,10 +65,11 @@ export function ChatInterface({ agentId }: { agentId: string }) {
   const speak = (text: string) => {
     if (!isSpeakerOn) return;
     if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel(); // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'ko-KR';
-      utterance.rate = 1.0;
+      utterance.rate = 1.25; // Snappy, quick speed
+      utterance.pitch = 1.15; // Energetic, bright pitch
       window.speechSynthesis.speak(utterance);
     }
   };
