@@ -155,6 +155,10 @@ export function ChatInterface({ agentId }: { agentId: string }) {
   const startListening = () => {
     if (isListening) return;
 
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       return;
     }
@@ -216,6 +220,9 @@ export function ChatInterface({ agentId }: { agentId: string }) {
     if (isListening) {
       stopListening();
     } else {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         alert('이 브라우저에서는 음성 인식을 지원하지 않습니다.');
         return;
