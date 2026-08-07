@@ -58,20 +58,32 @@ export function ChatInterface({ agentId }: { agentId: string }) {
 
   // Initial TTS greeting if speaker is on and verified beta tester
   useEffect(() => {
-    if (isSpeakerOn && messages.length === 1 && isBetaTester === true) {
-      speak(messages[0].content);
+    if (messages.length === 1 && isBetaTester === true) {
+      speak(messages[0].content, () => {
+        // Auto start listening after greeting finishes
+        startListening();
+      });
     }
   }, [isBetaTester]);
 
-  const speak = (text: string) => {
-    if (!isSpeakerOn) return;
+  const speak = (text: string, onEndCallback?: () => void) => {
+    if (!isSpeakerOn) {
+      if (onEndCallback) onEndCallback();
+      return;
+    }
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'ko-KR';
       utterance.rate = 1.25; // Snappy, quick speed
       utterance.pitch = 1.15; // Energetic, bright pitch
+      if (onEndCallback) {
+        utterance.onend = () => onEndCallback();
+        utterance.onerror = () => onEndCallback();
+      }
       window.speechSynthesis.speak(utterance);
+    } else {
+      if (onEndCallback) onEndCallback();
     }
   };
 
@@ -105,29 +117,26 @@ export function ChatInterface({ agentId }: { agentId: string }) {
       
       const botMessage: Message = { id: (Date.now() + 1).toString(), role: 'bot', content: data.reply };
       setMessages((prev) => [...prev, botMessage]);
-      speak(data.reply);
+      speak(data.reply, () => {
+        startListening();
+      });
       
     } catch (error) {
       console.error(error);
       const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'bot', content: '죄송합니다. 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' };
       setMessages((prev) => [...prev, errorMessage]);
-      speak(errorMessage.content);
+      speak(errorMessage.content, () => {
+        startListening();
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const toggleListen = () => {
-    if (isListening) {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      setIsListening(false);
-      return;
-    }
+  const startListening = () => {
+    if (isListening) return;
 
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('이 브라우저에서는 음성 인식을 지원하지 않습니다.');
       return;
     }
 
@@ -169,6 +178,25 @@ export function ChatInterface({ agentId }: { agentId: string }) {
     };
 
     recognition.start();
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsListening(false);
+  };
+
+  const toggleListen = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert('이 브라우저에서는 음성 인식을 지원하지 않습니다.');
+        return;
+      }
+      startListening();
+    }
   };
 
   if (checkingBeta) {
@@ -258,8 +286,10 @@ export function ChatInterface({ agentId }: { agentId: string }) {
         <div className="flex items-end gap-2 bg-gray-50 p-2 rounded-3xl border focus-within:ring-1 focus-within:ring-primary/50 transition-all">
           <button
             onClick={toggleListen}
-            className={`p-3 rounded-full flex-shrink-0 transition-colors ${
-              isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+            className={`p-3 rounded-full flex-shrink-0 transition-all ${
+              isListening 
+                ? 'bg-red-500 text-white animate-pulse ring-4 ring-red-500/20' 
+                : 'bg-red-50 text-red-500 hover:bg-red-100 border border-red-200'
             }`}
           >
             <Mic className="w-5 h-5" />
