@@ -211,6 +211,9 @@ export function ChatInterface({ agentId }: { agentId: string }) {
       // Remove markdown tables before speaking
       let cleanedText = text.replace(/\|[^|]*\|/g, '');
 
+      // Convert hyphens and slashes between numbers to "다시" for natural Korean speech synthesis
+      cleanedText = cleanedText.replace(/(\d+)[-/](\d+)/g, '$1 다시 $2');
+
       // Strip parenthesized text (reference tips), emojis, asterisks, and markdown formatting characters
       cleanedText = cleanedText
         .replace(/\([^)]*\)/g, '') // Remove text inside parentheses (e.g. (동/리 단위...))
