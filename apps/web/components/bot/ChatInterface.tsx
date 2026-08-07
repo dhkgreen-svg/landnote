@@ -26,6 +26,7 @@ export function ChatInterface({ agentId }: { agentId: string }) {
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   // Check beta permission on mount
   useEffect(() => {
@@ -77,6 +78,12 @@ export function ChatInterface({ agentId }: { agentId: string }) {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    // Stop listening if active
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+
     const userMessage: Message = { id: Date.now().toString(), role: 'user', content: input.trim() };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
@@ -112,8 +119,10 @@ export function ChatInterface({ agentId }: { agentId: string }) {
 
   const toggleListen = () => {
     if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
       setIsListening(false);
-      // Logic to stop recognition would go here
       return;
     }
 
@@ -125,16 +134,29 @@ export function ChatInterface({ agentId }: { agentId: string }) {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'ko-KR';
-    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.interimResults = true;
     recognition.maxAlternatives = 1;
+
+    recognitionRef.current = recognition;
+
+    let finalTranscript = '';
 
     recognition.onstart = () => {
       setIsListening(true);
+      finalTranscript = '';
     };
 
     recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInput(transcript);
+      let interimTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript + ' ';
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+      setInput((finalTranscript + interimTranscript).trim());
     };
 
     recognition.onerror = (event: any) => {
