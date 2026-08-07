@@ -27,86 +27,6 @@ const SYSTEM_PROMPT = `당신은 랜드노트의 '부동산 매물 자동 접수
 3. 모든 필수 정보가 수집되었다고 판단되면, 수집된 정보를 마크다운 리스트 없이 한글 문장으로 한눈에 확인하도록 요약해 보여주고 "이대로 매물 접수를 완료해 드릴까요?" 라고 물어보세요.
 4. 사용자가 접수에 동의하면 즉시 "save_property_listing" 함수를 호출하여 접수 완료 처리하세요.`;
 
-export async function POST(req: Request) {
-  try {
-    const { messages, agentId } = await req.json();
-
-    if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json({ error: 'Invalid messages array' }, { status: 400 });
-    }
-
-    if (!agentId) {
-      return NextResponse.json({ error: 'Agent ID is required' }, { status: 400 });
-    }
-
-    // Verify beta tester authorization
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const agentRes = await fetch(`${apiUrl}/public/agent/${agentId}`);
-    if (!agentRes.ok) {
-      return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
-    }
-    const agentData = await agentRes.json();
-    if (!agentData.data?.is_beta_tester) {
-      return NextResponse.json({ error: 'Stealth Mode: Agent is not authorized for beta features' }, { status: 403 });
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Gemini API Key missing' }, { status: 500 });
-    }
-
-    // Convert messages to Gemini format
-    const contents = messages.map(msg => ({
-      role: msg.role === 'bot' ? 'model' : 'user',
-      parts: [{ text: msg.content }]
-    }));
-
-    // Add system instruction for Gemini 1.5
-    const payload = {
-      system_instruction: {
-        parts: { text: SYSTEM_PROMPT }
-      },
-      contents: contents,
-      tools: [{
-        function_declarations: [{
-          name: "save_property_listing",
-          description: "고객으로부터 필수 매물 정보를 모두 수집했을 때, 이 함수를 호출하여 데이터베이스에 저장합니다.",
-          parameters: {
-            type: "OBJECT",
-            properties: {
-              property_type: { type: "STRING", description: "매물 종류 (예: 아파트, 공장, 상가, 토지 등)" },
-              transaction_type: { type: "STRING", description: "거래 종류 (예: 매매, 전세, 월세)" },
-              address: { type: "STRING", description: "주소 또는 대략적인 위치" },
-              price: { type: "STRING", description: "희망 가격 (매매가, 보증금, 월세 등)" },
-              area: { type: "STRING", description: "면적 (평수 또는 제곱미터)" },
-              features: { type: "STRING", description: "추가 특징 (층고, 방 개수, 층수 등)" }
-            },
-            required: ["property_type", "transaction_type", "address", "price", "area"]
-          }
-        }]
-      }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 500,
-      }
-    };
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Gemini API Error:', errText);
-      throw new Error('Failed to generate response from Gemini');
-    }
-
-    const data = await response.json();
-    
 // Helper functions for parsing Korean prices and features
 const parseKoreanPrice = (priceStr: string): number => {
   if (!priceStr) return 1;
@@ -189,15 +109,34 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Agent ID is required' }, { status: 400 });
     }
 
+    // Verify beta tester authorization
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const agentRes = await fetch(`${apiUrl}/public/agent/${agentId}`);
+    if (!agentRes.ok) {
+      return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+    }
+    const agentData = await agentRes.json();
+    if (!agentData.data?.is_beta_tester) {
+      return NextResponse.json({ error: 'Stealth Mode: Agent is not authorized for beta features' }, { status: 403 });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Gemini API Key missing' }, { status: 500 });
+    }
+
+    // Convert messages to Gemini format
+    const contents = messages.map(msg => ({
+      role: msg.role === 'bot' ? 'model' : 'user',
+      parts: [{ text: msg.content }]
+    }));
+
     // Call Gemini API with SYSTEM_PROMPT and messages
     const requestBody = {
-      contents: [
-        { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
-        ...messages.map((m: any) => ({
-          role: m.role === 'bot' ? 'model' : 'user',
-          parts: [{ text: m.content }],
-        })),
-      ],
+      system_instruction: {
+        parts: { text: SYSTEM_PROMPT }
+      },
+      contents: contents,
       generationConfig: {
         temperature: 0.1,
       },
@@ -225,7 +164,6 @@ export async function POST(req: Request) {
       ],
     };
 
-    const apiKey = process.env.GEMINI_API_KEY;
     const responseGemini = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
@@ -259,7 +197,7 @@ export async function POST(req: Request) {
         );
 
         // 2. Fetch agent code case-insensitively using maybeSingle
-        const { data: agentData, error: agentError } = await supabase
+        const { data: agentDbData, error: agentError } = await supabase
           .from('agents')
           .select('agent_code')
           .ilike('agent_code', agentId)
@@ -269,7 +207,7 @@ export async function POST(req: Request) {
           console.error('Error fetching agent code:', agentError);
         }
 
-        const agentCode = agentData?.agent_code || 'ATEST';
+        const agentCode = agentDbData?.agent_code || 'ATEST';
 
         // 3. Helper functions for mapping
         const mapPropertyType = (type: string) => {
@@ -289,8 +227,6 @@ export async function POST(req: Request) {
         };
 
         // 4. Save via Public API call to NestJS backend with correct price validation mapping
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-        
         const mappedTxType = mapTransactionType(args.transaction_type);
         const parsedPrice = parseKoreanPrice(args.price);
 
