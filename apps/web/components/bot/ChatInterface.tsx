@@ -99,6 +99,9 @@ export function ChatInterface({ agentId }: { agentId: string }) {
 
     // Stop listening if active
     if (recognitionRef.current && isListening) {
+      recognitionRef.current.onresult = null;
+      recognitionRef.current.onend = null;
+      recognitionRef.current.onerror = null;
       recognitionRef.current.stop();
       setIsListening(false);
     }
@@ -185,6 +188,9 @@ export function ChatInterface({ agentId }: { agentId: string }) {
 
   const stopListening = () => {
     if (recognitionRef.current) {
+      recognitionRef.current.onresult = null;
+      recognitionRef.current.onend = null;
+      recognitionRef.current.onerror = null;
       recognitionRef.current.stop();
     }
     setIsListening(false);
