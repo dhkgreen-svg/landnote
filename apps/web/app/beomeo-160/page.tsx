@@ -70,10 +70,26 @@ export default function StandaloneBeomeoBuildingPage() {
   const [leadSubmitted, setLeadSubmitted] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const handleLeadSubmit = (e: React.FormEvent) => {
+  const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!leadName || !leadPhone) return;
-    setLeadSubmitted(true);
+    
+    try {
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: leadName, phone: leadPhone, source: 'beomeo-160' })
+      });
+      
+      if (res.ok) {
+        setLeadSubmitted(true);
+      } else {
+        alert('신청 중 오류가 발생했습니다. 다시 시도해주세요.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('신청 중 오류가 발생했습니다.');
+    }
   };
 
   const handleCopyLink = () => {
