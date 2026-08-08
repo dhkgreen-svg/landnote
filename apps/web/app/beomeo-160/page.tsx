@@ -508,9 +508,9 @@ export default function StandaloneBeomeoBuildingPage() {
               <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 mb-3 px-3 py-1">
                 PRIVATE BRIEFING REQUEST
               </Badge>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-3">
-                상세 투자 제안서 (PDF & 임대차 계약서) 신청
-              </h2>
+              <h3 className="text-2xl sm:text-3xl font-bold text-white mb-3 tracking-tight break-keep">
+                상세 투자 제안서 상담 신청
+              </h3>
               <p className="text-slate-400 text-sm">
                 본 매물은 보안상 전체 공개하지 않으며, 성함과 연락처를 남겨주시면 담당 중개사가 확인 후 프라이빗 제안서를 발송해 드립니다.
               </p>
