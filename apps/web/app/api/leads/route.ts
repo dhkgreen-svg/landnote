@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     console.log('알림톡 발송 완료! (시뮬레이션)\n');
 
     // 3. 디스코드 알림 발송 (실제 연동)
-    const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1524234313393115187/jEMao8PuDp6mS21XW1bxu0ZKaXRgl74bwdwHRwk6ZFEmX_rI-IVQlsfkmvP4UhahZ9B7';
+    const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1535575121580789762/a5GNETdUlK-d5CKzwF3RXiAOWtNv9I9FoTh3Yw7JTP4CL3T0iY4gnd3_HV6-MKdg2NvE';
     
     if (DISCORD_WEBHOOK_URL) {
       const discordMessage = {
