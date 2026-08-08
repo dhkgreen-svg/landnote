@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, phone, source } = body;
+    const { name, phone, source, purchasePurpose, briefingPreference } = body;
 
     if (!name || !phone) {
       return NextResponse.json({ error: 'Name and phone are required' }, { status: 400 });
@@ -19,7 +19,9 @@ export async function POST(request: Request) {
         { 
           name, 
           phone, 
-          source: source || 'beomeo-160' 
+          source: source || 'beomeo-160',
+          purchase_purpose: purchasePurpose || null,
+          briefing_preference: briefingPreference || null
         }
       ]);
       
@@ -46,6 +48,8 @@ export async function POST(request: Request) {
           fields: [
             { name: '👤 성함/법인명', value: name, inline: true },
             { name: '📱 연락처', value: phone, inline: true },
+            { name: '🏢 매입 목적', value: purchasePurpose || '미선택', inline: true },
+            { name: '🤝 브리핑 희망', value: briefingPreference || '미선택', inline: true },
             { name: '📍 유입 경로', value: source || 'beomeo-160', inline: false },
             { name: '⏰ 접수 시간', value: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), inline: false }
           ],

@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   LayoutDashboard, MessageSquare, Building2, Shuffle,
-  BarChart3, QrCode, Settings, LogOut, Menu, Camera
+  BarChart3, QrCode, Settings, LogOut, Menu, Camera, Star
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { label: '현황', href: '/dashboard', icon: LayoutDashboard },
   { label: '매물 관리', href: '/dashboard/listings', icon: Building2 },
   { label: '문의 관리', href: '/dashboard/inquiries', icon: MessageSquare },
+  { label: 'VIP 폼 리드', href: '/dashboard/vip-leads', icon: Star },
   { label: '매칭', href: '/dashboard/matching', icon: Shuffle },
   { label: '통계', href: '/dashboard/stats', icon: BarChart3 },
   { label: 'AI 간편 입력', href: '/dashboard/ai-scanner', icon: Camera },

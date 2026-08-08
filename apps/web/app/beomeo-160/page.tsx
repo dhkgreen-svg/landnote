@@ -67,6 +67,8 @@ export default function StandaloneBeomeoBuildingPage() {
   // Lead Form State
   const [leadName, setLeadName] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
+  const [purchasePurpose, setPurchasePurpose] = useState('');
+  const [briefingPreference, setBriefingPreference] = useState('');
   const [leadSubmitted, setLeadSubmitted] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -78,7 +80,13 @@ export default function StandaloneBeomeoBuildingPage() {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: leadName, phone: leadPhone, source: 'beomeo-160' })
+        body: JSON.stringify({ 
+          name: leadName, 
+          phone: leadPhone, 
+          source: 'beomeo-160',
+          purchasePurpose,
+          briefingPreference
+        })
       });
       
       if (res.ok) {
@@ -540,6 +548,52 @@ export default function StandaloneBeomeoBuildingPage() {
                     required
                     className="h-12 bg-slate-950 border-slate-800 text-white placeholder:text-slate-600 rounded-xl focus:border-amber-400"
                   />
+                </div>
+
+                <div className="pt-2">
+                  <Label className="text-slate-300 text-sm mb-2 block flex items-center justify-between">
+                    <span>매입 목적</span>
+                    <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">선택 사항</span>
+                  </Label>
+                  <div className="flex gap-2">
+                    {['법인 사옥 실사용', '개인·법인 투자용'].map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setPurchasePurpose(purchasePurpose === option ? '' : option)}
+                        className={`flex-1 h-10 text-xs sm:text-sm font-semibold rounded-lg border transition-all ${
+                          purchasePurpose === option
+                            ? 'bg-amber-500/10 border-amber-500 text-amber-400'
+                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pb-4">
+                  <Label className="text-slate-300 text-sm mb-2 block flex items-center justify-between">
+                    <span>프라이빗 브리핑 희망 방식</span>
+                    <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">선택 사항</span>
+                  </Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {['물건지 현장 비밀 투어', '고객님 사무실 방문', '나우부동산 방문'].map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setBriefingPreference(briefingPreference === option ? '' : option)}
+                        className={`w-full h-10 text-xs sm:text-sm font-semibold rounded-lg border transition-all ${
+                          briefingPreference === option
+                            ? 'bg-amber-500/10 border-amber-500 text-amber-400'
+                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <Button type="submit" className="w-full h-13 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-base rounded-xl shadow-lg shadow-amber-500/20">
