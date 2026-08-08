@@ -1,1 +1,0 @@
-ALTER TABLE agents ADD COLUMN IF NOT EXISTS custom_templates JSONB NOT NULL DEFAULT '{}'::jsonb;

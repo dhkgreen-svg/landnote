@@ -1,2 +1,0 @@
-ALTER TABLE customer_inquiries ADD COLUMN complex_name VARCHAR(100), ADD COLUMN building_num VARCHAR(20), ADD COLUMN room_num VARCHAR(20);
-ALTER TABLE property_listings ADD COLUMN complex_name VARCHAR(100), ADD COLUMN building_num VARCHAR(20), ADD COLUMN room_num VARCHAR(20);
