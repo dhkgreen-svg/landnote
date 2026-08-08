@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(request: Request) {
   try {
@@ -9,13 +10,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Name and phone are required' }, { status: 400 });
     }
 
-    // 1. CRM DB 저장 시뮬레이션 (실제로는 Prisma나 NestJS API 호출)
-    console.log('\n====================================');
-    console.log('[LandNote CRM] 새로운 VIP 리드 수집됨!');
-    console.log(`이름(법인명): ${name}`);
-    console.log(`연락처: ${phone}`);
-    console.log(`유입 경로: ${source || 'beomeo-160'}`);
-    console.log('====================================');
+    // 1. CRM DB 저장 (Supabase vip_leads 테이블)
+    const supabase = createClient();
+    
+    const { error: dbError } = await supabase
+      .from('vip_leads')
+      .insert([
+        { 
+          name, 
+          phone, 
+          source: source || 'beomeo-160' 
+        }
+      ]);
+      
+    if (dbError) {
+      console.error('Supabase 저장 실패:', dbError);
+      // DB 저장 실패해도 알림톡과 디스코드는 보내도록 진행
+    } else {
+      console.log(`[LandNote CRM] VIP 리드(DB) 저장 성공! (이름: ${name})`);
+    }
 
     // 2. 다이렉트센드 알림톡 전송 시뮬레이션
     console.log(`[다이렉트센드 API 호출] 알림톡 발송 중... 대상: ${phone}`);
