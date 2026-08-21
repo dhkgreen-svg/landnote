@@ -150,26 +150,64 @@ export default function StandaloneBeomeoBuildingPage() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-amber-500/10 blur-[120px] rounded-full pointer-events-none" />
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs sm:text-sm font-medium mb-6 backdrop-blur-sm">
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>대구 수성구 범어동 160억 통빌딩 전용 브리핑</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center mb-10">
+            
+            {/* Left Content Column */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs sm:text-sm font-medium backdrop-blur-sm">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>대구 수성구 범어동 160억 통빌딩 전용 브리핑</span>
+              </div>
+
+              <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-[1.2]">
+                대구 수성구의 심장, 범어동 대로변
+                <br />
+                <span className="bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent">
+                  160억 원대 준신축 메디컬·학원 빌딩
+                </span>
+              </h1>
+
+              <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
+                수성구청역 도보 1분 초역세권. 공실 스트레스 없는 <strong className="text-white font-semibold">‘똘똘한 한 채’</strong>의 표본.<br className="hidden sm:inline" />
+                2019년 준신축, 전 층 우량 임차인 입점 완료 및 주차 25대 완비.
+              </p>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <a href="#calculator" className="inline-flex items-center justify-center h-12 px-6 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-amber-500/20">
+                  <Calculator className="w-4.5 h-4.5 mr-2" />
+                  실시간 투자 수익률 계산하기
+                </a>
+                <a href="#lead-form" className="inline-flex items-center justify-center h-12 px-6 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-sm transition-all">
+                  <Download className="w-4.5 h-4.5 mr-2 text-amber-400" />
+                  상세 임대 내역서(PDF) 신청
+                </a>
+              </div>
+            </div>
+
+            {/* Right Image/Banner Column */}
+            <div className="lg:col-span-5 flex justify-center w-full">
+              <div className="relative group overflow-hidden rounded-2xl border border-amber-500/30 shadow-2xl shadow-amber-500/5 max-w-md w-full">
+                <img 
+                  src="/beomeo_banner.jpg" 
+                  alt="대구 수성구 범어동 160억 빌딩 조감도 및 수익률 그래프" 
+                  className="w-full h-auto object-cover transform group-hover:scale-[1.02] transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute bottom-4 left-4 right-4 bg-slate-900/80 backdrop-blur-sm border border-slate-800 p-3 rounded-xl flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">랜드마크 빌딩 실시간 분석</span>
+                    <span className="text-amber-400 font-bold">연평균 기대 수익률 6.8%+</span>
+                  </div>
+                  <Badge className="bg-amber-500 text-slate-950 font-bold border-none text-[10px]">VIP 단독매물</Badge>
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight text-white leading-[1.2] mb-6">
-            대구 수성구의 심장, 범어동 대로변
-            <br />
-            <span className="bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent">
-              160억 원대 준신축 메디컬·학원 빌딩
-            </span>
-          </h1>
-
-          <p className="text-slate-300 text-base sm:text-xl max-w-3xl leading-relaxed mb-8">
-            수성구청역 도보 1분 초역세권. 공실 스트레스 없는 <strong className="text-white font-semibold">‘똘똘한 한 채’</strong>의 표본.<br className="hidden sm:inline" />
-            2019년 준신축, 전 층 우량 임차인 입점 완료 및 주차 25대 완비.
-          </p>
-
           {/* Core Specs Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-4xl mb-10">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-6xl pt-8 border-t border-slate-900">
             <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 backdrop-blur-md">
               <span className="text-xs text-slate-400 block mb-1">매매 희망가</span>
               <span className="text-xl sm:text-2xl font-extrabold text-amber-400">160억 원</span>
@@ -186,18 +224,6 @@ export default function StandaloneBeomeoBuildingPage() {
               <span className="text-xs text-slate-400 block mb-1">준공 / 주차</span>
               <span className="text-lg sm:text-xl font-bold text-white">2019년 / 25대</span>
             </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <a href="#calculator" className="inline-flex items-center justify-center h-13 px-8 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-base transition-all shadow-lg shadow-amber-500/20">
-              <Calculator className="w-5 h-5 mr-2" />
-              실시간 투자 수익률 계산하기
-            </a>
-            <a href="#lead-form" className="inline-flex items-center justify-center h-13 px-6 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-base transition-all">
-              <Download className="w-5 h-5 mr-2 text-amber-400" />
-              상세 임대 내역서(PDF) 신청
-            </a>
           </div>
         </div>
       </section>
