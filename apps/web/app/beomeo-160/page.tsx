@@ -189,17 +189,17 @@ export default function StandaloneBeomeoBuildingPage() {
             <div className="lg:col-span-5 flex justify-center w-full">
               <div className="relative group overflow-hidden rounded-2xl border border-amber-500/30 shadow-2xl shadow-amber-500/5 max-w-md w-full">
                 <img 
-                  src="/beomeo_banner.jpg" 
-                  alt="대구 수성구 범어동 160억 빌딩 조감도 및 수익률 그래프" 
+                  src="/beomeo_interior.jpg" 
+                  alt="대구 수성구 범어동 160억 빌딩 내부 로비 전경" 
                   className="w-full h-auto object-cover transform group-hover:scale-[1.02] transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none" />
                 <div className="absolute bottom-4 left-4 right-4 bg-slate-900/80 backdrop-blur-sm border border-slate-800 p-3 rounded-xl flex items-center justify-between text-xs">
                   <div>
-                    <span className="text-slate-400 block text-[10px]">랜드마크 빌딩 실시간 분석</span>
-                    <span className="text-amber-400 font-bold">연평균 기대 수익률 6.8%+</span>
+                    <span className="text-slate-400 block text-[10px]">프라이빗 빌딩 실내 로비 라운지</span>
+                    <span className="text-amber-400 font-bold">보안 유지 VIP 단독 매물</span>
                   </div>
-                  <Badge className="bg-amber-500 text-slate-950 font-bold border-none text-[10px]">VIP 단독매물</Badge>
+                  <Badge className="bg-amber-500 text-slate-950 font-bold border-none text-[10px]">내부 공개</Badge>
                 </div>
               </div>
             </div>
