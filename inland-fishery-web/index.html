@@ -3,375 +3,1415 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>사단법인 한국내수면어업연합회</title>
-  <!-- Google Fonts -->
+  <title>사단법인 전국내수면어로어업인연합회</title>
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="해양수산부 허가 사단법인 전국내수면어로어업인연합회 공식 대표 웹사이트. 전국 16개 시·도 지회 및 내수면 어업인 권익 보호, 생태계 보존, 법정 결산 공시.">
+  <meta name="keywords" content="내수면어업, 내수면어업인연합회, 어로어업, 해양수산부, 결산공시, 수생태계보존">
+  
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800;900&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css?v=20260813_10">
 </head>
 <body>
 
-  <!-- Top Banner -->
+  <!-- Top Bar -->
   <div class="top-bar">
     <div class="container top-bar-content">
       <div class="top-info">
-        <span><i class="fa-solid fa-building-columns"></i> 해양수산부 관할 사단법인</span>
+        <span><i class="fa-solid fa-building-columns"></i> 해양수산부 허가 사단법인</span>
         <span class="divider">|</span>
-        <span><i class="fa-solid fa-phone"></i> 대표문의: 02-1234-5678</span>
+        <span><i class="fa-solid fa-phone"></i> 대표문의: <span id="header-contact-tel"></span></span>
       </div>
       <div class="top-links">
-        <a href="#notice"><i class="fa-solid fa-bullhorn"></i> 공지사항</a>
-        <a href="#disclosure"><i class="fa-solid fa-file-invoice-dollar"></i> 결산공시</a>
-        <a href="#contact" class="btn-sm"><i class="fa-solid fa-envelope"></i> 1:1 문의</a>
+        <a href="#about-section" onclick="openAboutModal()"><i class="fa-solid fa-circle-info"></i> 연합회 소개</a>
+        <a href="#notice-section" onclick="openNoticeModalFull()"><i class="fa-solid fa-bell"></i> 법정 결산 공시</a>
+        <span id="header-user-status-area" style="margin-left: 10px;">
+          <!-- Dynamically updated by JS (Guest vs Logged-in User) -->
+        </span>
       </div>
     </div>
   </div>
 
-  <!-- Header / Navigation -->
-  <header class="header" id="header">
+  <!-- Header -->
+  <header class="header">
     <div class="container header-content">
       <a href="#" class="logo">
-        <div class="logo-icon">
-          <i class="fa-solid fa-water"></i>
-        </div>
+        <img src="logo_clean.svg" alt="사단법인 전국내수면어로어업인연합회 로고" class="logo-badge-img">
         <div class="logo-text">
-          <span class="logo-badge">해양수산부 허가 제2026-08호</span>
-          <span class="logo-title">사단법인 한국내수면어업연합회</span>
+          <span class="logo-badge">해양수산부 등록 사단법인</span>
+          <h1 class="logo-title">전국내수면어로어업인연합회</h1>
         </div>
       </a>
-
-      <nav class="nav" id="nav-menu">
-        <a href="#about" class="nav-link active">연합회 소개</a>
-        <a href="#services" class="nav-link">주요 사업</a>
-        <a href="#gallery" class="nav-link">활동 동향</a>
-        <a href="#notice" class="nav-link">알림 / 공시</a>
-        <a href="#contact" class="nav-link">오시는 길 & 문의</a>
-      </nav>
-
-      <div class="header-actions">
-        <a href="#contact" class="btn btn-primary">회원가입 / 문의</a>
-        <button class="mobile-toggle" id="mobile-toggle" aria-label="메뉴 열기">
-          <i class="fa-solid fa-bars"></i>
-        </button>
-      </div>
+      <div id="header-user-status-main"></div>
     </div>
   </header>
 
   <!-- Hero Section -->
   <section class="hero">
     <div class="hero-bg-overlay"></div>
-    <div class="container hero-content">
-      <span class="hero-tag"><i class="fa-solid fa-fish-fins"></i> 대한민국 내수면 어업인 권익 보호</span>
-      <h1 class="hero-title">풍요로운 내수면 생태계,<br>어업인과 함께 미래를 엽니다</h1>
-      <p class="hero-desc">
-        사단법인 한국내수면어업연합회는 해양수산부 소관 비영리 사단법인으로서,<br>
-        전국 내수면 어업인의 권익 향상과 친환경 내수면 수산물의 가치 증진을 위해 앞장섭니다.
-      </p>
-      <div class="hero-btns">
-        <a href="#gallery" class="btn btn-hero-primary"><i class="fa-solid fa-camera"></i> 최근 활동 동향 보기</a>
-        <a href="#about" class="btn btn-hero-secondary"><i class="fa-solid fa-circle-info"></i> 연합회 소개</a>
-      </div>
+    <div class="container">
+      <div class="hero-clean-content">
+        <div class="hero-tag">
+          <i class="fa-solid fa-certificate"></i> 대한민국 내수면 어업인의 정통 대표 기구
+        </div>
+        <h2 class="hero-title">내수면어로어업 내수경제 활로개척</h2>
+        <p class="hero-desc">
+          전국 16개 시·도 지회 회원이 서로 소통하며 강과 호수의 수생태계 보존과 어업인 권익 향상에 앞장섭니다.
+        </p>
 
-      <!-- Quick Stats Counter -->
-      <div class="hero-stats">
-        <div class="stat-item">
-          <span class="stat-num">1,250+</span>
-          <span class="stat-label">전국 회원 어가</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-          <span class="stat-num">16</span>
-          <span class="stat-label">광역시·도 지회</span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-          <span class="stat-num">100%</span>
-          <span class="stat-label">투명 결산 공시</span>
+        <!-- 2개 핵심 이동 버튼 바 -->
+        <div class="hero-nav-2btns margin-top-lg">
+          <button class="hero-nav-btn btn-nav-about" onclick="openAboutModal()">
+            <i class="fa-solid fa-sitemap"></i> 🏛️ 연합회 소개 및 조직도
+          </button>
+          <button class="hero-nav-btn btn-nav-notice" onclick="openNoticeModalFull()">
+            <i class="fa-solid fa-bullhorn" style="color: #FCD34D;"></i> 📢 알림 / 법정 결산공시
+          </button>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Section 1: 연합회 소개 -->
-  <section class="section about-section" id="about">
+  <!-- Main Section 1: Gallery Activities Grid -->
+  <section class="section gallery-section">
     <div class="container">
-      <div class="section-header text-center">
-        <span class="section-subtitle">ABOUT US</span>
-        <h2 class="section-title">사단법인 한국내수면어업연합회</h2>
-        <p class="section-desc">지속 가능한 내수면 어업 발전과 어업인 권익 보호를 위한 중심축입니다.</p>
-      </div>
-
-      <div class="about-grid">
-        <div class="about-card">
-          <div class="card-icon"><i class="fa-solid fa-handshake"></i></div>
-          <h3>어업인 권익 보호</h3>
-          <p>내수면 어업인의 정당한 권익을 대변하고 어업 현장의 애로사항을 정부 및 지자체에 적극 건의합니다.</p>
-        </div>
-        <div class="about-card highlighted">
-          <div class="card-icon"><i class="fa-solid fa-chart-line"></i></div>
-          <h3>기술 연구 및 교육</h3>
-          <p>친환경 내수면 양식 기술 보급, 질병 관리, 현대화 시설 도입을 위한 기술 교육을 지원합니다.</p>
-        </div>
-        <div class="about-card">
-          <div class="card-icon"><i class="fa-solid fa-leaf"></i></div>
-          <h3>생태계 보존 & 소비촉진</h3>
-          <p>깨끗한 내수면 수생태계 보원과 함께 안전한 국내산 내수면 수산물의 소비 촉진 홍보를 전개합니다.</p>
-        </div>
-      </div>
-
-      <!-- 회장 인사말 메시지 박스 -->
-      <div class="greeting-box">
-        <div class="greeting-avatar">
-          <i class="fa-solid fa-user-tie"></i>
-        </div>
-        <div class="greeting-content">
-          <h4>"전국 내수면 어업인 여러분의 든든한 동반자가 되겠습니다."</h4>
-          <p>
-            우리나라 내수면 어업은 강과 호수를 터전으로 국민들에게 건강한 수산먹거리를 제공해 온 소중한 민물 자원의 뿌리입니다. 
-            한국내수면어업연합회는 소통과 협력을 바탕으로 내수면 어업인의 경제적·사회적 지위 향상에 최선을 다하겠습니다.
-          </p>
-          <div class="greeting-footer">
-            <span class="founder-name">사단법인 한국내수면어업연합회 임원진 일동</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Section 2: 활동 동향 & 갤러리 (사진 중심) -->
-  <section class="section gallery-section" id="gallery">
-    <div class="container">
-      <div class="section-header">
+      <div class="section-header gallery-section-header margin-bottom-md">
         <div>
-          <span class="section-subtitle">ACTIVITY GALLERY</span>
-          <h2 class="section-title">연합회 활동 동향</h2>
+          <span class="section-subtitle">RECENT ASSOCIATION ACTIVITIES</span>
+          <h3 class="section-title">📸 연합회 주요 활동 동향</h3>
+          <p class="section-desc">전국 지회의 생생한 현장 활동과 총회, 기술 교육 현장입니다.</p>
         </div>
-        <!-- Gallery Filter Tabs -->
-        <div class="filter-tabs">
-          <button class="tab-btn active" data-filter="all">전체</button>
-          <button class="tab-btn" data-filter="field">현장활동</button>
-          <button class="tab-btn" data-filter="meeting">총회/이사회</button>
-          <button class="tab-btn" data-filter="edu">기술교육</button>
+        <div class="gallery-action-bar">
+          <!-- 4개 통합 탭 (좌우 스크롤 0% 깔끔 피팅) -->
+          <div class="filter-tabs">
+            <button class="tab-btn active" onclick="renderGalleryGrid('all', event)">전체</button>
+            <button class="tab-btn" onclick="renderGalleryGrid('field', event)">현장활동 및 교육</button>
+            <button class="tab-btn" onclick="renderGalleryGrid('meeting', event)">총회/이사회</button>
+            <button class="tab-btn" onclick="renderGalleryGrid('branch', event)">지부활동</button>
+          </div>
+          <!-- 🏛️ 시·도 지회 행사 전용 등록 버튼 -->
+          <button class="btn-gallery-add" onclick="openBranchAdminModal()" style="background: #0284C7; color: #FFF; border: none; font-weight: 800;">
+            <i class="fa-solid fa-lock"></i> [+ 🏛️ 시·도 지회 행사 등록]
+          </button>
         </div>
       </div>
 
-      <!-- Gallery Grid -->
       <div class="gallery-grid" id="gallery-grid">
-        <!-- Item 1 -->
-        <div class="gallery-card" data-category="field" onclick="openGalleryModal(0)">
-          <div class="card-img-wrap">
-            <img src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80" alt="양식장 현장 점검">
-            <span class="card-badge badge-field">현장활동</span>
-          </div>
-          <div class="card-body">
-            <span class="card-date"><i class="fa-regular fa-calendar"></i> 2026.07.18</span>
-            <h4 class="card-title">내수면 양식 어가 현장 수질 및 시설 점검</h4>
-            <p class="card-text">하계 고온기 대비 내수면 양식 어가의 수질 관리 및 산소 공급 시설 현장 지도 점검을 실시하였습니다.</p>
-          </div>
-        </div>
-
-        <!-- Item 2 -->
-        <div class="gallery-card" data-category="meeting" onclick="openGalleryModal(1)">
-          <div class="card-img-wrap">
-            <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=80" alt="정기 총회">
-            <span class="card-badge badge-meeting">총회/이사회</span>
-          </div>
-          <div class="card-body">
-            <span class="card-date"><i class="fa-regular fa-calendar"></i> 2026.06.25</span>
-            <h4 class="card-title">2026년도 상반기 정기 총회 및 정책 간담회</h4>
-            <p class="card-text">해양수산부 관계자 및 전국 지회장들이 참석한 가운데 내수면 어업 육성법 개정안 및 예산 안건을 의결했습니다.</p>
-          </div>
-        </div>
-
-        <!-- Item 3 -->
-        <div class="gallery-card" data-category="edu" onclick="openGalleryModal(2)">
-          <div class="card-img-wrap">
-            <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=800&q=80" alt="기술 교육">
-            <span class="card-badge badge-edu">기술교육</span>
-          </div>
-          <div class="card-body">
-            <span class="card-date"><i class="fa-regular fa-calendar"></i> 2026.05.30</span>
-            <h4 class="card-title">친환경 스마트 내수면 양식 기술 전문가 초청 강연</h4>
-            <p class="card-text">전국 어업인 120 여명을 대상으로 에너지 절감형 스마트 순환가두리 양식 기술 세미나를 진행하였습니다.</p>
-          </div>
-        </div>
-
-        <!-- Item 4 -->
-        <div class="gallery-card" data-category="field" onclick="openGalleryModal(3)">
-          <div class="card-img-wrap">
-            <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80" alt="수생태계 보존 캠페인">
-            <span class="card-badge badge-field">현장활동</span>
-          </div>
-          <div class="card-body">
-            <span class="card-date"><i class="fa-regular fa-calendar"></i> 2026.05.12</span>
-            <h4 class="card-title">내수면 외래어종 퇴치 및 환경 정화 활동</h4>
-            <p class="card-text">주요 하천 환경 정화 및 생태계 교란 외래어종 퇴치 사업을 대청호 일대에서 공동 추진하였습니다.</p>
-          </div>
-        </div>
+        <!-- Rendered by JavaScript -->
       </div>
     </div>
   </section>
 
-  <!-- Section 3: 알림 및 공시사항 (Notice & Disclosure) -->
-  <section class="section notice-section" id="notice">
-    <div class="container">
-      <div class="notice-grid">
-        <!-- 공지사항 Box -->
-        <div class="notice-box">
-          <div class="notice-box-header">
-            <h3><i class="fa-solid fa-bullhorn"></i> 연합회 공지사항</h3>
-            <a href="#" class="more-link" onclick="alert('전체 공지사항 목록으로 이동합니다.'); return false;">더보기 +</a>
-          </div>
-          <ul class="notice-list">
-            <li onclick="openNoticeModal('사단법인 한국내수면어업연합회 공식 홈페이지 개설 안내', '2026-07-24', '사단법인 한국내수면어업연합회의 공식 웹사이트가 오픈되었습니다. 어업인 여러분의 많은 이용 바랍니다.')">
-              <span class="notice-tag tag-new">NEW</span>
-              <span class="notice-title">사단법인 한국내수면어업연합회 공식 홈페이지 개설 안내</span>
-              <span class="notice-date">2026.07.24</span>
-            </li>
-            <li onclick="openNoticeModal('2026년 하반기 내수면 어가 시설 현대화 지원 사업 신청', '2026-07-15', '해양수산부 2026년 하반기 내수면 어가 지원사업 공모 안내입니다. 관련 서식은 자료실에서 다운로드 가능합니다.')">
-              <span class="notice-tag">공지</span>
-              <span class="notice-title">2026년 하반기 내수면 어가 시설 현대화 지원 사업 신청</span>
-              <span class="notice-date">2026.07.15</span>
-            </li>
-            <li onclick="openNoticeModal('제14회 내수면 어업인 한마음 대회 개최 일자 안내', '2026-07-02', '전국 어업인 화합을 위한 한마음 대회가 오는 9월 개최됩니다.')">
-              <span class="notice-tag">행사</span>
-              <span class="notice-title">제14회 내수면 어업인 한마음 대회 개최 일자 안내</span>
-              <span class="notice-date">2026.07.02</span>
-            </li>
-          </ul>
-        </div>
-
-        <!-- 법정 결산 공시 Box -->
-        <div class="notice-box disclosure-box" id="disclosure">
-          <div class="notice-box-header">
-            <h3><i class="fa-solid fa-file-shield"></i> 법정 결산 공시</h3>
-            <span class="legal-badge">기재부/해수부 규정 준수</span>
-          </div>
-          <div class="disclosure-card">
-            <div class="disclosure-icon"><i class="fa-solid fa-file-pdf"></i></div>
-            <div class="disclosure-info">
-              <h4>2025년도 수입·지출 결산서 및 사업실적 공시</h4>
-              <p>기획재정부 및 해양수산부 관련 법령에 의거한 연간 결산 공시 자료입니다.</p>
-              <span class="file-size"><i class="fa-solid fa-download"></i> PDF 다운로드 (1.2 MB)</span>
-            </div>
-            <button class="btn btn-outline" onclick="alert('결산서 PDF 다운로드가 진행됩니다.');">공시보기</button>
-          </div>
-          <div class="disclosure-card">
-            <div class="disclosure-icon"><i class="fa-solid fa-file-lines"></i></div>
-            <div class="disclosure-info">
-              <h4>사단법인 한국내수면어업연합회 정관</h4>
-              <p>법인 설립 및 운영에 관한 기본 정관 문서입니다.</p>
-              <span class="file-size"><i class="fa-solid fa-download"></i> HWP 다운로드 (340 KB)</span>
-            </div>
-            <button class="btn btn-outline" onclick="alert('정관 문서 다운로드가 진행됩니다.');">정관보기</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Section 4: 문의하기 및 오시는 길 -->
-  <section class="section contact-section" id="contact">
+  <!-- Main Section 2: Contact Form -->
+  <section class="section" style="background: #FFF;">
     <div class="container">
       <div class="contact-grid">
-        <!-- Contact Info -->
-        <div class="contact-info">
-          <span class="section-subtitle">LOCATION & CONTACT</span>
-          <h2 class="section-title">사무국 오시는 길 & 문의</h2>
-          <p class="contact-desc">내수면 어업 관련 문의 및 연합회 가입 상담을 친절하게 안내해 드립니다.</p>
-
+        <div>
+          <span class="section-subtitle">CONTACT & INQUIRY</span>
+          <h3 class="section-title">사단법인 연합회 사무국 연락처 및 위치 안내</h3>
+          <p class="section-desc">어가 애로사항 건의 및 지회 가입 문의를 언제든 환영합니다.</p>
+          
           <div class="info-list">
             <div class="info-item">
               <div class="info-icon"><i class="fa-solid fa-location-dot"></i></div>
               <div>
-                <strong>사무국 주소</strong>
-                <p>서울특별시 영등포구 국회대로 123, 연합회 회관 4층 (해양수산관)</p>
+                <strong>중앙 사무국 주소</strong>
+                <p></p>
               </div>
             </div>
             <div class="info-item">
               <div class="info-icon"><i class="fa-solid fa-phone"></i></div>
               <div>
                 <strong>대표 전화 & 팩스</strong>
-                <p>TEL: 02-1234-5678 | FAX: 02-1234-5679</p>
+                <p></p>
               </div>
             </div>
             <div class="info-item">
               <div class="info-icon"><i class="fa-solid fa-envelope"></i></div>
               <div>
                 <strong>이메일 문의</strong>
-                <p>contact@inland-fishery.or.kr</p>
+                <p></p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 1:1 Quick Form -->
         <div class="contact-form-wrap">
-          <h3><i class="fa-solid fa-paper-plane"></i> 1:1 온라인 문의 접수</h3>
+          <span class="form-wrap-badge"><i class="fa-solid fa-paper-plane"></i> 빠른 문의 접수</span>
+          <h3>어가 현장 건의 및 회원 문의</h3>
           <form id="inquiry-form" onsubmit="handleInquirySubmit(event)">
-            <div class="form-group">
-              <label for="form-name">성함 / 어가명 *</label>
-              <input type="text" id="form-name" required placeholder="예: 홍길동 (소양호 어가)">
+            <div class="form-row">
+              <div class="form-group col-half">
+                <label for="form-name">성함 / 어가명 *</label>
+                <input type="text" id="form-name" required placeholder="예: 홍길동 (충주호 어가)">
+              </div>
+              <div class="form-group col-half">
+                <label for="form-phone">연락처 *</label>
+                <input type="tel" id="form-phone" required placeholder="010-0000-0000">
+              </div>
             </div>
             <div class="form-group">
-              <label for="form-phone">연락처 *</label>
-              <input type="tel" id="form-phone" required placeholder="010-0000-0000">
-            </div>
-            <div class="form-group">
-              <label for="form-type">문의 유형</label>
-              <select id="form-type">
-                <option value="join">연합회 가입 문의</option>
-                <option value="policy">어업 지원 정책 관련</option>
-                <option value="etc">기타 일반 문의</option>
+              <label for="form-region">소속 수계 / 지역 *</label>
+              <select id="form-region" required>
+                <option value="">선택하세요</option>
+                <option value="한강">한강 수계 (경기/강원)</option>
+                <option value="금강">금강 수계 (충북/충남)</option>
+                <option value="낙동강">낙동강 수계 (경북/경남)</option>
+                <option value="영산강">영산강·섬진강 수계 (전북/전남)</option>
+                <option value="기타">기타 지역 및 관련 기관</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="form-message">문의 내용 *</label>
-              <textarea id="form-message" rows="4" required placeholder="궁금하신 내용을 입력해 주세요."></textarea>
+              <label for="form-msg">건의 내용 *</label>
+              <textarea id="form-msg" rows="3" required placeholder="건의 사항이나 문의 내용을 작성해 주세요."></textarea>
             </div>
-            <button type="submit" class="btn btn-primary btn-block"><i class="fa-solid fa-paper-plane"></i> 문의 보내기</button>
+            <button type="submit" class="btn btn-primary btn-block"><i class="fa-solid fa-paper-plane"></i> 사무국으로 문의 접수하기</button>
           </form>
         </div>
       </div>
+
+      <!-- 하단 전용 관리자 바 (제일 밑에 조용하게 배치) -->
+      <div class="bottom-admin-bar">
+        <div class="admin-bar-info">
+          <i class="fa-solid fa-user-shield"></i>
+          <div>
+            <strong>사단법인 중앙 연합회 전용 활동 & 회계 결산 실시간 등록 시스템</strong>
+            <p>권한을 부여받은 마스터 및 승인된 지부 관리자만 아이디/비밀번호 인증 후 등록하실 수 있습니다.</p>
+          </div>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+          <!-- 1. 중앙 연합회 활동/회계 등록 버튼 -->
+          <button class="btn-bottom-admin" onclick="openAdminModal()">
+            <i class="fa-solid fa-lock"></i> [+ 연합회 활동/회계 등록]
+          </button>
+
+          <!-- 2. 지회 권한 가입 신청 및 사무국 마스터 승인 관리 버튼 -->
+          <button class="btn-bottom-admin" onclick="openMemberAuthModal()" style="background: #0284C7; font-size: 0.78rem; padding: 6px 12px;">
+            <i class="fa-solid fa-users-gear"></i> [👥 지회 관리자 권한 신청 & 사무국 승인 관리]
+          </button>
+        </div>
+      </div>
+
     </div>
   </section>
 
   <!-- Footer -->
   <footer class="footer">
-    <div class="container footer-content">
-      <div class="footer-top">
-        <div class="footer-logo">
-          <i class="fa-solid fa-water"></i> 사단법인 한국내수면어업연합회
-        </div>
-        <div class="footer-nav">
-          <a href="#about">연합회 소개</a>
-          <a href="#gallery">활동 동향</a>
-          <a href="#notice">공지사항</a>
-          <a href="#disclosure">결산공시</a>
-          <a href="#contact">개인정보처리방침</a>
-        </div>
+    <div class="container text-center">
+      <div class="footer-brand">
+        <img src="logo_clean.svg" alt="연합회 로고" class="footer-logo-img">
+        <span class="footer-title">사단법인 전국내수면어로어업인연합회</span>
       </div>
-      <div class="footer-bottom">
-        <p>
-          사단법인 한국내수면어업연합회 | 해양수산부 설립허가 제2026-08호 | 대표자: 회장 홍길동<br>
-          사업자등록번호: 123-82-00000 | 대표전화: 02-1234-5678 | 이메일: contact@inland-fishery.or.kr
-        </p>
-        <p class="copyright">Copyright © 2026 Korea Inland Fisheries Association. All Rights Reserved.</p>
+      <div class="footer-info">
+        고유번호: 123-82-00000 | 대표자: 홍길동 | 주소: <span id="footer-address"></span><br>
+        Copyright &copy; 2026 사단법인 전국내수면어로어업인연합회. All Rights Reserved.
       </div>
     </div>
   </footer>
+
+  <!-- 🌟 FIRST TIME AUTO POPUP: 연합회 최신 공지사항 웰컴 팝업 창 -->
+  <div class="modal" id="welcome-notice-modal">
+    <div class="modal-content" style="max-width: 620px;">
+      <button class="modal-close" onclick="closeWelcomeNotice()">&times;</button>
+      
+      <div style="text-align: center; margin-bottom: 16px;">
+        <span style="background: #0284C7; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-bullhorn"></i> 사단법인 연합회 최신 공지사항
+        </span>
+        <h2 style="font-size: 1.35rem; color: #0A2540; margin-top: 10px; font-weight: 900;">
+          사단법인 전국내수면어로어업인연합회에 오신 것을 환영합니다!
+        </h2>
+      </div>
+
+      <div id="welcome-notice-body">
+        <div style="background: #F8FAFC; padding: 18px; border-radius: 12px; border: 1px solid #E2E8F0; margin-bottom: 16px;">
+          <span style="background: #EF4444; color: #FFF; padding: 3px 8px; border-radius: 4px; font-size: 0.76rem; font-weight: 800;">NEW 공지</span>
+          <h3 style="font-size: 1.12rem; color: #0A2540; margin: 8px 0 4px; font-weight: 900;">2026년도 상반기 정기 총회 및 내수면 어가 법정 결산 공시</h3>
+          <span style="font-size: 0.8rem; color: #64748B;"><i class="fa-regular fa-calendar-check"></i> 공시일: 2026.06.25</span>
+          <p style="margin-top: 10px; color: #334155; font-size: 0.9rem; line-height: 1.65;">
+            전국 16개 시·도 지회 회원 어업인 여러분 안녕하십니까.<br>
+            사단법인 연합회의 2026년도 상반기 주요 어가 현장 지도 활동 보고 및 수입·지출 법정 결산 장부가 공시되었습니다.
+          </p>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; background: #F1F5F9; padding: 10px 14px; border-radius: 10px; font-size: 0.84rem; color: #64748B;">
+        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;">
+          <input type="checkbox" onchange="toggleHideToday(event)"> 오늘 하루 동안 이 창 다시 보지 않기
+        </label>
+        <div style="display: flex; gap: 8px;">
+          
+          <button onclick="closeWelcomeNotice()" style="background: #0A2540; color: #FFF; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 700; cursor: pointer;">닫기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔒 LOGIN MODAL -->
+  <div class="modal" id="login-modal">
+    <div class="modal-content" style="max-width: 480px; padding: 24px;">
+      <button class="modal-close" onclick="closeLoginModal()">&times;</button>
+      
+      <div style="text-align: center; margin-bottom: 20px;">
+        <span style="background: #0A2540; color: #FCD34D; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-shield-halved"></i> 회원 및 사무국 전용 인증
+        </span>
+        <h2 style="font-size: 1.3rem; color: #0A2540; margin-top: 10px; font-weight: 900;">
+          🔑 회원 & 마스터 관리자 로그인
+        </h2>
+        <p style="font-size: 0.84rem; color: #64748B; margin-top: 6px; line-height: 1.5;" id="login-modal-prompt">
+          일반 방문객(게스트)은 로그인 없이 연합회 활동 및 조직도를 보실 수 있습니다.<br>
+          세부 결산 장부 열람 및 컨텐츠 등록을 위해 로그인해 주세요.
+        </p>
+      </div>
+
+      <form id="login-form" onsubmit="handleLoginSubmit(event)">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="login-id" style="font-weight: 700; color: #334155; font-size: 0.86rem;">아이디 (ID)</label>
+          <input type="text" id="login-id" required placeholder="아이디를 입력하세요" style="padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 18px;">
+          <label for="login-pw" style="font-weight: 700; color: #334155; font-size: 0.86rem;">비밀번호 (Password)</label>
+          <input type="password" id="login-pw" required placeholder="비밀번호 입력" style="padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" style="padding: 12px; font-size: 0.95rem; justify-content: center; font-weight: 800;">
+          <i class="fa-solid fa-right-to-bracket"></i> 인증 로그인 하기
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 🔒 CHANGE PASSWORD MODAL -->
+  <div class="modal" id="change-pw-modal">
+    <div class="modal-content" style="max-width: 400px; padding: 24px;">
+      <button class="modal-close" onclick="closeChangePwModal()">&times;</button>
+      <div style="text-align: center; margin-bottom: 20px;">
+        <span style="background: #F59E0B; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-key"></i> 보안 설정
+        </span>
+        <h2 style="font-size: 1.3rem; color: #0A2540; margin-top: 10px; font-weight: 900;">
+          비밀번호 변경
+        </h2>
+      </div>
+      <form id="change-pw-form" onsubmit="handleChangePwSubmit(event)">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="change-pw-old" style="font-weight: 700; color: #334155; font-size: 0.86rem;">기존 비밀번호 *</label>
+          <input type="password" id="change-pw-old" required placeholder="현재 사용 중인 비밀번호" style="padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label for="change-pw-new" style="font-weight: 700; color: #334155; font-size: 0.86rem;">새로운 비밀번호 *</label>
+          <input type="password" id="change-pw-new" required placeholder="새 비밀번호 입력" style="padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;">
+        </div>
+        <div class="form-group" style="margin-bottom: 18px;">
+          <label for="change-pw-confirm" style="font-weight: 700; color: #334155; font-size: 0.86rem;">비밀번호 확인 *</label>
+          <input type="password" id="change-pw-confirm" required placeholder="새 비밀번호 다시 입력" style="padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" style="background: #F59E0B; border:none; padding: 12px; font-size: 0.95rem; justify-content: center; font-weight: 800;">
+          <i class="fa-solid fa-check"></i> 비밀번호 변경하기
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 📝 SIGNUP REQUEST MODAL -->
+  <div class="modal" id="signup-modal">
+    <div class="modal-content" style="max-width: 520px; padding: 26px;">
+      <button class="modal-close" onclick="closeSignupModal()">&times;</button>
+      
+      <div style="text-align: center; margin-bottom: 18px;">
+        <span style="background: #0284C7; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-user-plus"></i> 권한 신청 서식
+        </span>
+        <h2 style="font-size: 1.3rem; color: #0A2540; margin-top: 8px; font-weight: 900;">
+          📝 지회 관리자 권한 가입 신청
+        </h2>
+        <p style="font-size: 0.84rem; color: #64748B; margin-top: 4px; line-height: 1.5;">
+          지회 행사 및 현장 활동 등록 권한이 필요하신 지회장 및 이사님께서는 서식을 제출해 주세요.<br>
+          <strong>사단법인 중앙 연합회 사무국 마스터 승인 후 로그인 및 등록이 가능합니다.</strong>
+        </p>
+      </div>
+
+      <form id="signup-form" onsubmit="handleSignupSubmit(event)">
+        <div class="form-group">
+          <label for="signup-role">신청 권한 (선택) *</label>
+          <select id="signup-role" required onchange="handleSignupRoleChange()">
+            <option value="branch">지회 관리자 (지회장, 이사 등)</option>
+            <option value="master">연합회 마스터 (사무총장, 회장 등)</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group col-half">
+            <label for="signup-name">신청자 성함 / 직위 *</label>
+            <input type="text" id="signup-name" required placeholder="예: 윤강원 (강원 영서 이사)">
+          </div>
+          <div class="form-group col-half">
+            <label for="signup-branch" id="signup-branch-label">소속 지회 *</label>
+            <select id="signup-branch" required>
+              <option value="충북 지회">충북 지회</option>
+              <option value="강원 지회">강원 지회</option>
+              <option value="전남 지회">전남 지회</option>
+              <option value="경남 지회">경남 지회</option>
+              <option value="경기 지회">경기 지회</option>
+              <option value="충남 지회">충남 지회</option>
+              <option value="경북 지회">경북 지회</option>
+              <option value="전북 지회">전북 지회</option>
+              <option value="기타 지회">기타 지부</option>
+              <option value="중앙 사무국" style="display: none;" id="opt-center">중앙 사무국 (본부)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group col-half">
+            <label for="signup-id">사용할 희망 아이디 (ID) *</label>
+            <input type="text" id="signup-id" required placeholder="예: gw_kifa">
+          </div>
+          <div class="form-group col-half">
+            <label for="signup-pw">희망 비밀번호 *</label>
+            <input type="password" id="signup-pw" required placeholder="비밀번호 설정">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="signup-phone">연락처 (전화번호) *</label>
+          <input type="tel" id="signup-phone" required placeholder="010-0000-0000">
+        </div>
+
+        <div class="form-group">
+          <label for="signup-reason">신청 사유 및 담당 역할 *</label>
+          <textarea id="signup-reason" rows="2" required placeholder="예: 강원 영서 지회 현장 활동 보고서 및 행사 소식을 직접 올리고자 신청합니다."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 16px;">
+          <button type="submit" class="btn btn-primary" style="flex: 2; justify-content: center; padding: 12px; background: #0284C7; border-color: #0284C7; font-weight: 800;">
+            <i class="fa-solid fa-paper-plane"></i> 가입 신청서 사무국 제출
+          </button>
+          <button type="button" class="btn btn-outline" onclick="closeSignupModal()" style="flex: 1; justify-content: center; padding: 12px; background: #F1F5F9; color: #64748B; border-color: #CBD5E1;">
+            닫기
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 👑 MASTER APPROVAL MODAL -->
+  <div class="modal" id="master-approval-modal">
+    <div class="modal-content" style="max-width: 820px; padding: 26px;">
+      <button class="modal-close" onclick="closeMasterApprovalModal()">&times;</button>
+      
+      <div style="text-align: center; margin-bottom: 20px;">
+        <span style="background: #0A2540; color: #FCD34D; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-crown"></i> 사단법인 중앙 연합회 마스터 전용
+        </span>
+        <h2 style="font-size: 1.35rem; color: #0A2540; margin-top: 8px; font-weight: 900;">
+          👑 지회 회원 권한 가입 승인 및 계정 관리
+        </h2>
+        <p style="font-size: 0.84rem; color: #64748B; margin-top: 4px;">
+          지회에서 제출한 가입 신청서를 확인하고 <strong>[승인]</strong> 버튼을 누르면 해당 지회 아이디로 즉시 등록할 수 있게 됩니다.
+        </p>
+      </div>
+
+      <div style="background: #F8FAFC; padding: 14px 16px; border-radius: 10px; border: 1px solid #E2E8F0; margin-bottom: 16px; display: flex; justify-content: flex-end; align-items: center;">
+        <button onclick="openSignupModal()" style="background: #0284C7; color: #FFF; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer;">
+          + 신규 지회 직접 가입 신청
+        </button>
+      </div>
+
+      <div id="master-approval-list-container">
+        <!-- Rendered by JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- DEDICATED FULL MODAL: 연합회 조직도 + 회장 인사말 & 이사회/대의원회 명부 + 연합회 소개 전용 팝업 창 -->
+  <div class="modal" id="about-modal">
+    <div class="modal-content about-modal-content">
+      <button class="modal-close" onclick="closeAboutModal()">&times;</button>
+
+      <!-- 1. 연합회 조직도 섹션 -->
+      <div class="about-section-block">
+        <div class="section-header text-center margin-bottom-md">
+          <span class="section-subtitle">ORGANIZATION STRUCTURE</span>
+          <h2 class="section-title">사단법인 전국내수면어로어업인연합회 조직도</h2>
+          <p class="section-desc">전국 어업인의 단결된 목소리와 체계적인 행정을 기틀로 운영됩니다.</p>
+        </div>
+
+        <div class="org-chart-wrapper">
+          <div class="org-node org-top">
+            <div class="org-node-title"><i class="fa-solid fa-users"></i> 전국 어업인 총회</div>
+            <div class="org-node-desc">최고 의결 기구</div>
+          </div>
+          <div class="org-line-v"></div>
+
+          <div class="org-node org-exec clickable-node" onclick="scrollToDirectory('board')">
+            <div class="org-node-title"><i class="fa-solid fa-user-tie"></i> 이사회 & 대의원회</div>
+            <div class="org-node-desc">👉 클릭 시 [이사회 명단] 및 [대의원회 명단]으로 이동합니다</div>
+          </div>
+          <div class="org-line-v"></div>
+
+          <div class="org-node org-sec">
+            <div class="org-node-title"><i class="fa-solid fa-building"></i> 사무총장 / 중앙 사무국</div>
+            <div class="org-node-desc">연합회 실무 집행 총괄</div>
+          </div>
+          <div class="org-line-v"></div>
+
+          <div class="org-branches-grid" style="grid-template-columns: 1fr 1fr; max-width: 640px; margin: 10px auto 0;">
+            <div class="org-branch-card clickable-node" onclick="openCommitteeModal(event)" style="border-color: #D97706; background: #FFFBEB; cursor: pointer;">
+              <div class="branch-icon" style="background: #FEF3C7; color: #D97706; pointer-events: none;"><i class="fa-solid fa-bullseye"></i></div>
+              <h4 style="color: #92400E; font-weight: 900; pointer-events: none;">🎯 특별위원회</h4>
+              <p style="color: #B45309; pointer-events: none;">👉 클릭 시 현안별 개별 특별위원회 현황 및 위원 명단 팝업이 열립니다</p>
+            </div>
+            <div class="org-branch-card highlighted-branch clickable-node" onclick="openBranchListModal(event)" style="border-color: #0284C7; background: #F0F9FF; cursor: pointer;">
+              <div class="branch-icon" style="background: #BAE6FD; color: #0369A1; pointer-events: none;"><i class="fa-solid fa-map-location-dot"></i></div>
+              <h4 style="color: #0A2540; font-weight: 900; pointer-events: none;">🏛️ 전국 시·도 지회</h4>
+              <p style="color: #0284C7; pointer-events: none;">👉 클릭 시 전국 시·도 지부 조직도 및 명단 팝업이 열립니다</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="about-divider"></div>
+
+      <!-- 2. 회장 인사말 및 이사회/대의원회 전환 명부 -->
+      <div class="about-section-block" id="directory-section">
+        <div class="section-header text-center margin-bottom-md">
+          <span class="section-subtitle">PRESIDENT GREETING & DIRECTORY</span>
+          <h2 class="section-title">연합회 회장 인사말 및 임원·대의원 명부</h2>
+          <p class="section-desc">전국 내수면 어업인의 권익 향상과 발전을 위해 봉사하는 연합회 리더십입니다.</p>
+        </div>
+
+        <div class="president-special-box">
+          <div class="president-profile-side">
+            <div class="president-photo-wrap">
+              <img src="" alt="" class="president-photo-img" id="pres-img">
+              <span class="president-badge" id="pres-badge"></span>
+            </div>
+            <h3 class="president-name" id="pres-name"></h3>
+            <span class="president-phone" id="pres-phone"></span>
+            <span class="president-region" id="pres-region"></span>
+          </div>
+
+          <div class="president-message-side">
+            <h4 id="pres-subtitle"></h4>
+            <p id="pres-message-p">
+              
+            </p>
+            <div class="greeting-signature" id="pres-sig">
+              
+            </div>
+          </div>
+        </div>
+
+        <div class="officers-directory-wrap margin-top-lg">
+          <div class="directory-header-bar">
+            <div>
+              <h3 class="directory-title"><i class="fa-solid fa-id-card-clip"></i> 임원 & 대의원</h3>
+            </div>
+            
+            <div class="directory-toggle-group">
+              <button class="dir-toggle-btn active" id="btn-toggle-board" onclick="filterDirectory('board')">
+                <i class="fa-solid fa-user-tie"></i> 🏛️ 이사회 (이사 명단 보기)
+              </button>
+              <button class="dir-toggle-btn" id="btn-toggle-delegate" onclick="filterDirectory('delegate')">
+                <i class="fa-solid fa-users-gear"></i> 👥 대의원회 (대의원 명단 보기)
+              </button>
+            </div>
+          </div>
+
+          <div class="officers-grid" id="directory-grid">
+            <!-- Rendered by JavaScript -->
+          </div>
+        </div>
+
+      </div>
+
+      <div class="about-divider"></div>
+
+      <!-- 3. 연합회 소개 (3대 핵심 가치) -->
+      <div class="about-section-block">
+        <div class="section-header text-center margin-bottom-md">
+          <span class="section-subtitle">ABOUT US CORE VALUES</span>
+          <h2 class="section-title">사단법인 연합회 3대 핵심 가치</h2>
+          <p class="section-desc">지속 가능한 내수면 어업 발전과 어업인 권익 보호를 위한 중심축입니다.</p>
+        </div>
+
+        <div class="about-grid">
+          <div class="about-card">
+            <div class="card-icon"><i class="fa-solid fa-handshake"></i></div>
+            <h3>어업인 권익 보호</h3>
+            <p>내수면 어로어업인의 정당한 권익을 대변하고 어업 현장의 애로사항을 정부 및 지자체에 적극 건의합니다.</p>
+          </div>
+          <div class="about-card highlighted">
+            <div class="card-icon"><i class="fa-solid fa-chart-line"></i></div>
+            <h3>내수경제 활로개척</h3>
+            <p>친환경 내수면 어업 기술 보급, 자원 조성, 수산물 정류 시설 및 유통 구조 개선에 앞장섭니다.</p>
+          </div>
+          <div class="about-card">
+            <div class="card-icon"><i class="fa-solid fa-leaf"></i></div>
+            <h3>생태계 보존 & 자원조성</h3>
+            <p>깨끗한 내수면 수생태계 복원과 함께 외래어종 퇴치, 치어 방류 사업을 추진합니다.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="about-divider"></div>
+
+      <!-- 4. 공식 엠블럼 휘장 상징과 의미 -->
+      <div class="about-section-block">
+        <div class="section-header text-center margin-bottom-md">
+          <span class="section-subtitle">OFFICIAL EMBLEM</span>
+          <h2 class="section-title">공식 엠블럼 휘장 상징과 의미</h2>
+          <p class="section-desc">연합회 배지 마크는 내수면의 청정 자연 환경과 어업인의 번영, 상생의 가치를 상징합니다.</p>
+        </div>
+
+        <div class="emblem-integrated-box">
+          <div class="emblem-box">
+            <div class="emblem-left">
+              <img src="logo_clean.svg" alt="사단법인 전국내수면어로어업인연합회 공식 엠블럼" class="emblem-large-img">
+              <div style="margin-top: 14px; font-weight: 800; color: #0A2540;">공식 엠블럼 휘장</div>
+            </div>
+            <div class="emblem-right">
+              <ul class="emblem-meaning-list">
+                <li>
+                  <div class="meaning-icon"><i class="fa-solid fa-mountain"></i></div>
+                  <div>
+                    <strong>청정 푸른 산과 하천 (자연 터전)</strong>
+                    <p>우리가 터전으로 삼는 전국 강과 호수, 푸른 산하의 생명력과 청정 수질을 형상화하였습니다.</p>
+                  </div>
+                </li>
+                <li>
+                  <div class="meaning-icon"><i class="fa-solid fa-fish"></i></div>
+                  <div>
+                    <strong>상생하는 두 마리 물고기 (풍요와 희망)</strong>
+                    <p>내수면 어업인과 수생태계가 조화롭게 상생하며, 붉은색과 푸른색의 풍요로운 어자원 결실을 나타냅니다.</p>
+                  </div>
+                </li>
+                <li>
+                  <div class="meaning-icon"><i class="fa-solid fa-award"></i></div>
+                  <div>
+                    <strong>금빛 원형 테두리 (위상과 단결)</strong>
+                    <p>'내수면어로어업 내수경제 활로개척'의 슬로건과 사단법인의 정통성, 어업인의 단결을 의미합니다.</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- DEDICATED FULL MODAL: 연합회 알림 & 법정 결산 공시 전용 팝업 창 -->
+  <div class="modal" id="notice-modal">
+    <div class="modal-content" style="max-width: 960px;">
+      <button class="modal-close" onclick="closeNoticeModalFull()">&times;</button>
+      
+      <div class="about-section-block">
+        <div class="section-header text-center margin-bottom-md">
+          <span class="section-subtitle">ASSOCIATION ANNOUNCEMENTS & DISCLOSURE</span>
+          <h2 class="section-title">📢 연합회 공지사항 및 법정 결산 공시</h2>
+          <p class="section-desc">사단법인 연합회의 공식 공지사항과 활동 시 동시 집행되는 예산·회계 결산 내역입니다.</p>
+        </div>
+
+        <div class="notice-box-clean margin-bottom-md">
+          <div style="font-size: 1.05rem; font-weight: 800; color: var(--primary); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <i class="fa-solid fa-bullhorn" style="color: #EF4444;"></i> 📢 연합회 공식 공지사항
+          </div>
+
+          <ul class="notice-list-clean">
+            <li id="main-new-notice-item" onclick="openNoticeModal('2026년도 상반기 정기 총회 및 내수면 어가 수질 점검 공지', '2026.06.25', '전국 16개 시·도 지회 회원 어업인 여러분 안녕하십니까.<br><br>사단법인 전국내수면어로어업인연합회의 2026년도 상반기 정기 총회 및 내수면 어가 수질 안전 점검 관련 공지사항입니다.<br><br><strong>[주요 공지 안건]</strong><br>1. 2026년도 상반기 어가 현장 지도 실적 보고<br>2. 외래어종 퇴치 및 수생태계 보전 사업 집행 결과 공시<br>3. 시·도 지부 어업인 복지 및 정부 지원 건의안 의결<br><br>자세한 사항은 사무국(02-1234-5678)으로 문의해 주시기 바랍니다.')">
+              <span class="notice-tag tag-new">NEW</span>
+              <div class="notice-info-wrap">
+                <span class="notice-title-text">2026년도 상반기 정기 총회 및 내수면 어가 수질 점검 공지</span>
+                <span class="notice-date-text"><i class="fa-regular fa-calendar"></i> 2026.06.25 (최신 공지)</span>
+              </div>
+              <span class="notice-arrow">&rarr;</span>
+            </li>
+
+            <li onclick="togglePastNoticesList()" class="past-notices-toggle-row" style="background: #F1F5F9; border-color: #CBD5E1;">
+              <span class="notice-tag" style="background: #64748B;">공지</span>
+              <div class="notice-info-wrap">
+                <span class="notice-title-text" style="color: #334155; font-weight: 800;">📂 지난 공지사항 전체 목록 보기 (그동안 공지된 내역 목록)</span>
+                <span class="notice-date-text" style="color: #64748B;"><i class="fa-solid fa-folder-open"></i> 누르시면 이전에 공지되었던 행사 및 알림 목록이 차례대로 펼쳐집니다.</span>
+              </div>
+              <span class="notice-arrow" id="past-notice-chevron"><i class="fa-solid fa-chevron-down"></i></span>
+            </li>
+          </ul>
+
+          <div id="past-notices-archive" style="display: none; margin-top: 14px; padding-top: 14px; border-top: 2px dashed #CBD5E1;">
+            <div style="font-size: 0.85rem; font-weight: 800; color: #64748B; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+              <span><i class="fa-solid fa-clock-rotate-left"></i> 지난 공지사항 목록 (제목 클릭 시 세부 공지 내용 확인)</span>
+              <button id="add-past-notice-btn" style="display:none; background: #0284C7; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-weight: bold;" onclick="openPastNoticeEditModal(null, event)">➕ 추가</button>
+            </div>
+            <ul class="notice-list-clean" id="past-notices-list-container">
+            </ul>
+          </div>
+        </div>
+
+        <div class="about-divider"></div>
+
+        <!-- 2. 회계 및 법정 결산 장부 공시 섹션 -->
+        <div class="section-header text-center margin-bottom-md">
+          <span class="section-subtitle">ANNUAL & MONTHLY FINANCIAL LEDGER</span>
+          <h2 class="section-title">🏛️ 회계 및 법정 결산 장부 공시</h2>
+          <p class="section-desc">활동 등록 시 자동 정산되는 연도별·월별 수입/지출 내역과 당기 잔액 결산 장부입니다.</p>
+        </div>
+
+        <div class="notice-box-clean" style="padding: clamp(16px, 4vw, 24px);">
+          <div id="disclosure-list-wrap">
+            <!-- Dynamic Rendered Ledger Sheet & Summary -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
 
   <!-- Detail Modal -->
   <div class="modal" id="detail-modal">
     <div class="modal-content">
       <button class="modal-close" onclick="closeModal()">&times;</button>
-      <div id="modal-body-content"></div>
+      <div id="modal-body-content"></div><div id="detail-action-area" style="margin-top: 15px;"></div>
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <!-- 🎛️ MASTER DASHBOARD MODAL -->
+  <div class="modal" id="master-dashboard-modal">
+    <div class="modal-content" style="max-width: 420px; padding: 24px;">
+      <button class="modal-close" onclick="hideModalClean('master-dashboard-modal')">&times;</button>
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="background: #0A2540; color: #4ADE80; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-user-check"></i> 중앙 연합회 마스터 메뉴
+        </span>
+        <h2 style="font-size: 1.3rem; color: #0A2540; margin-top: 10px; font-weight: 900;">무엇을 하시겠습니까?</h2>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <button type="button" onclick="openNewAdminEntry()" style="background: #0284C7; color: #FFF; border: none; padding: 16px; border-radius: 12px; font-size: 1.05rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <i class="fa-solid fa-plus-circle"></i> 신규 활동 & 회계 입력
+        </button>
+        <button type="button" onclick="openMasterEditList()" style="background: #475569; color: #FFF; border: none; padding: 16px; border-radius: 12px; font-size: 1.05rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <i class="fa-solid fa-list-check"></i> 기존 활동 및 회계 수정
+        </button>
+        <button type="button" onclick="openInquiryListModal()" style="background: #10B981; color: #FFF; border: none; padding: 16px; border-radius: 12px; font-size: 1.05rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <i class="fa-solid fa-inbox"></i> 접수된 현장 건의 및 문의 확인
+        </button>
+        <button type="button" onclick="openChangePwModalFromDashboard()" style="background: #F59E0B; color: #FFF; border: none; padding: 16px; border-radius: 12px; font-size: 1.05rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <i class="fa-solid fa-key"></i> 마스터 비밀번호 변경
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 📝 MASTER EDIT LIST MODAL -->
+  <div class="modal" id="master-edit-list-modal">
+    <div class="modal-content" style="max-width: 600px; padding: 24px;">
+      <button class="modal-close" onclick="hideModalClean('master-edit-list-modal')">&times;</button>
+      <div style="text-align: center; margin-bottom: 20px;">
+        <span style="background: #475569; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-list"></i> 등록된 활동 목록
+        </span>
+        <h2 style="font-size: 1.3rem; color: #0A2540; margin-top: 10px; font-weight: 900;">기존 활동 수정</h2>
+        <p style="font-size: 0.85rem; color: #64748B; margin-top: 6px;">수정할 활동 항목을 선택해 주세요.</p>
+      </div>
+      <div id="master-edit-list-container" style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 4px;">
+        <!-- JS가 여기에 아이템을 채웁니다 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. Central Association Admin Input Modal -->
+  <div class="modal" id="admin-modal">
+    <div class="modal-content admin-modal-content">
+      <button class="modal-close" onclick="closeAdminModal()">&times;</button>
+
+
+
+      <div class="admin-modal-header">
+        <h2><i class="fa-solid fa-pen-to-square"></i> 사단법인 연합회 활동 & 회계 동시 등록</h2>
+        <p>사진과 수입·지출 세부 항목들을 <strong>[+] 버튼으로 자유롭게 추가</strong>하여 등록하실 수 있습니다.</p>
+      </div>
+
+      <form id="unified-admin-form" onsubmit="handleUnifiedSubmit(event)">
+        <div class="form-group">
+          <label for="entry-title">등록 제목 (연합회 사업 활동명 또는 집행 내역명) *</label>
+          <input type="text" id="entry-title" required placeholder="예: 2026년 7월 현장 어가 수질 점검 및 지자체 업무 협약">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group col-half">
+            <label for="entry-date">날짜 (어느 날) *</label>
+            <input type="date" id="entry-date" required>
+          </div>
+          <div class="form-group col-half">
+            <label for="entry-category">활동 카테고리 *</label>
+            <select id="entry-category" required>
+              <option value="field">현장활동 및 교육</option>
+              <option value="meeting">총회 / 이사회</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="entry-file">📸 활동 사진 선택 (최대 20장, 다중 선택 가능)</label>
+          <input type="file" id="entry-file" accept="image/*" multiple onchange="previewImageFile(event)">
+          <input type="url" id="entry-img-url" placeholder="또는 대표 이미지 인터넷 주소(URL) 입력" style="margin-top: 6px;">
+          <div id="img-preview-box" class="img-preview-box" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 10px;">
+            <span id="img-preview-placeholder">선택된 사진 미리보기 (클릭하여 대표사진 변경, X를 눌러 삭제)</span>
+          </div>
+        </div>
+
+        <div class="form-group dynamic-acc-box" style="background: #ECFDF5; border: 1px solid #A7F3D0; padding: 14px; border-radius: 12px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label style="color: #065F46; font-weight: 800; font-size: 0.92rem; margin: 0;">
+              <i class="fa-solid fa-circle-arrow-down" style="color: #059669;"></i> [수입] 항목 세부 추가 (선택)
+            </label>
+            <button type="button" class="btn-add-row" onclick="addIncomeRow()" style="background: #059669; color: #FFF; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
+              <i class="fa-solid fa-plus"></i> 수입 항목 추가
+            </button>
+          </div>
+          <div id="income-rows-container"></div>
+        </div>
+
+        <div class="form-group dynamic-acc-box" style="background: #FEF2F2; border: 1px solid #FCA5A5; padding: 14px; border-radius: 12px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label style="color: #991B1B; font-weight: 800; font-size: 0.92rem; margin: 0;">
+              <i class="fa-solid fa-circle-arrow-up" style="color: #DC2626;"></i> [지출] 항목 세부 추가 (선택)
+            </label>
+            <button type="button" class="btn-add-row" onclick="addExpenseRow()" style="background: #DC2626; color: #FFF; border: none; padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
+              <i class="fa-solid fa-plus"></i> 지출 항목 추가
+            </button>
+          </div>
+          <div id="expense-rows-container"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="entry-desc">상세 내용 및 세부 집행 설명 *</label>
+          <textarea id="entry-desc" rows="3" required placeholder="진행된 연합회 활동 성과와 해당 날짜의 예산 집행 세부 내용을 적어주세요."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="submit" id="admin-submit-btn" class="btn btn-primary" style="flex: 2; justify-content: center; padding: 14px;">
+            <i class="fa-solid fa-cloud-arrow-up"></i> 연합회 활동 & 회계 동시 등록 및 반영
+          </button>
+          <button type="button" id="admin-delete-btn" class="btn btn-outline" onclick="deleteMasterActivity()" style="display: none; flex: 1; justify-content: center; padding: 14px; background: #FEE2E2; color: #DC2626; border-color: #FCA5A5; font-weight: 800;">
+            <i class="fa-solid fa-trash"></i> 삭제하기
+          </button>
+          <button type="button" class="btn btn-outline" onclick="closeAdminModal()" style="flex: 1; justify-content: center; padding: 14px; background: #F1F5F9; color: #64748B; border-color: #CBD5E1;">
+            닫기
+          </button>
+        </div>
+      </form>
+      <div id="admin-auth-status-bar" style="background: #0A2540; color: #FFF; padding: 8px 14px; border-radius: 8px; font-size: 0.82rem; margin-top: 14px; display: flex; justify-content: space-between; align-items: center;">
+        <span><i class="fa-solid fa-user-check" style="color: #4ADE80;"></i> 인증됨: <strong id="admin-user-name">중앙 연합회 마스터</strong></span>
+        <div style="display: flex; gap: 6px;">
+          <button type="button" onclick="openChangePwModal()" style="background: #F59E0B; color: #FFF; border: none; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 700;"><i class="fa-solid fa-key"></i> 비번변경</button>
+          <button type="button" onclick="handleLogout()" style="background: #DC2626; color: #FFF; border: none; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 700;">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🎛️ BRANCH DASHBOARD MODAL -->
+  <div class="modal" id="branch-dashboard-modal">
+    <div class="modal-content" style="max-width: 420px; padding: 24px;">
+      <button class="modal-close" onclick="hideModalClean('branch-dashboard-modal')">&times;</button>
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span style="background: #0284C7; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-building-flag"></i> 시·도 지회 관리자 메뉴
+        </span>
+        <h2 style="font-size: 1.3rem; color: #0A2540; margin-top: 10px; font-weight: 900;">무엇을 하시겠습니까?</h2>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <button type="button" onclick="openNewBranchAdminEntry()" style="background: #0284C7; color: #FFF; border: none; padding: 16px; border-radius: 12px; font-size: 1.05rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <i class="fa-solid fa-plus-circle"></i> 신규 지부 활동 입력
+        </button>
+        <button type="button" onclick="openBranchEditList()" style="background: #475569; color: #FFF; border: none; padding: 16px; border-radius: 12px; font-size: 1.05rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <i class="fa-solid fa-list-check"></i> 기존 지부 활동 수정
+        </button>
+        <button type="button" onclick="openChangePwModalFromDashboard()" style="background: #F59E0B; color: #FFF; border: none; padding: 16px; border-radius: 12px; font-size: 1.05rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <i class="fa-solid fa-key"></i> 비밀번호 변경
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 📝 BRANCH EDIT LIST MODAL -->
+  <div class="modal" id="branch-edit-list-modal">
+    <div class="modal-content" style="max-width: 600px; padding: 24px;">
+      <button class="modal-close" onclick="hideModalClean('branch-edit-list-modal')">&times;</button>
+      <div style="text-align: center; margin-bottom: 20px;">
+        <span style="background: #475569; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-list"></i> 등록된 활동 목록
+        </span>
+        <h2 style="font-size: 1.3rem; color: #0A2540; margin-top: 10px; font-weight: 900;">기존 활동 수정</h2>
+        <p style="font-size: 0.85rem; color: #64748B; margin-top: 6px;">수정할 활동 항목을 선택해 주세요.</p>
+      </div>
+      <div id="branch-edit-list-container" style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto; padding-right: 4px;">
+        <!-- JS가 여기에 아이템을 채웁니다 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Single Branch Admin Input Modal -->
+  <div class="modal" id="branch-admin-modal">
+    <div class="modal-content admin-modal-content">
+      <button class="modal-close" onclick="closeBranchAdminModal()">&times;</button>
+
+
+
+      <div class="admin-modal-header" style="background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);">
+        <h2><i class="fa-solid fa-building-flag"></i> 시·도 지회 행사 & 활동 전용 등록</h2>
+        <p>전국 시·도 지회의 자체 행사 및 지부 현장 활동을 등록합니다.</p>
+      </div>
+
+      <div style="background: #F0F9FF; border: 1px solid #BAE6FD; padding: 12px 14px; border-radius: 10px; margin: 16px 0; font-size: 0.86rem; color: #0369A1; line-height: 1.5;">
+        <i class="fa-solid fa-circle-info" style="color: #0284C7;"></i> <strong>안내:</strong> 시·도 지회 행사 등록건은 <strong>[지부활동] 갤러리 및 세부 동향 보고서에만 반영</strong>되며, 사단법인 중앙 연합회의 법정 결산 회계 장부에는 포함되지 않습니다.
+      </div>
+
+      <form id="branch-admin-form" onsubmit="handleBranchSubmit(event)">
+        <div class="form-group">
+          <label for="branch-entry-title">지회 행사 / 활동 제목 *</label>
+          <input type="text" id="branch-entry-title" required placeholder="예: 충북 지회 충주호 어구 현대화 현장 간담회">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group col-half">
+            <label for="branch-entry-date">날짜 (어느 날) *</label>
+            <input type="date" id="branch-entry-date" required>
+          </div>
+          <div class="form-group col-half">
+            <label for="branch-entry-region">소속 지회 / 수계 *</label>
+            <select id="branch-entry-region" required>
+              <option value="충북 지회">충북 지회 (충주호/청풍호)</option>
+              <option value="강원 지회">강원 지회 (소양호/의암호)</option>
+              <option value="전남 지회">전남 지회 (영산강/섬진강)</option>
+              <option value="경남 지회">경남 지회 (낙동강/진양호)</option>
+              <option value="경기 지회">경기 지회 (남한강/북한강)</option>
+              <option value="충남 지회">충남 지회 (금강/대청호)</option>
+              <option value="경북 지회">경북 지회 (안동호/임하호)</option>
+              <option value="전북 지회">전북 지회 (옥정호/금강)</option>
+              <option value="기타 지회">기타 시·도 지부</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="branch-entry-file">📸 지회 행사 사진 선택 (최대 20장, 다중 선택 가능)</label>
+          <input type="file" id="branch-entry-file" accept="image/*" multiple onchange="previewBranchImageFile(event)">
+          <input type="url" id="branch-entry-img-url" placeholder="또는 대표 이미지 인터넷 주소(URL) 입력" style="margin-top: 6px;">
+          <div id="branch-img-preview-box" class="img-preview-box" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 10px;">
+            <span id="branch-img-preview-placeholder">선택된 사진 미리보기 (클릭하여 대표사진 변경, X를 눌러 삭제)</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="branch-entry-desc">지회 행사 상세 내용 및 세부 보고 *</label>
+          <textarea id="branch-entry-desc" rows="4" required placeholder="해당 시·도 지부에서 진행된 현장 행사 내용과 어업인 참석 현황을 작성해 주세요."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="submit" id="branch-submit-btn" class="btn btn-primary" style="flex: 2; justify-content: center; padding: 14px; background: #0284C7; border-color: #0284C7;">
+            <i class="fa-solid fa-building-flag"></i> 🏛️ 지회 행사 활동 등록하기 (회계 미반영)
+          </button>
+          <button type="button" id="branch-delete-btn" class="btn btn-outline" onclick="deleteBranchActivity()" style="display: none; flex: 1; justify-content: center; padding: 14px; background: #FEE2E2; color: #DC2626; border-color: #FCA5A5; font-weight: 800;">
+            <i class="fa-solid fa-trash"></i> 삭제하기
+          </button>
+          <button type="button" class="btn btn-outline" onclick="closeBranchAdminModal()" style="flex: 1; justify-content: center; padding: 14px; background: #F1F5F9; color: #64748B; border-color: #CBD5E1;">
+            닫기
+          </button>
+        </div>
+      </form>
+      <div id="branch-auth-status-bar" style="background: #0284C7; color: #FFF; padding: 8px 14px; border-radius: 8px; font-size: 0.82rem; margin-top: 14px; display: flex; justify-content: space-between; align-items: center;">
+        <span><i class="fa-solid fa-user-check" style="color: #BAE6FD;"></i> 인증됨: <strong id="branch-user-name">시·도 지회 관리자</strong></span>
+        <div style="display: flex; gap: 6px;">
+          <button type="button" onclick="openChangePwModal()" style="background: #F59E0B; color: #FFF; border: none; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 700;"><i class="fa-solid fa-key"></i> 비번변경</button>
+          <button type="button" onclick="handleLogout()" style="background: #DC2626; color: #FFF; border: none; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 700;">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🎯 SPECIAL COMMITTEES MODAL: 현안별 특별위원회 관리 팝업 -->
+  <div class="modal" id="committee-modal">
+    <div class="modal-content" style="max-width: 860px; padding: 26px;">
+      <button class="modal-close" onclick="closeCommitteeModal()">&times;</button>
+      
+      <div style="text-align: center; margin-bottom: 20px;">
+        <span style="background: #D97706; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-bullseye"></i> 사단법인 연합회 현안별 기구
+        </span>
+        <h2 style="font-size: 1.35rem; color: #0A2540; margin-top: 8px; font-weight: 900;">
+          🎯 사단법인 전국내수면어로어업인연합회 특별위원회
+        </h2>
+        <p style="font-size: 0.84rem; color: #64748B; margin-top: 4px;">
+          내수면 어업인의 정당한 권익 및 주요 현안 해결을 위해 연합회 내 설치된 개별 특별위원회 현황입니다.
+        </p>
+      </div>
+
+      <!-- 특별위원회 목록 카드가 출력되는 영역 -->
+      <div id="committee-cards-container" style="margin-bottom: 20px;">
+        <!-- Rendered by JavaScript -->
+      </div>
+
+      <!-- 마스터 전용 관리 안내 및 추가 버튼 (하단 배치) -->
+      <div id="committee-admin-btn-area">
+        <!-- Rendered by JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 🎯 ADD SPECIAL COMMITTEE FORM MODAL -->
+  <div class="modal" id="add-committee-modal">
+    <div class="modal-content" style="max-width: 540px; padding: 26px;">
+      <button class="modal-close" onclick="closeAddCommitteeModal()">&times;</button>
+      
+      <div style="text-align: center; margin-bottom: 18px;">
+        <span style="background: #0A2540; color: #FCD34D; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-crown"></i> 마스터 전용 생성
+        </span>
+        <h2 style="font-size: 1.3rem; color: #0A2540; margin-top: 8px; font-weight: 900;">
+          🎯 신규 특별위원회 생성 및 등록
+        </h2>
+      </div>
+
+      <form id="add-committee-form" onsubmit="handleAddCommitteeSubmit(event)">
+        <div class="form-group">
+          <label for="committee-title">특별위원회 명칭 *</label>
+          <input type="text" id="committee-title" required placeholder="예: 내수면 어구 현대화 및 법안 개정 특별위원회">
+        </div>
+
+        <div class="form-group">
+          <label for="committee-chair">위원장 성함 및 소속 *</label>
+          <input type="text" id="committee-chair" required placeholder="예: 이순신 수석부회장 (충남 지회)">
+        </div>
+
+        <div class="form-group">
+          <label for="committee-members">구성 위원 명단 *</label>
+          <input type="text" id="committee-members" required placeholder="예: 강감찬 감사, 김유신 이사, 윤관 이사 외 5명">
+        </div>
+
+        <div class="form-group">
+          <label for="committee-purpose">설치 목적 및 현안 목표 *</label>
+          <textarea id="committee-purpose" rows="3" required placeholder="특별위원회 설치 목적과 해결하고자 하는 현안 안건을 적어주세요."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 16px;">
+          <button type="submit" class="btn btn-primary" style="flex: 2; justify-content: center; padding: 12px; background: #D97706; border-color: #D97706; font-weight: 800;">
+            <i class="fa-solid fa-plus"></i> 특별위원회 신규 생성하기
+          </button>
+          <button type="button" class="btn btn-outline" onclick="closeAddCommitteeModal()" style="flex: 1; justify-content: center; padding: 12px;">
+            취소
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 👤 MASTER OFFICERS / DELEGATES MANAGEMENT MODAL (임원 및 대의원 등록 및 사진/인적사항 관리 팝업) -->
+  <div class="modal" id="add-officer-modal">
+    <div class="modal-content" style="max-width: 540px; padding: 24px;">
+      <button class="modal-close" onclick="closeAddOfficerModal()">&times;</button>
+      
+      <div style="text-align: center; margin-bottom: 16px;">
+        <span style="background: #0284C7; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-crown"></i> 마스터 임원/대의원 관리
+        </span>
+        <h2 style="font-size: 1.25rem; color: #0A2540; margin-top: 8px; font-weight: 900;">
+          👤 임원 및 대의원 등록 / 해체 관리
+        </h2>
+      </div>
+
+      <!-- 현재 등록된 명단 목록 및 삭제 영역 -->
+      <div id="officer-manage-list-area" style="margin-bottom: 16px; border-bottom: 1px solid #E2E8F0; padding-bottom: 14px;">
+        <!-- Rendered dynamically by JavaScript renderOfficerManageList() -->
+      </div>
+
+      <form id="add-officer-form" onsubmit="handleAddOfficerSubmit(event)">
+        <h4 style="font-size: 0.92rem; color: #0A2540; font-weight: 900; margin-bottom: 10px;">
+          ➕ 신규 임원 또는 대의원 추가 등록 (사진 포함)
+        </h4>
+
+        <div class="form-group">
+          <label for="officer-group-type">소속 구분 *</label>
+          <select id="officer-group-type" style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem; background: #FFF;">
+            <option value="board">🏛️ 이사회 명단 (이사/부회장/감사)</option>
+            <option value="delegate">👥 대의원회 명단 (대의원)</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group" style="flex: 1;">
+            <label for="officer-name">성함 *</label>
+            <input type="text" id="officer-name" required placeholder="예: 홍길동">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="officer-tag">직책 구분 태그 *</label>
+            <input type="text" id="officer-tag" required placeholder="예: 부회장, 감사, 대의원">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="officer-role">세부 직책 및 역할 *</label>
+          <input type="text" id="officer-role" required placeholder="예: 중앙연합회 부회장 또는 충북 수계 대의원">
+        </div>
+
+        <div class="form-group">
+          <label for="officer-phone">연락처 *</label>
+          <input type="text" id="officer-phone" required placeholder="예: 010-1234-5678">
+        </div>
+
+        <div class="form-group">
+          <label for="officer-region">소속 수계 및 주요 지역 *</label>
+          <input type="text" id="officer-region" required placeholder="예: 충남 금강 수계 어가">
+        </div>
+
+        <div class="form-group">
+          <label for="officer-image-file">📸 프로필 사진 등록 (파일 업로드 또는 URL 입력)</label>
+          <input type="file" id="officer-image-file" accept="image/*" style="margin-bottom: 6px; font-size: 0.85rem;" onchange="handleOfficerImageFileUpload(event)">
+          <input type="url" id="officer-image-url" placeholder="또는 이미지 주소 URL 입력 (예: https://...)" style="font-size: 0.85rem;">
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 16px;">
+          <button type="submit" id="officer-submit-btn" class="btn btn-primary" style="flex: 2; justify-content: center; padding: 12px; background: #0284C7; font-weight: 800;">
+            <i class="fa-solid fa-user-plus"></i> 신규 등록 및 반영하기
+          </button>
+          <button type="button" class="btn btn-outline" onclick="closeAddOfficerModal()" style="flex: 1; justify-content: center; padding: 12px;">
+            닫기
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 🏛️ REGIONAL BRANCHES MODAL: 전국 16개 시·도 지회 조직 현황 팝업 -->
+  <div class="modal" id="branch-list-modal">
+    <div class="modal-content" style="max-width: 900px; padding: 26px;">
+      <button class="modal-close" onclick="closeBranchListModal()">&times;</button>
+      
+      <div style="text-align: center; margin-bottom: 20px;">
+        <span style="background: #0284C7; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-map-location-dot"></i> 전국 지자체별 어업인 조직
+        </span>
+        <h2 style="font-size: 1.35rem; color: #0A2540; margin-top: 8px; font-weight: 900;">
+          🏛️ 사단법인 전국 시·도 지회 조직 현황
+        </h2>
+        <p style="font-size: 0.84rem; color: #64748B; margin-top: 4px;">
+          전국 시·도 지회 내수면 어가 현황입니다.
+        </p>
+      </div>
+
+      <!-- 16개 시·도 지회 카드가 출력되는 영역 -->
+      <div id="branch-cards-grid-container" style="margin-bottom: 20px;">
+        <!-- Rendered by JavaScript -->
+      </div>
+
+      <!-- 마스터 전용 조직 관리 안내 및 버튼 (하단 배치) -->
+      <div id="branch-list-admin-btn-area">
+        <!-- Rendered by JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 🏛️ ADD / MODIFY BRANCH FORM MODAL -->
+  <div class="modal" id="add-branch-modal">
+    <div class="modal-content" style="max-width: 540px; padding: 26px;">
+      <button class="modal-close" onclick="closeAddBranchModal()">&times;</button>
+      
+      <div style="text-align: center; margin-bottom: 18px;">
+        <span style="background: #0A2540; color: #FCD34D; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-crown"></i> 마스터 조직 관리
+        </span>
+        <h2 style="font-size: 1.3rem; color: #0A2540; margin-top: 8px; font-weight: 900;">
+          🏛️ 시·도 지회 신설 및 통폐합 조직 관리
+        </h2>
+      </div>
+
+      <!-- 8개 지회 조직 목록 및 스마트 ⚙️ 조직 관리 영역 -->
+      <div id="branch-manage-list-container">
+        <!-- Rendered by JavaScript renderBranchManageList() -->
+      </div>
+
+      <!-- 신규 지회 추가 생성 토글 폼 박스 (버튼 클릭 시에만 노출) -->
+      <div id="new-branch-form-box" style="display: none; background: #F8FAFC; border: 1px solid #CBD5E1; padding: 16px; border-radius: 10px; margin-top: 14px;">
+        <h4 style="font-size: 0.95rem; color: #0A2540; font-weight: 900; margin-bottom: 12px;">
+          ➕ 신규 시·도 지회 추가 생성 등록
+        </h4>
+        <form id="add-branch-form" onsubmit="handleAddBranchSubmit(event)">
+          <div class="form-group">
+            <label for="branch-list-name">지회 명칭 *</label>
+            <input type="text" id="branch-list-name" required placeholder="예: 충북 통합 지회">
+          </div>
+
+          <div class="form-group">
+            <label>지회장 성함 및 연락처 *</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="branch-list-leader-name" required placeholder="이름 (예: 홍길동)" style="flex: 1; padding: 12px; border: 1px solid #CBD5E1; border-radius: 6px;">
+              <input type="text" id="branch-list-leader-phone" required placeholder="연락처" style="flex: 1; padding: 12px; border: 1px solid #CBD5E1; border-radius: 6px;">
+            </div>
+          </div>
+
+          <div class="form-group">
+              <label>지회 소속 대의원 명단</label>
+              <div id="dynamic-delegates-container">
+                <!-- Dynamic rows will be injected here -->
+              </div>
+              <button type="button" onclick="addDelegateRow()" style="margin-top: 8px; background: #F1F5F9; border: 1px dashed #94A3B8; padding: 8px; width: 100%; border-radius: 6px; cursor: pointer; color: #475569; font-size: 0.82rem; font-weight: 800;">
+                <i class="fa-solid fa-user-plus"></i> + 대의원 1명 추가
+              </button>
+            </div>
+
+          <div class="form-group">
+            <label for="branch-list-region">관할 수계 및 주요 지역 *</label>
+            <input type="text" id="branch-list-region" required placeholder="예: 충북 충주호, 제천, 단양, 대청호 수계 어가">
+          </div>
+
+          <div class="form-group">
+            <label for="branch-list-office">지회 사무실 주소 *</label>
+            <input type="text" id="branch-list-office" required placeholder="예: 충북 제천시 의림대로 123 지회 회관 2층">
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 14px;">
+            <button type="submit" class="btn btn-primary" style="flex: 2; padding: 10px; background: #0284C7; font-weight: 800;">
+                <i class="fa-solid fa-check"></i> 지회 정보 저장 (입력 및 수정)
+              </button>
+            <button type="button" class="btn btn-outline" onclick="toggleNewBranchForm(false)" style="flex: 1; padding: 10px;">
+              닫기
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- 하단 닫기 및 신규 추가 버튼 바 -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px; border-top: 1px solid #E2E8F0; padding-top: 14px;">
+        <button type="button" onclick="toggleNewBranchForm()" style="background: #0284C7; color: #FFF; border: none; padding: 10px 16px; border-radius: 6px; font-weight: 800; font-size: 0.84rem; cursor: pointer;">
+            <i class="fa-solid fa-plus"></i> + 신규 지회 추가 (입력창 열기)
+          </button>
+        <button type="button" class="btn btn-outline" onclick="closeAddBranchModal()" style="padding: 10px 18px; font-size: 0.84rem;">
+          닫기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🏛️ BRANCH MANAGEMENT ACTION MODAL (지회 통합 / 분리 / 삭제 옵션 선택 팝업) -->
+  <div class="modal" id="branch-action-modal">
+    <div class="modal-content" style="max-width: 560px; padding: 24px;">
+      <button class="modal-close" onclick="closeBranchActionModal()">&times;</button>
+      
+      <div style="text-align: center; margin-bottom: 18px;">
+        <span style="background: #0284C7; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-sliders"></i> 시·도 지회 조직 관리 개편
+        </span>
+        <h2 style="font-size: 1.25rem; color: #0A2540; margin-top: 8px; font-weight: 900;" id="branch-action-modal-title">
+          ⚙️ 지회 조직 개편 옵션 선택
+        </h2>
+        <p style="font-size: 0.84rem; color: #64748B; margin-top: 4px;" id="branch-action-target-desc">
+          선택하신 지회에 대한 개편 옵션을 선택해 주세요.
+        </p>
+      </div>
+
+      <!-- 4대 옵션 선택 버튼 바 -->
+      <div style="display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap;">
+        <button type="button" class="btn" id="btn-opt-merge" onclick="selectBranchActionOption('merge')" style="flex: 1; min-width: 120px; padding: 10px 6px; background: #059669; color: #FFF; border: none; font-weight: 800; font-size: 0.84rem; border-radius: 8px; cursor: pointer;">
+          <i class="fa-solid fa-code-merge"></i> 1. 지회 통합
+        </button>
+        <button type="button" class="btn" id="btn-opt-split" onclick="selectBranchActionOption('split')" style="flex: 1; min-width: 120px; padding: 10px 6px; background: #D97706; color: #FFF; border: none; font-weight: 800; font-size: 0.84rem; border-radius: 8px; cursor: pointer;">
+          <i class="fa-solid fa-scissors"></i> 2. 지회 분리
+        </button>
+        <button type="button" class="btn" id="btn-opt-edit" onclick="selectBranchActionOption('edit')" style="flex: 1; min-width: 120px; padding: 10px 6px; background: #0284C7; color: #FFF; border: none; font-weight: 800; font-size: 0.84rem; border-radius: 8px; cursor: pointer;">
+          <i class="fa-solid fa-pen-to-square"></i> 3. 지회 관리(수정)
+        </button>
+        <button type="button" class="btn" id="btn-opt-delete" onclick="selectBranchActionOption('delete')" style="flex: 1; min-width: 120px; padding: 10px 6px; background: #EF4444; color: #FFF; border: none; font-weight: 800; font-size: 0.84rem; border-radius: 8px; cursor: pointer;">
+          <i class="fa-solid fa-trash-can"></i> 4. 지회 삭제
+        </button>
+      </div>
+
+      <!-- Option 1: MERGE Dynamic Form Area -->
+      <div id="branch-action-merge-box" style="display: none; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 16px; border-radius: 10px; margin-bottom: 16px;">
+        <h4 style="color: #065F46; font-size: 0.95rem; font-weight: 900; margin-bottom: 8px;">
+          🤝 [지회 통합] 어느 지회와 통합하시겠습니까?
+        </h4>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label style="font-size: 0.84rem; color: #047857; font-weight: 700;">통합 대상 지회 선택 *</label>
+          <select id="merge-target-branch-select" style="width: 100%; padding: 10px; border: 1px solid #6EE7B7; border-radius: 6px; font-size: 0.88rem; background: #FFF;">
+            <!-- Rendered dynamically -->
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="font-size: 0.84rem; color: #047857; font-weight: 700;">통합 후 지회 명칭 *</label>
+          <input type="text" id="merge-new-name" placeholder="예: 충청 통합 지회 (충북·충남 수계)" style="width: 100%; padding: 10px; border: 1px solid #6EE7B7; border-radius: 6px; font-size: 0.88rem; background: #FFF;">
+        </div>
+        <button type="button" onclick="executeBranchMerge()" style="width: 100%; background: #059669; color: #FFF; border: none; padding: 12px; border-radius: 6px; font-weight: 900; font-size: 0.9rem; cursor: pointer;">
+          <i class="fa-solid fa-check"></i> 두 지회 통합 처리 실행하기
+        </button>
+      </div>
+
+      <!-- Option 2: SPLIT Dynamic Form Area -->
+      <div id="branch-action-split-box" style="display: none; background: #FFFBEB; border: 1px solid #FDE68A; padding: 16px; border-radius: 10px; margin-bottom: 16px;">
+        <h4 style="color: #92400E; font-size: 0.95rem; font-weight: 900; margin-bottom: 8px;">
+          ✂️ [지회 분리] 어떻게 분리하시겠습니까?
+        </h4>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label style="font-size: 0.84rem; color: #B45309; font-weight: 700;">분리 1번째 지회 명칭 *</label>
+          <input type="text" id="split-name-1" placeholder="예: 강원 영서 지회 (소양호·의암호)" style="width: 100%; padding: 10px; border: 1px solid #FCD34D; border-radius: 6px; font-size: 0.88rem; background: #FFF;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="font-size: 0.84rem; color: #B45309; font-weight: 700;">분리 2번째 신설 지회 명칭 *</label>
+          <input type="text" id="split-name-2" placeholder="예: 강원 영동 지회 (동해안 수계)" style="width: 100%; padding: 10px; border: 1px solid #FCD34D; border-radius: 6px; font-size: 0.88rem; background: #FFF;">
+        </div>
+        <button type="button" onclick="executeBranchSplit()" style="width: 100%; background: #D97706; color: #FFF; border: none; padding: 12px; border-radius: 6px; font-weight: 900; font-size: 0.9rem; cursor: pointer;">
+          <i class="fa-solid fa-scissors"></i> 지회 분리 개편 실행하기
+        </button>
+      </div>
+
+      <!-- Option 3: EDIT Dynamic Form Area (지회 관리 - 인적사항/연락처 변경) -->
+      <div id="branch-action-edit-box" style="display: none; background: #F0F9FF; border: 1px solid #BAE6FD; padding: 16px; border-radius: 10px; margin-bottom: 16px;">
+        <h4 style="color: #0369A1; font-size: 0.95rem; font-weight: 900; margin-bottom: 8px;">
+          ✏️ [지회 관리] 지회장 성함, 대의원 명단 및 연락처 수정
+        </h4>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label style="font-size: 0.84rem; color: #0369A1; font-weight: 700;">지회 명칭 *</label>
+          <input type="text" id="edit-branch-name" style="width: 100%; padding: 8px 10px; border: 1px solid #7DD3FC; border-radius: 6px; font-size: 0.88rem; background: #FFF;">
+        </div>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label style="font-size: 0.84rem; color: #0369A1; font-weight: 700;">👤 지회장 성함 및 연락처 *</label>
+          <input type="text" id="edit-branch-leader" placeholder="예: 윤관 (010-5678-9012)" style="width: 100%; padding: 8px 10px; border: 1px solid #7DD3FC; border-radius: 6px; font-size: 0.88rem; background: #FFF;">
+        </div>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label style="font-size: 0.84rem; color: #0369A1; font-weight: 700;">👥 소속 대의원 3명 (성함 및 연락처)</label>
+          <input type="text" id="edit-branch-delegates" placeholder="예: 원균 (010-3333-4444), 김춘천 (010-3333-5555), 박양구 (010-3333-6666)" style="width: 100%; padding: 8px 10px; border: 1px solid #7DD3FC; border-radius: 6px; font-size: 0.88rem; background: #FFF;">
+        </div>
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label style="font-size: 0.84rem; color: #0369A1; font-weight: 700;">📍 관할 수계 및 주요 어가 *</label>
+          <input type="text" id="edit-branch-region" style="width: 100%; padding: 8px 10px; border: 1px solid #7DD3FC; border-radius: 6px; font-size: 0.88rem; background: #FFF;">
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="font-size: 0.84rem; color: #0369A1; font-weight: 700;">🏢 지회 사무실 주소 *</label>
+          <input type="text" id="edit-branch-office" style="width: 100%; padding: 8px 10px; border: 1px solid #7DD3FC; border-radius: 6px; font-size: 0.88rem; background: #FFF;">
+        </div>
+        <button type="button" onclick="executeBranchEdit()" style="width: 100%; background: #0284C7; color: #FFF; border: none; padding: 12px; border-radius: 6px; font-weight: 900; font-size: 0.9rem; cursor: pointer;">
+          <i class="fa-solid fa-floppy-disk"></i> 지회 관리 수정 사항 저장하기
+        </button>
+      </div>
+
+      <!-- Option 4: DELETE Dynamic Form Area -->
+      <div id="branch-action-delete-box" style="display: none; background: #FEF2F2; border: 1px solid #FCA5A5; padding: 16px; border-radius: 10px; margin-bottom: 16px;">
+        <h4 style="color: #991B1B; font-size: 0.95rem; font-weight: 900; margin-bottom: 8px;">
+          🗑️ [4. 지회 삭제] 이 지회 조직을 완전히 해체 및 삭제하시겠습니까?
+        </h4>
+        <p style="font-size: 0.84rem; color: #7F1D1D; margin-bottom: 12px; line-height: 1.5;">
+          삭제 시 해당 지회 조직 명부가 연합회 조직도에서 제외됩니다.
+        </p>
+        <button type="button" onclick="executeBranchDelete()" style="width: 100%; background: #DC2626; color: #FFF; border: none; padding: 12px; border-radius: 6px; font-weight: 900; font-size: 0.9rem; cursor: pointer;">
+          <i class="fa-solid fa-trash-can"></i> 이 지회 완전 삭제 실행하기
+        </button>
+      </div>
+
+      <div style="text-align: right;">
+        <button type="button" class="btn btn-outline" onclick="closeBranchActionModal()" style="padding: 10px 18px; font-size: 0.86rem;">
+          취소 / 닫기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✏️ NOTICE EDIT MODAL -->
+  <div class="modal" id="notice-edit-modal">
+    <div class="modal-content" style="max-width: 600px; padding: 24px;">
+      <button class="modal-close" onclick="closeNoticeEditModal()">&times;</button>
+      <h2 style="font-size: 1.3rem; color: #0A2540; margin-bottom: 20px; font-weight: 900;">
+        <i class="fa-solid fa-pen-to-square"></i> 공지사항 수정
+      </h2>
+      <div class="form-group">
+        <label for="edit-notice-title" style="font-weight: 700;">공지 제목</label>
+        <input type="text" id="edit-notice-title" style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;" placeholder="제목을 입력하세요">
+      </div>
+      <div class="form-group" style="margin-top: 15px;">
+        <label for="edit-notice-date" style="font-weight: 700;">공지 일자</label>
+        <input type="date" id="edit-notice-date" style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;" placeholder="예: 2026.06.25">
+      </div>
+      <div class="form-group" style="margin-top: 15px;">
+        <label for="edit-notice-content" style="font-weight: 700;">공지 내용</label>
+        <textarea id="edit-notice-content" rows="8" style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px; resize: vertical;" placeholder="공지 내용을 입력하세요 (줄바꿈 가능)"></textarea>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button type="button" class="btn" style="background: #64748B; color: white;" onclick="closeNoticeEditModal()">취소</button>
+        <button type="button" class="btn btn-primary" onclick="saveNoticeData()">저장 및 실시간 반영</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal" id="past-notice-edit-modal">
+    <div class="modal-content" style="max-width: 600px; padding: 24px;">
+      <button class="modal-close" onclick="closePastNoticeEditModal()">&times;</button>
+      <h2 style="font-size: 1.3rem; color: #0A2540; margin-bottom: 20px; font-weight: 900;">
+        <i class="fa-solid fa-folder-plus"></i> 지난 공지사항 추가 / 수정
+      </h2>
+      <div class="form-group">
+        <label for="edit-past-notice-title" style="font-weight: 700;">공지 제목 *</label>
+        <input type="text" id="edit-past-notice-title" required style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;" placeholder="제목 입력">
+      </div>
+      <div class="form-group" style="margin-top: 15px;">
+        <label for="edit-past-notice-date" style="font-weight: 700;">공지 날짜 (YYYY.MM.DD) *</label>
+        <input type="date" id="edit-past-notice-date" required style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;" placeholder="예: 2026.05.12">
+      </div>
+      <div class="form-group" style="margin-top: 15px;">
+        <label for="edit-past-notice-tag" style="font-weight: 700;">분류 태그 *</label>
+        <input type="text" id="edit-past-notice-tag" required style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;" placeholder="예: 행사공지, 이사회, 정관">
+      </div>
+      <div class="form-group" style="margin-top: 15px; margin-bottom: 10px;">
+        <label style="font-weight: 700; display: flex; align-items: center; gap: 8px; cursor: pointer; background: #FEF3C7; padding: 10px; border-radius: 6px; color: #92400E; border: 1px solid #FDE68A;">
+          <input type="checkbox" id="edit-past-notice-is-popup" style="width: 18px; height: 18px; cursor: pointer;">
+          📌 이 공지사항을 홈페이지 초기 팝업창에 항상 띄우기 (중요 공지)
+        </label>
+      </div>
+      <div class="form-group" style="margin-top: 15px;">
+        <label for="edit-past-notice-content" style="font-weight: 700;">공지 내용 (줄바꿈 허용) *</label>
+        <textarea id="edit-past-notice-content" required rows="6" style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px; resize: vertical;" placeholder="상세 내용을 입력하세요."></textarea>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button type="button" class="btn" style="background: #64748B; color: white;" onclick="closePastNoticeEditModal()">취소</button>
+        <button type="button" class="btn btn-primary" onclick="savePastNoticeData()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Module Setup -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+    import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-storage.js";
+    window.firebaseInitializeApp = initializeApp;
+    window.firebaseGetStorage = getStorage;
+    window.firebaseRef = ref;
+    window.firebaseUploadString = uploadString;
+    window.firebaseGetDownloadURL = getDownloadURL;
+  </script>
+  <script src="app.js?v=clear_cache_1787724118715"></script>
+
+  <!-- 📩 INQUIRY LIST MODAL -->
+  <div class="modal" id="inquiry-list-modal">
+    <div class="modal-content" style="max-width: 700px; padding: 24px;">
+      <button class="modal-close" onclick="hideModalClean('inquiry-list-modal')">&times;</button>
+      <div style="text-align: center; margin-bottom: 20px;">
+        <span style="background: #10B981; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
+          <i class="fa-solid fa-inbox"></i> 접수된 현장 건의 및 문의 내역
+        </span>
+      </div>
+      <div id="inquiry-list-container" style="max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;">
+        <!-- 문의 목록이 여기에 동적으로 추가됩니다 -->
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
+

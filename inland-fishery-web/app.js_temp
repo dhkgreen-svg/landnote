@@ -1,33 +1,37 @@
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBmzGsJJXzPFrXg5oEjRRJCMNQmiBl2Hf4",
-  authDomain: "inland-fishery.firebaseapp.com",
-  projectId: "inland-fishery",
-  storageBucket: "inland-fishery.firebasestorage.app",
-  messagingSenderId: "682627481944",
-  appId: "1:682627481944:web:76f7a25d1568e11ea4252d",
-  databaseURL: "https://inland-fishery-default-rtdb.firebaseio.com"
-};
+const supabaseUrl = 'https://ingxrbznlgdueofcbsmf.supabase.co';
+const supabaseKey = 'sb_publishable_QqsRMoiUYnez4f2h-V41vQ_6SgbUZwe';
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-const app = window.firebaseInitializeApp(firebaseConfig);
-const storage = window.firebaseGetStorage(app);
+function base64ToBlob(base64) {
+  const mimeType = base64.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)[1];
+  const byteCharacters = atob(base64.split(',')[1]);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  return new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+}
 
 async function uploadToSupabase(base64Data, prefix) {
-  // Now uploads to Firebase despite the function name
   if (!base64Data.startsWith('data:image')) return base64Data;
   const mimeType = base64Data.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)[1];
   const ext = mimeType.split('/')[1] || 'jpg';
-  const fileName = 'images/' + prefix + '_' + Date.now() + '_' + Math.floor(Math.random()*10000) + '.' + ext;
+  const blob = base64ToBlob(base64Data);
+  const fileName = prefix + '_' + Date.now() + '_' + Math.floor(Math.random()*10000) + '.' + ext;
   
-  try {
-    const storageRef = window.firebaseRef(storage, fileName);
-    const snapshot = await window.firebaseUploadString(storageRef, base64Data, 'data_url');
-    const downloadURL = await window.firebaseGetDownloadURL(snapshot.ref);
-    return downloadURL;
-  } catch (error) {
-    console.error('Firebase Storage upload error:', error);
+  const { data, error } = await supabaseClient.storage.from('public_images').upload(fileName, blob, {
+    cacheControl: '3600',
+    upsert: false
+  });
+  
+  if (error) {
+    console.error('Storage upload error:', error);
     throw error;
   }
+  
+  const { data: { publicUrl } } = supabaseClient.storage.from('public_images').getPublicUrl(fileName);
+  return publicUrl;
 }
 
 window.addEventListener('error', function(e) {
@@ -369,7 +373,7 @@ async function handleChangePwSubmit(e) {
     return;
   }
 
-  try {
+  
     const res = await fetch('/api/change-pw', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -450,7 +454,7 @@ async function handleSignupSubmit(e) {
     status: 'pending'
   };
 
-  try {
+  
     const res = await fetch('/api/signup-request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -582,7 +586,7 @@ function renderMasterApprovalList() {
 }
 
 async function approveUser(userId) {
-  try {
+  
     const res = await fetch('/api/approve-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -603,7 +607,7 @@ async function approveUser(userId) {
 
 async function deletePendingUser(userId) {
   if (confirm("정말 이 가입 신청을 거절하고 삭제하시겠습니까?")) {
-    try {
+    
       const res = await fetch('/api/delete-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -841,7 +845,7 @@ function openBranchListModal(e) {
     if (e.preventDefault) e.preventDefault();
     if (e.stopPropagation) e.stopPropagation();
   }
-  try {
+  
     renderBranchCards();
   } catch (err) {
     console.log('Error rendering branch cards:', err);
@@ -1321,7 +1325,7 @@ async function saveNoticeData() {
   // renderWelcomeNotice();
   localStorage.setItem('kifa_welcome_notice', JSON.stringify(welcomeNotice));
 
-  try {
+  
     await fetch('/api/save-org-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1766,6 +1770,7 @@ function closePresidentEditModal() {
 async function savePresidentGreetingData() {
   const saveBtn = document.querySelector("#president-greeting-edit-modal button[onclick^='savePresidentGreetingData']");
   if (saveBtn) { saveBtn.innerText = "업로드 중..."; saveBtn.disabled = true; }
+  
   const name = document.getElementById('edit-pres-name').value.trim();
   const badge = document.getElementById('edit-pres-badge').value.trim();
   const phone = document.getElementById('edit-pres-phone').value.trim();
@@ -1807,7 +1812,7 @@ async function savePresidentGreetingData() {
     boardList.unshift(presOfficerObj);
   }
 
-  try {
+  
     await fetch('/api/save-org-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1831,7 +1836,7 @@ async function syncOrgDataToServer() {
   localStorage.setItem('kifa_committees_list', JSON.stringify(committeesList));
   localStorage.setItem('kifa_board_list', JSON.stringify(boardList));
   localStorage.setItem('kifa_delegate_list', JSON.stringify(delegateList));
-  try {
+  
     await fetch('/api/save-org-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1843,7 +1848,7 @@ async function syncOrgDataToServer() {
 }
 
 async function loadServerData() {
-  try {
+  
     const res = await fetch('/api/data');
     if (res.ok) {
       const db = await res.json();
@@ -1862,7 +1867,7 @@ async function loadServerData() {
         if (db.inquiries) inquiriesList = db.inquiries;
 
                 // AUTO-SYNC ORG DATA (PRESIDENT, CONTACT, BOARD)
-        try {
+        
           const locPres = JSON.parse(localStorage.getItem('kifa_president_greeting'));
           const locBoard = JSON.parse(localStorage.getItem('kifa_board_list'));
           const locDelegate = JSON.parse(localStorage.getItem('kifa_delegate_list'));
@@ -1903,7 +1908,7 @@ async function loadServerData() {
         } catch(e) { console.error(e); }
 
         // AUTO-SYNC LOCALSTORAGE ITEMS THAT FAILED TO SAVE
-        try {
+        
           const localGallery = JSON.parse(localStorage.getItem('kifa_gallery') || '[]');
           const localAccounting = JSON.parse(localStorage.getItem('kifa_accounting') || '[]');
           let needsSync = false;
@@ -2246,7 +2251,7 @@ function handleOfficerImageFileUpload(e) {
   reader.readAsDataURL(file);
 }
 
-async function handleAddOfficerSubmit(e) {
+function handleAddOfficerSubmit(e) {
   e.preventDefault();
   const groupType = document.getElementById('officer-group-type').value;
   const name = document.getElementById('officer-name').value.trim();
@@ -2521,7 +2526,7 @@ async function deletePost(id) {
   }
 
   if (confirm("정말 이 게시글과 회계 내역을 삭제하시겠습니까?")) {
-    try {
+    
       const res = await fetch('/api/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3059,7 +3064,7 @@ async function handleBranchSubmit(e) {
     content: `<p style="line-height: 1.75; color: #334155;">${desc}</p>`
   };
 
-  try {
+  
     const res = await fetch('/api/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3171,7 +3176,7 @@ async function handleUnifiedSubmit(e) {
     accountingBreakdown: breakdown
   };
 
-  try {
+  
     const res = await fetch('/api/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3239,7 +3244,7 @@ async function handleInquirySubmit(e) {
   }
 
   const payload = { name, phone, region, content };
-  try {
+  
     const res = await fetch('/api/submit-inquiry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3291,7 +3296,7 @@ function renderInquiryList() {
 
 async function deleteInquiry(id) {
   if (!confirm('이 문의 내역을 정말 삭제하시겠습니까?')) return;
-  try {
+  
     const res = await fetch('/api/delete-inquiry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3469,7 +3474,7 @@ async function savePastNoticeData() {
     localStorage.removeItem('kifa_hide_notice_' + n.id);
   });
   
-  try {
+  
     await fetch('/api/save-org-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3486,7 +3491,7 @@ async function deletePastNotice(id, e) {
   if (confirm("정말 삭제하시겠습니까?")) {
     pastNotices = pastNotices.filter(n => n.id !== id);
     renderPastNotices();
-    try {
+    
       await fetch('/api/save-org-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3601,7 +3606,7 @@ async function saveContactSettings(e) {
   renderContactInfo();
   hideModalClean('contact-settings-modal');
   
-  try {
+  
     await fetch('/api/save-org-data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3658,7 +3663,7 @@ function addDelegateRow(name = '', phone = '') {
 async function deleteUser(userId) {
   if (!confirm(`아이디 '${userId}' 의 계정 권한을 정말 삭제하시겠습니까?\n삭제 시 해당 아이디로는 더 이상 로그인할 수 없습니다.`)) return;
   
-  try {
+  
     const res = await fetch('/api/delete-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3683,7 +3688,7 @@ async function deleteUser(userId) {
 async function deleteApprovedUser(userId) {
   if (!confirm('아이디 ' + userId + ' 의 계정 권한을 정말 삭제하시겠습니까?\n삭제 시 해당 아이디로는 더 이상 로그인할 수 없습니다.')) return;
   
-  try {
+  
     const res = await fetch('/api/delete-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
