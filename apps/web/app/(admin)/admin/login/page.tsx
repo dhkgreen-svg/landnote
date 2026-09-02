@@ -44,22 +44,33 @@ export default function AdminLoginPage() {
       localStorage.removeItem('landnote_admin_saved_password');
     }
 
+    let actualEmail = email;
+    if (!email.includes('@')) {
+      actualEmail = email.replace(/[^0-9]/g, '') + '@landnote.com';
+    }
+    let actualPassword = password;
+    if (password === '3304' || (password.length === 4 && /^\d+$/.test(password))) {
+      actualPassword = password + password; // 4자리 숫자(3304) 입력 시 8자리(33043304) 자동 연동
+    }
+
     try {
-      const result = await apiFetch<{ admin: any; session: any }>('/admin/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
+      const supabase = createClient();
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: actualEmail,
+        password: actualPassword,
       });
 
-      if (result.session) {
-        const supabase = createClient();
-        await supabase.auth.setSession({
-          access_token: result.session.access_token,
-          refresh_token: result.session.refresh_token,
-        });
+      if (signInError) {
+        setError(signInError.message || '아이디 또는 비밀번호가 올바르지 않습니다');
+        setLoading(false);
+        return;
+      }
+
+      if (data.session) {
         router.push('/admin');
       }
     } catch (err: any) {
-      setError(err.message || '로그인에 실패했습니다');
+      setError(err?.message || '로그인에 실패했습니다');
     } finally {
       setLoading(false);
     }
@@ -74,11 +85,11 @@ export default function AdminLoginPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">아이디 (이메일 또는 전화번호)</Label>
+              <Label htmlFor="email">아이디 (전화번호 또는 이메일)</Label>
               <Input
                 id="email"
                 type="text"
-                placeholder="010-0000-0000 또는 admin@landnote.com"
+                placeholder="010-9999-3399"
                 value={email}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -96,10 +107,13 @@ export default function AdminLoginPage() {
               <Input
                 id="password"
                 type="password"
+                placeholder="3304"
+                maxLength={8}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value.replace(/[^0-9]/g, ''))}
                 required
               />
+              <p className="text-xs text-blue-600 font-medium mt-1">※ 숫자 4자리에서 8자리 입력</p>
             </div>
             
             <div className="flex items-center justify-between mt-2 mb-4">

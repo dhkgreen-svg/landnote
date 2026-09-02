@@ -130,6 +130,11 @@ export class AuthService {
       };
     }
 
+    let actualPassword = password;
+    if (actualPassword.length === 4 && /^\d+$/.test(actualPassword)) {
+      actualPassword = actualPassword + actualPassword;
+    }
+
     const authClient = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -137,7 +142,7 @@ export class AuthService {
     );
     const { data, error } = await authClient.auth.signInWithPassword({
       email,
-      password,
+      password: actualPassword,
     });
 
     if (error) {

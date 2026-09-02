@@ -56,37 +56,31 @@ export default function LoginPage() {
       actualEmail = loginEmail.replace(/[^0-9]/g, '') + '@landnote.com';
     }
 
-    const actualPassword = isAdminLogin ? 'admin1234!' : loginPass;
+    let actualPassword = loginPass;
+    if (isAdminLogin) {
+      actualPassword = 'admin1234!';
+    } else if (loginPass === '3304' || (loginPass.length === 4 && /^\d+$/.test(loginPass))) {
+      actualPassword = loginPass + loginPass; // 4자리 숫자(3304) 입력 시 8자리(33043304) 자동 연동
+    }
 
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: actualEmail, password: actualPassword }),
+      const supabase = createClient();
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: actualEmail,
+        password: actualPassword,
       });
 
-      const json = await res.json();
-
-      if (!res.ok || json.ok === false) {
-        setError(json.error?.message ?? '로그인에 실패했습니다');
+      if (signInError) {
+        setError(signInError.message || '아이디 또는 비밀번호가 올바르지 않습니다');
         setLoading(false);
         return;
       }
 
-      const data = json.data ?? json;
-      const session = data.session;
-
-      if (session) {
-        const supabase = createClient();
-        await supabase.auth.setSession({
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-        });
+      if (data.session) {
+        router.push('/dashboard');
       }
-
-      router.push('/dashboard');
-    } catch {
-      setError('네트워크 오류가 발생했습니다');
+    } catch (err: any) {
+      setError(err?.message || '로그인 중 오류가 발생했습니다');
       setLoading(false);
     }
   };
@@ -110,11 +104,11 @@ export default function LoginPage() {
             <Input
               id="email"
               type="text"
-              placeholder="010-0000-0000"
+              placeholder="010-9999-3399"
               value={email}
               onChange={(e) => {
                 const val = e.target.value;
-                if (/^[0-9-]*$/.test(val)) {
+                if (/^[0-9-]*$/.test(val) && !val.includes('@')) {
                   setEmail(formatPhoneNumber(val));
                 } else {
                   setEmail(val);
@@ -125,15 +119,19 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">비밀번호</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">비밀번호</Label>
+            </div>
             <Input
               id="password"
               type="password"
-              placeholder="비밀번호를 입력하세요"
+              placeholder="3304"
+              maxLength={8}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value.replace(/[^0-9]/g, ''))}
               required
             />
+            <p className="text-xs text-blue-600 font-medium mt-1">※ 숫자 4자리에서 8자리 입력</p>
           </div>
           
           <div className="flex items-center justify-between">

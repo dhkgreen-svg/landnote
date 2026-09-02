@@ -37,6 +37,9 @@ export class AdminService {
         });
       }
       actualEmail = matchedAdmin.email;
+    let actualPassword = password;
+    if (actualPassword.length === 4 && /^\d+$/.test(actualPassword)) {
+      actualPassword = actualPassword + actualPassword;
     }
 
     // signInWithPassword()는 클라이언트의 인증 컨텍스트를 변경하므로
@@ -48,7 +51,7 @@ export class AdminService {
 
     const { data, error } = await authClient.auth.signInWithPassword({
       email: actualEmail,
-      password,
+      password: actualPassword,
     });
 
     if (error) {
