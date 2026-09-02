@@ -67,7 +67,7 @@ export default function AdminLoginPage() {
       }
 
       if (data.session) {
-        router.push('/admin');
+        window.location.href = '/admin';
       }
     } catch (err: any) {
       setError(err?.message || '로그인에 실패했습니다');
