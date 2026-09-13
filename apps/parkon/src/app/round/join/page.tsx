@@ -12,6 +12,7 @@ function RoundJoinContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const roomIdParam = searchParams.get('roomId') || '';
   const courseParam = searchParams.get('course') || '';
   const leaderParam = searchParams.get('leader') || '조장';
   const roundIdParam = searchParams.get('roundId') || '';
@@ -38,7 +39,7 @@ function RoundJoinContent() {
     }
   }, [courseParam]);
 
-  const handleJoinRound = () => {
+  const handleJoinRound = async () => {
     const trimmedName = userName.trim() || '동반자';
 
     // 내 프로필 이름 업데이트
@@ -90,16 +91,41 @@ function RoundJoinContent() {
       }
     }
 
-    // 2. 새 라운드 준비 모드 초대일 때
-    if (course) {
-      ParkOnStorage.setHomeCourseId(course.id);
-      setJoinedToast(`⛳ '${trimmedName}' 님, ${course.name} 동반자로 입장합니다!`);
-      setTimeout(() => {
-        router.push(`/round/new?course=${course.id}&joined=${encodeURIComponent(trimmedName)}`);
-      }, 800);
-    } else {
-      router.push('/');
+    // 2. 조장이 연 룸(Room)에 동반자로 참가하여 대기실로 이동
+    const targetRoomId = roomIdParam || `room_${courseParam || 'default'}`;
+
+    try {
+      // 서버 룸 API에 동반자 입장 등록
+      await fetch('/api/round/room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'join',
+          roomId: targetRoomId,
+          playerName: trimmedName,
+          leaderName: leaderParam,
+          courseId: course?.id || courseParam || 'course_1',
+          courseName: course?.name || '구미 동락 파크골프장',
+        }),
+      });
+
+      // 동일 기기/브라우저 탭 간 즉시 동기화 브로드캐스트
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('parkon_room_sync');
+        bc.postMessage({
+          roomId: targetRoomId,
+          joinedPlayer: trimmedName,
+        });
+        bc.close();
+      }
+    } catch (err) {
+      console.error('Failed to notify room join:', err);
     }
+
+    setJoinedToast(`⛳ '${trimmedName}' 님, 대기실로 입장합니다!`);
+    setTimeout(() => {
+      router.push(`/round/waiting?roomId=${encodeURIComponent(targetRoomId)}&guest=${encodeURIComponent(trimmedName)}`);
+    }, 700);
   };
 
   return (

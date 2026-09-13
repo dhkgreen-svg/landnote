@@ -37,24 +37,18 @@ function NewRoundForm() {
     { id: 'p_4', name: '동반자3', isLeader: false, isSelf: false },
   ]);
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
+  const [roomId] = useState<string>(() => 'room_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [joinSimulationToast, setJoinSimulationToast] = useState<string | null>(null);
 
   useEffect(() => {
-    const updateSelfName = () => {
-      const selfName = getDefaultSelfName();
+    const selfName = getDefaultSelfName();
+    if (selfName) {
       setPlayersList((prev) =>
         prev.map((p, idx) => (idx === 0 || p.isSelf ? { ...p, name: selfName, isSelf: true } : p))
       );
-    };
-    updateSelfName();
-    window.addEventListener('storage', updateSelfName);
-    window.addEventListener('parkon_profile_updated', updateSelfName);
-    return () => {
-      window.removeEventListener('storage', updateSelfName);
-      window.removeEventListener('parkon_profile_updated', updateSelfName);
-    };
+    }
   }, []);
 
   // Course correction/expansion modal state
@@ -235,12 +229,12 @@ function NewRoundForm() {
     }
   }, [joinedPlayer]);
 
-  // 초대 링크 및 실제 카메라 인식용 QR 코드 생성
+  // 초대 링크 및 실제 카메라 인식용 QR 코드 생성 (roomId 포함)
   const currentLeader = playersList.find((p) => p.isLeader) || playersList[0];
   const leaderName = currentLeader?.name || '조장';
   const inviteUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/round/join?course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`
-    : `https://parkon.kr/round/join?course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`;
+    ? `${window.location.origin}/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`
+    : `https://parkon.kr/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`;
 
   useEffect(() => {
     if (showQrModal && inviteUrl) {
@@ -253,6 +247,101 @@ function NewRoundForm() {
         });
     }
   }, [showQrModal, inviteUrl]);
+
+  // 1. 조장의 셋업 변경사항을 서버 룸(Room)에 지속 동기화 (sync)
+  useEffect(() => {
+    if (!roomId) return;
+    try {
+      fetch('/api/round/room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'sync',
+          roomId,
+          leaderName,
+          courseId: selectedCourseId || 'course_1',
+          courseName: currentCourse?.name || '구미 동락 파크골프장',
+          courseLetter: selectedCourseLetter,
+          startHoleIndex,
+          playerCount,
+          players: playersList.slice(0, playerCount).map((p) => ({
+            id: p.id,
+            name: p.name,
+            isLeader: p.isLeader,
+          })),
+        }),
+      }).catch((e) => console.error('Failed to sync room:', e));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [roomId, selectedCourseId, currentCourse?.name, selectedCourseLetter, startHoleIndex, playerCount, playersList, leaderName]);
+
+  // 2. 동반자 입장 실시간 감지 (1초 폴링 + BroadcastChannel 즉각 반응)
+  useEffect(() => {
+    if (!roomId) return;
+
+    let isSubscribed = true;
+
+    const pollJoinedCompanions = async () => {
+      try {
+        const res = await fetch(`/api/round/room?roomId=${encodeURIComponent(roomId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.room && isSubscribed) {
+            const serverPlayers: { id: string; name: string; isLeader: boolean }[] = data.room.players || [];
+
+            setPlayersList((prev) => {
+              let updated = false;
+              const next = [...prev];
+
+              serverPlayers.forEach((sp, idx) => {
+                if (idx > 0 && sp.name && !sp.name.startsWith('동반자')) {
+                  if (next[idx] && next[idx].name !== sp.name) {
+                    next[idx] = { ...next[idx], name: sp.name };
+                    updated = true;
+                  } else if (!next[idx] && next.length < 6) {
+                    next.push({ id: sp.id || `p_${Date.now()}`, name: sp.name, isLeader: false, isSelf: false });
+                    updated = true;
+                  }
+                }
+              });
+
+              if (updated) {
+                const latestGuest = serverPlayers.find((sp) => sp.name && !sp.isLeader && !sp.name.startsWith('동반자'));
+                if (latestGuest) {
+                  setJoinSimulationToast(`🎉 '${latestGuest.name}' 님이 QR 코드로 라운드에 자동 입장하였습니다!`);
+                  setTimeout(() => setJoinSimulationToast(null), 3500);
+                }
+              }
+
+              return updated ? next : prev;
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Failed to poll room guests:', e);
+      }
+    };
+
+    const interval = setInterval(pollJoinedCompanions, 1000);
+
+    // 동일 기기 탭 브로드캐스트 리스너
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      bc = new BroadcastChannel('parkon_room_sync');
+      bc.onmessage = (event) => {
+        if (event.data && event.data.roomId === roomId && event.data.joinedPlayer && isSubscribed) {
+          handleSimulateQrJoin(event.data.joinedPlayer);
+        }
+      };
+    }
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+      if (bc) bc.close();
+    };
+  }, [roomId]);
 
   // 강력한 카카오톡/문자/링크 공유 함수 (모바일 네이티브 공유 -> 클립보드 -> 임시 텍스트에어리어 -> 프롬프트 폴백)
   const handleShareInvite = async () => {
@@ -316,7 +405,7 @@ function NewRoundForm() {
     setTimeout(() => setCopiedLink(false), 4000);
   };
 
-  const startRound = () => {
+  const startRound = async () => {
     if (!currentCourse) return;
 
     const newId = 'round_' + Date.now();
@@ -349,6 +438,34 @@ function NewRoundForm() {
       players: sortedPlayers,
       status: 'IN_PROGRESS',
     };
+
+    // 3. 서버 룸(Room)에 라운드 시작 알림 -> 대기실의 동반자들도 즉시 스코어카드로 자동 이동!
+    try {
+      await fetch('/api/round/room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'start',
+          roomId,
+          roundSession: newSession,
+        }),
+      });
+
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('parkon_room_sync');
+        bc.postMessage({
+          roomId,
+          room: {
+            status: 'STARTED',
+            roundId: newId,
+            roundSession: newSession,
+          },
+        });
+        bc.close();
+      }
+    } catch (e) {
+      console.error('Failed to notify room start:', e);
+    }
 
     ParkOnStorage.saveCurrentRound(newSession);
     ParkOnStorage.setHomeCourseId(currentCourse.id);
@@ -727,7 +844,7 @@ function NewRoundForm() {
             {/* 스크롤 가능한 모달 본문 */}
             <div className="p-4 space-y-3.5 overflow-y-auto flex-1 overscroll-contain">
               {/* QR Code Display */}
-            <div className="flex flex-col items-center justify-center p-4 bg-stone-50 rounded-2xl border border-stone-200 text-center space-y-2.5">
+            <div data-room-id={roomId} data-invite-url={inviteUrl} className="flex flex-col items-center justify-center p-4 bg-stone-50 rounded-2xl border border-stone-200 text-center space-y-2.5">
               <div className="p-3 bg-white rounded-2xl shadow-sm border-2 border-emerald-500/30 flex flex-col items-center justify-center relative">
                 {qrDataUrl ? (
                   <div className="relative flex items-center justify-center">
@@ -749,12 +866,17 @@ function NewRoundForm() {
                   </div>
                 )}
               </div>
-              <div className="space-y-0.5">
-                <span className="text-xs font-black text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full">
-                  초대 구장: {currentCourse?.name || '파크골프장'}
-                </span>
+              <div className="space-y-1">
+                <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-black text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                    초대 구장: {currentCourse?.name || '파크골프장'}
+                  </span>
+                  <span className="text-[11px] font-bold text-stone-600 bg-stone-200/80 px-2 py-0.5 rounded-md">
+                    대기실 코드: #{roomId ? roomId.slice(-6).toUpperCase() : 'PARK'}
+                  </span>
+                </div>
                 <p className="text-[12px] text-stone-700 font-extrabold">
-                  📷 동반자가 스마트폰 기본 카메라로 비추면 바로 참가 페이지가 열립니다.
+                  📷 동반자가 스마트폰 기본 카메라로 비추면 바로 참가 대기실이 열립니다.
                 </p>
               </div>
             </div>
