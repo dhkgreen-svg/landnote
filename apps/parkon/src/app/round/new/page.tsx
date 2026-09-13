@@ -881,6 +881,69 @@ function NewRoundForm() {
               </div>
             </div>
 
+            {/* 실시간 동반자 입장 감지 현황 박스 (QR 모달 안에서 바로 확인 가능) */}
+            <div className="bg-emerald-50/90 border-2 border-emerald-400/80 rounded-xl p-3 space-y-2 text-left shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-black text-emerald-950">
+                  <Users className="w-4 h-4 text-emerald-700" />
+                  <span>실시간 동반자 참여 현황</span>
+                </div>
+                <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  실시간 자동 감지 중
+                </span>
+              </div>
+
+              <div className="space-y-1.5 pt-0.5">
+                {playersList.slice(0, playerCount).map((p, idx) => {
+                  const isJoined = p.isLeader || !p.name.startsWith('동반자');
+                  return (
+                    <div
+                      key={p.id || idx}
+                      className={`flex items-center justify-between p-2 rounded-lg border text-xs transition ${
+                        p.isLeader
+                          ? 'bg-amber-100/90 border-amber-300 text-amber-950 font-black'
+                          : isJoined
+                          ? 'bg-white border-emerald-500 text-emerald-950 font-black shadow-xs'
+                          : 'bg-stone-50 border-stone-200 text-stone-400 font-medium'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span
+                          className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                            p.isLeader
+                              ? 'bg-amber-400 text-amber-950'
+                              : isJoined
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-stone-200 text-stone-500'
+                          }`}
+                        >
+                          {idx + 1}
+                        </span>
+                        <span className="truncate">{p.name}</span>
+                      </div>
+
+                      <div className="shrink-0">
+                        {p.isLeader ? (
+                          <span className="text-[10px] bg-amber-200 text-amber-900 font-black px-1.5 py-0.5 rounded">
+                            👑 조장
+                          </span>
+                        ) : isJoined ? (
+                          <span className="text-[10px] bg-emerald-600 text-white font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                            ✓ 입장 완료
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
+                            스캔 대기 중...
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* 눈에 잘 띄는 카카오톡/문자용 초대 링크 복사 네모 박스 (QR 바로 밑에 배치) */}
             <div className="space-y-1.5">
               <button

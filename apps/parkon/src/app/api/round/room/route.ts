@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 export interface RoomPlayer {
   id: string;
@@ -21,13 +24,41 @@ export interface ParkOnRoom {
   updatedAt: number;
 }
 
-// Global in-memory storage for rooms (persists during Next.js server runtime)
+// Temporary file for cross-process/serverless persistence fallback
+const ROOMS_CACHE_FILE = path.join(os.tmpdir(), 'parkon_rooms_cache.json');
+
+// In-memory cache
 const getRoomsMap = (): Map<string, ParkOnRoom> => {
   const g = globalThis as any;
   if (!g.__parkonRooms) {
     g.__parkonRooms = new Map<string, ParkOnRoom>();
+    // Load from disk if exists
+    try {
+      if (fs.existsSync(ROOMS_CACHE_FILE)) {
+        const raw = fs.readFileSync(ROOMS_CACHE_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        for (const [k, v] of Object.entries(parsed)) {
+          g.__parkonRooms.set(k, v as ParkOnRoom);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load rooms from disk:', e);
+    }
   }
   return g.__parkonRooms;
+};
+
+// Save to disk
+const persistRooms = (rooms: Map<string, ParkOnRoom>) => {
+  try {
+    const obj: Record<string, ParkOnRoom> = {};
+    rooms.forEach((v, k) => {
+      obj[k] = v;
+    });
+    fs.writeFileSync(ROOMS_CACHE_FILE, JSON.stringify(obj), 'utf-8');
+  } catch (e) {
+    console.error('Failed to persist rooms to disk:', e);
+  }
 };
 
 // GET /api/round/room?roomId=...
@@ -40,7 +71,23 @@ export async function GET(req: NextRequest) {
   }
 
   const rooms = getRoomsMap();
-  const room = rooms.get(roomId);
+  let room = rooms.get(roomId);
+
+  // If not in memory, re-check disk file
+  if (!room) {
+    try {
+      if (fs.existsSync(ROOMS_CACHE_FILE)) {
+        const raw = fs.readFileSync(ROOMS_CACHE_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed[roomId]) {
+          room = parsed[roomId];
+          rooms.set(roomId, room!);
+        }
+      }
+    } catch (e) {
+      console.error('Disk read error:', e);
+    }
+  }
 
   if (!room) {
     return NextResponse.json({ success: false, message: 'ROOM_NOT_FOUND' }, { status: 404 });
@@ -61,6 +108,22 @@ export async function POST(req: NextRequest) {
 
     const rooms = getRoomsMap();
     let room = rooms.get(roomId);
+
+    // If not in memory, check disk
+    if (!room) {
+      try {
+        if (fs.existsSync(ROOMS_CACHE_FILE)) {
+          const raw = fs.readFileSync(ROOMS_CACHE_FILE, 'utf-8');
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed[roomId]) {
+            room = parsed[roomId];
+            rooms.set(roomId, room!);
+          }
+        }
+      } catch (e) {
+        console.error('Disk read error:', e);
+      }
+    }
 
     // 1. 조장 화면 설정 동기화 (sync)
     if (action === 'sync') {
@@ -94,12 +157,14 @@ export async function POST(req: NextRequest) {
           updatedAt: Date.now(),
         };
       } else {
-        // 기존 방 업데이트 (조장이 코스, 홀, 인원수 등을 변경할 때)
-        // 주의: 동반자가 이미 조인해서 입력한 실제 이름이 있다면 보존
+        // 기존 방 업데이트: 동반자가 이미 입장해서 입력한 실제 이름은 절대 덮어쓰지 않음
         const mergedPlayers: RoomPlayer[] = (players || room.players).map((p: RoomPlayer, idx: number) => {
+          if (idx === 0) {
+            return { ...p, isLeader: true, name: leaderName || p.name || '조장' };
+          }
           const existing = room!.players[idx];
-          if (existing && !existing.isLeader && !existing.name.startsWith('동반자') && p.name.startsWith('동반자')) {
-            return { ...p, name: existing.name };
+          if (existing && !existing.name.startsWith('동반자') && p.name.startsWith('동반자')) {
+            return existing;
           }
           return p;
         });
@@ -118,16 +183,18 @@ export async function POST(req: NextRequest) {
       }
 
       rooms.set(roomId, room);
+      persistRooms(rooms);
       return NextResponse.json({ success: true, room });
     }
 
     // 2. 동반자 입장 (join)
     if (action === 'join') {
       const { playerName } = body;
-      const guestName = (playerName || '동반자').trim();
+      let guestName = (playerName || '동반자').trim();
+      if (!guestName) guestName = '동반자';
 
       if (!room) {
-        // 방이 아직 없으면 초기 생성
+        // 방이 없으면 즉시 생성
         room = {
           roomId,
           leaderName: body.leaderName || '조장',
@@ -146,29 +213,29 @@ export async function POST(req: NextRequest) {
           updatedAt: Date.now(),
         };
       } else {
-        // 이미 참여했는지 확인
-        const alreadyJoined = room.players.some((p) => p.name === guestName);
-        if (!alreadyJoined) {
-          // 동반자1, 동반자2 등 기본 플레이스홀더를 교체하거나 추가
-          const placeholderIdx = room.players.findIndex((p) => !p.isLeader && (p.name.startsWith('동반자') || !p.name.trim()));
-          if (placeholderIdx !== -1) {
-            room.players[placeholderIdx] = {
-              ...room.players[placeholderIdx],
-              name: guestName,
-            };
-          } else if (room.players.length < 6) {
-            room.players.push({
-              id: `p_guest_${Date.now()}`,
-              name: guestName,
-              isLeader: false,
-            });
-            room.playerCount = room.players.length;
-          }
+        // 첫 번째 빈 슬롯(동반자1, 동반자2...)에 게스트를 즉시 배치
+        const placeholderIdx = room.players.findIndex(
+          (p, idx) => idx > 0 && !p.isLeader && (p.name.startsWith('동반자') || !p.name.trim())
+        );
+
+        if (placeholderIdx !== -1) {
+          room.players[placeholderIdx] = {
+            ...room.players[placeholderIdx],
+            name: guestName,
+          };
+        } else if (room.players.length < 6) {
+          room.players.push({
+            id: `p_guest_${Date.now()}`,
+            name: guestName,
+            isLeader: false,
+          });
+          room.playerCount = room.players.length;
         }
         room.updatedAt = Date.now();
       }
 
       rooms.set(roomId, room);
+      persistRooms(rooms);
       return NextResponse.json({ success: true, room, joinedPlayer: guestName });
     }
 
@@ -185,6 +252,7 @@ export async function POST(req: NextRequest) {
       room.updatedAt = Date.now();
 
       rooms.set(roomId, room);
+      persistRooms(rooms);
       return NextResponse.json({ success: true, room });
     }
 
