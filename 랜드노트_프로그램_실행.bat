@@ -4,7 +4,7 @@ title LandNote Program Launcher
 cd /d "%~dp0"
 
 echo [1/2] Starting LandNote Server (API & Web)...
-start "" cmd /c "npx pnpm dev"
+start "" powershell -NoExit -ExecutionPolicy Bypass -Command "pnpm dev"
 
 echo [2/2] Opening LandNote Browser...
 timeout /t 5 > nul

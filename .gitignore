@@ -49,6 +49,14 @@ tmp_*.html
 # PWA build artifacts
 **/public/sw.js
 **/public/workbox-*.js
+
+# large backups and media
+backups_and_archives/
+python_apps/
+*.zip
+*.mp4
 **/public/sw.js.map
 **/public/workbox-*.js.map
 **/public/swe-worker-*.js
+
+.vercel

@@ -37,6 +37,7 @@ export class AdminService {
         });
       }
       actualEmail = matchedAdmin.email;
+    }
     let actualPassword = password;
     if (actualPassword.length === 4 && /^\d+$/.test(actualPassword)) {
       actualPassword = actualPassword + actualPassword;

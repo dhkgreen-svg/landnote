@@ -10,6 +10,9 @@ interface InquiryItem {
   category_codes: string[];
   subcategory_codes: string[];
   transaction_types: string[];
+  detailed_conditions?: any;
+  agent_memo?: string | null;
+  tags?: string[];
   status: string;
   created_at: string;
 }

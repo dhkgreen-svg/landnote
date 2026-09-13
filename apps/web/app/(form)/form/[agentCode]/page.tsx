@@ -57,7 +57,7 @@ export default async function FormStep1Page({
       phone={agent.phone}
       selectedCategories={agent.selected_categories}
       subscriptionPlan={agent.subscription_plan}
-      isBetaTester={agent.is_beta_tester || params.agentCode === 'ATEST' || params.agentCode === 'test-agent'}
+      isBetaTester={agent.is_beta_tester}
     />
   );
 }
