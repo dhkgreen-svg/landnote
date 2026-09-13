@@ -1,6 +1,11 @@
 'use client';
 
 import React from 'react';
+import { TeeSwingDiagrams } from './rule-diagrams/TeeSwingDiagrams';
+import { PuttingGreenDiagrams } from './rule-diagrams/PuttingGreenDiagrams';
+import { HazardReliefDiagrams } from './rule-diagrams/HazardReliefDiagrams';
+import { TouchPenaltyDiagrams } from './rule-diagrams/TouchPenaltyDiagrams';
+import { ScoreMannerDiagrams } from './rule-diagrams/ScoreMannerDiagrams';
 
 interface RuleSituationDiagramProps {
   ruleId: string;
@@ -635,6 +640,31 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
         </div>
       </div>
     );
+  }
+
+  // [2] Tee & Swing Category (ts-1 ~ ts-8)
+  if (ruleId.startsWith('ts-')) {
+    return <TeeSwingDiagrams ruleId={ruleId} />;
+  }
+
+  // [3] Putting Green & Flagstick Category (pg-1 ~ pg-8)
+  if (ruleId.startsWith('pg-')) {
+    return <PuttingGreenDiagrams ruleId={ruleId} />;
+  }
+
+  // [4] Hazard & Relief Category (hr-1 ~ hr-8)
+  if (ruleId.startsWith('hr-')) {
+    return <HazardReliefDiagrams ruleId={ruleId} />;
+  }
+
+  // [5] Touch & Penalty Category (tp-1 ~ tp-8)
+  if (ruleId.startsWith('tp-')) {
+    return <TouchPenaltyDiagrams ruleId={ruleId} />;
+  }
+
+  // [6] Scorecard & Manner Category (sm-1 ~ sm-8)
+  if (ruleId.startsWith('sm-')) {
+    return <ScoreMannerDiagrams ruleId={ruleId} />;
   }
 
   // Default Mascot / Category Fallback Visual Card
