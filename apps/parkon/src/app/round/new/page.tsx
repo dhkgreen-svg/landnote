@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Users, Flag, Play, Plus, Trash2, ArrowLeft, MapPin, Edit3, Settings, QrCode, Copy, Check, Sparkles } from 'lucide-react';
+import { Users, Flag, Play, Plus, Trash2, ArrowLeft, MapPin, Edit3, Settings, QrCode, Copy, Check, Sparkles, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import { Course, RoundPlayer, RoundSession, formatCourseHolesText } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
 import { generateStandardHoles } from '@/lib/defaultCourses';
 import { getDefaultSelfName, sortPlayersByLeaderAndAlphabetical } from '@/lib/playerUtils';
+import { generateQrCodeDataUrl } from '@/lib/qrUtils';
 
 const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
@@ -21,7 +22,8 @@ interface SetupPlayer {
 function NewRoundForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialCourseId = searchParams.get('courseId');
+  const initialCourseId = searchParams.get('courseId') || searchParams.get('course');
+  const joinedPlayer = searchParams.get('joined');
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
@@ -35,6 +37,7 @@ function NewRoundForm() {
     { id: 'p_4', name: '동반자3', isLeader: false, isSelf: false },
   ]);
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [joinSimulationToast, setJoinSimulationToast] = useState<string | null>(null);
 
@@ -220,6 +223,97 @@ function NewRoundForm() {
     }
     setJoinSimulationToast(`🎉 '${guestName}' 님이 QR 코드로 라운드에 자동 입장하였습니다!`);
     setTimeout(() => setJoinSimulationToast(null), 3500);
+  };
+
+  // URL 쿼리(초대 링크를 타고 들어온 동반자) 자동 합류 처리
+  useEffect(() => {
+    if (joinedPlayer) {
+      const decodedName = decodeURIComponent(joinedPlayer).trim();
+      if (decodedName) {
+        handleSimulateQrJoin(decodedName);
+      }
+    }
+  }, [joinedPlayer]);
+
+  // 초대 링크 및 실제 카메라 인식용 QR 코드 생성
+  const currentLeader = playersList.find((p) => p.isLeader) || playersList[0];
+  const leaderName = currentLeader?.name || '조장';
+  const inviteUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/round/join?course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`
+    : `https://parkon.kr/round/join?course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`;
+
+  useEffect(() => {
+    if (showQrModal && inviteUrl) {
+      generateQrCodeDataUrl(inviteUrl)
+        .then((url) => {
+          if (url) setQrDataUrl(url);
+        })
+        .catch((err) => {
+          console.error('Failed to generate real QR Code:', err);
+        });
+    }
+  }, [showQrModal, inviteUrl]);
+
+  // 강력한 카카오톡/문자/링크 공유 함수 (모바일 네이티브 공유 -> 클립보드 -> 임시 텍스트에어리어 -> 프롬프트 폴백)
+  const handleShareInvite = async () => {
+    const courseName = currentCourse?.name || '파크골프장';
+    const shareTitle = `[파크온] ${courseName} 라운딩 초대`;
+    const shareText = `[파크온 동반자 초대]\n⛳ ${courseName} 함께 라운딩해요!\n조장: ${leaderName}\n아래 링크를 누르면 동반자로 자동 등록됩니다:\n${inviteUrl}`;
+
+    // 1. 모바일 환경에서 시스템 공유 시트 (카카오톡, 문자 등 직접 선택 가능)
+    if (typeof navigator !== 'undefined' && navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent || '')) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: inviteUrl,
+        });
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 3000);
+        return;
+      } catch (err) {
+        // 사용자가 취소했거나 권한 제한 시 클립보드 복사로 전환
+      }
+    }
+
+    // 2. 최신 비동기 클립보드 API
+    let copied = false;
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(shareText);
+        copied = true;
+      } catch {
+        copied = false;
+      }
+    }
+
+    // 3. 권한 제한 / HTTP 환경 대비 임시 textarea + execCommand 폴백
+    if (!copied && typeof document !== 'undefined') {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = shareText;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '0';
+        textarea.setAttribute('readonly', '');
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+      } catch {
+        copied = false;
+      }
+    }
+
+    // 4. 최후의 수단: 브라우저 기본 안내창
+    if (!copied && typeof window !== 'undefined') {
+      window.prompt('초대 링크를 복사하여 카카오톡이나 문자에 붙여넣으세요:', inviteUrl);
+      copied = true;
+    }
+
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 4000);
   };
 
   const startRound = () => {
@@ -634,105 +728,33 @@ function NewRoundForm() {
             <div className="p-4 space-y-3.5 overflow-y-auto flex-1 overscroll-contain">
               {/* QR Code Display */}
             <div className="flex flex-col items-center justify-center p-4 bg-stone-50 rounded-2xl border border-stone-200 text-center space-y-2.5">
-              <div className="p-4 bg-white rounded-2xl shadow-sm border-2 border-emerald-500/30 flex flex-col items-center justify-center">
-                {/* Sharp Vector SVG QR Code with ParkOn Center Emblem */}
-                <svg viewBox="0 0 160 160" className="w-40 h-40 text-stone-900" fill="currentColor">
-                  {/* Top-Left Finder */}
-                  <rect x="10" y="10" width="40" height="40" rx="6" fill="#047857" />
-                  <rect x="16" y="16" width="28" height="28" rx="4" fill="#ffffff" />
-                  <rect x="22" y="22" width="16" height="16" rx="2" fill="#047857" />
-
-                  {/* Top-Right Finder */}
-                  <rect x="110" y="10" width="40" height="40" rx="6" fill="#047857" />
-                  <rect x="116" y="16" width="28" height="28" rx="4" fill="#ffffff" />
-                  <rect x="122" y="22" width="16" height="16" rx="2" fill="#047857" />
-
-                  {/* Bottom-Left Finder */}
-                  <rect x="10" y="110" width="40" height="40" rx="6" fill="#047857" />
-                  <rect x="16" y="116" width="28" height="28" rx="4" fill="#ffffff" />
-                  <rect x="22" y="122" width="16" height="16" rx="2" fill="#047857" />
-
-                  {/* Data Modules (Dense ParkOn QR Matrix pattern) */}
-                  <g fill="#1f2937">
-                    <rect x="58" y="14" width="6" height="6" rx="1.5" />
-                    <rect x="70" y="14" width="6" height="6" rx="1.5" />
-                    <rect x="82" y="14" width="6" height="6" rx="1.5" />
-                    <rect x="94" y="14" width="6" height="6" rx="1.5" />
-
-                    <rect x="58" y="26" width="6" height="6" rx="1.5" />
-                    <rect x="76" y="26" width="6" height="6" rx="1.5" />
-                    <rect x="88" y="26" width="6" height="6" rx="1.5" />
-
-                    <rect x="64" y="38" width="6" height="6" rx="1.5" />
-                    <rect x="82" y="38" width="6" height="6" rx="1.5" />
-                    <rect x="94" y="38" width="6" height="6" rx="1.5" />
-
-                    <rect x="14" y="58" width="6" height="6" rx="1.5" />
-                    <rect x="26" y="58" width="6" height="6" rx="1.5" />
-                    <rect x="38" y="58" width="6" height="6" rx="1.5" />
-                    <rect x="52" y="58" width="6" height="6" rx="1.5" />
-                    <rect x="64" y="58" width="6" height="6" rx="1.5" />
-                    <rect x="76" y="58" width="6" height="6" rx="1.5" />
-                    <rect x="92" y="58" width="6" height="6" rx="1.5" />
-                    <rect x="108" y="58" width="6" height="6" rx="1.5" />
-                    <rect x="124" y="58" width="6" height="6" rx="1.5" />
-                    <rect x="138" y="58" width="6" height="6" rx="1.5" />
-
-                    <rect x="14" y="70" width="6" height="6" rx="1.5" />
-                    <rect x="32" y="70" width="6" height="6" rx="1.5" />
-                    <rect x="46" y="70" width="6" height="6" rx="1.5" />
-                    <rect x="104" y="70" width="6" height="6" rx="1.5" />
-                    <rect x="118" y="70" width="6" height="6" rx="1.5" />
-                    <rect x="136" y="70" width="6" height="6" rx="1.5" />
-
-                    <rect x="20" y="82" width="6" height="6" rx="1.5" />
-                    <rect x="38" y="82" width="6" height="6" rx="1.5" />
-                    <rect x="110" y="82" width="6" height="6" rx="1.5" />
-                    <rect x="128" y="82" width="6" height="6" rx="1.5" />
-                    <rect x="140" y="82" width="6" height="6" rx="1.5" />
-
-                    <rect x="14" y="94" width="6" height="6" rx="1.5" />
-                    <rect x="28" y="94" width="6" height="6" rx="1.5" />
-                    <rect x="44" y="94" width="6" height="6" rx="1.5" />
-                    <rect x="58" y="94" width="6" height="6" rx="1.5" />
-                    <rect x="72" y="94" width="6" height="6" rx="1.5" />
-                    <rect x="88" y="94" width="6" height="6" rx="1.5" />
-                    <rect x="104" y="94" width="6" height="6" rx="1.5" />
-                    <rect x="120" y="94" width="6" height="6" rx="1.5" />
-                    <rect x="136" y="94" width="6" height="6" rx="1.5" />
-
-                    <rect x="58" y="108" width="6" height="6" rx="1.5" />
-                    <rect x="72" y="108" width="6" height="6" rx="1.5" />
-                    <rect x="86" y="108" width="6" height="6" rx="1.5" />
-                    <rect x="102" y="108" width="6" height="6" rx="1.5" />
-                    <rect x="126" y="108" width="6" height="6" rx="1.5" />
-                    <rect x="140" y="108" width="6" height="6" rx="1.5" />
-
-                    <rect x="64" y="122" width="6" height="6" rx="1.5" />
-                    <rect x="80" y="122" width="6" height="6" rx="1.5" />
-                    <rect x="96" y="122" width="6" height="6" rx="1.5" />
-                    <rect x="114" y="122" width="6" height="6" rx="1.5" />
-                    <rect x="132" y="122" width="6" height="6" rx="1.5" />
-
-                    <rect x="58" y="136" width="6" height="6" rx="1.5" />
-                    <rect x="74" y="136" width="6" height="6" rx="1.5" />
-                    <rect x="90" y="136" width="6" height="6" rx="1.5" />
-                    <rect x="108" y="136" width="6" height="6" rx="1.5" />
-                    <rect x="124" y="136" width="6" height="6" rx="1.5" />
-                    <rect x="138" y="136" width="6" height="6" rx="1.5" />
-                  </g>
-
-                  {/* Center Emblem: ParkOn Golf Flag */}
-                  <rect x="62" y="62" width="36" height="36" rx="10" fill="#047857" stroke="#ffffff" strokeWidth="3" />
-                  <text x="80" y="85" textAnchor="middle" fill="#ffffff" fontSize="18" fontWeight="900">⛳</text>
-                </svg>
+              <div className="p-3 bg-white rounded-2xl shadow-sm border-2 border-emerald-500/30 flex flex-col items-center justify-center relative">
+                {qrDataUrl ? (
+                  <div className="relative flex items-center justify-center">
+                    <img
+                      src={qrDataUrl}
+                      alt="동반자 초대 QR 코드"
+                      className="w-48 h-48 rounded-xl object-contain shadow-inner"
+                    />
+                    {/* Center Emblem Badge */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-10 h-10 bg-white rounded-xl shadow-md border-2 border-emerald-600 flex items-center justify-center">
+                        <span className="text-xl">⛳</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-48 h-48 flex items-center justify-center text-stone-400 font-bold text-sm">
+                    QR 코드 생성 중...
+                  </div>
+                )}
               </div>
               <div className="space-y-0.5">
                 <span className="text-xs font-black text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full">
-                  초대 룸 코드: #{selectedCourseId ? selectedCourseId.slice(-4).toUpperCase() : 'PARK'}
+                  초대 구장: {currentCourse?.name || '파크골프장'}
                 </span>
-                <p className="text-[11px] text-stone-500 font-medium">
-                  동반자가 스마트폰 카메라로 QR 코드를 비추면 파크온이 즉시 열립니다.
+                <p className="text-[12px] text-stone-700 font-extrabold">
+                  📷 동반자가 스마트폰 기본 카메라로 비추면 바로 참가 페이지가 열립니다.
                 </p>
               </div>
             </div>
@@ -741,25 +763,15 @@ function NewRoundForm() {
             <div className="space-y-1.5">
               <button
                 type="button"
-                onClick={() => {
-                  const courseName = currentCourse?.name || '파크골프장';
-                  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://parkon.kr';
-                  const inviteUrl = `${baseUrl}/round/join?course=${selectedCourseId || 'dongrak'}`;
-                  const shareMsg = `[파크온 동반자 초대]\n⛳ ${courseName} 함께 라운딩해요!\n아래 링크를 누르면 동반자로 자동 등록됩니다:\n${inviteUrl}`;
-                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                    navigator.clipboard.writeText(shareMsg);
-                  }
-                  setCopiedLink(true);
-                  setTimeout(() => setCopiedLink(false), 4000);
-                }}
+                onClick={handleShareInvite}
                 className="w-full py-3.5 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] font-black rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm border border-[#E6CF00] transition active:scale-98 cursor-pointer"
               >
                 <span className="text-base leading-none">💬</span>
-                <span>{copiedLink ? '초대 링크 복사 완료!' : '카카오톡 / 문자용 초대 링크 복사'}</span>
+                <span>{copiedLink ? '초대 링크 복사 완료!' : '카카오톡 / 문자 초대장 보내기'}</span>
                 {copiedLink ? (
                   <Check className="w-4 h-4 ml-auto text-emerald-800 font-black" />
                 ) : (
-                  <Copy className="w-4 h-4 ml-auto text-stone-700" />
+                  <Share2 className="w-4 h-4 ml-auto text-stone-700" />
                 )}
               </button>
 
