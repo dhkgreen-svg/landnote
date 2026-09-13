@@ -9,6 +9,8 @@ import { ClubStorage } from '@/lib/clubStorage';
 import { ConditionStatus } from '@/components/ConditionStatus';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { KakaoLoginModal } from '@/components/KakaoLoginModal';
+import { WelcomeModal } from '@/components/WelcomeModal';
+import { RulesWebtoonModal } from '@/components/RulesWebtoonModal';
 import { KakaoAuthUser } from '@/lib/storage';
 
 export default function HomePage() {
@@ -21,6 +23,7 @@ export default function HomePage() {
   const [userProfile, setUserProfile] = useState<UserGolfProfile>(DEFAULT_USER_PROFILE);
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
   const [showNationalStatsModal, setShowNationalStatsModal] = useState<boolean>(false);
+  const [showRulesWebtoonModal, setShowRulesWebtoonModal] = useState<boolean>(false);
   const [leaderboardTab, setLeaderboardTab] = useState<'FIRST_PLACE' | 'TOP4'>('FIRST_PLACE');
   const [statsCourseId, setStatsCourseId] = useState<string>('');
   const [clubBadge, setClubBadge] = useState<{ text: string; isPlaying: boolean } | null>(null);
@@ -640,6 +643,15 @@ export default function HomePage() {
 
   return (
     <div className="p-4 max-w-md mx-auto space-y-4 pb-12">
+      {/* -1. 첫 방문자 환영 모달 (PC·모바일 1초 앱 깔기 vs 그냥 시작하기) */}
+      <WelcomeModal />
+
+      {/* -2. 파키의 파크골프 웹툰북 & 룰 Q&A 모달 */}
+      <RulesWebtoonModal
+        isOpen={showRulesWebtoonModal}
+        onClose={() => setShowRulesWebtoonModal(false)}
+      />
+
       {/* 0. PWA 스마트폰 1초 앱 설치 배너 & 가이드 */}
       <InstallPrompt />
 
@@ -797,12 +809,22 @@ export default function HomePage() {
             )}
           </div>
 
-          <div className="my-2 bg-stone-50 rounded-xl p-2 border border-stone-100 flex flex-col justify-center">
-            <div className="text-[11px] font-black text-stone-800">
-              새 대회 개설 & 조편성
+          <div className="my-2 bg-stone-50 rounded-xl p-2 border border-stone-100 flex items-center gap-2">
+            <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-purple-200 bg-white shadow-2xs">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/mascot/사진저장고_사진_20260913_38.jpg"
+                alt="클럽 앤 번개 동반자 나눔 파키"
+                className="w-full h-full object-cover"
+              />
             </div>
-            <div className="text-[10px] text-stone-500 font-medium truncate">
-              동반자 실시간 스코어 연동
+            <div className="min-w-0">
+              <div className="text-[11px] font-black text-stone-800 leading-tight truncate">
+                새 대회 개설 & 조편성
+              </div>
+              <div className="text-[9.5px] text-stone-500 font-medium truncate">
+                동반자 실시간 스코어 연동
+              </div>
             </div>
           </div>
 
@@ -811,6 +833,39 @@ export default function HomePage() {
             <span className="text-purple-700 font-black">바로가기 ▶</span>
           </div>
         </Link>
+      </section>
+
+      {/* 4-1. 파키의 파크골프 웹툰북 & 룰 Q&A 팝업 배너 */}
+      <section
+        onClick={() => setShowRulesWebtoonModal(true)}
+        className="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white rounded-2xl p-3 shadow-sm border border-emerald-600/60 hover:border-emerald-400 transition active:scale-[0.99] cursor-pointer flex items-center justify-between gap-3"
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="relative w-12 h-12 rounded-xl overflow-hidden shadow-xs border border-amber-300 shrink-0 bg-stone-100">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/mascot/사진저장고_사진_20260913_31.jpg"
+              alt="파키의 파크골프 웹툰북"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-black text-white tracking-tight">
+                파키의 웹툰북 & 룰 Q&A
+              </span>
+              <span className="text-[9px] font-black bg-amber-400 text-stone-950 px-1.5 py-0.2 rounded shadow-2xs">
+                만화로 보는 룰
+              </span>
+            </div>
+            <p className="text-[10.5px] text-emerald-200 font-medium truncate mt-0.5">
+              그립 교습 · 동반자 나눔 에티켓 · 자주 묻는 핵심 룰 5선
+            </p>
+          </div>
+        </div>
+        <span className="text-[10px] font-black text-amber-300 bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded-xl shrink-0 whitespace-nowrap">
+          웹툰 보기 ▶
+        </span>
       </section>
 
       {/* 5. Recent Completed Rounds */}
@@ -967,6 +1022,27 @@ export default function HomePage() {
 
             {/* 스크롤 본문 */}
             <div className="p-4 space-y-4 overflow-y-auto flex-1 overscroll-contain">
+              {/* 상단 파키 전국 명예의 전당 배너 (1번: 5스타 4.9점 트로피 파키) */}
+              <div className="relative rounded-2xl overflow-hidden border border-amber-300 shadow-xs bg-stone-100 flex items-center bg-gradient-to-r from-amber-100 to-amber-50 p-2.5 gap-3">
+                <div className="relative w-16 h-16 rounded-xl overflow-hidden shadow-xs border border-amber-400 shrink-0 bg-white">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/mascot/사진저장고_사진_20260913_1.jpg"
+                    alt="전국 공인 5스타 트로피 파키"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-black text-amber-950 flex items-center gap-1">
+                    <span>전국 파크골프 공인 명예의 전당</span>
+                    <span className="text-[9px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded">5-STAR</span>
+                  </div>
+                  <p className="text-[10.5px] text-amber-900 font-medium leading-tight mt-0.5">
+                    전국 공식 18홀 완주 기록을 기반으로 산출되는 대한민국 표준 공인 등급입니다.
+                  </p>
+                </div>
+              </div>
+
               {/* 1. 전국 공인 실력 지수 */}
               <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-3.5 flex items-center justify-between shadow-xs">
                 <div>
@@ -1150,6 +1226,27 @@ export default function HomePage() {
                 </div>
               </div>
 
+              {/* 상단 파키 스코어카드 분석 배너 (37번: 스코어카드와 연필 든 스마트 파키) */}
+              <div className="relative rounded-2xl overflow-hidden border border-emerald-300 shadow-xs bg-stone-100 flex items-center bg-gradient-to-r from-emerald-100 to-teal-50 p-2.5 gap-3">
+                <div className="relative w-16 h-16 rounded-xl overflow-hidden shadow-xs border border-emerald-400 shrink-0 bg-white">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/mascot/사진저장고_사진_20260913_37.jpg"
+                    alt="스코어카드 기록 분석 파키"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-black text-emerald-950 flex items-center gap-1">
+                    <span>파키의 구장별 정밀 스코어 리포트</span>
+                    <span className="text-[9px] bg-emerald-700 text-white font-black px-1.5 py-0.2 rounded">공식 전적</span>
+                  </div>
+                  <p className="text-[10.5px] text-emerald-900 font-medium leading-tight mt-0.5">
+                    구장별 18홀 정규 라운드 기록으로 산출된 평균 타수와 순위표입니다.
+                  </p>
+                </div>
+              </div>
+
               {/* 1. 선택된 구장에서의 [나의 등급 & 실력 요약 카드] */}
               <div className="bg-gradient-to-br from-emerald-800 to-emerald-950 text-white rounded-2xl p-4 space-y-3 shadow-md border border-emerald-700/60">
                 <div className="flex items-center justify-between border-b border-emerald-700/60 pb-2.5">
@@ -1261,6 +1358,27 @@ export default function HomePage() {
                 {/* 1등 명단 뷰 (동점 1위 최신순 정렬) */}
                 {leaderboardTab === 'FIRST_PLACE' ? (
                   <div className="space-y-2">
+                    {/* 챔피언 트로피 파키 배너 */}
+                    <div className="relative rounded-xl overflow-hidden border border-amber-300 shadow-2xs bg-amber-50 p-2 flex items-center gap-2.5">
+                      <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-amber-400 bg-white">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/mascot/사진저장고_사진_20260913_35.jpg"
+                          alt="파크골프 챔피언십 우승 파키"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-black text-amber-950 flex items-center gap-1">
+                          <span>{activeStatsCourse.name} 1등 챔피언 클럽</span>
+                          <span className="text-[8.5px] bg-amber-400 text-stone-950 font-black px-1 rounded">CHAMPION</span>
+                        </div>
+                        <p className="text-[10px] text-amber-900 font-medium leading-tight mt-0.5">
+                          역대 최저타를 기록한 명예로운 챔피언 골퍼들의 최신순 명단입니다!
+                        </p>
+                      </div>
+                    </div>
+
                     <div className="flex items-center justify-between text-[11px] font-bold text-amber-950 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
                       <span>💡 18홀 최저 <strong>{activeCourseLeaderboard.recordScore}타</strong> 챔피언</span>
                       <span className="text-[10px] bg-amber-200/80 text-amber-900 px-1.5 py-0.2 rounded font-black">

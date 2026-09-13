@@ -257,8 +257,25 @@ export function ConditionVoteModal({
             </span>
           </div>
 
-          <div className="bg-emerald-50/80 rounded-xl p-2.5 border border-emerald-200/80 text-[11px] text-emerald-950 leading-relaxed font-medium">
-            💡 <strong>[3시간 실시간 룰]</strong> 잔디는 아침의 이슬과 오후의 햇빛에 따라 구름성과 물기가 달라집니다. 골퍼분들이 입력하신 정보는 <strong>최근 3시간 실시간 데이터</strong>로 최우선 반영됩니다!
+          {/* 파키의 실시간 잔디 관측 안내 배너 */}
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-2.5 border border-emerald-200/90 flex items-center gap-3">
+            <div className="relative w-16 h-16 rounded-xl overflow-hidden shadow-xs border border-emerald-300 shrink-0 bg-white">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/mascot/사진저장고_사진_20260913_29.jpg"
+                alt="잔디 상태 관측하는 파키"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-black text-emerald-950 flex items-center gap-1">
+                <span>파키의 3시간 실시간 잔디 관측</span>
+                <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-bold">LIVE</span>
+              </div>
+              <p className="text-[10.5px] text-emerald-800 leading-snug font-medium mt-0.5">
+                잔디는 아침 이슬과 햇빛에 따라 변합니다. 현장 골퍼분들의 터치 한 번이 전국 동반자들에게 최고의 나침반이 됩니다!
+              </p>
+            </div>
           </div>
 
           {/* 피드백 토스트 */}
