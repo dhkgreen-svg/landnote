@@ -34,11 +34,13 @@ import {
   RulebookChapter,
 } from '@/lib/rulebookData';
 import { CHAPTER_WEBTOONS } from '@/lib/chapterWebtoons';
+import { RuleSituationDiagram } from '@/components/RuleSituationDiagram';
 
 export default function RulesPage() {
   const [selectedCategory, setSelectedCategory] = useState<RuleCategoryId>('ob');
   const [rulebookViewMode, setRulebookViewMode] = useState<'webtoon' | 'articles'>('webtoon');
   const [chapterModalMode, setChapterModalMode] = useState<'webtoon' | 'articles'>('webtoon');
+  const [qaModalMode, setQaModalMode] = useState<'webtoon' | 'text'>('webtoon');
   const [questionText, setQuestionText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
@@ -54,6 +56,7 @@ export default function RulesPage() {
   const isListeningRef = useRef(false);
   const questionTextRef = useRef('');
   const chapterScrollRef = useRef<HTMLDivElement>(null);
+  const qaScrollRef = useRef<HTMLDivElement>(null);
 
   const currentChapterIndex = selectedChapter
     ? KPGA_RULEBOOK_CHAPTERS.findIndex((c) => c.id === selectedChapter.id)
@@ -69,6 +72,31 @@ export default function RulesPage() {
     setSelectedChapter(ch);
     if (chapterScrollRef.current) {
       chapterScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Q&A Category questions & sequential navigation
+  const currentCategoryQuestions = CATEGORIZED_RULES.filter(
+    (r) => r.category === (activeVerdict?.category || selectedCategory)
+  );
+  const currentQuestionIndex = activeVerdict
+    ? currentCategoryQuestions.findIndex((r) => r.id === activeVerdict.id)
+    : -1;
+  const prevQuestion =
+    currentQuestionIndex > 0 ? currentCategoryQuestions[currentQuestionIndex - 1] : null;
+  const nextQuestion =
+    currentQuestionIndex >= 0 && currentQuestionIndex < currentCategoryQuestions.length - 1
+      ? currentCategoryQuestions[currentQuestionIndex + 1]
+      : null;
+
+  const handleGoToQuestion = (q: CategorizedRuleItem) => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+    setActiveVerdict(q);
+    if (qaScrollRef.current) {
+      qaScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -197,7 +225,11 @@ export default function RulesPage() {
   // Open modal directly from question item click
   const openRuleModal = (rule: CategorizedRuleItem) => {
     setActiveVerdict(rule);
+    setQaModalMode('webtoon');
     setShowModal(true);
+    setTimeout(() => {
+      qaScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 50);
   };
 
   // Instant Verdict Solver Engine (Gemini AI 연동 + 50개 DB 매칭)
@@ -601,8 +633,9 @@ export default function RulesPage() {
                 </div>
 
                 <div className="shrink-0 flex items-center gap-1">
-                  <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white px-2 py-1 rounded-lg transition border border-emerald-200">
-                    답 보기
+                  <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white px-2.5 py-1 rounded-xl transition border border-emerald-200 shadow-2xs flex items-center gap-1">
+                    <span>🎨</span>
+                    <span>웹툰 판정</span>
                   </span>
                   <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-emerald-700 transition" />
                 </div>
@@ -1283,111 +1316,412 @@ export default function RulesPage() {
               </button>
             </div>
 
-            {/* Modal Body (Scrollable) */}
-            <div className="p-4 overflow-y-auto space-y-3.5">
-              {/* Question Situation */}
-              <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-1">
-                <div className="text-xs font-black text-emerald-800 flex items-center gap-1">
-                  <span>질문 상황:</span>
-                </div>
-                <div className="text-sm font-extrabold text-stone-900 leading-snug">
-                  {activeVerdict.title}
-                </div>
-                <p className="text-xs text-stone-600 font-bold mt-1 leading-relaxed break-keep">
-                  {activeVerdict.situation}
-                </p>
-              </div>
-
-              {/* Verdict Highlight Box */}
-              <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-md space-y-1">
-                <div className="text-xs font-bold text-emerald-100 flex items-center gap-1">
-                  <CheckCircle className="w-4 h-4 text-amber-300" />
-                  <span>최종 솔로몬 판정 결론</span>
-                </div>
-                <div className="text-lg font-black leading-snug tracking-tight text-white">
-                  {activeVerdict.verdict}
-                </div>
-              </div>
-
-              {/* Penalty Status */}
-              <div className="flex items-center justify-between bg-stone-100 px-3.5 py-2.5 rounded-xl border border-stone-200">
-                <span className="text-xs font-black text-stone-700">벌타 유무:</span>
-                <span
-                  className={`text-xs font-black px-2.5 py-1 rounded-lg ${
-                    activeVerdict.penalty.includes('벌타 없음') || activeVerdict.penalty.includes('무벌')
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-rose-600 text-white'
+            {/* Modal Internal Mode Switch: 파키 만화 웹툰 vs 상세 법조문 */}
+            <div className="px-4 pt-3 pb-1 bg-stone-50 border-b border-stone-200">
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-200/80 rounded-2xl">
+                <button
+                  type="button"
+                  onClick={() => setQaModalMode('webtoon')}
+                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
+                    qaModalMode === 'webtoon'
+                      ? 'bg-emerald-700 text-white shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
-                  {activeVerdict.penalty}
-                </span>
+                  <span>🎨</span>
+                  <span>파키 웹툰 판정</span>
+                  <span className="text-[9px] bg-amber-400 text-emerald-950 px-1.5 py-0.2 rounded-full font-black">
+                    삽화
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQaModalMode('text')}
+                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
+                    qaModalMode === 'text'
+                      ? 'bg-emerald-700 text-white shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <span>📜</span>
+                  <span>상세 법조문 판정</span>
+                </button>
               </div>
+            </div>
 
-              {/* Procedure */}
-              <div className="bg-white p-3.5 rounded-2xl border-2 border-stone-200 space-y-1">
-                <div className="text-xs font-black text-stone-900 flex items-center gap-1">
-                  <span>📌 현장 진행 및 처리 절차:</span>
-                </div>
-                <p className="text-xs text-stone-800 font-bold leading-relaxed break-keep">
-                  {activeVerdict.procedure}
-                </p>
-              </div>
-
-              {/* Official Association Regulation Rule Text Box */}
-              {(activeVerdict.officialArticle || activeVerdict.officialRuleText) && (
-                <div className="bg-amber-50/90 border-2 border-amber-300 rounded-2xl p-3.5 space-y-2 shadow-sm">
-                  <div className="flex items-center justify-between gap-1.5 border-b border-amber-200/90 pb-2">
-                    <div className="flex items-center gap-1.5 text-amber-950 font-black text-xs">
-                      <span className="text-base">📜</span>
-                      <span>(사)대한파크골프협회 공식 경기규정</span>
-                    </div>
-                    {activeVerdict.officialArticle && (
-                      <span className="text-[11px] font-black bg-amber-200 text-amber-950 px-2 py-0.5 rounded-lg border border-amber-400">
-                        {activeVerdict.officialArticle}
+            {/* Modal Body (Scrollable) */}
+            <div ref={qaScrollRef} className="p-4 overflow-y-auto space-y-3.5 flex-1">
+              {/* 1. 파키 웹툰 판정 모드 */}
+              {qaModalMode === 'webtoon' && (
+                <div className="space-y-3.5">
+                  {/* Question Situation Header */}
+                  <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-1.5 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black bg-emerald-700 text-white px-2 py-0.5 rounded-full">
+                        {activeVerdict.categoryLabel || '공인 규정 질의'}
+                        {currentQuestionIndex >= 0 ? ` · 제${currentQuestionIndex + 1}문항` : ''}
                       </span>
-                    )}
+                      {currentQuestionIndex >= 0 && (
+                        <span className="text-[11px] font-bold text-stone-500">
+                          총 {currentCategoryQuestions.length}문항 중 {currentQuestionIndex + 1}번
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="text-sm font-extrabold text-stone-900 leading-snug pt-0.5">
+                      {activeVerdict.title}
+                    </h4>
+                    <div className="bg-white rounded-xl p-2.5 border border-stone-200 text-xs font-bold text-stone-700 flex items-start gap-1.5">
+                      <span className="text-sm shrink-0">🤔</span>
+                      <span className="break-keep leading-relaxed">
+                        <strong className="text-stone-900">상황:</strong> {activeVerdict.situation}
+                      </span>
+                    </div>
                   </div>
-                  {activeVerdict.officialRuleText && (
-                    <div className="bg-white/95 p-3 rounded-xl border border-amber-200 text-stone-800 text-xs font-semibold leading-relaxed break-keep space-y-1">
-                      <div className="text-[11px] font-black text-amber-800 flex items-center gap-1">
-                        <span>【공인 규정 조항 원문】</span>
+
+                  {/* Precise Situation Diagram (SVG Graphic) */}
+                  <RuleSituationDiagram
+                    ruleId={activeVerdict.id}
+                    category={activeVerdict.category}
+                  />
+
+                  {/* Parky Speech Bubble */}
+                  <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-3.5 shadow-sm space-y-1">
+                    <div className="flex items-center gap-1.5 text-emerald-950 font-black text-xs">
+                      <span className="text-base">📢</span>
+                      <span>파키의 판정 한마디!</span>
+                    </div>
+                    <p className="text-xs text-emerald-950 font-extrabold leading-relaxed break-keep">
+                      "{activeVerdict.voiceAnswer || activeVerdict.verdict}"
+                    </p>
+                  </div>
+
+                  {/* Verdict Highlight Box */}
+                  <div className="bg-emerald-600 text-white p-3.5 rounded-2xl shadow-md space-y-1">
+                    <div className="text-xs font-bold text-emerald-100 flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4 text-amber-300" />
+                      <span>최종 솔로몬 판정 결론</span>
+                    </div>
+                    <div className="text-base font-black leading-snug tracking-tight text-white">
+                      {activeVerdict.verdict}
+                    </div>
+                  </div>
+
+                  {/* Penalty Status */}
+                  <div className="flex items-center justify-between bg-stone-100 px-3.5 py-2.5 rounded-xl border border-stone-200">
+                    <span className="text-xs font-black text-stone-700">벌타 유무:</span>
+                    <span
+                      className={`text-xs font-black px-2.5 py-1 rounded-lg ${
+                        activeVerdict.penalty.includes('벌타 없음') || activeVerdict.penalty.includes('무벌')
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-rose-600 text-white'
+                      }`}
+                    >
+                      {activeVerdict.penalty}
+                    </span>
+                  </div>
+
+                  {/* Procedure */}
+                  <div className="bg-white p-3.5 rounded-2xl border-2 border-stone-200 space-y-1">
+                    <div className="text-xs font-black text-stone-900 flex items-center gap-1">
+                      <span>📌 현장 진행 및 처리 절차:</span>
+                    </div>
+                    <p className="text-xs text-stone-800 font-bold leading-relaxed break-keep">
+                      {activeVerdict.procedure}
+                    </p>
+                  </div>
+
+                  {/* Official Association Regulation Rule Text Box */}
+                  {(activeVerdict.officialArticle || activeVerdict.officialRuleText) && (
+                    <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-3 text-xs text-amber-950 font-bold space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-amber-900 font-extrabold">
+                          📜 공식 조항: {activeVerdict.officialArticle}
+                        </span>
                       </div>
-                      <p className="text-stone-700 italic">
-                        &ldquo;{activeVerdict.officialRuleText}&rdquo;
-                      </p>
+                      {activeVerdict.officialRuleText && (
+                        <p className="text-[11px] text-stone-700 italic mt-0.5">
+                          &ldquo;{activeVerdict.officialRuleText}&rdquo;
+                        </p>
+                      )}
                     </div>
                   )}
+
+                  {/* Question Completion & Next Question Banner */}
+                  <div className="bg-gradient-to-br from-emerald-950 via-teal-950 to-stone-900 text-white rounded-3xl p-4 text-center space-y-3 shadow-md border-2 border-emerald-500/50">
+                    <div className="inline-flex items-center gap-1.5 bg-amber-400 text-emerald-950 px-3 py-1 rounded-full text-xs font-black">
+                      <span>✔</span>
+                      <span>
+                        {currentQuestionIndex >= 0
+                          ? `제${currentQuestionIndex + 1}문항 확인 완료`
+                          : '판정 확인 완료'}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-emerald-100 font-bold">
+                      {nextQuestion
+                        ? `다음 질문: 제${currentQuestionIndex + 2}문항 · ${nextQuestion.title}`
+                        : '이 분야의 모든 판정 질문을 확인하셨습니다!'}
+                    </p>
+
+                    <div className="flex flex-col gap-2 pt-1">
+                      {/* 다음 문항 보기 큰 버튼 */}
+                      {nextQuestion && (
+                        <button
+                          type="button"
+                          onClick={() => handleGoToQuestion(nextQuestion)}
+                          className="w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-emerald-950 font-black rounded-2xl text-sm shadow-md flex items-center justify-center gap-2 active:scale-95 transition"
+                        >
+                          <span>다음 문항 보기 ▶ (제{currentQuestionIndex + 2}번)</span>
+                          <ChevronRight className="w-4 h-4 text-emerald-950" />
+                        </button>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* 원문 판정으로 돌아가기 버튼 */}
+                        <button
+                          type="button"
+                          onClick={() => setQaModalMode('text')}
+                          className="py-2.5 px-3 bg-white/15 hover:bg-white/25 text-white font-black rounded-xl text-xs border border-white/20 flex items-center justify-center gap-1.5 transition"
+                        >
+                          <span>📜</span>
+                          <span>원문 판정으로</span>
+                        </button>
+
+                        {/* 이전 문항 보기 버튼 */}
+                        {prevQuestion ? (
+                          <button
+                            type="button"
+                            onClick={() => handleGoToQuestion(prevQuestion)}
+                            className="py-2.5 px-3 bg-white/10 hover:bg-white/20 text-emerald-200 font-black rounded-xl text-xs border border-white/15 flex items-center justify-center gap-1.5 transition"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                            <span>이전 문항 (제{currentQuestionIndex}번)</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={closeModal}
+                            className="py-2.5 px-3 bg-white/10 hover:bg-white/20 text-stone-300 font-black rounded-xl text-xs border border-white/15 flex items-center justify-center gap-1.5 transition"
+                          >
+                            <span>목록으로</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Speaker TTS Read Aloud Button */}
+                  <button
+                    type="button"
+                    onClick={() => speakVerdict(activeVerdict)}
+                    className={`w-full py-3 px-3 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition shadow ${
+                      isSpeaking
+                        ? 'bg-rose-600 text-white animate-pulse'
+                        : 'bg-stone-800 hover:bg-stone-900 text-white'
+                    }`}
+                  >
+                    <Volume2 className="w-4 h-4" />
+                    <span>
+                      {isSpeaking
+                        ? '🔊 음성 낭독 중... (터치 시 중단)'
+                        : '🔊 동반자에게 스피커로 판정 읽어주기'}
+                    </span>
+                  </button>
                 </div>
               )}
 
-              {/* Speaker TTS Read Aloud Button */}
-              <button
-                type="button"
-                onClick={() => speakVerdict(activeVerdict)}
-                className={`w-full py-3 px-3 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition shadow ${
-                  isSpeaking
-                    ? 'bg-rose-600 text-white animate-pulse'
-                    : 'bg-stone-800 hover:bg-stone-900 text-white'
-                }`}
-              >
-                <Volume2 className="w-4 h-4" />
-                <span>
-                  {isSpeaking
-                    ? '🔊 음성 낭독 중... (터치 시 중단)'
-                    : '🔊 동반자에게 스피커로 판정 읽어주기'}
-                </span>
-              </button>
+              {/* 2. 상세 법조문 판정 모드 */}
+              {qaModalMode === 'text' && (
+                <div className="space-y-3.5">
+                  {/* Switch to webtoon prompt button */}
+                  <button
+                    type="button"
+                    onClick={() => setQaModalMode('webtoon')}
+                    className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black rounded-2xl text-xs shadow-sm flex items-center justify-center gap-1.5 transition"
+                  >
+                    <span>🎨</span>
+                    <span>상황 삽화가 포함된 파키 웹툰 판정으로 보기</span>
+                  </button>
+
+                  {/* Question Situation */}
+                  <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-1">
+                    <div className="text-xs font-black text-emerald-800 flex items-center gap-1">
+                      <span>질문 상황:</span>
+                    </div>
+                    <div className="text-sm font-extrabold text-stone-900 leading-snug">
+                      {activeVerdict.title}
+                    </div>
+                    <p className="text-xs text-stone-600 font-bold mt-1 leading-relaxed break-keep">
+                      {activeVerdict.situation}
+                    </p>
+                  </div>
+
+                  {/* Verdict Highlight Box */}
+                  <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-md space-y-1">
+                    <div className="text-xs font-bold text-emerald-100 flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4 text-amber-300" />
+                      <span>최종 솔로몬 판정 결론</span>
+                    </div>
+                    <div className="text-lg font-black leading-snug tracking-tight text-white">
+                      {activeVerdict.verdict}
+                    </div>
+                  </div>
+
+                  {/* Penalty Status */}
+                  <div className="flex items-center justify-between bg-stone-100 px-3.5 py-2.5 rounded-xl border border-stone-200">
+                    <span className="text-xs font-black text-stone-700">벌타 유무:</span>
+                    <span
+                      className={`text-xs font-black px-2.5 py-1 rounded-lg ${
+                        activeVerdict.penalty.includes('벌타 없음') || activeVerdict.penalty.includes('무벌')
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-rose-600 text-white'
+                      }`}
+                    >
+                      {activeVerdict.penalty}
+                    </span>
+                  </div>
+
+                  {/* Procedure */}
+                  <div className="bg-white p-3.5 rounded-2xl border-2 border-stone-200 space-y-1">
+                    <div className="text-xs font-black text-stone-900 flex items-center gap-1">
+                      <span>📌 현장 진행 및 처리 절차:</span>
+                    </div>
+                    <p className="text-xs text-stone-800 font-bold leading-relaxed break-keep">
+                      {activeVerdict.procedure}
+                    </p>
+                  </div>
+
+                  {/* Official Association Regulation Rule Text Box */}
+                  {(activeVerdict.officialArticle || activeVerdict.officialRuleText) && (
+                    <div className="bg-amber-50/90 border-2 border-amber-300 rounded-2xl p-3.5 space-y-2 shadow-sm">
+                      <div className="flex items-center justify-between gap-1.5 border-b border-amber-200/90 pb-2">
+                        <div className="flex items-center gap-1.5 text-amber-950 font-black text-xs">
+                          <span className="text-base">📜</span>
+                          <span>(사)대한파크골프협회 공식 경기규정</span>
+                        </div>
+                        {activeVerdict.officialArticle && (
+                          <span className="text-[11px] font-black bg-amber-200 text-amber-950 px-2 py-0.5 rounded-lg border border-amber-400">
+                            {activeVerdict.officialArticle}
+                          </span>
+                        )}
+                      </div>
+                      {activeVerdict.officialRuleText && (
+                        <div className="bg-white/95 p-3 rounded-xl border border-amber-200 text-stone-800 text-xs font-semibold leading-relaxed break-keep space-y-1">
+                          <div className="text-[11px] font-black text-amber-800 flex items-center gap-1">
+                            <span>【공인 규정 조항 원문】</span>
+                          </div>
+                          <p className="text-stone-700 italic">
+                            &ldquo;{activeVerdict.officialRuleText}&rdquo;
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Speaker TTS Read Aloud Button */}
+                  <button
+                    type="button"
+                    onClick={() => speakVerdict(activeVerdict)}
+                    className={`w-full py-3 px-3 rounded-2xl font-black text-xs flex items-center justify-center gap-2 transition shadow ${
+                      isSpeaking
+                        ? 'bg-rose-600 text-white animate-pulse'
+                        : 'bg-stone-800 hover:bg-stone-900 text-white'
+                    }`}
+                  >
+                    <Volume2 className="w-4 h-4" />
+                    <span>
+                      {isSpeaking
+                        ? '🔊 음성 낭독 중... (터치 시 중단)'
+                        : '🔊 동반자에게 스피커로 판정 읽어주기'}
+                    </span>
+                  </button>
+
+                  {/* 원문 하단 문항 이동 버튼 */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    {prevQuestion ? (
+                      <button
+                        type="button"
+                        onClick={() => handleGoToQuestion(prevQuestion)}
+                        className="py-2.5 px-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs border border-stone-300 flex items-center justify-center gap-1 transition"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span>이전 문항</span>
+                      </button>
+                    ) : (
+                      <div />
+                    )}
+
+                    {nextQuestion && (
+                      <button
+                        type="button"
+                        onClick={() => handleGoToQuestion(nextQuestion)}
+                        className="py-2.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white font-black rounded-xl text-xs shadow flex items-center justify-center gap-1 transition"
+                      >
+                        <span>다음 문항 ▶</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-3.5 border-t border-stone-200 bg-stone-50">
+            {/* Modal Navigation Footer */}
+            <div className="p-3 border-t border-stone-200 bg-stone-50 space-y-2 shrink-0">
+              <div className="flex items-center gap-2">
+                {prevQuestion ? (
+                  <button
+                    type="button"
+                    onClick={() => handleGoToQuestion(prevQuestion)}
+                    className="flex-1 py-2.5 px-2 rounded-2xl font-black text-xs bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 shadow-2xs flex items-center justify-center gap-1 active:scale-95 transition"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-emerald-800 shrink-0" />
+                    <span className="truncate">이전 문항</span>
+                  </button>
+                ) : (
+                  <div className="flex-1" />
+                )}
+
+                {/* 원문으로 돌아가기 / 만화로 돌아가기 전환 버튼 */}
+                <button
+                  type="button"
+                  onClick={() => setQaModalMode(qaModalMode === 'webtoon' ? 'text' : 'webtoon')}
+                  className="py-2.5 px-3 rounded-2xl font-black text-xs bg-emerald-100/90 hover:bg-emerald-200 text-emerald-950 border border-emerald-300 shadow-2xs flex items-center justify-center gap-1.5 active:scale-95 transition shrink-0"
+                >
+                  {qaModalMode === 'webtoon' ? (
+                    <>
+                      <span>📜</span>
+                      <span>원문 판정으로</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🎨</span>
+                      <span>만화 판정으로</span>
+                    </>
+                  )}
+                </button>
+
+                {nextQuestion ? (
+                  <button
+                    type="button"
+                    onClick={() => handleGoToQuestion(nextQuestion)}
+                    className="flex-1 py-2.5 px-2 rounded-2xl font-black text-xs bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 text-white shadow-sm flex items-center justify-center gap-1 active:scale-95 transition"
+                  >
+                    <span className="truncate">다음 문항</span>
+                    <ChevronRight className="w-4 h-4 text-amber-300 shrink-0" />
+                  </button>
+                ) : (
+                  <div className="flex-1" />
+                )}
+              </div>
+
+              {/* 닫기 (목록으로 돌아가기) */}
               <button
                 type="button"
                 onClick={closeModal}
-                className="w-full py-3.5 rounded-2xl font-black text-sm bg-stone-900 hover:bg-stone-800 text-white shadow flex items-center justify-center gap-1.5 active:scale-95 transition"
+                className="w-full py-2.5 rounded-xl font-bold text-xs bg-stone-200 hover:bg-stone-300 text-stone-700 flex items-center justify-center gap-1 active:scale-95 transition"
               >
-                <X className="w-4 h-4 text-stone-400" />
-                <span>확인 완료 (이전 화면으로 복귀)</span>
+                <X className="w-3.5 h-3.5 text-stone-500" />
+                <span>닫기 (질문 목록으로 복귀)</span>
               </button>
             </div>
           </div>
