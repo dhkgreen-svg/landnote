@@ -32,9 +32,12 @@ import {
   CategorizedRuleItem,
   RulebookChapter,
 } from '@/lib/rulebookData';
+import { CHAPTER_WEBTOONS } from '@/lib/chapterWebtoons';
 
 export default function RulesPage() {
   const [selectedCategory, setSelectedCategory] = useState<RuleCategoryId>('ob');
+  const [rulebookViewMode, setRulebookViewMode] = useState<'webtoon' | 'articles'>('webtoon');
+  const [chapterModalMode, setChapterModalMode] = useState<'webtoon' | 'articles'>('webtoon');
   const [questionText, setQuestionText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
@@ -330,7 +333,7 @@ export default function RulesPage() {
       {/* 1. (사)대한파크골프협회 공인 공식 룰북 (제1장~제8장 밑으로 쭉 나열) */}
       {/* 좌우 스크롤 제거 -> 세로 나열 리스트 + 클릭 시 팝업창 출력 */}
       {/* ========================================================= */}
-      <div className="bg-white rounded-3xl border-2 border-emerald-600 shadow-md p-4 space-y-3">
+      <div className="bg-white rounded-3xl border-2 border-emerald-600 shadow-md p-4 space-y-3.5">
         <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-10 h-10 rounded-2xl bg-amber-400 text-emerald-950 font-black flex items-center justify-center text-xl shadow-md shrink-0">
@@ -346,7 +349,7 @@ export default function RulesPage() {
                 </h3>
               </div>
               <p className="text-xs text-stone-600 font-bold mt-0.5 truncate">
-                항목을 터치하시면 해당 장의 세부 내용이 팝업창으로 뜹니다
+                딱딱한 규정을 파키 캐릭터 만화로 쉽고 재미있게 만나보세요!
               </p>
             </div>
           </div>
@@ -355,39 +358,129 @@ export default function RulesPage() {
           </span>
         </div>
 
-        {/* 8개 장 세로 나열 리스트 (좌우 스크롤 없이 밑으로 쭉 나열) */}
-        <div className="space-y-2 pt-0.5">
-          {KPGA_RULEBOOK_CHAPTERS.map((ch) => (
-            <button
-              key={ch.id}
-              type="button"
-              onClick={() => setSelectedChapter(ch)}
-              className="w-full text-left p-3 rounded-2xl border-2 border-stone-200 hover:border-emerald-600 bg-stone-50/80 hover:bg-emerald-50/50 shadow-sm transition active:scale-[0.98] flex items-center justify-between gap-3 group"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="w-10 h-10 rounded-xl bg-emerald-700 group-hover:bg-emerald-600 text-white font-black text-xs flex flex-col items-center justify-center shrink-0 shadow-sm transition">
-                  <span className="text-[9px] text-amber-300 font-black">공인</span>
-                  <span>{ch.chapterNumber}</span>
-                </span>
-                <div className="min-w-0">
-                  <h4 className="font-extrabold text-xs text-stone-900 truncate">
-                    {ch.title}
-                  </h4>
-                  <p className="text-[11px] text-stone-500 font-bold truncate mt-0.5">
-                    {ch.summary}
-                  </p>
-                </div>
-              </div>
-
-              <div className="shrink-0 flex items-center gap-1">
-                <span className="text-[11px] font-black text-emerald-800 bg-white group-hover:bg-emerald-600 group-hover:text-white px-2 py-1 rounded-lg transition border border-emerald-200 shadow-sm">
-                  세부 내용
-                </span>
-                <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-emerald-700 transition" />
-              </div>
-            </button>
-          ))}
+        {/* View Mode Switch: 파키 만화 웹툰 모드 vs 규정집 조항 목록 */}
+        <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-100 rounded-2xl border border-stone-200">
+          <button
+            type="button"
+            onClick={() => setRulebookViewMode('webtoon')}
+            className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
+              rulebookViewMode === 'webtoon'
+                ? 'bg-emerald-700 text-white shadow-sm'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <span>🎨</span>
+            <span>파키 만화 웹툰 모드</span>
+            <span className="text-[9px] bg-amber-400 text-emerald-950 px-1.5 py-0.5 rounded-full font-black">
+              추천
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRulebookViewMode('articles')}
+            className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
+              rulebookViewMode === 'articles'
+                ? 'bg-emerald-700 text-white shadow-sm'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <span>📜</span>
+            <span>규정집 조항 목록</span>
+          </button>
         </div>
+
+        {/* 1) 파키 만화 웹툰 보기 모드 */}
+        {rulebookViewMode === 'webtoon' && (
+          <div className="space-y-2.5 pt-0.5">
+            {KPGA_RULEBOOK_CHAPTERS.map((ch) => {
+              const webtoon = CHAPTER_WEBTOONS[ch.id];
+              return (
+                <div
+                  key={ch.id}
+                  onClick={() => {
+                    setSelectedChapter(ch);
+                    setChapterModalMode('webtoon');
+                  }}
+                  className="p-3 rounded-2xl border-2 border-emerald-200/90 bg-gradient-to-r from-emerald-50/70 via-white to-amber-50/40 hover:border-emerald-600 shadow-sm transition active:scale-[0.98] cursor-pointer group flex items-center gap-3"
+                >
+                  {/* Parky Mascot Thumbnail */}
+                  <div className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-emerald-300 shadow-sm shrink-0 bg-stone-100">
+                    <img
+                      src={webtoon?.coverImage || '/mascot/사진저장고_사진_20260913_28.jpg'}
+                      alt={ch.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                    />
+                    <span className="absolute bottom-0 inset-x-0 bg-emerald-950/85 text-[9px] text-amber-300 font-black text-center py-0.5">
+                      {ch.chapterNumber}
+                    </span>
+                  </div>
+
+                  {/* Chapter Info */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-black bg-amber-400 text-emerald-950 px-1.5 py-0.5 rounded-md shrink-0">
+                        {webtoon ? `총 ${webtoon.totalCuts}컷 만화` : '만화'}
+                      </span>
+                      <h4 className="font-extrabold text-xs text-stone-900 truncate">
+                        {ch.title}
+                      </h4>
+                    </div>
+                    <p className="text-[11px] text-stone-600 font-bold truncate mt-1">
+                      {webtoon?.subtitle || ch.summary}
+                    </p>
+                  </div>
+
+                  {/* Read Button */}
+                  <div className="shrink-0 flex items-center gap-1">
+                    <span className="text-[11px] font-black text-emerald-900 bg-white group-hover:bg-emerald-600 group-hover:text-white px-2.5 py-1.5 rounded-xl transition border border-emerald-300 shadow-sm flex items-center gap-1">
+                      <span>만화 보기</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 2) 8개 장 세로 나열 조항 리스트 모드 */}
+        {rulebookViewMode === 'articles' && (
+          <div className="space-y-2 pt-0.5">
+            {KPGA_RULEBOOK_CHAPTERS.map((ch) => (
+              <button
+                key={ch.id}
+                type="button"
+                onClick={() => {
+                  setSelectedChapter(ch);
+                  setChapterModalMode('articles');
+                }}
+                className="w-full text-left p-3 rounded-2xl border-2 border-stone-200 hover:border-emerald-600 bg-stone-50/80 hover:bg-emerald-50/50 shadow-sm transition active:scale-[0.98] flex items-center justify-between gap-3 group"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-10 h-10 rounded-xl bg-emerald-700 group-hover:bg-emerald-600 text-white font-black text-xs flex flex-col items-center justify-center shrink-0 shadow-sm transition">
+                    <span className="text-[9px] text-amber-300 font-black">공인</span>
+                    <span>{ch.chapterNumber}</span>
+                  </span>
+                  <div className="min-w-0">
+                    <h4 className="font-extrabold text-xs text-stone-900 truncate">
+                      {ch.title}
+                    </h4>
+                    <p className="text-[11px] text-stone-500 font-bold truncate mt-0.5">
+                      {ch.summary}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="shrink-0 flex items-center gap-1">
+                  <span className="text-[11px] font-black text-emerald-800 bg-white group-hover:bg-emerald-600 group-hover:text-white px-2 py-1 rounded-lg transition border border-emerald-200 shadow-sm">
+                    조항 전문
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-emerald-700 transition" />
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ========================================================= */}
@@ -710,68 +803,241 @@ export default function RulesPage() {
               </button>
             </div>
 
-            {/* Chapter Articles Content (Scrollable) */}
-            <div className="p-4 overflow-y-auto space-y-3.5 flex-1">
-              {/* Chapter Header Info */}
-              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 space-y-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="bg-emerald-700 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-                    {selectedChapter.chapterNumber} 개요
-                  </span>
-                  <h4 className="text-xs font-black text-emerald-950">
-                    {selectedChapter.title}
-                  </h4>
-                </div>
-                <p className="text-xs text-emerald-900 font-bold mt-1 leading-relaxed break-keep">
-                  {selectedChapter.summary}
-                </p>
-              </div>
-
-              {/* Articles in Chapter */}
-              <div className="space-y-3">
-                {selectedChapter.articles.map((art, aIdx) => (
-                  <div
-                    key={aIdx}
-                    className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-2 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between border-b border-stone-200 pb-1.5">
-                      <h5 className="font-extrabold text-xs text-stone-900 flex items-center gap-1.5">
-                        <span className="text-emerald-700">📜</span>
-                        <span>{art.articleNumber}</span>
-                        <span className="text-stone-500 font-bold">· {art.title}</span>
-                      </h5>
-                    </div>
-
-                    <div className="text-xs text-stone-800 font-medium leading-relaxed break-keep whitespace-pre-line">
-                      {art.content}
-                    </div>
-
-                    {art.penaltyNote && (
-                      <div className="bg-rose-50 border border-rose-200 rounded-xl px-2.5 py-1 text-[11px] font-black text-rose-800 flex items-center gap-1">
-                        <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                        <span>위반 시 벌칙: {art.penaltyNote}</span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Official External Link Note */}
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-900 font-bold flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Info className="w-4 h-4 text-amber-700 shrink-0" />
-                  <span className="truncate">협회 공식 웹사이트 규정실 바로가기</span>
-                </div>
-                <a
-                  href="https://kpga.or.kr"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-2.5 py-1 bg-amber-400 hover:bg-amber-500 text-emerald-950 font-black rounded-lg text-[11px] shrink-0 flex items-center gap-1"
+            {/* Modal Internal Mode Switch: 파키 만화 웹툰 vs 법조문 원문 */}
+            <div className="px-4 pt-3 pb-1 bg-stone-50 border-b border-stone-200">
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-200/80 rounded-2xl">
+                <button
+                  type="button"
+                  onClick={() => setChapterModalMode('webtoon')}
+                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
+                    chapterModalMode === 'webtoon'
+                      ? 'bg-emerald-700 text-white shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
                 >
-                  <span>kpga.or.kr</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+                  <span>🎨</span>
+                  <span>파키 만화 웹툰</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChapterModalMode('articles')}
+                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
+                    chapterModalMode === 'articles'
+                      ? 'bg-emerald-700 text-white shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <span>📜</span>
+                  <span>법조문 원문</span>
+                </button>
               </div>
+            </div>
+
+            {/* Chapter Modal Content (Scrollable) */}
+            <div className="p-4 overflow-y-auto space-y-3.5 flex-1">
+              {/* 1. 파키 만화 웹툰 모드 */}
+              {chapterModalMode === 'webtoon' && (() => {
+                const currentWebtoon = CHAPTER_WEBTOONS[selectedChapter.id];
+                return (
+                  <div className="space-y-4">
+                    {/* Webtoon Intro Card */}
+                    <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white p-3.5 rounded-2xl shadow-sm space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black bg-amber-400 text-emerald-950 px-2 py-0.5 rounded-full">
+                          파키와 함께하는 룰북 만화
+                        </span>
+                        <span className="text-[11px] text-emerald-100 font-bold">
+                          {currentWebtoon ? `총 ${currentWebtoon.totalCuts}컷 완결` : '만화'}
+                        </span>
+                      </div>
+                      <h4 className="font-black text-sm text-white pt-0.5">
+                        {currentWebtoon?.subtitle || selectedChapter.summary}
+                      </h4>
+                    </div>
+
+                    {/* Webtoon Cuts List */}
+                    {currentWebtoon?.cuts.map((cut) => {
+                      const badgeBg =
+                        cut.badgeType === 'safe'
+                          ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                          : cut.badgeType === 'penalty'
+                          ? 'bg-rose-100 text-rose-900 border-rose-300'
+                          : cut.badgeType === 'caution'
+                          ? 'bg-amber-100 text-amber-950 border-amber-300'
+                          : 'bg-sky-100 text-sky-900 border-sky-300';
+
+                      return (
+                        <div
+                          key={cut.cutNumber}
+                          className="bg-stone-50 border-2 border-emerald-200 rounded-3xl overflow-hidden shadow-sm space-y-3 p-3.5"
+                        >
+                          {/* Cut Header */}
+                          <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="w-6 h-6 rounded-lg bg-emerald-800 text-white text-xs font-black flex items-center justify-center shrink-0">
+                                {cut.cutNumber}
+                              </span>
+                              <h5 className="font-extrabold text-xs text-stone-900 truncate">
+                                {cut.title}
+                              </h5>
+                            </div>
+                            <span
+                              className={`text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0 ${badgeBg}`}
+                            >
+                              {cut.badge}
+                            </span>
+                          </div>
+
+                          {/* Situation description */}
+                          <div className="bg-white rounded-xl p-2.5 border border-stone-200 text-xs font-bold text-stone-700 flex items-start gap-2">
+                            <span className="text-sm shrink-0">🤔</span>
+                            <span className="break-keep leading-relaxed">
+                              <strong className="text-stone-900">상황:</strong> {cut.situation}
+                            </span>
+                          </div>
+
+                          {/* Mascot High-Res Image Cut */}
+                          <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-300 shadow-md aspect-[4/3] bg-stone-100">
+                            <img
+                              src={cut.image}
+                              alt={`파키 만화 제${cut.cutNumber}컷`}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute top-2 left-2 bg-emerald-950/80 backdrop-blur-sm text-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow">
+                              파키의 판정 극장
+                            </div>
+                          </div>
+
+                          {/* Parky Speech Bubble */}
+                          <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-3 shadow-sm">
+                            <div className="flex items-center gap-1.5 text-emerald-950 font-black text-xs mb-1">
+                              <span className="text-base">📢</span>
+                              <span>파키의 판정 한마디!</span>
+                            </div>
+                            <p className="text-xs text-emerald-950 font-extrabold leading-relaxed break-keep">
+                              "{cut.parkyDialogue}"
+                            </p>
+                          </div>
+
+                          {/* Official Verdict / Penalty Banner */}
+                          <div className="bg-amber-50 border border-amber-300 rounded-xl p-2.5 space-y-1">
+                            <div className="text-xs font-black text-amber-950 flex items-center gap-1">
+                              <span>⚖️</span>
+                              <span>공식 판정: {cut.verdict}</span>
+                            </div>
+                            {cut.penaltyText && (
+                              <div className="text-[11px] font-extrabold text-rose-700 flex items-center gap-1">
+                                <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                <span>벌칙: {cut.penaltyText}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Key Point Box */}
+                          <div className="bg-white rounded-xl p-2.5 text-[11px] font-bold text-stone-700 flex items-start gap-1.5 border border-stone-200">
+                            <span className="text-xs shrink-0">💡</span>
+                            <span className="break-keep leading-relaxed">
+                              <strong>핵심 요약:</strong> {cut.keyPoint}
+                            </span>
+                          </div>
+
+                          {/* Article Reference */}
+                          <div className="text-[10px] font-bold text-stone-500 flex items-center gap-1 px-1">
+                            <span>📜</span>
+                            <span>{cut.article}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Switch to legal text prompt button */}
+                    <button
+                      type="button"
+                      onClick={() => setChapterModalMode('articles')}
+                      className="w-full py-3 bg-stone-100 hover:bg-stone-200 text-stone-800 font-black rounded-2xl text-xs border border-stone-300 flex items-center justify-center gap-1.5 transition"
+                    >
+                      <span>📜</span>
+                      <span>이 장의 법조문 원문 전문 읽기</span>
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {/* 2. 기존 법조문 원문 읽기 모드 */}
+              {chapterModalMode === 'articles' && (
+                <div className="space-y-3.5">
+                  {/* Chapter Header Info */}
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="bg-emerald-700 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                        {selectedChapter.chapterNumber} 개요
+                      </span>
+                      <h4 className="text-xs font-black text-emerald-950">
+                        {selectedChapter.title}
+                      </h4>
+                    </div>
+                    <p className="text-xs text-emerald-900 font-bold mt-1 leading-relaxed break-keep">
+                      {selectedChapter.summary}
+                    </p>
+                  </div>
+
+                  {/* Switch to webtoon prompt button */}
+                  <button
+                    type="button"
+                    onClick={() => setChapterModalMode('webtoon')}
+                    className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black rounded-2xl text-xs shadow-sm flex items-center justify-center gap-1.5 transition"
+                  >
+                    <span>🎨</span>
+                    <span>이 장의 파키 만화 웹툰으로 보기</span>
+                  </button>
+
+                  {/* Articles in Chapter */}
+                  <div className="space-y-3">
+                    {selectedChapter.articles.map((art, aIdx) => (
+                      <div
+                        key={aIdx}
+                        className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-2 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between border-b border-stone-200 pb-1.5">
+                          <h5 className="font-extrabold text-xs text-stone-900 flex items-center gap-1.5">
+                            <span className="text-emerald-700">📜</span>
+                            <span>{art.articleNumber}</span>
+                            <span className="text-stone-500 font-bold">· {art.title}</span>
+                          </h5>
+                        </div>
+
+                        <div className="text-xs text-stone-800 font-medium leading-relaxed break-keep whitespace-pre-line">
+                          {art.content}
+                        </div>
+
+                        {art.penaltyNote && (
+                          <div className="bg-rose-50 border border-rose-200 rounded-xl px-2.5 py-1 text-[11px] font-black text-rose-800 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                            <span>위반 시 벌칙: {art.penaltyNote}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Official External Link Note */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-900 font-bold flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Info className="w-4 h-4 text-amber-700 shrink-0" />
+                      <span className="truncate">협회 공식 웹사이트 규정실 바로가기</span>
+                    </div>
+                    <a
+                      href="https://kpga.or.kr"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1 bg-amber-400 hover:bg-amber-500 text-emerald-950 font-black rounded-lg text-[11px] shrink-0 flex items-center gap-1"
+                    >
+                      <span>kpga.or.kr</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
