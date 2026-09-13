@@ -57,6 +57,32 @@ export default function RoundPlayPage() {
   const [editPlayersDraft, setEditPlayersDraft] = useState<RoundPlayer[]>([]);
   const [shareFeedbackToast, setShareFeedbackToast] = useState<string | null>(null);
 
+  // 조장 및 동반자 관리 모달 열기 (본인 이름 및 동반자 이름 유실 방지 자동 보정)
+  const openPlayerEditModal = () => {
+    if (!session || !session.players) return;
+    const selfName = getDefaultSelfName();
+    const syncedDraft = session.players.map((p, idx) => {
+      const isSelf = p.isSelf ?? (idx === 0);
+      let name = (p.name || '').trim();
+      if (isSelf) {
+        if (!name || name === '본인' || name.startsWith('본인(')) {
+          name = selfName;
+        }
+      } else {
+        if (!name) {
+          name = `동반자 ${idx + 1}`;
+        }
+      }
+      return {
+        ...p,
+        isSelf,
+        name,
+      };
+    });
+    setEditPlayersDraft(syncedDraft);
+    setShowPlayerEditModal(true);
+  };
+
   // Load round and course
   useEffect(() => {
     // 📱 새 조장 스마트폰으로 카톡 링크 열었을 때 경기 세션 즉시 복원 (Handoff)
@@ -1177,10 +1203,7 @@ export default function RoundPlayPage() {
           </div>
           <button
             type="button"
-            onClick={() => {
-              setEditPlayersDraft(session.players.map((p) => ({ ...p })));
-              setShowPlayerEditModal(true);
-            }}
+            onClick={openPlayerEditModal}
             className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold active:scale-95 transition shadow-2xs ${
               sunlightMode
                 ? 'bg-stone-900 border-yellow-400/60 text-yellow-300 hover:bg-stone-800'
@@ -1207,6 +1230,7 @@ export default function RoundPlayPage() {
 
           // 🚪 중도 퇴장(기권) 선수: 점수 입력 버튼을 없애고 이전 타수 보존 카드만 깔끔하게 노출
           if (player.isOut) {
+            const displayName = player.name || (player.isSelf ? getDefaultSelfName() : '선수');
             return (
               <div
                 key={player.id}
@@ -1221,9 +1245,14 @@ export default function RoundPlayPage() {
                     <span className="text-[10px] px-2 py-0.5 rounded-md bg-stone-200 text-stone-700 font-black">
                       🚪 중도퇴장
                     </span>
-                    <span className="font-extrabold text-stone-700 line-through text-sm">
-                      {player.name}
+                    <span className="font-extrabold text-stone-800 line-through text-sm">
+                      {displayName}
                     </span>
+                    {player.isSelf && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-black bg-blue-100 text-blue-700">
+                        본인
+                      </span>
+                    )}
                     <span className="text-[11px] text-stone-600 font-medium">
                       ({player.departedHole || pConfirmedHoles.length}홀까지 참여)
                     </span>
@@ -1235,10 +1264,7 @@ export default function RoundPlayPage() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => {
-                        setEditPlayersDraft(session.players.map((p) => ({ ...p })));
-                        setShowPlayerEditModal(true);
-                      }}
+                      onClick={openPlayerEditModal}
                       className="text-xs text-stone-500 hover:text-emerald-700 underline font-bold px-1 py-0.5 cursor-pointer"
                     >
                       변경
@@ -1246,7 +1272,9 @@ export default function RoundPlayPage() {
                   </div>
                 </div>
                 <div className="text-[11px] text-stone-600 mt-1">
-                  * 사정상 먼저 기권하셨으며, 이전 홀 타수는 스코어카드에 정상 보존됩니다.
+                  {player.isSelf
+                    ? `* 본인(${displayName}) 님이 개인 사정으로 기권하셨으며, 지금까지 기록한 ${pConfirmedHoles.length}홀 타수는 안전하게 보존됩니다.`
+                    : `* 개인 사정으로 먼저 기권하셨으며, 이전 홀 타수는 스코어카드에 정상 보존됩니다.`}
                 </div>
               </div>
             );
@@ -2633,7 +2661,7 @@ export default function RoundPlayPage() {
       {/* 👑 조장 및 동반자 관리 모달 */}
       {showPlayerEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-stone-200 max-h-[92vh] flex flex-col overflow-hidden">
+          <div className="bg-white text-stone-900 rounded-2xl w-full max-w-md shadow-2xl border border-stone-200 max-h-[92vh] flex flex-col overflow-hidden">
             {/* 고정 헤더 */}
             <div className="flex items-center justify-between border-b border-stone-100 p-4 shrink-0 bg-white z-10">
               <div className="flex items-center gap-2">
@@ -2679,6 +2707,8 @@ export default function RoundPlayPage() {
 
                 {editPlayersDraft.map((draftP) => {
                   const isSelectedLeader = draftP.isLeader && !draftP.isOut;
+                  const selfName = getDefaultSelfName();
+                  const currentDisplayName = draftP.name || (draftP.isSelf ? selfName : '선수');
 
                   // 🚪 중도 퇴장 선수 카드
                   if (draftP.isOut) {
@@ -2693,13 +2723,20 @@ export default function RoundPlayPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className="text-xs font-bold text-stone-700 line-through">{draftP.name}</span>
+                            <span className="text-xs font-black text-stone-800 line-through">
+                              {currentDisplayName}
+                            </span>
+                            {draftP.isSelf && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded font-black bg-blue-100 text-blue-700">
+                                본인
+                              </span>
+                            )}
                             <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-stone-200 text-stone-600">
                               {draftP.departedHole || actualHoleNumber}홀까지 보존
                             </span>
                           </div>
                           <div className="text-[11px] text-stone-600">
-                            기권 처리됨 (이전 타수 정상 유지)
+                            {draftP.isSelf ? '본인 기권 처리됨 (이전 타수 정상 유지)' : '기권 처리됨 (이전 타수 정상 유지)'}
                           </div>
                         </div>
                         <button
@@ -2768,8 +2805,8 @@ export default function RoundPlayPage() {
                               prev.map((p) => (p.id === draftP.id ? { ...p, name: val } : p))
                             );
                           }}
-                          placeholder="이름 입력"
-                          className="w-full px-2.5 py-1 text-sm bg-white border border-stone-300 rounded-lg focus:outline-hidden focus:border-emerald-500 font-bold"
+                          placeholder={draftP.isSelf ? selfName : "이름 입력"}
+                          className="w-full px-2.5 py-1 text-sm bg-white text-stone-900 border border-stone-300 rounded-lg focus:outline-hidden focus:border-emerald-500 font-bold placeholder:text-stone-400"
                         />
                       </div>
 
@@ -2777,11 +2814,11 @@ export default function RoundPlayPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (
-                            confirm(
-                              `${draftP.name} 님이 지금 중도 퇴장(기권)하시나요?\n\n* 지금까지 기록한 타수는 안전하게 보존되며, 다음 홀부터 점수 입력에서 제외됩니다.`
-                            )
-                          ) {
+                          const confirmMsg = draftP.isSelf
+                            ? `${currentDisplayName}(본인) 님이 지금 중도 퇴장(기권)하시나요?\n\n* 지금까지 기록한 타수는 안전하게 보존되며, 다른 동반자에게 조장을 넘겨주고 이후 홀 점수 입력에서 제외됩니다.`
+                            : `${currentDisplayName} 님이 지금 중도 퇴장(기권)하시나요?\n\n* 지금까지 기록한 타수는 안전하게 보존되며, 다음 홀부터 점수 입력에서 제외됩니다.`;
+
+                          if (confirm(confirmMsg)) {
                             setEditPlayersDraft((prev) => {
                               const updated = prev.map((p) => {
                                 if (p.id === draftP.id) {
@@ -2891,7 +2928,26 @@ export default function RoundPlayPage() {
               <button
                 type="button"
                 onClick={() => {
-                  let updated = [...editPlayersDraft];
+                  const selfName = getDefaultSelfName();
+                  let updated = editPlayersDraft.map((p, idx) => {
+                    const isSelf = p.isSelf ?? (idx === 0);
+                    let name = (p.name || '').trim();
+                    if (isSelf) {
+                      if (!name || name === '본인' || name.startsWith('본인(')) {
+                        name = selfName;
+                      }
+                    } else {
+                      if (!name) {
+                        name = `동반자 ${idx + 1}`;
+                      }
+                    }
+                    return {
+                      ...p,
+                      isSelf,
+                      name,
+                    };
+                  });
+
                   const active = updated.filter((p) => !p.isOut);
                   if (active.length > 0 && !active.some((p) => p.isLeader)) {
                     const firstActiveId = active[0].id;

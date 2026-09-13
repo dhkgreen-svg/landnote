@@ -18,13 +18,18 @@ export function getDefaultSelfName(): string {
 /**
  * 레거시 이름 '본인(조장)' 또는 '본인'을 실제 이름으로 정화
  */
-export function cleanPlayerName(rawName: string, isSelf?: boolean): string {
-  if (!rawName) return isSelf ? getDefaultSelfName() : '동반자';
+export function cleanPlayerName(rawName: string, isSelf?: boolean, fallbackIdx?: number): string {
+  const fallback = isSelf
+    ? getDefaultSelfName()
+    : (fallbackIdx !== undefined ? `동반자 ${fallbackIdx + 1}` : '동반자');
+
+  if (!rawName) return fallback;
   const trimmed = rawName.trim();
+  if (!trimmed) return fallback;
+
   if (
     trimmed === '본인(조장)' ||
     trimmed === '본인' ||
-    trimmed === '본인(조장)' ||
     trimmed.startsWith('본인(')
   ) {
     return getDefaultSelfName();
@@ -46,8 +51,8 @@ export function sortPlayersByLeaderAndAlphabetical(players: RoundPlayer[]): Roun
 
   // 레거시 이름 정화 및 본인 여부 보정
   const normalized = players.map((p, idx) => {
-    const isSelf = p.isSelf ?? (idx === 0 && (p.name.includes('본인') || idx === 0));
-    const cleanedName = cleanPlayerName(p.name, isSelf);
+    const isSelf = p.isSelf ?? (idx === 0 && (p.name?.includes('본인') || idx === 0));
+    const cleanedName = cleanPlayerName(p.name, isSelf, idx);
     return {
       ...p,
       name: cleanedName,
