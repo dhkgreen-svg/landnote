@@ -9,6 +9,7 @@ import { ParkOnStorage } from '@/lib/storage';
 import { generateStandardHoles } from '@/lib/defaultCourses';
 import { getDefaultSelfName, sortPlayersByLeaderAndAlphabetical } from '@/lib/playerUtils';
 import { generateQrCodeDataUrl } from '@/lib/qrUtils';
+import { PlayStartNoticeModal } from '@/components/PlayStartNoticeModal';
 
 const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
@@ -41,6 +42,7 @@ function NewRoundForm() {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [joinSimulationToast, setJoinSimulationToast] = useState<string | null>(null);
+  const [showPlayStartNotice, setShowPlayStartNotice] = useState<boolean>(false);
 
   useEffect(() => {
     const selfName = getDefaultSelfName();
@@ -472,6 +474,18 @@ function NewRoundForm() {
     router.push(`/round/${newId}`);
   };
 
+  const handleInitiateStartRound = () => {
+    if (typeof window !== 'undefined') {
+      const hideDate = localStorage.getItem('parkon_hide_round_notice_date');
+      const today = new Date().toISOString().slice(0, 10);
+      if (hideDate === today) {
+        startRound();
+        return;
+      }
+    }
+    setShowPlayStartNotice(true);
+  };
+
   return (
     <div className="p-3.5 space-y-3.5">
       {/* Top bar */}
@@ -729,7 +743,7 @@ function NewRoundForm() {
       {/* 4. Bottom Start Button */}
       <button
         type="button"
-        onClick={startRound}
+        onClick={handleInitiateStartRound}
         className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-base font-black py-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
       >
         <Play className="w-4 h-4 fill-current" />
@@ -1010,6 +1024,19 @@ function NewRoundForm() {
           </div>
         </div>
       )}
+
+      {/* 6. Play Start Verification & Encouragement Notice Modal */}
+      <PlayStartNoticeModal
+        isOpen={showPlayStartNotice}
+        onClose={() => setShowPlayStartNotice(false)}
+        onConfirm={() => {
+          setShowPlayStartNotice(false);
+          startRound();
+        }}
+        courseName={currentCourse?.name}
+        courseLetter={selectedCourseLetter}
+        startHole={startHoleIndex}
+      />
     </div>
   );
 }
