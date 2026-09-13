@@ -35,6 +35,7 @@ import {
 } from '@/lib/rulebookData';
 import { CHAPTER_WEBTOONS } from '@/lib/chapterWebtoons';
 import { RuleSituationDiagram } from '@/components/RuleSituationDiagram';
+import { ChapterCutDiagram } from '@/components/ChapterCutDiagram';
 
 export default function RulesPage() {
   const [selectedCategory, setSelectedCategory] = useState<RuleCategoryId>('ob');
@@ -949,16 +950,12 @@ export default function RulesPage() {
                               </span>
                             </div>
 
-                            {/* Mascot High-Res Image Cut */}
-                            <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-300 shadow-md aspect-[4/3] bg-stone-100">
-                              <img
-                                src={cut.image}
-                                alt={`파키 만화 제${cut.cutNumber}컷`}
-                                className="w-full h-full object-cover"
+                            {/* Situation-Specific Official Vector Webtoon Diagram */}
+                            <div className="space-y-1.5">
+                              <ChapterCutDiagram
+                                chapterId={selectedChapter.id}
+                                cutNumber={cut.cutNumber}
                               />
-                              <div className="absolute top-2 left-2 bg-emerald-950/80 backdrop-blur-sm text-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-full shadow">
-                                파키의 판정 극장
-                              </div>
                             </div>
 
                             {/* Parky Speech Bubble */}
