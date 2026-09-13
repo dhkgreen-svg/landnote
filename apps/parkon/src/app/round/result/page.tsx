@@ -3,7 +3,7 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Award, Share2, Copy, Check, Home, BookmarkCheck, ArrowRight, ShieldAlert, Sparkles } from 'lucide-react';
+import { Award, Share2, Copy, Check, Home, BookmarkCheck, ArrowRight, ShieldAlert, Sparkles, Trophy } from 'lucide-react';
 import { RoundSession, Course } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
 import { PRESCRIPTIONS } from '@/lib/defaultCourses';
@@ -622,8 +622,17 @@ function ResultContent() {
       {/* Google AdSense Slot */}
       <AdSenseSlot className="pt-2" />
 
-      {/* 5. Home Navigation */}
-      <div className="pt-2">
+      {/* 5. Navigation Buttons */}
+      <div className="pt-2 space-y-2">
+        {session.clubRoomId && (
+          <Link
+            href={`/club/${session.clubRoomId}`}
+            className="w-full bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-base shadow-md active:scale-98 transition"
+          >
+            <Trophy className="w-5 h-5 text-amber-300" />
+            <span>🏆 대회 / 월례회 전체 리더보드로 이동</span>
+          </Link>
+        )}
         <Link
           href="/"
           className="w-full bg-stone-800 hover:bg-stone-700 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-base shadow active:scale-98 transition"

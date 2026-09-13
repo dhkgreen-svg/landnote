@@ -296,6 +296,7 @@ export default function RoundPlayPage() {
         const holeKeys = Object.keys(scores).map(Number);
         const validHoles = holeKeys.filter((h) => scores[h] !== undefined && scores[h] > 0);
         return {
+          playerId: p.id,
           playerName: p.name,
           scores,
           totalStrokes: p.totalStrokes || 0,
@@ -872,6 +873,26 @@ export default function RoundPlayPage() {
       completedAt: new Date().toISOString(),
     };
     ParkOnStorage.saveCompletedRound(finished);
+
+    // Sync final completion to ClubStorage if linked to club room
+    if (finished.clubRoomId && finished.clubGroupNumber) {
+      const playerUpdates = finished.players.map((p) => {
+        const scores = p.scores || {};
+        const holeKeys = Object.keys(scores).map(Number);
+        const validHoles = holeKeys.filter((h) => scores[h] !== undefined && scores[h] > 0);
+        return {
+          playerId: p.id,
+          playerName: p.name,
+          scores,
+          totalStrokes: p.totalStrokes || 0,
+          parDiff: p.totalParDiff || 0,
+          holesCompleted: validHoles.length,
+        };
+      });
+      ClubStorage.updateGroupScores(finished.clubRoomId, finished.clubGroupNumber, playerUpdates);
+      ClubStorage.setGroupStatus(finished.clubRoomId, finished.clubGroupNumber, 'FINISHED');
+    }
+
     router.push(`/round/result?id=${finished.id}`);
   };
 

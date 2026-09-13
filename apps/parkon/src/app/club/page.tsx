@@ -39,6 +39,7 @@ import { Course } from '@/types/parkon';
 import { ClubStorage } from '@/lib/clubStorage';
 import { ParkOnStorage } from '@/lib/storage';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
+import { getDefaultSelfName } from '@/lib/playerUtils';
 
 const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
@@ -192,6 +193,9 @@ export default function ClubGatheringHomePage() {
       setNewClubHomeCourseId(list[0].id);
       setNewFlashCourseId(list[0].id);
     }
+    const selfName = getDefaultSelfName();
+    setApplicantName(selfName);
+    setNewFlashHostName(selfName);
   };
 
   const showToast = (msg: string) => {
@@ -352,14 +356,16 @@ export default function ClubGatheringHomePage() {
   };
 
   const handleJoinClub = (club: ParkGolfClub) => {
-    ClubStorage.joinClub(club.id, '홍길동(본인)');
+    const selfName = getDefaultSelfName();
+    ClubStorage.joinClub(club.id, selfName);
     refreshAllData();
     showToast(`🎉 '${club.name}'에 가입되었습니다!`);
   };
 
   const handleLeaveClub = (club: ParkGolfClub) => {
+    const selfName = getDefaultSelfName();
     if (confirm(`'${club.name}' 클럽에서 탈퇴하시겠습니까?`)) {
-      ClubStorage.leaveClub(club.id, '김총무(본인)');
+      ClubStorage.leaveClub(club.id, selfName);
       refreshAllData();
       showToast(`'${club.name}' 클럽에서 탈퇴하였습니다.`);
     }

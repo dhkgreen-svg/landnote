@@ -987,7 +987,7 @@ export const ClubStorage = {
   updateGroupScores(
     roomId: string,
     groupNumber: number,
-    playerUpdates: { playerName: string; scores: Record<number, number>; totalStrokes: number; parDiff: number; holesCompleted: number }[]
+    playerUpdates: { playerId?: string; playerName: string; scores: Record<number, number>; totalStrokes: number; parDiff: number; holesCompleted: number }[]
   ): ClubEventRoom | null {
     const room = this.getRoom(roomId);
     if (!room) return null;
@@ -999,7 +999,7 @@ export const ClubStorage = {
     let validCount = 0;
 
     playerUpdates.forEach((up) => {
-      const p = group.players.find((pl) => pl.name === up.playerName);
+      const p = group.players.find((pl) => (up.playerId && pl.id === up.playerId) || pl.name === up.playerName);
       if (p) {
         p.scores = up.scores;
         p.totalStrokes = up.totalStrokes;
@@ -1013,7 +1013,28 @@ export const ClubStorage = {
     if (validCount > 0) {
       group.totalScore = groupTotal;
       group.avgScore = Math.round((groupTotal / validCount) * 10) / 10;
-      group.status = 'PLAYING';
+      if (group.status !== 'FINISHED') {
+        group.status = 'PLAYING';
+      }
+    }
+
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 8-1. 조 상태 변경 (대기 / 경기 중 / 완주)
+  setGroupStatus(roomId: string, groupNumber: number, status: 'WAITING' | 'PLAYING' | 'FINISHED'): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+
+    const group = room.groups.find((g) => g.groupNumber === groupNumber);
+    if (!group) return null;
+
+    group.status = status;
+    if (room.groups.every((g) => g.status === 'FINISHED')) {
+      room.status = 'FINISHED';
+    } else if (room.groups.some((g) => g.status === 'PLAYING' || g.status === 'FINISHED')) {
+      room.status = 'PLAYING';
     }
 
     this.saveRoom(room);
