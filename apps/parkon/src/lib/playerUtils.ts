@@ -55,30 +55,42 @@ export function sortPlayersByLeaderAndAlphabetical(players: RoundPlayer[]): Roun
     };
   });
 
-  // 1. 조장 찾기 (명시된 isLeader가 없으면 첫 번째 인원 또는 isSelf 인원을 조장으로 간주)
-  let leader = normalized.find((p) => p.isLeader);
-  if (!leader) {
-    leader = normalized.find((p) => p.isSelf) || normalized[0];
+  // 활동 중인 플레이어와 중도 퇴장(isOut) 플레이어 분리
+  const activePlayers = normalized.filter((p) => !p.isOut);
+  const departedPlayers = normalized.filter((p) => p.isOut);
+
+  // 1. 활성 플레이어 중에서 조장 찾기 (퇴장한 조장은 자동 해제 및 활성 인원 승격)
+  let leader = activePlayers.find((p) => p.isLeader);
+  if (!leader && activePlayers.length > 0) {
+    leader = activePlayers.find((p) => p.isSelf) || activePlayers[0];
     leader = { ...leader, isLeader: true };
   }
 
-  // 2. 나머지 인원 필터링
-  const others = normalized
-    .filter((p) => p.id !== leader!.id)
-    .map((p) => ({
-      ...p,
-      isLeader: false,
-    }));
+  let sortedActive: RoundPlayer[] = [];
+  if (leader) {
+    const others = activePlayers
+      .filter((p) => p.id !== leader!.id)
+      .map((p) => ({
+        ...p,
+        isLeader: false,
+      }));
 
-  // 3. 나머지 인원 가나다순 정렬 (이름 기준)
-  others.sort((a, b) => {
-    const nameA = a.name || '';
-    const nameB = b.name || '';
-    return nameA.localeCompare(nameB, 'ko');
-  });
+    // 2. 나머지 활성 인원 가나다순 정렬 (이름 기준)
+    others.sort((a, b) => {
+      const nameA = a.name || '';
+      const nameB = b.name || '';
+      return nameA.localeCompare(nameB, 'ko');
+    });
 
-  // 4. 조장 1번 + 나머지 가나다순 조합
-  return [{ ...leader, isLeader: true }, ...others];
+    sortedActive = [{ ...leader, isLeader: true }, ...others];
+  } else {
+    sortedActive = activePlayers.map((p) => ({ ...p, isLeader: false }));
+  }
+
+  // 3. 중도 퇴장 인원은 조장 해제 후 맨 뒤에 배치
+  const sortedDeparted = departedPlayers.map((p) => ({ ...p, isLeader: false }));
+
+  return [...sortedActive, ...sortedDeparted];
 }
 
 /**

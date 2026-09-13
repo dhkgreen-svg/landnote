@@ -58,6 +58,8 @@ export interface RoundPlayer {
   name: string;
   isLeader?: boolean; // 조장 여부 (조장은 항상 1번에 배치)
   isSelf?: boolean;   // 본인 여부
+  isOut?: boolean;    // 사정상 중도 퇴장/기권 여부 (기존 홀 기록 보존, 이후 홀 제외)
+  departedHole?: number; // 몇 번 홀에서 중도 퇴장했는지 표시용
   scores: Record<number, number>; // hole -> strokes
   obCount: Record<number, number>; // hole -> ob count
   totalStrokes: number;

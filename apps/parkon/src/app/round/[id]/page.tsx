@@ -55,9 +55,27 @@ export default function RoundPlayPage() {
   // 👑 조장 및 동반자 관리 모달 상태
   const [showPlayerEditModal, setShowPlayerEditModal] = useState<boolean>(false);
   const [editPlayersDraft, setEditPlayersDraft] = useState<RoundPlayer[]>([]);
+  const [shareFeedbackToast, setShareFeedbackToast] = useState<string | null>(null);
 
   // Load round and course
   useEffect(() => {
+    // 📱 새 조장 스마트폰으로 카톡 링크 열었을 때 경기 세션 즉시 복원 (Handoff)
+    if (typeof window !== 'undefined') {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const handoffParam = searchParams.get('handoff');
+        if (handoffParam) {
+          const parsed = JSON.parse(decodeURIComponent(handoffParam));
+          if (parsed && (parsed.id === roundId || !roundId)) {
+            ParkOnStorage.saveCurrentRound(parsed);
+            window.history.replaceState({}, '', `/round/${parsed.id || roundId}`);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to import handoff round session:', e);
+      }
+    }
+
     const active = ParkOnStorage.getCurrentRound();
     if (!active || active.id !== roundId) {
       // Fallback: check completed rounds
@@ -483,9 +501,12 @@ export default function RoundPlayPage() {
 
   // Change strokes for a player
   const changeStroke = (playerId: string, delta: number) => {
+    const target = session.players.find((p) => p.id === playerId);
+    if (target?.isOut) return;
+
     const curConfirmed = session.confirmedHoles || [];
     const updatedPlayers = session.players.map((p) => {
-      if (p.id !== playerId) return p;
+      if (p.id !== playerId || p.isOut) return p;
       const currentStrokes = p.scores[actualHoleNumber] ?? currentPar;
       const newStrokes = Math.max(1, currentStrokes + delta);
 
@@ -511,9 +532,12 @@ export default function RoundPlayPage() {
 
   // One-touch OB +2 Button
   const handleOB = (playerId: string) => {
+    const target = session.players.find((p) => p.id === playerId);
+    if (target?.isOut) return;
+
     const curConfirmed = session.confirmedHoles || [];
     const updatedPlayers = session.players.map((p) => {
-      if (p.id !== playerId) return p;
+      if (p.id !== playerId || p.isOut) return p;
       const currentStrokes = p.scores[actualHoleNumber] ?? currentPar;
       const currentOb = p.obCount[actualHoleNumber] ?? 0;
 
@@ -537,9 +561,12 @@ export default function RoundPlayPage() {
 
   // Reset to Par for player (tapping center button sets par score explicitly)
   const resetToPar = (playerId: string) => {
+    const target = session.players.find((p) => p.id === playerId);
+    if (target?.isOut) return;
+
     const curConfirmed = session.confirmedHoles || [];
     const updatedPlayers = session.players.map((p) => {
-      if (p.id !== playerId) return p;
+      if (p.id !== playerId || p.isOut) return p;
       const newScores = { ...p.scores, [actualHoleNumber]: currentPar };
       const totalStrokes = curConfirmed.reduce(
         (acc, hNum) => acc + (newScores[hNum] || 0),
@@ -574,8 +601,9 @@ export default function RoundPlayPage() {
       currentConfirmed.push(actualHoleNumber);
     }
 
-    // 2. Lock in score for current hole for all players (defaults to currentPar if untouched)
+    // 2. Lock in score for current hole for active players (preserve departed isOut players)
     const updatedPlayers = session.players.map((p) => {
+      if (p.isOut) return p;
       const currentVal = p.scores[actualHoleNumber] ?? currentPar;
       const newScores = { ...p.scores, [actualHoleNumber]: currentVal };
       const newOb = { ...p.obCount, [actualHoleNumber]: p.obCount[actualHoleNumber] ?? 0 };
@@ -769,6 +797,22 @@ export default function RoundPlayPage() {
     );
 
     const updatedPlayers = session.players.map((p) => {
+      if (p.isOut) {
+        const newScores = { ...p.scores };
+        const newOb = { ...p.obCount };
+        unplayedHoles.forEach((hNum) => {
+          delete newScores[hNum];
+          delete newOb[hNum];
+        });
+        const totalStrokes = Object.values(newScores).reduce((sum, s) => sum + (s || 0), 0);
+        return {
+          ...p,
+          scores: newScores,
+          obCount: newOb,
+          totalStrokes,
+        };
+      }
+
       const currentVal = p.scores[actualHoleNumber] ?? currentPar;
       const newScores = { ...p.scores, [actualHoleNumber]: currentVal };
       const newOb = { ...p.obCount, [actualHoleNumber]: p.obCount[actualHoleNumber] ?? 0 };
@@ -1094,6 +1138,22 @@ export default function RoundPlayPage() {
         </div>
       )}
 
+      {/* Share / Handoff Feedback Toast */}
+      {shareFeedbackToast && (
+        <div className="bg-[#FEE500] text-[#191919] border border-[#E6CF00] text-xs font-black p-2.5 rounded-xl shadow-md flex items-center justify-between animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <span className="text-base">💬</span>
+            <span>{shareFeedbackToast}</span>
+          </div>
+          <button
+            onClick={() => setShareFeedbackToast(null)}
+            className="text-stone-600 hover:text-black ml-2 text-sm font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* 3. Local Rule Yellow Attention Bar */}
       <LocalRuleBanner hole={actualHoleNumber} localRule={holeMetadata.localRule} />
 
@@ -1106,10 +1166,13 @@ export default function RoundPlayPage() {
         <div className="flex items-center justify-between px-1 py-0.5 text-xs">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className={`font-black ${sunlightMode ? 'text-yellow-300' : 'text-stone-800'}`}>
-              플레이어 ({session.players.length}명)
+              플레이어 ({session.players.filter((p) => !p.isOut).length}명 참여중
+              {session.players.some((p) => p.isOut) && (
+                <span className="text-stone-600 font-normal"> · {session.players.filter((p) => p.isOut).length}명 중도퇴장</span>
+              )})
             </span>
             <span className={`text-[11px] ${sunlightMode ? 'text-stone-400' : 'text-stone-500'} font-medium`}>
-              · 1번 👑조장 / 2~{session.players.length}번 가나다순
+              · 1번 👑조장 / 2~{session.players.filter((p) => !p.isOut).length}번 가나다순
             </span>
           </div>
           <button
@@ -1142,7 +1205,54 @@ export default function RoundPlayPage() {
           }, 0);
           const pTotalDiff = pTotalStrokes - pTotalPar;
 
+          // 🚪 중도 퇴장(기권) 선수: 점수 입력 버튼을 없애고 이전 타수 보존 카드만 깔끔하게 노출
+          if (player.isOut) {
             return (
+              <div
+                key={player.id}
+                className={`rounded-xl p-3 border transition ${
+                  sunlightMode
+                    ? 'bg-zinc-950 border-zinc-800 text-zinc-400'
+                    : 'bg-stone-50/90 border-stone-200 text-stone-600'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-stone-200 text-stone-700 font-black">
+                      🚪 중도퇴장
+                    </span>
+                    <span className="font-extrabold text-stone-700 line-through text-sm">
+                      {player.name}
+                    </span>
+                    <span className="text-[11px] text-stone-600 font-medium">
+                      ({player.departedHole || pConfirmedHoles.length}홀까지 참여)
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-stone-700 bg-stone-200/80 px-2 py-1 rounded-lg">
+                      기록 보존: {pConfirmedHoles.length}홀 {pTotalStrokes}타
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditPlayersDraft(session.players.map((p) => ({ ...p })));
+                        setShowPlayerEditModal(true);
+                      }}
+                      className="text-xs text-stone-500 hover:text-emerald-700 underline font-bold px-1 py-0.5 cursor-pointer"
+                    >
+                      변경
+                    </button>
+                  </div>
+                </div>
+                <div className="text-[11px] text-stone-600 mt-1">
+                  * 사정상 먼저 기권하셨으며, 이전 홀 타수는 스코어카드에 정상 보존됩니다.
+                </div>
+              </div>
+            );
+          }
+
+          return (
             <div
               key={player.id}
               className={
@@ -2523,14 +2633,14 @@ export default function RoundPlayPage() {
       {/* 👑 조장 및 동반자 관리 모달 */}
       {showPlayerEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-stone-200 max-h-[90vh] flex flex-col overflow-hidden">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-stone-200 max-h-[92vh] flex flex-col overflow-hidden">
             {/* 고정 헤더 */}
             <div className="flex items-center justify-between border-b border-stone-100 p-4 shrink-0 bg-white z-10">
               <div className="flex items-center gap-2">
                 <span className="text-xl">👑</span>
                 <div>
-                  <h3 className="font-extrabold text-stone-900 text-base">조장 지정 및 동반자 관리</h3>
-                  <p className="text-xs text-stone-500">1번 조장 우선 배치 / 나머지 가나다순 자동 정렬</p>
+                  <h3 className="font-extrabold text-stone-900 text-base">조장 및 동반자 관리</h3>
+                  <p className="text-xs text-stone-500">조장 위임 · 중도 퇴장/대타 · 새 조장 폰 넘겨주기</p>
                 </div>
               </div>
               <button
@@ -2544,78 +2654,229 @@ export default function RoundPlayPage() {
 
             {/* 스크롤 가능한 본문 */}
             <div className="p-4 space-y-4 overflow-y-auto flex-1 overscroll-contain">
-
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 space-y-1">
-              <div className="font-extrabold flex items-center gap-1">
-                <span>💡 정렬 원칙 안내</span>
+              {/* 친절한 안내 박스 */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 space-y-1.5">
+                <div className="font-extrabold flex items-center gap-1">
+                  <span>💡 편리한 실전 라운딩 기능</span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-amber-800">
+                  • <strong>조장 변경</strong>: 원하는 분의 👑 버튼을 누르면 1번 조장으로 즉시 위임됩니다.<br />
+                  • <strong>중도 퇴장</strong>: 도중에 먼저 가시는 분은 <strong>[🚪 중도퇴장]</strong>을 누르면 이전 타수는 보존되고 다음 홀부터 제외됩니다.<br />
+                  • <strong>폰 넘겨주기</strong>: 조장이 바뀌거나 배터리가 부족할 때 아래 <strong>[카톡 전송]</strong>으로 새 조장 폰에 경기를 넘겨줄 수 있습니다.
+                </p>
               </div>
-              <p className="text-[11px] leading-relaxed text-amber-800">
-                • <strong>조장으로 선택된 인원</strong>이 무조건 <strong>1번 슬롯</strong>에 👑 조장 배지와 함께 배치됩니다.<br />
-                • 조장을 제외한 나머지 인원(본인 포함)은 <strong>가나다순</strong>으로 2, 3, 4번에 자동 정렬됩니다.<br />
-                • 순서가 변경되어도 기존 각 홀별 타수 및 OB 기록은 안전하게 유지됩니다.
-              </p>
-            </div>
 
-            <div className="space-y-2.5">
-              <div className="text-xs font-bold text-stone-700 px-0.5">참여 인원 ({editPlayersDraft.length}명)</div>
-              {editPlayersDraft.map((draftP) => {
-                const isSelectedLeader = draftP.isLeader;
-                return (
-                  <div
-                    key={draftP.id}
-                    className={`p-3 rounded-xl border transition flex items-center gap-3 ${
-                      isSelectedLeader
-                        ? 'border-amber-400 bg-amber-50/50 shadow-xs'
-                        : 'border-stone-200 bg-stone-50/40 hover:bg-stone-50'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditPlayersDraft((prev) =>
-                          prev.map((p) => ({
-                            ...p,
-                            isLeader: p.id === draftP.id,
-                          }))
-                        );
-                      }}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1 shrink-0 cursor-pointer ${
+              {/* 참여 인원 목록 */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between px-0.5">
+                  <div className="text-xs font-bold text-stone-700">
+                    참여 인원 ({editPlayersDraft.filter((p) => !p.isOut).length}명 참여중
+                    {editPlayersDraft.some((p) => p.isOut) && (
+                      <span className="text-stone-500 font-normal"> · {editPlayersDraft.filter((p) => p.isOut).length}명 퇴장</span>
+                    )})
+                  </div>
+                </div>
+
+                {editPlayersDraft.map((draftP) => {
+                  const isSelectedLeader = draftP.isLeader && !draftP.isOut;
+
+                  // 🚪 중도 퇴장 선수 카드
+                  if (draftP.isOut) {
+                    return (
+                      <div
+                        key={draftP.id}
+                        className="p-3 rounded-xl border border-stone-300 bg-stone-100/90 transition flex items-center gap-3"
+                      >
+                        <div className="px-2 py-1.5 rounded-lg text-xs font-black bg-stone-200 text-stone-700 flex items-center gap-1 shrink-0">
+                          <span>🚪</span>
+                          <span>중도퇴장</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-xs font-bold text-stone-700 line-through">{draftP.name}</span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-stone-200 text-stone-600">
+                              {draftP.departedHole || actualHoleNumber}홀까지 보존
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-stone-600">
+                            기권 처리됨 (이전 타수 정상 유지)
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditPlayersDraft((prev) =>
+                              prev.map((p) => (p.id === draftP.id ? { ...p, isOut: false, departedHole: undefined } : p))
+                            );
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 shrink-0 cursor-pointer transition active:scale-95 shadow-2xs"
+                        >
+                          ↩ 다시 참여
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  // ⛳ 정상 활동 중인 선수 카드
+                  return (
+                    <div
+                      key={draftP.id}
+                      className={`p-3 rounded-xl border transition flex items-center gap-2.5 ${
                         isSelectedLeader
-                          ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-300'
-                          : 'bg-white border border-stone-300 text-stone-600 hover:bg-stone-100'
+                          ? 'border-amber-400 bg-amber-50/50 shadow-xs'
+                          : 'border-stone-200 bg-stone-50/40 hover:bg-stone-50'
                       }`}
                     >
-                      <span>👑</span>
-                      <span>{isSelectedLeader ? '조장 (1번)' : '조장 선택'}</span>
-                    </button>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-xs font-bold text-stone-700">이름</span>
-                        {draftP.isSelf && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-blue-100 text-blue-700">
-                            본인
-                          </span>
-                        )}
-                      </div>
-                      <input
-                        type="text"
-                        value={draftP.name}
-                        onChange={(e) => {
-                          const val = e.target.value;
+                      {/* 👑 조장 선택/위임 버튼 */}
+                      <button
+                        type="button"
+                        onClick={() => {
                           setEditPlayersDraft((prev) =>
-                            prev.map((p) => (p.id === draftP.id ? { ...p, name: val } : p))
+                            prev.map((p) => ({
+                              ...p,
+                              isLeader: p.id === draftP.id,
+                            }))
                           );
                         }}
-                        placeholder="이름 입력"
-                        className="w-full px-2.5 py-1.5 text-sm bg-white border border-stone-300 rounded-lg focus:outline-hidden focus:border-emerald-500 font-bold"
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                        className={`px-2 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1 shrink-0 cursor-pointer ${
+                          isSelectedLeader
+                            ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-300'
+                            : 'bg-white border border-stone-300 text-stone-600 hover:bg-stone-100'
+                        }`}
+                        title="이 플레이어를 조장(1번)으로 지정"
+                      >
+                        <span>👑</span>
+                        <span>{isSelectedLeader ? '조장 (1번)' : '조장 위임'}</span>
+                      </button>
 
+                      {/* 이름 입력 필드 */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-[11px] font-bold text-stone-600">이름</span>
+                          {draftP.isSelf && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-blue-100 text-blue-700">
+                              본인
+                            </span>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={draftP.name}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditPlayersDraft((prev) =>
+                              prev.map((p) => (p.id === draftP.id ? { ...p, name: val } : p))
+                            );
+                          }}
+                          placeholder="이름 입력"
+                          className="w-full px-2.5 py-1 text-sm bg-white border border-stone-300 rounded-lg focus:outline-hidden focus:border-emerald-500 font-bold"
+                        />
+                      </div>
+
+                      {/* 🚪 중도 퇴장 버튼 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            confirm(
+                              `${draftP.name} 님이 지금 중도 퇴장(기권)하시나요?\n\n* 지금까지 기록한 타수는 안전하게 보존되며, 다음 홀부터 점수 입력에서 제외됩니다.`
+                            )
+                          ) {
+                            setEditPlayersDraft((prev) => {
+                              const updated = prev.map((p) => {
+                                if (p.id === draftP.id) {
+                                  return { ...p, isOut: true, isLeader: false, departedHole: actualHoleNumber };
+                                }
+                                return p;
+                              });
+                              // 만약 조장이 퇴장했다면 남아있는 첫 번째 활성 인원을 새 조장으로 자동 지정
+                              const active = updated.filter((p) => !p.isOut);
+                              if (!active.some((p) => p.isLeader) && active.length > 0) {
+                                active[0].isLeader = true;
+                              }
+                              return updated;
+                            });
+                          }
+                        }}
+                        className="px-2 py-1.5 rounded-lg text-xs font-bold border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 shrink-0 cursor-pointer transition active:scale-95 flex items-center gap-0.5"
+                        title="사정상 먼저 귀가/기권 시 터치"
+                      >
+                        <span>🚪</span>
+                        <span>중도퇴장</span>
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* ➕ 동반자 추가 버튼 (최대 4인까지) */}
+                {editPlayersDraft.filter((p) => !p.isOut).length < 4 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const activeCount = editPlayersDraft.filter((p) => !p.isOut).length;
+                      if (activeCount >= 4) {
+                        alert('한 조의 최대 동반자는 4명입니다.');
+                        return;
+                      }
+                      const newNum = editPlayersDraft.length + 1;
+                      const newPlayer: RoundPlayer = {
+                        id: `player_add_${Date.now()}`,
+                        name: `동반자 ${newNum}`,
+                        scores: {},
+                        obCount: {},
+                        totalStrokes: 0,
+                        totalParDiff: 0,
+                      };
+                      setEditPlayersDraft((prev) => [...prev, newPlayer]);
+                    }}
+                    className="w-full py-2.5 px-3 rounded-xl border border-dashed border-emerald-400 bg-emerald-50/60 hover:bg-emerald-50 text-emerald-800 text-xs font-black flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
+                  >
+                    <span>➕</span>
+                    <span>동반자 추가 (중간 합류 / 대타 선수)</span>
+                  </button>
+                )}
+              </div>
+
+              {/* 💬 새 조장 스마트폰으로 경기 넘겨주기 (카톡 전송) 섹션 */}
+              <div className="pt-3 border-t border-stone-200/80 space-y-2">
+                <div className="text-xs font-black text-stone-800 flex items-center gap-1.5">
+                  <span className="text-base">📱</span>
+                  <span>스마트폰 경기 넘겨주기 (조장 교체 / 배터리 방전 시)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const handoffUrl = `${window.location.origin}/round/${roundId}?handoff=${encodeURIComponent(JSON.stringify(session))}`;
+                      if (typeof navigator !== 'undefined' && navigator.share) {
+                        await navigator.share({
+                          title: `[파크온] ${course.name} 파크골프 경기 이어받기`,
+                          text: `[파크온] ${course.name} 경기 스코어카드 이어받기 링크입니다. 터치하시면 현재 ${actualHoleNumber}번 홀부터 그대로 이어서 기록하실 수 있습니다.`,
+                          url: handoffUrl,
+                        });
+                        setShareFeedbackToast('✓ 새 조장에게 경기 넘겨주기 링크가 전송되었습니다!');
+                        setTimeout(() => setShareFeedbackToast(null), 4000);
+                      } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                        await navigator.clipboard.writeText(handoffUrl);
+                        alert(
+                          `✓ 새 조장용 경기 이어받기 링크가 복사되었습니다!\n\n카카오톡 대화방에 붙여넣어(Ctrl+V) 전송하시면, 새 조장님이 터치 한 번으로 현재 ${actualHoleNumber}번 홀부터 그대로 이어서 기록할 수 있습니다.`
+                        );
+                      } else {
+                        prompt('아래 링크를 복사하여 새 조장에게 카카오톡으로 보내주세요:', handoffUrl);
+                      }
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  }}
+                  className="w-full py-3 px-3 rounded-xl bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition active:scale-95 cursor-pointer border border-[#E6CF00]"
+                >
+                  <span className="text-base">💬</span>
+                  <span>새 조장 스마트폰으로 경기 넘겨주기 (카톡 / 링크)</span>
+                </button>
+                <p className="text-[11px] text-stone-500 leading-tight">
+                  * 새 조장이 카톡에서 링크를 누르면 현재 홀과 타수 그대로 즉시 이어받아 입력할 수 있습니다.
+                </p>
+              </div>
             </div>
 
             {/* 고정 하단 액션 버튼 */}
@@ -2631,8 +2892,10 @@ export default function RoundPlayPage() {
                 type="button"
                 onClick={() => {
                   let updated = [...editPlayersDraft];
-                  if (!updated.some((p) => p.isLeader)) {
-                    updated[0] = { ...updated[0], isLeader: true };
+                  const active = updated.filter((p) => !p.isOut);
+                  if (active.length > 0 && !active.some((p) => p.isLeader)) {
+                    const firstActiveId = active[0].id;
+                    updated = updated.map((p) => ({ ...p, isLeader: p.id === firstActiveId }));
                   }
                   // 본인(isSelf) 이름 수정 시 사용자 프로필 및 상단 헤더에 즉시 연동
                   const selfPlayer = updated.find((p) => p.isSelf);
