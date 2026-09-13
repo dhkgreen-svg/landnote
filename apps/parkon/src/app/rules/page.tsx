@@ -39,6 +39,7 @@ import { ChapterCutDiagram } from '@/components/ChapterCutDiagram';
 
 export default function RulesPage() {
   const [selectedCategory, setSelectedCategory] = useState<RuleCategoryId>('ob');
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [rulebookViewMode, setRulebookViewMode] = useState<'webtoon' | 'articles'>('webtoon');
   const [chapterModalMode, setChapterModalMode] = useState<'webtoon' | 'articles'>('webtoon');
   const [qaModalMode, setQaModalMode] = useState<'webtoon' | 'text'>('webtoon');
@@ -536,7 +537,8 @@ export default function RulesPage() {
       </div>
 
       {/* ========================================================= */}
-      {/* 2. 규정 분야별 질문 문항 선택 (카테고리 보기 & 문항 리스트) */}
+      {/* ========================================================= */}
+      {/* 2. 규정 분야별 질문 선택 (카테고리별 팝업) */}
       {/* ========================================================= */}
       <div className="space-y-3">
         {/* Category Header */}
@@ -544,105 +546,55 @@ export default function RulesPage() {
           <div className="flex items-center gap-1.5">
             <span className="text-base">📂</span>
             <span className="text-sm font-black text-stone-900">
-              규정 분야별 질문 선택 (카테고리 보기)
+              규정 분야별 질문 선택 (카테고리별 팝업)
             </span>
           </div>
           <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded-full">
-            총 50문항
+            총 6개 분야 · 50문항
           </span>
         </div>
 
-        {/* Categories Grid (6개 분야 탭) */}
-        <div className="grid grid-cols-3 gap-2">
+        {/* Categories List Cards (Like Chapter cards above) */}
+        <div className="space-y-2.5 pt-0.5">
           {RULE_CATEGORIES.map((cat) => {
-            const isSelected = selectedCategory === cat.id;
+            const count = CATEGORIZED_RULES.filter((r) => r.category === cat.id).length;
             return (
-              <button
+              <div
                 key={cat.id}
-                type="button"
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`p-2.5 rounded-2xl text-left transition flex flex-col justify-between border-2 shadow-sm active:scale-95 ${
-                  isSelected
-                    ? 'bg-emerald-700 text-white border-emerald-600 shadow-emerald-700/30'
-                    : 'bg-white text-stone-800 border-stone-200 hover:border-emerald-500 hover:bg-emerald-50/40'
-                }`}
+                onClick={() => {
+                  setSelectedCategory(cat.id);
+                  setIsCategoryModalOpen(true);
+                }}
+                className="p-3 rounded-2xl border-2 border-emerald-200/90 bg-gradient-to-r from-emerald-50/70 via-white to-amber-50/40 hover:border-emerald-600 shadow-sm transition active:scale-[0.98] cursor-pointer group flex items-center justify-between gap-3"
               >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-lg">{cat.icon}</span>
-                  <span
-                    className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
-                      isSelected
-                        ? 'bg-amber-400 text-emerald-950'
-                        : 'bg-stone-100 text-stone-700'
-                    }`}
-                  >
-                    {cat.badge}
-                  </span>
-                </div>
-                <div className="font-black text-xs leading-tight break-keep">
-                  {cat.label}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Selected Category Questions List */}
-        <div className="bg-stone-50 border-2 border-emerald-600/30 rounded-3xl p-3.5 space-y-2.5 shadow-sm">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm">{selectedCategoryMeta?.icon}</span>
-              <span className="text-xs font-black text-stone-900">
-                {selectedCategoryMeta?.label} ({currentCategoryRules.length}문항)
-              </span>
-            </div>
-            <span className="text-[11px] font-bold text-stone-500">
-              터치 시 판정 답이 뜹니다
-            </span>
-          </div>
-
-          <p className="text-[11px] text-stone-600 font-bold px-1">
-            {selectedCategoryMeta?.description}
-          </p>
-
-          {/* Question List Items */}
-          <div className="space-y-2 pt-1">
-            {currentCategoryRules.map((rule, idx) => (
-              <button
-                key={rule.id}
-                type="button"
-                onClick={() => openRuleModal(rule)}
-                className="w-full text-left p-3.5 rounded-2xl border-2 border-stone-200 hover:border-emerald-600 bg-white hover:bg-emerald-50/50 shadow-sm transition active:scale-[0.98] flex items-center justify-between gap-3 group"
-              >
-                <div className="flex items-start gap-2.5 min-w-0">
-                  <span className="w-7 h-7 rounded-xl bg-emerald-700 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-sm group-hover:bg-emerald-600">
-                    Q{idx + 1}
-                  </span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-12 h-12 rounded-xl bg-white border-2 border-emerald-300 shadow-xs flex items-center justify-center text-2xl shrink-0 group-hover:scale-105 transition">
+                    {cat.icon}
+                  </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 border border-stone-200 shrink-0">
-                        {rule.categoryLabel}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-black bg-amber-400 text-emerald-950 px-1.5 py-0.2 rounded-md shrink-0">
+                        {count}문항 완비
                       </span>
                       <h4 className="font-extrabold text-xs text-stone-900 truncate">
-                        {rule.title}
+                        {cat.label}
                       </h4>
                     </div>
-                    <p className="text-[11px] text-stone-600 font-bold truncate">
-                      {rule.situation}
+                    <p className="text-[11px] text-stone-500 font-bold truncate mt-0.5">
+                      {cat.description}
                     </p>
                   </div>
                 </div>
 
                 <div className="shrink-0 flex items-center gap-1">
-                  <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white px-2.5 py-1 rounded-xl transition border border-emerald-200 shadow-2xs flex items-center gap-1">
-                    <span>🎨</span>
-                    <span>웹툰 판정</span>
+                  <span className="text-[11px] font-black text-emerald-800 bg-white group-hover:bg-emerald-600 group-hover:text-white px-2.5 py-1.5 rounded-xl transition border border-emerald-200 shadow-xs flex items-center gap-1">
+                    <span>문항 보기</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
                   </span>
-                  <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-emerald-700 transition" />
                 </div>
-              </button>
-            ))}
-          </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -812,6 +764,144 @@ export default function RulesPage() {
           <span>확인 완료 (홈으로 복귀)</span>
         </Link>
       </div>
+
+      {/* ========================================================= */}
+      {/* 팝업 모달 0: 규정 분야별 질문 문항 선택 전용 팝업창 */}
+      {/* OB 관련 질문 또는 타 카테고리 클릭 시 해당 분야의 문항들이 팝업으로 출력 */}
+      {/* ========================================================= */}
+      {isCategoryModalOpen && selectedCategoryMeta && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 animate-fadeIn"
+          onClick={() => setIsCategoryModalOpen(false)}
+        >
+          <div
+            className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border-2 border-emerald-600 max-h-[90vh] flex flex-col animate-scaleUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Category Modal Header */}
+            <div className="p-4 bg-gradient-to-r from-emerald-900 to-teal-900 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="w-10 h-10 rounded-xl bg-amber-400 text-emerald-950 font-black flex items-center justify-center text-xl shadow shrink-0">
+                  {selectedCategoryMeta.icon}
+                </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-black bg-amber-400 text-emerald-950 px-1.5 py-0.2 rounded-full">
+                      {selectedCategoryMeta.badge}
+                    </span>
+                    <span className="text-[11px] text-emerald-200 font-bold">
+                      총 {currentCategoryRules.length}문항
+                    </span>
+                  </div>
+                  <h3 className="font-black text-sm text-white truncate pt-0.5">
+                    {selectedCategoryMeta.label}
+                  </h3>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsCategoryModalOpen(false)}
+                className="p-1.5 rounded-full bg-emerald-950/60 hover:bg-emerald-800 text-white transition shrink-0 ml-2"
+                aria-label="닫기"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick Category Switcher Tabs */}
+            <div className="px-3 py-2 bg-stone-100 border-b border-stone-200 overflow-x-auto flex items-center gap-1.5 scrollbar-none shrink-0">
+              {RULE_CATEGORIES.map((cat) => {
+                const isSelected = selectedCategory === cat.id;
+                const count = CATEGORIZED_RULES.filter((r) => r.category === cat.id).length;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black shrink-0 transition flex items-center gap-1 ${
+                      isSelected
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'bg-white text-stone-700 hover:bg-emerald-50 border border-stone-200'
+                    }`}
+                  >
+                    <span>{cat.icon}</span>
+                    <span>{cat.label.split(' ')[0]}</span>
+                    <span
+                      className={`text-[10px] px-1 rounded ${
+                        isSelected
+                          ? 'bg-amber-400 text-emerald-950 font-black'
+                          : 'bg-stone-100 text-stone-500 font-bold'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Questions List (Scrollable) */}
+            <div className="p-4 overflow-y-auto space-y-2.5 flex-1 bg-stone-50">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs font-bold text-emerald-900 flex items-center justify-between">
+                <span>💡 문항을 터치하면 상황별 웹툰 도해와 공식 판정이 열립니다.</span>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                {currentCategoryRules.map((rule, idx) => (
+                  <button
+                    key={rule.id}
+                    type="button"
+                    onClick={() => openRuleModal(rule)}
+                    className="w-full text-left p-3.5 rounded-2xl border-2 border-stone-200 hover:border-emerald-600 bg-white hover:bg-emerald-50/50 shadow-sm transition active:scale-[0.98] flex items-center justify-between gap-3 group cursor-pointer"
+                  >
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <span className="w-7 h-7 rounded-xl bg-emerald-700 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5 shadow-sm group-hover:bg-emerald-600">
+                        Q{idx + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 border border-stone-200 shrink-0">
+                            {rule.categoryLabel}
+                          </span>
+                          <h4 className="font-extrabold text-xs text-stone-900 truncate">
+                            {rule.title}
+                          </h4>
+                        </div>
+                        <p className="text-[11px] text-stone-600 font-bold truncate">
+                          {rule.situation}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 flex items-center gap-1">
+                      <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white px-2.5 py-1 rounded-xl transition border border-emerald-200 shadow-2xs flex items-center gap-1">
+                        <span>🎨</span>
+                        <span>웹툰 보기</span>
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-emerald-700 transition" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Modal Bottom Footer */}
+            <div className="p-3 bg-white border-t border-stone-200 flex items-center justify-between gap-2 shrink-0">
+              <span className="text-[11px] text-stone-500 font-bold">
+                (사)대한파크골프협회 공식 판정 기준
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsCategoryModalOpen(false)}
+                className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-black rounded-xl text-xs transition"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================= */}
       {/* 팝업 모달 1: 룰북 각 장별 세부 내용 전용 팝업창 */}
@@ -1276,7 +1366,7 @@ export default function RulesPage() {
       {/* ========================================================= */}
       {showModal && activeVerdict && (
         <div
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 animate-fadeIn"
+          className="fixed inset-0 z-[60] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 animate-fadeIn"
           onClick={closeModal}
         >
           <div
