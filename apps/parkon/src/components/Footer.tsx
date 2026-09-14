@@ -81,9 +81,18 @@ export function Footer() {
           </p>
         </div>
 
-        {/* 저작권 및 운영 안내 */}
-        <div className="text-[10px] text-stone-400 pt-1">
-          <p>© 2026 ParkOn Team. All rights reserved.</p>
+        {/* 저작권 및 운영 안내 (대표님 전용 관제실 진입점 포함) */}
+        <div className="text-[10px] text-stone-400 pt-1 flex flex-col items-center gap-0.5">
+          <p className="flex items-center gap-1">
+            <span>© 2026 ParkOn Team. All rights reserved.</span>
+            <Link
+              href="/admin"
+              className="text-stone-300 hover:text-stone-500 transition ml-0.5"
+              title="관리자 전용 관제실"
+            >
+              🔒
+            </Link>
+          </p>
           <p className="mt-0.5">Contact: contact@parkongolf.com · 문의 및 파크골프장 정보 제보 환영</p>
         </div>
       </div>

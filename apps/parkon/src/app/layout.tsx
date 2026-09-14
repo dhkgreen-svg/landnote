@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { VisitorTracker } from '@/components/VisitorTracker';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://parkongolf.com'),
@@ -80,6 +81,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen flex flex-col antialiased bg-stone-100 text-stone-900">
+        <VisitorTracker />
         <Header />
         <main className="flex-1 max-w-md w-full mx-auto pb-6">
           {children}
