@@ -266,12 +266,12 @@ export default function AdminDashboardPage() {
         )}
       </div>
 
-      {/* 4 Major Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 4 Major Metric Cards - Clean 2x2 Grid */}
+      <div className="grid grid-cols-2 gap-2.5">
         {/* Today Visitors */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3.5 sm:p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500">오늘 순 방문자 (Unique)</span>
+            <span className="text-[11px] sm:text-xs font-bold text-zinc-500">오늘 방문자</span>
             <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center">
               <Users className="w-5 h-5" />
             </div>
@@ -288,9 +288,9 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Total Pageviews */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3.5 sm:p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500">누적 총 페이지뷰</span>
+            <span className="text-[11px] sm:text-xs font-bold text-zinc-500">누적 페이지뷰</span>
             <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center">
               <Eye className="w-5 h-5" />
             </div>
@@ -299,17 +299,17 @@ export default function AdminDashboardPage() {
             <span className="text-3xl font-black text-zinc-900 dark:text-zinc-100">
               {metrics?.totalPageviews ?? 0}
             </span>
-            <span className="text-xs text-zinc-500">회 조회</span>
+            <span className="text-xs text-zinc-500">회</span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="text-[11px] text-zinc-400 mt-1">
             누적 순 방문자: <strong className="text-emerald-600">{metrics?.uniqueVisitors ?? 0}명</strong>
           </p>
         </div>
 
         {/* Active Multiplayer Rooms */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3.5 sm:p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500">실시간 진행 라운드</span>
+            <span className="text-[11px] sm:text-xs font-bold text-zinc-500">실시간 라운드</span>
             <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center">
               <Radio className="w-5 h-5" />
             </div>
@@ -318,28 +318,28 @@ export default function AdminDashboardPage() {
             <span className="text-3xl font-black text-zinc-900 dark:text-zinc-100">
               {metrics?.activeRoomsCount ?? 0}
             </span>
-            <span className="text-xs text-zinc-500">개 방 진행 중</span>
+            <span className="text-xs text-zinc-500">개 진행 중</span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            카카오톡 공유 및 실시간 동반자 스코어 방
+          <p className="text-[11px] text-zinc-400 mt-1">
+            카카오톡 공유 스코어 방
           </p>
         </div>
 
         {/* Google AdSense Status */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3.5 sm:p-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500">수익화 (애드센스)</span>
+            <span className="text-[11px] sm:text-xs font-bold text-zinc-500">애드센스 수익</span>
             <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center">
               <Award className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-lg font-black text-amber-600 dark:text-amber-400">
+            <span className="text-base font-black text-amber-600 dark:text-amber-400">
               승인 심사 대기
             </span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            게시자 ID 메타태그 설정 완료 (ca-pub)
+          <p className="text-[11px] text-zinc-400 mt-1">
+            게시자 ID 메타태그 완료
           </p>
         </div>
       </div>
