@@ -39,6 +39,7 @@ import { ChapterCutDiagram, ChapterThumbnail } from '@/components/ChapterCutDiag
 
 export default function RulesPage() {
   const [selectedCategory, setSelectedCategory] = useState<RuleCategoryId>('ob');
+  const [fontSizeMode, setFontSizeMode] = useState<'normal' | 'large' | 'xlarge'>('large');
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [rulebookViewMode, setRulebookViewMode] = useState<'webtoon' | 'articles'>('webtoon');
   const [chapterModalMode, setChapterModalMode] = useState<'webtoon' | 'articles'>('webtoon');
@@ -105,6 +106,29 @@ export default function RulesPage() {
   useEffect(() => {
     questionTextRef.current = questionText;
   }, [questionText]);
+
+  // Load saved font size preference
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('parkon_rules_fontsize') as 'normal' | 'large' | 'xlarge';
+      if (saved && ['normal', 'large', 'xlarge'].includes(saved)) {
+        setFontSizeMode(saved);
+      }
+    }
+  }, []);
+
+  const handleSetFontSize = (mode: 'normal' | 'large' | 'xlarge') => {
+    setFontSizeMode(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('parkon_rules_fontsize', mode);
+    }
+  };
+
+  // Senior Font Scale Helper Classes
+  const fsBody = fontSizeMode === 'xlarge' ? 'text-base' : fontSizeMode === 'large' ? 'text-sm' : 'text-xs';
+  const fsTitle = fontSizeMode === 'xlarge' ? 'text-lg' : fontSizeMode === 'large' ? 'text-base' : 'text-sm';
+  const fsSmall = fontSizeMode === 'xlarge' ? 'text-sm' : fontSizeMode === 'large' ? 'text-xs' : 'text-[11px]';
+  const fsArticle = fontSizeMode === 'xlarge' ? 'text-base leading-relaxed' : fontSizeMode === 'large' ? 'text-sm leading-relaxed' : 'text-xs leading-relaxed';
 
   // Initialize Speech Recognition (Continuous mode without 5-second timeout)
   useEffect(() => {
@@ -357,6 +381,54 @@ export default function RulesPage() {
           <p className="text-xs text-stone-600 font-bold mt-0.5">
             필드 분쟁 즉시 해결 · (사)대한파크골프협회 공인 규정 준거
           </p>
+        </div>
+      </div>
+
+      {/* Senior Font Size Controller Bar */}
+      <div className="bg-stone-100 border border-stone-300/80 rounded-2xl p-2 px-3 flex items-center justify-between shadow-2xs">
+        <div className="flex items-center gap-1.5 text-stone-700 font-black text-xs">
+          <span>🔍</span>
+          <span>글자 크기</span>
+        </div>
+        <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-stone-200 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => handleSetFontSize('normal')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-black transition ${
+              fontSizeMode === 'normal'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            보통
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSetFontSize('large')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 ${
+              fontSizeMode === 'large'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <span>크게</span>
+            <span className={`text-[9px] px-1 py-0.2 rounded-full font-black ${
+              fontSizeMode === 'large' ? 'bg-amber-400 text-emerald-950' : 'bg-emerald-100 text-emerald-800'
+            }`}>
+              추천
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSetFontSize('xlarge')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-black transition ${
+              fontSizeMode === 'xlarge'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            아주크게
+          </button>
         </div>
       </div>
 
@@ -805,6 +877,49 @@ export default function RulesPage() {
               </button>
             </div>
 
+            {/* In-Modal Senior Font Size Controller Bar */}
+            <div className="px-3 py-1.5 bg-stone-50 border-b border-stone-200 flex items-center justify-between shrink-0">
+              <span className="text-[11px] font-black text-stone-600 flex items-center gap-1">
+                <span>🔍</span>
+                <span>글자 크기</span>
+              </span>
+              <div className="flex items-center gap-0.5 bg-stone-200/80 p-0.5 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => handleSetFontSize('normal')}
+                  className={`px-2 py-0.5 rounded-lg text-xs font-black transition ${
+                    fontSizeMode === 'normal'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  보통
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetFontSize('large')}
+                  className={`px-2 py-0.5 rounded-lg text-xs font-black transition ${
+                    fontSizeMode === 'large'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  크게
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetFontSize('xlarge')}
+                  className={`px-2 py-0.5 rounded-lg text-xs font-black transition ${
+                    fontSizeMode === 'xlarge'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  왕글씨
+                </button>
+              </div>
+            </div>
+
             {/* Quick Category Switcher Tabs */}
             <div className="px-3 py-2 bg-stone-100 border-b border-stone-200 overflow-x-auto flex items-center gap-1.5 scrollbar-none shrink-0">
               {RULE_CATEGORIES.map((cat) => {
@@ -860,11 +975,11 @@ export default function RulesPage() {
                           <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 border border-stone-200 shrink-0">
                             {rule.categoryLabel}
                           </span>
-                          <h4 className="font-extrabold text-xs text-stone-900 truncate">
+                          <h4 className={`font-extrabold ${fsBody} text-stone-900 truncate`}>
                             {rule.title}
                           </h4>
                         </div>
-                        <p className="text-[11px] text-stone-600 font-bold truncate">
+                        <p className={`${fsSmall} text-stone-600 font-bold truncate`}>
                           {rule.situation}
                         </p>
                       </div>
@@ -942,33 +1057,70 @@ export default function RulesPage() {
               </button>
             </div>
 
-            {/* Modal Internal Mode Switch: 파키 만화 웹툰 vs 법조문 원문 */}
-            <div className="px-4 pt-3 pb-1 bg-stone-50 border-b border-stone-200">
-              <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-200/80 rounded-2xl">
-                <button
-                  type="button"
-                  onClick={() => setChapterModalMode('webtoon')}
-                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
-                    chapterModalMode === 'webtoon'
-                      ? 'bg-emerald-700 text-white shadow-sm'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  <span>🎨</span>
-                  <span>파키 만화 웹툰</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChapterModalMode('articles')}
-                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
-                    chapterModalMode === 'articles'
-                      ? 'bg-emerald-700 text-white shadow-sm'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  <span>📜</span>
-                  <span>법조문 원문</span>
-                </button>
+            {/* Modal Internal Mode Switch & Font Size Bar */}
+            <div className="px-4 pt-2.5 pb-2 bg-stone-50 border-b border-stone-200 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="grid grid-cols-2 gap-1 p-1 bg-stone-200/80 rounded-2xl flex-1">
+                  <button
+                    type="button"
+                    onClick={() => setChapterModalMode('webtoon')}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition ${
+                      chapterModalMode === 'webtoon'
+                        ? 'bg-emerald-700 text-white shadow-sm'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <span>🎨 만화</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChapterModalMode('articles')}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition ${
+                      chapterModalMode === 'articles'
+                        ? 'bg-emerald-700 text-white shadow-sm'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <span>📜 원문</span>
+                  </button>
+                </div>
+
+                {/* In-Modal Font Size Switcher */}
+                <div className="flex items-center gap-0.5 bg-stone-200/80 p-1 rounded-2xl shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleSetFontSize('normal')}
+                    className={`px-2 py-1 rounded-xl text-xs font-black transition ${
+                      fontSizeMode === 'normal'
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    보통
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetFontSize('large')}
+                    className={`px-2 py-1 rounded-xl text-xs font-black transition ${
+                      fontSizeMode === 'large'
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    크게
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetFontSize('xlarge')}
+                    className={`px-2 py-1 rounded-xl text-xs font-black transition ${
+                      fontSizeMode === 'xlarge'
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    왕글씨
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1029,7 +1181,7 @@ export default function RulesPage() {
                             </div>
 
                             {/* Situation description */}
-                            <div className="bg-white rounded-xl p-2.5 border border-stone-200 text-xs font-bold text-stone-700 flex items-start gap-2">
+                            <div className={`bg-white rounded-xl p-2.5 border border-stone-200 ${fsBody} font-bold text-stone-700 flex items-start gap-2`}>
                               <span className="text-sm shrink-0">🤔</span>
                               <span className="break-keep leading-relaxed">
                                 <strong className="text-stone-900">상황:</strong> {cut.situation}
@@ -1050,19 +1202,19 @@ export default function RulesPage() {
                                 <span className="text-base">📢</span>
                                 <span>파키의 판정 한마디!</span>
                               </div>
-                              <p className="text-xs text-emerald-950 font-extrabold leading-relaxed break-keep">
+                              <p className={`${fsBody} text-emerald-950 font-extrabold leading-relaxed break-keep`}>
                                 "{cut.parkyDialogue}"
                               </p>
                             </div>
 
                             {/* Official Verdict / Penalty Banner */}
                             <div className="bg-amber-50 border border-amber-300 rounded-xl p-2.5 space-y-1">
-                              <div className="text-xs font-black text-amber-950 flex items-center gap-1">
+                              <div className={`${fsBody} font-black text-amber-950 flex items-center gap-1`}>
                                 <span>⚖️</span>
                                 <span>공식 판정: {cut.verdict}</span>
                               </div>
                               {cut.penaltyText && (
-                                <div className="text-[11px] font-extrabold text-rose-700 flex items-center gap-1">
+                                <div className={`${fsSmall} font-extrabold text-rose-700 flex items-center gap-1`}>
                                   <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                                   <span>벌칙: {cut.penaltyText}</span>
                                 </div>
@@ -1070,7 +1222,7 @@ export default function RulesPage() {
                             </div>
 
                             {/* Key Point Box */}
-                            <div className="bg-white rounded-xl p-2.5 text-[11px] font-bold text-stone-700 flex items-start gap-1.5 border border-stone-200">
+                            <div className={`bg-white rounded-xl p-2.5 ${fsSmall} font-bold text-stone-700 flex items-start gap-1.5 border border-stone-200`}>
                               <span className="text-xs shrink-0">💡</span>
                               <span className="break-keep leading-relaxed">
                                 <strong>핵심 요약:</strong> {cut.keyPoint}
@@ -1078,7 +1230,7 @@ export default function RulesPage() {
                             </div>
 
                             {/* Article Reference */}
-                            <div className="text-[10px] font-bold text-stone-500 flex items-center gap-1 px-1">
+                            <div className={`${fsSmall} font-bold text-stone-500 flex items-center gap-1 px-1`}>
                               <span>📜</span>
                               <span>{cut.article}</span>
                             </div>
@@ -1181,11 +1333,11 @@ export default function RulesPage() {
                       <span className="bg-emerald-700 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
                         {selectedChapter.chapterNumber} 개요
                       </span>
-                      <h4 className="text-xs font-black text-emerald-950">
+                      <h4 className={`${fsTitle} font-black text-emerald-950`}>
                         {selectedChapter.title}
                       </h4>
                     </div>
-                    <p className="text-xs text-emerald-900 font-bold mt-1 leading-relaxed break-keep">
+                    <p className={`${fsBody} text-emerald-900 font-bold mt-1 leading-relaxed break-keep`}>
                       {selectedChapter.summary}
                     </p>
                   </div>
@@ -1208,19 +1360,19 @@ export default function RulesPage() {
                         className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-2 shadow-sm"
                       >
                         <div className="flex items-center justify-between border-b border-stone-200 pb-1.5">
-                          <h5 className="font-extrabold text-xs text-stone-900 flex items-center gap-1.5">
+                          <h5 className={`font-extrabold ${fsBody} text-stone-900 flex items-center gap-1.5`}>
                             <span className="text-emerald-700">📜</span>
                             <span>{art.articleNumber}</span>
                             <span className="text-stone-500 font-bold">· {art.title}</span>
                           </h5>
                         </div>
 
-                        <div className="text-xs text-stone-800 font-medium leading-relaxed break-keep whitespace-pre-line">
+                        <div className={`${fsArticle} text-stone-800 font-medium break-keep whitespace-pre-line`}>
                           {art.content}
                         </div>
 
                         {art.penaltyNote && (
-                          <div className="bg-rose-50 border border-rose-200 rounded-xl px-2.5 py-1 text-[11px] font-black text-rose-800 flex items-center gap-1">
+                          <div className={`bg-rose-50 border border-rose-200 rounded-xl px-2.5 py-1 ${fsSmall} font-black text-rose-800 flex items-center gap-1`}>
                             <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                             <span>위반 시 벌칙: {art.penaltyNote}</span>
                           </div>
@@ -1399,36 +1551,70 @@ export default function RulesPage() {
               </button>
             </div>
 
-            {/* Modal Internal Mode Switch: 파키 만화 웹툰 vs 상세 법조문 */}
-            <div className="px-4 pt-3 pb-1 bg-stone-50 border-b border-stone-200">
-              <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-200/80 rounded-2xl">
-                <button
-                  type="button"
-                  onClick={() => setQaModalMode('webtoon')}
-                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
-                    qaModalMode === 'webtoon'
-                      ? 'bg-emerald-700 text-white shadow-sm'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  <span>🎨</span>
-                  <span>파키 웹툰 판정</span>
-                  <span className="text-[9px] bg-amber-400 text-emerald-950 px-1.5 py-0.2 rounded-full font-black">
-                    삽화
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQaModalMode('text')}
-                  className={`py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
-                    qaModalMode === 'text'
-                      ? 'bg-emerald-700 text-white shadow-sm'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  <span>📜</span>
-                  <span>상세 법조문 판정</span>
-                </button>
+            {/* Modal Internal Mode Switch & Font Size Bar */}
+            <div className="px-4 pt-2.5 pb-2 bg-stone-50 border-b border-stone-200 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="grid grid-cols-2 gap-1 p-1 bg-stone-200/80 rounded-2xl flex-1">
+                  <button
+                    type="button"
+                    onClick={() => setQaModalMode('webtoon')}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition ${
+                      qaModalMode === 'webtoon'
+                        ? 'bg-emerald-700 text-white shadow-sm'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <span>🎨 웹툰 판정</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQaModalMode('text')}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition ${
+                      qaModalMode === 'text'
+                        ? 'bg-emerald-700 text-white shadow-sm'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <span>📜 상세 판정</span>
+                  </button>
+                </div>
+
+                {/* In-Modal Font Size Switcher */}
+                <div className="flex items-center gap-0.5 bg-stone-200/80 p-1 rounded-2xl shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleSetFontSize('normal')}
+                    className={`px-2 py-1 rounded-xl text-xs font-black transition ${
+                      fontSizeMode === 'normal'
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    보통
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetFontSize('large')}
+                    className={`px-2 py-1 rounded-xl text-xs font-black transition ${
+                      fontSizeMode === 'large'
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    크게
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetFontSize('xlarge')}
+                    className={`px-2 py-1 rounded-xl text-xs font-black transition ${
+                      fontSizeMode === 'xlarge'
+                        ? 'bg-emerald-700 text-white shadow-xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    왕글씨
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1450,10 +1636,10 @@ export default function RulesPage() {
                         </span>
                       )}
                     </div>
-                    <h4 className="text-sm font-extrabold text-stone-900 leading-snug pt-0.5">
+                    <h4 className={`${fsTitle} font-extrabold text-stone-900 leading-snug pt-0.5`}>
                       {activeVerdict.title}
                     </h4>
-                    <div className="bg-white rounded-xl p-2.5 border border-stone-200 text-xs font-bold text-stone-700 flex items-start gap-1.5">
+                    <div className={`bg-white rounded-xl p-2.5 border border-stone-200 ${fsBody} font-bold text-stone-700 flex items-start gap-1.5`}>
                       <span className="text-sm shrink-0">🤔</span>
                       <span className="break-keep leading-relaxed">
                         <strong className="text-stone-900">상황:</strong> {activeVerdict.situation}
@@ -1473,27 +1659,27 @@ export default function RulesPage() {
                       <span className="text-base">📢</span>
                       <span>파키의 판정 한마디!</span>
                     </div>
-                    <p className="text-xs text-emerald-950 font-extrabold leading-relaxed break-keep">
+                    <p className={`${fsBody} text-emerald-950 font-extrabold leading-relaxed break-keep`}>
                       "{activeVerdict.voiceAnswer || activeVerdict.verdict}"
                     </p>
                   </div>
 
                   {/* Verdict Highlight Box */}
                   <div className="bg-emerald-600 text-white p-3.5 rounded-2xl shadow-md space-y-1">
-                    <div className="text-xs font-bold text-emerald-100 flex items-center gap-1">
+                    <div className={`${fsSmall} font-bold text-emerald-100 flex items-center gap-1`}>
                       <CheckCircle className="w-4 h-4 text-amber-300" />
                       <span>최종 솔로몬 판정 결론</span>
                     </div>
-                    <div className="text-base font-black leading-snug tracking-tight text-white">
+                    <div className={`${fontSizeMode === 'xlarge' ? 'text-xl' : fontSizeMode === 'large' ? 'text-lg' : 'text-base'} font-black leading-snug tracking-tight text-white`}>
                       {activeVerdict.verdict}
                     </div>
                   </div>
 
                   {/* Penalty Status */}
                   <div className="flex items-center justify-between bg-stone-100 px-3.5 py-2.5 rounded-xl border border-stone-200">
-                    <span className="text-xs font-black text-stone-700">벌타 유무:</span>
+                    <span className={`${fsBody} font-black text-stone-700`}>벌타 유무:</span>
                     <span
-                      className={`text-xs font-black px-2.5 py-1 rounded-lg ${
+                      className={`${fsBody} font-black px-2.5 py-1 rounded-lg ${
                         activeVerdict.penalty.includes('벌타 없음') || activeVerdict.penalty.includes('무벌')
                           ? 'bg-emerald-600 text-white'
                           : 'bg-rose-600 text-white'
@@ -1505,24 +1691,24 @@ export default function RulesPage() {
 
                   {/* Procedure */}
                   <div className="bg-white p-3.5 rounded-2xl border-2 border-stone-200 space-y-1">
-                    <div className="text-xs font-black text-stone-900 flex items-center gap-1">
+                    <div className={`${fsBody} font-black text-stone-900 flex items-center gap-1`}>
                       <span>📌 현장 진행 및 처리 절차:</span>
                     </div>
-                    <p className="text-xs text-stone-800 font-bold leading-relaxed break-keep">
+                    <p className={`${fsBody} text-stone-800 font-bold leading-relaxed break-keep`}>
                       {activeVerdict.procedure}
                     </p>
                   </div>
 
                   {/* Official Association Regulation Rule Text Box */}
                   {(activeVerdict.officialArticle || activeVerdict.officialRuleText) && (
-                    <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-3 text-xs text-amber-950 font-bold space-y-1">
+                    <div className={`bg-amber-50/90 border border-amber-300 rounded-2xl p-3 ${fsSmall} text-amber-950 font-bold space-y-1`}>
                       <div className="flex items-center justify-between">
                         <span className="text-amber-900 font-extrabold">
                           📜 공식 조항: {activeVerdict.officialArticle}
                         </span>
                       </div>
                       {activeVerdict.officialRuleText && (
-                        <p className="text-[11px] text-stone-700 italic mt-0.5">
+                        <p className={`${fsSmall} text-stone-700 italic mt-0.5`}>
                           &ldquo;{activeVerdict.officialRuleText}&rdquo;
                         </p>
                       )}
@@ -1628,33 +1814,33 @@ export default function RulesPage() {
 
                   {/* Question Situation */}
                   <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-1">
-                    <div className="text-xs font-black text-emerald-800 flex items-center gap-1">
+                    <div className={`${fsSmall} font-black text-emerald-800 flex items-center gap-1`}>
                       <span>질문 상황:</span>
                     </div>
-                    <div className="text-sm font-extrabold text-stone-900 leading-snug">
+                    <div className={`${fsTitle} font-extrabold text-stone-900 leading-snug`}>
                       {activeVerdict.title}
                     </div>
-                    <p className="text-xs text-stone-600 font-bold mt-1 leading-relaxed break-keep">
+                    <p className={`${fsBody} text-stone-600 font-bold mt-1 leading-relaxed break-keep`}>
                       {activeVerdict.situation}
                     </p>
                   </div>
 
                   {/* Verdict Highlight Box */}
                   <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-md space-y-1">
-                    <div className="text-xs font-bold text-emerald-100 flex items-center gap-1">
+                    <div className={`${fsSmall} font-bold text-emerald-100 flex items-center gap-1`}>
                       <CheckCircle className="w-4 h-4 text-amber-300" />
                       <span>최종 솔로몬 판정 결론</span>
                     </div>
-                    <div className="text-lg font-black leading-snug tracking-tight text-white">
+                    <div className={`${fontSizeMode === 'xlarge' ? 'text-2xl' : fontSizeMode === 'large' ? 'text-xl' : 'text-lg'} font-black leading-snug tracking-tight text-white`}>
                       {activeVerdict.verdict}
                     </div>
                   </div>
 
                   {/* Penalty Status */}
                   <div className="flex items-center justify-between bg-stone-100 px-3.5 py-2.5 rounded-xl border border-stone-200">
-                    <span className="text-xs font-black text-stone-700">벌타 유무:</span>
+                    <span className={`${fsBody} font-black text-stone-700`}>벌타 유무:</span>
                     <span
-                      className={`text-xs font-black px-2.5 py-1 rounded-lg ${
+                      className={`${fsBody} font-black px-2.5 py-1 rounded-lg ${
                         activeVerdict.penalty.includes('벌타 없음') || activeVerdict.penalty.includes('무벌')
                           ? 'bg-emerald-600 text-white'
                           : 'bg-rose-600 text-white'
@@ -1666,10 +1852,10 @@ export default function RulesPage() {
 
                   {/* Procedure */}
                   <div className="bg-white p-3.5 rounded-2xl border-2 border-stone-200 space-y-1">
-                    <div className="text-xs font-black text-stone-900 flex items-center gap-1">
+                    <div className={`${fsBody} font-black text-stone-900 flex items-center gap-1`}>
                       <span>📌 현장 진행 및 처리 절차:</span>
                     </div>
-                    <p className="text-xs text-stone-800 font-bold leading-relaxed break-keep">
+                    <p className={`${fsArticle} text-stone-800 font-bold break-keep`}>
                       {activeVerdict.procedure}
                     </p>
                   </div>
@@ -1678,19 +1864,19 @@ export default function RulesPage() {
                   {(activeVerdict.officialArticle || activeVerdict.officialRuleText) && (
                     <div className="bg-amber-50/90 border-2 border-amber-300 rounded-2xl p-3.5 space-y-2 shadow-sm">
                       <div className="flex items-center justify-between gap-1.5 border-b border-amber-200/90 pb-2">
-                        <div className="flex items-center gap-1.5 text-amber-950 font-black text-xs">
+                        <div className={`flex items-center gap-1.5 text-amber-950 font-black ${fsBody}`}>
                           <span className="text-base">📜</span>
                           <span>(사)대한파크골프협회 공식 경기규정</span>
                         </div>
                         {activeVerdict.officialArticle && (
-                          <span className="text-[11px] font-black bg-amber-200 text-amber-950 px-2 py-0.5 rounded-lg border border-amber-400">
+                          <span className={`${fsSmall} font-black bg-amber-200 text-amber-950 px-2 py-0.5 rounded-lg border border-amber-400`}>
                             {activeVerdict.officialArticle}
                           </span>
                         )}
                       </div>
                       {activeVerdict.officialRuleText && (
-                        <div className="bg-white/95 p-3 rounded-xl border border-amber-200 text-stone-800 text-xs font-semibold leading-relaxed break-keep space-y-1">
-                          <div className="text-[11px] font-black text-amber-800 flex items-center gap-1">
+                        <div className={`bg-white/95 p-3 rounded-xl border border-amber-200 text-stone-800 ${fsArticle} font-semibold break-keep space-y-1`}>
+                          <div className={`${fsSmall} font-black text-amber-800 flex items-center gap-1`}>
                             <span>【공인 규정 조항 원문】</span>
                           </div>
                           <p className="text-stone-700 italic">
