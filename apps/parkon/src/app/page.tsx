@@ -835,7 +835,7 @@ export default function HomePage() {
         </Link>
       </section>
 
-      {/* 4-1. 천기섬 사주 & 오늘의 무료 운세 제휴 광고 배너 */}
+      {/* 4-1. 배너 1: 천기섬 사주 오늘의 무료 운세 제휴 배너 */}
       <a
         href="https://cheongiseong-saju.vercel.app"
         target="_blank"
@@ -855,21 +855,55 @@ export default function HomePage() {
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-black text-white tracking-tight">
-                천기섬 사주 & 오늘의 무료 운세
+                오늘의 무료 운세 보기
               </span>
               <span className="text-[9px] font-black bg-amber-400 text-stone-950 px-1.5 py-0.2 rounded shadow-2xs">
-                오늘의 무료 운세
+                천기섬 사주
               </span>
             </div>
             <p className="text-[10.5px] text-emerald-200 font-medium truncate mt-0.5">
-              오늘 나의 라운드 재물운 · 홀인원 대박 기운 · 무료 사주 보기
+              오늘 나의 라운드 재물운 · 홀인원 대박 기운 확인
             </p>
           </div>
         </div>
         <span className="text-[10px] font-black text-amber-300 bg-white/10 group-hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded-xl shrink-0 whitespace-nowrap transition-colors">
-          무료 운세 보기 ▶
+          운세 보기 ▶
         </span>
       </a>
+
+      {/* 4-2. 배너 2: 파키의 파크골프 에티켓 & 룰 Q&A 배너 */}
+      <button
+        onClick={() => setShowRulesWebtoonModal(true)}
+        className="bg-gradient-to-r from-stone-800 via-emerald-950 to-stone-900 text-white rounded-2xl p-3 shadow-sm border border-emerald-700/50 hover:border-emerald-400 transition active:scale-[0.99] cursor-pointer flex items-center justify-between gap-3 group text-left w-full"
+        title="파크골프 에티켓 & 룰 웹툰북 보기"
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="relative w-12 h-12 rounded-xl overflow-hidden shadow-xs border border-emerald-400 shrink-0 bg-stone-100 group-hover:scale-105 transition-transform">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/mascot/사진저장고_사진_20260913_1.jpg"
+              alt="파크골프 에티켓 & 룰 가이드"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-black text-white tracking-tight">
+                파크골프 에티켓 & 필드 매너
+              </span>
+              <span className="text-[9px] font-black bg-emerald-400 text-stone-950 px-1.5 py-0.2 rounded shadow-2xs">
+                만화로 보는 룰
+              </span>
+            </div>
+            <p className="text-[10.5px] text-stone-300 font-medium truncate mt-0.5">
+              동반자 배려 수칙 · 필수 에티켓 · 자주 묻는 룰 Q&A
+            </p>
+          </div>
+        </div>
+        <span className="text-[10px] font-black text-emerald-300 bg-white/10 group-hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded-xl shrink-0 whitespace-nowrap transition-colors">
+          에티켓 보기 ▶
+        </span>
+      </button>
 
       {/* 5. Recent Completed Rounds */}
       {completedRounds.length > 0 && (
