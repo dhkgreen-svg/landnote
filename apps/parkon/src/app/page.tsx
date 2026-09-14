@@ -835,38 +835,41 @@ export default function HomePage() {
         </Link>
       </section>
 
-      {/* 4-1. 파키의 파크골프 웹툰북 & 룰 Q&A 팝업 배너 */}
-      <section
-        onClick={() => setShowRulesWebtoonModal(true)}
-        className="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white rounded-2xl p-3 shadow-sm border border-emerald-600/60 hover:border-emerald-400 transition active:scale-[0.99] cursor-pointer flex items-center justify-between gap-3"
+      {/* 4-1. 천기섬 사주 & 오늘의 무료 운세 제휴 광고 배너 */}
+      <a
+        href="https://cheongiseong-saju.vercel.app"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white rounded-2xl p-3 shadow-sm border border-emerald-600/60 hover:border-emerald-400 transition active:scale-[0.99] cursor-pointer flex items-center justify-between gap-3 group"
+        title="천기섬 사주 - 오늘의 무료 운세 바로가기"
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="relative w-12 h-12 rounded-xl overflow-hidden shadow-xs border border-amber-300 shrink-0 bg-stone-100">
+          <div className="relative w-12 h-12 rounded-xl overflow-hidden shadow-xs border border-amber-300 shrink-0 bg-stone-100 group-hover:scale-105 transition-transform">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/mascot/사진저장고_사진_20260913_31.jpg"
-              alt="파키의 파크골프 웹툰북"
+              alt="천기섬 사주 오늘의 무료 운세"
               className="w-full h-full object-cover"
             />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-black text-white tracking-tight">
-                파키의 웹툰북 & 룰 Q&A
+                천기섬 사주 & 오늘의 무료 운세
               </span>
               <span className="text-[9px] font-black bg-amber-400 text-stone-950 px-1.5 py-0.2 rounded shadow-2xs">
-                만화로 보는 룰
+                오늘의 무료 운세
               </span>
             </div>
             <p className="text-[10.5px] text-emerald-200 font-medium truncate mt-0.5">
-              그립 교습 · 동반자 나눔 에티켓 · 자주 묻는 핵심 룰 5선
+              오늘 나의 라운드 재물운 · 홀인원 대박 기운 · 무료 사주 보기
             </p>
           </div>
         </div>
-        <span className="text-[10px] font-black text-amber-300 bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded-xl shrink-0 whitespace-nowrap">
-          웹툰 보기 ▶
+        <span className="text-[10px] font-black text-amber-300 bg-white/10 group-hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded-xl shrink-0 whitespace-nowrap transition-colors">
+          무료 운세 보기 ▶
         </span>
-      </section>
+      </a>
 
       {/* 5. Recent Completed Rounds */}
       {completedRounds.length > 0 && (
