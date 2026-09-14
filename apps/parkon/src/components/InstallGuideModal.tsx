@@ -11,25 +11,14 @@ interface InstallGuideModalProps {
 
 export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialPrompt }: InstallGuideModalProps) {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(initialPrompt || null);
-  const [isDesktop, setIsDesktop] = useState<boolean>(false);
-  const [isIos, setIsIos] = useState<boolean>(false);
-  const [isKakao, setIsKakao] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'AUTO' | 'PC' | 'MOBILE'>('AUTO');
   const [mobileSubTab, setMobileSubTab] = useState<'KAKAO' | 'CHROME' | 'IOS'>('KAKAO');
+  const [showPcOption, setShowPcOption] = useState<boolean>(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isMobile = /android|iphone|ipad|ipod|mobile/.test(userAgent);
-    const ios = /iphone|ipad|ipod/.test(userAgent);
-    const kakao = userAgent.includes('kakaotalk');
-
-    setIsDesktop(!isMobile);
-    setIsIos(ios);
-    setIsKakao(kakao);
-    setActiveTab(!isMobile ? 'PC' : 'MOBILE');
-    setMobileSubTab(ios ? 'IOS' : 'KAKAO');
+    // 카카오톡 링크 유입이 절대 다수이므로 KAKAO 탭을 기본값으로 고정
+    setMobileSubTab('KAKAO');
 
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
@@ -66,14 +55,8 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
-            {activeTab === 'PC' ? (
-              <Laptop className="w-5 h-5 text-yellow-300" />
-            ) : (
-              <Smartphone className="w-5 h-5 text-yellow-300" />
-            )}
-            <h3 className="font-extrabold text-base">
-              {activeTab === 'PC' ? 'PC 바탕화면 앱 설치' : '스마트폰 바탕화면 앱 추가'}
-            </h3>
+            <Smartphone className="w-5 h-5 text-yellow-300" />
+            <h3 className="font-extrabold text-base">스마트폰 바탕화면 앱 추가</h3>
           </div>
           <button
             type="button"
@@ -84,47 +67,8 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
           </button>
         </div>
 
-        {/* 기기 선택 탭 (PC / 모바일 전환 가능) */}
-        <div className="flex border-b border-stone-200 bg-stone-50 text-xs font-bold shrink-0">
-          <button
-            type="button"
-            onClick={() => setActiveTab('PC')}
-            className={`flex-1 py-2.5 flex items-center justify-center gap-1.5 transition border-b-2 cursor-pointer ${
-              activeTab === 'PC'
-                ? 'border-emerald-700 text-emerald-900 bg-white font-black'
-                : 'border-transparent text-stone-500 hover:text-stone-800'
-            }`}
-          >
-            <Laptop className="w-3.5 h-3.5" />
-            <span>PC (컴퓨터) 설치</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('MOBILE')}
-            className={`flex-1 py-2.5 flex items-center justify-center gap-1.5 transition border-b-2 cursor-pointer ${
-              activeTab === 'MOBILE'
-                ? 'border-emerald-700 text-emerald-900 bg-white font-black'
-                : 'border-transparent text-stone-500 hover:text-stone-800'
-            }`}
-          >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span>스마트폰 (모바일) 설치</span>
-          </button>
-        </div>
-
         {/* Body */}
-        <div className="p-5 space-y-4 text-stone-800 overflow-y-auto">
-          {/* 기존 구버전 삭제 안내 (공통) */}
-          <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-900 leading-relaxed">
-            <div className="font-extrabold flex items-center gap-1.5 text-red-800 mb-1">
-              <span className="text-sm">⚠️</span>
-              <span className="font-black">[기존 사용자 필독] 옛날 바로가기는 먼저 삭제!</span>
-            </div>
-            <p className="text-[11px] text-red-700 font-medium leading-normal">
-              이전 임시 테스트 주소 시절 추가된 바로가기 아이콘은 바탕화면에서 <strong>꾹 눌러 [삭제]</strong>하신 후, 아래 방법으로 새로 설치하셔야 공식 주소(parkongolf.com)와 파키 심볼로 연결됩니다.
-            </p>
-          </div>
-
+        <div className="p-4 space-y-3.5 text-stone-800 overflow-y-auto">
           {/* 앱 아이콘 미리보기 */}
           <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -135,15 +79,13 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
             />
             <div className="min-w-0">
               <div className="text-xs font-black text-emerald-950 flex items-center gap-1">
-                <span>{activeTab === 'PC' ? 'PC 바탕화면에 생성되는 파크온 앱' : '스마트폰 바탕화면 파키 아이콘'}</span>
+                <span>스마트폰 바탕화면 파키 아이콘</span>
                 <span className="bg-amber-400 text-emerald-950 px-1 py-0.2 rounded text-[9px] font-black">
                   공식
                 </span>
               </div>
               <div className="text-[11px] text-emerald-800 font-medium mt-0.5">
-                {activeTab === 'PC'
-                  ? '설치하면 주소창 없는 윈도우 독립 창으로 빠르게 실행됩니다.'
-                  : '설치 후 누르면 주소창 없는 전체화면 앱으로 바로 실행됩니다.'}
+                설치 후 누르면 주소창 없는 전체화면 앱으로 바로 실행됩니다.
               </div>
             </div>
           </div>
@@ -155,53 +97,10 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
               onClick={handleDirectInstall}
               className="w-full py-3 px-4 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 hover:brightness-105 active:scale-98 text-emerald-950 font-black text-xs rounded-xl shadow-md border border-amber-300 flex items-center justify-center gap-2 cursor-pointer transition animate-bounce"
             >
-              {activeTab === 'PC' ? <Laptop className="w-4 h-4 text-emerald-950" /> : <Smartphone className="w-4 h-4 text-emerald-950" />}
-              <span>
-                {activeTab === 'PC' ? 'PC 바탕화면에 파크온 1초 자동 설치' : '스마트폰에 바로가기 1초 자동 추가'}
-              </span>
+              <Smartphone className="w-4 h-4 text-emerald-950" />
+              <span>스마트폰에 바로가기 1초 자동 추가</span>
             </button>
           )}
-
-          {/* 탭별 설치 방법 안내 */}
-          {activeTab === 'PC' ? (
-            /* PC (컴퓨터 크롬, 엣지, 웨일 등) 설치 안내 */
-            <div className="space-y-2.5 text-xs">
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
-                <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
-                  1
-                </span>
-                <div>
-                  브라우저(Chrome/Edge) 주소창 맨 오른쪽의{' '}
-                  <span className="font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
-                    [컴퓨터에 앱 설치 💻]
-                  </span>{' '}
-                  아이콘을 클릭합니다.
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
-                <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
-                  2
-                </span>
-                <div>
-                  또는 브라우저 오른쪽 상단{' '}
-                  <span className="font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
-                    더보기 메뉴 [⋮] ➔ [저장 및 공유] ➔ [파크온 설치]
-                  </span>{' '}
-                  (또는 바로가기 만들기)를 누릅니다.
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
-                <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
-                  3
-                </span>
-                <div>
-                  컴퓨터 바탕화면과 시작 메뉴, 작업표시줄에 스마트폰 앱처럼 깔끔한 파크온 독립 프로그램이 생성됩니다!
-                </div>
-              </div>
-            </div>
-          ) : (
             /* 스마트폰 (모바일) 설치 안내 - 시니어 맞춤 3단 분기 */
             <div className="space-y-3">
               {/* 모바일 브라우저 유형 선택 탭 */}
@@ -444,15 +343,44 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
                 </div>
               )}
             </div>
-          )}
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-sm rounded-xl transition mt-2 cursor-pointer shadow-md"
-          >
-            확인했습니다
-          </button>
+            {/* PC (컴퓨터) 설치 안내 옵션 (접이식) */}
+            <div className="pt-2 border-t border-stone-200">
+              <button
+                type="button"
+                onClick={() => setShowPcOption(!showPcOption)}
+                className="w-full py-2 px-3 text-stone-500 hover:text-stone-800 text-[11px] font-bold flex items-center justify-between rounded-xl bg-stone-50 hover:bg-stone-100 transition cursor-pointer"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Laptop className="w-3.5 h-3.5 text-stone-600" />
+                  <span>컴퓨터(PC) 화면에도 설치하시겠습니까?</span>
+                </span>
+                <span className="text-[10px] text-emerald-800 font-extrabold">
+                  {showPcOption ? '닫기 ▲' : '방법 보기 ▼'}
+                </span>
+              </button>
+
+              {showPcOption && (
+                <div className="mt-2 p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-1.5 text-xs text-stone-700 leading-relaxed">
+                  <div className="font-extrabold text-stone-900 text-xs flex items-center gap-1">
+                    💻 PC 크롬/엣지 브라우저에서 설치하는 방법:
+                  </div>
+                  <p>1. 브라우저 주소창 맨 오른쪽의 <strong>[앱 설치 💻]</strong> 아이콘을 클릭합니다.</p>
+                  <p>2. 또는 브라우저 오른쪽 상단 <strong>더보기 [⋮] ➔ [저장 및 공유] ➔ [파크온 설치]</strong>를 누릅니다.</p>
+                  <p className="text-[11px] text-emerald-800 font-bold">
+                    바탕화면과 작업표시줄에 스마트폰 앱처럼 깔끔한 파크온 독립 프로그램이 생성됩니다!
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-3.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-sm rounded-xl transition mt-2 cursor-pointer shadow-md"
+            >
+              확인했습니다
+            </button>
         </div>
       </div>
     </div>

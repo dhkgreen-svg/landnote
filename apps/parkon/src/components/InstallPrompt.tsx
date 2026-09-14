@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Download, X, Smartphone, ExternalLink, CheckCircle } from 'lucide-react';
+import { Download, X, Smartphone, ExternalLink, CheckCircle, Laptop } from 'lucide-react';
 import { ParkOnStorage } from '@/lib/storage';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -18,6 +18,7 @@ export function InstallPrompt() {
   const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
   const [isInstalled, setIsInstalled] = useState<boolean>(false);
   const [guideTab, setGuideTab] = useState<'KAKAO' | 'CHROME' | 'IOS'>('KAKAO');
+  const [showPcOptionPrompt, setShowPcOptionPrompt] = useState<boolean>(false);
 
   useEffect(() => {
     // 1. 이미 홈 화면 앱으로 실행 중인지 검사 (PWA Standalone)
@@ -72,7 +73,7 @@ export function InstallPrompt() {
 
     setIsIos(isIosDevice);
     setIsKakao(isKakaoTalk);
-    setGuideTab(isIosDevice ? 'IOS' : 'KAKAO');
+    setGuideTab('KAKAO');
 
     // 6. Android / Chrome / Edge PWA 설치 이벤트
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -240,18 +241,7 @@ export function InstallPrompt() {
             </div>
 
             {/* Body */}
-            <div className="p-5 space-y-4 text-stone-800">
-              {/* 기존 구버전 삭제 안내 */}
-              <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-900 leading-relaxed">
-                <div className="font-extrabold flex items-center gap-1.5 text-red-800 mb-1">
-                  <span className="text-sm">⚠️</span>
-                  <span className="font-black">[필수] 기존 구버전 바로가기는 먼저 삭제해 주세요</span>
-                </div>
-                <p className="text-[11px] text-red-700 font-medium">
-                  이전 임시 주소 시절 만들어진 바탕화면 아이콘은 <strong>1~2초간 꾹 눌러 [삭제]</strong>해 주셔야 새 공식 주소(parkongolf.com)와 충돌하지 않습니다.
-                </p>
-              </div>
-
+            <div className="p-4 space-y-3.5 text-stone-800">
               {/* 앱 아이콘 미리보기 */}
               <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -535,6 +525,36 @@ export function InstallPrompt() {
                         </div>
                       </div>
                     </div>
+                  </div>
+                )}
+              </div>
+
+              {/* PC (컴퓨터) 설치 안내 옵션 (접이식) */}
+              <div className="pt-2 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setShowPcOptionPrompt(!showPcOptionPrompt)}
+                  className="w-full py-2 px-3 text-stone-500 hover:text-stone-800 text-[11px] font-bold flex items-center justify-between rounded-xl bg-stone-50 hover:bg-stone-100 transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Laptop className="w-3.5 h-3.5 text-stone-600" />
+                    <span>컴퓨터(PC) 화면에도 설치하시겠습니까?</span>
+                  </span>
+                  <span className="text-[10px] text-emerald-800 font-extrabold">
+                    {showPcOptionPrompt ? '닫기 ▲' : '방법 보기 ▼'}
+                  </span>
+                </button>
+
+                {showPcOptionPrompt && (
+                  <div className="mt-2 p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-1.5 text-xs text-stone-700 leading-relaxed">
+                    <div className="font-extrabold text-stone-900 text-xs flex items-center gap-1">
+                      💻 PC 크롬/엣지 브라우저에서 설치하는 방법:
+                    </div>
+                    <p>1. 브라우저 주소창 맨 오른쪽의 <strong>[앱 설치 💻]</strong> 아이콘을 클릭합니다.</p>
+                    <p>2. 또는 브라우저 오른쪽 상단 <strong>더보기 [⋮] ➔ [저장 및 공유] ➔ [파크온 설치]</strong>를 누릅니다.</p>
+                    <p className="text-[11px] text-emerald-800 font-bold">
+                      바탕화면과 작업표시줄에 스마트폰 앱처럼 깔끔한 파크온 독립 프로그램이 생성됩니다!
+                    </p>
                   </div>
                 )}
               </div>
