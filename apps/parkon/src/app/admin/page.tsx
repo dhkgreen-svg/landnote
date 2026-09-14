@@ -107,6 +107,7 @@ export default function AdminDashboardPage() {
   // Search & Filter States
   const [citySearchQuery, setCitySearchQuery] = useState('');
   const [selectedRegionGroup, setSelectedRegionGroup] = useState('ALL');
+  const [selectedProvinceModal, setSelectedProvinceModal] = useState<ProvinceStat | null>(null);
 
   // Check saved session PIN on load
   useEffect(() => {
@@ -639,16 +640,16 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* SECTION 3: Nationwide 8-Province & 17-City/Province Table */}
+      {/* SECTION 3: Nationwide 8-Province & Metropolitan Compact Banner Grid */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4">
           <div>
             <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-emerald-600" />
-              전국 8도 및 17개 광역시·도 유저 & 클럽 통합 누계
+              <MapPin className="w-5 h-5 text-emerald-600" />
+              전국 8도 및 광역시 현황
             </h2>
             <p className="text-xs text-zinc-400 mt-0.5">
-              전국 17개 시·도별 유저 수, 클럽 수, 대표 활동 구장 및 클럽 랭킹 일람입니다.
+              각 지역 배너를 클릭하시면 세부 클럽 및 활동 구장 상세 팝업이 표시됩니다.
             </p>
           </div>
 
@@ -660,78 +661,130 @@ export default function AdminDashboardPage() {
                 onClick={() => setSelectedRegionGroup(grp)}
                 className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all ${
                   selectedRegionGroup === grp
-                    ? 'bg-emerald-600 text-white'
+                    ? 'bg-emerald-600 text-white shadow-sm'
                     : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200'
                 }`}
               >
-                {grp === 'ALL' ? '전체 시·도' : grp}
+                {grp === 'ALL' ? '전체' : grp}
               </button>
             ))}
           </div>
         </div>
 
-        {/* 17 Provinces Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400">
-                <th className="py-2.5 px-3 font-semibold">순위</th>
-                <th className="py-2.5 px-3 font-semibold">광역시·도</th>
-                <th className="py-2.5 px-3 font-semibold">권역</th>
-                <th className="py-2.5 px-3 font-semibold">유저 수 (점유율)</th>
-                <th className="py-2.5 px-3 font-semibold">클럽 수</th>
-                <th className="py-2.5 px-3 font-semibold">대표 활동 구장</th>
-                <th className="py-2.5 px-3 font-semibold">주요 활동 클럽</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {filteredProvinces.map((prov, idx) => {
-                const isTop1 = idx === 0 && selectedRegionGroup === 'ALL';
-                return (
-                  <tr key={prov.code} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/40 transition-colors">
-                    <td className="py-3 px-3 font-bold text-zinc-700 dark:text-zinc-300">
-                      <span className={`w-5 h-5 rounded-full inline-flex items-center justify-center text-[11px] ${
-                        isTop1 ? 'bg-amber-100 text-amber-700 font-black' : 'text-zinc-500'
-                      }`}>
-                        {idx + 1}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 font-bold text-zinc-900 dark:text-zinc-100">
-                      {prov.name}
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium">
-                        {prov.regionGroup}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3">
-                      <div className="flex items-center gap-2">
-                        <strong className="text-emerald-600 font-bold text-sm">{prov.userCount}명</strong>
-                        <span className="text-zinc-400">({prov.userPercentage}%)</span>
-                      </div>
-                      <div className="w-24 bg-zinc-200 dark:bg-zinc-700 rounded-full h-1.5 mt-1 overflow-hidden">
-                        <div
-                          className="bg-emerald-500 h-full rounded-full"
-                          style={{ width: `${Math.max(8, prov.userPercentage)}%` }}
-                        />
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 font-bold text-purple-600 dark:text-purple-400 text-sm">
-                      {prov.clubCount}개
-                    </td>
-                    <td className="py-3 px-3 text-zinc-600 dark:text-zinc-400 max-w-xs">
-                      {prov.majorCourses.join(', ')}
-                    </td>
-                    <td className="py-3 px-3 text-zinc-500 max-w-xs">
-                      {prov.topClubs.map(c => `${c.name}(${c.memberCount}명)`).join(', ') || '동호회 모집 중'}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        {/* Compact Banner Grid: Only 3 key items per banner (Region Name, Users, Clubs) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-2.5">
+          {filteredProvinces.map((prov) => (
+            <button
+              key={prov.code}
+              onClick={() => setSelectedProvinceModal(prov)}
+              className="p-3 bg-zinc-50 dark:bg-zinc-800/70 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 rounded-xl transition-all text-left group shadow-xs relative flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-xs font-bold text-zinc-800 dark:text-zinc-100 group-hover:text-emerald-600 transition-colors truncate">
+                    {prov.name}
+                  </span>
+                  <span className="text-[10px] text-zinc-400 shrink-0 font-medium">
+                    {prov.regionGroup}
+                  </span>
+                </div>
+                <div className="mt-2 text-lg font-black text-emerald-600 dark:text-emerald-400">
+                  {prov.userCount}<span className="text-xs font-normal text-zinc-500 ml-0.5">명</span>
+                </div>
+              </div>
+
+              <div className="mt-1.5 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-between text-[11px] text-zinc-500">
+                <span>클럽 {prov.clubCount}개</span>
+                <span className="text-[10px] text-emerald-600 font-semibold group-hover:translate-x-0.5 transition-transform">상세 &gt;</span>
+              </div>
+            </button>
+          ))}
         </div>
       </div>
+
+      {/* Province Detail Popup Modal */}
+      {selectedProvinceModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold rounded">
+                  {selectedProvinceModal.regionGroup}
+                </span>
+                <h3 className="text-lg font-black text-zinc-900 dark:text-zinc-100">
+                  {selectedProvinceModal.name} 세부 현황
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedProvinceModal(null)}
+                className="w-8 h-8 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-500 flex items-center justify-center font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Core 3 Numbers */}
+            <div className="grid grid-cols-3 gap-2.5 text-center">
+              <div className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
+                <div className="text-[11px] text-zinc-400 font-medium">유저 수</div>
+                <div className="text-xl font-black text-emerald-600 mt-0.5">{selectedProvinceModal.userCount}명</div>
+              </div>
+              <div className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
+                <div className="text-[11px] text-zinc-400 font-medium">전체 점유율</div>
+                <div className="text-xl font-black text-teal-600 mt-0.5">{selectedProvinceModal.userPercentage}%</div>
+              </div>
+              <div className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
+                <div className="text-[11px] text-zinc-400 font-medium">개설 클럽</div>
+                <div className="text-xl font-black text-purple-600 mt-0.5">{selectedProvinceModal.clubCount}개</div>
+              </div>
+            </div>
+
+            {/* Clubs List */}
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-purple-500" />
+                소속 클럽 명단
+              </div>
+              <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                {selectedProvinceModal.topClubs?.map((club, idx) => (
+                  <div key={idx} className="p-2.5 bg-zinc-50 dark:bg-zinc-800/70 rounded-lg flex items-center justify-between text-xs">
+                    <div>
+                      <div className="font-bold text-zinc-800 dark:text-zinc-200">{club.name}</div>
+                      <div className="text-[11px] text-zinc-400">홈구장: {club.homeCourse}</div>
+                    </div>
+                    <span className="font-bold text-emerald-600">{club.memberCount}명</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Major Courses */}
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-emerald-500" />
+                주요 파크골프장 목록
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedProvinceModal.majorCourses?.map((course, idx) => (
+                  <span key={idx} className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 text-xs font-medium rounded-lg">
+                    {course}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Close Button */}
+            <div className="pt-2">
+              <button
+                onClick={() => setSelectedProvinceModal(null)}
+                className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold rounded-xl text-xs transition-colors"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SECTION 4: 2-Column: Popular Pages & Daily Trend */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

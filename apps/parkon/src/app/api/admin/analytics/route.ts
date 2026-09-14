@@ -155,7 +155,7 @@ export async function GET(req: NextRequest) {
   const baseProvinces: ProvinceStat[] = [
     {
       code: 'GB',
-      name: '경상북도 (구미/포항/경주/김천/안동)',
+      name: '경상북도',
       regionGroup: '영남권',
       userCount: 0,
       userPercentage: 0,
@@ -169,7 +169,7 @@ export async function GET(req: NextRequest) {
     },
     {
       code: 'DG',
-      name: '대구광역시 (달서/수성/북구)',
+      name: '대구광역시',
       regionGroup: '영남권',
       userCount: 0,
       userPercentage: 0,
@@ -182,7 +182,7 @@ export async function GET(req: NextRequest) {
     },
     {
       code: 'BS',
-      name: '부산광역시 (사상/강서/북구)',
+      name: '부산광역시',
       regionGroup: '영남권',
       userCount: 0,
       userPercentage: 0,
@@ -195,7 +195,7 @@ export async function GET(req: NextRequest) {
     },
     {
       code: 'GN',
-      name: '경상남도 (창원/김해/진주/양산)',
+      name: '경상남도',
       regionGroup: '영남권',
       userCount: 0,
       userPercentage: 0,
@@ -207,7 +207,7 @@ export async function GET(req: NextRequest) {
     },
     {
       code: 'US',
-      name: '울산광역시 (태화강/동구)',
+      name: '울산광역시',
       regionGroup: '영남권',
       userCount: 0,
       userPercentage: 0,
@@ -219,7 +219,7 @@ export async function GET(req: NextRequest) {
     },
     {
       code: 'SO',
-      name: '서울특별시 (영등포/송파/마포)',
+      name: '서울특별시',
       regionGroup: '수도권',
       userCount: 0,
       userPercentage: 0,
@@ -232,7 +232,7 @@ export async function GET(req: NextRequest) {
     },
     {
       code: 'GG',
-      name: '경기도 (수원/성남/용인/고양/남양주)',
+      name: '경기도',
       regionGroup: '수도권',
       userCount: 0,
       userPercentage: 0,
@@ -244,7 +244,7 @@ export async function GET(req: NextRequest) {
     },
     {
       code: 'IC',
-      name: '인천광역시 (연수/서구/남동)',
+      name: '인천광역시',
       regionGroup: '수도권',
       userCount: 0,
       userPercentage: 0,
@@ -256,7 +256,7 @@ export async function GET(req: NextRequest) {
     },
     {
       code: 'CN',
-      name: '충청남도 / 대전광역시 / 세종시',
+      name: '충청남도/대전',
       regionGroup: '충청권',
       userCount: 0,
       userPercentage: 0,
@@ -268,7 +268,7 @@ export async function GET(req: NextRequest) {
     },
     {
       code: 'CB',
-      name: '충청북도 (청주/충주/제천)',
+      name: '충청북도',
       regionGroup: '충청권',
       userCount: 0,
       userPercentage: 0,
@@ -280,7 +280,7 @@ export async function GET(req: NextRequest) {
     },
     {
       code: 'JN',
-      name: '전라남도 / 광주광역시',
+      name: '전라남도/광주',
       regionGroup: '호남권',
       userCount: 0,
       userPercentage: 0,
@@ -292,7 +292,7 @@ export async function GET(req: NextRequest) {
     },
     {
       code: 'JB',
-      name: '전라북도 (전주/익산/군산)',
+      name: '전라북도',
       regionGroup: '호남권',
       userCount: 0,
       userPercentage: 0,
@@ -304,7 +304,7 @@ export async function GET(req: NextRequest) {
     },
     {
       code: 'GW',
-      name: '강원특별자치도 (춘천/원주/강릉/화천)',
+      name: '강원특별자치도',
       regionGroup: '강원/제주',
       userCount: 0,
       userPercentage: 0,
@@ -316,7 +316,7 @@ export async function GET(req: NextRequest) {
     },
     {
       code: 'JJ',
-      name: '제주특별자치도 (제주/서귀포)',
+      name: '제주특별자치도',
       regionGroup: '강원/제주',
       userCount: 0,
       userPercentage: 0,
