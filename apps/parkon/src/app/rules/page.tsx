@@ -35,7 +35,7 @@ import {
 } from '@/lib/rulebookData';
 import { CHAPTER_WEBTOONS } from '@/lib/chapterWebtoons';
 import { RuleSituationDiagram } from '@/components/RuleSituationDiagram';
-import { ChapterCutDiagram } from '@/components/ChapterCutDiagram';
+import { ChapterCutDiagram, ChapterThumbnail } from '@/components/ChapterCutDiagram';
 
 export default function RulesPage() {
   const [selectedCategory, setSelectedCategory] = useState<RuleCategoryId>('ob');
@@ -456,13 +456,9 @@ export default function RulesPage() {
                   }}
                   className="p-3 rounded-2xl border-2 border-emerald-200/90 bg-gradient-to-r from-emerald-50/70 via-white to-amber-50/40 hover:border-emerald-600 shadow-sm transition active:scale-[0.98] cursor-pointer group flex items-center gap-3"
                 >
-                  {/* Parky Mascot Thumbnail */}
-                  <div className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-emerald-300 shadow-sm shrink-0 bg-stone-100">
-                    <img
-                      src={webtoon?.coverImage || '/mascot/사진저장고_사진_20260913_28.jpg'}
-                      alt={ch.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                    />
+                  {/* Situation Webtoon Thumbnail */}
+                  <div className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-emerald-300 shadow-sm shrink-0 bg-stone-900 group-hover:border-amber-400 transition">
+                    <ChapterThumbnail chapterId={ch.id} />
                     <span className="absolute bottom-0 inset-x-0 bg-emerald-950/85 text-[9px] text-amber-300 font-black text-center py-0.5">
                       {ch.chapterNumber}
                     </span>

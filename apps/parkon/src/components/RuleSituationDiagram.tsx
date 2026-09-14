@@ -681,12 +681,26 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
       </div>
 
       <div className="relative rounded-xl overflow-hidden border border-emerald-400/40 aspect-[16/9] bg-stone-950 flex items-center justify-center">
-        <img
-          src="/mascot/사진저장고_사진_20260913_28.jpg"
-          alt="파키 룰 판정 가이드"
-          className="w-full h-full object-cover opacity-90"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 flex items-end p-3">
+        <svg viewBox="0 0 380 200" className="w-full h-full">
+          <defs>
+            <linearGradient id="fallbackGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#064e3b" />
+              <stop offset="100%" stopColor="#022c22" />
+            </linearGradient>
+          </defs>
+          <rect width="380" height="200" fill="url(#fallbackGreen)" />
+          <ellipse cx="190" cy="150" rx="140" ry="40" fill="#047857" stroke="#10b981" strokeWidth="2" />
+          <circle cx="190" cy="135" r="7" fill="#0f172a" />
+          <line x1="190" y1="135" x2="190" y2="70" stroke="#ffffff" strokeWidth="3" />
+          <polygon points="190,70 145,82 190,94" fill="#ef4444" />
+          <text x="165" y="86" fill="#ffffff" fontSize="10" fontWeight="900">KPGA</text>
+          <circle cx="150" cy="140" r="10" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
+          <rect x="100" y="20" width="180" height="32" rx="8" fill="#0f172a" fillOpacity="0.9" stroke="#f59e0b" strokeWidth="1.5" />
+          <text x="190" y="41" textAnchor="middle" fill="#fef08a" fontSize="12" fontWeight="900">
+            ⚖️ (사)대한파크골프협회 경기규칙
+          </text>
+        </svg>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 flex items-end p-3 pointer-events-none">
           <div className="text-xs font-black text-amber-300 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-amber-400/40">
             📢 경기위원 파키의 정밀 판정 극장
           </div>

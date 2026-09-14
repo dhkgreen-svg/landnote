@@ -1262,3 +1262,136 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
     </div>
   );
 }
+
+export function ChapterThumbnail({ chapterId }: { chapterId: string }) {
+  if (chapterId === 'ch-1') {
+    return (
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <rect width="80" height="80" fill="#064e3b" />
+        <path d="M 10 65 Q 40 30 70 45" fill="none" stroke="#22c55e" strokeWidth="16" strokeLinecap="round" />
+        <ellipse cx="40" cy="25" rx="12" ry="6" fill="#d97706" />
+        <circle cx="65" cy="45" r="3.5" fill="#0f172a" />
+        <line x1="65" y1="45" x2="65" y2="20" stroke="#ffffff" strokeWidth="1.5" />
+        <polygon points="65,20 50,26 65,32" fill="#ef4444" />
+        <rect x="8" y="8" width="34" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
+        <text x="25" y="17.5" textAnchor="middle" fill="#fbbf24" fontSize="7" fontWeight="900">Par 33</text>
+      </svg>
+    );
+  }
+
+  if (chapterId === 'ch-2') {
+    return (
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <rect width="80" height="80" fill="#1c1917" />
+        <line x1="15" y1="20" x2="45" y2="60" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+        <path d="M 40 55 L 65 45 Q 72 55 65 68 L 42 70 Z" fill="#92400e" stroke="#f59e0b" strokeWidth="1" />
+        <circle cx="50" cy="50" r="6" fill="#eab308" stroke="#ffffff" strokeWidth="1" />
+        <text x="50" y="52" textAnchor="middle" fill="#713f12" fontSize="4" fontWeight="900">KPGA</text>
+        <circle cx="28" cy="62" r="5" fill="#f97316" stroke="#ffffff" strokeWidth="1" />
+        <rect x="8" y="8" width="38" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
+        <text x="27" y="17.5" textAnchor="middle" fill="#38bdf8" fontSize="6.5" fontWeight="900">공인용구</text>
+      </svg>
+    );
+  }
+
+  if (chapterId === 'ch-3') {
+    return (
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <rect width="80" height="80" fill="#0f172a" />
+        <rect x="15" y="30" width="50" height="35" rx="3" fill="#15803d" stroke="#4ade80" strokeWidth="1" />
+        <rect x="25" y="42" width="6" height="14" rx="2" fill="#3b82f6" />
+        <rect x="38" y="42" width="6" height="14" rx="2" fill="#3b82f6" />
+        <path d="M 15 20 Q 45 10 55 45" fill="none" stroke="#38bdf8" strokeWidth="2" strokeDasharray="3 2" />
+        <circle cx="55" cy="40" r="5" fill="#f97316" stroke="#ffffff" strokeWidth="1" />
+        <rect x="8" y="8" width="36" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
+        <text x="26" y="17.5" textAnchor="middle" fill="#4ade80" fontSize="6.5" fontWeight="900">스트로크</text>
+      </svg>
+    );
+  }
+
+  if (chapterId === 'ch-4') {
+    return (
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <rect width="80" height="80" fill="#450a0a" />
+        <rect x="0" y="0" width="40" height="80" fill="#15803d" />
+        <line x1="40" y1="0" x2="40" y2="80" stroke="#ffffff" strokeWidth="4" />
+        <circle cx="42" cy="42" r="10" fill="#f97316" stroke="#ffffff" strokeWidth="1.5" />
+        <rect x="8" y="8" width="36" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
+        <text x="26" y="17.5" textAnchor="middle" fill="#4ade80" fontSize="6.5" fontWeight="900">1mm 세이프</text>
+        <rect x="38" y="60" width="34" height="13" rx="3" fill="#7f1d1d" />
+        <text x="55" y="69.5" textAnchor="middle" fill="#fecaca" fontSize="6.5" fontWeight="900">OB 2벌타</text>
+      </svg>
+    );
+  }
+
+  if (chapterId === 'ch-5') {
+    return (
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <rect width="80" height="80" fill="#15803d" />
+        <ellipse cx="50" cy="48" rx="24" ry="18" fill="#0284c7" stroke="#38bdf8" strokeWidth="2" />
+        <circle cx="50" cy="48" r="5" fill="#f97316" stroke="#ffffff" strokeWidth="1" />
+        <rect x="10" y="32" width="22" height="18" rx="2" fill="#475569" stroke="#94a3b8" strokeWidth="1" />
+        <line x1="15" y1="32" x2="15" y2="50" stroke="#1e293b" strokeWidth="1.5" />
+        <line x1="21" y1="32" x2="21" y2="50" stroke="#1e293b" strokeWidth="1.5" />
+        <rect x="8" y="8" width="38" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
+        <text x="27" y="17.5" textAnchor="middle" fill="#38bdf8" fontSize="6.5" fontWeight="900">해저드/구제</text>
+      </svg>
+    );
+  }
+
+  if (chapterId === 'ch-6') {
+    return (
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <rect width="80" height="80" fill="#14532d" />
+        <ellipse cx="40" cy="50" rx="28" ry="14" fill="#22c55e" />
+        <ellipse cx="40" cy="50" rx="10" ry="4" fill="#0f172a" />
+        <line x1="40" y1="50" x2="40" y2="20" stroke="#ffffff" strokeWidth="2.5" />
+        <polygon points="40,20 22,27 40,34" fill="#ef4444" />
+        <circle cx="32" cy="48" r="4.5" fill="#f97316" stroke="#ffffff" strokeWidth="1" />
+        <rect x="8" y="8" width="38" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
+        <text x="27" y="17.5" textAnchor="middle" fill="#fbbf24" fontSize="6.5" fontWeight="900">깃대 필수</text>
+      </svg>
+    );
+  }
+
+  if (chapterId === 'ch-7') {
+    return (
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <rect width="80" height="80" fill="#1e293b" />
+        <circle cx="30" cy="45" r="9" fill="#f97316" stroke="#ffffff" strokeWidth="1.5" />
+        <circle cx="50" cy="45" r="9" fill="#3b82f6" stroke="#ffffff" strokeWidth="1.5" />
+        <text x="40" y="38" textAnchor="middle" fill="#ef4444" fontSize="11" fontWeight="900">💥</text>
+        <rect x="8" y="8" width="38" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
+        <text x="27" y="17.5" textAnchor="middle" fill="#4ade80" fontSize="6.5" fontWeight="900">충돌 무벌</text>
+        <rect x="36" y="60" width="36" height="13" rx="3" fill="#7f1d1d" />
+        <text x="54" y="69.5" textAnchor="middle" fill="#fecaca" fontSize="6.5" fontWeight="900">오구 2벌타</text>
+      </svg>
+    );
+  }
+
+  if (chapterId === 'ch-8') {
+    return (
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <rect width="80" height="80" fill="#292524" />
+        <rect x="18" y="24" width="44" height="46" rx="4" fill="#ffffff" stroke="#94a3b8" strokeWidth="1.5" />
+        <line x1="24" y1="34" x2="56" y2="34" stroke="#cbd5e1" strokeWidth="2" />
+        <line x1="24" y1="42" x2="56" y2="42" stroke="#cbd5e1" strokeWidth="2" />
+        <line x1="24" y1="50" x2="56" y2="50" stroke="#cbd5e1" strokeWidth="2" />
+        <g transform="translate(42, 44) rotate(-15)">
+          <rect x="-18" y="-7" width="36" height="14" rx="2" fill="#dc2626" stroke="#fecaca" strokeWidth="1" />
+          <text x="0" y="3.5" textAnchor="middle" fill="#ffffff" fontSize="7" fontWeight="900">실격(DQ)</text>
+        </g>
+        <rect x="8" y="8" width="40" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
+        <text x="28" y="17.5" textAnchor="middle" fill="#f87171" fontSize="6.5" fontWeight="900">컨시드 불가</text>
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 80 80" className="w-full h-full">
+      <rect width="80" height="80" fill="#065f46" />
+      <text x="40" y="45" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="900">규정집</text>
+    </svg>
+  );
+}
+
