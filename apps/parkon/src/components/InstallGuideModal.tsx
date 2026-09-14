@@ -15,6 +15,7 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
   const [isIos, setIsIos] = useState<boolean>(false);
   const [isKakao, setIsKakao] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'AUTO' | 'PC' | 'MOBILE'>('AUTO');
+  const [mobileSubTab, setMobileSubTab] = useState<'KAKAO' | 'CHROME' | 'IOS'>('KAKAO');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -28,6 +29,7 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
     setIsIos(ios);
     setIsKakao(kakao);
     setActiveTab(!isMobile ? 'PC' : 'MOBILE');
+    setMobileSubTab(ios ? 'IOS' : 'KAKAO');
 
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
@@ -199,83 +201,248 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
                 </div>
               </div>
             </div>
-          ) : isKakao ? (
-            /* 카카오톡 인앱 브라우저 안내 */
-            <div className="space-y-3">
-              <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 leading-relaxed font-bold">
-                ⚠️ 카카오톡 안에서는 앱 설치가 제한됩니다. <span className="underline text-emerald-800">외부 브라우저로 1번만 열어주세요</span>:
-              </div>
-
-              <div className="space-y-2 text-xs">
-                <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
-                  <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
-                    1
-                  </span>
-                  <div>화면 맨 우측 상단의 <span className="font-black text-emerald-800 bg-emerald-100 px-1 py-0.5 rounded">점 세 개 [⋮]</span> 터치</div>
-                </div>
-
-                <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
-                  <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
-                    2
-                  </span>
-                  <div>메뉴에서 <span className="font-black text-emerald-800 bg-emerald-100 px-1 py-0.5 rounded">[다른 브라우저로 열기]</span> 터치</div>
-                </div>
-
-                <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
-                  <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
-                    3
-                  </span>
-                  <div>열린 크롬/사파리에서 <span className="font-black text-emerald-800 bg-emerald-100 px-1 py-0.5 rounded">[홈 화면에 추가]</span>를 누르면 완료!</div>
-                </div>
-              </div>
-            </div>
-          ) : isIos ? (
-            /* 아이폰 사파리 안내 */
-            <div className="space-y-2.5 text-xs">
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
-                <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
-                  1
-                </span>
-                <div>사파리 화면 하단 중앙의 <span className="font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">공유 버튼 [⎋]</span> 터치</div>
-              </div>
-
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
-                <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
-                  2
-                </span>
-                <div>메뉴를 위로 살짝 올려서 <span className="font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">[홈 화면에 추가]</span> 터치</div>
-              </div>
-
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
-                <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
-                  3
-                </span>
-                <div>우측 상단의 <span className="font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">[추가]</span>를 누르면 바탕화면에 파키 아이콘 생성 완료!</div>
-              </div>
-            </div>
           ) : (
-            /* 안드로이드 크롬/삼성인터넷 안내 */
-            <div className="space-y-2.5 text-xs">
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
-                <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
-                  1
-                </span>
-                <div>브라우저 우측 상단(또는 하단)의 <span className="font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">더보기 메뉴 [⋮]</span> 터치</div>
+            /* 스마트폰 (모바일) 설치 안내 - 시니어 맞춤 3단 분기 */
+            <div className="space-y-3">
+              {/* 모바일 브라우저 유형 선택 탭 */}
+              <div className="p-1 bg-stone-100 rounded-xl border border-stone-200 grid grid-cols-3 gap-1 text-xs font-black">
+                <button
+                  type="button"
+                  onClick={() => setMobileSubTab('KAKAO')}
+                  className={`py-2 px-1.5 rounded-lg transition cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center ${
+                    mobileSubTab === 'KAKAO'
+                      ? 'bg-amber-400 text-emerald-950 shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <span className="text-sm">💬</span>
+                  <span className="text-[11px] leading-tight font-black">카톡 링크 (필독)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileSubTab('CHROME')}
+                  className={`py-2 px-1.5 rounded-lg transition cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center ${
+                    mobileSubTab === 'CHROME'
+                      ? 'bg-emerald-700 text-white shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <span className="text-sm">🌐</span>
+                  <span className="text-[11px] leading-tight font-black">크롬 · 삼성인터넷</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileSubTab('IOS')}
+                  className={`py-2 px-1.5 rounded-lg transition cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center ${
+                    mobileSubTab === 'IOS'
+                      ? 'bg-emerald-700 text-white shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <span className="text-sm">🍎</span>
+                  <span className="text-[11px] leading-tight font-black">아이폰 (사파리)</span>
+                </button>
               </div>
 
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
-                <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
-                  2
-                </span>
-                <div><span className="font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">[앱 설치]</span> 또는 <span className="font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">[홈 화면에 추가]</span> 터치</div>
-              </div>
+              {/* 1) 카카오톡 링크로 접속한 경우 (가장 많은 시니어 사례) */}
+              {mobileSubTab === 'KAKAO' && (
+                <div className="space-y-3">
+                  <div className="p-3 bg-amber-50 border-2 border-amber-300 rounded-2xl text-xs text-amber-950 leading-relaxed font-bold">
+                    <div className="flex items-center gap-1.5 text-amber-900 font-extrabold text-xs mb-1">
+                      <span>⚠️</span>
+                      <span>카카오톡 화면 안에서는 앱 설치가 제한됩니다!</span>
+                    </div>
+                    카톡 내부에서는 보안상 바로 깔리지 않으므로, <strong className="underline text-emerald-900 font-black">아래 5단계 순서대로 딱 1번만</strong> 진행하시면 스마트폰 바탕화면에 정상적으로 깔립니다:
+                  </div>
 
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
-                <span className="w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
-                  3
-                </span>
-                <div>바탕화면에 생성된 귀여운 파키 아이콘을 누르면 전체화면 전용 앱으로 바로 열립니다!</div>
-              </div>
+                  <div className="space-y-2.5 text-xs">
+                    {/* 1단계 */}
+                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-white border-2 border-amber-200 shadow-xs">
+                      <span className="w-6 h-6 rounded-full bg-amber-400 text-emerald-950 flex items-center justify-center font-black text-xs shrink-0 mt-0.5 shadow-xs">
+                        1
+                      </span>
+                      <div className="leading-relaxed">
+                        카카오톡 화면 <strong className="text-emerald-900 font-black">우측 하단 (또는 우측 상단)</strong>의{' '}
+                        <span className="font-black text-emerald-950 bg-amber-200 px-1.5 py-0.5 rounded border border-amber-300">
+                          점 세 개 [···] 또는 [⋮]
+                        </span>{' '}
+                        더보기 메뉴를 터치합니다.
+                      </div>
+                    </div>
+
+                    {/* 2단계 */}
+                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-white border-2 border-emerald-300 shadow-xs">
+                      <span className="w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5 shadow-xs">
+                        2
+                      </span>
+                      <div className="leading-relaxed">
+                        나오는 메뉴 목록에서 <strong className="text-rose-600 underline font-black">위에서 3번째</strong>에 있는{' '}
+                        <span className="font-black text-white bg-emerald-700 px-2 py-0.5 rounded shadow-xs inline-block my-0.5">
+                          [다른 브라우저로 보기]
+                        </span>{' '}
+                        (또는 다른 브라우저로 열기)를 터치합니다.
+                        <div className="mt-1.5 p-2 bg-emerald-50 rounded-xl border border-emerald-200 text-[11px] text-emerald-900 font-bold leading-normal">
+                          💡 <strong>왜 3번째를 눌러야 하나요?</strong><br />
+                          카톡 화면 안에서는 앱 설치 기능이 없기 때문에, 이 3번째 버튼을 눌러야 <strong>크롬(Chrome)이나 삼성인터넷 새 창</strong>으로 전환되어 앱 설치가 가능해집니다!
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3단계 */}
+                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-white border-2 border-amber-200 shadow-xs">
+                      <span className="w-6 h-6 rounded-full bg-amber-400 text-emerald-950 flex items-center justify-center font-black text-xs shrink-0 mt-0.5 shadow-xs">
+                        3
+                      </span>
+                      <div className="leading-relaxed">
+                        크롬(Chrome)이나 인터넷 새 창이 뜨면, 화면 <strong className="text-emerald-900 font-black">우측 상단 (또는 우측 하단)</strong>의{' '}
+                        <span className="font-black text-emerald-950 bg-amber-200 px-1.5 py-0.5 rounded border border-amber-300">
+                          점 세 개 [⋮] (더보기 메뉴)
+                        </span>{' '}
+                        를 다시 한번 터치합니다.
+                      </div>
+                    </div>
+
+                    {/* 4단계 */}
+                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-white border-2 border-emerald-300 shadow-xs">
+                      <span className="w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5 shadow-xs">
+                        4
+                      </span>
+                      <div className="leading-relaxed">
+                        메뉴 목록에서{' '}
+                        <span className="font-black text-white bg-emerald-700 px-2 py-0.5 rounded shadow-xs inline-block my-0.5">
+                          [앱 설치]
+                        </span>{' '}
+                        또는{' '}
+                        <span className="font-black text-emerald-950 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 inline-block my-0.5">
+                          [홈 화면에 추가]
+                        </span>{' '}
+                        (또는 다운로드 및 설치하기)를 터치합니다.
+                      </div>
+                    </div>
+
+                    {/* 5단계 */}
+                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-emerald-50 border-2 border-emerald-400 shadow-xs">
+                      <span className="w-6 h-6 rounded-full bg-emerald-800 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5 shadow-xs">
+                        5
+                      </span>
+                      <div className="leading-relaxed">
+                        화면에 뜨는 팝업창에서{' '}
+                        <span className="font-black text-emerald-950 bg-amber-300 px-1.5 py-0.5 rounded border border-amber-400">
+                          [설치]
+                        </span>{' '}
+                        또는 [추가]를 누르면 완료!
+                        <p className="text-[11px] text-emerald-900 font-extrabold mt-1.5">
+                          🎉 스마트폰 바탕화면에 귀여운 <strong>파키 골프공 아이콘 앱</strong>이 쏙 깔렸습니다! 앞으로는 이 아이콘만 누르면 주소창 없이 1초 만에 바로 열립니다.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 2) 크롬 / 삼성인터넷으로 직접 접속한 경우 */}
+              {mobileSubTab === 'CHROME' && (
+                <div className="space-y-3">
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-900 leading-relaxed font-bold">
+                    🌐 크롬(Chrome) 또는 삼성인터넷 브라우저로 직접 접속하신 경우 아래 순서대로 1초 만에 설치하실 수 있습니다:
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-white border border-stone-200 shadow-xs">
+                      <span className="w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                        1
+                      </span>
+                      <div className="leading-relaxed">
+                        화면 <strong className="text-emerald-900">우측 상단 (또는 우측 하단)</strong>의{' '}
+                        <span className="font-black text-emerald-950 bg-amber-200 px-1.5 py-0.5 rounded border border-amber-300">
+                          점 세 개 [⋮] (더보기 메뉴)
+                        </span>{' '}
+                        를 터치합니다.
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-white border border-stone-200 shadow-xs">
+                      <span className="w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                        2
+                      </span>
+                      <div className="leading-relaxed">
+                        메뉴 목록에서{' '}
+                        <span className="font-black text-white bg-emerald-700 px-2 py-0.5 rounded shadow-xs">
+                          [앱 설치]
+                        </span>{' '}
+                        또는{' '}
+                        <span className="font-black text-emerald-950 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
+                          [홈 화면에 추가]
+                        </span>{' '}
+                        를 누릅니다.
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-emerald-50 border border-emerald-300 shadow-xs">
+                      <span className="w-6 h-6 rounded-full bg-emerald-800 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                        3
+                      </span>
+                      <div className="leading-relaxed">
+                        확인 팝업에서{' '}
+                        <span className="font-black text-emerald-950 bg-amber-300 px-1.5 py-0.5 rounded">
+                          [설치]
+                        </span>{' '}
+                        또는 [추가]를 누르면 스마트폰 바탕화면에 즉시 설치 완료됩니다!
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 3) 아이폰 사파리 사용자인 경우 */}
+              {mobileSubTab === 'IOS' && (
+                <div className="space-y-3">
+                  <div className="p-3 bg-stone-100 border border-stone-300 rounded-2xl text-xs text-stone-800 leading-relaxed font-bold">
+                    🍎 아이폰(Safari 사파리)에서는 아래 순서대로 홈 화면에 추가하시면 됩니다:
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-white border border-stone-200 shadow-xs">
+                      <span className="w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                        1
+                      </span>
+                      <div className="leading-relaxed">
+                        사파리 화면 <strong className="text-emerald-900">맨 아래 중앙</strong>의{' '}
+                        <span className="font-black text-emerald-950 bg-amber-200 px-1.5 py-0.5 rounded border border-amber-300">
+                          공유 버튼 [⎋] (네모 위 화살표)
+                        </span>{' '}
+                        를 터치합니다.
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-white border border-stone-200 shadow-xs">
+                      <span className="w-6 h-6 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                        2
+                      </span>
+                      <div className="leading-relaxed">
+                        메뉴를 위로 살짝 올려서{' '}
+                        <span className="font-black text-white bg-emerald-700 px-2 py-0.5 rounded shadow-xs">
+                          [홈 화면에 추가 (+)]
+                        </span>{' '}
+                        를 터치합니다.
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-emerald-50 border border-emerald-300 shadow-xs">
+                      <span className="w-6 h-6 rounded-full bg-emerald-800 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                        3
+                      </span>
+                      <div className="leading-relaxed">
+                        화면 오른쪽 상단의{' '}
+                        <span className="font-black text-emerald-950 bg-amber-300 px-1.5 py-0.5 rounded">
+                          [추가]
+                        </span>{' '}
+                        를 누르면 아이폰 바탕화면에 파키 아이콘이 생성됩니다!
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
