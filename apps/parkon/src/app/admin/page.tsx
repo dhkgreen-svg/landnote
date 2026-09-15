@@ -247,50 +247,55 @@ export default function AdminDashboardPage() {
   // --- Authenticated Dashboard ---
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Top Master Header */}
-      <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white rounded-2xl p-5 sm:p-6 shadow-lg relative overflow-hidden">
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black flex items-center gap-2">
-              ParkOn 전국 통합 관제센터
+      {/* Top Master Header (Compact & Sleek) */}
+      <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white rounded-2xl p-3.5 sm:p-5 shadow-lg relative overflow-hidden">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          {/* Brand Logo & Subtitle */}
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+              ParkOn
             </h1>
+            <span className="text-xs sm:text-sm font-bold text-emerald-200 tracking-tight">
+              전국 통합 관제센터
+            </span>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
+          {/* Action Buttons: 3 equal columns on mobile */}
+          <div className="grid grid-cols-3 sm:flex sm:items-center gap-1.5 w-full sm:w-auto">
             <button
               onClick={() => fetchMetrics(pin)}
               disabled={isLoading}
-              className="px-3.5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors backdrop-blur-sm whitespace-nowrap"
+              className="py-1.5 px-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors backdrop-blur-sm whitespace-nowrap"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
               <span>새로고침</span>
             </button>
             <button
               onClick={() => setAutoRefresh(!autoRefresh)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+              className={`py-1.5 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors whitespace-nowrap ${
                 autoRefresh
                   ? 'bg-emerald-500 text-white shadow-sm'
                   : 'bg-white/10 text-white/70 hover:bg-white/20'
               }`}
             >
-              <Radio className={`w-3.5 h-3.5 ${autoRefresh ? 'animate-pulse' : ''}`} />
+              <Radio className={`w-3 h-3 ${autoRefresh ? 'animate-pulse' : ''}`} />
               <span>실시간(1분) {autoRefresh ? 'ON' : 'OFF'}</span>
             </button>
             <button
               onClick={handleLogout}
-              className="px-3.5 py-2 bg-red-500/80 hover:bg-red-600 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap"
+              className="py-1.5 px-2 bg-red-500/80 hover:bg-red-600 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors whitespace-nowrap"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <LogOut className="w-3 h-3" />
               <span>로그아웃</span>
             </button>
           </div>
         </div>
 
         {lastRefreshed && (
-          <div className="mt-4 pt-3 border-t border-emerald-600/50 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs text-emerald-200/80">
-            <span>마지막 데이터 갱신: {lastRefreshed} (1분 주기 자동 동기화)</span>
-            <span className="flex items-center gap-1.5 text-amber-200 font-semibold">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+          <div className="mt-2.5 pt-2 border-t border-emerald-600/40 flex items-center justify-between text-[11px] sm:text-xs text-emerald-200/80">
+            <span>갱신: {lastRefreshed} (1분 자동)</span>
+            <span className="flex items-center gap-1 text-amber-200 font-semibold">
+              <Sparkles className="w-3 h-3 text-amber-300" />
               마스터 : 김대희 (총괄)
             </span>
           </div>
