@@ -1858,7 +1858,7 @@ ${shareUrl}`;
       courseName: data.courseName,
       playDate: data.playDate,
       playTime: data.playTime,
-      targetCount: data.targetCount || 4,
+      targetCount: data.targetCount || 10,
       currentParticipants: [
         {
           id: `p_${Date.now()}`,

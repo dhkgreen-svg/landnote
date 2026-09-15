@@ -40,7 +40,7 @@ import {
   Play,
   Hand,
 } from 'lucide-react';
-import { ClubEventRoom, ParkGolfClub, ClubMember, FlashGathering, TournamentType } from '@/types/club';
+import { ClubEventRoom, ClubGroup, ClubPlayer, ParkGolfClub, ClubMember, FlashGathering, TournamentType } from '@/types/club';
 import { Course } from '@/types/parkon';
 import { ClubStorage } from '@/lib/clubStorage';
 import { CompanionStorage, Companionship, CompanionLightningRound } from '@/lib/companionStorage';
@@ -157,23 +157,23 @@ export default function ClubGatheringHomePage() {
   const [flashGatherings, setFlashGatherings] = useState<FlashGathering[]>([]);
   const [selectedFlashClubId, setSelectedFlashClubId] = useState<string>('');
 
-  // 1촌 번개 개설 모달 상태
+  // 1촌 번개 개설 모달 상태 (10인 단체 번개 또는 소규모 제한 가능)
   const [showCreate1ChonModal, setShowCreate1ChonModal] = useState(false);
   const [ltnCourseId, setLtnCourseId] = useState('course-gumi-dongrak');
   const [ltnDateStr, setLtnDateStr] = useState('오늘');
   const [ltnTimeStr, setLtnTimeStr] = useState('14:30');
-  const [ltnTargetPlayers, setLtnTargetPlayers] = useState<number>(4);
-  const [ltnNotes, setLtnNotes] = useState('오늘 선선할 때 18홀 편하게 도실 1촌 수락해주세요!');
+  const [ltnTargetPlayers, setLtnTargetPlayers] = useState<number>(10);
+  const [ltnNotes, setLtnNotes] = useState('오늘 10인 모여서 2~3개 조로 신나게 라운드해요!');
   const [ltnInvited1Chons, setLtnInvited1Chons] = useState<string[]>([]);
 
-  // 클럽원 전용 번개 개설 모달 상태
+  // 클럽원 전용 번개 개설 모달 상태 (기본 10명 이상)
   const [showCreateClubFlashModal, setShowCreateClubFlashModal] = useState(false);
-  const [clubFlashTitle, setClubFlashTitle] = useState('오늘 14:00 2명 급구!');
+  const [clubFlashTitle, setClubFlashTitle] = useState('주말 10인 클럽 번개 라운드!');
   const [clubFlashCourseId, setClubFlashCourseId] = useState('course-gumi-dongrak');
   const [clubFlashDate, setClubFlashDate] = useState('오늘');
   const [clubFlashTime, setClubFlashTime] = useState('14:00');
-  const [clubFlashTargetCount, setClubFlashTargetCount] = useState<number>(4);
-  const [clubFlashNotes, setClubFlashNotes] = useState('동호회 정회원 매너 라운드 함께해요!');
+  const [clubFlashTargetCount, setClubFlashTargetCount] = useState<number>(10);
+  const [clubFlashNotes, setClubFlashNotes] = useState('클럽 정회원 10인 모여 2~3개 조로 번개 라운드 진행합니다!');
 
   // 초기 로딩
   useEffect(() => {
@@ -457,13 +457,72 @@ export default function ClubGatheringHomePage() {
     showToast(`1촌 번개 참가를 취소하였습니다.`);
   };
 
-  // 4인 수락 완료 시 스코어보드 바로 시작
+  // 1촌 번개 수락 완료 시 스코어보드 / 전광판 바로 시작 (10인 등 다인원 또는 4인 이하 지원)
   const handleStart1ChonRound = (round: CompanionLightningRound) => {
     const playerList = round.acceptedPlayers && round.acceptedPlayers.length > 0
       ? round.acceptedPlayers
       : round.currentPlayers;
-    const names = playerList.map((p) => p.name).join(',');
-    router.push(`/score/quick?courseId=${round.courseId}&players=${encodeURIComponent(names)}`);
+
+    // 4인 이하일 때는 간편 스코어카드로 시작
+    if (playerList.length <= 4) {
+      const names = playerList.map((p) => p.name).join(',');
+      router.push(`/score/quick?courseId=${round.courseId}&players=${encodeURIComponent(names)}`);
+      return;
+    }
+
+    // 10인 모임 또는 5인 이상 다인원: 2~3개 조 자동 편성 & 실시간 전광판 룸 생성
+    const groupCount = Math.max(2, Math.ceil(playerList.length / 4));
+    const letters = ['A', 'B'];
+    const groups: ClubGroup[] = [];
+
+    for (let i = 1; i <= groupCount; i++) {
+      const courseLetter = letters[(i - 1) % letters.length];
+      groups.push({
+        groupNumber: i,
+        name: `${i}조`,
+        startCourseLetter: courseLetter,
+        leaderName: '',
+        players: [],
+        status: 'WAITING',
+      });
+    }
+
+    playerList.forEach((p, idx) => {
+      const gIdx = idx % groupCount;
+      const isLeader = groups[gIdx].players.length === 0;
+      if (isLeader) groups[gIdx].leaderName = p.name;
+      groups[gIdx].players.push({
+        id: p.id || `p_${Date.now()}_${idx}`,
+        name: p.name,
+        isLeader,
+        scores: {},
+        totalStrokes: 0,
+        parDiff: 0,
+        holesCompleted: 0,
+      });
+    });
+
+    const newRoom: ClubEventRoom = {
+      id: `chon-flash-${Date.now()}`,
+      tournamentType: 'CLUB_INTERNAL',
+      title: `⚡ [1촌번개] ${round.hostName}의 1촌 ${playerList.length}인 단체 라운드`,
+      courseId: round.courseId,
+      courseName: round.courseName,
+      hostName: round.hostName,
+      selectedCourseLetters: letters,
+      totalHoles: 18,
+      targetTotalPlayers: playerList.length,
+      gameMode: 'NEW_PERIO',
+      gameModeTitle: '신페리오 방식 (핸디캡 적용)',
+      gameRuleNotes: '1촌 10인 이상 단체 번개 라운드 (실시간 조별 전광판)',
+      groups,
+      status: 'PLAYING',
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+
+    ClubStorage.saveRoom(newRoom);
+    showToast(`⛳ 1촌 ${playerList.length}인 번개 전광판 룸이 개설되었습니다!`);
+    router.push(`/club/${newRoom.id}`);
   };
 
   // 1촌 번개 카톡 공유
@@ -475,7 +534,7 @@ export default function ClubGatheringHomePage() {
     const text = `⚡ [파크온 1촌 번개 호출]
 ⛳ 장소: ${round.courseName}
 📅 일시: ${round.dateStr} ${round.timeStr}
-👥 정원: 4인 (현재 ${acceptedCount}/4명 수락 완료)
+👥 정원: ${round.targetPlayersCount}인 (현재 ${acceptedCount}/${round.targetPlayersCount}명 수락 완료)
 💬 메시지: "${round.notes}"
 
 👇 아래 링크를 눌러 1촌 번개 참가 [수락하기 ✋]를 눌러주세요!
@@ -485,7 +544,7 @@ ${shareUrl}`;
     showToast(`📋 1촌 번개 카톡 안내문이 복사되었습니다! 1촌 단톡방에 공유하세요.`);
   };
 
-  // 클럽원 전용 번개 개설
+  // 클럽원 전용 번개 개설 (기본 10명 이상)
   const handleCreateClubFlashSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const club = clubs.find((c) => c.id === selectedFlashClubId);
@@ -493,7 +552,7 @@ ${shareUrl}`;
     const selfName = ParkOnStorage.getUserDisplayName(selectedFlashClubId);
 
     ClubStorage.createFlashGathering({
-      title: clubFlashTitle.trim() || `${course.name} 번개 라운드`,
+      title: clubFlashTitle.trim() || `${course.name} 10인 번개 라운드`,
       type: 'CLUB_ONLY',
       clubId: club?.id,
       clubName: club?.name,
@@ -508,7 +567,7 @@ ${shareUrl}`;
 
     setFlashGatherings(ClubStorage.getAllFlashGatherings());
     setShowCreateClubFlashModal(false);
-    showToast(`⚡ '${club?.name || '클럽'}' 전용 번개가 개설되었습니다!`);
+    showToast(`⚡ '${club?.name || '클럽'}' 전용 ${clubFlashTargetCount}인 번개가 개설되었습니다!`);
   };
 
   // 클럽 번개 참가 신청
@@ -531,6 +590,74 @@ ${shareUrl}`;
     ClubStorage.leaveFlashGathering(flashId, selfName);
     setFlashGatherings(ClubStorage.getAllFlashGatherings());
     showToast(`클럽 번개 참가 신청을 취소하였습니다.`);
+  };
+
+  // 10인이 모였을 때 클럽 번개 라운드 바로 시작 (조 편성 및 실시간 전광판 룸 생성)
+  const handleStartClubFlashRound = (flash: FlashGathering) => {
+    const participants = flash.currentParticipants;
+    if (participants.length === 0) return;
+
+    if (participants.length <= 4) {
+      const names = participants.map((p) => p.name).join(',');
+      router.push(`/score/quick?courseId=${flash.courseId}&players=${encodeURIComponent(names)}`);
+      return;
+    }
+
+    // 10인 이상: 2~3개 조 이상으로 자동 균등 편성 (10명이면 3개 조: 4, 3, 3)
+    const groupCount = Math.max(2, Math.ceil(participants.length / 4));
+    const letters = ['A', 'B'];
+    const groups: ClubGroup[] = [];
+
+    for (let i = 1; i <= groupCount; i++) {
+      const courseLetter = letters[(i - 1) % letters.length];
+      groups.push({
+        groupNumber: i,
+        name: `${i}조`,
+        startCourseLetter: courseLetter,
+        leaderName: '',
+        players: [],
+        status: 'WAITING',
+      });
+    }
+
+    participants.forEach((p, idx) => {
+      const gIdx = idx % groupCount;
+      const isLeader = groups[gIdx].players.length === 0;
+      if (isLeader) groups[gIdx].leaderName = p.name;
+      groups[gIdx].players.push({
+        id: p.id || `p_${Date.now()}_${idx}`,
+        name: p.name,
+        isLeader,
+        scores: {},
+        totalStrokes: 0,
+        parDiff: 0,
+        holesCompleted: 0,
+      });
+    });
+
+    const newRoom: ClubEventRoom = {
+      id: `club-flash-${Date.now()}`,
+      clubId: flash.clubId,
+      clubName: flash.clubName,
+      tournamentType: 'CLUB_INTERNAL',
+      title: `⚡ [클럽번개] ${flash.clubName || '클럽'} ${flash.title}`,
+      courseId: flash.courseId,
+      courseName: flash.courseName,
+      hostName: flash.hostName,
+      selectedCourseLetters: letters,
+      totalHoles: 18,
+      targetTotalPlayers: participants.length,
+      gameMode: 'NEW_PERIO',
+      gameModeTitle: '신페리오 방식 (핸디캡 적용)',
+      gameRuleNotes: `${participants.length}인 클럽 번개 라운드 (실시간 조별 전광판 및 순위)`,
+      groups,
+      status: 'PLAYING',
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+
+    ClubStorage.saveRoom(newRoom);
+    showToast(`⛳ ${participants.length}인 클럽 번개 전광판 룸이 개설되었습니다!`);
+    router.push(`/club/${newRoom.id}`);
   };
 
   // 클럽 번개 카톡 공유
@@ -1752,17 +1879,19 @@ ${shareUrl}`;
                         </div>
                       </div>
 
-                      {/* 대표님 요청 핵심: [수락하기 ✋] 버튼 & 4인 완료 시 스코어보드 시작 */}
+                      {/* 대표님 요청 핵심: [수락하기 ✋] 버튼 & 10인(또는 정원) 완료 시 라운드/전광판 시작 */}
                       <div className="pt-1 space-y-2">
                         {isFull ? (
-                          // 4인 완료 시: 즉시 스코어카드 시작!
+                          // 10인(또는 정원) 완료 시: 즉시 라운드 / 전광판 시작!
                           <button
                             type="button"
                             onClick={() => handleStart1ChonRound(round)}
                             className="w-full min-h-[52px] bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 active:scale-98 text-stone-950 font-black text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer border border-yellow-300"
                           >
                             <Play className="w-5 h-5 text-stone-950 fill-stone-950" />
-                            <span>⛳ 4인 라운드 스코어카드 바로 시작 ▶</span>
+                            <span>
+                              ⛳ {round.targetPlayersCount}인 번개 라운드 시작 ({round.targetPlayersCount > 4 ? '실시간 조별 전광판' : '스코어카드'} ▶)
+                            </span>
                           </button>
                         ) : hasAccepted ? (
                           // 이미 수락한 경우: 수락 취소 가능
@@ -1959,6 +2088,18 @@ ${shareUrl}`;
                                   </span>
                                 ))}
                               </div>
+
+                              {/* 10인(또는 정원) 모임 완료 시 바로 라운드 시작 버튼 (실시간 조별 전광판 연결) */}
+                              {(flash.currentParticipants.length >= flash.targetCount || flash.currentParticipants.length >= 10) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartClubFlashRound(flash)}
+                                  className="w-full min-h-[52px] bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 active:scale-98 text-stone-950 font-black text-xs sm:text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer border border-yellow-300"
+                                >
+                                  <Play className="w-5 h-5 text-stone-950 fill-stone-950" />
+                                  <span>⛳ {flash.currentParticipants.length}인 클럽 번개 라운드 시작 (실시간 조별 전광판) ▶</span>
+                                </button>
+                              )}
 
                               {/* 참가 신청 버튼 */}
                               <div className="pt-1">
@@ -4147,24 +4288,52 @@ ${shareUrl}`;
                 </div>
               </div>
 
-              {/* 모집 정원 */}
-              <div className="space-y-1">
-                <label className="text-xs font-extrabold text-stone-800">모집 정원</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[2, 3, 4].map((cnt) => (
+              {/* 모집 정원 (10인 단체 번개 또는 4인 소규모 제한) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-stone-800">모집 인원 (정원)</label>
+                  <span className="text-[11px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300">
+                    {ltnTargetPlayers}명 설정됨
+                  </span>
+                </div>
+                <div className="p-2.5 bg-stone-50 rounded-xl border border-stone-200 text-[11px] text-stone-600 font-medium leading-relaxed">
+                  💡 <strong>10인이 모여</strong> 2~3개 조로 단체 번개(실시간 조별 전광판)를 즐기거나, <strong>4인으로 인원을 제한</strong>하여 소규모 라운드를 진행할 수 있습니다.
+                </div>
+                {/* 빠른 선택 칩 */}
+                <div className="grid grid-cols-5 gap-1.5">
+                  {[
+                    { count: 10, label: '10명 (기본)' },
+                    { count: 4, label: '4명 (1조제한)' },
+                    { count: 8, label: '8명 (2개조)' },
+                    { count: 12, label: '12명 (3개조)' },
+                    { count: 16, label: '16명 (4개조)' },
+                  ].map((item) => (
                     <button
-                      key={cnt}
+                      key={item.count}
                       type="button"
-                      onClick={() => setLtnTargetPlayers(cnt)}
-                      className={`py-2 rounded-xl text-xs font-black border transition cursor-pointer ${
-                        ltnTargetPlayers === cnt
-                          ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
+                      onClick={() => setLtnTargetPlayers(item.count)}
+                      className={`py-2 px-1 rounded-xl text-xs font-black border transition cursor-pointer text-center ${
+                        ltnTargetPlayers === item.count
+                          ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs ring-2 ring-emerald-300'
                           : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
                       }`}
                     >
-                      {cnt}인 라운드 {cnt === 4 ? '(추천)' : ''}
+                      {item.label}
                     </button>
                   ))}
+                </div>
+                {/* 직접 입력 */}
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-xs font-bold text-stone-600 shrink-0">직접 인원 지정:</span>
+                  <input
+                    type="number"
+                    min={2}
+                    max={100}
+                    value={ltnTargetPlayers}
+                    onChange={(e) => setLtnTargetPlayers(Math.max(2, parseInt(e.target.value) || 2))}
+                    className="w-20 px-2.5 py-1 bg-white border border-stone-300 rounded-lg text-xs font-black text-stone-900 focus:outline-none focus:border-emerald-600"
+                  />
+                  <span className="text-xs font-bold text-stone-600">명 모집</span>
                 </div>
               </div>
 
@@ -4323,24 +4492,53 @@ ${shareUrl}`;
                 </div>
               </div>
 
-              {/* 정원 */}
-              <div className="space-y-1">
-                <label className="text-xs font-extrabold text-stone-800">정원 (보통 4명)</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[2, 3, 4].map((cnt) => (
+              {/* 모집 정원 (기본 10명 이상 권장) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-stone-800">모집 정원 (기본 10명 이상 권장)</label>
+                  <span className="text-[11px] font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300">
+                    {clubFlashTargetCount}명 모집 설정됨
+                  </span>
+                </div>
+                <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-950 font-medium leading-relaxed">
+                  💡 클럽 번개는 <strong>10명 이상</strong> 모여 2~3개 조로 자동 편성되며, 10명이 모이면 실시간 조별 전광판 룸에서 즉시 번개 라운드를 진행할 수 있습니다.
+                </div>
+                {/* 빠른 선택 칩 */}
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                  {[
+                    { count: 10, label: '10명 (기본)' },
+                    { count: 12, label: '12명 (3조)' },
+                    { count: 16, label: '16명 (4조)' },
+                    { count: 20, label: '20명 (5조)' },
+                    { count: 4, label: '4명 (1조)' },
+                    { count: 8, label: '8명 (2조)' },
+                  ].map((item) => (
                     <button
-                      key={cnt}
+                      key={item.count}
                       type="button"
-                      onClick={() => setClubFlashTargetCount(cnt)}
-                      className={`py-2 rounded-xl text-xs font-black border transition cursor-pointer ${
-                        clubFlashTargetCount === cnt
-                          ? 'bg-amber-500 text-stone-950 border-amber-600 shadow-xs'
-                          : 'bg-stone-50 text-stone-700 border-stone-200'
+                      onClick={() => setClubFlashTargetCount(item.count)}
+                      className={`py-2 px-1 rounded-xl text-xs font-black border transition cursor-pointer text-center ${
+                        clubFlashTargetCount === item.count
+                          ? 'bg-amber-500 text-stone-950 border-amber-600 shadow-xs ring-2 ring-amber-300'
+                          : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
                       }`}
                     >
-                      {cnt}명 {cnt === 4 ? '(표준)' : ''}
+                      {item.label}
                     </button>
                   ))}
+                </div>
+                {/* 직접 입력 */}
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-xs font-bold text-stone-600 shrink-0">직접 정원 지정:</span>
+                  <input
+                    type="number"
+                    min={2}
+                    max={100}
+                    value={clubFlashTargetCount}
+                    onChange={(e) => setClubFlashTargetCount(Math.max(2, parseInt(e.target.value) || 2))}
+                    className="w-20 px-2.5 py-1 bg-white border border-stone-300 rounded-lg text-xs font-black text-stone-900 focus:outline-none focus:border-amber-600"
+                  />
+                  <span className="text-xs font-bold text-stone-600">명 모집</span>
                 </div>
               </div>
 
