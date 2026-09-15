@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { HelpCircle, MapPin, AlertTriangle } from 'lucide-react';
+import { HelpCircle, MapPin, AlertTriangle, Trophy } from 'lucide-react';
 import { ParkOnStorage, KakaoAuthUser } from '@/lib/storage';
 import { KakaoLoginModal } from './KakaoLoginModal';
 
@@ -141,6 +141,15 @@ export function Header() {
                 </span>
               </button>
             )}
+
+            {/* 0. 나의 파크골프 연대기 & 1촌 */}
+            <Link
+              href="/chronicle"
+              className="w-9 h-9 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
+              title="나의 파크골프 연대기 & 1촌 명부"
+            >
+              <Trophy className="w-5 h-5 text-amber-600 stroke-[2.5]" />
+            </Link>
 
             {/* 1. 룰 솔로몬 (물음표) 버튼 */}
             <Link

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Play, MapPin, History, Award, Flame, Trophy, X, ArrowRight, ChevronDown, Check, Plus, Star, Search, Trash2, Share2, Download } from 'lucide-react';
+import { Play, MapPin, History, Award, Flame, Trophy, X, ArrowRight, ChevronDown, Check, Plus, Star, Search, Trash2, Share2, Download, Heart } from 'lucide-react';
 import { Course, RoundSession, formatCourseHolesText } from '@/types/parkon';
 import { ParkOnStorage, UserGolfProfile, DEFAULT_USER_PROFILE } from '@/lib/storage';
 import { ClubStorage } from '@/lib/clubStorage';
@@ -11,6 +11,7 @@ import { InstallPrompt } from '@/components/InstallPrompt';
 import { KakaoLoginModal } from '@/components/KakaoLoginModal';
 import { WelcomeModal } from '@/components/WelcomeModal';
 import { RulesWebtoonModal } from '@/components/RulesWebtoonModal';
+import { CompanionFeedWidget } from '@/components/CompanionFeedWidget';
 import { KakaoAuthUser } from '@/lib/storage';
 
 export default function HomePage() {
@@ -958,6 +959,37 @@ export default function HomePage() {
           룰 솔로몬 보기 ▶
         </span>
       </button>
+
+      {/* 4.5. 나의 파크골프 연대기 & 1촌 바로가기 카드 */}
+      <Link
+        href="/chronicle"
+        className="block bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 text-white rounded-3xl p-4 border border-emerald-500/40 shadow-sm hover:border-amber-400 transition group active:scale-[0.99]"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-amber-400 text-emerald-950 flex items-center justify-center font-black shadow-md shrink-0">
+              <Trophy className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm sm:text-base font-black text-white group-hover:text-amber-300 transition-colors">
+                  📖 나의 파크골프 연대기 &amp; 1촌 인연
+                </span>
+                <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full">
+                  신규
+                </span>
+              </div>
+              <p className="text-xs text-emerald-200 mt-0.5 font-medium">
+                커리어 마일스톤 · 최다 동반 파트너 · 전국 구장 도장깨기
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-5 h-5 text-amber-300 group-hover:translate-x-1 transition-transform shrink-0" />
+        </div>
+      </Link>
+
+      {/* 4.6. 1촌 실시간 응원 피드 위젯 */}
+      <CompanionFeedWidget />
 
       {/* 5. Recent Completed Rounds */}
       {completedRounds.length > 0 && (

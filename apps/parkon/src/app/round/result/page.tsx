@@ -3,9 +3,11 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Award, Share2, Copy, Check, Home, BookmarkCheck, ArrowRight, ShieldAlert, Sparkles, Trophy } from 'lucide-react';
+import { Award, Share2, Copy, Check, Home, BookmarkCheck, ArrowRight, ShieldAlert, Sparkles, Trophy, Camera } from 'lucide-react';
 import { RoundSession, Course } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
+import { CompanionStorage } from '@/lib/companionStorage';
+import { WatermarkPhotoCardModal } from '@/components/WatermarkPhotoCardModal';
 import { PRESCRIPTIONS } from '@/lib/defaultCourses';
 import { AdSenseSlot } from '@/components/AdSenseSlot';
 import { HoleScoreBadge, ScoreBadgeLegend } from '@/components/HoleScoreBadge';
@@ -19,6 +21,7 @@ function ResultContent() {
   const [course, setCourse] = useState<Course | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
   const [savedPlayerId, setSavedPlayerId] = useState<string | null>(null);
+  const [showPhotoCardModal, setShowPhotoCardModal] = useState<boolean>(false);
 
   useEffect(() => {
     if (!roundId) {
@@ -48,6 +51,8 @@ function ResultContent() {
       const allCourses = ParkOnStorage.getAllCourses();
       const found = allCourses.find((c) => c.id === session.courseId) || allCourses[0];
       setCourse(found);
+      // 자동 1촌 연결 & 누적 라운드 카운트 증가
+      CompanionStorage.autoConnectRoundCompanions(session);
     }
   }, [session]);
 
@@ -279,6 +284,37 @@ function ResultContent() {
             )
           </span>
         </div>
+      </div>
+
+      {/* 1.5. [최우선 노출] 오늘의 동반 사진 남기기 & 포토카드 공유 CTA (Senior 56px+) */}
+      <div className="bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-500 p-1 rounded-3xl shadow-lg">
+        <button
+          type="button"
+          onClick={() => setShowPhotoCardModal(true)}
+          className="w-full min-h-[56px] bg-stone-950 hover:bg-stone-900 text-white font-black px-4 py-3 rounded-[22px] flex items-center justify-between gap-2 shadow-inner transition active:scale-98 cursor-pointer"
+        >
+          <div className="flex items-center gap-3 text-left">
+            <div className="w-11 h-11 rounded-2xl bg-amber-400 text-stone-950 flex items-center justify-center font-black shrink-0 shadow-md">
+              <Camera className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm sm:text-base font-black text-amber-300">
+                  📸 오늘의 동반 사진 남기기 &amp; 공유
+                </span>
+                <span className="text-[10px] bg-red-600 text-white font-black px-1.5 py-0.2 rounded-full">
+                  인기 1위
+                </span>
+              </div>
+              <p className="text-xs text-stone-300 font-medium mt-0.5">
+                동반자 얼굴과 스코어가 담긴 1초 기념 포토카드 생성
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-black bg-amber-400 hover:bg-amber-300 text-stone-950 px-3 py-2 rounded-xl shrink-0 shadow-sm">
+            만들기 &gt;
+          </span>
+        </button>
       </div>
 
       {/* 2. Leaderboard Table */}
@@ -634,6 +670,13 @@ function ResultContent() {
           </Link>
         )}
         <Link
+          href="/chronicle"
+          className="w-full bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-base shadow-md active:scale-98 transition"
+        >
+          <Trophy className="w-5 h-5 text-amber-300" />
+          <span>📖 나의 파크골프 연대기 &amp; 1촌 명부로 이동</span>
+        </Link>
+        <Link
           href="/"
           className="w-full bg-stone-800 hover:bg-stone-700 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-base shadow active:scale-98 transition"
         >
@@ -641,6 +684,13 @@ function ResultContent() {
           <span>홈 화면으로 이동</span>
         </Link>
       </div>
+
+      {/* Watermark Photo Card Modal */}
+      <WatermarkPhotoCardModal
+        isOpen={showPhotoCardModal}
+        onClose={() => setShowPhotoCardModal(false)}
+        session={session}
+      />
     </div>
   );
 }
