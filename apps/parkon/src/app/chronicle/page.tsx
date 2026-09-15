@@ -18,12 +18,15 @@ import {
   Compass, 
   CheckCircle2, 
   Star,
-  Home
+  Home,
+  Zap,
+  Play
 } from 'lucide-react';
 import { ParkOnStorage } from '@/lib/storage';
-import { CompanionStorage, Companionship } from '@/lib/companionStorage';
+import { CompanionStorage, Companionship, CompanionLightningRound } from '@/lib/companionStorage';
 import { CompanionQRModal } from '@/components/CompanionQRModal';
 import { CompanionFeedWidget } from '@/components/CompanionFeedWidget';
+import { CompanionLightningModal } from '@/components/CompanionLightningModal';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
 
 function ChronicleContent() {
@@ -32,7 +35,9 @@ function ChronicleContent() {
 
   const [userName, setUserName] = useState<string>('김대희');
   const [companions, setCompanions] = useState<Companionship[]>([]);
+  const [lightningRounds, setLightningRounds] = useState<CompanionLightningRound[]>([]);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [showLightningModal, setShowLightningModal] = useState(false);
   const [toastMsg, setToastMsg] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'MILESTONE' | 'COMPANIONS' | 'STAMP_MAP'>('MILESTONE');
 
@@ -52,12 +57,15 @@ function ChronicleContent() {
     const load = () => {
       setUserName(ParkOnStorage.getUserDisplayName());
       setCompanions(CompanionStorage.getCompanions());
+      setLightningRounds(CompanionStorage.getLightningRounds());
     };
     load();
     window.addEventListener('parkon_companion_updated', load);
+    window.addEventListener('parkon_lightning_updated', load);
     window.addEventListener('storage', load);
     return () => {
       window.removeEventListener('parkon_companion_updated', load);
+      window.removeEventListener('parkon_lightning_updated', load);
       window.removeEventListener('storage', load);
     };
   }, []);
@@ -303,15 +311,120 @@ function ChronicleContent() {
 
       {activeTab === 'COMPANIONS' && (
         <div className="space-y-4">
-          {/* 1촌 추가 버튼 (Senior Friendly 52px) */}
-          <button
-            type="button"
-            onClick={() => setShowQrModal(true)}
-            className="w-full min-h-[52px] bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl text-base flex items-center justify-center gap-2 shadow-md active:scale-98 transition cursor-pointer"
-          >
-            <QrCode className="w-5 h-5 text-amber-300" />
-            <span>+ 현장에서 동반자와 1촌 QR 맺기</span>
-          </button>
+          {/* 1촌 전용 액션 버튼 (52px+ 대형 터치 규격) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => setShowLightningModal(true)}
+              className="w-full min-h-[52px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 font-black rounded-2xl text-base flex items-center justify-center gap-2 shadow-md active:scale-98 transition cursor-pointer border border-amber-400/50"
+            >
+              <Zap className="w-5 h-5 fill-stone-950 text-stone-950" />
+              <span>⚡ 나의 1촌에게 번개 라운드 띄우기</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowQrModal(true)}
+              className="w-full min-h-[52px] bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl text-base flex items-center justify-center gap-2 shadow-md active:scale-98 transition cursor-pointer"
+            >
+              <QrCode className="w-5 h-5 text-amber-300" />
+              <span>+ 현장에서 동반자와 1촌 QR 맺기</span>
+            </button>
+          </div>
+
+          {/* 실시간 모집 중인 1촌 번개 라운드 카드 */}
+          {lightningRounds.length > 0 && (
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50/60 rounded-3xl p-4 border-2 border-amber-200/80 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-xs">
+                    ⚡
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-amber-950">모집 중인 1촌 친목 번개</h3>
+                    <p className="text-[10px] text-amber-700 font-bold">1촌 동반자 전용 4인 조 편성</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowLightningModal(true)}
+                  className="text-xs font-black text-amber-800 hover:text-amber-950 flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span>전체보기</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {lightningRounds.slice(0, 3).map((ltn) => {
+                  const isUserJoined = ltn.currentPlayers.some((p) => p.name === userName);
+                  const isFull = ltn.currentPlayers.length >= ltn.targetPlayersCount;
+
+                  return (
+                    <div
+                      key={ltn.id}
+                      className="bg-white p-3 rounded-2xl border border-amber-200/70 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-black text-stone-900">{ltn.courseName}</span>
+                          <span className="text-[10px] bg-amber-100 text-amber-900 font-extrabold px-1.5 py-0.5 rounded">
+                            {ltn.dateStr} {ltn.timeStr}
+                          </span>
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">
+                            {ltn.currentPlayers.length}/{ltn.targetPlayersCount}명
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-500 font-medium line-clamp-1">{ltn.notes}</p>
+                        <div className="flex items-center gap-1 text-[11px] text-stone-600">
+                          <span className="font-bold text-stone-400">참여자:</span>
+                          {ltn.currentPlayers.map((p) => (
+                            <span key={p.id} className="bg-stone-100 px-1.5 py-0.2 rounded font-bold text-[10px]">
+                              {p.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {isFull ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              window.location.href = `/round/new?courseId=${ltn.courseId}&players=${encodeURIComponent(
+                                ltn.currentPlayers.map((p) => p.name).join(',')
+                              )}`;
+                            }}
+                            className="w-full sm:w-auto px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-white" />
+                            <span>스코어카드 시작</span>
+                          </button>
+                        ) : isUserJoined ? (
+                          <span className="text-xs font-black text-amber-800 bg-amber-100 px-3 py-1.5 rounded-xl">
+                            참여 완료 (대기중)
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              CompanionStorage.joinLightningRound(ltn.id, userName);
+                              setLightningRounds(CompanionStorage.getLightningRounds());
+                              setToastMsg(`⚡ '${ltn.courseName}' 1촌 번개 조에 참여했습니다!`);
+                              setTimeout(() => setToastMsg(''), 3000);
+                            }}
+                            className="w-full sm:w-auto px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-black rounded-xl flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                          >
+                            <span>참여하기 ✋</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* 1촌 실시간 응원 피드 위젯 */}
           <CompanionFeedWidget />
@@ -437,6 +550,13 @@ function ChronicleContent() {
         isOpen={showQrModal}
         onClose={() => setShowQrModal(false)}
         onCompanionAdded={() => setCompanions(CompanionStorage.getCompanions())}
+      />
+
+      {/* Companion Lightning Modal */}
+      <CompanionLightningModal
+        isOpen={showLightningModal}
+        onClose={() => setShowLightningModal(false)}
+        onRoundCreated={() => setLightningRounds(CompanionStorage.getLightningRounds())}
       />
     </div>
   );

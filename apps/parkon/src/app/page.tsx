@@ -835,7 +835,7 @@ export default function HomePage() {
                 <Award className="w-3.5 h-3.5 text-purple-700" />
               </span>
               <span className="text-xs font-black text-stone-900 group-hover:text-purple-700 transition">
-                클럽 앤 번개
+                클럽 &amp; 대회 센터
               </span>
             </div>
             {clubBadge && (
@@ -854,22 +854,22 @@ export default function HomePage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/mascot/사진저장고_사진_20260913_38.jpg"
-                alt="클럽 앤 번개 동반자 나눔 파키"
+                alt="클럽 및 대회 운영 파키"
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="min-w-0">
               <div className="text-[11px] font-black text-stone-800 leading-tight truncate">
-                새 대회 개설 & 조편성
+                클럽 관리 &amp; 대회 개설
               </div>
               <div className="text-[9.5px] text-stone-500 font-medium truncate">
-                동반자 실시간 스코어 연동
+                신페리오 · 샷건 전광판
               </div>
             </div>
           </div>
 
           <div className="flex items-center justify-between text-[10px] font-black text-purple-800 pt-0.5 border-t border-stone-100">
-            <span>대회 개설</span>
+            <span>클럽·대회 운영</span>
             <span className="text-purple-700 font-black">바로가기 ▶</span>
           </div>
         </Link>
@@ -980,7 +980,7 @@ export default function HomePage() {
                 </span>
               </div>
               <p className="text-xs text-emerald-200 mt-0.5 font-medium">
-                커리어 마일스톤 · 최다 동반 파트너 · 전국 구장 도장깨기
+                커리어 마일스톤 · 1촌 친목 번개 띄우기 · 전국 구장 도장깨기
               </p>
             </div>
           </div>

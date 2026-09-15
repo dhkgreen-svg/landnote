@@ -31,9 +31,26 @@ export interface CheerFeedItem {
   myCheer?: CheerReactionType;
 }
 
+export interface CompanionLightningRound {
+  id: string;
+  hostId: string;
+  hostName: string;
+  courseId: string;
+  courseName: string;
+  dateStr: string; // '오늘', '내일', etc.
+  timeStr: string; // '14:30'
+  targetPlayersCount: number;
+  currentPlayers: Array<{ id: string; name: string; isHost: boolean }>;
+  notes: string;
+  tags: string[];
+  status: 'RECRUITING' | 'FULL' | 'STARTED';
+  createdAt: string;
+}
+
 const STORAGE_KEYS = {
   COMPANIONS: 'parkon_companions_v1',
   CHEER_FEED: 'parkon_cheer_feed_v1',
+  LIGHTNING_ROUNDS: 'parkon_companion_lightning_v1',
 };
 
 const AVATAR_COLORS = [
@@ -328,18 +345,157 @@ export const CompanionStorage = {
     }
   },
 
-  async syncCheerToCloud(roundId: string, reactionType: CheerReactionType, recipientId: string) {
+  async syncCheerToCloud(feedId: string, reactionType: CheerReactionType, companionId: string) {
     if (!supabase) return;
     try {
-      await supabase.from('cheer_reactions').insert({
-        round_id: roundId,
-        sender_id: 'self',
-        sender_name: ParkOnStorage.getUserDisplayName(),
-        recipient_id: recipientId,
+      await supabase.from('companion_cheers').insert({
+        feed_id: feedId,
         reaction_type: reactionType,
+        companion_id: companionId,
+        created_at: new Date().toISOString(),
       });
     } catch {
       // Local fallback
     }
+  },
+
+  // 8. 1촌 번개 라운드 시스템 (Track A)
+  getLightningRounds(): CompanionLightningRound[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.LIGHTNING_ROUNDS);
+      if (!data) {
+        const defaultSeeds: CompanionLightningRound[] = [
+          {
+            id: 'ltn_seed_1',
+            hostId: 'user_lee_yh',
+            hostName: '이영호',
+            courseId: 'course-gumi-dongrak',
+            courseName: '구미 동락 파크골프장',
+            dateStr: '오늘',
+            timeStr: '14:30',
+            targetPlayersCount: 4,
+            currentPlayers: [
+              { id: 'user_lee_yh', name: '이영호', isHost: true },
+              { id: 'user_park_cs', name: '박철수', isHost: false },
+            ],
+            notes: '오후 선선할 때 18홀 편하게 도실 1촌 2분 모십니다!',
+            tags: ['명랑 라운드', '동락 A+B코스', '초보 환영'],
+            status: 'RECRUITING',
+            createdAt: new Date().toISOString(),
+          },
+        ];
+        localStorage.setItem(STORAGE_KEYS.LIGHTNING_ROUNDS, JSON.stringify(defaultSeeds));
+        return defaultSeeds;
+      }
+      const parsed: CompanionLightningRound[] = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveLightningRounds(rounds: CompanionLightningRound[]): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.LIGHTNING_ROUNDS, JSON.stringify(rounds.slice(0, 30)));
+      window.dispatchEvent(new Event('parkon_lightning_updated'));
+    } catch (e) {
+      console.error('Failed to save lightning rounds:', e);
+    }
+  },
+
+  createLightningRound(params: {
+    courseId: string;
+    courseName: string;
+    dateStr: string;
+    timeStr: string;
+    targetPlayersCount?: number;
+    notes?: string;
+    tags?: string[];
+  }): CompanionLightningRound {
+    const selfName = ParkOnStorage.getUserDisplayName();
+    const newLtn: CompanionLightningRound = {
+      id: `ltn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      hostId: 'self',
+      hostName: selfName,
+      courseId: params.courseId,
+      courseName: params.courseName,
+      dateStr: params.dateStr,
+      timeStr: params.timeStr,
+      targetPlayersCount: params.targetPlayersCount || 4,
+      currentPlayers: [{ id: 'self', name: selfName, isHost: true }],
+      notes: params.notes || '1촌과 함께 즐거운 파크골프 라운드!',
+      tags: params.tags && params.tags.length > 0 ? params.tags : ['명랑 라운드', '1촌 환영'],
+      status: 'RECRUITING',
+      createdAt: new Date().toISOString(),
+    };
+
+    const list = [newLtn, ...this.getLightningRounds()];
+    this.saveLightningRounds(list);
+
+    // Also notify via cheer feed
+    const feedItem: CheerFeedItem = {
+      id: `feed_ltn_${Date.now()}`,
+      companionId: 'self',
+      companionName: selfName,
+      courseName: params.courseName,
+      actionText: `⚡ [1촌 번개] ${params.courseName} (${params.dateStr} ${params.timeStr}) 4인 모집!`,
+      scoreSummary: `현재 1/${params.targetPlayersCount || 4}명 모임 중`,
+      timestamp: new Date().toISOString(),
+      timeAgoStr: '방금 전',
+      isPlaying: false,
+      cheers: { NICE_SHOT: 1, CONGRATS: 0, FIGHTING: 3 },
+    };
+    const feed = [feedItem, ...this.getCheerFeed()].slice(0, 30);
+    this.saveCheerFeed(feed);
+
+    return newLtn;
+  },
+
+  joinLightningRound(lightningId: string, playerName?: string): boolean {
+    const list = this.getLightningRounds();
+    const idx = list.findIndex((l) => l.id === lightningId);
+    if (idx < 0) return false;
+
+    const round = list[idx];
+    const selfName = playerName || ParkOnStorage.getUserDisplayName();
+
+    // Check if already joined
+    if (round.currentPlayers.some((p) => p.name === selfName)) return false;
+
+    if (round.currentPlayers.length >= round.targetPlayersCount) return false;
+
+    round.currentPlayers.push({
+      id: `user_${Date.now()}`,
+      name: selfName,
+      isHost: false,
+    });
+
+    if (round.currentPlayers.length >= round.targetPlayersCount) {
+      round.status = 'FULL';
+    }
+
+    list[idx] = round;
+    this.saveLightningRounds(list);
+    return true;
+  },
+
+  leaveLightningRound(lightningId: string, playerName?: string): boolean {
+    const list = this.getLightningRounds();
+    const idx = list.findIndex((l) => l.id === lightningId);
+    if (idx < 0) return false;
+
+    const round = list[idx];
+    const selfName = playerName || ParkOnStorage.getUserDisplayName();
+
+    round.currentPlayers = round.currentPlayers.filter((p) => p.name !== selfName);
+    if (round.status === 'FULL') {
+      round.status = 'RECRUITING';
+    }
+
+    list[idx] = round;
+    this.saveLightningRounds(list);
+    return true;
   },
 };
