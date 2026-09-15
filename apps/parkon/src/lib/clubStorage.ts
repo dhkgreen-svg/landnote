@@ -1842,12 +1842,16 @@ ${shareUrl}`;
     courseName: string;
     playDate: string;
     playTime: string;
-    targetCount: number;
+    targetCount?: number;
+    lightningScope?: 'FOUR_PLAYERS' | 'MULTI_OPEN';
     hostName: string;
     notes?: string;
   }): FlashGathering {
     const list = this.getAllFlashGatherings();
     const newId = `flash-${Date.now()}`;
+    const scope = data.lightningScope || (data.targetCount && data.targetCount > 4 ? 'MULTI_OPEN' : 'FOUR_PLAYERS');
+    const target = scope === 'MULTI_OPEN' ? 999 : (data.targetCount || 4);
+
     const newGathering: FlashGathering = {
       id: newId,
       title: data.title,
@@ -1858,7 +1862,8 @@ ${shareUrl}`;
       courseName: data.courseName,
       playDate: data.playDate,
       playTime: data.playTime,
-      targetCount: data.targetCount || 10,
+      targetCount: target,
+      lightningScope: scope,
       currentParticipants: [
         {
           id: `p_${Date.now()}`,
@@ -1895,18 +1900,10 @@ ${shareUrl}`;
     const alreadyJoined = item.currentParticipants.some((p) => p.name.includes(participantName));
     if (alreadyJoined) return { success: true, isWaitlist: false, message: '이미 참가자로 등록되어 있습니다.' };
 
-    const alreadyWaiting = item.waitingList.find((p) => p.name.includes(participantName));
-    if (alreadyWaiting) {
-      return {
-        success: true,
-        isWaitlist: true,
-        waitNumber: alreadyWaiting.waitNumber,
-        message: `이미 대기 ${alreadyWaiting.waitNumber}번으로 접수되어 있습니다.`,
-      };
-    }
+    const isMultiOpen = item.lightningScope === 'MULTI_OPEN' || item.targetCount >= 999;
 
-    // 정원 초과 시 -> 대기자 명단 자동 등록 (대기 번호 부여)
-    if (item.currentParticipants.length >= item.targetCount) {
+    // 4인 번개일 때만 정원 초과 대기자 등록
+    if (!isMultiOpen && item.currentParticipants.length >= 4) {
       item.status = 'FULL';
       const waitNumber = item.waitingList.length + 1;
       item.waitingList.push({
@@ -1925,7 +1922,7 @@ ${shareUrl}`;
       }
     }
 
-    // 정원 여유 있을 시 -> 정규 참가자 등록
+    // 정규 참가자 등록 (4인 이상 무제한 번개는 무제한 등록!)
     item.currentParticipants.push({
       id: `p_${Date.now()}`,
       name: participantName,
@@ -1933,7 +1930,7 @@ ${shareUrl}`;
       phone,
     });
 
-    if (item.currentParticipants.length >= item.targetCount) {
+    if (!isMultiOpen && item.currentParticipants.length >= 4) {
       item.status = 'FULL';
     }
 
@@ -2018,15 +2015,18 @@ ${shareUrl}`;
         ? `${window.location.origin}/club?hub=FLASH&flashId=${flash.id}`
         : `https://parkongolf.com/club?hub=FLASH&flashId=${flash.id}`;
 
-    const remaining = Math.max(0, flash.targetCount - flash.currentParticipants.length);
-    const clubBadge = flash.clubName ? `[${flash.clubName}]` : `[파크온 번개]`;
+    const clubBadge = flash.clubName ? `[${flash.clubName}]` : '[파크온 번개]';
+    const isMultiOpen = flash.lightningScope === 'MULTI_OPEN' || flash.targetCount >= 999;
+    const capacityText = isMultiOpen
+      ? `4인 이상 인원 무제한 (현재 ${flash.currentParticipants.length}명 참여 중!)`
+      : `4인 번개 (현재 ${flash.currentParticipants.length}/4명, 2인 이상 출발 가능)`;
 
     return `${clubBadge} ⚡ 번개 라운드 긴급 모집!
 "${flash.title}"
 
 ⛳ 장소: ${flash.courseName}
 📅 일시: ${flash.playDate} ${flash.playTime}
-👥 정원: 총 ${flash.targetCount}명 중 ${remaining > 0 ? `${remaining}명 급구!` : '정원 마감'}
+👥 모집: ${capacityText}
 👤 현재 참가: ${flash.currentParticipants.map((p) => p.name).join(', ')}
 ${flash.notes ? `💬 안내: "${flash.notes}"\n` : ''}
 👇 아래 파크온 링크를 눌러 1초 만에 바로 조인하세요!

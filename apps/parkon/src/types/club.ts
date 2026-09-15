@@ -126,7 +126,8 @@ export interface FlashGathering {
   courseName: string;
   playDate: string;          // 2026-09-12
   playTime: string;          // 14:00
-  targetCount: number;       // 총 정원 (보통 4명)
+  targetCount: number;       // 총 정원 (4인 번개: 4명, 4인 이상 번개: 999명 무제한)
+  lightningScope?: 'FOUR_PLAYERS' | 'MULTI_OPEN'; // [NEW] 'FOUR_PLAYERS' (4인 번개) vs 'MULTI_OPEN' (4인 이상 번개)
   currentParticipants: { id: string; name: string; joinedAt: string; phone?: string }[];
   waitingList?: { id: string; name: string; joinedAt: string; phone?: string; waitNumber: number }[]; // 정원 초과 시 대기 번호 명단
   hostName: string;          // 개설자

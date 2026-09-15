@@ -39,7 +39,8 @@ export interface CompanionLightningRound {
   courseName: string;
   dateStr: string; // '오늘', '내일', etc.
   timeStr: string; // '14:30'
-  targetPlayersCount: number;
+  targetPlayersCount: number; // 4인 번개: 4명, 4인 이상 번개: 999 (무제한)
+  lightningScope?: 'FOUR_PLAYERS' | 'MULTI_OPEN'; // 4인 번개 vs 4인 이상 무제한 번개
   invited1ChonNames?: string[]; // 초대 대상 1촌 이름 목록
   acceptedPlayers?: Array<{ id: string; name: string; isHost: boolean; acceptedAt: string }>; // 수락 완료 동반자
   currentPlayers: Array<{ id: string; name: string; isHost: boolean }>;
@@ -427,11 +428,15 @@ export const CompanionStorage = {
     dateStr: string;
     timeStr: string;
     targetPlayersCount?: number;
+    lightningScope?: 'FOUR_PLAYERS' | 'MULTI_OPEN';
     invited1ChonNames?: string[];
     notes?: string;
     tags?: string[];
   }): CompanionLightningRound {
     const selfName = ParkOnStorage.getUserDisplayName();
+    const scope = params.lightningScope || (params.targetPlayersCount && params.targetPlayersCount > 4 ? 'MULTI_OPEN' : 'FOUR_PLAYERS');
+    const targetCount = scope === 'MULTI_OPEN' ? 999 : (params.targetPlayersCount || 4);
+
     const newLtn: CompanionLightningRound = {
       id: `ltn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       hostId: 'self',
@@ -440,14 +445,15 @@ export const CompanionStorage = {
       courseName: params.courseName,
       dateStr: params.dateStr,
       timeStr: params.timeStr,
-      targetPlayersCount: params.targetPlayersCount || 10,
+      targetPlayersCount: targetCount,
+      lightningScope: scope,
       invited1ChonNames: params.invited1ChonNames,
       acceptedPlayers: [
         { id: 'self', name: selfName, isHost: true, acceptedAt: new Date().toISOString() },
       ],
       currentPlayers: [{ id: 'self', name: selfName, isHost: true }],
-      notes: params.notes || '1촌과 함께 즐거운 파크골프 라운드!',
-      tags: params.tags && params.tags.length > 0 ? params.tags : ['1촌 전용', '명랑 라운드'],
+      notes: params.notes || (scope === 'MULTI_OPEN' ? '4인 이상 인원 무제한 번개 라운드!' : '4인 안심 번개 라운드 (2인 이상 출발)!'),
+      tags: params.tags && params.tags.length > 0 ? params.tags : [scope === 'MULTI_OPEN' ? '4인 이상 번개' : '4인 번개', '명랑 라운드'],
       status: 'RECRUITING',
       createdAt: new Date().toISOString(),
     };
@@ -461,8 +467,10 @@ export const CompanionStorage = {
       companionId: 'self',
       companionName: selfName,
       courseName: params.courseName,
-      actionText: `⚡ [1촌 번개] ${params.courseName} (${params.dateStr} ${params.timeStr}) ${params.targetPlayersCount || 10}인 모집!`,
-      scoreSummary: `현재 1/${params.targetPlayersCount || 10}명 수락 완료`,
+      actionText: scope === 'MULTI_OPEN'
+        ? `⚡ [1촌 번개] ${params.courseName} (${params.dateStr} ${params.timeStr}) 4인 이상 무제한 모집!`
+        : `⚡ [1촌 번개] ${params.courseName} (${params.dateStr} ${params.timeStr}) 4인 번개 (2인 이상 출발)!`,
+      scoreSummary: scope === 'MULTI_OPEN' ? `현재 1명 수락 (인원 무제한)` : `현재 1/4명 수락 완료`,
       timestamp: new Date().toISOString(),
       timeAgoStr: '방금 전',
       isPlaying: false,
@@ -495,7 +503,10 @@ export const CompanionStorage = {
       return true; // 이미 수락함
     }
 
-    if (round.acceptedPlayers.length >= round.targetPlayersCount) {
+    const isMultiOpen = round.lightningScope === 'MULTI_OPEN' || round.targetPlayersCount >= 999;
+
+    // 4인 번개일 때만 4명 도달 시 마감 체크
+    if (!isMultiOpen && round.acceptedPlayers.length >= 4) {
       return false; // 마감됨
     }
 
@@ -514,7 +525,7 @@ export const CompanionStorage = {
       round.currentPlayers.push(newPlayer);
     }
 
-    if (round.acceptedPlayers.length >= round.targetPlayersCount) {
+    if (!isMultiOpen && round.acceptedPlayers.length >= 4) {
       round.status = 'FULL';
     }
 
