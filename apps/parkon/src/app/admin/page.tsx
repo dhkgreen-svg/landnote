@@ -302,17 +302,14 @@ export default function AdminDashboardPage() {
         )}
       </div>
 
-      {/* 4대 핵심 집계 카드: 미니멀 & 한눈에 쏙 들어오는 구조 */}
+      {/* 4대 핵심 집계 카드: 아이콘 제거 및 완전 중앙 정렬 미니멀 구조 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* 1. 총 가입자 수 */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs hover:border-emerald-400 transition-colors">
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">총 가입자 수</span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
-              <Download className="w-4 h-4 text-emerald-600" />
-            </div>
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center shadow-xs hover:border-emerald-400 transition-colors">
+          <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300">
+            총 가입자 수
           </div>
-          <div className="mt-2 flex items-baseline gap-1">
+          <div className="mt-1.5 flex items-baseline justify-center gap-1">
             <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
               {metrics?.totalAllTimeUsers ?? 0}
             </span>
@@ -321,14 +318,11 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* 2. 오늘 이용자 */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs hover:border-blue-400 transition-colors">
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">오늘 이용자</span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
-              <Users className="w-4 h-4 text-blue-600" />
-            </div>
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center shadow-xs hover:border-blue-400 transition-colors">
+          <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300">
+            오늘 이용자
           </div>
-          <div className="mt-2 flex items-baseline gap-1">
+          <div className="mt-1.5 flex items-baseline justify-center gap-1">
             <span className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400">
               {metrics?.todayDAU ?? 0}
             </span>
@@ -337,14 +331,11 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* 3. 현재 접속자 */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs hover:border-amber-400 transition-colors">
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">현재 접속자</span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
-              <Radio className="w-4 h-4 animate-pulse text-amber-500" />
-            </div>
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center shadow-xs hover:border-amber-400 transition-colors">
+          <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300">
+            현재 접속자
           </div>
-          <div className="mt-2 flex items-baseline gap-1">
+          <div className="mt-1.5 flex items-baseline justify-center gap-1">
             <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
               {metrics?.liveUsers ?? 0}
             </span>
@@ -353,14 +344,11 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* 4. 주간 이용자 */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs hover:border-purple-400 transition-colors">
-          <div className="flex items-center justify-between gap-1">
-            <span className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">주간 이용자</span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center shrink-0">
-              <Activity className="w-4 h-4 text-purple-600" />
-            </div>
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center shadow-xs hover:border-purple-400 transition-colors">
+          <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300">
+            주간 이용자
           </div>
-          <div className="mt-2 flex items-baseline gap-1">
+          <div className="mt-1.5 flex items-baseline justify-center gap-1">
             <span className="text-2xl sm:text-3xl font-black text-purple-600 dark:text-purple-400">
               {metrics?.weeklyWAU ?? 0}
             </span>
