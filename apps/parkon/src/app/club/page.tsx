@@ -4504,9 +4504,9 @@ ${shareUrl}`;
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-black text-xs text-stone-900">⛳ 4인 번개</span>
+                      <span className="font-black text-xs text-stone-900">⛳ 4명 라운드 (기본)</span>
                       <span className="bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full">
-                        기본
+                        기본 4인
                       </span>
                     </div>
                     <div className="text-[11px] text-stone-500 font-medium mt-1 leading-snug">
@@ -4525,7 +4525,7 @@ ${shareUrl}`;
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-black text-xs text-stone-900">👥 4인 이상 번개</span>
+                      <span className="font-black text-xs text-stone-900">👥 인원 수 제한 없음</span>
                       <span className="bg-amber-500 text-stone-950 text-[9px] font-black px-1.5 py-0.2 rounded-full">
                         무제한
                       </span>
@@ -4714,9 +4714,9 @@ ${shareUrl}`;
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-black text-xs text-stone-900">⛳ 4인 번개</span>
+                      <span className="font-black text-xs text-stone-900">⛳ 4명 라운드 (기본)</span>
                       <span className="bg-stone-800 text-amber-300 text-[9px] font-black px-1.5 py-0.2 rounded-full">
-                        기본
+                        기본 4인
                       </span>
                     </div>
                     <div className="text-[11px] text-stone-500 font-medium mt-1 leading-snug">
@@ -4735,7 +4735,7 @@ ${shareUrl}`;
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-black text-xs text-stone-900">👥 4인 이상 번개</span>
+                      <span className="font-black text-xs text-stone-900">👥 인원 수 제한 없음</span>
                       <span className="bg-amber-500 text-stone-950 text-[9px] font-black px-1.5 py-0.2 rounded-full">
                         무제한
                       </span>
