@@ -1,7 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { createClient } = require('@supabase/supabase-js');
+
 
 const PORT = process.env.PORT || 3050;
 const PUBLIC_DIR = path.join(__dirname);
@@ -48,6 +48,10 @@ async function saveDb(db) {
       throw new Error('Failed to save to Firebase');
     }
   } catch (err) {
+    console.error('Firebase Exception:', err.message);
+    throw err;
+  }
+} catch (err) {
     console.error('Firebase Exception:', err.message);
     throw err;
   }

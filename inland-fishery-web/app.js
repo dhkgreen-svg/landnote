@@ -13,9 +13,8 @@ const app = window.firebaseInitializeApp(firebaseConfig);
 const storage = window.firebaseGetStorage(app);
 
 async function uploadToSupabase(base64Data, prefix) {
-  // Now uploads to Firebase despite the function name
   if (!base64Data.startsWith('data:image')) return base64Data;
-  const mimeType = base64Data.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)[1];
+  const mimeType = base64Data.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,/)[1];
   const ext = mimeType.split('/')[1] || 'jpg';
   const fileName = 'images/' + prefix + '_' + Date.now() + '_' + Math.floor(Math.random()*10000) + '.' + ext;
   
