@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Play, MapPin, History, Award, Flame, Trophy, X, ArrowRight, ChevronDown, Check, Plus, Star, Search, Trash2, Share2, Download } from 'lucide-react';
+import { Play, MapPin, History, Award, Flame, Trophy, X, ArrowRight, ChevronDown, Check, Plus, Star, Search, Trash2, Share2, Download, Heart, Newspaper } from 'lucide-react';
 import { Course, RoundSession, formatCourseHolesText } from '@/types/parkon';
 import { ParkOnStorage, UserGolfProfile, DEFAULT_USER_PROFILE } from '@/lib/storage';
 import { ClubStorage } from '@/lib/clubStorage';
@@ -11,6 +11,7 @@ import { InstallPrompt } from '@/components/InstallPrompt';
 import { KakaoLoginModal } from '@/components/KakaoLoginModal';
 import { WelcomeModal } from '@/components/WelcomeModal';
 import { RulesWebtoonModal } from '@/components/RulesWebtoonModal';
+import { CompanionFeedWidget } from '@/components/CompanionFeedWidget';
 import { KakaoAuthUser } from '@/lib/storage';
 
 export default function HomePage() {
@@ -834,7 +835,7 @@ export default function HomePage() {
                 <Award className="w-3.5 h-3.5 text-purple-700" />
               </span>
               <span className="text-xs font-black text-stone-900 group-hover:text-purple-700 transition">
-                클럽 앤 번개
+                클럽 &amp; 대회 센터
               </span>
             </div>
             {clubBadge && (
@@ -853,22 +854,22 @@ export default function HomePage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/mascot/사진저장고_사진_20260913_38.jpg"
-                alt="클럽 앤 번개 동반자 나눔 파키"
+                alt="클럽 및 대회 운영 파키"
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="min-w-0">
               <div className="text-[11px] font-black text-stone-800 leading-tight truncate">
-                새 대회 개설 & 조편성
+                클럽 관리 &amp; 대회 개설
               </div>
               <div className="text-[9.5px] text-stone-500 font-medium truncate">
-                동반자 실시간 스코어 연동
+                신페리오 · 샷건 전광판
               </div>
             </div>
           </div>
 
           <div className="flex items-center justify-between text-[10px] font-black text-purple-800 pt-0.5 border-t border-stone-100">
-            <span>대회 개설</span>
+            <span>클럽·대회 운영</span>
             <span className="text-purple-700 font-black">바로가기 ▶</span>
           </div>
         </Link>
@@ -958,6 +959,65 @@ export default function HomePage() {
           룰 솔로몬 보기 ▶
         </span>
       </button>
+
+      {/* 4.5. 나의 파크골프 연대기 & 1촌 바로가기 카드 */}
+      <Link
+        href="/chronicle"
+        className="block bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 text-white rounded-3xl p-4 border border-emerald-500/40 shadow-sm hover:border-amber-400 transition group active:scale-[0.99]"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-amber-400 text-emerald-950 flex items-center justify-center font-black shadow-md shrink-0">
+              <Trophy className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm sm:text-base font-black text-white group-hover:text-amber-300 transition-colors">
+                  📖 나의 파크골프 연대기 &amp; 1촌 인연
+                </span>
+                <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full">
+                  신규
+                </span>
+              </div>
+              <p className="text-xs text-emerald-200 mt-0.5 font-medium">
+                커리어 마일스톤 · 1촌 친목 번개 띄우기 · 전국 구장 도장깨기
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-5 h-5 text-amber-300 group-hover:translate-x-1 transition-transform shrink-0" />
+        </div>
+      </Link>
+
+      {/* 4.6. 게시판 & 파크골프 뉴스 바로가기 카드 (GPS 반경 연동·전국 시합 공고·열린 신문고) */}
+      <Link
+        href="/board"
+        className="block bg-gradient-to-r from-purple-950 via-stone-900 to-emerald-950 text-white rounded-3xl p-4 border border-purple-400/50 shadow-sm hover:border-purple-300 transition group active:scale-[0.99]"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center font-black shadow-md shrink-0 border border-purple-300/40">
+              <Newspaper className="w-6 h-6 text-amber-300" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm sm:text-base font-black text-white group-hover:text-amber-300 transition-colors">
+                  📢 게시판 &amp; 파크골프 뉴스
+                </span>
+                <span className="text-[10px] bg-purple-500 text-white font-black px-2 py-0.5 rounded-full">
+                  GPS 연동
+                </span>
+              </div>
+              <p className="text-xs text-purple-200 mt-0.5 font-medium">
+                전국 시합·대회 공고 · GPS 내 위치 소식 · 열린 신문고(건의/오류 제보)
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-5 h-5 text-purple-300 group-hover:translate-x-1 transition-transform shrink-0" />
+        </div>
+      </Link>
+
+      {/* 4.6. 1촌 실시간 응원 피드 위젯 */}
+      <CompanionFeedWidget />
 
       {/* 5. Recent Completed Rounds */}
       {completedRounds.length > 0 && (

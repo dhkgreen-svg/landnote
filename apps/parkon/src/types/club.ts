@@ -27,10 +27,18 @@ export interface ClubGroup {
   status: 'WAITING' | 'PLAYING' | 'FINISHED' | 'RECRUITING';
 }
 
+export type TournamentType = 'CLUB_MATCH' | 'REGIONAL_OPEN' | 'CLUB_INTERNAL';
+
 export interface ClubEventRoom {
   id: string;          // e.g. 'dongrak-monthly-9'
   clubId?: string;     // linked club id (e.g. 'club-gumi-dongrak')
   clubName?: string;   // e.g. '구미 동락 에이스 파크골프 클럽'
+  tournamentType?: TournamentType; // [NEW] 'CLUB_MATCH' (클럽대항전) | 'REGIONAL_OPEN' (시·도 공식대회) | 'CLUB_INTERNAL' (클럽 월례회)
+  participatingClubs?: { clubId: string; clubName: string }[]; // [NEW] 대항전 참가 클럽들
+  matchTeamCount?: number; // [NEW] 대항전 참가 팀 수 (예: 2개팀, 3개팀, 4개팀)
+  playersPerTeam?: number; // [NEW] 클럽당 출전 엔트리 인원 (예: 16명, 12명)
+  matchInviteType?: 'DIRECT_CHALLENGE' | 'OPEN_CHALLENGE'; // [NEW] 지정 클럽 지목 도전장 vs 전국 공개 챌린지
+  regionScope?: string; // [NEW] 예: '구미시', '대구광역시', '경상북도'
   title: string;       // e.g. '구미 동락클럽 9월 정기 월례회'
   courseId: string;
   courseName: string;
@@ -121,7 +129,8 @@ export interface FlashGathering {
   courseName: string;
   playDate: string;          // 2026-09-12
   playTime: string;          // 14:00
-  targetCount: number;       // 총 정원 (보통 4명)
+  targetCount: number;       // 총 정원 (4인 번개: 4명, 4인 이상 번개: 999명 무제한)
+  lightningScope?: 'FOUR_PLAYERS' | 'MULTI_OPEN'; // [NEW] 'FOUR_PLAYERS' (4인 번개) vs 'MULTI_OPEN' (4인 이상 번개)
   currentParticipants: { id: string; name: string; joinedAt: string; phone?: string }[];
   waitingList?: { id: string; name: string; joinedAt: string; phone?: string; waitNumber: number }[]; // 정원 초과 시 대기 번호 명단
   hostName: string;          // 개설자

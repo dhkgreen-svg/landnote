@@ -21,152 +21,72 @@ const STORAGE_KEYS = {
   FLASH_GATHERINGS: 'parkon_flash_gatherings_v1',
 };
 
-// 기본 샘플 클럽 데이터
+// 기본 공식 동호회 데이터 (가상 인물 배제)
 function generateDefaultSeedClubs(): ParkGolfClub[] {
   return [
     {
       id: 'club-gumi-dongrak',
-      name: '구미 동락 에이스 파크골프 클럽',
+      name: '구미 동락 파크골프 클럽',
       region: '경북 구미',
       homeCourseId: 'course-gumi-dongrak',
       homeCourseName: '구미 동락 파크골프장',
-      description: '구미 동락구장을 사랑하는 5070 동호인 클럽입니다. 매월 둘째 주 토요일 정기 월례회 개최!',
-      presidentName: '박회장',
-      managerName: '김총무(본인)',
-      contactPhone: '010-1234-5678',
-      memberCount: 38,
+      description: '구미 동락구장을 사랑하는 동호인 공식 클럽입니다. 정기 월례회 및 친선 라운드 진행.',
+      presidentName: '동락회장',
+      managerName: '김대희',
+      contactPhone: '054-480-4918',
+      memberCount: 1,
       members: [
-        { id: 'm1', name: '박회장', role: 'PRESIDENT', joinedAt: '2026-01-01', phone: '010-1111-2222' },
-        { id: 'm2', name: '김총무(본인)', role: 'MANAGER', joinedAt: '2026-01-02', phone: '010-1234-5678' },
-        { id: 'm3', name: '이순신', role: 'MEMBER', joinedAt: '2026-02-15', phone: '010-3333-4444' },
-        { id: 'm4', name: '강감찬', role: 'MEMBER', joinedAt: '2026-03-01', phone: '010-5555-6666' },
-        { id: 'm5', name: '을지문덕', role: 'MEMBER', joinedAt: '2026-03-05', phone: '010-7777-8888' },
+        { id: 'm1', name: '김대희', role: 'MANAGER', joinedAt: '2026-01-01', phone: '054-480-4918' },
       ],
-      pendingMembers: [
-        {
-          id: 'pm_1',
-          name: '정약용',
-          phone: '010-9123-4567',
-          requestedAt: '오늘 11:20',
-          message: '동락구장에서 자주 칩니다. 회원 가입 신청합니다!',
-        },
-        {
-          id: 'pm_2',
-          name: '신사임당',
-          phone: '010-8876-5432',
-          requestedAt: '오늘 13:40',
-          message: '주말 월례회 참석하고 싶어요^^',
-        },
-      ],
+      pendingMembers: [],
       isPublic: true,
       badgeColor: 'emerald',
       createdAt: '2026-01-01',
     },
     {
       id: 'club-busan-samrak',
-      name: '부산 낙동 파크골프 사랑방',
-      region: '부산 사상',
-      homeCourseId: 'course-busan-samrak',
-      homeCourseName: '부산 삼락 파크골프장',
-      description: '삼락 생태공원의 맑은 바람과 함께 즐기는 친목 파크골프 클럽입니다. 초보 환영!',
-      presidentName: '이회장',
-      managerName: '최총무',
-      contactPhone: '010-9876-5432',
-      memberCount: 45,
+      name: '부산 삼락 파크골프 클럽',
+      region: '부산 사상구',
+      homeCourseId: 'course-samrak',
+      homeCourseName: '부산 삼락생태공원 파크골프장',
+      description: '부산 삼락구장을 홈으로 하는 전통의 명문 클럽입니다. 타 클럽 친선 교류전 환영!',
+      presidentName: '삼락회장',
+      managerName: '이총무',
+      contactPhone: '051-310-4000',
+      memberCount: 36,
       members: [
-        { id: 'mb1', name: '이회장', role: 'PRESIDENT', joinedAt: '2026-02-01', phone: '010-9999-8888' },
-        { id: 'mb2', name: '최총무', role: 'MANAGER', joinedAt: '2026-02-05', phone: '010-9876-5432' },
-        { id: 'mb3', name: '김총무(본인)', role: 'MEMBER', joinedAt: '2026-02-20', phone: '010-1234-5678' },
-        { id: 'mb4', name: '박영수', role: 'MEMBER', joinedAt: '2026-03-01', phone: '010-3344-5566' },
-      ],
-      pendingMembers: [],
-      isPublic: true,
-      badgeColor: 'amber',
-      createdAt: '2026-02-01',
-    },
-    {
-      id: 'club-seoul-hangang',
-      name: '서울 한강 시니어 파크골프회',
-      region: '서울 영등포',
-      homeCourseId: 'course-seoul-yeouido',
-      homeCourseName: '여의도 파크골프장',
-      description: '여의도 한강 둔치에서 건강과 우정을 다지는 수도권 명문 파크골프 클럽입니다.',
-      presidentName: '정회장',
-      managerName: '강총무',
-      contactPhone: '010-5555-8888',
-      memberCount: 52,
-      members: [
-        { id: 'ms1', name: '정회장', role: 'PRESIDENT', joinedAt: '2026-01-10', phone: '010-2211-3344' },
-        { id: 'ms2', name: '강총무', role: 'MANAGER', joinedAt: '2026-01-12', phone: '010-5555-8888' },
+        { id: 'm_sr_1', name: '이총무', role: 'MANAGER', joinedAt: '2026-01-02', phone: '051-310-4000' },
       ],
       pendingMembers: [],
       isPublic: true,
       badgeColor: 'purple',
-      createdAt: '2026-01-10',
+      createdAt: '2026-01-02',
+    },
+    {
+      id: 'club-daegu-suseong',
+      name: '대구 수성 에이스 파크골프 클럽',
+      region: '대구 수성구',
+      homeCourseId: 'course-suseong',
+      homeCourseName: '팔현 파크골프장',
+      description: '대구 수성구 팔현구장에서 활동하는 열정 파크골프 클럽입니다.',
+      presidentName: '수성회장',
+      managerName: '박총무',
+      contactPhone: '053-666-2000',
+      memberCount: 28,
+      members: [
+        { id: 'm_ss_1', name: '박총무', role: 'MANAGER', joinedAt: '2026-01-03', phone: '053-666-2000' },
+      ],
+      pendingMembers: [],
+      isPublic: true,
+      badgeColor: 'amber',
+      createdAt: '2026-01-03',
     },
   ];
 }
 
-// 기본 샘플 번개 데이터
+// 기본 번개 데이터 (사용자 직접 개설 전에는 빈 목록 유지)
 function generateDefaultSeedFlash(): FlashGathering[] {
-  return [
-    {
-      id: 'flash-1',
-      title: '오늘 14:00 동락 2명 급구! (18홀 편하게 치실 분)',
-      type: 'OPEN',
-      courseId: 'course-gumi-dongrak',
-      courseName: '구미 동락 파크골프장',
-      playDate: '오늘 (당일)',
-      playTime: '14:00',
-      targetCount: 4,
-      currentParticipants: [
-        { id: 'fp1', name: '김총무 (개설자)', joinedAt: '2026-09-12 10:00' },
-        { id: 'fp2', name: '이순신', joinedAt: '2026-09-12 11:30' },
-      ],
-      hostName: '김총무',
-      notes: '18홀 가볍게 치고 커피 한잔해요! 초보자 환영합니다.',
-      status: 'RECRUITING',
-      createdAt: '2026-09-12T01:00:00.000Z',
-    },
-    {
-      id: 'flash-2',
-      title: '주말 토요일 오전 9시 삼락 1명 조인 모십니다',
-      type: 'OPEN',
-      courseId: 'course-busan-samrak',
-      courseName: '부산 삼락 파크골프장',
-      playDate: '9월 13일(일)',
-      playTime: '09:00',
-      targetCount: 4,
-      currentParticipants: [
-        { id: 'fp3', name: '최총무 (개설자)', joinedAt: '2026-09-12 09:00' },
-        { id: 'fp4', name: '박영수', joinedAt: '2026-09-12 09:40' },
-        { id: 'fp5', name: '정미경', joinedAt: '2026-09-12 10:10' },
-      ],
-      hostName: '최총무',
-      notes: '36홀 완주 목표, 매너 플레이어 모십니다.',
-      status: 'RECRUITING',
-      createdAt: '2026-09-12T02:00:00.000Z',
-    },
-    {
-      id: 'flash-3',
-      title: '[동락클럽 전용] 평일 오후 번개 4인 라운드',
-      type: 'CLUB_ONLY',
-      clubId: 'club-gumi-dongrak',
-      clubName: '구미 동락 에이스 파크골프 클럽',
-      courseId: 'course-gumi-dongrak',
-      courseName: '구미 동락 파크골프장',
-      playDate: '오늘 (당일)',
-      playTime: '16:00',
-      targetCount: 4,
-      currentParticipants: [
-        { id: 'fp6', name: '박회장 (개설자)', joinedAt: '2026-09-12 08:30' },
-      ],
-      hostName: '박회장',
-      notes: '동락클럽 회원님들 번개입니다. 저녁 식사 같이해요.',
-      status: 'RECRUITING',
-      createdAt: '2026-09-12T02:30:00.000Z',
-    },
-  ];
+  return [];
 }
 
 // 실전 20명 5개 조 시드 데이터 생성
@@ -833,6 +753,12 @@ export const ClubStorage = {
     targetTotalPlayers?: number;
     clubId?: string;
     clubName?: string;
+    tournamentType?: 'CLUB_MATCH' | 'REGIONAL_OPEN' | 'CLUB_INTERNAL';
+    participatingClubs?: { clubId: string; clubName: string }[];
+    matchTeamCount?: number;
+    playersPerTeam?: number;
+    matchInviteType?: 'DIRECT_CHALLENGE' | 'OPEN_CHALLENGE';
+    regionScope?: string;
     entryFee?: number;
     bankAccount?: string;
     gameMode?: 'STROKE' | 'NEW_PERIO' | 'SCRAMBLE' | 'STABLEFORD' | 'CASUAL';
@@ -866,6 +792,12 @@ export const ClubStorage = {
       id,
       clubId: params.clubId,
       clubName: params.clubName,
+      tournamentType: params.tournamentType || (params.participatingClubs && params.participatingClubs.length > 1 ? 'CLUB_MATCH' : 'CLUB_INTERNAL'),
+      participatingClubs: params.participatingClubs,
+      matchTeamCount: params.matchTeamCount,
+      playersPerTeam: params.playersPerTeam,
+      matchInviteType: params.matchInviteType,
+      regionScope: params.regionScope,
       title: params.title.trim() || '파크골프 동호회 정기 모임',
       courseId: params.courseId,
       courseName: params.courseName,
@@ -1215,9 +1147,35 @@ export const ClubStorage = {
   // 11. 카카오톡 공유 링크 및 초대 메시지 생성
   generateKakaoShareText(room: ClubEventRoom): string {
     const totalCurrentPlayers = room.groups.reduce((sum, g) => sum + g.players.length, 0);
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3005';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3008';
     const link = `${origin}/club/${room.id}`;
     const modeInfo = this.getGameModeInfo(room.gameMode);
+
+    if (room.tournamentType === 'CLUB_MATCH') {
+      const hostClub = room.clubName || '주최 클럽';
+      const oppClubs =
+        room.participatingClubs && room.participatingClubs.length > 0
+          ? room.participatingClubs
+              .map((c) => c.clubName)
+              .filter((n) => n !== hostClub)
+              .join(', ') || '상대 클럽'
+          : '전국 파크골프 클럽';
+      const teamCount = room.matchTeamCount || 2;
+      const perTeam = room.playersPerTeam || Math.round((room.targetTotalPlayers || 32) / teamCount);
+      const isDirect = room.matchInviteType !== 'OPEN_CHALLENGE';
+
+      return `⚔️ [파크온 클럽 대항전 공식 ${isDirect ? '도전장' : '오픈 챌린지'}]
+
+🏆 ${room.title}
+🏛️ 대결 매치: [${hostClub}] ⚔️ VS ⚔️ [${oppClubs}]
+📍 구장: ${room.courseName} (${room.totalHoles}홀)
+👥 출전 엔트리: ${teamCount}개 팀 (팀당 ${perTeam}명 / 총 ${room.targetTotalPlayers || 32}명)
+🎯 경기 방식: ${room.gameModeTitle || modeInfo.title}
+⛳ 조 편성: 라이벌 크로스 맞대결 조편성 (총 ${room.groups.length}개 조)
+
+👇 아래 링크를 눌러 대항전 수락 및 출전 엔트리를 등록하세요!
+${link}`;
+    }
 
     let feeInfo = '';
     if (typeof room.entryFee === 'number' && room.entryFee > 0) {
@@ -1633,6 +1591,17 @@ export const ClubStorage = {
         return seeds;
       }
       const parsed: ParkGolfClub[] = JSON.parse(data);
+      const seeds = generateDefaultSeedClubs();
+      let changed = false;
+      seeds.forEach((sc) => {
+        if (!parsed.some((c) => c.id === sc.id)) {
+          parsed.push(sc);
+          changed = true;
+        }
+      });
+      if (changed) {
+        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(parsed));
+      }
       return parsed.map((c) => ({
         ...c,
         pendingMembers: c.pendingMembers || [],
@@ -1954,12 +1923,16 @@ ${shareUrl}`;
     courseName: string;
     playDate: string;
     playTime: string;
-    targetCount: number;
+    targetCount?: number;
+    lightningScope?: 'FOUR_PLAYERS' | 'MULTI_OPEN';
     hostName: string;
     notes?: string;
   }): FlashGathering {
     const list = this.getAllFlashGatherings();
     const newId = `flash-${Date.now()}`;
+    const scope = data.lightningScope || (data.targetCount && data.targetCount > 4 ? 'MULTI_OPEN' : 'FOUR_PLAYERS');
+    const target = scope === 'MULTI_OPEN' ? 999 : (data.targetCount || 4);
+
     const newGathering: FlashGathering = {
       id: newId,
       title: data.title,
@@ -1970,7 +1943,8 @@ ${shareUrl}`;
       courseName: data.courseName,
       playDate: data.playDate,
       playTime: data.playTime,
-      targetCount: data.targetCount || 4,
+      targetCount: target,
+      lightningScope: scope,
       currentParticipants: [
         {
           id: `p_${Date.now()}`,
@@ -2007,18 +1981,10 @@ ${shareUrl}`;
     const alreadyJoined = item.currentParticipants.some((p) => p.name.includes(participantName));
     if (alreadyJoined) return { success: true, isWaitlist: false, message: '이미 참가자로 등록되어 있습니다.' };
 
-    const alreadyWaiting = item.waitingList.find((p) => p.name.includes(participantName));
-    if (alreadyWaiting) {
-      return {
-        success: true,
-        isWaitlist: true,
-        waitNumber: alreadyWaiting.waitNumber,
-        message: `이미 대기 ${alreadyWaiting.waitNumber}번으로 접수되어 있습니다.`,
-      };
-    }
+    const isMultiOpen = item.lightningScope === 'MULTI_OPEN' || item.targetCount >= 999;
 
-    // 정원 초과 시 -> 대기자 명단 자동 등록 (대기 번호 부여)
-    if (item.currentParticipants.length >= item.targetCount) {
+    // 4인 번개일 때만 정원 초과 대기자 등록
+    if (!isMultiOpen && item.currentParticipants.length >= 4) {
       item.status = 'FULL';
       const waitNumber = item.waitingList.length + 1;
       item.waitingList.push({
@@ -2037,7 +2003,7 @@ ${shareUrl}`;
       }
     }
 
-    // 정원 여유 있을 시 -> 정규 참가자 등록
+    // 정규 참가자 등록 (4인 이상 무제한 번개는 무제한 등록!)
     item.currentParticipants.push({
       id: `p_${Date.now()}`,
       name: participantName,
@@ -2045,7 +2011,7 @@ ${shareUrl}`;
       phone,
     });
 
-    if (item.currentParticipants.length >= item.targetCount) {
+    if (!isMultiOpen && item.currentParticipants.length >= 4) {
       item.status = 'FULL';
     }
 
@@ -2116,6 +2082,13 @@ ${shareUrl}`;
     }
   },
 
+  leaveFlashGathering(
+    gatheringId: string,
+    participantName: string
+  ): { success: boolean; promotedPlayerName?: string } {
+    return this.cancelFlashGathering(gatheringId, participantName);
+  },
+
   // 카카오톡 번개 모집 초대장 문구 생성 (카톡 단체방 공유용)
   generateFlashKakaoShareText(flash: FlashGathering): string {
     const shareUrl =
@@ -2123,22 +2096,47 @@ ${shareUrl}`;
         ? `${window.location.origin}/club?hub=FLASH&flashId=${flash.id}`
         : `https://parkongolf.com/club?hub=FLASH&flashId=${flash.id}`;
 
-    const isMultiOpen = flash.targetCount >= 999;
-    const remaining = isMultiOpen ? 0 : Math.max(0, flash.targetCount - flash.currentParticipants.length);
-    const clubBadge = flash.clubName ? `[${flash.clubName}]` : `[파크온 번개]`;
+    const clubBadge = flash.clubName ? `[${flash.clubName}]` : '[파크온 번개]';
+    const isMultiOpen = flash.lightningScope === 'MULTI_OPEN' || flash.targetCount >= 999;
     const capacityText = isMultiOpen
-      ? `인원 수 제한 없음 (4인 이상 무제한)`
-      : `총 ${flash.targetCount}명 중 ${remaining > 0 ? `${remaining}명 급구!` : '정원 마감'}`;
+      ? `4인 이상 인원 무제한 (현재 ${flash.currentParticipants.length}명 참여 중!)`
+      : `4인 번개 (현재 ${flash.currentParticipants.length}/4명, 2인 이상 출발 가능)`;
 
     return `${clubBadge} ⚡ 번개 라운드 긴급 모집!
 "${flash.title}"
 
 ⛳ 장소: ${flash.courseName}
 📅 일시: ${flash.playDate} ${flash.playTime}
-👥 정원: ${capacityText}
+👥 모집: ${capacityText}
 👤 현재 참가: ${flash.currentParticipants.map((p) => p.name).join(', ')}
 ${flash.notes ? `💬 안내: "${flash.notes}"\n` : ''}
 👇 아래 파크온 링크를 눌러 1초 만에 바로 조인하세요!
 ${shareUrl}`;
   },
+
+  // 전체 조 편성 카카오톡 단톡방 공지 문구 생성
+  generateGroupFormationKakaoShareText(room: ClubEventRoom): string {
+    const origin =
+      typeof window !== 'undefined'
+        ? window.location.origin
+        : 'https://parkongolf.com';
+    const link = `${origin}/club/${room.id}`;
+    const totalPlayers = room.groups.reduce((sum, g) => sum + g.players.length, 0);
+
+    let text = `📢 [파크온] ${room.courseName} 라운드 조 편성 결과\n`;
+    text += `🏆 ${room.title}\n`;
+    text += `👥 총 ${room.groups.length}개 조 (${totalPlayers}명 배정 완료)\n`;
+    text += `---------------------------------\n`;
+
+    room.groups.forEach((g) => {
+      const leaderStr = g.leaderName ? ` (조장: ${g.leaderName})` : '';
+      const members = g.players.map((p) => (p.isLeader ? `👑${p.name}` : p.name)).join(', ');
+      text += `⛳ ${g.name}${leaderStr}\n   👉 ${members || '배정 대기 중'}\n`;
+    });
+
+    text += `---------------------------------\n`;
+    text += `📡 실시간 디지털 전광판 & 스코어보드 바로가기:\n${link}`;
+    return text;
+  },
 };
+

@@ -213,39 +213,9 @@ const RESTAURANT_CATEGORIES = [
   { id: '분식·기타', label: '분식·간식·카페', icon: '☕', desc: '김밥, 라면, 커피, 베이커리' },
 ];
 
-// --- 유료 스폰서 추천 제휴 식당 (상단 직사각형 배너 상시 노출) ---
-const DEFAULT_PAID_RESTAURANTS: ParkGolfRestaurant[] = [
-  {
-    id: 'sponsor-rest-1',
-    name: '선산 숯불한우가든',
-    region: '경북 구미시 선산읍',
-    category: '고기·구이',
-    signatureMenu: '한우 갈비살, 꽃등심, 뚝배기 불고기',
-    priceInfo: '15,000원~',
-    distanceText: '구미 구장 7분',
-    groupSeating: '50석 단체 연회 완비 / 대형 버스 주차 / 승합차 무료 픽업',
-    phone: '054-482-5592',
-    tags: ['스폰서맛집', '단체환영', '픽업무료', '한우전문'],
-    isPaid: true,
-    bannerTitle: '👑 [스폰서 추천] 선산 숯불한우 · 파크골프 50석 단체 환영 & 승합차 무료 픽업 ↗',
-    description: '파크골프 라운딩 후 동호회 단체 회식 1등 명소! 50인 단체석 완비, 구장 왕복 픽업 무료 지원 및 음료 서비스!',
-  },
-  {
-    id: 'sponsor-rest-2',
-    name: '팔공산 가마솥 토종닭·능이백숙',
-    region: '경북 칠곡군 동명면',
-    category: '백숙·오리',
-    signatureMenu: '능이버섯 토종닭 백숙, 유황오리 백숙, 해물파전',
-    priceInfo: '60,000원 (3~4인)',
-    distanceText: '인근 구장 10분',
-    groupSeating: '독채 룸 6개 (최대 70석) / 족구장 / 대형 주차장',
-    phone: '054-977-1238',
-    tags: ['스폰서맛집', '보양식', '단체환영', '예약필수'],
-    isPaid: true,
-    bannerTitle: '👑 [스폰서 추천] 팔공산 가마솥 토종닭 백숙 · 70석 단체 환영 & 사전 예약 ↗',
-    description: '운동 후 원기 회복 1등 보양식! 24시간 가마솥에서 고아낸 진한 능이버섯 백숙. 사전 전화 예약 시 즉시 식사 가능!',
-  },
-];
+// --- 유료 스폰서 제휴 식당 (실제 등록 데이터만 노출, 가상 목업 제거) ---
+const DEFAULT_PAID_RESTAURANTS: ParkGolfRestaurant[] = [];
+
 
 export default function CoursesPage() {
   const router = useRouter();
@@ -755,8 +725,10 @@ export default function CoursesPage() {
 
   const filteredCourses = isSearchActive
     ? courses.filter((c) => {
+        if (activeSearchTerm === '전체' || activeSearchTerm === '전국') return true;
         const matchName = c.name.toLowerCase().includes(activeSearchTerm);
         const matchRegion = c.region.toLowerCase().includes(activeSearchTerm);
+        const matchAddress = c.address?.toLowerCase().includes(activeSearchTerm) || false;
         const matchDesc = c.description?.toLowerCase().includes(activeSearchTerm) || false;
 
         // Space-tolerant matching: e.g. "경북청송" matches "경북 청송", "구미양호" matches "구미 양호"
@@ -765,7 +737,7 @@ export default function CoursesPage() {
         const noSpaceRegion = c.region.toLowerCase().replace(/\s+/g, '');
         const matchNoSpace = noSpaceName.includes(noSpaceQuery) || noSpaceRegion.includes(noSpaceQuery);
 
-        return matchName || matchRegion || matchDesc || matchNoSpace;
+        return matchName || matchRegion || matchAddress || matchDesc || matchNoSpace;
       })
     : [];
 
@@ -943,6 +915,59 @@ export default function CoursesPage() {
             <Search className="w-5 h-5" />
             <span className="text-xs">검색</span>
           </button>
+        </div>
+
+        {/* ⛳ 전국 17개 시·도 원터치 빠른 탐색 바 */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setInputQuery('전체');
+              setAppliedQuery('전체');
+            }}
+            className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition cursor-pointer ${
+              appliedQuery === '전체'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200'
+            }`}
+          >
+            전국 전체 ({courses.length})
+          </button>
+          {[
+            { name: '서울', count: 28 },
+            { name: '경기', count: 58 },
+            { name: '인천', count: 8 },
+            { name: '부산', count: 18 },
+            { name: '대구', count: 39 },
+            { name: '광주', count: 9 },
+            { name: '대전', count: 5 },
+            { name: '울산', count: 7 },
+            { name: '세종', count: 9 },
+            { name: '강원', count: 46 },
+            { name: '충북', count: 26 },
+            { name: '충남', count: 35 },
+            { name: '전북', count: 33 },
+            { name: '전남', count: 43 },
+            { name: '경북', count: 71 },
+            { name: '경남', count: 89 },
+            { name: '제주', count: 11 },
+          ].map((reg) => (
+            <button
+              key={reg.name}
+              type="button"
+              onClick={() => {
+                setInputQuery(reg.name);
+                setAppliedQuery(reg.name);
+              }}
+              className={`px-2.5 py-1.5 rounded-xl font-bold whitespace-nowrap transition cursor-pointer ${
+                appliedQuery === reg.name
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200'
+              }`}
+            >
+              {reg.name} ({reg.count})
+            </button>
+          ))}
         </div>
       </div>
 
@@ -1144,6 +1169,38 @@ export default function CoursesPage() {
                       <p className="text-xs text-stone-700 bg-stone-50 p-2.5 rounded-xl border border-stone-200 leading-snug break-keep font-medium">
                         {c.description}
                       </p>
+                    )}
+
+                    {/* Facility Details: Address, Phone, Fee, Hours, Parking */}
+                    {(c.address || c.phone || c.openHours || c.fee || c.closedDay || c.parking) && (
+                      <div className="text-xs space-y-1.5 bg-stone-50/90 p-3 rounded-2xl border border-stone-200">
+                        {c.address && (
+                          <div className="flex items-start gap-1.5 text-stone-800">
+                            <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" />
+                            <span className="font-bold text-stone-900">{c.address}</span>
+                          </div>
+                        )}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-stone-600 font-semibold text-[11px]">
+                          {c.phone && (
+                            <a
+                              href={`tel:${c.phone}`}
+                              className="flex items-center gap-1 text-emerald-800 hover:underline font-extrabold bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200"
+                            >
+                              <Phone className="w-3 h-3 text-emerald-700" />
+                              <span>{c.phone}</span>
+                            </a>
+                          )}
+                          {c.fee && <span className="bg-white px-2 py-0.5 rounded-lg border border-stone-200">💰 {c.fee}</span>}
+                          {c.openHours && <span className="bg-white px-2 py-0.5 rounded-lg border border-stone-200">⏰ {c.openHours}</span>}
+                          {c.closedDay && <span className="bg-rose-50 text-rose-800 px-2 py-0.5 rounded-lg border border-rose-200 font-bold">⛔ {c.closedDay}</span>}
+                        </div>
+                        {c.parking && (
+                          <div className="text-[11px] text-stone-600 flex items-center gap-1 font-medium">
+                            <span>🅿️ 주차:</span>
+                            <span>{c.parking}</span>
+                          </div>
+                        )}
+                      </div>
                     )}
 
                     {/* 👑 HONOR BADGE (명예 표시) */}
