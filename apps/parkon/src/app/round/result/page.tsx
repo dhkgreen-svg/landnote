@@ -230,7 +230,7 @@ function ResultContent() {
           />
           <div className="text-left">
             <span className="text-[10px] bg-amber-400 text-emerald-950 font-black px-1.5 py-0.2 rounded-md">
-              캐디 파키의 한마디
+              스마트 AI 코치 파키의 한마디
             </span>
             <p className="text-xs font-bold text-amber-200 mt-0.5">
               &ldquo;오늘 멋진 라운드 완주를 진심으로 축하드려요! 굿샷! 🎉&rdquo;
