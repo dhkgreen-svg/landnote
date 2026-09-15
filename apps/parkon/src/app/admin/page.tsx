@@ -249,19 +249,11 @@ export default function AdminDashboardPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       {/* Top Master Header */}
       <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white rounded-2xl p-5 sm:p-6 shadow-lg relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 text-xs font-bold rounded-full flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-300" /> 최고관리자 통합관제
-              </span>
-            </div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black mt-1.5 flex items-center gap-2 whitespace-nowrap">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black flex items-center gap-2">
               ParkOn 전국 통합 관제센터
             </h1>
-            <p className="text-xs sm:text-sm text-emerald-100/90 mt-1">
-              총 다운로드 골퍼 수, 오늘 이용 유저(DAU), 실시간 접속자 및 전국 16개 시·도별 실제 현황을 정밀 집계합니다.
-            </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
