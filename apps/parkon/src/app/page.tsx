@@ -24,6 +24,7 @@ export default function HomePage() {
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
   const [showNationalStatsModal, setShowNationalStatsModal] = useState<boolean>(false);
   const [showRulesWebtoonModal, setShowRulesWebtoonModal] = useState<boolean>(false);
+  const [showRulesSolomonPopup, setShowRulesSolomonPopup] = useState<boolean>(false);
   const [leaderboardTab, setLeaderboardTab] = useState<'FIRST_PLACE' | 'TOP4'>('FIRST_PLACE');
   const [statsCourseId, setStatsCourseId] = useState<string>('');
   const [clubBadge, setClubBadge] = useState<{ text: string; isPlaying: boolean } | null>(null);
@@ -652,6 +653,44 @@ export default function HomePage() {
         onClose={() => setShowRulesWebtoonModal(false)}
       />
 
+      {/* -2.5. 룰 솔로몬 & 만화 웹툰 전체 가이드 팝업창 (물음표 기능 완벽 연동) */}
+      {showRulesSolomonPopup && (
+        <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg h-[92vh] sm:h-[88vh] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-stone-200">
+            {/* Modal Top Bar */}
+            <div className="bg-emerald-800 text-white px-4 py-3 flex items-center justify-between shrink-0 shadow-md">
+              <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-emerald-700 text-white flex items-center justify-center text-sm font-bold shadow-xs">
+                  ⚖️
+                </span>
+                <div>
+                  <div className="text-sm font-black text-white flex items-center gap-1.5">
+                    <span>룰 솔로몬 & 만화 웹툰 가이드</span>
+                    <span className="text-[9px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full">
+                      공인 규정 준거
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-emerald-200">필드 분쟁 1초 판정 · 음성/사진 판정 · 챕터별 만화</div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRulesSolomonPopup(false)}
+                className="px-3 py-1.5 bg-white/20 hover:bg-white/30 active:scale-95 text-white text-xs font-black rounded-xl flex items-center gap-1 transition shadow-xs"
+              >
+                <span>✕ 닫기</span>
+              </button>
+            </div>
+            {/* Iframe to /rules */}
+            <iframe
+              src="/rules"
+              className="w-full flex-1 border-0"
+              title="파크골프 룰 솔로몬 및 만화 웹툰 가이드"
+            />
+          </div>
+        </div>
+      )}
+
       {/* 0. PWA 스마트폰 1초 앱 설치 배너 & 가이드 */}
       <InstallPrompt />
 
@@ -871,37 +910,38 @@ export default function HomePage() {
         </span>
       </a>
 
-      {/* 4-2. 배너 2: 파키의 파크골프 에티켓 & 룰 Q&A 배너 */}
+      {/* 4-2. 배너 2: 파크골프 룰 솔로몬 & 만화 웹툰 가이드 바로가기 배너 */}
       <button
-        onClick={() => setShowRulesWebtoonModal(true)}
+        type="button"
+        onClick={() => setShowRulesSolomonPopup(true)}
         className="bg-gradient-to-r from-stone-800 via-emerald-950 to-stone-900 text-white rounded-2xl p-3 shadow-sm border border-emerald-700/50 hover:border-emerald-400 transition active:scale-[0.99] cursor-pointer flex items-center justify-between gap-3 group text-left w-full"
-        title="파크골프 에티켓 & 룰 웹툰북 보기"
+        title="파크골프 룰 솔로몬 & 만화 웹툰 가이드 팝업 열기"
       >
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="relative w-12 h-12 rounded-xl overflow-hidden shadow-xs border border-emerald-400 shrink-0 bg-stone-100 group-hover:scale-105 transition-transform">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/mascot/사진저장고_사진_20260913_1.jpg"
-              alt="파크골프 에티켓 & 룰 가이드"
+              alt="파크골프 룰 솔로몬 & 만화 웹툰 가이드"
               className="w-full h-full object-cover"
             />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-black text-white tracking-tight">
-                파크골프 에티켓 & 필드 매너
+                파크골프 룰 솔로몬 & 만화 웹툰
               </span>
               <span className="text-[9px] font-black bg-emerald-400 text-stone-950 px-1.5 py-0.2 rounded shadow-2xs">
                 만화로 보는 룰
               </span>
             </div>
             <p className="text-[10.5px] text-stone-300 font-medium truncate mt-0.5">
-              동반자 배려 수칙 · 필수 에티켓 · 자주 묻는 룰 Q&A
+              필드 분쟁 즉시 판정 · 챕터별 만화 가이드 · 공인 규정 준거
             </p>
           </div>
         </div>
         <span className="text-[10px] font-black text-emerald-300 bg-white/10 group-hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded-xl shrink-0 whitespace-nowrap transition-colors">
-          에티켓 보기 ▶
+          룰 솔로몬 보기 ▶
         </span>
       </button>
 
