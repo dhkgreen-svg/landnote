@@ -247,32 +247,32 @@ export default function AdminDashboardPage() {
   // --- Authenticated Dashboard ---
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Top Master Header (Compact & Sleek) */}
-      <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white rounded-2xl p-3.5 sm:p-5 shadow-lg relative overflow-hidden">
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          {/* Brand Logo & Subtitle */}
-          <div className="flex items-baseline gap-2">
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+      {/* Top Master Header (Single Slim Row) */}
+      <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white rounded-2xl p-3 sm:p-4 shadow-lg relative overflow-hidden">
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-2">
+          {/* Brand Logo & Subtitle in one inline group */}
+          <div className="flex items-baseline gap-1.5 sm:gap-2 shrink-0">
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white whitespace-nowrap">
               ParkOn
             </h1>
-            <span className="text-xs sm:text-sm font-bold text-emerald-200 tracking-tight">
+            <span className="text-xs sm:text-sm font-bold text-emerald-200 tracking-tight whitespace-nowrap">
               전국 통합 관제센터
             </span>
           </div>
 
-          {/* Action Buttons: 3 equal columns on mobile */}
-          <div className="grid grid-cols-3 sm:flex sm:items-center gap-1.5 w-full sm:w-auto">
+          {/* Action Buttons right aligned on the same row */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             <button
               onClick={() => fetchMetrics(pin)}
               disabled={isLoading}
-              className="py-1.5 px-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors backdrop-blur-sm whitespace-nowrap"
+              className="py-1 px-2 sm:px-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition-colors backdrop-blur-sm whitespace-nowrap"
             >
               <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
               <span>새로고침</span>
             </button>
             <button
               onClick={() => setAutoRefresh(!autoRefresh)}
-              className={`py-1.5 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors whitespace-nowrap ${
+              className={`py-1 px-2 sm:px-2.5 rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition-colors whitespace-nowrap ${
                 autoRefresh
                   ? 'bg-emerald-500 text-white shadow-sm'
                   : 'bg-white/10 text-white/70 hover:bg-white/20'
@@ -283,7 +283,7 @@ export default function AdminDashboardPage() {
             </button>
             <button
               onClick={handleLogout}
-              className="py-1.5 px-2 bg-red-500/80 hover:bg-red-600 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-colors whitespace-nowrap"
+              className="py-1 px-2 sm:px-2.5 bg-red-500/80 hover:bg-red-600 rounded-xl text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition-colors whitespace-nowrap"
             >
               <LogOut className="w-3 h-3" />
               <span>로그아웃</span>
