@@ -51,10 +51,6 @@ async function saveDb(db) {
     console.error('Firebase Exception:', err.message);
     throw err;
   }
-} catch (err) {
-    console.error('Firebase Exception:', err.message);
-    throw err;
-  }
 }
 
 const server = http.createServer(async (req, res) => {
