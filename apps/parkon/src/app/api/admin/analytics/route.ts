@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
@@ -54,6 +55,18 @@ interface AnalyticsStore {
 }
 
 const ANALYTICS_FILE = path.join(os.tmpdir(), 'parkon_analytics_logs.json');
+
+
+const getSupabaseClient = () => {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key || url.includes('placeholder')) return null;
+  try {
+    return createClient(url, key, { auth: { persistSession: false } });
+  } catch {
+    return null;
+  }
+};
 
 const getAnalyticsStore = (): AnalyticsStore => {
   const g = globalThis as any;
@@ -579,6 +592,28 @@ export async function GET(req: NextRequest) {
   }
 
   const store = getAnalyticsStore();
+  // Cloud Database Sync (Vercel Serverless 영구 보존용)
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('parkon_analytics_logs')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(1000);
+      if (!error && data && data.length > 0) {
+        const existingIds = new Set(store.logs.map((l) => l.id));
+        data.forEach((row: any) => {
+          if (!existingIds.has(row.id)) {
+            store.logs.push(row);
+            existingIds.add(row.id);
+          }
+        });
+      }
+    } catch {
+      // Local fallback
+    }
+  }
   const now = new Date();
   const nowTime = now.getTime();
   const todayStr = now.toISOString().split('T')[0];
@@ -820,6 +855,16 @@ export async function POST(req: NextRequest) {
 
     store.popularPages[currentPath] = (store.popularPages[currentPath] || 0) + 1;
     saveAnalyticsStore(store);
+
+    // Supabase Cloud에 비동기 영구 저장 (백그라운드)
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase.from('parkon_analytics_logs').insert([log]);
+      } catch {
+        // Local fallback
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
