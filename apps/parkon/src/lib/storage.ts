@@ -386,7 +386,9 @@ export const ParkOnStorage = {
           const userCourses = custom.totalCourses || Math.max(1, Math.round(userHoles / 9));
           const holes = (custom.holesMetadata && custom.holesMetadata.length >= userHoles)
             ? custom.holesMetadata.slice(0, userHoles)
-            : generateStandardHoles(userHoles);
+            : (d.holesMetadata && d.holesMetadata.length >= userHoles
+                ? d.holesMetadata.slice(0, userHoles)
+                : generateStandardHoles(userHoles));
 
           return applyCrowdSpecs({
             ...d,
