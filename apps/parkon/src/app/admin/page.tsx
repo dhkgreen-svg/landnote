@@ -18,47 +18,16 @@ import {
   Globe, 
   LogOut, 
   Sparkles, 
-  Award, 
   MapPin, 
-  Building2, 
   Calendar, 
-  Flame, 
-  Trophy, 
-  Activity,
-  Search,
-  Zap,
-  Target,
-  ChevronRight,
-  Filter
+  Activity
 } from 'lucide-react';
 
 interface ProvinceStat {
   code: string;
   name: string;
-  regionGroup?: string;
   userCount: number;
   userPercentage: number;
-  clubCount: number;
-  totalClubMembers?: number;
-  weeklyRounds?: number;
-  peakHours?: string;
-  majorCourses: string[];
-  topClubs: Array<{ name: string; memberCount: number; homeCourse: string; tag?: string }>;
-}
-
-interface CityStat {
-  cityName: string;
-  province: string;
-  userCount: number;
-  clubCount: number;
-  clubs: string[];
-  courses: string[];
-}
-
-interface UserCohorts {
-  heavyUsers: { count: number; percentage: number; label: string; description: string };
-  regularUsers: { count: number; percentage: number; label: string; description: string };
-  lightUsers: { count: number; percentage: number; label: string; description: string };
 }
 
 interface Metrics {
@@ -70,18 +39,7 @@ interface Metrics {
   todayPageviews: number;
   totalUniqueVisitors: number;
   provinceStats: ProvinceStat[];
-  cityDirectory: CityStat[];
-  userCohorts: UserCohorts;
   dailyTrend: Record<string, { pageviews: number; uniqueVisitors: number }>;
-  activeRoomsCount: number;
-  activeRoomsList: Array<{
-    roomId: string;
-    courseName: string;
-    leaderName: string;
-    playerCount: number;
-    status: string;
-    updatedAt: number;
-  }>;
   popularPages: Record<string, number>;
   recentVisitors: Array<{
     id: string;
@@ -107,16 +65,12 @@ export default function AdminDashboardPage() {
   const [lastRefreshed, setLastRefreshed] = useState<string>('');
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // Search & Filter States
-  const [citySearchQuery, setCitySearchQuery] = useState('');
-  const [selectedProvinceModal, setSelectedProvinceModal] = useState<ProvinceStat | null>(null);
-
-  // Check saved session PIN on load
+  // Check saved session PIN on load (6자리 768517)
   useEffect(() => {
     const savedPin = sessionStorage.getItem('parkon_admin_pin');
-    if (savedPin === '3304') {
-      setPin('3304');
-      fetchMetrics('3304');
+    if (savedPin === '768517') {
+      setPin('768517');
+      fetchMetrics('768517');
     }
   }, []);
 
@@ -150,7 +104,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (!isAuthenticated || !autoRefresh) return;
     const interval = setInterval(() => {
-      fetchMetrics(pin || '3304');
+      fetchMetrics(pin || '768517');
     }, 10000);
     return () => clearInterval(interval);
   }, [isAuthenticated, autoRefresh, pin, fetchMetrics]);
@@ -158,7 +112,7 @@ export default function AdminDashboardPage() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!pin.trim()) {
-      setErrorMsg('PIN 4자리를 입력해주세요.');
+      setErrorMsg('PIN 6자리를 입력해주세요.');
       return;
     }
     fetchMetrics(pin.trim());
@@ -181,7 +135,7 @@ export default function AdminDashboardPage() {
 
   const getPageTitle = (p: string) => {
     if (p === '/') return '메인 홈 (스코어카드/구장)';
-    if (p.startsWith('/rules')) return '경기 규정집 (왕글씨)';
+    if (p.startsWith('/rules')) return '경기 규정집 & 웹툰';
     if (p.startsWith('/courses')) return '전국 구장 검색';
     if (p.startsWith('/club')) return '파크온 클럽 커뮤니티';
     if (p.startsWith('/round')) return '멀티플레이 실시간 라운드';
@@ -189,26 +143,11 @@ export default function AdminDashboardPage() {
     return p;
   };
 
-  // Province Stats
   const provinces = useMemo(() => {
     return metrics?.provinceStats ?? [];
   }, [metrics?.provinceStats]);
 
-  // Filtered City Directory based on Search Query
-  const filteredCities = useMemo(() => {
-    if (!metrics?.cityDirectory) return [];
-    const query = citySearchQuery.trim().toLowerCase();
-    if (!query) return metrics.cityDirectory;
-    return metrics.cityDirectory.filter((city) => {
-      const matchCity = city.cityName.toLowerCase().includes(query);
-      const matchProv = city.province.toLowerCase().includes(query);
-      const matchClubs = city.clubs.some((c) => c.toLowerCase().includes(query));
-      const matchCourses = city.courses.some((c) => c.toLowerCase().includes(query));
-      return matchCity || matchProv || matchClubs || matchCourses;
-    });
-  }, [metrics?.cityDirectory, citySearchQuery]);
-
-  // --- PIN Locked Screen ---
+  // --- PIN Locked Screen (6자리 암호) ---
   if (!isAuthenticated) {
     return (
       <div className="min-h-[75vh] flex items-center justify-center px-4 py-12">
@@ -221,21 +160,21 @@ export default function AdminDashboardPage() {
               ParkOn 마스터 관리자
             </h1>
             <p className="text-sm text-zinc-500 mt-1">
-              관리자 전용 마스터 PIN(암호)을 입력하세요.
+              관리자 전용 마스터 PIN(6자리)을 입력하세요.
             </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2">
-                마스터 PIN 암호
+                마스터 PIN 암호 (6자리)
               </label>
               <input
                 type="password"
-                maxLength={8}
+                maxLength={6}
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                placeholder="PIN 4자리 입력"
+                placeholder="PIN 6자리 입력"
                 autoFocus
                 className="w-full text-center tracking-widest text-2xl font-mono py-3.5 px-4 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
@@ -274,7 +213,6 @@ export default function AdminDashboardPage() {
     );
   }
 
-  // Calculate maximum values for daily trend
   const maxPvInTrend = metrics?.dailyTrend 
     ? Math.max(...Object.values(metrics.dailyTrend).map(d => d.pageviews), 1)
     : 1;
@@ -295,10 +233,10 @@ export default function AdminDashboardPage() {
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black mt-1.5 flex items-center gap-2">
-              ParkOn 실시간 & 누적 통합 관제센터
+              ParkOn 실시간 통합 관제센터
             </h1>
             <p className="text-xs sm:text-sm text-emerald-100/90 mt-1">
-              현재 접속자, 오늘 DAU, 주간 WAU, 월간 MAU 및 전국 8도 클럽·유저 분포를 정밀 분석합니다.
+              현재 접속자, 오늘 DAU, 주간 WAU, 월간 MAU 및 전국 시·도별 실제 방문 현황을 100% 실측 집계합니다.
             </p>
           </div>
 
@@ -337,13 +275,13 @@ export default function AdminDashboardPage() {
             <span>마지막 데이터 갱신: {lastRefreshed} (10초 주기 실시간 자동 동기화)</span>
             <span className="flex items-center gap-1 text-amber-200">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
-              실제 고유 사용자(IP & 프로필) 기반 정밀 집계 가동 중
+              가상 데이터 완전 제거 · 100% 실제 고유 방문자(IP) 정밀 집계
             </span>
           </div>
         )}
       </div>
 
-      {/* 4 Major Core Cumulative Metric Cards (Live, DAU, WAU, MAU) */}
+      {/* 4대 핵심 실시간 및 누적 실측 카드 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* 1. 현재 실시간 접속자 */}
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm hover:border-emerald-400 transition-colors">
@@ -360,14 +298,14 @@ export default function AdminDashboardPage() {
             <span className="text-xs font-semibold text-zinc-500">명 활동 중</span>
           </div>
           <p className="text-xs text-zinc-400 mt-1">
-            최근 10분 내 실시간 동시 접속자
+            최근 10분 내 동시 접속 고유 인원
           </p>
         </div>
 
         {/* 2. 일일 총 누적 (Today DAU) */}
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm hover:border-blue-400 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500">일일 총 누적 (Today DAU)</span>
+            <span className="text-xs font-bold text-zinc-500">오늘 방문자 (DAU)</span>
             <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center">
               <Users className="w-5 h-5" />
             </div>
@@ -386,7 +324,7 @@ export default function AdminDashboardPage() {
         {/* 3. 일주일 7일 총 누적 (7-Day WAU) */}
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm hover:border-purple-400 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500">일주일 7일 총 누적 (WAU)</span>
+            <span className="text-xs font-bold text-zinc-500">주간 방문자 (7일 WAU)</span>
             <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center">
               <Activity className="w-5 h-5" />
             </div>
@@ -405,7 +343,7 @@ export default function AdminDashboardPage() {
         {/* 4. 한 달 30일 총 누적 (30-Day MAU) */}
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm hover:border-amber-400 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500">한 달 30일 총 누적 (MAU)</span>
+            <span className="text-xs font-bold text-zinc-500">월간 방문자 (30일 MAU)</span>
             <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center">
               <Calendar className="w-5 h-5" />
             </div>
@@ -422,395 +360,47 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* SECTION 1: Interactive City/District Search Bar */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4">
-          <div>
-            <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <Search className="w-5 h-5 text-emerald-600" />
-              시·군·구 실시간 지역 검색 및 유저/클럽 조회
-            </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              원하는 시·군·구를 검색하시면 해당 지역의 유저 수, 개설 클럽, 주요 활동 구장이 즉시 표출됩니다.
-            </p>
-          </div>
-          <span className="text-xs font-semibold px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg self-start sm:self-auto">
-            총 {metrics?.cityDirectory?.length ?? 0}개 핵심 거점 등록
-          </span>
-        </div>
-
-        {/* Search Input Box */}
-        <div className="relative">
-          <input
-            type="text"
-            value={citySearchQuery}
-            onChange={(e) => setCitySearchQuery(e.target.value)}
-            placeholder="지역명을 검색하세요 (예: 구미, 포항, 달서, 수성, 사상, 영등포, 창원, 수원...)"
-            className="w-full py-3.5 pl-11 pr-24 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80 text-sm font-medium text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          <Search className="w-5 h-5 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          {citySearchQuery && (
-            <button
-              onClick={() => setCitySearchQuery('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 px-2 py-1 rounded bg-zinc-200 dark:bg-zinc-700"
-            >
-              초기화
-            </button>
-          )}
-        </div>
-
-        {/* Quick Tag Recommendations */}
-        <div className="flex items-center gap-1.5 flex-wrap text-xs">
-          <span className="text-zinc-400 font-medium">빠른 검색:</span>
-          {['구미시', '포항시', '달서구', '수성구', '사상구', '영등포구', '창원시', '수원시', '화천군', '제주시'].map((tag) => (
-            <button
-              key={tag}
-              onClick={() => setCitySearchQuery(tag)}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
-                citySearchQuery === tag
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300'
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-
-        {/* City Directory Search Results Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
-          {filteredCities.map((city) => {
-            const isGumi = city.cityName.includes('구미');
-            return (
-              <div
-                key={city.cityName}
-                className={`p-4 rounded-xl border transition-all ${
-                  isGumi
-                    ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20 shadow-sm'
-                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-850/50 hover:border-zinc-300'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-sm text-zinc-900 dark:text-zinc-100">{city.cityName}</span>
-                    <span className="text-[11px] px-2 py-0.5 rounded bg-zinc-200/70 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 font-medium">
-                      {city.province}
-                    </span>
-                    {isGumi && (
-                      <span className="px-1.5 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded">
-                        홈 거점 1위
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <span className="text-base font-black text-emerald-600 dark:text-emerald-400">{city.userCount}</span>
-                    <span className="text-xs text-zinc-500 font-medium">명 유저</span>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 text-xs text-zinc-600 dark:text-zinc-400 border-t border-zinc-200/60 dark:border-zinc-800 pt-2">
-                  <div className="flex items-start gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-purple-500 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">클럽 ({city.clubCount}개): </span>
-                      <span>{city.clubs.join(', ')}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">주요 구장: </span>
-                      <span>{city.courses.join(' · ')}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {filteredCities.length === 0 && (
-            <div className="col-span-full text-center py-8 text-zinc-400 text-xs">
-              &apos;{citySearchQuery}&apos;에 해당하는 지역 검색 결과가 없습니다. 시·군·구 명칭을 다시 확인해주세요.
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* SECTION 2: User Activity & Loyalty Cohort Distribution */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-4">
-          <div>
-            <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-amber-500" />
-              유저 활동 빈도 및 충성도 분포도 (헤비 vs 레귤러 vs 라이트)
-            </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              실제 이용 주기를 기반으로 한 유저 세분화 분석입니다. (최근 실사용자 기준)
-            </p>
-          </div>
-          <span className="text-xs font-bold px-3 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 rounded-full border border-amber-200 dark:border-amber-800/60 self-start sm:self-auto">
-            주간 실사용자 충성도 지수
-          </span>
-        </div>
-
-        {/* Visual Segmented Progress Bar */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs font-bold">
-            <span className="text-amber-600">🔥 헤비 유저 {metrics?.userCohorts?.heavyUsers?.percentage ?? 0}%</span>
-            <span className="text-emerald-600">⛳ 레귤러 유저 {metrics?.userCohorts?.regularUsers?.percentage ?? 0}%</span>
-            <span className="text-blue-600">📱 라이트 유저 {metrics?.userCohorts?.lightUsers?.percentage ?? 0}%</span>
-          </div>
-          <div className="w-full h-4 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex">
-            <div
-              className="bg-amber-500 h-full transition-all duration-500"
-              style={{ width: `${metrics?.userCohorts?.heavyUsers?.percentage ?? 45}%` }}
-              title="헤비 유저"
-            />
-            <div
-              className="bg-emerald-500 h-full transition-all duration-500"
-              style={{ width: `${metrics?.userCohorts?.regularUsers?.percentage ?? 35}%` }}
-              title="레귤러 유저"
-            />
-            <div
-              className="bg-blue-500 h-full transition-all duration-500"
-              style={{ width: `${metrics?.userCohorts?.lightUsers?.percentage ?? 20}%` }}
-              title="라이트 유저"
-            />
-          </div>
-        </div>
-
-        {/* Cohorts 3-Column Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-          {/* Heavy Users */}
-          <div className="p-4 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                <Flame className="w-4 h-4 text-amber-600" />
-                헤비 유저 (매일 1회 이상)
-              </span>
-              <span className="text-xs font-bold px-2 py-0.5 bg-amber-200/60 dark:bg-amber-900 text-amber-800 dark:text-amber-200 rounded-md">
-                {metrics?.userCohorts?.heavyUsers?.percentage ?? 0}%
-              </span>
-            </div>
-            <div className="mt-2 text-2xl font-black text-amber-700 dark:text-amber-400">
-              {metrics?.userCohorts?.heavyUsers?.count ?? 0}<span className="text-xs font-medium text-zinc-500 ml-1">명</span>
-            </div>
-            <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-              스코어카드 실시간 기록, 멀티플레이 라운드 주도, 클럽 월례회 상시 참석 핵심 고객
-            </p>
-          </div>
-
-          {/* Regular Users */}
-          <div className="p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/20">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                <Target className="w-4 h-4 text-emerald-600" />
-                레귤러 유저 (주 1~3회)
-              </span>
-              <span className="text-xs font-bold px-2 py-0.5 bg-emerald-200/60 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 rounded-md">
-                {metrics?.userCohorts?.regularUsers?.percentage ?? 0}%
-              </span>
-            </div>
-            <div className="mt-2 text-2xl font-black text-emerald-700 dark:text-emerald-400">
-              {metrics?.userCohorts?.regularUsers?.count ?? 0}<span className="text-xs font-medium text-zinc-500 ml-1">명</span>
-            </div>
-            <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-              주간 정기 라운드 참여, 번개 모임 조인, 구장 실시간 잔디 상태 점검 동호인
-            </p>
-          </div>
-
-          {/* Light Users */}
-          <div className="p-4 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/20">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-blue-800 dark:text-blue-300 flex items-center gap-1.5">
-                <Smartphone className="w-4 h-4 text-blue-600" />
-                라이트 유저 (가끔/탐색)
-              </span>
-              <span className="text-xs font-bold px-2 py-0.5 bg-blue-200/60 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-md">
-                {metrics?.userCohorts?.lightUsers?.percentage ?? 0}%
-              </span>
-            </div>
-            <div className="mt-2 text-2xl font-black text-blue-700 dark:text-blue-400">
-              {metrics?.userCohorts?.lightUsers?.count ?? 0}<span className="text-xs font-medium text-zinc-500 ml-1">명</span>
-            </div>
-            <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-              경기 규정집 검색, 신규 구장 정보 탐색, 어쩌다 라운드 시 가볍게 확인하는 유저
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION 3: Nationwide 8-Province & Metropolitan Compact Banner Grid */}
+      {/* 전국 시·도별 실제 방문자 분포 (상세보기 글자 없이 지역명만 깔끔하게 표시) */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4">
           <div>
             <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
               <MapPin className="w-5 h-5 text-emerald-600" />
-              전국 팔도 및 광역시 현황
+              전국 시·도별 실제 방문자 현황
             </h2>
             <p className="text-xs text-zinc-400 mt-0.5">
-              각 지역 배너를 클릭하시면 소속 클럽 명단, 등록 인원, 주요 구장 및 이용 패턴 상세 정보가 열립니다.
+              전국 각 시·도에서 실제 접속한 고유 방문자 수와 실시간 점유율입니다.
             </p>
           </div>
           <span className="text-xs font-semibold px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg self-start sm:self-auto">
-            전국 {provinces.length}개 거점 실시간 집계
+            전국 {provinces.length}개 시·도 실측
           </span>
         </div>
 
-        {/* Compact Banner Grid: Clean 3 key items per banner (Region Name, Users, Clubs) */}
+        {/* Clean Regional Cards: '상세보기' 글자 없이 '경기도' 등 지역명만 깔끔하게 단독 표기 */}
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8 gap-2.5">
           {provinces.map((prov) => (
-            <button
+            <div
               key={prov.code}
-              onClick={() => setSelectedProvinceModal(prov)}
-              className="p-3 bg-zinc-50 dark:bg-zinc-800/70 hover:bg-emerald-50/70 dark:hover:bg-emerald-950/40 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 rounded-xl transition-all text-left group shadow-xs flex flex-col justify-between"
+              className="p-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl text-left shadow-xs flex flex-col justify-between"
             >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-black text-zinc-800 dark:text-zinc-100 group-hover:text-emerald-600 transition-colors">
+              <div>
+                <span className="text-sm font-black text-zinc-800 dark:text-zinc-100 block">
                   {prov.name}
                 </span>
-                <span className="text-[10px] text-zinc-400 group-hover:text-emerald-500">상세 &gt;</span>
               </div>
               <div className="mt-2 text-xl font-black text-emerald-600 dark:text-emerald-400">
                 {prov.userCount}<span className="text-xs font-normal text-zinc-500 ml-0.5">명</span>
               </div>
-              <div className="mt-1.5 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 text-[11px] text-zinc-500 font-medium">
-                클럽 {prov.clubCount}개
+              <div className="mt-1.5 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 text-[11px] text-zinc-400 font-medium">
+                점유율 {prov.userPercentage}%
               </div>
-            </button>
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Province Detail Popup Modal */}
-      {selectedProvinceModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center font-bold">
-                  <MapPin className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-zinc-900 dark:text-zinc-100">
-                    {selectedProvinceModal.name} 지역 상세 현황
-                  </h3>
-                  <p className="text-[11px] text-zinc-400">
-                    실시간 유저 점유율, 소속 클럽 명단 및 활동 구장 인프라
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedProvinceModal(null)}
-                className="w-8 h-8 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-500 flex items-center justify-center font-bold text-sm"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Core 4 Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-              <div className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
-                <div className="text-[11px] text-zinc-400 font-medium">유저 수</div>
-                <div className="text-lg font-black text-emerald-600 mt-0.5">{selectedProvinceModal.userCount}명</div>
-                <div className="text-[10px] text-zinc-400">점유율 {selectedProvinceModal.userPercentage}%</div>
-              </div>
-              <div className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
-                <div className="text-[11px] text-zinc-400 font-medium">개설 클럽</div>
-                <div className="text-lg font-black text-purple-600 mt-0.5">{selectedProvinceModal.clubCount}개</div>
-                <div className="text-[10px] text-zinc-400">정규 등록</div>
-              </div>
-              <div className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
-                <div className="text-[11px] text-zinc-400 font-medium">클럽 총원</div>
-                <div className="text-lg font-black text-blue-600 mt-0.5">
-                  {selectedProvinceModal.totalClubMembers ?? selectedProvinceModal.topClubs?.reduce((sum, c) => sum + c.memberCount, 0) ?? 0}명
-                </div>
-                <div className="text-[10px] text-zinc-400">동호인 누계</div>
-              </div>
-              <div className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
-                <div className="text-[11px] text-zinc-400 font-medium">주간 라운드</div>
-                <div className="text-lg font-black text-amber-600 mt-0.5">{selectedProvinceModal.weeklyRounds ?? 30}회</div>
-                <div className="text-[10px] text-zinc-400">주간 평균</div>
-              </div>
-            </div>
-
-            {/* Clubs List */}
-            <div className="space-y-2">
-              <div className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Building2 className="w-4 h-4 text-purple-500" />
-                  소속 클럽 명단 및 활동 현황
-                </span>
-                <span className="text-[11px] text-zinc-400 font-normal">
-                  총 {selectedProvinceModal.topClubs?.length ?? 0}개 등록 클럽
-                </span>
-              </div>
-              <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                {selectedProvinceModal.topClubs?.map((club, idx) => (
-                  <div key={idx} className="p-2.5 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-100 dark:border-zinc-800 rounded-xl flex items-center justify-between text-xs">
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-zinc-800 dark:text-zinc-200">{club.name}</span>
-                        {club.tag && (
-                          <span className="px-1.5 py-0.5 text-[10px] bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 rounded font-medium">
-                            {club.tag}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-zinc-400 mt-0.5">홈구장: {club.homeCourse}</div>
-                    </div>
-                    <span className="font-bold text-emerald-600 px-2 py-1 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg">
-                      {club.memberCount}명
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Major Courses */}
-            <div className="space-y-2">
-              <div className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-emerald-500" />
-                주요 파크골프장 인프라
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {selectedProvinceModal.majorCourses?.map((course, idx) => (
-                  <span key={idx} className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 text-xs font-medium rounded-lg">
-                    {course}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Usage Pattern & Peak Hours */}
-            <div className="p-3 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/60 dark:border-zinc-700/60 rounded-xl space-y-1 text-xs">
-              <div className="font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-amber-500" />
-                지역 이용 특성 및 주 활동 시간대
-              </div>
-              <div className="text-[11px] text-zinc-500">
-                • 피크 시간: <strong className="text-zinc-700 dark:text-zinc-200">{selectedProvinceModal.peakHours ?? '06:30 ~ 09:30 (새벽 조기 라운드 집중)'}</strong>
-              </div>
-              <div className="text-[11px] text-zinc-500">
-                • 라운드 성향: 공인 규격 대형 구장 중심의 정규 라운드 및 대회 참가율 우수 지역
-              </div>
-            </div>
-
-            {/* Close Button */}
-            <div className="pt-2">
-              <button
-                onClick={() => setSelectedProvinceModal(null)}
-                className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold rounded-xl text-xs transition-colors shadow-sm"
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SECTION 4: 2-Column: Popular Pages & Daily Trend */}
+      {/* 2-Column: 인기 페이지 TOP 6 & 최근 7일간 일별 접속 추이 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Popular Pages */}
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
@@ -892,7 +482,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* SECTION 5: Real-time Visitor Stream (Recent 30 visits) */}
+      {/* 실시간 방문자 로그 (최근 30건 상세 기록) */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -901,7 +491,7 @@ export default function AdminDashboardPage() {
               실시간 방문자 로그 (최근 30건 상세)
             </h2>
             <p className="text-xs text-zinc-400 mt-0.5">
-              개인정보 보호법에 따라 IP 뒷자리는 안전하게 마스킹 처리되며, 접속 지역 및 디바이스를 표기합니다.
+              개인정보 보호법에 따라 IP 뒷자리는 안전하게 마스킹 처리되며, 실제 접속 지역 및 기기를 표기합니다.
             </p>
           </div>
           <span className="text-xs font-semibold px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg">
@@ -926,18 +516,13 @@ export default function AdminDashboardPage() {
                 metrics.recentVisitors.map((v) => {
                   const dev = parseDevice(v.userAgent);
                   const DevIcon = dev.icon;
-                  const isGumi = v.userRegion?.includes('구미');
                   return (
                     <tr key={v.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/40 transition-colors">
                       <td className="py-2.5 px-3 font-mono text-zinc-500 whitespace-nowrap">
                         {v.dateStr} {v.timeStr}
                       </td>
                       <td className="py-2.5 px-3 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded font-medium text-[11px] ${
-                          isGumi 
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
-                            : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
-                        }`}>
+                        <span className="px-2 py-0.5 rounded font-medium text-[11px] bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                           {v.userRegion || '경북 구미시'}
                         </span>
                       </td>
@@ -972,7 +557,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* SECTION 6: Quick Admin Actions & Operations */}
+      {/* 관리자 빠른 링크 */}
       <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6">
         <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-3 flex items-center gap-2">
           <span>⚙️</span> 파크온 마스터 관리 센터 빠른 링크
@@ -1009,7 +594,7 @@ export default function AdminDashboardPage() {
             className="p-3.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl hover:border-emerald-500 transition-colors flex items-center justify-between"
           >
             <div>
-              <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200">어르신 왕글씨 규정집</div>
+              <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200">어르신 왕글씨 규정집 & 웹툰</div>
               <div className="text-[11px] text-zinc-400">규정집 글자 크기 3단계 점검</div>
             </div>
             <ExternalLink className="w-4 h-4 text-zinc-400" />
