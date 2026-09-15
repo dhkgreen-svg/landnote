@@ -21,152 +21,34 @@ const STORAGE_KEYS = {
   FLASH_GATHERINGS: 'parkon_flash_gatherings_v1',
 };
 
-// 기본 샘플 클럽 데이터
+// 기본 공식 동호회 데이터 (가상 인물 배제)
 function generateDefaultSeedClubs(): ParkGolfClub[] {
   return [
     {
       id: 'club-gumi-dongrak',
-      name: '구미 동락 에이스 파크골프 클럽',
+      name: '구미 동락 파크골프 클럽',
       region: '경북 구미',
       homeCourseId: 'course-gumi-dongrak',
       homeCourseName: '구미 동락 파크골프장',
-      description: '구미 동락구장을 사랑하는 5070 동호인 클럽입니다. 매월 둘째 주 토요일 정기 월례회 개최!',
-      presidentName: '박회장',
-      managerName: '김총무(본인)',
-      contactPhone: '010-1234-5678',
-      memberCount: 38,
+      description: '구미 동락구장을 사랑하는 동호인 공식 클럽입니다. 정기 월례회 및 친선 라운드 진행.',
+      presidentName: '동락회장',
+      managerName: '김대희',
+      contactPhone: '054-480-4918',
+      memberCount: 1,
       members: [
-        { id: 'm1', name: '박회장', role: 'PRESIDENT', joinedAt: '2026-01-01', phone: '010-1111-2222' },
-        { id: 'm2', name: '김총무(본인)', role: 'MANAGER', joinedAt: '2026-01-02', phone: '010-1234-5678' },
-        { id: 'm3', name: '이순신', role: 'MEMBER', joinedAt: '2026-02-15', phone: '010-3333-4444' },
-        { id: 'm4', name: '강감찬', role: 'MEMBER', joinedAt: '2026-03-01', phone: '010-5555-6666' },
-        { id: 'm5', name: '을지문덕', role: 'MEMBER', joinedAt: '2026-03-05', phone: '010-7777-8888' },
+        { id: 'm1', name: '김대희', role: 'MANAGER', joinedAt: '2026-01-01', phone: '054-480-4918' },
       ],
-      pendingMembers: [
-        {
-          id: 'pm_1',
-          name: '정약용',
-          phone: '010-9123-4567',
-          requestedAt: '오늘 11:20',
-          message: '동락구장에서 자주 칩니다. 회원 가입 신청합니다!',
-        },
-        {
-          id: 'pm_2',
-          name: '신사임당',
-          phone: '010-8876-5432',
-          requestedAt: '오늘 13:40',
-          message: '주말 월례회 참석하고 싶어요^^',
-        },
-      ],
+      pendingMembers: [],
       isPublic: true,
       badgeColor: 'emerald',
       createdAt: '2026-01-01',
     },
-    {
-      id: 'club-busan-samrak',
-      name: '부산 낙동 파크골프 사랑방',
-      region: '부산 사상',
-      homeCourseId: 'course-busan-samrak',
-      homeCourseName: '부산 삼락 파크골프장',
-      description: '삼락 생태공원의 맑은 바람과 함께 즐기는 친목 파크골프 클럽입니다. 초보 환영!',
-      presidentName: '이회장',
-      managerName: '최총무',
-      contactPhone: '010-9876-5432',
-      memberCount: 45,
-      members: [
-        { id: 'mb1', name: '이회장', role: 'PRESIDENT', joinedAt: '2026-02-01', phone: '010-9999-8888' },
-        { id: 'mb2', name: '최총무', role: 'MANAGER', joinedAt: '2026-02-05', phone: '010-9876-5432' },
-        { id: 'mb3', name: '김총무(본인)', role: 'MEMBER', joinedAt: '2026-02-20', phone: '010-1234-5678' },
-        { id: 'mb4', name: '박영수', role: 'MEMBER', joinedAt: '2026-03-01', phone: '010-3344-5566' },
-      ],
-      pendingMembers: [],
-      isPublic: true,
-      badgeColor: 'amber',
-      createdAt: '2026-02-01',
-    },
-    {
-      id: 'club-seoul-hangang',
-      name: '서울 한강 시니어 파크골프회',
-      region: '서울 영등포',
-      homeCourseId: 'course-seoul-yeouido',
-      homeCourseName: '여의도 파크골프장',
-      description: '여의도 한강 둔치에서 건강과 우정을 다지는 수도권 명문 파크골프 클럽입니다.',
-      presidentName: '정회장',
-      managerName: '강총무',
-      contactPhone: '010-5555-8888',
-      memberCount: 52,
-      members: [
-        { id: 'ms1', name: '정회장', role: 'PRESIDENT', joinedAt: '2026-01-10', phone: '010-2211-3344' },
-        { id: 'ms2', name: '강총무', role: 'MANAGER', joinedAt: '2026-01-12', phone: '010-5555-8888' },
-      ],
-      pendingMembers: [],
-      isPublic: true,
-      badgeColor: 'purple',
-      createdAt: '2026-01-10',
-    },
   ];
 }
 
-// 기본 샘플 번개 데이터
+// 기본 번개 데이터 (사용자 직접 개설 전에는 빈 목록 유지)
 function generateDefaultSeedFlash(): FlashGathering[] {
-  return [
-    {
-      id: 'flash-1',
-      title: '오늘 14:00 동락 2명 급구! (18홀 편하게 치실 분)',
-      type: 'OPEN',
-      courseId: 'course-gumi-dongrak',
-      courseName: '구미 동락 파크골프장',
-      playDate: '오늘 (당일)',
-      playTime: '14:00',
-      targetCount: 4,
-      currentParticipants: [
-        { id: 'fp1', name: '김총무 (개설자)', joinedAt: '2026-09-12 10:00' },
-        { id: 'fp2', name: '이순신', joinedAt: '2026-09-12 11:30' },
-      ],
-      hostName: '김총무',
-      notes: '18홀 가볍게 치고 커피 한잔해요! 초보자 환영합니다.',
-      status: 'RECRUITING',
-      createdAt: '2026-09-12T01:00:00.000Z',
-    },
-    {
-      id: 'flash-2',
-      title: '주말 토요일 오전 9시 삼락 1명 조인 모십니다',
-      type: 'OPEN',
-      courseId: 'course-busan-samrak',
-      courseName: '부산 삼락 파크골프장',
-      playDate: '9월 13일(일)',
-      playTime: '09:00',
-      targetCount: 4,
-      currentParticipants: [
-        { id: 'fp3', name: '최총무 (개설자)', joinedAt: '2026-09-12 09:00' },
-        { id: 'fp4', name: '박영수', joinedAt: '2026-09-12 09:40' },
-        { id: 'fp5', name: '정미경', joinedAt: '2026-09-12 10:10' },
-      ],
-      hostName: '최총무',
-      notes: '36홀 완주 목표, 매너 플레이어 모십니다.',
-      status: 'RECRUITING',
-      createdAt: '2026-09-12T02:00:00.000Z',
-    },
-    {
-      id: 'flash-3',
-      title: '[동락클럽 전용] 평일 오후 번개 4인 라운드',
-      type: 'CLUB_ONLY',
-      clubId: 'club-gumi-dongrak',
-      clubName: '구미 동락 에이스 파크골프 클럽',
-      courseId: 'course-gumi-dongrak',
-      courseName: '구미 동락 파크골프장',
-      playDate: '오늘 (당일)',
-      playTime: '16:00',
-      targetCount: 4,
-      currentParticipants: [
-        { id: 'fp6', name: '박회장 (개설자)', joinedAt: '2026-09-12 08:30' },
-      ],
-      hostName: '박회장',
-      notes: '동락클럽 회원님들 번개입니다. 저녁 식사 같이해요.',
-      status: 'RECRUITING',
-      createdAt: '2026-09-12T02:30:00.000Z',
-    },
-  ];
+  return [];
 }
 
 // 실전 20명 5개 조 시드 데이터 생성

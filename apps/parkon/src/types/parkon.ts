@@ -30,6 +30,14 @@ export interface Course {
   imageUrl?: string;     // 구장 안내도 및 스코어카드 사진
   contributionHistory?: CourseContribution[]; // 명예의 전당 히스토리
   createdAt?: string;
+  address?: string;
+  phone?: string;
+  fee?: string;
+  openHours?: string;
+  closedDay?: string;
+  parking?: string;
+  lat?: number;
+  lng?: number;
 }
 
 export function formatCourseHolesText(course: { totalHoles: number; totalCourses?: number }): string {
