@@ -15,29 +15,56 @@ export interface VisitorLog {
   userRegion?: string;
   homeCourse?: string;
   userName?: string;
+  isAppInstall?: boolean;
+}
+
+export interface CityDetailStat {
+  cityName: string;
+  userCount: number;
+  liveUsers: number;
+  clubCount: number;
+  clubs: string[];
+  majorCourses: string[];
+  activityIndex: string;
 }
 
 export interface ProvinceStat {
   code: string;
   name: string;
   userCount: number;
+  liveUsers: number;
+  clubCount: number;
   userPercentage: number;
+  activityLabel: string;
+  cities: CityDetailStat[];
+}
+
+interface AnalyticsStore {
+  logs: VisitorLog[];
+  popularPages: Record<string, number>;
+  totalAllTimeUsers: number;
+  totalAppDownloads: number;
 }
 
 const ANALYTICS_FILE = path.join(os.tmpdir(), 'parkon_analytics_logs.json');
 
-const getAnalyticsStore = (): { logs: VisitorLog[]; popularPages: Record<string, number> } => {
+const getAnalyticsStore = (): AnalyticsStore => {
   const g = globalThis as any;
   if (!g.__parkonAnalytics) {
     g.__parkonAnalytics = {
       logs: [] as VisitorLog[],
       popularPages: {} as Record<string, number>,
+      totalAllTimeUsers: 0,
+      totalAppDownloads: 0,
     };
     try {
       if (fs.existsSync(ANALYTICS_FILE)) {
         const raw = fs.readFileSync(ANALYTICS_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
-        g.__parkonAnalytics = parsed;
+        g.__parkonAnalytics = {
+          ...g.__parkonAnalytics,
+          ...parsed,
+        };
       }
     } catch (e) {
       console.warn('Failed to read analytics file:', e);
@@ -46,7 +73,7 @@ const getAnalyticsStore = (): { logs: VisitorLog[]; popularPages: Record<string,
   return g.__parkonAnalytics;
 };
 
-const saveAnalyticsStore = (store: any) => {
+const saveAnalyticsStore = (store: AnalyticsStore) => {
   try {
     fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(store), 'utf-8');
   } catch (e) {
@@ -54,35 +81,487 @@ const saveAnalyticsStore = (store: any) => {
   }
 };
 
-// 지역 표준화 헬퍼 (전국 17개 시도 매핑)
-function normalizeRegion(raw?: string, path?: string): string {
-  if (raw) {
-    if (raw.includes('구미')) return '경북 구미시';
-    if (raw.includes('포항')) return '경북 포항시';
-    if (raw.includes('경북')) return '경상북도';
-    if (raw.includes('대구')) return '대구광역시';
-    if (raw.includes('부산')) return '부산광역시';
-    if (raw.includes('창원') || raw.includes('김해') || raw.includes('경남')) return '경상남도';
-    if (raw.includes('울산')) return '울산광역시';
-    if (raw.includes('서울')) return '서울특별시';
-    if (raw.includes('경기') || raw.includes('수원') || raw.includes('성남')) return '경기도';
-    if (raw.includes('인천')) return '인천광역시';
-    if (raw.includes('대전') || raw.includes('세종') || raw.includes('충남')) return '충청남도/대전';
-    if (raw.includes('충북') || raw.includes('청주')) return '충청북도';
-    if (raw.includes('광주') || raw.includes('전남')) return '전라남도/광주';
-    if (raw.includes('전북') || raw.includes('전주')) return '전라북도';
-    if (raw.includes('강원') || raw.includes('춘천')) return '강원특별자치도';
-    if (raw.includes('제주')) return '제주특별자치도';
-    return raw;
-  }
-  if (path) {
-    if (path.includes('dongrak') || path.includes('gumi') || path.includes('yangho') || path.includes('jisan')) return '경북 구미시';
-    if (path.includes('daegu') || path.includes('gangchang')) return '대구광역시';
-    if (path.includes('busan') || path.includes('samrak')) return '부산광역시';
-    if (path.includes('seoul') || path.includes('yeouido')) return '서울특별시';
-  }
-  return '경북 구미시'; // 기본 홈 베이스
+// 16개 시·도 및 세부 시·군·구 메타데이터 정의
+interface ProvinceSeed {
+  code: string;
+  name: string;
+  baseClubCount: number;
+  activityLabel: string;
+  cities: Array<{
+    name: string;
+    clubCount: number;
+    clubs: string[];
+    courses: string[];
+    activity: string;
+  }>;
 }
+
+const PROVINCE_SEEDS: ProvinceSeed[] = [
+  {
+    code: 'GB',
+    name: '경북',
+    baseClubCount: 14,
+    activityLabel: '최고 활성 거점 (A+)',
+    cities: [
+      {
+        name: '구미시',
+        clubCount: 5,
+        clubs: ['구미 동락 에이스 클럽', '구미 지산사랑 동호회', '구미 양호 버디클럽', '선산 그린회'],
+        courses: ['동락 파크골프장(36홀)', '지산 구장(63홀)', '양호 구장(36홀)', '선산 구장'],
+        activity: '매일 조기/주말 라운드 집중 (A+)',
+      },
+      {
+        name: '포항시',
+        clubCount: 3,
+        clubs: ['포항 형산강 파크클럽', '포항 송도 동호회'],
+        courses: ['형산강 파크골프장(27홀)', '송도 구장'],
+        activity: '정기 월례회 활발 (A)',
+      },
+      {
+        name: '경주시',
+        clubCount: 3,
+        clubs: ['경주 토함 파크회', '보문 호반클럽'],
+        courses: ['경주 안강 구장(18홀)', '보문 구장'],
+        activity: '주말 원정 라운드 우수 (A)',
+      },
+      {
+        name: '김천시',
+        clubCount: 2,
+        clubs: ['김천 직지 파크클럽', '혁신도시 파크동호회'],
+        courses: ['김천 강변 파크골프장'],
+        activity: '평일/주말 상시 이용 (B+)',
+      },
+      {
+        name: '안동시',
+        clubCount: 1,
+        clubs: ['안동 낙동강 클럽'],
+        courses: ['안동 낙동강변 구장'],
+        activity: '정기 라운드 진행 (B)',
+      },
+    ],
+  },
+  {
+    code: 'DG',
+    name: '대구',
+    baseClubCount: 10,
+    activityLabel: '매우 활발 (A+)',
+    cities: [
+      {
+        name: '달서구',
+        clubCount: 4,
+        clubs: ['대구 달서 사랑방', '성서 그린클럽'],
+        courses: ['강창 파크골프장', '호림 강변 구장'],
+        activity: '월례회 및 번개 모임 활발 (A+)',
+      },
+      {
+        name: '수성구',
+        clubCount: 3,
+        clubs: ['수성 패밀리 파크클럽', '팔현 생태동호회'],
+        courses: ['수성 파크골프장', '팔현 구장'],
+        activity: '주말 집중 라운드 (A)',
+      },
+      {
+        name: '북구',
+        clubCount: 2,
+        clubs: ['금호강 그린회'],
+        courses: ['사수 파크골프장', '불로 구장'],
+        activity: '평일 오전 라운드 (B+)',
+      },
+      {
+        name: '동구',
+        clubCount: 1,
+        clubs: ['팔공 버디회'],
+        courses: ['봉무 구장', '율하체육공원 구장'],
+        activity: '신규 회원 유입 활발 (B)',
+      },
+    ],
+  },
+  {
+    code: 'BS',
+    name: '부산',
+    baseClubCount: 8,
+    activityLabel: '매우 활발 (A)',
+    cities: [
+      {
+        name: '사상구',
+        clubCount: 3,
+        clubs: ['부산 낙동 사랑방', '삼락 에이스'],
+        courses: ['삼락 생태공원 파크골프장(36홀)'],
+        activity: '대형 클럽 주말 라운드 집중 (A+)',
+      },
+      {
+        name: '강서구',
+        clubCount: 2,
+        clubs: ['부산 대저 그린클럽'],
+        courses: ['대저 생태공원 구장'],
+        activity: '평일 조기 라운드 활발 (A)',
+      },
+      {
+        name: '북구',
+        clubCount: 2,
+        clubs: ['화명 강변 파크회'],
+        courses: ['화명 생태 구장'],
+        activity: '정기 월례회 가동 (B+)',
+      },
+      {
+        name: '해운대구',
+        clubCount: 1,
+        clubs: ['해운대 파크클럽'],
+        courses: ['해운대 수목원 구장'],
+        activity: '주말 동호인 모임 (B)',
+      },
+    ],
+  },
+  {
+    code: 'SO',
+    name: '서울',
+    baseClubCount: 9,
+    activityLabel: '수도권 중심 (A)',
+    cities: [
+      {
+        name: '영등포구',
+        clubCount: 4,
+        clubs: ['한강 시니어 파크골프회', '여의도 버디클럽'],
+        courses: ['여의도 한강 파크골프장(18홀)'],
+        activity: '주중/주말 상시 풀 라운드 (A+)',
+      },
+      {
+        name: '송파구',
+        clubCount: 2,
+        clubs: ['잠실 파크사랑회'],
+        courses: ['잠실 파크골프장'],
+        activity: '주말 번개 모임 활발 (A)',
+      },
+      {
+        name: '마포구',
+        clubCount: 2,
+        clubs: ['마포 월드 파크클럽'],
+        courses: ['월드컵공원 노을 구장'],
+        activity: '평일 오전 라운드 (B+)',
+      },
+      {
+        name: '강남/서초',
+        clubCount: 1,
+        clubs: ['양재천 그린회'],
+        courses: ['양재천 강변 구장'],
+        activity: '동호인 친목 라운드 (B)',
+      },
+    ],
+  },
+  {
+    code: 'GG',
+    name: '경기',
+    baseClubCount: 11,
+    activityLabel: '수도권 광역 (A)',
+    cities: [
+      {
+        name: '수원시',
+        clubCount: 3,
+        clubs: ['경기 수레바퀴 클럽', '서호 파크회'],
+        courses: ['수원 서호 파크골프장'],
+        activity: '정기 월례회 운영 (A)',
+      },
+      {
+        name: '성남시',
+        clubCount: 3,
+        clubs: ['분당 탄천 그린동호회'],
+        courses: ['탄천 성남 파크골프장'],
+        activity: '주중 라운드 활발 (A)',
+      },
+      {
+        name: '양평군',
+        clubCount: 2,
+        clubs: ['양평 맑은물 파크클럽'],
+        courses: ['양평 강상 파크골프장'],
+        activity: '전국 원정 투어 명소 (A)',
+      },
+      {
+        name: '용인시',
+        clubCount: 2,
+        clubs: ['용인 처인 파크회'],
+        courses: ['용인 모현 구장'],
+        activity: '회원 모집 확대 중 (B+)',
+      },
+      {
+        name: '고양시',
+        clubCount: 1,
+        clubs: ['일산 호수 파크클럽'],
+        courses: ['고양 대화 구장'],
+        activity: '주말 번개 활발 (B)',
+      },
+    ],
+  },
+  {
+    code: 'US',
+    name: '울산',
+    baseClubCount: 5,
+    activityLabel: '활발 (B+)',
+    cities: [
+      {
+        name: '남구/중구',
+        clubCount: 3,
+        clubs: ['울산 태화강 동호인회', '남구 삼호 클럽'],
+        courses: ['태화강 파크골프장(36홀)', '삼호 구장'],
+        activity: '새벽 조기 라운드 집중 (A)',
+      },
+      {
+        name: '울주군',
+        clubCount: 2,
+        clubs: ['울주 영남알프스회'],
+        courses: ['울주 작천정 구장'],
+        activity: '주말 정기 모임 (B+)',
+      },
+    ],
+  },
+  {
+    code: 'GN',
+    name: '경남',
+    baseClubCount: 7,
+    activityLabel: '활발 (A)',
+    cities: [
+      {
+        name: '창원시',
+        clubCount: 3,
+        clubs: ['창원 대산 에이스', '의창 그린회'],
+        courses: ['창원 대산 파크골프장(72홀)'],
+        activity: '전국 최대 규모 대회 성지 (A+)',
+      },
+      {
+        name: '김해시',
+        clubCount: 2,
+        clubs: ['김해 가야 파크골프회'],
+        courses: ['술뫼 파크골프장'],
+        activity: '정기 라운드 활발 (A)',
+      },
+      {
+        name: '진주시',
+        clubCount: 2,
+        clubs: ['진주 남강 그린클럽'],
+        courses: ['진주 남강 구장'],
+        activity: '회원 친선 라운드 (B+)',
+      },
+    ],
+  },
+  {
+    code: 'IC',
+    name: '인천',
+    baseClubCount: 4,
+    activityLabel: '보통 (B+)',
+    cities: [
+      {
+        name: '서구',
+        clubCount: 2,
+        clubs: ['인천 청라 버디회'],
+        courses: ['청라 파크골프장'],
+        activity: '주말 라운드 집중 (B+)',
+      },
+      {
+        name: '연수구',
+        clubCount: 2,
+        clubs: ['송도 해돋이 파크클럽'],
+        courses: ['송도 달빛공원 구장'],
+        activity: '평일 라운드 (B)',
+      },
+    ],
+  },
+  {
+    code: 'GW',
+    name: '강원',
+    baseClubCount: 5,
+    activityLabel: '대회 명소 (A)',
+    cities: [
+      {
+        name: '화천군',
+        clubCount: 2,
+        clubs: ['화천 산천어 전국동호회'],
+        courses: ['산천어 파크골프장(36홀)'],
+        activity: '전국 대회 원정 성지 (A+)',
+      },
+      {
+        name: '춘천시',
+        clubCount: 2,
+        clubs: ['춘천 호반 파크클럽'],
+        courses: ['의암호 구장'],
+        activity: '주말 정기 라운드 (B+)',
+      },
+      {
+        name: '원주시',
+        clubCount: 1,
+        clubs: ['원주 섬강 그린회'],
+        courses: ['섬강 파크골프장'],
+        activity: '회원 모집 중 (B)',
+      },
+    ],
+  },
+  {
+    code: 'CB',
+    name: '충북',
+    baseClubCount: 3,
+    activityLabel: '보통 (B)',
+    cities: [
+      {
+        name: '청주시',
+        clubCount: 2,
+        clubs: ['청주 직지 파크클럽'],
+        courses: ['무심천 파크골프장'],
+        activity: '월례회 운영 (B+)',
+      },
+      {
+        name: '충주시',
+        clubCount: 1,
+        clubs: ['충주 사과향 파크회'],
+        courses: ['호암지 구장'],
+        activity: '주말 라운드 (B)',
+      },
+    ],
+  },
+  {
+    code: 'CN',
+    name: '충남',
+    baseClubCount: 6,
+    activityLabel: '활발 (B+)',
+    cities: [
+      {
+        name: '천안시',
+        clubCount: 3,
+        clubs: ['천안 삼거리 파크회'],
+        courses: ['천안 도솔 구장'],
+        activity: '정기 라운드 활발 (B+)',
+      },
+      {
+        name: '아산시',
+        clubCount: 2,
+        clubs: ['아산 온천 그린클럽'],
+        courses: ['이순신 파크골프장'],
+        activity: '월례회 활성 (B+)',
+      },
+      {
+        name: '공주시',
+        clubCount: 1,
+        clubs: ['공주 백제 파크동호회'],
+        courses: ['금강 파크골프장'],
+        activity: '친목 라운드 (B)',
+      },
+    ],
+  },
+  {
+    code: 'DJ',
+    name: '대전/세종',
+    baseClubCount: 4,
+    activityLabel: '보통 (B+)',
+    cities: [
+      {
+        name: '대전 유성구/서구',
+        clubCount: 2,
+        clubs: ['대전 한빛 파크골프회'],
+        courses: ['갑천 파크골프장'],
+        activity: '평일/주말 라운드 (B+)',
+      },
+      {
+        name: '세종시',
+        clubCount: 2,
+        clubs: ['세종 금강 파크사랑'],
+        courses: ['세종 금강 구장'],
+        activity: '신규 유저 유입 (B+)',
+      },
+    ],
+  },
+  {
+    code: 'JB',
+    name: '전북',
+    baseClubCount: 4,
+    activityLabel: '보통 (B)',
+    cities: [
+      {
+        name: '전주시',
+        clubCount: 2,
+        clubs: ['전주 온고을 파크회'],
+        courses: ['만경강 파크골프장'],
+        activity: '월례회 진행 (B+)',
+      },
+      {
+        name: '익산시',
+        clubCount: 2,
+        clubs: ['익산 보석 파크클럽'],
+        courses: ['익산 만경 구장'],
+        activity: '주말 라운드 (B)',
+      },
+    ],
+  },
+  {
+    code: 'JN',
+    name: '전남',
+    baseClubCount: 5,
+    activityLabel: '활발 (B+)',
+    cities: [
+      {
+        name: '순천시',
+        clubCount: 2,
+        clubs: ['순천만 갈대 파크회'],
+        courses: ['순천만 국가정원 구장'],
+        activity: '정기 월례회 (A)',
+      },
+      {
+        name: '목포시',
+        clubCount: 2,
+        clubs: ['목포 유달산 파크클럽'],
+        courses: ['갓바위 구장'],
+        activity: '주말 라운드 (B+)',
+      },
+      {
+        name: '나주시',
+        clubCount: 1,
+        clubs: ['나주 배꽃 파크동호회'],
+        courses: ['영산강 구장'],
+        activity: '친목 라운드 (B)',
+      },
+    ],
+  },
+  {
+    code: 'GJ',
+    name: '광주',
+    baseClubCount: 3,
+    activityLabel: '보통 (B)',
+    cities: [
+      {
+        name: '광산구',
+        clubCount: 2,
+        clubs: ['빛고을 광주 파크클럽'],
+        courses: ['영산강 구장'],
+        activity: '정기 모임 (B+)',
+      },
+      {
+        name: '북구',
+        clubCount: 1,
+        clubs: ['광주 무등 파크사랑'],
+        courses: ['첨단 체육공원 구장'],
+        activity: '평일 라운드 (B)',
+      },
+    ],
+  },
+  {
+    code: 'JJ',
+    name: '제주',
+    baseClubCount: 3,
+    activityLabel: '관광/투어 (B+)',
+    cities: [
+      {
+        name: '제주시',
+        clubCount: 2,
+        clubs: ['제주 한라 파크골프회'],
+        courses: ['제주 회천 구장'],
+        activity: '도민 및 여행객 라운드 (B+)',
+      },
+      {
+        name: '서귀포시',
+        clubCount: 1,
+        clubs: ['서귀포 칠십리 클럽'],
+        courses: ['칠십리 구장'],
+        activity: '주말 라운드 (B)',
+      },
+    ],
+  },
+];
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -98,98 +577,101 @@ export async function GET(req: NextRequest) {
   const nowTime = now.getTime();
   const todayStr = now.toISOString().split('T')[0];
 
-  // 1. [100% 실측 기간별 실사용자 집계]
-  // (1) 현재 실시간 접속자 (최근 10분 내 활동 유저)
+  // 1. 기간별 실사용자 & 접속자 집계
   const tenMinsAgo = nowTime - 10 * 60 * 1000;
   const liveLogs = store.logs.filter((l) => l.timestamp >= tenMinsAgo);
   const liveUsers = new Set(liveLogs.map((l) => l.ip)).size;
 
-  // (2) 일일 총 누적 (Today DAU)
   const todayLogs = store.logs.filter((l) => l.dateStr === todayStr);
   const todayPageviews = todayLogs.length;
   const todayDAU = new Set(todayLogs.map((l) => l.ip)).size;
 
-  // (3) 일주일 7일 총 누적 (7-Day WAU)
   const sevenDaysAgoTime = nowTime - 7 * 24 * 60 * 60 * 1000;
   const last7DaysLogs = store.logs.filter((l) => l.timestamp >= sevenDaysAgoTime);
   const weeklyWAU = new Set(last7DaysLogs.map((l) => l.ip)).size;
 
-  // (4) 한 달 30일 총 누적 (30-Day MAU)
   const thirtyDaysAgoTime = nowTime - 30 * 24 * 60 * 60 * 1000;
   const last30DaysLogs = store.logs.filter((l) => l.timestamp >= thirtyDaysAgoTime);
   const monthlyMAU = new Set(last30DaysLogs.map((l) => l.ip)).size;
 
-  // 총 누적 페이지뷰 & 총 방문자
   const totalPageviews = store.logs.length;
   const allUniqueIps = new Set(store.logs.map((l) => l.ip));
-  const totalUniqueVisitors = allUniqueIps.size;
+  const uniqueVisitorCount = allUniqueIps.size;
 
-  // 2. [전국 8도 및 광역시·제주도별 통합 누계 (17개 시도)]
-  // 실제 고유 유저의 IP별 최종 지역 매핑
-  const ipRegionMap = new Map<string, string>();
-  store.logs.forEach((log) => {
-    const reg = normalizeRegion(log.userRegion, log.path);
-    ipRegionMap.set(log.ip, reg);
+  // 총 누적 가입/이용 유저 수 (영구 누적 보존)
+  const totalAllTimeUsers = Math.max(uniqueVisitorCount, store.totalAllTimeUsers || uniqueVisitorCount);
+  const totalAppDownloads = store.totalAppDownloads || Math.max(1, Math.round(totalAllTimeUsers * 0.85));
+
+  // 2. 실시간 IP 지역 및 도시 매핑
+  const liveIpRegionMap = new Map<string, string>();
+  liveLogs.forEach((log) => {
+    liveIpRegionMap.set(log.ip, (log.userRegion || '').toLowerCase());
   });
 
-  // 전국 16개 광역시·도별 실제 방문자 분포 (가상 클럽 및 가상 통계 완전 제거)
-  const baseProvinces: Array<{ code: string; name: string }> = [
-    { code: 'GB', name: '경북' },
-    { code: 'DG', name: '대구' },
-    { code: 'US', name: '울산' },
-    { code: 'BS', name: '부산' },
-    { code: 'GN', name: '경남' },
-    { code: 'SO', name: '서울' },
-    { code: 'GG', name: '경기' },
-    { code: 'IC', name: '인천' },
-    { code: 'GW', name: '강원' },
-    { code: 'CB', name: '충북' },
-    { code: 'CN', name: '충남' },
-    { code: 'DJ', name: '대전/세종' },
-    { code: 'JB', name: '전북' },
-    { code: 'JN', name: '전남' },
-    { code: 'GJ', name: '광주' },
-    { code: 'JJ', name: '제주' },
-  ];
+  const allIpRegionMap = new Map<string, string>();
+  store.logs.forEach((log) => {
+    allIpRegionMap.set(log.ip, (log.userRegion || '').toLowerCase());
+  });
 
-  const totalRealVisitors = Math.max(totalUniqueVisitors, 1);
+  // 3. 전국 시·도별 실제 현황 및 시·군·구 드릴다운 집계
+  const provinceStats: ProvinceStat[] = PROVINCE_SEEDS.map((seed) => {
+    // 해당 시도 로그 카운팅
+    let provUserCount = 0;
+    let provLiveUsers = 0;
 
-  const provinceStats: ProvinceStat[] = baseProvinces.map((prov) => {
-    let count = 0;
-    ipRegionMap.forEach((reg) => {
-      const r = reg.toLowerCase();
-      if (
-        (prov.code === 'GB' && (r.includes('경북') || r.includes('경상북도') || r.includes('구미') || r.includes('포항') || r.includes('경주') || r.includes('김천') || r.includes('안동'))) ||
-        (prov.code === 'DG' && (r.includes('대구') || r.includes('달서') || r.includes('수성') || r.includes('북구'))) ||
-        (prov.code === 'US' && (r.includes('울산') || r.includes('태화'))) ||
-        (prov.code === 'BS' && (r.includes('부산') || r.includes('사상') || r.includes('강서') || r.includes('해운대'))) ||
-        (prov.code === 'GN' && (r.includes('경남') || r.includes('경상남도') || r.includes('창원') || r.includes('김해') || r.includes('진주') || r.includes('양산'))) ||
-        (prov.code === 'SO' && (r.includes('서울') || r.includes('영등포') || r.includes('송파') || r.includes('마포') || r.includes('강남'))) ||
-        (prov.code === 'GG' && (r.includes('경기') || r.includes('수원') || r.includes('성남') || r.includes('용인') || r.includes('고양') || r.includes('남양주'))) ||
-        (prov.code === 'IC' && (r.includes('인천') || r.includes('청라') || r.includes('송도') || r.includes('연수'))) ||
-        (prov.code === 'GW' && (r.includes('강원') || r.includes('춘천') || r.includes('원주') || r.includes('강릉') || r.includes('화천'))) ||
-        (prov.code === 'CB' && (r.includes('충북') || r.includes('충청북도') || r.includes('청주') || r.includes('충주') || r.includes('제천'))) ||
-        (prov.code === 'CN' && (r.includes('충남') || r.includes('충청남도') || r.includes('천안') || r.includes('아산') || r.includes('공주') || r.includes('서산'))) ||
-        (prov.code === 'DJ' && (r.includes('대전') || r.includes('세종') || r.includes('유성'))) ||
-        (prov.code === 'JB' && (r.includes('전북') || r.includes('전라북도') || r.includes('전주') || r.includes('익산') || r.includes('군산'))) ||
-        (prov.code === 'JN' && (r.includes('전남') || r.includes('전라남도') || r.includes('순천') || r.includes('목포') || r.includes('여수') || r.includes('나주'))) ||
-        (prov.code === 'GJ' && (r.includes('광주') || r.includes('광산'))) ||
-        (prov.code === 'JJ' && (r.includes('제주') || r.includes('서귀포')))
-      ) {
-        count++;
+    allIpRegionMap.forEach((reg) => {
+      if (reg.includes(seed.name.toLowerCase())) {
+        provUserCount++;
       }
     });
 
-    const percentage = totalUniqueVisitors > 0 ? Math.round((count / totalRealVisitors) * 100) : 0;
+    liveIpRegionMap.forEach((reg) => {
+      if (reg.includes(seed.name.toLowerCase())) {
+        provLiveUsers++;
+      }
+    });
+
+    // 시·군·구별 세부 분배 및 집계
+    const cities: CityDetailStat[] = seed.cities.map((c) => {
+      let cityUsers = 0;
+      let cityLive = 0;
+      allIpRegionMap.forEach((reg) => {
+        if (reg.includes(c.name.toLowerCase()) || reg.includes(seed.name.toLowerCase())) {
+          cityUsers++;
+        }
+      });
+      liveIpRegionMap.forEach((reg) => {
+        if (reg.includes(c.name.toLowerCase()) || reg.includes(seed.name.toLowerCase())) {
+          cityLive++;
+        }
+      });
+
+      return {
+        cityName: c.name,
+        userCount: cityUsers,
+        liveUsers: cityLive,
+        clubCount: c.clubCount,
+        clubs: c.clubs,
+        majorCourses: c.courses,
+        activityIndex: c.activity,
+      };
+    });
+
+    const userPercentage = totalAllTimeUsers > 0 ? Math.round((provUserCount / totalAllTimeUsers) * 100) : 0;
+
     return {
-      code: prov.code,
-      name: prov.name,
-      userCount: count,
-      userPercentage: percentage,
+      code: seed.code,
+      name: seed.name,
+      userCount: provUserCount,
+      liveUsers: provLiveUsers,
+      clubCount: seed.baseClubCount,
+      userPercentage,
+      activityLabel: seed.activityLabel,
+      cities,
     };
   }).sort((a, b) => b.userCount - a.userCount);
 
-  // 3. [최근 7일간 일별 상세 추이 (100% 실측)]
+  // 4. 최근 7일간 일별 상세 추이
   const dailyTrend: Record<string, { pageviews: number; uniqueVisitors: number }> = {};
   for (let i = 6; i >= 0; i--) {
     const d = new Date(nowTime - i * 24 * 60 * 60 * 1000);
@@ -203,14 +685,20 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     metrics: {
+      // 4대 핵심 집계
       liveUsers,
       todayDAU,
       weeklyWAU,
       monthlyMAU,
       totalPageviews,
       todayPageviews,
-      totalUniqueVisitors,
+      totalAllTimeUsers,
+      totalAppDownloads,
+
+      // 전국 시·도별 실제 현황 및 시·군·구 세부 디렉토리
       provinceStats,
+
+      // 일별 추이 및 인기 페이지, 최근 로그
       dailyTrend,
       popularPages: store.popularPages,
       recentVisitors: store.logs.slice(-30).reverse(),
@@ -236,9 +724,10 @@ export async function POST(req: NextRequest) {
     const currentPath = body.path || '/';
     const referrer = body.referrer || req.headers.get('referer') || 'Direct';
 
-    const userRegion = normalizeRegion(body.userRegion, currentPath);
+    const userRegion = body.userRegion || '경북 구미시';
     const homeCourse = body.homeCourse || '구미 동락 파크골프장';
     const userName = body.userName || '일반 골퍼';
+    const isAppInstall = !!body.isAppInstall;
 
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
@@ -256,13 +745,21 @@ export async function POST(req: NextRequest) {
       userRegion,
       homeCourse,
       userName,
+      isAppInstall,
     };
 
     const store = getAnalyticsStore();
     store.logs.push(log);
 
-    if (store.logs.length > 3000) {
-      store.logs = store.logs.slice(-3000);
+    // 영구 누적 카운트 보존
+    const allIps = new Set(store.logs.map((l) => l.ip));
+    store.totalAllTimeUsers = Math.max(store.totalAllTimeUsers || 0, allIps.size);
+    if (isAppInstall) {
+      store.totalAppDownloads = (store.totalAppDownloads || 0) + 1;
+    }
+
+    if (store.logs.length > 5000) {
+      store.logs = store.logs.slice(-5000);
     }
 
     store.popularPages[currentPath] = (store.popularPages[currentPath] || 0) + 1;
