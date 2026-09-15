@@ -1285,7 +1285,9 @@ export default function ClubGatheringHomePage() {
                   (kakaoUser?.aliasName && p.name.includes(kakaoUser.aliasName)) ||
                   p.name.includes('본인')
               );
-              const isFull = currentCount >= flash.targetCount;
+              const isMultiOpen = flash.targetCount >= 999;
+              const isFull = !isMultiOpen && currentCount >= flash.targetCount;
+              const remaining = isMultiOpen ? 0 : Math.max(0, flash.targetCount - currentCount);
               const waitingCount = flash.waitingList?.length || 0;
 
               return (
@@ -1307,12 +1309,16 @@ export default function ClubGatheringHomePage() {
                         )}
                         <span
                           className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                            isFull
+                            isMultiOpen
+                              ? 'bg-amber-400 text-stone-950 shadow-2xs font-extrabold'
+                              : isFull
                               ? 'bg-amber-100 text-amber-900 border border-amber-300'
                               : 'bg-emerald-100 text-emerald-900'
                           }`}
                         >
-                          {isFull
+                          {isMultiOpen
+                            ? `👥 인원 무제한 (${currentCount}명 참가 중)`
+                            : isFull
                             ? waitingCount > 0
                               ? `정원 마감 (대기 ${waitingCount}명)`
                               : '정원 마감 (대기 접수 중)'
@@ -1353,7 +1359,7 @@ export default function ClubGatheringHomePage() {
                   {/* 참가자 명단 */}
                   <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200 text-xs space-y-1">
                     <div className="text-[11px] font-black text-stone-600 flex items-center justify-between">
-                      <span>참여자 현황 ({currentCount} / {flash.targetCount}명)</span>
+                      <span>참여자 현황 ({currentCount} / {isMultiOpen ? '무제한' : `${flash.targetCount}명`})</span>
                       <span className="text-stone-500 font-medium">개설자: {flash.hostName}</span>
                     </div>
                     <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
@@ -1365,7 +1371,7 @@ export default function ClubGatheringHomePage() {
                           {p.name}
                         </span>
                       ))}
-                      {remaining > 0 &&
+                      {!isMultiOpen && remaining > 0 &&
                         Array.from({ length: remaining }).map((_, i) => (
                           <span
                             key={`empty-${i}`}
@@ -1374,6 +1380,11 @@ export default function ClubGatheringHomePage() {
                             빈자리
                           </span>
                         ))}
+                      {isMultiOpen && (
+                        <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-bold px-2 py-0.5 rounded-lg">
+                          + 자유 참가 가능
+                        </span>
+                      )}
                     </div>
 
                     {/* 대기자 명단 (Waiting List) */}
@@ -3163,10 +3174,14 @@ export default function ClubGatheringHomePage() {
                     onChange={(e) => setNewFlashTargetCount(Number(e.target.value))}
                     className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold"
                   >
-                    <option value={2}>2명 라운드</option>
-                    <option value={3}>3명 라운드</option>
                     <option value={4}>4명 라운드 (기본)</option>
+                    <option value={999}>인원 수 제한 없음 (4인 이상 무제한)</option>
                   </select>
+                  <p className="text-[10px] text-stone-500 font-medium leading-tight">
+                    {newFlashTargetCount === 4
+                      ? '💡 2인 이상만 모여도 방장이 즉시 출발 가능!'
+                      : '💡 인원 제한 없이 참가, 모인 인원으로 자동 조 편성'}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">

@@ -2123,15 +2123,19 @@ ${shareUrl}`;
         ? `${window.location.origin}/club?hub=FLASH&flashId=${flash.id}`
         : `https://parkongolf.com/club?hub=FLASH&flashId=${flash.id}`;
 
-    const remaining = Math.max(0, flash.targetCount - flash.currentParticipants.length);
+    const isMultiOpen = flash.targetCount >= 999;
+    const remaining = isMultiOpen ? 0 : Math.max(0, flash.targetCount - flash.currentParticipants.length);
     const clubBadge = flash.clubName ? `[${flash.clubName}]` : `[파크온 번개]`;
+    const capacityText = isMultiOpen
+      ? `인원 수 제한 없음 (4인 이상 무제한)`
+      : `총 ${flash.targetCount}명 중 ${remaining > 0 ? `${remaining}명 급구!` : '정원 마감'}`;
 
     return `${clubBadge} ⚡ 번개 라운드 긴급 모집!
 "${flash.title}"
 
 ⛳ 장소: ${flash.courseName}
 📅 일시: ${flash.playDate} ${flash.playTime}
-👥 정원: 총 ${flash.targetCount}명 중 ${remaining > 0 ? `${remaining}명 급구!` : '정원 마감'}
+👥 정원: ${capacityText}
 👤 현재 참가: ${flash.currentParticipants.map((p) => p.name).join(', ')}
 ${flash.notes ? `💬 안내: "${flash.notes}"\n` : ''}
 👇 아래 파크온 링크를 눌러 1초 만에 바로 조인하세요!
