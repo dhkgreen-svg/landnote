@@ -934,22 +934,22 @@ export default function CoursesPage() {
             전국 전체 ({courses.length})
           </button>
           {[
-            { name: '대구', count: 39 },
-            { name: '경북', count: 71 },
-            { name: '경남', count: 89 },
-            { name: '부산', count: 18 },
-            { name: '울산', count: 7 },
             { name: '서울', count: 28 },
             { name: '경기', count: 58 },
             { name: '인천', count: 8 },
+            { name: '부산', count: 18 },
+            { name: '대구', count: 39 },
+            { name: '광주', count: 9 },
+            { name: '대전', count: 5 },
+            { name: '울산', count: 7 },
+            { name: '세종', count: 9 },
             { name: '강원', count: 46 },
             { name: '충북', count: 26 },
             { name: '충남', count: 35 },
-            { name: '대전', count: 5 },
-            { name: '세종', count: 9 },
             { name: '전북', count: 33 },
             { name: '전남', count: 43 },
-            { name: '광주', count: 9 },
+            { name: '경북', count: 71 },
+            { name: '경남', count: 89 },
             { name: '제주', count: 11 },
           ].map((reg) => (
             <button

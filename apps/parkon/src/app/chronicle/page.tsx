@@ -20,9 +20,12 @@ import {
   Star,
   Home,
   Zap,
-  Play
+  Play,
+  Swords,
+  Share2,
 } from 'lucide-react';
 import { ParkOnStorage } from '@/lib/storage';
+import { ClubStorage } from '@/lib/clubStorage';
 import { CompanionStorage, Companionship, CompanionLightningRound } from '@/lib/companionStorage';
 import { CompanionQRModal } from '@/components/CompanionQRModal';
 import { CompanionFeedWidget } from '@/components/CompanionFeedWidget';
@@ -39,7 +42,7 @@ function ChronicleContent() {
   const [showQrModal, setShowQrModal] = useState(false);
   const [showLightningModal, setShowLightningModal] = useState(false);
   const [toastMsg, setToastMsg] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'MILESTONE' | 'COMPANIONS' | 'STAMP_MAP'>('MILESTONE');
+  const [activeTab, setActiveTab] = useState<'MILESTONE' | 'CLUB_MATCH' | 'COMPANIONS' | 'STAMP_MAP'>('MILESTONE');
 
   // Handle incoming addFriend query param from QR scan
   useEffect(() => {
@@ -85,14 +88,15 @@ function ChronicleContent() {
     memo: '드라이버 굿샷 파트너',
   };
 
-  // Conquered courses (동락, 양호, 지산 등)
+  // Conquered courses
   const conqueredCourseIds = ['course-gumi-dongrak', 'course-gumi-yangho', 'course-gumi-jisan', 'course-daegu-suseong'];
   const sampleRegions = [
-    { code: 'GB', name: '경북', total: 14, conquered: 3 },
-    { code: 'DG', name: '대구', total: 10, conquered: 1 },
-    { code: 'BS', name: '부산', total: 8, conquered: 0 },
-    { code: 'SO', name: '서울', total: 9, conquered: 0 },
-    { code: 'GN', name: '경남', total: 7, conquered: 0 },
+    { code: 'SO', name: '서울', total: 28, conquered: 1 },
+    { code: 'GG', name: '경기', total: 58, conquered: 2 },
+    { code: 'BS', name: '부산', total: 18, conquered: 2 },
+    { code: 'DG', name: '대구', total: 39, conquered: 4 },
+    { code: 'GB', name: '경북', total: 71, conquered: 6 },
+    { code: 'GN', name: '경남', total: 89, conquered: 3 },
   ];
 
   return (
@@ -156,45 +160,58 @@ function ChronicleContent() {
         </div>
       </div>
 
-      {/* 2. 3대 탭 내비게이션 (Senior 52px+ Friendly) */}
-      <div className="grid grid-cols-3 p-1.5 bg-stone-200 rounded-2xl gap-1 text-xs font-black">
+      {/* 2. 4대 탭 내비게이션 (클럽 대항전 실록 신설) */}
+      <div className="grid grid-cols-4 p-1.5 bg-stone-200 rounded-2xl gap-1 text-[11px] font-black">
         <button
           type="button"
           onClick={() => setActiveTab('MILESTONE')}
-          className={`min-h-[48px] rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`min-h-[48px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
             activeTab === 'MILESTONE'
               ? 'bg-white text-emerald-800 shadow-sm border border-emerald-300'
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
           <Trophy className="w-4 h-4 text-emerald-600" />
-          <span>커리어 연대기</span>
+          <span>커리어</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('CLUB_MATCH')}
+          className={`min-h-[48px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+            activeTab === 'CLUB_MATCH'
+              ? 'bg-gradient-to-b from-purple-800 to-purple-950 text-amber-300 shadow-sm border border-purple-500'
+              : 'text-stone-700 hover:text-purple-900'
+          }`}
+        >
+          <Swords className="w-4 h-4 text-purple-600" />
+          <span>대항전 실록</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('COMPANIONS')}
-          className={`min-h-[48px] rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`min-h-[48px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
             activeTab === 'COMPANIONS'
               ? 'bg-white text-emerald-800 shadow-sm border border-emerald-300'
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
           <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
-          <span>1촌 인연 명부 ({companions.length})</span>
+          <span>1촌 명부</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('STAMP_MAP')}
-          className={`min-h-[48px] rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+          className={`min-h-[48px] rounded-xl transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
             activeTab === 'STAMP_MAP'
               ? 'bg-white text-emerald-800 shadow-sm border border-emerald-300'
               : 'text-stone-600 hover:text-stone-900'
           }`}
         >
           <Compass className="w-4 h-4 text-blue-600" />
-          <span>도장깨기 맵</span>
+          <span>도장깨기</span>
         </button>
       </div>
 
@@ -304,6 +321,212 @@ function ChronicleContent() {
                   <span>동반 1촌: 박철수, 정순자</span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚔️ [NEW] 클럽 대항전 실록 (Match Chronicle) */}
+      {activeTab === 'CLUB_MATCH' && (
+        <div className="space-y-4">
+          {/* 대항전 공식 전적 요약 카드 */}
+          <div className="bg-gradient-to-br from-purple-900 via-indigo-950 to-stone-950 text-white rounded-3xl p-5 shadow-xl border-2 border-purple-400/40 space-y-4">
+            <div className="flex items-center justify-between border-b border-purple-700/50 pb-3">
+              <div className="flex items-center gap-2">
+                <Swords className="w-5 h-5 text-amber-300" />
+                <h3 className="text-base font-black tracking-tight text-white">소속 클럽 공식 대항전 실록</h3>
+              </div>
+              <span className="text-[10px] bg-amber-400 text-purple-950 font-black px-2.5 py-0.5 rounded-full">
+                공식 인증 전적
+              </span>
+            </div>
+
+            {/* 전적 지표 그리드 */}
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
+                <div className="text-[10px] text-purple-200 font-bold">통산 전적</div>
+                <div className="text-lg font-black text-amber-300 mt-0.5">5전 4승 1패</div>
+              </div>
+              <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
+                <div className="text-[10px] text-purple-200 font-bold">승률</div>
+                <div className="text-lg font-black text-white mt-0.5">80.0%</div>
+              </div>
+              <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
+                <div className="text-[10px] text-purple-200 font-bold">누적 승점</div>
+                <div className="text-lg font-black text-white mt-0.5">12점</div>
+              </div>
+              <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
+                <div className="text-[10px] text-purple-200 font-bold">대항전 평균</div>
+                <div className="text-lg font-black text-emerald-300 mt-0.5">58.2타</div>
+              </div>
+            </div>
+
+            {/* 내 대항전 개인 타이틀 뱃지 */}
+            <div className="bg-purple-900/60 rounded-2xl p-3 border border-purple-500/30 flex items-center justify-between text-xs">
+              <span className="text-purple-200 font-bold flex items-center gap-1.5">
+                <span>🎖️</span>
+                <span>대표 선수 영예</span>
+              </span>
+              <span className="text-amber-300 font-black">
+                MVP 2회 수상 · 팀내 최저타 3회 · 결승타 1회
+              </span>
+            </div>
+          </div>
+
+          {/* 대항전 특별 훈장 컬렉션 */}
+          <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-5 h-5 text-purple-700" />
+              <h3 className="text-sm font-black text-stone-900">클럽 대항전 명예 훈장</h3>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="p-3 bg-purple-50 border border-purple-200 rounded-2xl space-y-1">
+                <span className="text-2xl">👑</span>
+                <div className="text-xs font-black text-purple-950">대항전 챔피언</div>
+                <div className="text-base font-black text-purple-700">4회 우승</div>
+                <div className="text-[10px] text-stone-500">팀 승리 기여 100%</div>
+              </div>
+
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl space-y-1">
+                <span className="text-2xl">⭐</span>
+                <div className="text-xs font-black text-amber-950">최우수 선수(MVP)</div>
+                <div className="text-base font-black text-amber-700">2회 수상</div>
+                <div className="text-[10px] text-stone-500">개인 최저 언더파</div>
+              </div>
+
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1">
+                <span className="text-2xl">⚔️</span>
+                <div className="text-xs font-black text-emerald-950">라이벌 킬러</div>
+                <div className="text-base font-black text-emerald-700">3전 전승</div>
+                <div className="text-[10px] text-stone-500">1대1 맞대결 승률 100%</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 대항전 출전 상세 매치 히스토리 */}
+          <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-purple-700" />
+                <h3 className="text-sm font-black text-stone-900">공식 대항전 출전 실록</h3>
+              </div>
+              <span className="text-xs text-stone-400 font-medium">영구 불멸 기록</span>
+            </div>
+
+            <div className="space-y-3">
+              {/* 매치 1 */}
+              <div className="p-4 bg-gradient-to-r from-purple-50/80 via-white to-amber-50/50 rounded-2xl border-2 border-purple-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black text-purple-900 bg-purple-100 px-2 py-0.5 rounded-md">
+                    2026.09.16 · 구미 동락 파크골프장 (36홀)
+                  </span>
+                  <span className="text-xs font-black text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                    🏆 팀 완승 (+16타차)
+                  </span>
+                </div>
+
+                <div className="text-sm font-black text-stone-900 flex items-center gap-1.5 flex-wrap">
+                  <span className="text-purple-950">구미 동락 클럽</span>
+                  <span className="text-purple-600 font-extrabold text-xs">452타</span>
+                  <span className="text-stone-400 font-bold">vs</span>
+                  <span className="text-stone-700">부산 삼락 클럽</span>
+                  <span className="text-stone-500 font-extrabold text-xs">468타</span>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-xl border border-stone-200 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-[11px] text-stone-500 font-bold">내 출전 기록: </span>
+                    <strong className="text-purple-950 font-black">2조 1번 선수 출전</strong>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-black text-emerald-600">58타 (-2)</span>
+                    <span className="text-[10px] text-amber-700 font-bold ml-1.5 bg-amber-100 px-1.5 py-0.5 rounded">
+                      팀내 최우수 MVP
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 매치 2 */}
+              <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black text-stone-600 bg-stone-200 px-2 py-0.5 rounded-md">
+                    2026.08.30 · 대구 수성 파크골프장 (18홀)
+                  </span>
+                  <span className="text-xs font-black text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                    🏆 팀 승리 (+8타차)
+                  </span>
+                </div>
+
+                <div className="text-sm font-black text-stone-900 flex items-center gap-1.5 flex-wrap">
+                  <span className="text-purple-950">구미 동락 클럽</span>
+                  <span className="text-purple-600 font-extrabold text-xs">228타</span>
+                  <span className="text-stone-400 font-bold">vs</span>
+                  <span className="text-stone-700">대구 수성 패밀리</span>
+                  <span className="text-stone-500 font-extrabold text-xs">236타</span>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-xl border border-stone-200 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-[11px] text-stone-500 font-bold">내 출전 기록: </span>
+                    <strong className="text-stone-900 font-black">4조 2번 출전</strong>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-black text-stone-800">59타 (-1)</span>
+                    <span className="text-[10px] text-emerald-700 font-bold ml-1.5">
+                      조별 1위
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 매치 3 */}
+              <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black text-stone-600 bg-stone-200 px-2 py-0.5 rounded-md">
+                    2026.07.15 · 양평 강상 파크골프장 (36홀)
+                  </span>
+                  <span className="text-xs font-black text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full border border-rose-300">
+                    석패 (-4타차)
+                  </span>
+                </div>
+
+                <div className="text-sm font-black text-stone-900 flex items-center gap-1.5 flex-wrap">
+                  <span className="text-purple-950">구미 동락 클럽</span>
+                  <span className="text-stone-500 font-extrabold text-xs">460타</span>
+                  <span className="text-stone-400 font-bold">vs</span>
+                  <span className="text-stone-700">양평 남한강 클럽</span>
+                  <span className="text-purple-600 font-extrabold text-xs">456타</span>
+                </div>
+
+                <div className="bg-white p-2.5 rounded-xl border border-stone-200 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-[11px] text-stone-500 font-bold">내 출전 기록: </span>
+                    <strong className="text-stone-900 font-black">1조 1번(조장) 출전</strong>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-black text-stone-800">60타 (Even)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 대항전 실록 카톡/밴드 자랑하기 버튼 */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const text = `🏆 [파크온 대항전 실록]\n김대희 선수의 클럽 대항전 공식 통산 전적:\n- 통산: 5전 4승 1패 (승률 80.0%)\n- 대표 영예: MVP 2회, 팀내 최저타 3회\n- 최근 경기: 구미 동락 vs 부산 삼락 16타차 완승 견인 (개인 58타)\n\n파크온 실시간 전광판 & 연대기 확인:\nhttps://www.parkongolf.com/chronicle`;
+                  navigator.clipboard?.writeText(text);
+                  setToastMsg('📋 나의 대항전 실록 자랑하기 문구가 복사되었습니다! 단톡방/밴드에 붙여넣기 하세요.');
+                  setTimeout(() => setToastMsg(''), 3500);
+                }}
+                className="w-full py-3 bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-md cursor-pointer transition active:scale-98 flex items-center justify-center gap-1.5"
+              >
+                <Share2 className="w-4 h-4 text-amber-300" />
+                <span>나의 대항전 실록 카톡 / 밴드에 자랑하기</span>
+              </button>
             </div>
           </div>
         </div>

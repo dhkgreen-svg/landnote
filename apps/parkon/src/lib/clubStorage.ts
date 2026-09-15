@@ -43,6 +43,44 @@ function generateDefaultSeedClubs(): ParkGolfClub[] {
       badgeColor: 'emerald',
       createdAt: '2026-01-01',
     },
+    {
+      id: 'club-busan-samrak',
+      name: '부산 삼락 파크골프 클럽',
+      region: '부산 사상구',
+      homeCourseId: 'course-samrak',
+      homeCourseName: '부산 삼락생태공원 파크골프장',
+      description: '부산 삼락구장을 홈으로 하는 전통의 명문 클럽입니다. 타 클럽 친선 교류전 환영!',
+      presidentName: '삼락회장',
+      managerName: '이총무',
+      contactPhone: '051-310-4000',
+      memberCount: 36,
+      members: [
+        { id: 'm_sr_1', name: '이총무', role: 'MANAGER', joinedAt: '2026-01-02', phone: '051-310-4000' },
+      ],
+      pendingMembers: [],
+      isPublic: true,
+      badgeColor: 'purple',
+      createdAt: '2026-01-02',
+    },
+    {
+      id: 'club-daegu-suseong',
+      name: '대구 수성 에이스 파크골프 클럽',
+      region: '대구 수성구',
+      homeCourseId: 'course-suseong',
+      homeCourseName: '팔현 파크골프장',
+      description: '대구 수성구 팔현구장에서 활동하는 열정 파크골프 클럽입니다.',
+      presidentName: '수성회장',
+      managerName: '박총무',
+      contactPhone: '053-666-2000',
+      memberCount: 28,
+      members: [
+        { id: 'm_ss_1', name: '박총무', role: 'MANAGER', joinedAt: '2026-01-03', phone: '053-666-2000' },
+      ],
+      pendingMembers: [],
+      isPublic: true,
+      badgeColor: 'amber',
+      createdAt: '2026-01-03',
+    },
   ];
 }
 
@@ -717,6 +755,9 @@ export const ClubStorage = {
     clubName?: string;
     tournamentType?: 'CLUB_MATCH' | 'REGIONAL_OPEN' | 'CLUB_INTERNAL';
     participatingClubs?: { clubId: string; clubName: string }[];
+    matchTeamCount?: number;
+    playersPerTeam?: number;
+    matchInviteType?: 'DIRECT_CHALLENGE' | 'OPEN_CHALLENGE';
     regionScope?: string;
     entryFee?: number;
     bankAccount?: string;
@@ -753,6 +794,9 @@ export const ClubStorage = {
       clubName: params.clubName,
       tournamentType: params.tournamentType || (params.participatingClubs && params.participatingClubs.length > 1 ? 'CLUB_MATCH' : 'CLUB_INTERNAL'),
       participatingClubs: params.participatingClubs,
+      matchTeamCount: params.matchTeamCount,
+      playersPerTeam: params.playersPerTeam,
+      matchInviteType: params.matchInviteType,
       regionScope: params.regionScope,
       title: params.title.trim() || '파크골프 동호회 정기 모임',
       courseId: params.courseId,
@@ -1103,9 +1147,35 @@ export const ClubStorage = {
   // 11. 카카오톡 공유 링크 및 초대 메시지 생성
   generateKakaoShareText(room: ClubEventRoom): string {
     const totalCurrentPlayers = room.groups.reduce((sum, g) => sum + g.players.length, 0);
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3005';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3008';
     const link = `${origin}/club/${room.id}`;
     const modeInfo = this.getGameModeInfo(room.gameMode);
+
+    if (room.tournamentType === 'CLUB_MATCH') {
+      const hostClub = room.clubName || '주최 클럽';
+      const oppClubs =
+        room.participatingClubs && room.participatingClubs.length > 0
+          ? room.participatingClubs
+              .map((c) => c.clubName)
+              .filter((n) => n !== hostClub)
+              .join(', ') || '상대 클럽'
+          : '전국 파크골프 클럽';
+      const teamCount = room.matchTeamCount || 2;
+      const perTeam = room.playersPerTeam || Math.round((room.targetTotalPlayers || 32) / teamCount);
+      const isDirect = room.matchInviteType !== 'OPEN_CHALLENGE';
+
+      return `⚔️ [파크온 클럽 대항전 공식 ${isDirect ? '도전장' : '오픈 챌린지'}]
+
+🏆 ${room.title}
+🏛️ 대결 매치: [${hostClub}] ⚔️ VS ⚔️ [${oppClubs}]
+📍 구장: ${room.courseName} (${room.totalHoles}홀)
+👥 출전 엔트리: ${teamCount}개 팀 (팀당 ${perTeam}명 / 총 ${room.targetTotalPlayers || 32}명)
+🎯 경기 방식: ${room.gameModeTitle || modeInfo.title}
+⛳ 조 편성: 라이벌 크로스 맞대결 조편성 (총 ${room.groups.length}개 조)
+
+👇 아래 링크를 눌러 대항전 수락 및 출전 엔트리를 등록하세요!
+${link}`;
+    }
 
     let feeInfo = '';
     if (typeof room.entryFee === 'number' && room.entryFee > 0) {
@@ -1521,6 +1591,17 @@ export const ClubStorage = {
         return seeds;
       }
       const parsed: ParkGolfClub[] = JSON.parse(data);
+      const seeds = generateDefaultSeedClubs();
+      let changed = false;
+      seeds.forEach((sc) => {
+        if (!parsed.some((c) => c.id === sc.id)) {
+          parsed.push(sc);
+          changed = true;
+        }
+      });
+      if (changed) {
+        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(parsed));
+      }
       return parsed.map((c) => ({
         ...c,
         pendingMembers: c.pendingMembers || [],

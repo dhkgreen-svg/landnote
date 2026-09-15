@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Zap, Users, MapPin, Calendar, Clock, Sparkles, Check, ChevronRight, Play } from 'lucide-react';
+import { X, Zap, Users, MapPin, Calendar, Clock, Sparkles, Check, ChevronRight, Play, Search } from 'lucide-react';
 import { ParkOnStorage } from '@/lib/storage';
 import { CompanionStorage, CompanionLightningRound } from '@/lib/companionStorage';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
@@ -19,6 +19,11 @@ export function CompanionLightningModal({ isOpen, onClose, onRoundCreated }: Com
 
   const [activeTab, setActiveTab] = useState<'LIST' | 'CREATE'>('LIST');
   const [rounds, setRounds] = useState<CompanionLightningRound[]>([]);
+
+  // 전국 구장 검색 상태
+  const [showCourseSearchModal, setShowCourseSearchModal] = useState(false);
+  const [courseSearchTerm, setCourseSearchTerm] = useState('');
+  const [courseRegionFilter, setCourseRegionFilter] = useState('전체');
 
   // Create Form State
   const [selectedCourseId, setSelectedCourseId] = useState<string>('course-gumi-dongrak');
@@ -252,23 +257,45 @@ export function CompanionLightningModal({ isOpen, onClose, onRoundCreated }: Com
             </div>
           ) : (
             <form onSubmit={handleCreate} className="space-y-4 text-left">
-              {/* 1. 구장 선택 */}
+              {/* 1. 구장 선택 (전국 구장 검색 연동) */}
               <div className="space-y-1.5">
-                <label className="text-xs font-black text-stone-800 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>어느 구장에서 번개 라운딩을 하실까요?</span>
-                </label>
-                <select
-                  value={selectedCourseId}
-                  onChange={(e) => setSelectedCourseId(e.target.value)}
-                  className="w-full min-h-[50px] px-3.5 rounded-xl border-2 border-stone-300 focus:border-emerald-600 bg-stone-50 font-bold text-sm text-stone-900 focus:outline-none cursor-pointer"
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-stone-800 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>어느 구장에서 번개 라운딩을 하실까요?</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCourseSearchTerm('');
+                      setCourseRegionFilter('전체');
+                      setShowCourseSearchModal(true);
+                    }}
+                    className="text-emerald-700 hover:text-emerald-900 text-xs font-black flex items-center gap-1 cursor-pointer"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                    <span>전국 구장 검색</span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCourseSearchTerm('');
+                    setCourseRegionFilter('전체');
+                    setShowCourseSearchModal(true);
+                  }}
+                  className="w-full p-3 bg-stone-50 hover:bg-emerald-50/60 border-2 border-stone-300 hover:border-emerald-500 rounded-xl flex items-center justify-between text-xs font-bold text-stone-800 transition cursor-pointer text-left"
                 >
-                  {DEFAULT_COURSES.slice(0, 15).map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.region} · {c.totalHoles}홀)
-                    </option>
-                  ))}
-                </select>
+                  <span className="flex items-center gap-2 min-w-0">
+                    <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <span className="truncate font-black text-sm text-stone-900">
+                      {DEFAULT_COURSES.find((c) => c.id === selectedCourseId)?.name || '구미 동락 파크골프장'}
+                    </span>
+                  </span>
+                  <span className="text-stone-500 shrink-0 text-xs ml-2 font-bold">
+                    {DEFAULT_COURSES.find((c) => c.id === selectedCourseId)?.region || '경북'} · {DEFAULT_COURSES.find((c) => c.id === selectedCourseId)?.totalHoles || 36}홀 ▾
+                  </span>
+                </button>
               </div>
 
               {/* 2. 일시 선택 (오늘/내일 빠른 버튼) */}
@@ -355,6 +382,93 @@ export function CompanionLightningModal({ isOpen, onClose, onRoundCreated }: Com
           )}
         </div>
       </div>
+
+      {/* 전국 구장 검색 모달 (팝업 위에 뜨는 최상위 모달) */}
+      {showCourseSearchModal && (
+        <div
+          className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+          style={{ zIndex: 99999 }}
+        >
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-stone-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Search className="w-5 h-5 text-amber-300" />
+                <h3 className="font-extrabold text-base">전국 파크골프장 검색</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCourseSearchModal(false)}
+                className="text-stone-300 hover:text-white p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              <div className="relative">
+                <Search className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  value={courseSearchTerm}
+                  onChange={(e) => setCourseSearchTerm(e.target.value)}
+                  placeholder="구장명 또는 지역 검색 (예: 동락, 부산, 양평, 대구)"
+                  className="w-full pl-9 pr-3 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold focus:outline-none focus:border-emerald-600 focus:bg-white"
+                  autoFocus
+                />
+              </div>
+
+              {/* 지역 필터 칩 (대한민국 전국 표준 행정 지명 순서) */}
+              <div className="flex flex-wrap gap-1">
+                {['전체', '서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'].map((reg) => (
+                  <button
+                    key={reg}
+                    type="button"
+                    onClick={() => setCourseRegionFilter(reg)}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                      courseRegionFilter === reg
+                        ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
+                        : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    {reg}
+                  </button>
+                ))}
+              </div>
+
+              <div className="max-h-64 overflow-y-auto space-y-1.5 pr-0.5">
+                {DEFAULT_COURSES
+                  .filter((c) => {
+                    if (courseRegionFilter !== '전체' && !c.region.includes(courseRegionFilter)) return false;
+                    if (!courseSearchTerm.trim()) return true;
+                    const term = courseSearchTerm.trim().toLowerCase();
+                    const noSpaceTerm = term.replace(/\s+/g, '');
+                    const noSpaceName = c.name.toLowerCase().replace(/\s+/g, '');
+                    return c.name.toLowerCase().includes(term) || c.region.toLowerCase().includes(term) || noSpaceName.includes(noSpaceTerm);
+                  })
+                  .map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCourseId(c.id);
+                        setShowCourseSearchModal(false);
+                      }}
+                      className="w-full p-2.5 rounded-xl border border-stone-200 hover:bg-emerald-50 hover:border-emerald-400 text-left transition flex items-center justify-between cursor-pointer"
+                    >
+                      <div>
+                        <div className="text-xs font-black text-stone-900">{c.name}</div>
+                        <div className="text-[11px] text-stone-500 font-medium">
+                          {c.region} · 총 {c.totalHoles}홀
+                        </div>
+                      </div>
+                      <span className="text-xs font-black text-emerald-700">선택</span>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -35,6 +35,9 @@ export interface ClubEventRoom {
   clubName?: string;   // e.g. '구미 동락 에이스 파크골프 클럽'
   tournamentType?: TournamentType; // [NEW] 'CLUB_MATCH' (클럽대항전) | 'REGIONAL_OPEN' (시·도 공식대회) | 'CLUB_INTERNAL' (클럽 월례회)
   participatingClubs?: { clubId: string; clubName: string }[]; // [NEW] 대항전 참가 클럽들
+  matchTeamCount?: number; // [NEW] 대항전 참가 팀 수 (예: 2개팀, 3개팀, 4개팀)
+  playersPerTeam?: number; // [NEW] 클럽당 출전 엔트리 인원 (예: 16명, 12명)
+  matchInviteType?: 'DIRECT_CHALLENGE' | 'OPEN_CHALLENGE'; // [NEW] 지정 클럽 지목 도전장 vs 전국 공개 챌린지
   regionScope?: string; // [NEW] 예: '구미시', '대구광역시', '경상북도'
   title: string;       // e.g. '구미 동락클럽 9월 정기 월례회'
   courseId: string;

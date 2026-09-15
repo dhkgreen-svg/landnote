@@ -63,6 +63,7 @@ export default function ClubGatheringHomePage() {
   const [courseSearchTerm, setCourseSearchTerm] = useState('');
   const [courseRegionFilter, setCourseRegionFilter] = useState('전체');
   const [tempSelectedCourseId, setTempSelectedCourseId] = useState<string | null>(null);
+  const [courseSearchTarget, setCourseSearchTarget] = useState<'TOURNAMENT' | '1CHON' | 'CLUB_FLASH' | 'NEW_CLUB'>('TOURNAMENT');
 
   // 안내 토스트 메시지
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -107,6 +108,12 @@ export default function ClubGatheringHomePage() {
   const [tournamentType, setTournamentType] = useState<TournamentType>('CLUB_MATCH');
   const [participatingClubIds, setParticipatingClubIds] = useState<string[]>([]);
   const [regionalScope, setRegionalScope] = useState<string>('경상북도 구미시');
+
+  // [NEW] 클럽 대항전(교류전) 전용 매칭 & 엔트리 상태 (대표님 요청)
+  const [matchInviteType, setMatchInviteType] = useState<'DIRECT_CHALLENGE' | 'OPEN_CHALLENGE'>('DIRECT_CHALLENGE');
+  const [matchTeamCount, setMatchTeamCount] = useState<number>(2); // 2개 팀, 3개 팀, 4개 팀
+  const [playersPerTeam, setPlayersPerTeam] = useState<number>(16); // 클럽당 16명 (기본)
+  const [customOpponentName, setCustomOpponentName] = useState<string>('');
 
   // 대회 개설 서브 팝업 모달 상태
   const [showCreateFeeModal, setShowCreateFeeModal] = useState(false);
@@ -300,6 +307,9 @@ export default function ClubGatheringHomePage() {
   };
 
   const selectedCourse = allCourses.find((c) => c.id === selectedCourseId) || allCourses[0] || DEFAULT_COURSES[0];
+  const ltnSelectedCourse = allCourses.find((c) => c.id === ltnCourseId) || allCourses[0] || DEFAULT_COURSES[0];
+  const clubFlashSelectedCourse = allCourses.find((c) => c.id === clubFlashCourseId) || allCourses[0] || DEFAULT_COURSES[0];
+  const newClubSelectedCourse = allCourses.find((c) => c.id === newClubHomeCourseId) || allCourses[0] || DEFAULT_COURSES[0];
   const totalNumCourses = selectedCourse.totalCourses || Math.max(1, Math.round(selectedCourse.totalHoles / 9));
   const availableLetters = COURSE_LETTERS.slice(0, totalNumCourses);
 
@@ -315,7 +325,23 @@ export default function ClubGatheringHomePage() {
   };
 
   const confirmCourseSelection = (courseId: string) => {
-    handleCourseChange(courseId);
+    const c = allCourses.find((x) => x.id === courseId) || allCourses[0];
+    if (courseSearchTarget === '1CHON') {
+      setLtnCourseId(courseId);
+      showToast(`⛳ 번개 구장이 '${c.name}'(으)로 선택되었습니다.`);
+    } else if (courseSearchTarget === 'CLUB_FLASH') {
+      setClubFlashCourseId(courseId);
+      showToast(`⛳ 번개 구장이 '${c.name}'(으)로 선택되었습니다.`);
+    } else if (courseSearchTarget === 'NEW_CLUB') {
+      setNewClubHomeCourseId(courseId);
+      if (!newClubRegion || newClubRegion === '경북 구미') {
+        setNewClubRegion(c.region);
+      }
+      showToast(`⛳ 클럽 홈 구장이 '${c.name}'(으)로 선택되었습니다.`);
+    } else {
+      handleCourseChange(courseId);
+      showToast(`⛳ 대회 구장이 '${c.name}'(으)로 선택되었습니다.`);
+    }
     setShowCourseSearchModal(false);
   };
 
@@ -341,6 +367,56 @@ export default function ClubGatheringHomePage() {
     setGroupCount(optimal.groupCount);
   };
 
+  // 대항전 팀 수 변경
+  const handleMatchTeamCountChange = (count: number) => {
+    setMatchTeamCount(count);
+    const newTotal = count * playersPerTeam;
+    setTargetPlayers(newTotal);
+    const opt = ClubStorage.calculateOptimalGroups(newTotal);
+    setGroupCount(opt.groupCount);
+    updateMatchTitle(matchInviteType, count, playersPerTeam, participatingClubIds, customOpponentName);
+  };
+
+  // 대항전 팀당 출전 인원(엔트리) 변경
+  const handlePlayersPerTeamChange = (count: number) => {
+    const valid = Math.max(2, Math.min(100, count));
+    setPlayersPerTeam(valid);
+    const newTotal = matchTeamCount * valid;
+    setTargetPlayers(newTotal);
+    const opt = ClubStorage.calculateOptimalGroups(newTotal);
+    setGroupCount(opt.groupCount);
+    updateMatchTitle(matchInviteType, matchTeamCount, valid, participatingClubIds, customOpponentName);
+  };
+
+  // 대항전 제목 자동 생성
+  const updateMatchTitle = (
+    inviteType: 'DIRECT_CHALLENGE' | 'OPEN_CHALLENGE',
+    teamCount: number,
+    perTeam: number,
+    pClubIds: string[],
+    customOpp: string
+  ) => {
+    const hostClub = clubs.find((c) => c.id === tournamentClubId) || myClubs[0];
+    const hostName = hostClub ? hostClub.name.replace(' 파크골프 클럽', '').replace(' 클럽', '') : '우리 클럽';
+
+    if (inviteType === 'OPEN_CHALLENGE') {
+      setTitle(`[도전팀 구함] ${hostName} 친선 교류전 (${perTeam}인전) ⚔️`);
+      return;
+    }
+
+    const oppClub = clubs.find((c) => pClubIds.includes(c.id) && c.id !== hostClub?.id);
+    const oppName = oppClub
+      ? oppClub.name.replace(' 파크골프 클럽', '').replace(' 클럽', '')
+      : customOpp.trim() || '부산 삼락';
+
+    const total = teamCount * perTeam;
+    if (teamCount === 2) {
+      setTitle(`${hostName} vs ${oppName} ${total}인 친선 대항전 ⚔️`);
+    } else {
+      setTitle(`${hostName} 외 ${teamCount - 1}개 클럽 친선 삼파전 (${total}인) ⚔️`);
+    }
+  };
+
   // ========================================================
   // [대회 개설 핸들러]
   // ========================================================
@@ -349,23 +425,46 @@ export default function ClubGatheringHomePage() {
     const course = allCourses.find((c) => c.id === selectedCourseId) || allCourses[0] || DEFAULT_COURSES[0];
     const linkedClub = clubs.find((c) => c.id === tournamentClubId);
 
+    // 대항전 참가 클럽 목록 정리
+    let pClubs: { clubId: string; clubName: string }[] | undefined = undefined;
+    if (tournamentType === 'CLUB_MATCH') {
+      const list: { clubId: string; clubName: string }[] = [];
+      if (linkedClub) {
+        list.push({ clubId: linkedClub.id, clubName: linkedClub.name });
+      }
+      clubs
+        .filter((c) => participatingClubIds.includes(c.id) && c.id !== linkedClub?.id)
+        .forEach((c) => list.push({ clubId: c.id, clubName: c.name }));
+
+      if (customOpponentName.trim() && !list.some((c) => c.clubName === customOpponentName.trim())) {
+        list.push({ clubId: `ext-${Date.now()}`, clubName: customOpponentName.trim() });
+      }
+      pClubs = list.length > 0 ? list : undefined;
+    }
+
+    const calculatedTotal = tournamentType === 'CLUB_MATCH'
+      ? matchTeamCount * playersPerTeam
+      : targetPlayers;
+
+    const calculatedGroups = tournamentType === 'CLUB_MATCH'
+      ? Math.ceil(calculatedTotal / 4)
+      : (Number(groupCount) || 5);
+
     const newRoom = ClubStorage.createRoom({
       title: title || `${course.name} 정기 모임`,
       courseId: course.id,
       courseName: course.name,
       hostName: hostName || '총무',
       selectedCourseLetters: selectedLetters,
-      groupCount: Number(groupCount) || 5,
-      targetTotalPlayers: targetPlayers,
+      groupCount: calculatedGroups,
+      targetTotalPlayers: calculatedTotal,
       clubId: linkedClub?.id,
       clubName: linkedClub?.name,
       tournamentType,
-      participatingClubs:
-        tournamentType === 'CLUB_MATCH'
-          ? clubs
-              .filter((c) => participatingClubIds.includes(c.id))
-              .map((c) => ({ clubId: c.id, clubName: c.name }))
-          : undefined,
+      participatingClubs: pClubs,
+      matchTeamCount: tournamentType === 'CLUB_MATCH' ? matchTeamCount : undefined,
+      playersPerTeam: tournamentType === 'CLUB_MATCH' ? playersPerTeam : undefined,
+      matchInviteType: tournamentType === 'CLUB_MATCH' ? matchInviteType : undefined,
       regionScope: tournamentType === 'REGIONAL_OPEN' ? regionalScope : undefined,
       entryFee: Number(entryFee) || 0,
       bankAccount: bankAccount.trim(),
@@ -396,18 +495,27 @@ export default function ClubGatheringHomePage() {
   // [⚔️ 클럽 대항전 (교류전)] 모드 개설 팝업 오픈
   const handleOpenClubMatchTournament = () => {
     setTournamentType('CLUB_MATCH');
-    setTitle('구미 동락 vs 부산 삼락 파크골프 클럽 친선 대항전 ⚔️');
+    setMatchInviteType('DIRECT_CHALLENGE');
+    setMatchTeamCount(2);
+    setPlayersPerTeam(16);
     setTargetPlayers(32);
     setGroupCount(8);
     setSelectedLetters(['A', 'B', 'C', 'D']);
     if (myClubs.length > 0) {
       setTournamentClubId(myClubs[0].id);
-      const initialClubIds = [myClubs[0].id];
       const other = clubs.find((c) => c.id !== myClubs[0].id);
-      if (other) initialClubIds.push(other.id);
-      setParticipatingClubIds(initialClubIds);
+      if (other) {
+        setParticipatingClubIds([other.id]);
+        setTitle(`${myClubs[0].name.replace(' 파크골프 클럽', '')} vs ${other.name.replace(' 파크골프 클럽', '')} 32인 친선 대항전 ⚔️`);
+      } else {
+        setTitle(`${myClubs[0].name.replace(' 파크골프 클럽', '')} vs 부산 삼락 32인 친선 대항전 ⚔️`);
+      }
     } else {
-      setParticipatingClubIds(clubs.slice(0, 2).map((c) => c.id));
+      const first = clubs[0]?.id;
+      const second = clubs[1]?.id;
+      setTournamentClubId(first || '');
+      setParticipatingClubIds(second ? [second] : []);
+      setTitle('구미 동락 vs 부산 삼락 32인 친선 대항전 ⚔️');
     }
     setActiveHubTab('TOURNAMENTS');
     setTournamentViewMode('CREATE');
@@ -1495,85 +1603,6 @@ ${shareUrl}`;
                 </div>
               </div>
 
-              {/* 대회 규모별 신속 개설 프리셋 */}
-              <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
-                <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-                  <div className="flex items-center gap-1.5">
-                    <Trophy className="w-4 h-4 text-purple-700" />
-                    <h3 className="text-xs font-black text-stone-900">규모별 신속 개설 프리셋</h3>
-                  </div>
-                  <span className="text-[10px] text-stone-400 font-bold">터치 시 자동 조편성</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTargetPlayers(16);
-                      setGroupCount(4);
-                      setSelectedLetters(['A', 'B']);
-                      setTournamentType('CLUB_MATCH');
-                      setTitle('구미 동락 vs 양호 클럽 4조 16인 친선 교류전');
-                      setShowCreateModal(true);
-                    }}
-                    className="p-3 bg-purple-50/70 hover:bg-purple-100 border border-purple-200 rounded-2xl text-left transition active:scale-95 cursor-pointer"
-                  >
-                    <div className="text-[10px] font-black text-purple-700">소규모 클럽 교류전</div>
-                    <div className="text-sm font-black text-stone-900 mt-0.5">4개 조 (16명)</div>
-                    <div className="text-[10px] text-stone-500 mt-1">A, B 2개 코스 (18홀)</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTargetPlayers(32);
-                      setGroupCount(8);
-                      setSelectedLetters(['A', 'B', 'C', 'D']);
-                      setTournamentType('CLUB_MATCH');
-                      setTitle('구미 동락 vs 부산 삼락 8조 32인 정기 대항전');
-                      setShowCreateModal(true);
-                    }}
-                    className="p-3 bg-emerald-50/70 hover:bg-emerald-100 border border-emerald-200 rounded-2xl text-left transition active:scale-95 cursor-pointer"
-                  >
-                    <div className="text-[10px] font-black text-emerald-700">표준 2개 클럽 대항전</div>
-                    <div className="text-sm font-black text-stone-900 mt-0.5">8개 조 (32명)</div>
-                    <div className="text-[10px] text-stone-500 mt-1">A, B, C, D 4개 코스 (36홀)</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTargetPlayers(64);
-                      setGroupCount(16);
-                      setSelectedLetters(['A', 'B', 'C', 'D']);
-                      setTournamentType('REGIONAL_OPEN');
-                      setTitle('2026 구미시장배 파크골프 오픈 챔피언십');
-                      setShowCreateModal(true);
-                    }}
-                    className="p-3 bg-blue-50/70 hover:bg-blue-100 border border-blue-200 rounded-2xl text-left transition active:scale-95 cursor-pointer"
-                  >
-                    <div className="text-[10px] font-black text-blue-700">시·도 단위 공식 샷건 대회</div>
-                    <div className="text-sm font-black text-stone-900 mt-0.5">16개 조 (64명)</div>
-                    <div className="text-[10px] text-stone-500 mt-1">동시 티오프 샷건 모드</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTargetPlayers(144);
-                      setGroupCount(36);
-                      setTournamentType('REGIONAL_OPEN');
-                      setTitle('2026 영남권 연합 파크골프 메이저 챔피언십');
-                      setShowCreateModal(true);
-                    }}
-                    className="p-3 bg-amber-50/70 hover:bg-amber-100 border border-amber-200 rounded-2xl text-left transition active:scale-95 cursor-pointer"
-                  >
-                    <div className="text-[10px] font-black text-amber-800">전국 연합 메이저 대회</div>
-                    <div className="text-sm font-black text-stone-900 mt-0.5">36개 조 (144명)</div>
-                    <div className="text-[10px] text-stone-500 mt-1">구장 전체 샷건 동시 스타트</div>
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
@@ -1745,6 +1774,31 @@ ${shareUrl}`;
                       />
                     </div>
                   </div>
+
+                  {/* 대항전 전용 매치 정보 & 카톡 공식 도전장 발송 버튼 */}
+                  {room.tournamentType === 'CLUB_MATCH' && (
+                    <div className="bg-purple-50/90 rounded-2xl p-2.5 border border-purple-200 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-black text-purple-950">
+                        <span className="flex items-center gap-1">
+                          <Swords className="w-3.5 h-3.5 text-purple-700" />
+                          <span>
+                            {room.matchTeamCount || 2}개 팀 대항전 (클럽당 {room.playersPerTeam || Math.round(targetCapacity / (room.matchTeamCount || 2))}명 출전)
+                          </span>
+                        </span>
+                        <span className="text-[10px] text-purple-700 font-extrabold bg-purple-200/70 px-2 py-0.5 rounded-md">
+                          {room.matchInviteType === 'OPEN_CHALLENGE' ? '📢 전국 오픈 챌린지' : '⚔️ 지정 클럽 지목전'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopyInvite(e, room)}
+                        className="w-full py-2.5 px-3 bg-purple-700 hover:bg-purple-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-purple-800"
+                      >
+                        <Share2 className="w-3.5 h-3.5 text-yellow-300" />
+                        <span>⚔️ 상대 클럽에 카톡 공식 도전장 보내기</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* 전광판 입장 버튼 (Senior Touch 52px Target) */}
                   <Link
@@ -2382,18 +2436,40 @@ ${shareUrl}`;
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-extrabold text-stone-800">홈 구장 선택</label>
-                <select
-                  value={newClubHomeCourseId}
-                  onChange={(e) => setNewClubHomeCourseId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold focus:outline-none focus:border-emerald-600"
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-stone-800">홈 구장 선택 *</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCourseSearchTarget('NEW_CLUB');
+                      setCourseSearchTerm('');
+                      setCourseRegionFilter('전체');
+                      setShowCourseSearchModal(true);
+                    }}
+                    className="text-emerald-700 hover:text-emerald-900 text-xs font-black flex items-center gap-1 cursor-pointer"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                    <span>전국 구장 검색</span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCourseSearchTarget('NEW_CLUB');
+                    setCourseSearchTerm('');
+                    setCourseRegionFilter('전체');
+                    setShowCourseSearchModal(true);
+                  }}
+                  className="w-full p-2.5 bg-stone-50 hover:bg-emerald-50/50 border border-stone-300 rounded-xl flex items-center justify-between text-xs font-bold text-stone-800 transition cursor-pointer text-left"
                 >
-                  {allCourses.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.region})
-                    </option>
-                  ))}
-                </select>
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <span className="truncate font-black">{newClubSelectedCourse.name}</span>
+                  </span>
+                  <span className="text-stone-500 shrink-0 text-[11px] ml-2">
+                    {newClubSelectedCourse.region} · {newClubSelectedCourse.totalHoles}홀 ▾
+                  </span>
+                </button>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -2991,35 +3067,143 @@ ${shareUrl}`;
                   </button>
                 </div>
 
-                {/* 대항전인 경우: 참가 클럽 선택 */}
+                {/* 대항전인 경우: 매칭 방식, 팀 수, 상대 클럽 선택 (대표님 요청) */}
                 {tournamentType === 'CLUB_MATCH' && (
-                  <div className="pt-2 space-y-1">
-                    <label className="text-[11px] font-extrabold text-stone-700">대항전 참가 클럽 선택 (2개 이상)</label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {clubs.map((c) => {
-                        const isSelected = participatingClubIds.includes(c.id);
-                        return (
+                  <div className="pt-2 space-y-2.5">
+                    {/* 1. 초청 및 매칭 방식 (지정 도전장 vs 전국 공개 챌린지) */}
+                    <div className="space-y-1 bg-white p-2.5 rounded-xl border border-purple-200">
+                      <label className="text-[11px] font-black text-purple-950 flex items-center justify-between">
+                        <span>상대 초청 및 매칭 방식 선택</span>
+                        <span className="text-[10px] text-purple-700 font-bold">2가지 트랙 지원</span>
+                      </label>
+                      <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMatchInviteType('DIRECT_CHALLENGE');
+                            updateMatchTitle('DIRECT_CHALLENGE', matchTeamCount, playersPerTeam, participatingClubIds, customOpponentName);
+                          }}
+                          className={`py-2 px-1.5 text-[11px] font-black rounded-lg border transition cursor-pointer flex flex-col items-center justify-center text-center leading-tight ${
+                            matchInviteType === 'DIRECT_CHALLENGE'
+                              ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
+                              : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
+                          }`}
+                        >
+                          <span>⚔️ 지정 클럽 지목</span>
+                          <span className="text-[9px] opacity-90 mt-0.5">(카톡 공식 도전장 발송)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMatchInviteType('OPEN_CHALLENGE');
+                            updateMatchTitle('OPEN_CHALLENGE', matchTeamCount, playersPerTeam, participatingClubIds, customOpponentName);
+                          }}
+                          className={`py-2 px-1.5 text-[11px] font-black rounded-lg border transition cursor-pointer flex flex-col items-center justify-center text-center leading-tight ${
+                            matchInviteType === 'OPEN_CHALLENGE'
+                              ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
+                              : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
+                          }`}
+                        >
+                          <span>📢 전국 공개 챌린지</span>
+                          <span className="text-[9px] opacity-90 mt-0.5">(도전팀 모집 공고)</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 2. 대항전 참가 팀 수 선택 (2팀 / 3팀 / 4팀) */}
+                    <div className="space-y-1 bg-white p-2.5 rounded-xl border border-purple-200">
+                      <label className="text-[11px] font-black text-purple-950 flex items-center justify-between">
+                        <span>대항전 팀 수 선택</span>
+                        <span className="text-[10px] text-purple-700 font-bold">{matchTeamCount}개 팀 대결</span>
+                      </label>
+                      <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+                        {[
+                          { count: 2, label: '2개 팀', sub: '(1 vs 1 맞대결)' },
+                          { count: 3, label: '3개 팀', sub: '(삼파전 교류전)' },
+                          { count: 4, label: '4개 팀', sub: '(4강 연합전)' },
+                        ].map((t) => (
                           <button
-                            key={c.id}
+                            key={t.count}
                             type="button"
-                            onClick={() => {
-                              if (isSelected) {
-                                setParticipatingClubIds(participatingClubIds.filter((id) => id !== c.id));
-                              } else {
-                                setParticipatingClubIds([...participatingClubIds, c.id]);
-                              }
-                            }}
-                            className={`py-1.5 px-2.5 rounded-lg text-xs font-bold border transition cursor-pointer flex items-center gap-1 ${
-                              isSelected
-                                ? 'bg-purple-700 text-white border-purple-800'
-                                : 'bg-white text-stone-700 border-stone-300'
+                            onClick={() => handleMatchTeamCountChange(t.count)}
+                            className={`py-1.5 px-1 text-[11px] font-black rounded-lg border transition cursor-pointer flex flex-col items-center justify-center ${
+                              matchTeamCount === t.count
+                                ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
+                                : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
                             }`}
                           >
-                            {isSelected ? '✓' : '+'} {c.name}
+                            <span>{t.label}</span>
+                            <span className="text-[9px] opacity-90">{t.sub}</span>
                           </button>
-                        );
-                      })}
+                        ))}
+                      </div>
                     </div>
+
+                    {/* 3. 상대 클럽 지정 (지정 지목 시) 또는 전국 공개 공지 안내 */}
+                    {matchInviteType === 'DIRECT_CHALLENGE' ? (
+                      <div className="space-y-1.5 bg-white p-2.5 rounded-xl border border-purple-200">
+                        <label className="text-[11px] font-black text-purple-950 flex items-center justify-between">
+                          <span>상대 맞대결 클럽 선택 ({matchTeamCount - 1}개 클럽)</span>
+                          <span className="text-[10px] text-stone-500">터치하여 선택</span>
+                        </label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {clubs
+                            .filter((c) => c.id !== tournamentClubId)
+                            .map((c) => {
+                              const isSelected = participatingClubIds.includes(c.id);
+                              return (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => {
+                                    let next: string[];
+                                    if (isSelected) {
+                                      next = participatingClubIds.filter((id) => id !== c.id);
+                                    } else {
+                                      if (matchTeamCount === 2) {
+                                        next = [c.id];
+                                      } else {
+                                        next = [...participatingClubIds.filter((id) => id !== tournamentClubId), c.id];
+                                      }
+                                    }
+                                    setParticipatingClubIds(next);
+                                    updateMatchTitle(matchInviteType, matchTeamCount, playersPerTeam, next, customOpponentName);
+                                  }}
+                                  className={`py-1.5 px-2.5 rounded-lg text-xs font-bold border transition cursor-pointer flex items-center gap-1 ${
+                                    isSelected
+                                      ? 'bg-purple-700 text-white border-purple-800'
+                                      : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
+                                  }`}
+                                >
+                                  {isSelected ? '✓' : '+'} {c.name}
+                                </button>
+                              );
+                            })}
+                        </div>
+                        <div className="pt-0.5">
+                          <input
+                            type="text"
+                            value={customOpponentName}
+                            onChange={(e) => {
+                              setCustomOpponentName(e.target.value);
+                              updateMatchTitle(matchInviteType, matchTeamCount, playersPerTeam, participatingClubIds, e.target.value);
+                            }}
+                            placeholder="기타 클럽 직접 입력 (예: 칠곡 왜관 클럽, 대구 달성 클럽)"
+                            className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold focus:outline-none focus:border-purple-600"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-xs text-amber-950 font-bold space-y-1">
+                        <div className="flex items-center gap-1 font-black text-amber-900">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                          <span>📢 전국 파크골프 광장 공개 모집 공지</span>
+                        </div>
+                        <p className="text-[11px] text-stone-700 font-medium leading-relaxed">
+                          방 개설 시 파크온 전국 라운지에 <strong>'[도전팀 구함] 친선 교류전'</strong> 공지가 자동 등록되며, 다른 클럽이 [도전 신청]을 누르고 주최자가 승낙하면 대항전이 성립됩니다!
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -3083,6 +3267,7 @@ ${shareUrl}`;
                   <button
                     type="button"
                     onClick={() => {
+                      setCourseSearchTarget('TOURNAMENT');
                       setTempSelectedCourseId(selectedCourseId);
                       setShowCourseSearchModal(true);
                     }}
@@ -3103,77 +3288,164 @@ ${shareUrl}`;
                 </div>
               </div>
 
-              {/* 참가 인원수 (오르내림 +/- 스테퍼) */}
-              {(() => {
-                const opt = ClubStorage.calculateOptimalGroups(targetPlayers);
-                const k = opt.groupCount;
-                const fourCount = Math.max(0, targetPlayers - 3 * k);
-                const threeCount = Math.max(0, 4 * k - targetPlayers);
+              {/* 참가 인원수 설정: 클럽 대항전(팀당 엔트리 × 팀 수) vs 일반 월례회/시도대회 (대표님 요청) */}
+              {tournamentType === 'CLUB_MATCH' ? (
+                <div className="space-y-2 bg-purple-50/80 p-3 rounded-2xl border-2 border-purple-300">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-purple-950 flex items-center gap-1.5">
+                      <Users className="w-4 h-4 text-purple-700" />
+                      <span>클럽당 출전 엔트리 (팀당 인원)</span>
+                    </span>
+                    <span className="text-purple-800 font-bold text-[11px]">
+                      + / - 버튼 및 숫자 직접 입력
+                    </span>
+                  </div>
 
-                let summaryText = '';
-                if (targetPlayers <= 4) {
-                  summaryText = `총 1개 조 (${targetPlayers}명)`;
-                } else if (threeCount === 0) {
-                  summaryText = `총 ${k}개 조 (4인 조 ${fourCount}개 조)`;
-                } else if (fourCount === 0) {
-                  summaryText = `총 ${k}개 조 (3인 조 ${threeCount}개 조)`;
-                } else {
-                  summaryText = `총 ${k}개 조 (4인 ${fourCount}개 조 + 3인 ${threeCount}개 조)`;
-                }
+                  {/* +/- 오르내림 스테퍼 (자유 조절 & 직접 입력) */}
+                  <div className="bg-white p-3 rounded-xl border border-purple-200 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handlePlayersPerTeamChange(Math.max(2, playersPerTeam - 1))}
+                        className="w-12 h-12 rounded-xl bg-purple-100 hover:bg-purple-200 active:scale-95 text-purple-900 flex items-center justify-center font-black text-2xl border border-purple-300 transition cursor-pointer shadow-xs shrink-0"
+                        title="1명 내림"
+                      >
+                        <Minus className="w-6 h-6 stroke-[3]" />
+                      </button>
 
-                return (
-                  <div className="space-y-2 bg-purple-50/70 p-3 rounded-2xl border border-purple-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-stone-800 flex items-center gap-1.5">
-                        <Users className="w-4 h-4 text-purple-700" />
-                        <span>참가 인원수</span>
-                      </span>
-                      <span className="text-purple-800 font-bold text-[11px]">
-                        + / - 버튼으로 간편 조절
-                      </span>
-                    </div>
-
-                    <div className="bg-white p-3 rounded-xl border border-purple-200/80 space-y-2.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleTargetPlayersChange(Math.max(1, targetPlayers - 1))}
-                          className="w-12 h-12 rounded-xl bg-purple-100 hover:bg-purple-200 active:scale-95 text-purple-900 flex items-center justify-center font-black text-2xl border border-purple-300 transition cursor-pointer shadow-xs shrink-0"
-                          title="1명 내림"
-                        >
-                          <Minus className="w-6 h-6 stroke-[3]" />
-                        </button>
-
-                        <div className="flex-1 flex items-center justify-center gap-1.5 py-1 px-3 bg-purple-50/60 rounded-xl border-2 border-purple-400 text-center">
+                      <div className="flex-1 flex flex-col items-center justify-center py-1 px-3 bg-purple-50/60 rounded-xl border-2 border-purple-400 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-xs font-black text-purple-900">클럽당</span>
                           <input
                             type="number"
-                            min={1}
+                            min={2}
                             max={999}
-                            value={targetPlayers}
-                            onChange={(e) => handleTargetPlayersChange(Number(e.target.value))}
-                            className="w-20 text-center text-3xl font-black text-purple-950 bg-transparent focus:outline-none"
+                            value={playersPerTeam}
+                            onChange={(e) => handlePlayersPerTeamChange(Number(e.target.value))}
+                            className="w-16 text-center text-3xl font-black text-purple-950 bg-transparent focus:outline-none"
                           />
                           <span className="text-base font-black text-purple-800">명</span>
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleTargetPlayersChange(Math.min(999, targetPlayers + 1))}
-                          className="w-12 h-12 rounded-xl bg-purple-700 hover:bg-purple-800 active:scale-95 text-white flex items-center justify-center font-black text-2xl border border-purple-800 transition cursor-pointer shadow-md shrink-0"
-                          title="1명 올림"
-                        >
-                          <Plus className="w-6 h-6 stroke-[3]" />
-                        </button>
+                        <span className="text-[10px] font-bold text-stone-500">
+                          {matchTeamCount}개 팀 × {playersPerTeam}명 = 총 {matchTeamCount * playersPerTeam}명 출전
+                        </span>
                       </div>
-                    </div>
 
-                    <div className="bg-white p-2.5 rounded-xl border border-purple-200/80 text-xs font-black text-purple-950 flex items-center justify-between">
-                      <span>🎯 3~4인 최적 조 편성:</span>
-                      <span className="text-purple-800 font-black">{summaryText}</span>
+                      <button
+                        type="button"
+                        onClick={() => handlePlayersPerTeamChange(Math.min(999, playersPerTeam + 1))}
+                        className="w-12 h-12 rounded-xl bg-purple-700 hover:bg-purple-800 active:scale-95 text-white flex items-center justify-center font-black text-2xl border border-purple-800 transition cursor-pointer shadow-md shrink-0"
+                        title="1명 올림"
+                      >
+                        <Plus className="w-6 h-6 stroke-[3]" />
+                      </button>
                     </div>
                   </div>
-                );
-              })()}
+
+                  {/* 실시간 매칭 & 라이벌 조편성 요약 배너 */}
+                  {(() => {
+                    const totalP = matchTeamCount * playersPerTeam;
+                    const opt = ClubStorage.calculateOptimalGroups(totalP);
+                    const hostClub = clubs.find((c) => c.id === tournamentClubId) || myClubs[0];
+                    const oppClub = clubs.find((c) => participatingClubIds.includes(c.id) && c.id !== hostClub?.id);
+                    const oppText = oppClub
+                      ? oppClub.name
+                      : customOpponentName.trim() || (matchInviteType === 'OPEN_CHALLENGE' ? '전국 오픈 도전자 클럽' : '부산 삼락 파크골프 클럽');
+
+                    return (
+                      <div className="bg-gradient-to-br from-white to-purple-50 p-3 rounded-xl border border-purple-300 text-xs font-bold text-stone-800 space-y-1.5">
+                        <div className="flex items-center justify-between text-purple-950 font-black border-b border-purple-100 pb-1">
+                          <span>🎯 대항전 매칭 설계 요약</span>
+                          <span className="text-purple-700">총 {opt.groupCount}개 조 ({totalP}명)</span>
+                        </div>
+                        <div className="text-[11px] text-purple-900 font-extrabold flex items-center gap-1.5 flex-wrap">
+                          <span className="bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">
+                            {hostClub?.name || '우리 클럽'} ({playersPerTeam}명)
+                          </span>
+                          <span className="text-purple-600">⚔️ VS ⚔️</span>
+                          <span className="bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">
+                            {oppText} ({playersPerTeam}명)
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-stone-600 font-medium leading-relaxed">
+                          👉 <strong>라이벌 크로스 맞대결 조편성</strong>: 각 조당 양 클럽 선수가 {Math.max(1, Math.round(playersPerTeam / opt.groupCount))}명씩 맞대결 배치되어 서로 타수를 상호 마킹합니다.
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                (() => {
+                  const opt = ClubStorage.calculateOptimalGroups(targetPlayers);
+                  const k = opt.groupCount;
+                  const fourCount = Math.max(0, targetPlayers - 3 * k);
+                  const threeCount = Math.max(0, 4 * k - targetPlayers);
+
+                  let summaryText = '';
+                  if (targetPlayers <= 4) {
+                    summaryText = `총 1개 조 (${targetPlayers}명)`;
+                  } else if (threeCount === 0) {
+                    summaryText = `총 ${k}개 조 (4인 조 ${fourCount}개 조)`;
+                  } else if (fourCount === 0) {
+                    summaryText = `총 ${k}개 조 (3인 조 ${threeCount}개 조)`;
+                  } else {
+                    summaryText = `총 ${k}개 조 (4인 ${fourCount}개 조 + 3인 ${threeCount}개 조)`;
+                  }
+
+                  return (
+                    <div className="space-y-2 bg-purple-50/70 p-3 rounded-2xl border border-purple-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-stone-800 flex items-center gap-1.5">
+                          <Users className="w-4 h-4 text-purple-700" />
+                          <span>참가 인원수</span>
+                        </span>
+                        <span className="text-purple-800 font-bold text-[11px]">
+                          + / - 버튼으로 간편 조절
+                        </span>
+                      </div>
+
+                      <div className="bg-white p-3 rounded-xl border border-purple-200/80 space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleTargetPlayersChange(Math.max(1, targetPlayers - 1))}
+                            className="w-12 h-12 rounded-xl bg-purple-100 hover:bg-purple-200 active:scale-95 text-purple-900 flex items-center justify-center font-black text-2xl border border-purple-300 transition cursor-pointer shadow-xs shrink-0"
+                            title="1명 내림"
+                          >
+                            <Minus className="w-6 h-6 stroke-[3]" />
+                          </button>
+
+                          <div className="flex-1 flex items-center justify-center gap-1.5 py-1 px-3 bg-purple-50/60 rounded-xl border-2 border-purple-400 text-center">
+                            <input
+                              type="number"
+                              min={1}
+                              max={999}
+                              value={targetPlayers}
+                              onChange={(e) => handleTargetPlayersChange(Number(e.target.value))}
+                              className="w-20 text-center text-3xl font-black text-purple-950 bg-transparent focus:outline-none"
+                            />
+                            <span className="text-base font-black text-purple-800">명</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleTargetPlayersChange(Math.min(999, targetPlayers + 1))}
+                            className="w-12 h-12 rounded-xl bg-purple-700 hover:bg-purple-800 active:scale-95 text-white flex items-center justify-center font-black text-2xl border border-purple-800 transition cursor-pointer shadow-md shrink-0"
+                            title="1명 올림"
+                          >
+                            <Plus className="w-6 h-6 stroke-[3]" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-2.5 rounded-xl border border-purple-200/80 text-xs font-black text-purple-950 flex items-center justify-between">
+                        <span>🎯 3~4인 최적 조 편성:</span>
+                        <span className="text-purple-800 font-black">{summaryText}</span>
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
 
               {/* 플레이 코스 선택 (대표님 요청: A·B·C·D 4개 한 줄 나열) */}
               <div className="space-y-2 bg-stone-50 p-3 rounded-2xl border border-stone-200">
@@ -4007,7 +4279,10 @@ ${shareUrl}`;
       {/* MODAL 6: 전국 구장 검색 모달 */}
       {/* ========================================================================= */}
       {showCourseSearchModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+          style={{ zIndex: 99999 }}
+        >
           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-stone-200 overflow-hidden">
             <div className="bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -4024,15 +4299,42 @@ ${shareUrl}`;
             </div>
 
             <div className="p-4 space-y-3">
-              <input
-                type="text"
-                value={courseSearchTerm}
-                onChange={(e) => setCourseSearchTerm(e.target.value)}
-                placeholder="구장명 또는 지역 검색 (예: 동락, 부산, 여의도)"
-                className="w-full px-3 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold"
-              />
+              <div className="relative">
+                <Search className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  value={courseSearchTerm}
+                  onChange={(e) => setCourseSearchTerm(e.target.value)}
+                  placeholder="구장명 또는 지역 검색 (예: 동락, 부산, 양평, 대구)"
+                  className="w-full pl-9 pr-3 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold focus:outline-none focus:border-emerald-600 focus:bg-white"
+                  autoFocus
+                />
+              </div>
 
-              <div className="max-h-60 overflow-y-auto space-y-1.5">
+              {/* 지역 필터 칩 (대한민국 전국 표준 행정 지명 순서) */}
+              <div className="flex flex-wrap gap-1">
+                {['전체', '서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'].map((reg) => (
+                  <button
+                    key={reg}
+                    type="button"
+                    onClick={() => setCourseRegionFilter(reg)}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                      courseRegionFilter === reg
+                        ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
+                        : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    {reg}
+                  </button>
+                ))}
+              </div>
+
+              <div className="max-h-64 overflow-y-auto space-y-1.5 pr-0.5">
+                {filteredSearchCourses.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-stone-400">
+                    검색된 파크골프장이 없습니다.
+                  </div>
+                ) : null}
                 {filteredSearchCourses.map((c) => (
                   <button
                     key={c.id}
@@ -4449,18 +4751,40 @@ ${shareUrl}`;
 
               {/* 구장 선택 */}
               <div className="space-y-1">
-                <label className="text-xs font-extrabold text-stone-800">번개 라운드 구장 선택 *</label>
-                <select
-                  value={ltnCourseId}
-                  onChange={(e) => setLtnCourseId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold focus:outline-none focus:border-emerald-600"
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-stone-800">번개 라운드 구장 선택 *</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCourseSearchTarget('1CHON');
+                      setCourseSearchTerm('');
+                      setCourseRegionFilter('전체');
+                      setShowCourseSearchModal(true);
+                    }}
+                    className="text-emerald-700 hover:text-emerald-900 text-xs font-black flex items-center gap-1 cursor-pointer"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                    <span>전국 구장 검색</span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCourseSearchTarget('1CHON');
+                    setCourseSearchTerm('');
+                    setCourseRegionFilter('전체');
+                    setShowCourseSearchModal(true);
+                  }}
+                  className="w-full p-2.5 bg-stone-50 hover:bg-emerald-50/50 border border-stone-300 rounded-xl flex items-center justify-between text-xs font-bold text-stone-800 transition cursor-pointer text-left"
                 >
-                  {allCourses.slice(0, 30).map((c) => (
-                    <option key={c.id} value={c.id}>
-                      ⛳ {c.name} ({c.region})
-                    </option>
-                  ))}
-                </select>
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <span className="truncate font-black">{ltnSelectedCourse.name}</span>
+                  </span>
+                  <span className="text-stone-500 shrink-0 text-[11px] ml-2">
+                    {ltnSelectedCourse.region} · {ltnSelectedCourse.totalHoles}홀 ▾
+                  </span>
+                </button>
               </div>
 
               {/* 일시 선택 */}
@@ -4660,18 +4984,40 @@ ${shareUrl}`;
 
               {/* 구장 선택 */}
               <div className="space-y-1">
-                <label className="text-xs font-extrabold text-stone-800">구장 선택</label>
-                <select
-                  value={clubFlashCourseId}
-                  onChange={(e) => setClubFlashCourseId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-600"
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-stone-800">번개 라운드 구장 선택 *</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCourseSearchTarget('CLUB_FLASH');
+                      setCourseSearchTerm('');
+                      setCourseRegionFilter('전체');
+                      setShowCourseSearchModal(true);
+                    }}
+                    className="text-amber-700 hover:text-amber-900 text-xs font-black flex items-center gap-1 cursor-pointer"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                    <span>전국 구장 검색</span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCourseSearchTarget('CLUB_FLASH');
+                    setCourseSearchTerm('');
+                    setCourseRegionFilter('전체');
+                    setShowCourseSearchModal(true);
+                  }}
+                  className="w-full p-2.5 bg-stone-50 hover:bg-amber-50/50 border border-stone-300 rounded-xl flex items-center justify-between text-xs font-bold text-stone-800 transition cursor-pointer text-left"
                 >
-                  {allCourses.slice(0, 30).map((c) => (
-                    <option key={c.id} value={c.id}>
-                      ⛳ {c.name} ({c.region})
-                    </option>
-                  ))}
-                </select>
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <span className="truncate font-black">{clubFlashSelectedCourse.name}</span>
+                  </span>
+                  <span className="text-stone-500 shrink-0 text-[11px] ml-2">
+                    {clubFlashSelectedCourse.region} · {clubFlashSelectedCourse.totalHoles}홀 ▾
+                  </span>
+                </button>
               </div>
 
               {/* 일시 */}
