@@ -302,82 +302,70 @@ export default function AdminDashboardPage() {
         )}
       </div>
 
-      {/* 4대 핵심 집계 카드: 1) 총 유저/설치수, 2) 오늘 DAU, 3) 실시간 접속자, 4) 주간/월간 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* 1. 총 가입 / 다운로드 골퍼 */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm hover:border-emerald-400 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500">총 가입 / 이용 골퍼 수</span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center">
-              <Download className="w-5 h-5 text-emerald-600" />
+      {/* 4대 핵심 집계 카드: 미니멀 & 한눈에 쏙 들어오는 구조 */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        {/* 1. 총 가입자 수 */}
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs hover:border-emerald-400 transition-colors">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">총 가입자 수</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center shrink-0">
+              <Download className="w-4 h-4 text-emerald-600" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-1.5">
-            <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
+          <div className="mt-2 flex items-baseline gap-1">
+            <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
               {metrics?.totalAllTimeUsers ?? 0}
             </span>
-            <span className="text-xs font-semibold text-zinc-500">명 누적</span>
+            <span className="text-xs sm:text-sm font-bold text-zinc-500">명</span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            앱 설치/다운로드: <strong className="text-emerald-600">{metrics?.totalAppDownloads ?? 0}건</strong>
-          </p>
         </div>
 
-        {/* 2. 오늘 실제 방문자 (Today DAU) */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm hover:border-blue-400 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500">오늘 이용 골퍼 (DAU)</span>
-            <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center">
-              <Users className="w-5 h-5" />
+        {/* 2. 오늘 이용자 */}
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs hover:border-blue-400 transition-colors">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">오늘 이용자</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center shrink-0">
+              <Users className="w-4 h-4 text-blue-600" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-1.5">
-            <span className="text-3xl font-black text-zinc-900 dark:text-zinc-100">
+          <div className="mt-2 flex items-baseline gap-1">
+            <span className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400">
               {metrics?.todayDAU ?? 0}
             </span>
-            <span className="text-xs font-semibold text-zinc-500">명 방문</span>
+            <span className="text-xs sm:text-sm font-bold text-zinc-500">명</span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            오늘 총 페이지뷰: <strong className="text-blue-600">{metrics?.todayPageviews ?? 0}회</strong>
-          </p>
         </div>
 
-        {/* 3. 현재 실시간 동시 접속자 */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm hover:border-amber-400 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500">현재 실시간 접속자</span>
-            <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center">
-              <Radio className="w-5 h-5 animate-pulse text-amber-500" />
+        {/* 3. 현재 접속자 */}
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs hover:border-amber-400 transition-colors">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">현재 접속자</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center shrink-0">
+              <Radio className="w-4 h-4 animate-pulse text-amber-500" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-1.5">
-            <span className="text-3xl font-black text-amber-600 dark:text-amber-400">
+          <div className="mt-2 flex items-baseline gap-1">
+            <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
               {metrics?.liveUsers ?? 0}
             </span>
-            <span className="text-xs font-semibold text-zinc-500">명 활동 중</span>
+            <span className="text-xs sm:text-sm font-bold text-zinc-500">명</span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            최근 10분 내 동시 활동 골퍼
-          </p>
         </div>
 
-        {/* 4. 주간 / 월간 누적 (WAU / MAU) */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-sm hover:border-purple-400 transition-colors">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-zinc-500">주간(7일) 이용자</span>
-            <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center">
-              <Activity className="w-5 h-5" />
+        {/* 4. 주간 이용자 */}
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs hover:border-purple-400 transition-colors">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">주간 이용자</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600 flex items-center justify-center shrink-0">
+              <Activity className="w-4 h-4 text-purple-600" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-1.5">
-            <span className="text-3xl font-black text-purple-600 dark:text-purple-400">
+          <div className="mt-2 flex items-baseline gap-1">
+            <span className="text-2xl sm:text-3xl font-black text-purple-600 dark:text-purple-400">
               {metrics?.weeklyWAU ?? 0}
             </span>
-            <span className="text-xs font-semibold text-zinc-500">명 (WAU)</span>
+            <span className="text-xs sm:text-sm font-bold text-zinc-500">명</span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            월간(30일 MAU): <strong className="text-purple-600">{metrics?.monthlyMAU ?? 0}명</strong>
-          </p>
         </div>
       </div>
 
