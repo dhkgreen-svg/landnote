@@ -21,3 +21,8 @@ CREATE TABLE IF NOT EXISTS parkon_analytics_logs (
 
 CREATE INDEX IF NOT EXISTS idx_parkon_analytics_date ON parkon_analytics_logs("dateStr");
 CREATE INDEX IF NOT EXISTS idx_parkon_analytics_timestamp ON parkon_analytics_logs(timestamp);
+
+-- 권한 및 보안 설정 (접속자 로깅 및 관리자 대시보드 조회 허용)
+ALTER TABLE parkon_analytics_logs DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON parkon_analytics_logs TO anon, authenticated, service_role;
+
