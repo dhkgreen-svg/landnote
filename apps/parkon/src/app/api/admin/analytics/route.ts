@@ -39,6 +39,13 @@ export interface ProvinceStat {
   cities: CityDetailStat[];
 }
 
+export interface TrendItem {
+  key: string;
+  label: string;
+  pageviews: number;
+  uniqueVisitors: number;
+}
+
 interface AnalyticsStore {
   logs: VisitorLog[];
   popularPages: Record<string, number>;
@@ -81,7 +88,6 @@ const saveAnalyticsStore = (store: AnalyticsStore) => {
   }
 };
 
-// 16개 시·도 및 세부 시·군·구 메타데이터 정의
 interface ProvinceSeed {
   code: string;
   name: string;
@@ -615,7 +621,6 @@ export async function GET(req: NextRequest) {
 
   // 3. 전국 시·도별 실제 현황 및 시·군·구 드릴다운 집계
   const provinceStats: ProvinceStat[] = PROVINCE_SEEDS.map((seed) => {
-    // 해당 시도 로그 카운팅
     let provUserCount = 0;
     let provLiveUsers = 0;
 
@@ -631,7 +636,6 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    // 시·군·구별 세부 분배 및 집계
     const cities: CityDetailStat[] = seed.cities.map((c) => {
       let cityUsers = 0;
       let cityLive = 0;
@@ -671,21 +675,75 @@ export async function GET(req: NextRequest) {
     };
   }).sort((a, b) => b.userCount - a.userCount);
 
-  // 4. 최근 7일간 일별 상세 추이
-  const dailyTrend: Record<string, { pageviews: number; uniqueVisitors: number }> = {};
+  // 4. 기간별 영구 보존 추이 (일별 7일, 주별 8주, 월별 12개월, 연별)
+  // (1) 일별 추이 (최근 7일)
+  const dailyTrend: TrendItem[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(nowTime - i * 24 * 60 * 60 * 1000);
     const dStr = d.toISOString().split('T')[0];
+    const isToday = dStr === todayStr;
     const dayLogs = store.logs.filter((l) => l.dateStr === dStr);
-    dailyTrend[dStr] = {
+    dailyTrend.push({
+      key: dStr,
+      label: isToday ? `${dStr} (오늘)` : dStr,
       pageviews: dayLogs.length,
       uniqueVisitors: new Set(dayLogs.map((l) => l.ip)).size,
-    };
+    });
+  }
+
+  // (2) 주간별 추이 (최근 8주)
+  const weeklyTrend: TrendItem[] = [];
+  for (let w = 7; w >= 0; w--) {
+    const startOfWeek = new Date(nowTime - (w * 7 + 6) * 24 * 60 * 60 * 1000);
+    const endOfWeek = new Date(nowTime - w * 7 * 24 * 60 * 60 * 1000);
+    const sStr = startOfWeek.toISOString().split('T')[0].slice(5);
+    const eStr = endOfWeek.toISOString().split('T')[0].slice(5);
+    const weekLogs = store.logs.filter((l) => {
+      const t = l.timestamp;
+      return t >= startOfWeek.getTime() && t <= endOfWeek.getTime() + 24 * 60 * 60 * 1000;
+    });
+    weeklyTrend.push({
+      key: `w_${w}`,
+      label: w === 0 ? `이번 주 (${sStr}~${eStr})` : `${w}주 전 (${sStr}~${eStr})`,
+      pageviews: weekLogs.length,
+      uniqueVisitors: new Set(weekLogs.map((l) => l.ip)).size,
+    });
+  }
+
+  // (3) 월별 추이 (최근 12개월)
+  const monthlyTrend: TrendItem[] = [];
+  for (let m = 11; m >= 0; m--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const monthPrefix = `${y}-${mo}`;
+    const isThisMonth = m === 0;
+    const monthLogs = store.logs.filter((l) => (l.dateStr || '').startsWith(monthPrefix));
+    monthlyTrend.push({
+      key: monthPrefix,
+      label: isThisMonth ? `${y}년 ${mo}월 (이번 달)` : `${y}년 ${mo}월`,
+      pageviews: monthLogs.length,
+      uniqueVisitors: new Set(monthLogs.map((l) => l.ip)).size,
+    });
+  }
+
+  // (4) 연도별 추이 (최근 3개년)
+  const currentYear = now.getFullYear();
+  const yearlyTrend: TrendItem[] = [];
+  for (let y = currentYear - 2; y <= currentYear; y++) {
+    const yPrefix = String(y);
+    const isThisYear = y === currentYear;
+    const yearLogs = store.logs.filter((l) => (l.dateStr || '').startsWith(yPrefix));
+    yearlyTrend.push({
+      key: yPrefix,
+      label: isThisYear ? `${y}년 (올해)` : `${y}년`,
+      pageviews: yearLogs.length,
+      uniqueVisitors: new Set(yearLogs.map((l) => l.ip)).size,
+    });
   }
 
   return NextResponse.json({
     metrics: {
-      // 4대 핵심 집계
       liveUsers,
       todayDAU,
       weeklyWAU,
@@ -694,12 +752,11 @@ export async function GET(req: NextRequest) {
       todayPageviews,
       totalAllTimeUsers,
       totalAppDownloads,
-
-      // 전국 시·도별 실제 현황 및 시·군·구 세부 디렉토리
       provinceStats,
-
-      // 일별 추이 및 인기 페이지, 최근 로그
       dailyTrend,
+      weeklyTrend,
+      monthlyTrend,
+      yearlyTrend,
       popularPages: store.popularPages,
       recentVisitors: store.logs.slice(-30).reverse(),
     },
@@ -751,7 +808,6 @@ export async function POST(req: NextRequest) {
     const store = getAnalyticsStore();
     store.logs.push(log);
 
-    // 영구 누적 카운트 보존
     const allIps = new Set(store.logs.map((l) => l.ip));
     store.totalAllTimeUsers = Math.max(store.totalAllTimeUsers || 0, allIps.size);
     if (isAppInstall) {
