@@ -374,37 +374,31 @@ export default function AdminDashboardPage() {
           </span>
         </div>
 
-        {/* 2-Tier Cards: 1단계 유저 수(최우선), 2단계 현재 접속자 */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8 gap-2.5">
+        {/* 한 줄에 4개씩 4줄 배치 (총 16개 시·도 정사각형 미니멀 카드) */}
+        <div className="grid grid-cols-4 gap-2 sm:gap-3.5">
           {provinces.map((prov) => (
             <button
               key={prov.code}
               onClick={() => setSelectedProvinceModal(prov)}
-              className="p-3 bg-zinc-50 dark:bg-zinc-800/70 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 rounded-xl text-left shadow-xs transition-all flex flex-col justify-between group cursor-pointer active:scale-98"
+              className="aspect-square p-2 sm:p-3 bg-zinc-50 dark:bg-zinc-800/70 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 rounded-xl sm:rounded-2xl text-center shadow-xs transition-all flex flex-col justify-between items-center group cursor-pointer active:scale-98"
             >
-              <div>
-                <span className="text-sm font-black text-zinc-800 dark:text-zinc-100 group-hover:text-emerald-600 transition-colors block">
-                  {prov.name}
+              {/* 상단: 지역명 */}
+              <span className="text-sm sm:text-base font-black text-zinc-800 dark:text-zinc-100 group-hover:text-emerald-600 transition-colors">
+                {prov.name}
+              </span>
+
+              {/* 중앙: 유저 수 (단위/글자 없이 굵은 숫자만) */}
+              <div className="my-auto py-0.5">
+                <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                  {prov.userCount}
                 </span>
               </div>
 
-              {/* 1단계: 유저 수 (최우선 표시) */}
-              <div className="mt-2">
-                <div className="text-[10px] text-zinc-400 font-medium">유저 수</div>
-                <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">
-                  {prov.userCount}<span className="text-xs font-normal text-zinc-500 ml-0.5">명</span>
-                </div>
-              </div>
-
-              {/* 2단계: 현재 접속자 */}
-              <div className="mt-1 pt-1 border-t border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-between text-[11px]">
-                <span className="text-zinc-400">접속</span>
-                <span className="font-bold text-amber-600 dark:text-amber-400">{prov.liveUsers}명</span>
-              </div>
-
-              <div className="mt-0.5 flex items-center justify-between text-[10px] text-zinc-400">
+              {/* 하단: 접속자 및 클럽 수 */}
+              <div className="w-full pt-1 sm:pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 text-[10px] sm:text-xs text-zinc-500 flex flex-col sm:flex-row items-center justify-center sm:gap-1.5 leading-tight">
+                <span>접속 <strong className="text-amber-600 dark:text-amber-400 font-bold">{prov.liveUsers}명</strong></span>
+                <span className="hidden sm:inline text-zinc-300 dark:text-zinc-600">·</span>
                 <span>클럽 {prov.clubCount}개</span>
-                <span>{prov.userPercentage}%</span>
               </div>
             </button>
           ))}
