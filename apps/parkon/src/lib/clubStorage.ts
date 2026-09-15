@@ -715,6 +715,9 @@ export const ClubStorage = {
     targetTotalPlayers?: number;
     clubId?: string;
     clubName?: string;
+    tournamentType?: 'CLUB_MATCH' | 'REGIONAL_OPEN' | 'CLUB_INTERNAL';
+    participatingClubs?: { clubId: string; clubName: string }[];
+    regionScope?: string;
     entryFee?: number;
     bankAccount?: string;
     gameMode?: 'STROKE' | 'NEW_PERIO' | 'SCRAMBLE' | 'STABLEFORD' | 'CASUAL';
@@ -748,6 +751,9 @@ export const ClubStorage = {
       id,
       clubId: params.clubId,
       clubName: params.clubName,
+      tournamentType: params.tournamentType || (params.participatingClubs && params.participatingClubs.length > 1 ? 'CLUB_MATCH' : 'CLUB_INTERNAL'),
+      participatingClubs: params.participatingClubs,
+      regionScope: params.regionScope,
       title: params.title.trim() || '파크골프 동호회 정기 모임',
       courseId: params.courseId,
       courseName: params.courseName,
@@ -1996,6 +2002,13 @@ ${shareUrl}`;
     } catch {
       return { success: false };
     }
+  },
+
+  leaveFlashGathering(
+    gatheringId: string,
+    participantName: string
+  ): { success: boolean; promotedPlayerName?: string } {
+    return this.cancelFlashGathering(gatheringId, participantName);
   },
 
   // 카카오톡 번개 모집 초대장 문구 생성 (카톡 단체방 공유용)

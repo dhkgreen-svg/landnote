@@ -27,10 +27,15 @@ export interface ClubGroup {
   status: 'WAITING' | 'PLAYING' | 'FINISHED' | 'RECRUITING';
 }
 
+export type TournamentType = 'CLUB_MATCH' | 'REGIONAL_OPEN' | 'CLUB_INTERNAL';
+
 export interface ClubEventRoom {
   id: string;          // e.g. 'dongrak-monthly-9'
   clubId?: string;     // linked club id (e.g. 'club-gumi-dongrak')
   clubName?: string;   // e.g. '구미 동락 에이스 파크골프 클럽'
+  tournamentType?: TournamentType; // [NEW] 'CLUB_MATCH' (클럽대항전) | 'REGIONAL_OPEN' (시·도 공식대회) | 'CLUB_INTERNAL' (클럽 월례회)
+  participatingClubs?: { clubId: string; clubName: string }[]; // [NEW] 대항전 참가 클럽들
+  regionScope?: string; // [NEW] 예: '구미시', '대구광역시', '경상북도'
   title: string;       // e.g. '구미 동락클럽 9월 정기 월례회'
   courseId: string;
   courseName: string;

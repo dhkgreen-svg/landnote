@@ -40,6 +40,8 @@ export interface CompanionLightningRound {
   dateStr: string; // '오늘', '내일', etc.
   timeStr: string; // '14:30'
   targetPlayersCount: number;
+  invited1ChonNames?: string[]; // 초대 대상 1촌 이름 목록
+  acceptedPlayers?: Array<{ id: string; name: string; isHost: boolean; acceptedAt: string }>; // 수락 완료 동반자
   currentPlayers: Array<{ id: string; name: string; isHost: boolean }>;
   notes: string;
   tags: string[];
@@ -375,6 +377,11 @@ export const CompanionStorage = {
             dateStr: '오늘',
             timeStr: '14:30',
             targetPlayersCount: 4,
+            invited1ChonNames: ['박철수', '정순자'],
+            acceptedPlayers: [
+              { id: 'user_lee_yh', name: '이영호', isHost: true, acceptedAt: new Date().toISOString() },
+              { id: 'user_park_cs', name: '박철수', isHost: false, acceptedAt: new Date().toISOString() },
+            ],
             currentPlayers: [
               { id: 'user_lee_yh', name: '이영호', isHost: true },
               { id: 'user_park_cs', name: '박철수', isHost: false },
@@ -389,7 +396,16 @@ export const CompanionStorage = {
         return defaultSeeds;
       }
       const parsed: CompanionLightningRound[] = JSON.parse(data);
-      return Array.isArray(parsed) ? parsed : [];
+      if (Array.isArray(parsed)) {
+        return parsed.map((r) => ({
+          ...r,
+          acceptedPlayers: r.acceptedPlayers || r.currentPlayers.map((p) => ({
+            ...p,
+            acceptedAt: r.createdAt || new Date().toISOString(),
+          })),
+        }));
+      }
+      return [];
     } catch {
       return [];
     }
@@ -411,6 +427,7 @@ export const CompanionStorage = {
     dateStr: string;
     timeStr: string;
     targetPlayersCount?: number;
+    invited1ChonNames?: string[];
     notes?: string;
     tags?: string[];
   }): CompanionLightningRound {
@@ -424,9 +441,13 @@ export const CompanionStorage = {
       dateStr: params.dateStr,
       timeStr: params.timeStr,
       targetPlayersCount: params.targetPlayersCount || 4,
+      invited1ChonNames: params.invited1ChonNames,
+      acceptedPlayers: [
+        { id: 'self', name: selfName, isHost: true, acceptedAt: new Date().toISOString() },
+      ],
       currentPlayers: [{ id: 'self', name: selfName, isHost: true }],
       notes: params.notes || '1촌과 함께 즐거운 파크골프 라운드!',
-      tags: params.tags && params.tags.length > 0 ? params.tags : ['명랑 라운드', '1촌 환영'],
+      tags: params.tags && params.tags.length > 0 ? params.tags : ['1촌 전용', '명랑 라운드'],
       status: 'RECRUITING',
       createdAt: new Date().toISOString(),
     };
@@ -441,7 +462,7 @@ export const CompanionStorage = {
       companionName: selfName,
       courseName: params.courseName,
       actionText: `⚡ [1촌 번개] ${params.courseName} (${params.dateStr} ${params.timeStr}) 4인 모집!`,
-      scoreSummary: `현재 1/${params.targetPlayersCount || 4}명 모임 중`,
+      scoreSummary: `현재 1/${params.targetPlayersCount || 4}명 수락 완료`,
       timestamp: new Date().toISOString(),
       timeAgoStr: '방금 전',
       isPlaying: false,
@@ -453,26 +474,47 @@ export const CompanionStorage = {
     return newLtn;
   },
 
-  joinLightningRound(lightningId: string, playerName?: string): boolean {
+  // 1촌 번개 수락(Accept) 기능 - 수락 시 확정 등록!
+  acceptLightningRound(lightningId: string, playerName?: string): boolean {
     const list = this.getLightningRounds();
     const idx = list.findIndex((l) => l.id === lightningId);
     if (idx < 0) return false;
 
     const round = list[idx];
-    const selfName = playerName || ParkOnStorage.getUserDisplayName();
+    const selfName = (playerName || ParkOnStorage.getUserDisplayName()).trim();
+    if (!round.acceptedPlayers) {
+      round.acceptedPlayers = round.currentPlayers.map((p) => ({
+        id: p.id,
+        name: p.name,
+        isHost: p.isHost,
+        acceptedAt: new Date().toISOString(),
+      }));
+    }
 
-    // Check if already joined
-    if (round.currentPlayers.some((p) => p.name === selfName)) return false;
+    if (round.acceptedPlayers.some((p) => p.name === selfName)) {
+      return true; // 이미 수락함
+    }
 
-    if (round.currentPlayers.length >= round.targetPlayersCount) return false;
+    if (round.acceptedPlayers.length >= round.targetPlayersCount) {
+      return false; // 마감됨
+    }
 
-    round.currentPlayers.push({
+    const newPlayer = {
       id: `user_${Date.now()}`,
       name: selfName,
       isHost: false,
+    };
+
+    round.acceptedPlayers.push({
+      ...newPlayer,
+      acceptedAt: new Date().toISOString(),
     });
 
-    if (round.currentPlayers.length >= round.targetPlayersCount) {
+    if (!round.currentPlayers.some((p) => p.name === selfName)) {
+      round.currentPlayers.push(newPlayer);
+    }
+
+    if (round.acceptedPlayers.length >= round.targetPlayersCount) {
       round.status = 'FULL';
     }
 
@@ -481,15 +523,20 @@ export const CompanionStorage = {
     return true;
   },
 
-  leaveLightningRound(lightningId: string, playerName?: string): boolean {
+  // 1촌 번개 수락 취소 / 불참
+  cancelAcceptLightningRound(lightningId: string, playerName?: string): boolean {
     const list = this.getLightningRounds();
     const idx = list.findIndex((l) => l.id === lightningId);
     if (idx < 0) return false;
 
     const round = list[idx];
-    const selfName = playerName || ParkOnStorage.getUserDisplayName();
+    const selfName = (playerName || ParkOnStorage.getUserDisplayName()).trim();
 
+    if (round.acceptedPlayers) {
+      round.acceptedPlayers = round.acceptedPlayers.filter((p) => p.name !== selfName);
+    }
     round.currentPlayers = round.currentPlayers.filter((p) => p.name !== selfName);
+
     if (round.status === 'FULL') {
       round.status = 'RECRUITING';
     }
@@ -497,5 +544,13 @@ export const CompanionStorage = {
     list[idx] = round;
     this.saveLightningRounds(list);
     return true;
+  },
+
+  joinLightningRound(lightningId: string, playerName?: string): boolean {
+    return this.acceptLightningRound(lightningId, playerName);
+  },
+
+  leaveLightningRound(lightningId: string, playerName?: string): boolean {
+    return this.cancelAcceptLightningRound(lightningId, playerName);
   },
 };
