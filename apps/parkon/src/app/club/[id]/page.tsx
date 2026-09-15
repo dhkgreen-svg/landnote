@@ -331,6 +331,15 @@ export default function ClubRoomDetailPage() {
     }
   };
 
+  // 전체 조 편성표 카카오톡 공지 복사
+  const handleCopyGroupFormationKakao = () => {
+    const text = ClubStorage.generateGroupFormationKakaoShareText(room);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      showToast('📢 전체 조 편성 결과가 복사되었습니다! 단톡방에 공유하세요.');
+    }
+  };
+
   // 최종 대회 결과 리포트 복사
   const handleCopyTournamentReport = () => {
     const text = ClubStorage.generateTournamentResultReport(room);
@@ -851,18 +860,29 @@ export default function ClubRoomDetailPage() {
                 <Sparkles className="w-4 h-4 text-purple-700 shrink-0" />
                 <span>스마트 조 편성 (총 {totalAllPlayers}명 참여)</span>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setJoiningGroup(null);
-                  setNewPlayerName(ParkOnStorage.getUserDisplayName(room.clubId));
-                  setShowJoinModal(true);
-                }}
-                className="bg-white hover:bg-purple-100 text-purple-800 border border-purple-300 text-[11px] font-black px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>+ 참가자 등록</span>
-              </button>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleCopyGroupFormationKakao}
+                  className="bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] border border-[#E6CF00] text-[11px] font-black px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
+                  title="전체 조 편성 카톡 단톡방 공유"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>📋 조 편성 카톡 복사</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setJoiningGroup(null);
+                    setNewPlayerName(ParkOnStorage.getUserDisplayName(room.clubId));
+                    setShowJoinModal(true);
+                  }}
+                  className="bg-white hover:bg-purple-100 text-purple-800 border border-purple-300 text-[11px] font-black px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ 참가자 등록</span>
+                </button>
+              </div>
             </div>
 
             {/* 대기 풀 (Lobby Pool) 명단 */}

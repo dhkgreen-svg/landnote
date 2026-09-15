@@ -54,6 +54,7 @@ interface Metrics {
   todayDAU: number;
   weeklyWAU: number;
   monthlyMAU: number;
+  yearlyYAU?: number;
   totalPageviews: number;
   todayPageviews: number;
   totalAllTimeUsers: number;
@@ -558,8 +559,8 @@ export default function AdminDashboardPage() {
                 {metrics?.todayDAU ?? 0}
               </span>
             </div>
-            <span className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500">
-              시간별 상세
+            <span className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500 font-medium">
+              오늘 0시 기준
             </span>
           </button>
 
@@ -576,8 +577,8 @@ export default function AdminDashboardPage() {
                 {metrics?.weeklyWAU ?? 0}
               </span>
             </div>
-            <span className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500">
-              7일간 누계
+            <span className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500 font-medium">
+              최근 7일 누계
             </span>
           </button>
 
@@ -594,7 +595,7 @@ export default function AdminDashboardPage() {
                 {metrics?.monthlyMAU ?? 0}
               </span>
             </div>
-            <span className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500">
+            <span className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500 font-medium">
               이번달 누계
             </span>
           </button>
@@ -609,11 +610,11 @@ export default function AdminDashboardPage() {
             </span>
             <div className="my-auto py-0.5">
               <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
-                {metrics?.totalAllTimeUsers ?? 0}
+                {metrics?.yearlyYAU ?? metrics?.totalAllTimeUsers ?? 0}
               </span>
             </div>
-            <span className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500">
-              월별 누계
+            <span className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500 font-medium">
+              올해 누계
             </span>
           </button>
         </div>
@@ -631,16 +632,16 @@ export default function AdminDashboardPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-zinc-900 dark:text-zinc-100">
-                    {selectedTrendModal === 'DAILY' && '일별 접속 현황 (오늘 시간대별 세부 추이)'}
+                    {selectedTrendModal === 'DAILY' && '일별 접속 현황 (오늘 00시 기준 시간대별 추이)'}
                     {selectedTrendModal === 'WEEKLY' && '주간 접속 현황 (최근 7일간 일자별 추이)'}
-                    {selectedTrendModal === 'MONTHLY' && '월간 접속 현황 (최근 8주 주간별 추이)'}
-                    {selectedTrendModal === 'YEARLY' && '연간 접속 현황 (최근 12개월 월별 누계 추이)'}
+                    {selectedTrendModal === 'MONTHLY' && '월간 접속 현황 (이번 달 포함 최근 8주 주간별 추이)'}
+                    {selectedTrendModal === 'YEARLY' && '연간 접속 현황 (올해 포함 최근 12개월 월별 누계 추이)'}
                   </h3>
                   <p className="text-xs text-zinc-400 mt-0.5">
-                    {selectedTrendModal === 'DAILY' && '오늘 24시간 동안 발생한 시간대별 실시간 방문 현황입니다.'}
-                    {selectedTrendModal === 'WEEKLY' && '지난 일주일(7일) 동안 발생한 일자별 순방문자 및 페이지뷰 현황입니다.'}
-                    {selectedTrendModal === 'MONTHLY' && '이번 달을 포함한 최근 8주간의 주간별 이용자 누계 현황입니다.'}
-                    {selectedTrendModal === 'YEARLY' && '올해를 포함한 최근 12개월간의 월별 이용자 누계 현황입니다.'}
+                    {selectedTrendModal === 'DAILY' && '한국 표준시(KST) 오늘 00:00부터 발생한 시간대별 실시간 방문 현황입니다.'}
+                    {selectedTrendModal === 'WEEKLY' && '최근 7일(일주일) 동안 발생한 일자별 순방문자 및 페이지뷰 현황입니다.'}
+                    {selectedTrendModal === 'MONTHLY' && '이번 달(1일 00시 기준)을 포함한 최근 8주간의 주간별 이용자 누계 현황입니다.'}
+                    {selectedTrendModal === 'YEARLY' && '올해(1월 1일 기준)를 포함한 최근 12개월간의 월별 이용자 누계 현황입니다.'}
                   </p>
                 </div>
               </div>
@@ -656,22 +657,22 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-2 gap-3 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl">
               <div>
                 <div className="text-xs text-zinc-400 font-medium">
-                  {selectedTrendModal === 'DAILY' && '오늘 순방문자 (DAU)'}
+                  {selectedTrendModal === 'DAILY' && '오늘 순방문자 (0시 기준 DAU)'}
                   {selectedTrendModal === 'WEEKLY' && '최근 7일 순방문자 (WAU)'}
-                  {selectedTrendModal === 'MONTHLY' && '최근 30일 순방문자 (MAU)'}
-                  {selectedTrendModal === 'YEARLY' && '올해 총 누적 이용자'}
+                  {selectedTrendModal === 'MONTHLY' && '이번 달 순방문자 (MAU)'}
+                  {selectedTrendModal === 'YEARLY' && '올해 누적 순방문자 (YAU)'}
                 </div>
                 <div className="text-xl font-black text-blue-600 dark:text-blue-400 mt-0.5">
                   {selectedTrendModal === 'DAILY' && `${metrics?.todayDAU ?? 0}명`}
                   {selectedTrendModal === 'WEEKLY' && `${metrics?.weeklyWAU ?? 0}명`}
                   {selectedTrendModal === 'MONTHLY' && `${metrics?.monthlyMAU ?? 0}명`}
-                  {selectedTrendModal === 'YEARLY' && `${metrics?.totalAllTimeUsers ?? 0}명`}
+                  {selectedTrendModal === 'YEARLY' && `${metrics?.yearlyYAU ?? metrics?.totalAllTimeUsers ?? 0}명`}
                 </div>
               </div>
               <div>
                 <div className="text-xs text-zinc-400 font-medium">총 페이지 조회수</div>
                 <div className="text-xl font-black text-zinc-800 dark:text-zinc-100 mt-0.5">
-                  {selectedTrendModal === 'DAILY' && `${metrics?.todayPageviews ?? 0}회`}
+                  {selectedTrendModal === 'DAILY' && `${metrics?.todayPageviews ?? 0}회 (오늘)`}
                   {selectedTrendModal !== 'DAILY' && `${metrics?.totalPageviews ?? 0}회 누적`}
                 </div>
               </div>

@@ -43,12 +43,12 @@ export function TipCard({ hole, tip }: TipCardProps) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/parky.jpg"
-          alt="스마트 캐디 파키"
+          alt="스마트 AI 코치 파키"
           className="w-8 h-8 rounded-full object-cover shrink-0 border border-amber-400 shadow-2xs"
         />
         <div className="min-w-0">
           <div className="text-[10px] font-black text-emerald-800 flex items-center gap-1">
-            <span>🏌️ 스마트 캐디 파키의 코스 공략</span>
+            <span>🏌️ 스마트 AI 코치 파키의 코스 공략</span>
           </div>
           <p className="text-xs font-bold text-emerald-950 truncate break-keep">
             {tip}
