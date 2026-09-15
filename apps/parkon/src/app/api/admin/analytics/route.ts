@@ -57,6 +57,42 @@ interface AnalyticsStore {
 const ANALYTICS_FILE = path.join(os.tmpdir(), 'parkon_analytics_logs.json');
 
 
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+function getKSTDate(timestamp: number | Date = Date.now()): Date {
+  const t = typeof timestamp === 'number' ? timestamp : timestamp.getTime();
+  return new Date(t + KST_OFFSET_MS);
+}
+
+function formatKST(timestamp: number | Date = Date.now()) {
+  const d = getKSTDate(timestamp);
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth(); // 0-indexed
+  const day = d.getUTCDate();
+  const h = d.getUTCHours();
+  const min = d.getUTCMinutes();
+  const s = d.getUTCSeconds();
+
+  const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const timeStr = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+
+  const kstMidnight = Date.UTC(y, m, day, 0, 0, 0) - KST_OFFSET_MS;
+  const kstMonthStart = Date.UTC(y, m, 1, 0, 0, 0) - KST_OFFSET_MS;
+  const kstYearStart = Date.UTC(y, 0, 1, 0, 0, 0) - KST_OFFSET_MS;
+
+  return {
+    year: y,
+    month: m + 1,
+    day,
+    hour: h,
+    dateStr,
+    timeStr,
+    kstMidnight,
+    kstMonthStart,
+    kstYearStart,
+  };
+}
+
 const getSupabaseClient = () => {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://aoucvlpmhrqymziktevu.supabase.co';
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_LaugXgJoQNozOLkG14J-CQ_i8PJgJ6b';
@@ -614,26 +650,31 @@ export async function GET(req: NextRequest) {
       // Local fallback
     }
   }
-  const now = new Date();
-  const nowTime = now.getTime();
-  const todayStr = now.toISOString().split('T')[0];
+  const nowTime = Date.now();
+  const kstInfo = formatKST(nowTime);
 
-  // 1. 기간별 실사용자 & 접속자 집계
+  // 1. 기간별 실사용자 & 접속자 집계 (한국 표준시 KST 00:00:00 자정 기준 완벽 정렬)
   const tenMinsAgo = nowTime - 10 * 60 * 1000;
   const liveLogs = store.logs.filter((l) => l.timestamp >= tenMinsAgo);
   const liveUsers = new Set(liveLogs.map((l) => l.ip)).size;
 
-  const todayLogs = store.logs.filter((l) => l.dateStr === todayStr);
+  // 오늘 DAU: 오늘 00:00:00 KST부터 현재까지 발생한 순방문자
+  const todayLogs = store.logs.filter((l) => l.timestamp >= kstInfo.kstMidnight);
   const todayPageviews = todayLogs.length;
   const todayDAU = new Set(todayLogs.map((l) => l.ip)).size;
 
-  const sevenDaysAgoTime = nowTime - 7 * 24 * 60 * 60 * 1000;
+  // 주간 WAU: 최근 7일 (7일 전 00:00:00 KST부터 현재까지)
+  const sevenDaysAgoTime = kstInfo.kstMidnight - 6 * 24 * 60 * 60 * 1000;
   const last7DaysLogs = store.logs.filter((l) => l.timestamp >= sevenDaysAgoTime);
   const weeklyWAU = new Set(last7DaysLogs.map((l) => l.ip)).size;
 
-  const thirtyDaysAgoTime = nowTime - 30 * 24 * 60 * 60 * 1000;
-  const last30DaysLogs = store.logs.filter((l) => l.timestamp >= thirtyDaysAgoTime);
-  const monthlyMAU = new Set(last30DaysLogs.map((l) => l.ip)).size;
+  // 월간 MAU: 이번 달 (1일 00:00:00 KST부터 현재까지)
+  const thisMonthLogs = store.logs.filter((l) => l.timestamp >= kstInfo.kstMonthStart);
+  const monthlyMAU = new Set(thisMonthLogs.map((l) => l.ip)).size;
+
+  // 연간 YAU: 올해 (1월 1일 00:00:00 KST부터 현재까지)
+  const thisYearLogs = store.logs.filter((l) => l.timestamp >= kstInfo.kstYearStart);
+  const yearlyYAU = new Set(thisYearLogs.map((l) => l.ip)).size;
 
   const totalPageviews = store.logs.length;
   const allUniqueIps = new Set(store.logs.map((l) => l.ip));
@@ -711,11 +752,11 @@ export async function GET(req: NextRequest) {
   }).sort((a, b) => b.userCount - a.userCount);
 
   // 4. 기간별 영구 보존 추이 (시간별 24시간, 일별 7일, 주별 8주, 월별 12개월, 연별)
-  // (0) 오늘 시간별 추이 (00시 ~ 23시)
+  // (0) 오늘 시간별 추이 (한국 표준시 KST 00시 ~ 23시)
   const hourlyTrend: TrendItem[] = [];
   for (let h = 0; h < 24; h++) {
     const hStr = String(h).padStart(2, '0');
-    const hLogs = todayLogs.filter((l) => (l.timeStr || '').startsWith(hStr));
+    const hLogs = todayLogs.filter((l) => getKSTDate(l.timestamp).getUTCHours() === h);
     hourlyTrend.push({
       key: `${hStr}:00`,
       label: `${hStr}시`,
@@ -724,13 +765,15 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // (1) 일별 추이 (최근 7일)
+  // (1) 일별 추이 (최근 7일 KST 0시 기준)
   const dailyTrend: TrendItem[] = [];
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(nowTime - i * 24 * 60 * 60 * 1000);
-    const dStr = d.toISOString().split('T')[0];
-    const isToday = dStr === todayStr;
-    const dayLogs = store.logs.filter((l) => l.dateStr === dStr);
+    const targetDayStart = kstInfo.kstMidnight - i * 24 * 60 * 60 * 1000;
+    const targetDayEnd = targetDayStart + 24 * 60 * 60 * 1000;
+    const dKst = getKSTDate(targetDayStart);
+    const dStr = `${dKst.getUTCFullYear()}-${String(dKst.getUTCMonth() + 1).padStart(2, '0')}-${String(dKst.getUTCDate()).padStart(2, '0')}`;
+    const isToday = i === 0;
+    const dayLogs = store.logs.filter((l) => l.timestamp >= targetDayStart && l.timestamp < targetDayEnd);
     dailyTrend.push({
       key: dStr,
       label: isToday ? `${dStr} (오늘)` : dStr,
@@ -742,14 +785,13 @@ export async function GET(req: NextRequest) {
   // (2) 주간별 추이 (최근 8주)
   const weeklyTrend: TrendItem[] = [];
   for (let w = 7; w >= 0; w--) {
-    const startOfWeek = new Date(nowTime - (w * 7 + 6) * 24 * 60 * 60 * 1000);
-    const endOfWeek = new Date(nowTime - w * 7 * 24 * 60 * 60 * 1000);
-    const sStr = startOfWeek.toISOString().split('T')[0].slice(5);
-    const eStr = endOfWeek.toISOString().split('T')[0].slice(5);
-    const weekLogs = store.logs.filter((l) => {
-      const t = l.timestamp;
-      return t >= startOfWeek.getTime() && t <= endOfWeek.getTime() + 24 * 60 * 60 * 1000;
-    });
+    const startOfWeek = kstInfo.kstMidnight - (w * 7 + 6) * 24 * 60 * 60 * 1000;
+    const endOfWeek = kstInfo.kstMidnight - w * 7 * 24 * 60 * 60 * 1000 + 24 * 60 * 60 * 1000;
+    const sKst = getKSTDate(startOfWeek);
+    const eKst = getKSTDate(endOfWeek - 1000);
+    const sStr = `${String(sKst.getUTCMonth() + 1).padStart(2, '0')}-${String(sKst.getUTCDate()).padStart(2, '0')}`;
+    const eStr = `${String(eKst.getUTCMonth() + 1).padStart(2, '0')}-${String(eKst.getUTCDate()).padStart(2, '0')}`;
+    const weekLogs = store.logs.filter((l) => l.timestamp >= startOfWeek && l.timestamp < endOfWeek);
     weeklyTrend.push({
       key: `w_${w}`,
       label: w === 0 ? `이번 주 (${sStr}~${eStr})` : `${w}주 전 (${sStr}~${eStr})`,
@@ -761,14 +803,18 @@ export async function GET(req: NextRequest) {
   // (3) 월별 추이 (최근 12개월)
   const monthlyTrend: TrendItem[] = [];
   for (let m = 11; m >= 0; m--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
-    const y = d.getFullYear();
-    const mo = String(d.getMonth() + 1).padStart(2, '0');
-    const monthPrefix = `${y}-${mo}`;
+    const targetYear = kstInfo.year;
+    const targetMonthIndex = (kstInfo.month - 1) - m;
+    const mStart = Date.UTC(targetYear, targetMonthIndex, 1, 0, 0, 0) - KST_OFFSET_MS;
+    const mEnd = Date.UTC(targetYear, targetMonthIndex + 1, 1, 0, 0, 0) - KST_OFFSET_MS;
+    const mKst = getKSTDate(mStart);
+    const y = mKst.getUTCFullYear();
+    const mo = String(mKst.getUTCMonth() + 1).padStart(2, '0');
+    const monthKey = `${y}-${mo}`;
     const isThisMonth = m === 0;
-    const monthLogs = store.logs.filter((l) => (l.dateStr || '').startsWith(monthPrefix));
+    const monthLogs = store.logs.filter((l) => l.timestamp >= mStart && l.timestamp < mEnd);
     monthlyTrend.push({
-      key: monthPrefix,
+      key: monthKey,
       label: isThisMonth ? `${y}년 ${mo}월 (이번 달)` : `${y}년 ${mo}월`,
       pageviews: monthLogs.length,
       uniqueVisitors: new Set(monthLogs.map((l) => l.ip)).size,
@@ -776,14 +822,14 @@ export async function GET(req: NextRequest) {
   }
 
   // (4) 연도별 추이 (최근 3개년)
-  const currentYear = now.getFullYear();
   const yearlyTrend: TrendItem[] = [];
-  for (let y = currentYear - 2; y <= currentYear; y++) {
-    const yPrefix = String(y);
-    const isThisYear = y === currentYear;
-    const yearLogs = store.logs.filter((l) => (l.dateStr || '').startsWith(yPrefix));
+  for (let y = kstInfo.year - 2; y <= kstInfo.year; y++) {
+    const yStart = Date.UTC(y, 0, 1, 0, 0, 0) - KST_OFFSET_MS;
+    const yEnd = Date.UTC(y + 1, 0, 1, 0, 0, 0) - KST_OFFSET_MS;
+    const isThisYear = y === kstInfo.year;
+    const yearLogs = store.logs.filter((l) => l.timestamp >= yStart && l.timestamp < yEnd);
     yearlyTrend.push({
-      key: yPrefix,
+      key: String(y),
       label: isThisYear ? `${y}년 (올해)` : `${y}년`,
       pageviews: yearLogs.length,
       uniqueVisitors: new Set(yearLogs.map((l) => l.ip)).size,
@@ -796,6 +842,7 @@ export async function GET(req: NextRequest) {
       todayDAU,
       weeklyWAU,
       monthlyMAU,
+      yearlyYAU,
       totalPageviews,
       todayPageviews,
       totalAllTimeUsers,
@@ -807,7 +854,14 @@ export async function GET(req: NextRequest) {
       monthlyTrend,
       yearlyTrend,
       popularPages: store.popularPages,
-      recentVisitors: store.logs.slice(-30).reverse(),
+      recentVisitors: store.logs.slice(-30).reverse().map((log) => {
+        const k = formatKST(log.timestamp);
+        return {
+          ...log,
+          dateStr: k.dateStr,
+          timeStr: k.timeStr,
+        };
+      }),
     },
   });
 }
@@ -835,9 +889,10 @@ export async function POST(req: NextRequest) {
     const userName = body.userName || '일반 골퍼';
     const isAppInstall = !!body.isAppInstall;
 
-    const now = new Date();
-    const dateStr = now.toISOString().split('T')[0];
-    const timeStr = now.toTimeString().split(' ')[0];
+    const nowTime = Date.now();
+    const kstInfo = formatKST(nowTime);
+    const dateStr = kstInfo.dateStr;
+    const timeStr = kstInfo.timeStr;
 
     const log: VisitorLog = {
       id: Math.random().toString(36).substring(2, 9),
@@ -845,7 +900,7 @@ export async function POST(req: NextRequest) {
       userAgent: userAgent.slice(0, 120),
       path: currentPath,
       referrer: referrer.slice(0, 100),
-      timestamp: Date.now(),
+      timestamp: nowTime,
       dateStr,
       timeStr,
       userRegion,
