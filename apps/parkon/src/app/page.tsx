@@ -879,6 +879,20 @@ export default function HomePage() {
         href="https://cheongiseong-saju.vercel.app"
         target="_blank"
         rel="noopener noreferrer"
+        onClick={(e) => {
+          if (typeof window !== 'undefined' && window.innerWidth > 640) {
+            e.preventDefault();
+            const width = 440;
+            const height = 900;
+            const left = Math.max(0, Math.round((window.screen.width - width) / 2));
+            const top = Math.max(0, Math.round((window.screen.height - height) / 2));
+            window.open(
+              'https://cheongiseong-saju.vercel.app',
+              'CheongiseongSajuApp',
+              `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+            );
+          }
+        }}
         className="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white rounded-2xl p-3 shadow-sm border border-emerald-600/60 hover:border-emerald-400 transition active:scale-[0.99] cursor-pointer flex items-center justify-between gap-3 group"
         title="천기섬 사주 - 오늘의 무료 운세 바로가기"
       >
