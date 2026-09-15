@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { HelpCircle, MapPin, AlertTriangle, Trophy } from 'lucide-react';
+import { HelpCircle, MapPin, AlertTriangle, Trophy, Newspaper } from 'lucide-react';
 import { ParkOnStorage, KakaoAuthUser } from '@/lib/storage';
 import { KakaoLoginModal } from './KakaoLoginModal';
 
@@ -149,6 +149,15 @@ export function Header() {
               title="나의 파크골프 연대기 & 1촌 명부"
             >
               <Trophy className="w-5 h-5 text-amber-600 stroke-[2.5]" />
+            </Link>
+
+            {/* 0.5. 게시판 & 파크골프 뉴스 */}
+            <Link
+              href="/board"
+              className="w-9 h-9 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
+              title="게시판 & 파크골프 뉴스 (전국 시합 공고·열린 신문고)"
+            >
+              <Newspaper className="w-5 h-5 text-purple-700 stroke-[2.5]" />
             </Link>
 
             {/* 1. 룰 솔로몬 (물음표) 버튼 */}

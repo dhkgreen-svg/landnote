@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Play, MapPin, History, Award, Flame, Trophy, X, ArrowRight, ChevronDown, Check, Plus, Star, Search, Trash2, Share2, Download, Heart } from 'lucide-react';
+import { Play, MapPin, History, Award, Flame, Trophy, X, ArrowRight, ChevronDown, Check, Plus, Star, Search, Trash2, Share2, Download, Heart, Newspaper } from 'lucide-react';
 import { Course, RoundSession, formatCourseHolesText } from '@/types/parkon';
 import { ParkOnStorage, UserGolfProfile, DEFAULT_USER_PROFILE } from '@/lib/storage';
 import { ClubStorage } from '@/lib/clubStorage';
@@ -985,6 +985,34 @@ export default function HomePage() {
             </div>
           </div>
           <ArrowRight className="w-5 h-5 text-amber-300 group-hover:translate-x-1 transition-transform shrink-0" />
+        </div>
+      </Link>
+
+      {/* 4.6. 게시판 & 파크골프 뉴스 바로가기 카드 (GPS 반경 연동·전국 시합 공고·열린 신문고) */}
+      <Link
+        href="/board"
+        className="block bg-gradient-to-r from-purple-950 via-stone-900 to-emerald-950 text-white rounded-3xl p-4 border border-purple-400/50 shadow-sm hover:border-purple-300 transition group active:scale-[0.99]"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center font-black shadow-md shrink-0 border border-purple-300/40">
+              <Newspaper className="w-6 h-6 text-amber-300" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm sm:text-base font-black text-white group-hover:text-amber-300 transition-colors">
+                  📢 게시판 &amp; 파크골프 뉴스
+                </span>
+                <span className="text-[10px] bg-purple-500 text-white font-black px-2 py-0.5 rounded-full">
+                  GPS 연동
+                </span>
+              </div>
+              <p className="text-xs text-purple-200 mt-0.5 font-medium">
+                전국 시합·대회 공고 · GPS 내 위치 소식 · 열린 신문고(건의/오류 제보)
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-5 h-5 text-purple-300 group-hover:translate-x-1 transition-transform shrink-0" />
         </div>
       </Link>
 
