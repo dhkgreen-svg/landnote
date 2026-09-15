@@ -39,6 +39,7 @@ import {
   Send,
   Play,
   Hand,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { ClubEventRoom, ClubGroup, ClubPlayer, ParkGolfClub, ClubMember, FlashGathering, TournamentType } from '@/types/club';
 import { Course } from '@/types/parkon';
@@ -174,6 +175,15 @@ export default function ClubGatheringHomePage() {
   const [clubFlashDate, setClubFlashDate] = useState('오늘');
   const [clubFlashTime, setClubFlashTime] = useState('14:00');
   const [clubFlashNotes, setClubFlashNotes] = useState('2인 이상 모이면 언제든 바로 출발합니다!');
+
+  // 번개 라운드 조 편성 미리보기 & 현장 자리 맞바꾸기(Swap) 모달 상태
+  const [previewRoom, setPreviewRoom] = useState<ClubEventRoom | null>(null);
+  const [selectedSwapPlayer, setSelectedSwapPlayer] = useState<{
+    groupIndex: number;
+    playerIndex: number;
+    playerId: string;
+    playerName: string;
+  } | null>(null);
 
   // 초기 로딩
   useEffect(() => {
@@ -461,18 +471,28 @@ export default function ClubGatheringHomePage() {
 
   // 1촌 번개 수락 완료 시 스코어보드 / 전광판 바로 시작 (10인 등 다인원 또는 4인 이하 지원)
   const handleStart1ChonRound = (round: CompanionLightningRound) => {
-    const playerList = round.acceptedPlayers && round.acceptedPlayers.length > 0
+    const rawPlayerList = round.acceptedPlayers && round.acceptedPlayers.length > 0
       ? round.acceptedPlayers
       : round.currentPlayers;
 
     // 4인 이하일 때는 간편 스코어카드로 시작
-    if (playerList.length <= 4) {
-      const names = playerList.map((p) => p.name).join(',');
+    if (rawPlayerList.length <= 4) {
+      const names = rawPlayerList.map((p) => p.name).join(',');
       router.push(`/score/quick?courseId=${round.courseId}&players=${encodeURIComponent(names)}`);
       return;
     }
 
-    // 10인 모임 또는 5인 이상 다인원: 2~3개 조 자동 편성 & 실시간 전광판 룸 생성
+    // 5인 이상 다인원 (10인, 100인 등):
+    // 1) 방장 1조 조장 고정: 방장을 맨 앞으로 이동하여 1조 1번(1조 조장)으로 배치
+    const hostName = round.hostName || ParkOnStorage.getUserDisplayName();
+    const hostIdx = rawPlayerList.findIndex((p) => p.name === hostName || (p as any).isHost);
+    let playerList = [...rawPlayerList];
+    if (hostIdx > 0) {
+      const [hostPlayer] = playerList.splice(hostIdx, 1);
+      playerList.unshift(hostPlayer);
+    }
+
+    // 2) 2~N개 조 자동 균등 편성 (조당 3~4명)
     const groupCount = Math.max(2, Math.ceil(playerList.length / 4));
     const letters = ['A', 'B'];
     const groups: ClubGroup[] = [];
@@ -516,15 +536,16 @@ export default function ClubGatheringHomePage() {
       targetTotalPlayers: playerList.length,
       gameMode: 'NEW_PERIO',
       gameModeTitle: '신페리오 방식 (핸디캡 적용)',
-      gameRuleNotes: '1촌 10인 이상 단체 번개 라운드 (실시간 조별 전광판)',
+      gameRuleNotes: '1촌 단체 번개 라운드 (실시간 조별 전광판 및 조 편성)',
       groups,
       status: 'PLAYING',
       createdAt: new Date().toISOString().split('T')[0],
     };
 
-    ClubStorage.saveRoom(newRoom);
-    showToast(`⛳ 1촌 ${playerList.length}인 번개 전광판 룸이 개설되었습니다!`);
-    router.push(`/club/${newRoom.id}`);
+    // 조 편성 미리보기 및 현장 자리 맞바꾸기(Swap) 모달 열기
+    setPreviewRoom(newRoom);
+    setSelectedSwapPlayer(null);
+    showToast(`🎯 총 ${groups.length}개 조가 자동 편성되었습니다. 자리 맞바꾸기 확인 후 시작하세요!`);
   };
 
   // 1촌 번개 카톡 공유
@@ -602,18 +623,28 @@ ${shareUrl}`;
     showToast(`클럽 번개 참가 신청을 취소하였습니다.`);
   };
 
-  // 10인이 모였을 때 클럽 번개 라운드 바로 시작 (조 편성 및 실시간 전광판 룸 생성)
+  // 클럽 번개 라운드 시작 (4인 이하는 간편 스코어카드, 5인 이상은 조 편성 미리보기 & 전광판)
   const handleStartClubFlashRound = (flash: FlashGathering) => {
-    const participants = flash.currentParticipants;
-    if (participants.length === 0) return;
+    const rawParticipants = flash.currentParticipants;
+    if (rawParticipants.length === 0) return;
 
-    if (participants.length <= 4) {
-      const names = participants.map((p) => p.name).join(',');
+    if (rawParticipants.length <= 4) {
+      const names = rawParticipants.map((p) => p.name).join(',');
       router.push(`/score/quick?courseId=${flash.courseId}&players=${encodeURIComponent(names)}`);
       return;
     }
 
-    // 10인 이상: 2~3개 조 이상으로 자동 균등 편성 (10명이면 3개 조: 4, 3, 3)
+    // 5인 이상 다인원 (10인, 100인 등):
+    // 1) 방장 1조 조장 고정: 방장을 맨 앞으로 이동하여 1조 1번(1조 조장)으로 배치
+    const hostName = flash.hostName || ParkOnStorage.getUserDisplayName();
+    const hostIdx = rawParticipants.findIndex((p) => p.name === hostName);
+    let participants = [...rawParticipants];
+    if (hostIdx > 0) {
+      const [hostPlayer] = participants.splice(hostIdx, 1);
+      participants.unshift(hostPlayer);
+    }
+
+    // 2) 2~N개 조 이상으로 자동 균등 편성 (조당 3~4명)
     const groupCount = Math.max(2, Math.ceil(participants.length / 4));
     const letters = ['A', 'B'];
     const groups: ClubGroup[] = [];
@@ -665,9 +696,87 @@ ${shareUrl}`;
       createdAt: new Date().toISOString().split('T')[0],
     };
 
-    ClubStorage.saveRoom(newRoom);
-    showToast(`⛳ ${participants.length}인 클럽 번개 전광판 룸이 개설되었습니다!`);
-    router.push(`/club/${newRoom.id}`);
+    // 조 편성 미리보기 및 현장 자리 맞바꾸기(Swap) 모달 열기
+    setPreviewRoom(newRoom);
+    setSelectedSwapPlayer(null);
+    showToast(`🎯 총 ${groups.length}개 조가 자동 편성되었습니다. 자리 맞바꾸기 확인 후 시작하세요!`);
+  };
+
+  // 번개 조원 현장 맞바꾸기(Swap) 핸들러
+  const handlePlayerSwapClick = (groupIndex: number, playerIndex: number) => {
+    if (!previewRoom) return;
+    const targetPlayer = previewRoom.groups[groupIndex]?.players[playerIndex];
+    if (!targetPlayer) return;
+
+    if (!selectedSwapPlayer) {
+      // 1단계: 첫 번째 선수 선택
+      setSelectedSwapPlayer({
+        groupIndex,
+        playerIndex,
+        playerId: targetPlayer.id,
+        playerName: targetPlayer.name,
+      });
+      showToast(`'${targetPlayer.name}' 선택됨. 맞바꿀 다른 선수를 터치하세요.`);
+      return;
+    }
+
+    // 동일 인물 재선택 시 선택 취소
+    if (selectedSwapPlayer.groupIndex === groupIndex && selectedSwapPlayer.playerIndex === playerIndex) {
+      setSelectedSwapPlayer(null);
+      showToast(`선택을 취소하였습니다.`);
+      return;
+    }
+
+    // 2단계: 두 선수 자리 맞바꾸기
+    const updatedGroups = previewRoom.groups.map((g) => ({
+      ...g,
+      players: [...g.players],
+    }));
+
+    const sourceGroup = updatedGroups[selectedSwapPlayer.groupIndex];
+    const targetGroup = updatedGroups[groupIndex];
+
+    const sourcePlayer = sourceGroup.players[selectedSwapPlayer.playerIndex];
+    const targetPlayerObj = targetGroup.players[playerIndex];
+
+    sourceGroup.players[selectedSwapPlayer.playerIndex] = targetPlayerObj;
+    targetGroup.players[playerIndex] = sourcePlayer;
+
+    // 조장 재산정: 각 조의 1번 선수(인덱스 0)를 조장으로 설정
+    [sourceGroup, targetGroup].forEach((grp) => {
+      grp.players.forEach((p, pIdx) => {
+        p.isLeader = pIdx === 0;
+      });
+      if (grp.players[0]) {
+        grp.leaderName = grp.players[0].name;
+      }
+    });
+
+    setPreviewRoom({
+      ...previewRoom,
+      groups: updatedGroups,
+    });
+    setSelectedSwapPlayer(null);
+    showToast(`🔄 '${sourcePlayer.name}' ↔ '${targetPlayerObj.name}' 조 맞바꾸기 완료!`);
+  };
+
+  // 번개 조 편성 카카오톡 단톡방 공유 복사
+  const handleSharePreviewRoomKakao = async () => {
+    if (!previewRoom) return;
+    const text = ClubStorage.generateGroupFormationKakaoShareText(previewRoom);
+    await copyTextToClipboard(text);
+    showToast(`📋 전체 조 편성 카톡 공지문이 복사되었습니다! 단톡방에 붙여넣기 하세요.`);
+  };
+
+  // 조 편성 확정 및 실시간 전광판 룸 시작
+  const handleConfirmAndStartRound = () => {
+    if (!previewRoom) return;
+    ClubStorage.saveRoom(previewRoom);
+    showToast(`⛳ 조 편성이 확정되었습니다! 실시간 전광판으로 입장합니다.`);
+    const roomId = previewRoom.id;
+    setPreviewRoom(null);
+    setSelectedSwapPlayer(null);
+    router.push(`/club/${roomId}`);
   };
 
   // 클럽 번개 카톡 공유
@@ -4671,6 +4780,163 @@ ${shareUrl}`;
           </div>
         </div>
       )}
+
+      {/* 번개 조 편성 미리보기 & 현장 자리 맞바꾸기(Swap) 모달 */}
+      {previewRoom && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col border border-stone-200 animate-fadeIn">
+            {/* 상단 타이틀 & 닫기 */}
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-sm shrink-0">
+                  <Sparkles className="w-5 h-5 text-stone-950 fill-stone-950" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base sm:text-lg text-stone-900 flex items-center gap-1.5 flex-wrap">
+                    <span>번개 조 편성 & 자리 맞바꾸기</span>
+                    <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-black px-2 py-0.5 rounded-full">
+                      총 {previewRoom.groups.length}개 조 ({previewRoom.groups.reduce((s, g) => s + g.players.length, 0)}명)
+                    </span>
+                  </h3>
+                  <p className="text-xs text-stone-500 font-semibold mt-0.5">
+                    📍 {previewRoom.courseName} · 총괄 방장: <strong className="text-stone-900">{previewRoom.hostName}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewRoom(null);
+                  setSelectedSwapPlayer(null);
+                }}
+                className="p-2 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 안내 배너: 방장 1조 조장 고정 + 맞바꾸기 가이드 */}
+            <div className="space-y-2 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-3 text-xs leading-relaxed">
+              <div className="flex items-center gap-2 font-bold text-amber-950">
+                <span className="bg-amber-500 text-stone-950 px-1.5 py-0.5 rounded text-[10px] font-black">안내</span>
+                <span>👑 번개 총괄 방장(<strong>{previewRoom.hostName}</strong>)은 <strong>1조 1번(1조 조장)</strong>으로 고정 배치되었습니다.</span>
+              </div>
+              <div className="flex items-start gap-2 text-stone-700 text-[11px] pt-1 border-t border-amber-200/60">
+                <ArrowLeftRight className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <span>
+                  <strong>현장 조원 맞바꾸기(Swap)</strong>: 선수를 누른 후 다른 선수를 누르면 두 사람의 조가 즉시 맞바뀝니다.
+                  {selectedSwapPlayer && (
+                    <span className="text-amber-900 font-black ml-1 bg-amber-200/80 px-1.5 py-0.5 rounded">
+                      👉 현재 '{selectedSwapPlayer.playerName}' 선택됨 - 맞바꿀 선수를 터치하세요!
+                    </span>
+                  )}
+                </span>
+              </div>
+            </div>
+
+            {/* 카톡 단톡방 공유 복사 바 */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSharePreviewRoomKakao}
+                className="w-full min-h-[46px] bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] font-black text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-xs cursor-pointer border border-[#E6CF00] active:scale-98"
+              >
+                <Share2 className="w-4 h-4 text-[#191919]" />
+                <span>📋 전체 조 편성 카톡 공지 복사</span>
+              </button>
+            </div>
+
+            {/* 조 목록 스크롤 영역 */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[46vh]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {previewRoom.groups.map((group, gIdx) => (
+                  <div
+                    key={group.groupNumber}
+                    className="bg-stone-50 border border-stone-200 rounded-2xl p-3 space-y-2"
+                  >
+                    <div className="flex items-center justify-between border-b border-stone-200/70 pb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-xs text-stone-900">{group.name}</span>
+                        <span className="text-[10px] bg-stone-200 text-stone-700 font-bold px-1.5 py-0.2 rounded">
+                          {group.startCourseLetter}코스 출발
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-black text-stone-500">
+                        {group.players.length}명 배정
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {group.players.map((player, pIdx) => {
+                        const isSelected =
+                          selectedSwapPlayer?.groupIndex === gIdx &&
+                          selectedSwapPlayer?.playerIndex === pIdx;
+                        const isHostPlayer = player.name === previewRoom.hostName;
+
+                        return (
+                          <button
+                            key={player.id || `${gIdx}_${pIdx}`}
+                            type="button"
+                            onClick={() => handlePlayerSwapClick(gIdx, pIdx)}
+                            className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between transition cursor-pointer ${
+                              isSelected
+                                ? 'bg-amber-100 border-2 border-amber-500 font-black text-stone-950 shadow-sm scale-102 ring-2 ring-amber-300'
+                                : 'bg-white border border-stone-200 hover:border-amber-300 hover:bg-amber-50/50 text-stone-800'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="w-5 h-5 rounded-full bg-stone-100 text-stone-600 text-[10px] font-bold flex items-center justify-center shrink-0">
+                                {pIdx + 1}
+                              </span>
+                              <span className="font-bold text-xs truncate">{player.name}</span>
+                              {player.isLeader && (
+                                <span className="bg-amber-500 text-stone-950 text-[9px] font-black px-1.5 py-0.2 rounded shrink-0">
+                                  👑 조장
+                                </span>
+                              )}
+                              {isHostPlayer && (
+                                <span className="bg-stone-900 text-amber-300 text-[9px] font-black px-1.5 py-0.2 rounded shrink-0">
+                                  ⭐ 방장
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-stone-400 font-bold shrink-0">
+                              {isSelected ? '선택됨 (터치해 취소)' : '터치해 맞바꾸기'}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 하단 확정 버튼 영역 */}
+            <div className="pt-2 border-t border-stone-200 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewRoom(null);
+                  setSelectedSwapPlayer(null);
+                }}
+                className="w-1/3 min-h-[50px] bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs sm:text-sm rounded-2xl transition cursor-pointer border border-stone-300"
+              >
+                닫기 / 모집 유지
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAndStartRound}
+                className="w-2/3 min-h-[50px] bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm rounded-2xl shadow-lg transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-emerald-500"
+              >
+                <Play className="w-5 h-5 text-white fill-white" />
+                <span>🚀 조 편성 확정 & 전광판 시작!</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

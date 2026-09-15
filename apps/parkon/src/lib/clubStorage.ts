@@ -2032,4 +2032,30 @@ ${flash.notes ? `💬 안내: "${flash.notes}"\n` : ''}
 👇 아래 파크온 링크를 눌러 1초 만에 바로 조인하세요!
 ${shareUrl}`;
   },
+
+  // 전체 조 편성 카카오톡 단톡방 공지 문구 생성
+  generateGroupFormationKakaoShareText(room: ClubEventRoom): string {
+    const origin =
+      typeof window !== 'undefined'
+        ? window.location.origin
+        : 'https://parkongolf.com';
+    const link = `${origin}/club/${room.id}`;
+    const totalPlayers = room.groups.reduce((sum, g) => sum + g.players.length, 0);
+
+    let text = `📢 [파크온] ${room.courseName} 라운드 조 편성 결과\n`;
+    text += `🏆 ${room.title}\n`;
+    text += `👥 총 ${room.groups.length}개 조 (${totalPlayers}명 배정 완료)\n`;
+    text += `---------------------------------\n`;
+
+    room.groups.forEach((g) => {
+      const leaderStr = g.leaderName ? ` (조장: ${g.leaderName})` : '';
+      const members = g.players.map((p) => (p.isLeader ? `👑${p.name}` : p.name)).join(', ');
+      text += `⛳ ${g.name}${leaderStr}\n   👉 ${members || '배정 대기 중'}\n`;
+    });
+
+    text += `---------------------------------\n`;
+    text += `📡 실시간 디지털 전광판 & 스코어보드 바로가기:\n${link}`;
+    return text;
+  },
 };
+
