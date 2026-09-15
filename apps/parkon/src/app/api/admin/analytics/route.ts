@@ -710,7 +710,20 @@ export async function GET(req: NextRequest) {
     };
   }).sort((a, b) => b.userCount - a.userCount);
 
-  // 4. 기간별 영구 보존 추이 (일별 7일, 주별 8주, 월별 12개월, 연별)
+  // 4. 기간별 영구 보존 추이 (시간별 24시간, 일별 7일, 주별 8주, 월별 12개월, 연별)
+  // (0) 오늘 시간별 추이 (00시 ~ 23시)
+  const hourlyTrend: TrendItem[] = [];
+  for (let h = 0; h < 24; h++) {
+    const hStr = String(h).padStart(2, '0');
+    const hLogs = todayLogs.filter((l) => (l.timeStr || '').startsWith(hStr));
+    hourlyTrend.push({
+      key: `${hStr}:00`,
+      label: `${hStr}시`,
+      pageviews: hLogs.length,
+      uniqueVisitors: new Set(hLogs.map((l) => l.ip)).size,
+    });
+  }
+
   // (1) 일별 추이 (최근 7일)
   const dailyTrend: TrendItem[] = [];
   for (let i = 6; i >= 0; i--) {
@@ -788,6 +801,7 @@ export async function GET(req: NextRequest) {
       totalAllTimeUsers,
       totalAppDownloads,
       provinceStats,
+      hourlyTrend,
       dailyTrend,
       weeklyTrend,
       monthlyTrend,

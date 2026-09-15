@@ -59,6 +59,7 @@ interface Metrics {
   totalAllTimeUsers: number;
   totalAppDownloads: number;
   provinceStats: ProvinceStat[];
+  hourlyTrend?: Array<{ key: string; label: string; pageviews: number; uniqueVisitors: number }>;
   dailyTrend: Array<{ key: string; label: string; pageviews: number; uniqueVisitors: number }>;
   weeklyTrend: Array<{ key: string; label: string; pageviews: number; uniqueVisitors: number }>;
   monthlyTrend: Array<{ key: string; label: string; pageviews: number; uniqueVisitors: number }>;
@@ -90,7 +91,8 @@ export default function AdminDashboardPage() {
 
   // 시·도 상세 드릴다운 팝업 모달 상태
   const [selectedProvinceModal, setSelectedProvinceModal] = useState<ProvinceStat | null>(null);
-  const [trendPeriod, setTrendPeriod] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'>('DAILY');
+  // 추이 상세 팝업 모달 상태 (일별, 주별, 월별, 연별)
+  const [selectedTrendModal, setSelectedTrendModal] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | null>(null);
 
   // Check saved session PIN on load (6자리 768517)
   useEffect(() => {
@@ -524,137 +526,185 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* 2-Column: 인기 페이지 TOP 6 & 최근 7일간 일별 접속 추이 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Popular Pages */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
-          <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-4">
-            <TrendingUp className="w-4 h-4 text-emerald-600" />
-            가장 많이 찾는 인기 페이지 TOP 6
-          </h2>
-          <div className="space-y-3">
-            {metrics?.popularPages && Object.keys(metrics.popularPages).length > 0 ? (
-              Object.entries(metrics.popularPages)
-                .sort(([, a], [, b]) => b - a)
-                .slice(0, 6)
-                .map(([path, count], idx) => {
-                  const maxVal = Math.max(...Object.values(metrics.popularPages));
-                  const pct = Math.max(8, Math.round((count / (maxVal || 1)) * 100));
-                  return (
-                    <div key={path} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold text-zinc-700 dark:text-zinc-200 flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-center text-xs font-bold leading-5">
-                            {idx + 1}
-                          </span>
-                          <span>{getPageTitle(path)}</span>
-                          <span className="text-zinc-400 text-[11px] font-mono">({path})</span>
-                        </span>
-                        <strong className="text-emerald-600 font-bold">{count}회</strong>
-                      </div>
-                      <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
-                        <div
-                          className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })
-            ) : (
-              <p className="text-xs text-zinc-400 py-6 text-center">아직 집계된 페이지 뷰가 없습니다.</p>
-            )}
+      {/* 접속 및 이용 추이: 일별, 주별, 월별, 연별 4대 정사각형 버튼 타일 */}
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+          <div>
+            <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-blue-600" />
+              접속 및 이용 추이
+            </h2>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              각 버튼을 클릭하시면 시간별·일별·주별·월별 세부 추이 팝업이 열립니다.
+            </p>
           </div>
+          <span className="text-xs font-semibold px-2.5 py-1 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg">
+            버튼 클릭 시 상세 팝업
+          </span>
         </div>
 
-{/* Multi-Period Trend Chart (일별 / 주별 / 월별 / 연별) */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <div>
-                <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-blue-600" />
-                  접속 및 이용 추이 (일별 · 주별 · 월별 · 연별)
-                </h2>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  데이터가 누적 보존되어 장기적인 성장세를 정밀 분석할 수 있습니다.
-                </p>
-              </div>
+        {/* 4대 기간별 정사각형 버튼 */}
+        <div className="grid grid-cols-4 gap-2.5 sm:gap-4">
+          {/* 1. 일별 */}
+          <button
+            onClick={() => setSelectedTrendModal('DAILY')}
+            className="aspect-square p-2 sm:p-3.5 bg-blue-50/50 dark:bg-blue-950/30 hover:bg-blue-100/70 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-800 rounded-xl sm:rounded-2xl text-center shadow-xs transition-all flex flex-col justify-between items-center group cursor-pointer active:scale-98"
+          >
+            <span className="text-xs sm:text-sm font-black text-blue-700 dark:text-blue-300 group-hover:scale-105 transition-transform">
+              일별
+            </span>
+            <div className="my-auto py-0.5">
+              <span className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400">
+                {metrics?.todayDAU ?? 0}
+              </span>
+            </div>
+            <span className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500">
+              시간별 상세
+            </span>
+          </button>
 
-              {/* 4 Period Toggle Buttons */}
-              <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl self-start sm:self-auto">
-                <button
-                  onClick={() => setTrendPeriod('DAILY')}
-                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                    trendPeriod === 'DAILY'
-                      ? 'bg-white dark:bg-zinc-900 text-blue-600 shadow-xs'
-                      : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-                  }`}
-                >
-                  일별(7일)
-                </button>
-                <button
-                  onClick={() => setTrendPeriod('WEEKLY')}
-                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                    trendPeriod === 'WEEKLY'
-                      ? 'bg-white dark:bg-zinc-900 text-purple-600 shadow-xs'
-                      : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-                  }`}
-                >
-                  주별(8주)
-                </button>
-                <button
-                  onClick={() => setTrendPeriod('MONTHLY')}
-                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                    trendPeriod === 'MONTHLY'
-                      ? 'bg-white dark:bg-zinc-900 text-emerald-600 shadow-xs'
-                      : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-                  }`}
-                >
-                  월별(1년)
-                </button>
-                <button
-                  onClick={() => setTrendPeriod('YEARLY')}
-                  className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                    trendPeriod === 'YEARLY'
-                      ? 'bg-white dark:bg-zinc-900 text-amber-600 shadow-xs'
-                      : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
-                  }`}
-                >
-                  연별(누계)
-                </button>
+          {/* 2. 주별 */}
+          <button
+            onClick={() => setSelectedTrendModal('WEEKLY')}
+            className="aspect-square p-2 sm:p-3.5 bg-purple-50/50 dark:bg-purple-950/30 hover:bg-purple-100/70 dark:hover:bg-purple-900/40 border border-purple-200 dark:border-purple-800 rounded-xl sm:rounded-2xl text-center shadow-xs transition-all flex flex-col justify-between items-center group cursor-pointer active:scale-98"
+          >
+            <span className="text-xs sm:text-sm font-black text-purple-700 dark:text-purple-300 group-hover:scale-105 transition-transform">
+              주별
+            </span>
+            <div className="my-auto py-0.5">
+              <span className="text-2xl sm:text-3xl font-black text-purple-600 dark:text-purple-400">
+                {metrics?.weeklyWAU ?? 0}
+              </span>
+            </div>
+            <span className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500">
+              7일간 누계
+            </span>
+          </button>
+
+          {/* 3. 월별 */}
+          <button
+            onClick={() => setSelectedTrendModal('MONTHLY')}
+            className="aspect-square p-2 sm:p-3.5 bg-emerald-50/50 dark:bg-emerald-950/30 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 rounded-xl sm:rounded-2xl text-center shadow-xs transition-all flex flex-col justify-between items-center group cursor-pointer active:scale-98"
+          >
+            <span className="text-xs sm:text-sm font-black text-emerald-700 dark:text-emerald-300 group-hover:scale-105 transition-transform">
+              월별
+            </span>
+            <div className="my-auto py-0.5">
+              <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                {metrics?.monthlyMAU ?? 0}
+              </span>
+            </div>
+            <span className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500">
+              이번달 누계
+            </span>
+          </button>
+
+          {/* 4. 연별 */}
+          <button
+            onClick={() => setSelectedTrendModal('YEARLY')}
+            className="aspect-square p-2 sm:p-3.5 bg-amber-50/50 dark:bg-amber-950/30 hover:bg-amber-100/70 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-xl sm:rounded-2xl text-center shadow-xs transition-all flex flex-col justify-between items-center group cursor-pointer active:scale-98"
+          >
+            <span className="text-xs sm:text-sm font-black text-amber-700 dark:text-amber-300 group-hover:scale-105 transition-transform">
+              연별
+            </span>
+            <div className="my-auto py-0.5">
+              <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
+                {metrics?.totalAllTimeUsers ?? 0}
+              </span>
+            </div>
+            <span className="text-[10px] sm:text-xs text-zinc-400 dark:text-zinc-500">
+              월별 누계
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* 접속 및 이용 추이 상세 팝업 모달 */}
+      {selectedTrendModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center font-bold">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-zinc-900 dark:text-zinc-100">
+                    {selectedTrendModal === 'DAILY' && '일별 접속 현황 (오늘 시간대별 세부 추이)'}
+                    {selectedTrendModal === 'WEEKLY' && '주간 접속 현황 (최근 7일간 일자별 추이)'}
+                    {selectedTrendModal === 'MONTHLY' && '월간 접속 현황 (최근 8주 주간별 추이)'}
+                    {selectedTrendModal === 'YEARLY' && '연간 접속 현황 (최근 12개월 월별 누계 추이)'}
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    {selectedTrendModal === 'DAILY' && '오늘 24시간 동안 발생한 시간대별 실시간 방문 현황입니다.'}
+                    {selectedTrendModal === 'WEEKLY' && '지난 일주일(7일) 동안 발생한 일자별 순방문자 및 페이지뷰 현황입니다.'}
+                    {selectedTrendModal === 'MONTHLY' && '이번 달을 포함한 최근 8주간의 주간별 이용자 누계 현황입니다.'}
+                    {selectedTrendModal === 'YEARLY' && '올해를 포함한 최근 12개월간의 월별 이용자 누계 현황입니다.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedTrendModal(null)}
+                className="w-8 h-8 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-500 flex items-center justify-center font-bold text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Summary KPI */}
+            <div className="grid grid-cols-2 gap-3 bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl">
+              <div>
+                <div className="text-xs text-zinc-400 font-medium">
+                  {selectedTrendModal === 'DAILY' && '오늘 순방문자 (DAU)'}
+                  {selectedTrendModal === 'WEEKLY' && '최근 7일 순방문자 (WAU)'}
+                  {selectedTrendModal === 'MONTHLY' && '최근 30일 순방문자 (MAU)'}
+                  {selectedTrendModal === 'YEARLY' && '올해 총 누적 이용자'}
+                </div>
+                <div className="text-xl font-black text-blue-600 dark:text-blue-400 mt-0.5">
+                  {selectedTrendModal === 'DAILY' && `${metrics?.todayDAU ?? 0}명`}
+                  {selectedTrendModal === 'WEEKLY' && `${metrics?.weeklyWAU ?? 0}명`}
+                  {selectedTrendModal === 'MONTHLY' && `${metrics?.monthlyMAU ?? 0}명`}
+                  {selectedTrendModal === 'YEARLY' && `${metrics?.totalAllTimeUsers ?? 0}명`}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-zinc-400 font-medium">총 페이지 조회수</div>
+                <div className="text-xl font-black text-zinc-800 dark:text-zinc-100 mt-0.5">
+                  {selectedTrendModal === 'DAILY' && `${metrics?.todayPageviews ?? 0}회`}
+                  {selectedTrendModal !== 'DAILY' && `${metrics?.totalPageviews ?? 0}회 누적`}
+                </div>
               </div>
             </div>
 
-            {/* Render Active Trend List */}
+            {/* Bar List */}
             {(() => {
-              const activeList = 
-                trendPeriod === 'DAILY' ? (metrics?.dailyTrend || []) :
-                trendPeriod === 'WEEKLY' ? (metrics?.weeklyTrend || []) :
-                trendPeriod === 'MONTHLY' ? (metrics?.monthlyTrend || []) :
-                (metrics?.yearlyTrend || []);
+              const activeList =
+                selectedTrendModal === 'DAILY' ? (metrics?.hourlyTrend || []) :
+                selectedTrendModal === 'WEEKLY' ? (metrics?.dailyTrend || []) :
+                selectedTrendModal === 'MONTHLY' ? (metrics?.weeklyTrend || []) :
+                (metrics?.monthlyTrend || []);
 
               const maxPv = Math.max(...activeList.map(item => item.pageviews), 1);
-
-              const barColor = 
-                trendPeriod === 'DAILY' ? 'bg-blue-500' :
-                trendPeriod === 'WEEKLY' ? 'bg-purple-500' :
-                trendPeriod === 'MONTHLY' ? 'bg-emerald-500' :
+              const barColor =
+                selectedTrendModal === 'DAILY' ? 'bg-blue-500' :
+                selectedTrendModal === 'WEEKLY' ? 'bg-purple-500' :
+                selectedTrendModal === 'MONTHLY' ? 'bg-emerald-500' :
                 'bg-amber-500';
 
               return (
-                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                   {activeList.length > 0 ? (
                     activeList.map((item) => {
-                      const pct = Math.max(6, Math.round((item.pageviews / maxPv) * 100));
-                      const isCurrent = item.label.includes('오늘') || item.label.includes('이번') || item.label.includes('올해');
+                      const pct = Math.max(item.pageviews > 0 ? 8 : 0, Math.round((item.pageviews / maxPv) * 100));
+                      const isHighlight = item.label.includes('오늘') || item.label.includes('이번') || item.label.includes('올해') || item.pageviews > 0;
 
                       return (
-                        <div key={item.key} className="flex items-center gap-3 text-xs">
-                          <span className={`w-36 truncate font-mono ${isCurrent ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-zinc-500'}`}>
+                        <div key={item.key} className="flex items-center gap-3 text-xs p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
+                          <span className={`w-28 sm:w-36 truncate font-mono ${isHighlight ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-zinc-500'}`}>
                             {item.label}
                           </span>
-                          <div className="flex-1 bg-zinc-100 dark:bg-zinc-800 rounded-full h-3.5 overflow-hidden flex items-center">
+                          <div className="flex-1 bg-zinc-100 dark:bg-zinc-800 rounded-full h-3 overflow-hidden flex items-center">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ${barColor}`}
                               style={{ width: `${pct}%` }}
@@ -668,19 +718,24 @@ export default function AdminDashboardPage() {
                       );
                     })
                   ) : (
-                    <p className="text-xs text-zinc-400 py-6 text-center">추이 데이터 집계 중</p>
+                    <p className="text-xs text-zinc-400 py-8 text-center">집계된 데이터가 없습니다.</p>
                   )}
                 </div>
               );
             })()}
-          </div>
 
-          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-[11px] text-zinc-400 flex items-center justify-between">
-            <span>• PV: 총 조회 페이지수</span>
-            <span>• 괄호 (명): 중복 제외 순수 방문 골퍼수</span>
+            {/* Close Button */}
+            <div className="pt-2">
+              <button
+                onClick={() => setSelectedTrendModal(null)}
+                className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
             {/* 실시간 방문자 로그 (최근 30건 상세 기록) */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
