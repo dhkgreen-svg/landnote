@@ -1611,25 +1611,25 @@ export default function RoundPlayPage() {
       {holeStep === 'SCORING' && (
         <div className="space-y-2.5 animate-fadeIn">
           {/* 상단 미니 바: [ ◀ 코스 제원 다시보기 ] + 홀 정보 + 카운트 방식 표시 */}
-          <div className={`flex items-center justify-between p-2.5 rounded-2xl border transition ${
+          <div className={`flex items-center justify-between p-3 rounded-2xl border transition ${
             sunlightMode
               ? 'bg-black text-white border-yellow-400 shadow-md'
-              : 'bg-gradient-to-r from-emerald-900 to-teal-900 text-white border-emerald-600 shadow-xs'
+              : 'bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 text-white border-emerald-600 shadow-xs'
           }`}>
             <button
               type="button"
               onClick={() => setHoleStep('TEE_SHOT')}
-              className="bg-white/20 hover:bg-white/30 text-white text-[11px] font-black px-2.5 py-1 rounded-lg transition active:scale-95 flex items-center gap-1 shrink-0 cursor-pointer"
+              className="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-3 py-1.5 rounded-xl transition active:scale-95 flex items-center gap-1 shrink-0 cursor-pointer"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
+              <ChevronLeft className="w-4 h-4" />
               <span>코스 제원</span>
             </button>
 
-            <div className="text-center">
-              <span className="font-black text-sm text-yellow-300">
+            <div className="text-center flex items-center gap-2">
+              <span className="font-black text-base sm:text-lg text-yellow-300 drop-shadow-xs">
                 {courseLetter}-{holeInCourse}번 홀
               </span>
-              <span className="text-[11px] text-stone-200 font-bold ml-1.5">
+              <span className="text-xs sm:text-sm font-black text-white bg-black/30 px-2 py-0.5 rounded-lg border border-white/20">
                 Par {holeMetadata.par} · {holeMetadata.distanceMeter}m
               </span>
             </div>
@@ -1637,43 +1637,11 @@ export default function RoundPlayPage() {
             <button
               type="button"
               onClick={toggleCountingMode}
-              className="text-[10px] font-black px-2 py-0.5 rounded-md bg-yellow-400 text-stone-950 shadow-xs shrink-0 cursor-pointer"
+              className="text-xs font-black px-2.5 py-1 rounded-lg bg-yellow-400 text-stone-950 shadow-xs shrink-0 cursor-pointer active:scale-95 transition"
               title="0베이스 vs Par기준 카운트 방식 전환"
             >
               {countingMode === 'ZERO_BASE' ? '0베이스' : 'Par기준'}
             </button>
-          </div>
-
-          {/* 실시간 안심 저장 & 스코어보드 조회 버튼 */}
-          <div className="flex items-center justify-between text-[11px] font-bold px-1 text-stone-700">
-            {isOnline ? (
-              <span className="flex items-center gap-1.5 text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>실시간 안심 저장</span>
-                {wakeLockActive && <span className="text-yellow-600 text-[10px] ml-0.5" title="화면 켜짐 유지중">🔆</span>}
-              </span>
-            ) : (
-              <span
-                className="flex items-center gap-1 text-amber-900 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 font-black animate-pulse"
-                title="강변 음영 지역입니다. 로컬 저장소에 100% 안전 보관 중입니다."
-              >
-                <WifiOff className="w-3.5 h-3.5 text-amber-700" />
-                <span>오프라인 보관 중</span>
-              </span>
-            )}
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setModalActiveTab('INTEGRATED');
-                  setShowTotalScoreModal(true);
-                }}
-                className="bg-stone-900 hover:bg-stone-800 text-amber-300 px-2.5 py-1 rounded-full text-[11px] font-black flex items-center gap-1 shadow-sm transition active:scale-95 cursor-pointer border border-stone-700"
-              >
-                <BarChart2 className="w-3.5 h-3.5 text-amber-400" />
-                <span>총 {confirmedHoles.length}홀 누적 현황</span>
-              </button>
-            </div>
           </div>
 
           {/* 4인 스코어 기입 그리드 */}
@@ -2001,21 +1969,21 @@ export default function RoundPlayPage() {
             })}
           </div>
 
-          {/* [대표님 특명 UX 1]: 홀아웃 완료 2개 분리 (좌: [✔️ 확인] vs 우: [다음 홀 이동 ➔]) */}
+          {/* [대표님 특명 UX 1]: 홀아웃 완료 2개 분리 (좌: [✔️ 확인] vs 우: [다음 홀 이동 ➔]) - 초대형 크기로 시원하게 확대 */}
           <div className="grid grid-cols-2 gap-2 pt-1">
             {/* 좌측: [✔️ 확인] 버튼 (타수 확정 + 드르륵 진동 + 띵똥 차임벨) */}
             <button
               type="button"
               onClick={handleConfirmHole}
-              className={`h-15 rounded-2xl font-black text-base sm:text-lg shadow-lg border-2 transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer ${
+              className={`h-18 rounded-2xl font-black text-lg sm:text-xl shadow-xl border-2 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
                 confirmedFeedback
-                  ? 'bg-yellow-400 text-black border-yellow-500 ring-4 ring-yellow-400/50'
+                  ? 'bg-yellow-400 text-black border-yellow-500 ring-4 ring-yellow-400/50 scale-[1.02]'
                   : sunlightMode
                   ? 'bg-zinc-900 text-yellow-300 border-yellow-400 hover:bg-zinc-800'
-                  : 'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-500 shadow-emerald-900/20'
+                  : 'bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white border-emerald-400 shadow-emerald-900/30 ring-2 ring-emerald-500/20'
               }`}
             >
-              <CheckCircle2 className={`w-5 h-5 ${confirmedFeedback ? 'text-black' : 'text-yellow-300'}`} />
+              <CheckCircle2 className={`w-6 h-6 ${confirmedFeedback ? 'text-black' : 'text-yellow-300'}`} />
               <span>{confirmedFeedback ? '확인 완료!' : '확인 (저장)'}</span>
             </button>
 
@@ -2024,7 +1992,7 @@ export default function RoundPlayPage() {
               <button
                 type="button"
                 onClick={handleNextHole}
-                className={`h-15 rounded-2xl font-black text-sm sm:text-base shadow-lg border-2 transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
+                className={`h-18 rounded-2xl font-black text-base sm:text-lg shadow-xl border-2 transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer ${
                   sunlightMode
                     ? 'bg-purple-600 text-white border-white ring-4 ring-purple-400/40 hover:bg-purple-500'
                     : 'bg-gradient-to-r from-purple-700 to-indigo-700 text-white border-purple-400'
@@ -2038,31 +2006,31 @@ export default function RoundPlayPage() {
               <button
                 type="button"
                 onClick={handleNextHole}
-                className={`h-15 rounded-2xl font-black text-base sm:text-lg shadow-lg border-2 transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
+                className={`h-18 rounded-2xl font-black text-lg sm:text-xl shadow-xl border-2 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
                   sunlightMode
                     ? 'bg-yellow-400 text-black border-white ring-4 ring-yellow-400/40 hover:bg-yellow-300'
-                    : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white border-emerald-400 ring-2 ring-emerald-400/30'
+                    : 'bg-gradient-to-r from-teal-600 via-emerald-600 to-emerald-700 text-white border-teal-300 ring-2 ring-teal-400/30 shadow-teal-900/30'
                 }`}
               >
                 <span>다음 홀 이동</span>
-                <ChevronRight className="w-5 h-5 ml-0.5" />
+                <ChevronRight className="w-6 h-6 ml-0.5" />
               </button>
             )}
           </div>
 
-          {/* [대표님 특명 UX 2]: 현재 실시간 스코어보드판 보기 (누적 현황) - 홀아웃 버튼 아래로 이동 및 크기 최적화 */}
+          {/* [대표님 특명 UX 2]: 현재 실시간 스코어보드판 보기 (크기를 컴팩트하게 축소) */}
           <div className="pt-0.5">
             <button
               type="button"
               onClick={() => setShowTotalScoreModal(true)}
-              className={`w-full py-3.5 px-4 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm border transition active:scale-[0.99] cursor-pointer ${
+              className={`w-full py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs border transition active:scale-[0.98] cursor-pointer ${
                 sunlightMode
-                  ? 'bg-black text-yellow-300 border-yellow-400/70 hover:bg-zinc-900'
-                  : 'bg-stone-900 hover:bg-stone-800 text-amber-300 border-stone-700'
+                  ? 'bg-zinc-900 text-yellow-300 border-zinc-700 hover:bg-zinc-800'
+                  : 'bg-stone-800 hover:bg-stone-700 text-stone-300 border-stone-600'
               }`}
             >
-              <BarChart2 className="w-4 h-4 text-amber-400" />
-              <span>📋 현재 실시간 스코어보드판 보기 ({confirmedHoles.length}홀 누적 현황)</span>
+              <BarChart2 className="w-3.5 h-3.5 text-amber-400" />
+              <span>📋 현재 실시간 스코어판 보기 ({confirmedHoles.length}홀 누적)</span>
             </button>
           </div>
 
@@ -2115,7 +2083,7 @@ export default function RoundPlayPage() {
             </button>
           </div>
 
-          {/* [대표님 특명 UX 3]: 맨 밑 '현재 잔디 상태 1초 제보하기' (다른 코스 이동, 잠시 빠지기, 경기 종료 바로 밑) */}
+          {/* [대표님 특명 UX 3]: 맨 밑 '현재 잔디 상태 1초 제보하기' (눈에 띄는 선명한 파란색 버튼) */}
           <div className="pt-1.5 border-t border-stone-200/60">
             <button
               type="button"
@@ -2126,16 +2094,16 @@ export default function RoundPlayPage() {
                 }
                 setShowConditionModal(true);
               }}
-              className={`w-full py-2.5 px-3 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer border flex items-center justify-center gap-1.5 ${
+              className={`w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-black transition active:scale-95 cursor-pointer border flex items-center justify-center gap-2 shadow-sm ${
                 session?.isVirtual
                   ? 'bg-stone-100 text-stone-500 border-stone-300'
                   : sunlightMode
-                  ? 'bg-zinc-900 text-yellow-300 border-yellow-500/50 hover:bg-zinc-800'
-                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-300 shadow-2xs'
+                  ? 'bg-blue-600 hover:bg-blue-500 text-white border-yellow-300 ring-2 ring-blue-400/30'
+                  : 'bg-gradient-to-r from-blue-600 via-sky-600 to-blue-700 hover:from-blue-500 hover:to-sky-500 text-white border-blue-400 shadow-blue-600/20'
               }`}
             >
-              <span>🌱</span>
-              <span>현재 잔디 상태 1초 제보하기</span>
+              <span className="text-base">🌱</span>
+              <span className="tracking-wide">현재 잔디 상태 1초 제보하기</span>
             </button>
           </div>
         </div>
