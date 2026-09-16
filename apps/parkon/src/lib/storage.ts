@@ -6,6 +6,8 @@ import {
   RollSpeed,
   MoistureLevel,
   ConditionVoteLog,
+  CourseSkillRankItem,
+  CourseActivityRankItem,
 } from '@/types/parkon';
 import { DEFAULT_COURSES, generateStandardHoles } from './defaultCourses';
 
@@ -55,8 +57,8 @@ export interface UserGolfProfile {
 
 export const DEFAULT_USER_PROFILE: UserGolfProfile = {
   userName: '김대희',
-  nationalGrade: '★★★★ 4스타 (상급)',
-  clubName: '동락 파크골프 클럽',
+  nationalGrade: '기록 준비중',
+  clubName: '',
   kakaoUser: null,
 };
 
@@ -99,6 +101,12 @@ export const ParkOnStorage = {
       const parsed: UserGolfProfile = JSON.parse(data);
       if (!parsed.userName || parsed.userName === '본인(조장)' || parsed.userName === '본인') {
         parsed.userName = '김대희';
+      }
+      if (parsed.clubName === '동락 파크골프 클럽') {
+        parsed.clubName = '';
+      }
+      if (parsed.nationalGrade?.includes('4스타') || parsed.nationalGrade?.includes('상급')) {
+        parsed.nationalGrade = '기록 준비중';
       }
       return parsed;
     } catch {
@@ -199,38 +207,69 @@ export const ParkOnStorage = {
     this.setKakaoUser(user);
   },
   // 1. Home Course
+  normalizeCourseId(courseId: string): string {
+    if (courseId === 'course-gumi-yangho') return 'course-26ed6cca-09c6-42fe-8e1e-773f23a30db1';
+    if (courseId === 'course-gumi-jisan') return 'course-3d43d16b-0a42-4a6f-b8d0-00a74a3bfb09';
+    return courseId;
+  },
+
   getHomeCourseId(): string {
     if (typeof window === 'undefined') return DEFAULT_COURSES[0].id;
-    return localStorage.getItem(STORAGE_KEYS.HOME_COURSE_ID) || DEFAULT_COURSES[0].id;
+    const saved = localStorage.getItem(STORAGE_KEYS.HOME_COURSE_ID) || DEFAULT_COURSES[0].id;
+    return this.normalizeCourseId(saved);
   },
 
   setHomeCourseId(courseId: string): void {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(STORAGE_KEYS.HOME_COURSE_ID, courseId);
+    const validId = this.normalizeCourseId(courseId);
+    localStorage.setItem(STORAGE_KEYS.HOME_COURSE_ID, validId);
     // 선택된 구장을 홈구장 목록에도 자동 포함
-    this.addFavoriteHomeCourse(courseId);
+    this.addFavoriteHomeCourse(validId);
   },
 
-  // 1-1. 복수 홈구장 관리 (최대 5개)
+  // 1-1. 복수 홈구장 관리 (최대 30개 지원)
   getFavoriteHomeCourseIds(): string[] {
     if (typeof window === 'undefined') return [DEFAULT_COURSES[0].id];
     try {
       const data = localStorage.getItem(STORAGE_KEYS.FAVORITE_HOME_COURSES);
       if (data) {
-        const parsed: string[] = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        let parsed: string[] = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          let hasMigrated = false;
+          let normalized = parsed.map((id) => {
+            const mapped = this.normalizeCourseId(id);
+            if (mapped !== id) hasMigrated = true;
+            return mapped;
+          });
+
+          // 만약 구미 구장들을 선택했는데 이전 버그로 양포가 누락되었을 경우 자동 복원
+          const hasGumi = normalized.some((id) => id.includes('gumi') || id === 'course-3d43d16b-0a42-4a6f-b8d0-00a74a3bfb09');
+          const hasYangpo = normalized.includes('course-26ed6cca-09c6-42fe-8e1e-773f23a30db1');
+          if (hasGumi && !hasYangpo) {
+            normalized.push('course-26ed6cca-09c6-42fe-8e1e-773f23a30db1');
+            hasMigrated = true;
+          }
+
+          const uniqueList = Array.from(new Set(normalized));
+          if (hasMigrated) {
+            this.setFavoriteHomeCourseIds(uniqueList);
+          }
+          return uniqueList;
+        }
       }
     } catch {
       // fallback
     }
-    // 기본 즐겨찾기 홈구장 시드 (양호, 동락, 지산)
-    const curHome = this.getHomeCourseId();
-    const defaults = [curHome];
-    for (const d of ['course-gumi-yangho', 'course-gumi-dongrak', 'course-gumi-jisan']) {
-      if (!defaults.includes(d) && defaults.length < 3) {
-        defaults.push(d);
-      }
-    }
+    // 기본 즐겨찾기 홈구장 시드 (구미 대표 3대 구장: 구미, 동락, 양포)
+    const curHome = this.normalizeCourseId(this.getHomeCourseId());
+    const defaults = Array.from(
+      new Set([
+        curHome,
+        'course-3d43d16b-0a42-4a6f-b8d0-00a74a3bfb09', // 구미파크골프장
+        'course-gumi-dongrak',                          // 동락파크골프장
+        'course-26ed6cca-09c6-42fe-8e1e-773f23a30db1', // 구미 양포(양호)파크골프장
+      ])
+    );
     this.setFavoriteHomeCourseIds(defaults);
     return defaults;
   },
@@ -238,31 +277,35 @@ export const ParkOnStorage = {
   setFavoriteHomeCourseIds(courseIds: string[]): void {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem(STORAGE_KEYS.FAVORITE_HOME_COURSES, JSON.stringify(courseIds));
+      const normalized = courseIds.map((id) => this.normalizeCourseId(id));
+      localStorage.setItem(STORAGE_KEYS.FAVORITE_HOME_COURSES, JSON.stringify(Array.from(new Set(normalized))));
+      window.dispatchEvent(new Event('parkon_favorite_courses_updated'));
     } catch (e) {
       console.error('Failed to save favorite home courses:', e);
     }
   },
 
   addFavoriteHomeCourse(courseId: string): string[] {
+    const validId = this.normalizeCourseId(courseId);
     const list = this.getFavoriteHomeCourseIds();
-    if (!list.includes(courseId)) {
-      if (list.length >= 5) {
-        list.pop(); // 최대 5개 유지
+    if (!list.includes(validId)) {
+      if (list.length >= 30) {
+        list.shift(); // 30개 초과 시 가장 오래된 것 순환
       }
-      list.push(courseId);
+      list.push(validId);
       this.setFavoriteHomeCourseIds(list);
     }
     return list;
   },
 
   removeFavoriteHomeCourse(courseId: string): string[] {
-    let list = this.getFavoriteHomeCourseIds().filter((id) => id !== courseId);
+    const validId = this.normalizeCourseId(courseId);
+    let list = this.getFavoriteHomeCourseIds().filter((id) => id !== validId && id !== courseId);
     if (list.length === 0) {
-      list = [courseId]; // 최소 1개 유지
+      list = [validId]; // 최소 1개 유지
     }
     this.setFavoriteHomeCourseIds(list);
-    if (this.getHomeCourseId() === courseId) {
+    if (this.normalizeCourseId(this.getHomeCourseId()) === validId) {
       this.setHomeCourseId(list[0]);
     }
     return list;
@@ -1168,6 +1211,277 @@ export const ParkOnStorage = {
     } catch (e: any) {
       return { success: false, message: `복원 중 오류가 발생했습니다: ${e?.message || '형식 오류'}`, count: 0 };
     }
+  },
+
+  // 11. 구장별 100위 랭킹 산출 (공인 실력 1~100위 vs 필드 활동 1~100위 엄격 이분화)
+  getCourseLeaderboard100(
+    courseId: string,
+    courseName: string,
+    customUserName?: string
+  ): {
+    skillTop100: CourseSkillRankItem[];
+    activityTop100: CourseActivityRankItem[];
+    userSkillStatus: {
+      hasOfficialMatch: boolean;
+      officialRank: number | null;
+      officialScore: number | null;
+      hasCasualRound: boolean;
+      casualScore: number | null;
+      casualRankEquivalent: number | null;
+      isOutRank: boolean;
+      message: string;
+    };
+    userActivityStatus: {
+      rank: number;
+      roundsCount30Days: number;
+      tier: string;
+      message: string;
+    };
+  } {
+    const validCourseId = this.normalizeCourseId(courseId);
+    const profile = this.getUserProfile();
+    const myName = customUserName || profile.userName || '나이스버디';
+    const myClub = profile.clubName || '소속 클럽 미지정';
+
+    // 1. 유저의 해당 구장 완료 라운드 분석
+    const allCompleted = this.getCompletedRounds();
+    const courseRounds = allCompleted.filter(
+      (r) => this.normalizeCourseId(r.courseId) === validCourseId && r.isOfficial !== false
+    );
+
+    // 최근 30일 이내 완주 라운드 (활동 지수는 정규/일반/솔로/하루 N회 무관하게 100% 카운트)
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const user30DaysRounds = courseRounds.filter(
+      (r) => new Date(r.completedAt || r.startedAt).getTime() >= thirtyDaysAgo
+    );
+    const userRoundsCount = user30DaysRounds.length;
+
+    // 공식 클럽전/대회 라운드 vs 개인 친선 라운드 판별
+    const officialMatches = courseRounds.filter(
+      (r) => r.matchType === 'CLUB_MATCH' || r.matchType === 'TOURNAMENT' || !!r.clubRoomId
+    );
+    const casualMatches = courseRounds.filter(
+      (r) => !(r.matchType === 'CLUB_MATCH' || r.matchType === 'TOURNAMENT' || !!r.clubRoomId)
+    );
+
+    // 18홀 환산 타수 추출 헬퍼
+    const getBestScore = (rounds: RoundSession[]): number | null => {
+      let best: number | null = null;
+      rounds.forEach((r) => {
+        const me = r.players[0];
+        if (!me || !me.totalStrokes || me.totalStrokes <= 0) return;
+        const holesCount = Object.keys(me.scores || {}).length || r.totalHoles || 9;
+        if (holesCount > 0) {
+          const score18 = Math.round((me.totalStrokes / holesCount) * 18);
+          if (best === null || score18 < best) best = score18;
+        }
+      });
+      return best;
+    };
+
+    const myOfficialBest = getBestScore(officialMatches);
+    const myCasualBest = getBestScore(casualMatches);
+
+    // 2. [공인 실력 랭킹 1~100위] 베이스 시드 생성 (클럽전·공식 대회 참가자 기반)
+    const SEED_CLUBS = [
+      '구미사랑클럽', '수성버디클럽', '동락파크사랑방', '칠곡힐링클럽', '대구수성클럽',
+      '양포버디클럽', '비산파크골프', '형곡에이스클럽', '옥성단풍클럽', '선산강변클럽',
+      '해평철새클럽', '인동초클럽', '봉곡어울림', '상모사곡클럽', '원평드림클럽',
+      '황상에이스', '진미행복클럽', '양호물결클럽', '송정그린클럽', '도량한마음'
+    ];
+    const SEED_NAMES = [
+      '김동식', '이재홍', '최민호', '박상철', '김영환', '정태호', '권영미', '윤미경', '오세진', '배준호',
+      '장석호', '최경숙', '송철원', '정다혜', '김말선', '박진태', '백운기', '한상우', '서미정', '류승완',
+      '홍길동', '김현수', '이진호', '송인철', '서정민', '오성근', '이정숙', '황보경', '차명석', '고두환',
+      '유재선', '임동혁', '문병호', '노영진', '배성철', '강진수', '신동호', '안태양', '남궁민', '허정우',
+      '서진영', '조광현', '구자철', '민태식', '전명환', '배기준', '손성훈', '추승우', '곽도원', '탁재훈',
+      '변상일', '하태경', '주동수', '채정호', '엄기준', '원상필', '심형래', '석진호', '양경원', '천상욱',
+      '표동철', '나기주', '도재명', '어성호', '염동진', '용환수', '기우제', '라상준', '모영철', '사공민',
+      '우형태', '옥동열', '진병규', '팽기태', '함은호', '황명석', '길병우', '단재완', '마상훈', '방기호',
+      '사도진', '안병기', '제갈원', '풍성철', '호준혁', '공선우', '구명준', '노희철', '문도현', '민상훈',
+      '복성수', '선우진', '소병훈', '시동환', '예종석', '옥재민', '원도연', '위선우', '은상일', '임형찬'
+    ];
+
+    const baseSkillScores = [
+      48, 48, 49, 49, 50, 50, 51, 51, 51, 52,
+      52, 52, 53, 53, 53, 54, 54, 54, 54, 55,
+      55, 55, 55, 56, 56, 56, 56, 57, 57, 57,
+      57, 58, 58, 58, 58, 59, 59, 59, 59, 60,
+      60, 60, 60, 61, 61, 61, 61, 62, 62, 62,
+      62, 62, 63, 63, 63, 63, 64, 64, 64, 64,
+      64, 65, 65, 65, 65, 66, 66, 66, 66, 66,
+      67, 67, 67, 67, 68, 68, 68, 68, 68, 69,
+      69, 69, 69, 70, 70, 70, 70, 70, 71, 71,
+      71, 71, 72, 72, 72, 72, 73, 73, 74, 75
+    ];
+
+    const getGradeByScore = (sc: number): string => {
+      if (sc <= 54) return '5스타 마스터';
+      if (sc <= 58) return '4스타 상급';
+      if (sc <= 62) return '3스타 중급';
+      if (sc <= 66) return '2스타 중초급';
+      if (sc <= 72) return '1스타 초급';
+      return '일반 루키';
+    };
+
+    let skillTop100: CourseSkillRankItem[] = baseSkillScores.map((score, idx) => {
+      const rank = idx + 1;
+      const name = SEED_NAMES[idx % SEED_NAMES.length];
+      const club = SEED_CLUBS[idx % SEED_CLUBS.length];
+      const mType: '클럽전' | '정규대회' = idx % 3 === 0 ? '정규대회' : '클럽전';
+      const mMonth = Math.max(1, 9 - Math.floor(idx / 15));
+      const mDay = ((idx * 7) % 28) + 1;
+      const dateStr = `2026.${String(mMonth).padStart(2, '0')}.${String(mDay).padStart(2, '0')}`;
+
+      return {
+        rank,
+        rankLabel: `${rank}위`,
+        name: `[예시] ${name}`,
+        clubName: club,
+        score,
+        grade: getGradeByScore(score),
+        date: dateStr,
+        matchType: mType,
+        isMe: false,
+        isOutRank: false,
+      };
+    });
+
+    // 만약 유저가 공식 클럽전 기록이 있다면, 해당 순위에 유저를 정확히 삽입/정렬
+    let userOfficialRank: number | null = null;
+    if (myOfficialBest !== null) {
+      const myItem: CourseSkillRankItem = {
+        rank: 1,
+        rankLabel: '1위',
+        name: `${myName} (본인)`,
+        clubName: myClub,
+        score: myOfficialBest,
+        grade: getGradeByScore(myOfficialBest),
+        date: '2026.09.16 (최신)',
+        matchType: '클럽전',
+        isMe: true,
+        isOutRank: false,
+      };
+
+      const insertIdx = skillTop100.findIndex((it) => it.score > myOfficialBest);
+      if (insertIdx !== -1) {
+        skillTop100.splice(insertIdx, 0, myItem);
+      } else {
+        skillTop100.push(myItem);
+      }
+      skillTop100 = skillTop100.slice(0, 100).map((it, idx) => ({
+        ...it,
+        rank: idx + 1,
+        rankLabel: `${idx + 1}위`,
+      }));
+      const foundMe = skillTop100.find((it) => it.isMe);
+      userOfficialRank = foundMe ? foundMe.rank : null;
+    }
+
+    // 유저가 비공식 친선으로 친 경우: 등외 점수 산출 (100위권 안 점수라면 등외 순위 표기)
+    let userCasualRankEquivalent: number | null = null;
+    let isOutRank = false;
+    let skillMessage = '';
+
+    if (myOfficialBest !== null) {
+      skillMessage = `공식 클럽전 출전 기록으로 ${userOfficialRank}위에 공인 랭크되었습니다.`;
+    } else if (myCasualBest !== null) {
+      const eqIdx = skillTop100.findIndex((it) => it.score >= myCasualBest);
+      userCasualRankEquivalent = eqIdx !== -1 ? eqIdx + 1 : 101;
+      isOutRank = true;
+      skillMessage = `내 최고 기록: ${myCasualBest}타 [등외 점수 (비공식 친선)] - 공식 대회(클럽전)에 출전하시면 상위 ${userCasualRankEquivalent}위권으로 공식 랭킹에 즉시 등록됩니다!`;
+    } else {
+      skillMessage = '아직 이 구장에서의 라운드 기록이 없습니다. 라운드를 시작해 보세요!';
+    }
+
+    // 3. [필드 활동 랭킹 1~100위] 베이스 시드 생성 (일반/친선/솔로/하루 3번 모두 100% 반영)
+    const baseActivityRounds = [
+      54, 52, 48, 47, 45, 44, 42, 41, 40, 38,
+      38, 37, 36, 35, 34, 33, 33, 32, 31, 30,
+      29, 29, 28, 28, 27, 26, 26, 25, 25, 24,
+      24, 23, 23, 22, 22, 21, 21, 20, 20, 19,
+      19, 18, 18, 18, 17, 17, 16, 16, 15, 15,
+      15, 14, 14, 14, 13, 13, 13, 12, 12, 12,
+      11, 11, 11, 10, 10, 10, 9, 9, 9, 8,
+      8, 8, 8, 7, 7, 7, 7, 6, 6, 6,
+      6, 5, 5, 5, 5, 4, 4, 4, 4, 3,
+      3, 3, 3, 2, 2, 2, 2, 1, 1, 1
+    ];
+
+    const getActivityTier = (cnt: number): string => {
+      if (cnt >= 40) return '하루 2~3게임 열정왕';
+      if (cnt >= 25) return '매일 라운딩';
+      if (cnt >= 15) return '주 3~4회 완주';
+      if (cnt >= 8) return '주 1~2회 정기';
+      if (cnt >= 3) return '월 3~4회 즐김';
+      return '새싹 골퍼';
+    };
+
+    let activityTop100: CourseActivityRankItem[] = baseActivityRounds.map((rounds, idx) => {
+      const rank = idx + 1;
+      const name = SEED_NAMES[(idx + 13) % SEED_NAMES.length];
+      const club = SEED_CLUBS[(idx + 5) % SEED_CLUBS.length];
+
+      return {
+        rank,
+        name: `[예시] ${name}`,
+        clubName: club,
+        rounds,
+        tier: getActivityTier(rounds),
+        isMe: false,
+      };
+    });
+
+    // 유저의 실제 활동 횟수 (정규/친선/혼자/하루 3번 무관 100% 반영) 삽입
+    let userActivityRank = 100;
+    if (userRoundsCount > 0) {
+      const myActItem: CourseActivityRankItem = {
+        rank: 1,
+        name: `${myName} (본인)`,
+        clubName: myClub,
+        rounds: userRoundsCount,
+        tier: getActivityTier(userRoundsCount),
+        isMe: true,
+      };
+
+      const actInsertIdx = activityTop100.findIndex((it) => it.rounds <= userRoundsCount);
+      if (actInsertIdx !== -1) {
+        activityTop100.splice(actInsertIdx, 0, myActItem);
+      } else {
+        activityTop100.push(myActItem);
+      }
+
+      activityTop100 = activityTop100.slice(0, 100).map((it, idx) => ({
+        ...it,
+        rank: idx + 1,
+      }));
+
+      const foundAct = activityTop100.find((it) => it.isMe);
+      userActivityRank = foundAct ? foundAct.rank : 101;
+    }
+
+    return {
+      skillTop100,
+      activityTop100,
+      userSkillStatus: {
+        hasOfficialMatch: myOfficialBest !== null,
+        officialRank: userOfficialRank,
+        officialScore: myOfficialBest,
+        hasCasualRound: myCasualBest !== null,
+        casualScore: myCasualBest,
+        casualRankEquivalent: userCasualRankEquivalent,
+        isOutRank,
+        message: skillMessage,
+      },
+      userActivityStatus: {
+        rank: userActivityRank,
+        roundsCount30Days: userRoundsCount,
+        tier: getActivityTier(userRoundsCount),
+        message: userRoundsCount > 0
+          ? `최근 30일 동안 총 ${userRoundsCount}회 완주하여 활동 ${userActivityRank}위에 랭크되었습니다.`
+          : '아직 이번 달 완주 기록이 없습니다. 자유롭게 필드를 돌아보세요!',
+      },
+    };
   },
 };
 

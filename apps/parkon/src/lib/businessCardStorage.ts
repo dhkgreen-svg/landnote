@@ -123,15 +123,17 @@ export const BusinessCardStorage = {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.EXCHANGED_CARDS);
       if (data) {
-        return JSON.parse(data);
+        const parsed: UserBusinessCard[] = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(
+            (c) => c && !c.isSample && c.name !== '홍길동' && c.name !== '김파크' && c.name !== '이온'
+          );
+        }
       }
     } catch {
       // fallback
     }
-    // 기본 교환 명함 시드 (샘플 2건)
-    const seed = SAMPLE_COMMUNITY_CARDS.slice(1, 3);
-    this.saveExchangedCards(seed);
-    return seed;
+    return [];
   },
 
   saveExchangedCards(cards: UserBusinessCard[]): void {

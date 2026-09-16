@@ -1674,21 +1674,20 @@ ${link}`;
   },
 
   getMyClubIds(): string[] {
-    const defaultIds = ['club-gumi-dongrak', 'club-busan-samrak'];
-    if (typeof window === 'undefined') return defaultIds;
+    if (typeof window === 'undefined') return [];
     try {
       const data = localStorage.getItem(STORAGE_KEYS.MY_CLUB_IDS);
       if (data === null) {
-        localStorage.setItem(STORAGE_KEYS.MY_CLUB_IDS, JSON.stringify(defaultIds));
-        return defaultIds;
+        return [];
       }
       const parsed = JSON.parse(data);
       if (!Array.isArray(parsed)) {
-        return defaultIds;
+        return [];
       }
-      return parsed;
+      // 사용자가 직접 생성하거나 승인받은 클럽만 유지 (기본 가상 가입 완전 배제)
+      return parsed.filter((id) => id !== 'club-gumi-dongrak' && id !== 'club-busan-samrak');
     } catch {
-      return defaultIds;
+      return [];
     }
   },
 

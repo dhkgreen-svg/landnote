@@ -25,6 +25,10 @@ function NewRoundForm() {
   const searchParams = useSearchParams();
   const initialCourseId = searchParams.get('courseId') || searchParams.get('course');
   const joinedPlayer = searchParams.get('joined');
+  const isTrialMode =
+    searchParams.get('mode') === 'trial' ||
+    searchParams.get('mode') === 'virtual' ||
+    searchParams.get('trial') === 'true';
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
@@ -439,6 +443,8 @@ function NewRoundForm() {
       confirmedHoles: [],
       players: sortedPlayers,
       status: 'IN_PROGRESS',
+      isOfficial: !isTrialMode,
+      isVirtual: isTrialMode,
     };
 
     // 3. 서버 룸(Room)에 라운드 시작 알림 -> 대기실의 동반자들도 즉시 스코어카드로 자동 이동!
@@ -475,6 +481,10 @@ function NewRoundForm() {
   };
 
   const handleInitiateStartRound = () => {
+    if (isTrialMode) {
+      startRound();
+      return;
+    }
     if (typeof window !== 'undefined') {
       const hideDate = localStorage.getItem('parkon_hide_round_notice_date');
       const today = new Date().toISOString().slice(0, 10);
@@ -494,35 +504,39 @@ function NewRoundForm() {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h2 className="text-lg font-black text-stone-900 leading-tight">새 라운드 시작 설정</h2>
+          <h2 className="text-lg font-black text-stone-900 leading-tight flex items-center gap-1.5">
+            <span>{isTrialMode ? '🎯 프로그램 체험 연습 (팀 만들기)' : '새 라운드 시작 설정'}</span>
+            {isTrialMode && (
+              <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
+                체험 모드
+              </span>
+            )}
+          </h2>
           <p className="text-[11px] text-stone-600 font-semibold">
-            플레이할 구장과 코스를 자유롭게 선택하세요
+            {isTrialMode
+              ? '동반자 초대 및 팀 구성을 실전과 똑같이 체험해 보세요 (기록 미저장)'
+              : '플레이할 구장과 코스를 자유롭게 선택하세요'}
           </p>
         </div>
       </div>
 
-      {/* 🎯 가상 라운딩 1초 체험 배너 (기록 걱정 없이 언제든 테스트 가능) */}
-      <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-3 text-white shadow-md flex items-center justify-between gap-2.5">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-1 font-black text-xs text-stone-950 bg-amber-200/90 w-fit px-2 py-0.5 rounded-full">
-            <span>🎯</span>
-            <span>기록 부담 없는 가상 라운딩 체험</span>
+      {/* 🎯 프로그램 체험 연습 안내 가이드 배너 */}
+      {isTrialMode ? (
+        <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 rounded-2xl p-3.5 text-stone-950 shadow-md border-2 border-amber-300 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 font-black text-xs text-stone-950">
+              <span className="text-sm">🎯</span>
+              <span>체험 연습 모드 안내 (실전과 100% 동일 진행)</span>
+            </div>
+            <span className="text-[10px] bg-stone-950 text-amber-300 font-black px-2 py-0.5 rounded-full">
+              무흔적 안심 연습
+            </span>
           </div>
-          <p className="text-[11px] text-amber-100 font-medium leading-tight">
-            시간 무제한 · 종료 시 기록 제로(무흔적) 안심 연습
+          <p className="text-[11.5px] text-stone-950 font-bold leading-snug">
+            아래에서 <strong>동반자 인원수(1~4인) 선택</strong>, <strong>동반자 초대(QR·문자)</strong>, <strong>조장 지정</strong>, <strong>시작 코스</strong>를 실전처럼 설정한 뒤 [티샷 시작]을 누르시면 가상 스코어카드로 이동합니다!
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            const virtualSession = ParkOnStorage.createVirtualRoundSession(currentCourse?.id || selectedCourseId);
-            router.push(`/round/${virtualSession.id}`);
-          }}
-          className="bg-stone-950 hover:bg-stone-900 text-amber-300 font-black text-xs px-3 py-2 rounded-xl shrink-0 shadow transition active:scale-95 flex items-center gap-1 cursor-pointer"
-        >
-          <span>1초 체험 ▶</span>
-        </button>
-      </div>
+      ) : null}
 
       {/* 1. Current Play Course Display Card (구장에만 집중: 선택창/검색버튼/라벨 완전 제거) */}
       {currentCourse && (
@@ -668,24 +682,21 @@ function NewRoundForm() {
           </div>
         </div>
 
-        {/* QR Code Auto-Invite Banner */}
-        <div className="flex items-center justify-between bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl p-2.5">
+        {/* 동반자 초대 배너 (QR / 카카오톡 / 문자 초대) */}
+        <button
+          type="button"
+          onClick={() => setShowQrModal(true)}
+          className="w-full flex items-center justify-between bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 hover:from-emerald-100 hover:to-teal-100 border border-emerald-300 rounded-xl p-2.5 shadow-xs transition active:scale-[0.99] cursor-pointer text-left"
+        >
           <div className="flex items-center gap-2">
             <span className="text-xl">📱</span>
-            <div>
-              <div className="text-xs font-black text-emerald-950">스마트폰 QR 동반자 자동 등록</div>
-              <div className="text-[10px] text-emerald-700">카메라로 비추면 동반자 이름이 명단에 쏙 채워집니다</div>
-            </div>
+            <span className="text-sm font-black text-emerald-950">동반자 초대</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowQrModal(true)}
-            className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs active:scale-95 transition flex items-center gap-1 shrink-0 cursor-pointer"
-          >
+          <div className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs flex items-center gap-1.5 shrink-0">
             <QrCode className="w-3.5 h-3.5" />
-            <span>QR코드 초대</span>
-          </button>
-        </div>
+            <span>QR / 카카오톡 / 문자 초대</span>
+          </div>
+        </button>
 
         {/* Toast Notification when QR simulation adds a player */}
         {joinSimulationToast && (
@@ -694,17 +705,6 @@ function NewRoundForm() {
             <span>{joinSimulationToast}</span>
           </div>
         )}
-
-        {/* 안내문 */}
-        <div className="bg-amber-50 border border-amber-200/90 rounded-xl p-2.5 text-[11px] text-amber-950 font-bold space-y-0.5">
-          <div className="flex items-center gap-1 text-amber-900 font-black">
-            <span>💡</span>
-            <span>조장 지정 및 정렬 안내</span>
-          </div>
-          <p className="text-stone-600 leading-snug">
-            동반자 이름을 자유롭게 입력하신 후, 우측 끝의 <strong>[👑 조장]</strong> 버튼을 누르면 그 분이 1번으로 자동 지정되고 나머지 분들은 <strong>가나다순</strong>으로 자동 정렬되어 게임이 시작됩니다.
-          </p>
-        </div>
 
         {/* Dynamic Player Rows (1 to playerCount) */}
         <div className="space-y-2 pt-0.5">
@@ -761,17 +761,33 @@ function NewRoundForm() {
             </div>
           ))}
         </div>
+
+        {/* 조장 지정 및 정렬 안내문 (참고용 - 플레이어 리스트 하단 배치) */}
+        <div className="bg-amber-50 border border-amber-200/90 rounded-xl p-2.5 text-[11px] text-amber-950 font-bold space-y-0.5">
+          <div className="flex items-center gap-1 text-amber-900 font-black">
+            <span>💡</span>
+            <span>조장 지정 및 정렬 안내</span>
+          </div>
+          <p className="text-stone-600 leading-snug">
+            동반자 이름을 자유롭게 입력하신 후, 우측 끝의 <strong>[👑 조장]</strong> 버튼을 누르면 그 분이 1번으로 자동 지정되고 나머지 분들은 <strong>가나다순</strong>으로 자동 정렬되어 게임이 시작됩니다.
+          </p>
+        </div>
       </div>
 
       {/* 4. Bottom Start Button */}
       <button
         type="button"
         onClick={handleInitiateStartRound}
-        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-base font-black py-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
+        className={`w-full text-base font-black py-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5 active:scale-[0.98] transition cursor-pointer ${
+          isTrialMode
+            ? 'bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 border-2 border-amber-300'
+            : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+        }`}
       >
         <Play className="w-4 h-4 fill-current" />
         <span>
-          {selectedCourseLetter}코스 {startHoleIndex}번 홀 티샷 시작 ⛳
+          {isTrialMode ? '🎯 ' : ''}
+          {selectedCourseLetter}코스 {startHoleIndex}번 홀 {isTrialMode ? '체험 티샷 시작' : '티샷 시작 ⛳'}
         </span>
       </button>
 
@@ -865,8 +881,8 @@ function NewRoundForm() {
               <div className="flex items-center gap-2">
                 <span className="text-xl">📱</span>
                 <div>
-                  <h3 className="font-black text-stone-900 text-base leading-tight">동반자 QR코드 자동 초대</h3>
-                  <p className="text-xs text-stone-500">카메라로 비추면 명단에 자동 등록</p>
+                  <h3 className="font-black text-stone-900 text-base leading-tight">동반자 초대</h3>
+                  <p className="text-xs text-stone-500">QR 스캔 또는 카카오톡·문자 전송</p>
                 </div>
               </div>
               <button
@@ -879,170 +895,149 @@ function NewRoundForm() {
             </div>
 
             {/* 스크롤 가능한 모달 본문 */}
-            <div className="p-4 space-y-3.5 overflow-y-auto flex-1 overscroll-contain">
-              {/* QR Code Display */}
-            <div data-room-id={roomId} data-invite-url={inviteUrl} className="flex flex-col items-center justify-center p-4 bg-stone-50 rounded-2xl border border-stone-200 text-center space-y-2.5">
-              <div className="p-3 bg-white rounded-2xl shadow-sm border-2 border-emerald-500/30 flex flex-col items-center justify-center relative">
-                {qrDataUrl ? (
-                  <div className="relative flex items-center justify-center">
-                    <img
-                      src={qrDataUrl}
-                      alt="동반자 초대 QR 코드"
-                      className="w-48 h-48 rounded-xl object-contain shadow-inner"
-                    />
-                    {/* Center Emblem Badge */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="w-10 h-10 bg-white rounded-xl shadow-md border-2 border-emerald-600 flex items-center justify-center">
-                        <span className="text-xl">⛳</span>
+            <div className="p-4 space-y-3 overflow-y-auto flex-1 overscroll-contain">
+              {/* 1. 제일 위: QR 코드 디스플레이 */}
+              <div data-room-id={roomId} data-invite-url={inviteUrl} className="flex flex-col items-center justify-center p-3.5 bg-stone-50 rounded-2xl border border-stone-200 text-center">
+                <div className="p-2.5 bg-white rounded-2xl shadow-sm border-2 border-emerald-500/30 flex flex-col items-center justify-center relative">
+                  {qrDataUrl ? (
+                    <div className="relative flex items-center justify-center">
+                      <img
+                        src={qrDataUrl}
+                        alt="동반자 초대 QR 코드"
+                        className="w-44 h-44 rounded-xl object-contain shadow-inner"
+                      />
+                      {/* Center Emblem Badge */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-10 h-10 bg-white rounded-xl shadow-md border-2 border-emerald-600 flex items-center justify-center">
+                          <span className="text-xl">⛳</span>
+                        </div>
                       </div>
                     </div>
+                  ) : (
+                    <div className="w-44 h-44 flex items-center justify-center text-stone-400 font-bold text-sm">
+                      QR 코드 생성 중...
+                    </div>
+                  )}
+                </div>
+                <p className="text-[11px] text-stone-600 font-bold mt-1.5">
+                  📷 동반자가 스마트폰 카메라로 비추면 바로 참가 화면이 열립니다.
+                </p>
+              </div>
+
+              {/* 2. QR 바로 밑: 카카오톡 / 문자 초대장 보내기 */}
+              <div className="space-y-1.5">
+                <button
+                  type="button"
+                  onClick={handleShareInvite}
+                  className="w-full py-3.5 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] font-black rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm border border-[#E6CF00] transition active:scale-98 cursor-pointer"
+                >
+                  <span className="text-base leading-none">💬</span>
+                  <span>{copiedLink ? '초대 링크 복사 완료!' : '카카오톡 / 문자 초대장 보내기'}</span>
+                  {copiedLink ? (
+                    <Check className="w-4 h-4 ml-auto text-emerald-800 font-black" />
+                  ) : (
+                    <Share2 className="w-4 h-4 ml-auto text-stone-700" />
+                  )}
+                </button>
+
+                {/* 클릭 시 안내 문구 네모 박스 */}
+                {copiedLink ? (
+                  <div className="bg-emerald-700 text-white rounded-xl p-2.5 text-xs font-black text-center shadow-md animate-in fade-in slide-in-from-top-1 duration-150 flex flex-col items-center justify-center gap-0.5">
+                    <div className="flex items-center gap-1.5 text-emerald-100">
+                      <span className="text-sm">📋</span>
+                      <span className="text-xs font-black text-white">초대 링크가 복사되었습니다!</span>
+                    </div>
+                    <p className="text-[11px] text-emerald-100 font-medium leading-tight">
+                      카카오톡이나 문자 대화창에 <span className="underline font-bold text-white">[붙여넣기]</span> 하시면 됩니다.
+                    </p>
                   </div>
                 ) : (
-                  <div className="w-48 h-48 flex items-center justify-center text-stone-400 font-bold text-sm">
-                    QR 코드 생성 중...
+                  <div className="bg-amber-50/80 border border-amber-200/80 rounded-lg py-1 px-2.5 text-[11px] text-amber-900 text-center flex items-center justify-center gap-1">
+                    <span>👉</span>
+                    <span>클릭 시 복사되며, 카카오톡·문자 대화창에 [붙여넣기] 하시면 됩니다.</span>
                   </div>
                 )}
               </div>
-              <div className="space-y-1">
-                <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-black text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full">
-                    초대 구장: {currentCourse?.name || '파크골프장'}
+
+              {/* 3. 그 다음: 실시간 동반자 참여 현황 */}
+              <div className="bg-emerald-50/90 border-2 border-emerald-400/80 rounded-xl p-3 space-y-2 text-left shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-emerald-950">
+                    <Users className="w-4 h-4 text-emerald-700" />
+                    <span>실시간 동반자 참여 현황</span>
+                  </div>
+                  <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                    실시간 자동 감지 중
                   </span>
-                  <span className="text-[11px] font-bold text-stone-600 bg-stone-200/80 px-2 py-0.5 rounded-md">
+                </div>
+
+                <div className="space-y-1.5 pt-0.5">
+                  {playersList.slice(0, playerCount).map((p, idx) => {
+                    const isJoined = p.isLeader || !p.name.startsWith('동반자');
+                    return (
+                      <div
+                        key={p.id || idx}
+                        className={`flex items-center justify-between p-2 rounded-lg border text-xs transition ${
+                          p.isLeader
+                            ? 'bg-amber-100/90 border-amber-300 text-amber-950 font-black'
+                            : isJoined
+                            ? 'bg-white border-emerald-500 text-emerald-950 font-black shadow-xs'
+                            : 'bg-stone-50 border-stone-200 text-stone-400 font-medium'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <span
+                            className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                              p.isLeader
+                                ? 'bg-amber-400 text-amber-950'
+                                : isJoined
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-stone-200 text-stone-500'
+                            }`}
+                          >
+                            {idx + 1}
+                          </span>
+                          <span className="truncate">{p.name}</span>
+                        </div>
+
+                        <div className="shrink-0">
+                          {p.isLeader ? (
+                            <span className="text-[10px] bg-amber-200 text-amber-900 font-black px-1.5 py-0.5 rounded">
+                              👑 조장
+                            </span>
+                          ) : isJoined ? (
+                            <span className="text-[10px] bg-emerald-600 text-white font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                              ✓ 입장 완료
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
+                              스캔 대기 중...
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 4. 그 밑: 초대 구장 안내문 (작은 글씨) */}
+              <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-xs text-stone-600 space-y-1.5">
+                <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                  <span className="text-xs font-black text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded-md">
+                    ⛳ 초대 구장: {currentCourse?.name || '동락파크골프장'}
+                  </span>
+                  <span className="text-[10px] font-bold text-stone-500 bg-stone-200/70 px-1.5 py-0.5 rounded">
                     대기실 코드: #{roomId ? roomId.slice(-6).toUpperCase() : 'PARK'}
                   </span>
                 </div>
-                <p className="text-[12px] text-stone-700 font-extrabold">
-                  📷 동반자가 스마트폰 기본 카메라로 비추면 바로 참가 대기실이 열립니다.
+                <p className="text-[11px] text-stone-600 font-medium leading-relaxed">
+                  • 동반자가 참여하면 위 참여 현황 명단에 이름이 자동으로 쏙 채워집니다.<br />
+                  • 회원은 본인 실명/별명으로 자동 입장되며, 비회원은 게스트로 3초 만에 합류합니다.<br />
+                  • 라운드 시작 후에는 동반자 스마트폰에서도 실시간 스코어가 함께 공유됩니다.
                 </p>
               </div>
-            </div>
-
-            {/* 실시간 동반자 입장 감지 현황 박스 (QR 모달 안에서 바로 확인 가능) */}
-            <div className="bg-emerald-50/90 border-2 border-emerald-400/80 rounded-xl p-3 space-y-2 text-left shadow-xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-black text-emerald-950">
-                  <Users className="w-4 h-4 text-emerald-700" />
-                  <span>실시간 동반자 참여 현황</span>
-                </div>
-                <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                  실시간 자동 감지 중
-                </span>
-              </div>
-
-              <div className="space-y-1.5 pt-0.5">
-                {playersList.slice(0, playerCount).map((p, idx) => {
-                  const isJoined = p.isLeader || !p.name.startsWith('동반자');
-                  return (
-                    <div
-                      key={p.id || idx}
-                      className={`flex items-center justify-between p-2 rounded-lg border text-xs transition ${
-                        p.isLeader
-                          ? 'bg-amber-100/90 border-amber-300 text-amber-950 font-black'
-                          : isJoined
-                          ? 'bg-white border-emerald-500 text-emerald-950 font-black shadow-xs'
-                          : 'bg-stone-50 border-stone-200 text-stone-400 font-medium'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <span
-                          className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
-                            p.isLeader
-                              ? 'bg-amber-400 text-amber-950'
-                              : isJoined
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-stone-200 text-stone-500'
-                          }`}
-                        >
-                          {idx + 1}
-                        </span>
-                        <span className="truncate">{p.name}</span>
-                      </div>
-
-                      <div className="shrink-0">
-                        {p.isLeader ? (
-                          <span className="text-[10px] bg-amber-200 text-amber-900 font-black px-1.5 py-0.5 rounded">
-                            👑 조장
-                          </span>
-                        ) : isJoined ? (
-                          <span className="text-[10px] bg-emerald-600 text-white font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                            ✓ 입장 완료
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
-                            스캔 대기 중...
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 눈에 잘 띄는 카카오톡/문자용 초대 링크 복사 네모 박스 (QR 바로 밑에 배치) */}
-            <div className="space-y-1.5">
-              <button
-                type="button"
-                onClick={handleShareInvite}
-                className="w-full py-3.5 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] font-black rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm border border-[#E6CF00] transition active:scale-98 cursor-pointer"
-              >
-                <span className="text-base leading-none">💬</span>
-                <span>{copiedLink ? '초대 링크 복사 완료!' : '카카오톡 / 문자 초대장 보내기'}</span>
-                {copiedLink ? (
-                  <Check className="w-4 h-4 ml-auto text-emerald-800 font-black" />
-                ) : (
-                  <Share2 className="w-4 h-4 ml-auto text-stone-700" />
-                )}
-              </button>
-
-              {/* 클릭 시 안내 문구 네모 박스 */}
-              {copiedLink ? (
-                <div className="bg-emerald-700 text-white rounded-xl p-3 text-xs font-black text-center shadow-md animate-in fade-in slide-in-from-top-1 duration-150 flex flex-col items-center justify-center gap-1">
-                  <div className="flex items-center gap-1.5 text-emerald-100">
-                    <span className="text-sm">📋</span>
-                    <span className="text-xs font-black text-white">초대 링크가 복사되었습니다!</span>
-                  </div>
-                  <p className="text-[11px] text-emerald-100 font-medium leading-tight">
-                    카카오톡이나 문자 등 <span className="underline font-bold text-white">초청하고 싶은 곳에 [붙여넣기]</span> 하시면 됩니다.
-                  </p>
-                </div>
-              ) : (
-                <div className="bg-amber-50/80 border border-amber-200/80 rounded-lg py-1.5 px-2.5 text-[11px] text-amber-900 text-center flex items-center justify-center gap-1">
-                  <span>👉</span>
-                  <span>클릭 시 복사되며, 카카오톡·문자 대화창에 [붙여넣기] 하시면 됩니다.</span>
-                </div>
-              )}
-            </div>
-
-            {/* Guide bullet points */}
-            <div className="bg-amber-50 border border-amber-200/90 rounded-xl p-3 text-xs text-amber-950 space-y-1">
-              <div className="font-extrabold flex items-center gap-1 text-amber-900">
-                <span>💡</span>
-                <span>QR 동반자 자동 등록 안내</span>
-              </div>
-              <p className="text-[11px] leading-relaxed text-amber-800">
-                • 동반자가 파크온에 가입되어 있다면, 본인 프로필명(실명/닉네임)으로 자동 승인됩니다.<br />
-                • 동반자가 참여하면 방장 화면의 명단 빈칸에 이름이 자동으로 쏙 채워집니다.<br />
-                • 라운드 시작 후에는 동반자 스마트폰에서도 실시간 스코어가 함께 공유됩니다.
-              </p>
-            </div>
-
-            {/* Instant Test Simulator Button */}
-            <div className="pt-0.5">
-              <button
-                type="button"
-                onClick={() => {
-                  handleSimulateQrJoin('이동반');
-                  setShowQrModal(false);
-                }}
-                className="w-full py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-extrabold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4 text-emerald-600" />
-                <span>[체험 테스트] 동반자(이동반 님) 자동 참여 시뮬레이션</span>
-              </button>
-            </div>
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { RoundSession } from '@/types/parkon';
+import { UserBusinessCard } from '@/types/businessCard';
 import { supabase } from './supabase';
 import { ParkOnStorage } from './storage';
 
@@ -13,6 +14,7 @@ export interface Companionship {
   createdAt: string;
   avatarColor?: string;
   memo?: string;
+  businessCard?: UserBusinessCard;
 }
 
 export type CheerReactionType = 'NICE_SHOT' | 'CONGRATS' | 'FIGHTING';
@@ -65,98 +67,30 @@ const AVATAR_COLORS = [
   'bg-rose-600',
 ];
 
-const DEFAULT_COMPANIONS: Companionship[] = [
-  {
-    id: 'comp_1',
-    userId: 'self',
-    companionId: 'user_lee_yh',
-    companionName: '[예시] 이영호',
-    roundCount: 14,
-    lastPlayedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    lastCourseName: '구미 동락 파크골프장',
-    createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-    avatarColor: 'bg-emerald-600',
-    memo: '드라이버 굿샷 파트너 (핸디 0)',
-  },
-  {
-    id: 'comp_2',
-    userId: 'self',
-    companionId: 'user_park_cs',
-    companionName: '[예시] 박철수',
-    roundCount: 9,
-    lastPlayedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-    lastCourseName: '구미 양호 파크골프장',
-    createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-    avatarColor: 'bg-blue-600',
-    memo: '어프로치 퍼팅 명수',
-  },
-  {
-    id: 'comp_3',
-    userId: 'self',
-    companionId: 'user_jung_sj',
-    companionName: '[샘플] 정순자',
-    roundCount: 7,
-    lastPlayedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    lastCourseName: '구미 지산 파크골프장',
-    createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
-    avatarColor: 'bg-purple-600',
-    memo: '주말 오전 조기 라운드 동반',
-  },
-];
+const DEFAULT_COMPANIONS: Companionship[] = [];
 
-const DEFAULT_FEED_ITEMS: CheerFeedItem[] = [
-  {
-    id: 'feed_1',
-    companionId: 'user_lee_yh',
-    companionName: '[예시] 이영호',
-    courseName: '구미 동락 파크골프장',
-    actionText: '동락 18홀 라운드 완주!',
-    scoreSummary: '최종 57타 (-3 언더파 🥇1위)',
-    timestamp: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-    timeAgoStr: '25분 전',
-    isPlaying: false,
-    cheers: { NICE_SHOT: 8, CONGRATS: 5, FIGHTING: 3 },
-  },
-  {
-    id: 'feed_2',
-    companionId: 'user_park_cs',
-    companionName: '[예시] 박철수',
-    courseName: '구미 양호 파크골프장',
-    actionText: 'B코스 7번홀 그림 같은 2타 버디 달성!',
-    scoreSummary: '버디 퍼팅 성공 ⛳',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    timeAgoStr: '2시간 전',
-    isPlaying: false,
-    cheers: { NICE_SHOT: 12, CONGRATS: 7, FIGHTING: 2 },
-  },
-  {
-    id: 'feed_3',
-    companionId: 'user_jung_sj',
-    companionName: '[샘플] 정순자',
-    courseName: '구미 지산 파크골프장',
-    actionText: '지산 36홀 라운드 진행 중!',
-    scoreSummary: '현재 14번홀 플레이 중',
-    timestamp: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
-    timeAgoStr: '실시간 라운드 중',
-    isPlaying: true,
-    cheers: { NICE_SHOT: 4, CONGRATS: 2, FIGHTING: 9 },
-  },
-];
+const DEFAULT_FEED_ITEMS: CheerFeedItem[] = [];
 
 export const CompanionStorage = {
   // 1. 1촌 목록 조회
   getCompanions(): Companionship[] {
-    if (typeof window === 'undefined') return DEFAULT_COMPANIONS;
+    if (typeof window === 'undefined') return [];
     try {
       const data = localStorage.getItem(STORAGE_KEYS.COMPANIONS);
-      if (!data) {
-        localStorage.setItem(STORAGE_KEYS.COMPANIONS, JSON.stringify(DEFAULT_COMPANIONS));
-        return DEFAULT_COMPANIONS;
-      }
+      if (!data) return [];
       const parsed: Companionship[] = JSON.parse(data);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_COMPANIONS;
+      if (!Array.isArray(parsed)) return [];
+      // Clean out legacy mock companions
+      return parsed.filter(
+        (c) =>
+          c &&
+          c.companionId !== 'user_lee_yh' &&
+          c.companionId !== 'user_park_cs' &&
+          c.companionId !== 'user_jung_sj' &&
+          !c.id.startsWith('comp_')
+      );
     } catch {
-      return DEFAULT_COMPANIONS;
+      return [];
     }
   },
 
@@ -255,17 +189,22 @@ export const CompanionStorage = {
 
   // 6. 1촌 활동 & 응원 피드
   getCheerFeed(): CheerFeedItem[] {
-    if (typeof window === 'undefined') return DEFAULT_FEED_ITEMS;
+    if (typeof window === 'undefined') return [];
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CHEER_FEED);
-      if (!data) {
-        localStorage.setItem(STORAGE_KEYS.CHEER_FEED, JSON.stringify(DEFAULT_FEED_ITEMS));
-        return DEFAULT_FEED_ITEMS;
-      }
+      if (!data) return [];
       const parsed: CheerFeedItem[] = JSON.parse(data);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_FEED_ITEMS;
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(
+        (f) =>
+          f &&
+          f.companionId !== 'user_lee_yh' &&
+          f.companionId !== 'user_park_cs' &&
+          f.companionId !== 'user_jung_sj' &&
+          !f.id.startsWith('feed_')
+      );
     } catch {
-      return DEFAULT_FEED_ITEMS;
+      return [];
     }
   },
 
@@ -367,44 +306,18 @@ export const CompanionStorage = {
     if (typeof window === 'undefined') return [];
     try {
       const data = localStorage.getItem(STORAGE_KEYS.LIGHTNING_ROUNDS);
-      if (!data) {
-        const defaultSeeds: CompanionLightningRound[] = [
-          {
-            id: 'ltn_seed_1',
-            hostId: 'user_lee_yh',
-            hostName: '이영호',
-            courseId: 'course-gumi-dongrak',
-            courseName: '구미 동락 파크골프장',
-            dateStr: '오늘',
-            timeStr: '14:30',
-            targetPlayersCount: 4,
-            invited1ChonNames: ['박철수', '정순자'],
-            acceptedPlayers: [
-              { id: 'user_lee_yh', name: '이영호', isHost: true, acceptedAt: new Date().toISOString() },
-              { id: 'user_park_cs', name: '박철수', isHost: false, acceptedAt: new Date().toISOString() },
-            ],
-            currentPlayers: [
-              { id: 'user_lee_yh', name: '이영호', isHost: true },
-              { id: 'user_park_cs', name: '박철수', isHost: false },
-            ],
-            notes: '오후 선선할 때 18홀 편하게 도실 1촌 2분 모십니다!',
-            tags: ['명랑 라운드', '동락 A+B코스', '초보 환영'],
-            status: 'RECRUITING',
-            createdAt: new Date().toISOString(),
-          },
-        ];
-        localStorage.setItem(STORAGE_KEYS.LIGHTNING_ROUNDS, JSON.stringify(defaultSeeds));
-        return defaultSeeds;
-      }
+      if (!data) return [];
       const parsed: CompanionLightningRound[] = JSON.parse(data);
       if (Array.isArray(parsed)) {
-        return parsed.map((r) => ({
-          ...r,
-          acceptedPlayers: r.acceptedPlayers || r.currentPlayers.map((p) => ({
-            ...p,
-            acceptedAt: r.createdAt || new Date().toISOString(),
-          })),
-        }));
+        return parsed
+          .filter((r) => r && r.id !== 'ltn_seed_1' && r.hostId !== 'user_lee_yh')
+          .map((r) => ({
+            ...r,
+            acceptedPlayers: r.acceptedPlayers || r.currentPlayers.map((p) => ({
+              ...p,
+              acceptedAt: r.createdAt || new Date().toISOString(),
+            })),
+          }));
       }
       return [];
     } catch {

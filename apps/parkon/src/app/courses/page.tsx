@@ -221,6 +221,7 @@ export default function CoursesPage() {
   const router = useRouter();
   const [courses, setCourses] = useState<Course[]>(DEFAULT_COURSES);
   const [homeCourseId, setHomeCourseId] = useState<string>('');
+  const [favoriteHomeCourseIds, setFavoriteHomeCourseIds] = useState<string[]>([]);
   
   // Search input and applied search term
   const [inputQuery, setInputQuery] = useState<string>('');
@@ -387,22 +388,42 @@ export default function CoursesPage() {
     } catch (err) {
       console.error(err);
     }
+    refreshCourses();
+    window.addEventListener('parkon_favorite_courses_updated', refreshCourses);
+    return () => {
+      window.removeEventListener('parkon_favorite_courses_updated', refreshCourses);
+    };
   }, []);
 
   const refreshCourses = () => {
     setCourses(ParkOnStorage.getAllCourses());
     setHomeCourseId(ParkOnStorage.getHomeCourseId());
+    setFavoriteHomeCourseIds(ParkOnStorage.getFavoriteHomeCourseIds());
   };
 
-  const handleSetHomeCourse = (courseId: string) => {
-    ParkOnStorage.setHomeCourseId(courseId);
-    setHomeCourseId(courseId);
+  const handleToggleFavoriteHomeCourse = (courseId: string) => {
+    const validId = ParkOnStorage.normalizeCourseId(courseId);
+    const list = ParkOnStorage.getFavoriteHomeCourseIds();
+    if (list.includes(validId)) {
+      if (list.length > 1) {
+        const updated = ParkOnStorage.removeFavoriteHomeCourse(validId);
+        setFavoriteHomeCourseIds(updated);
+        setHomeCourseId(ParkOnStorage.getHomeCourseId());
+      } else {
+        alert('최소 1개의 홈구장은 유지되어야 합니다.');
+      }
+    } else {
+      const updated = ParkOnStorage.addFavoriteHomeCourse(validId);
+      setFavoriteHomeCourseIds(updated);
+    }
   };
 
   const handleSelectCourseAndGoHome = (courseId: string) => {
-    ParkOnStorage.setHomeCourseId(courseId);
-    setHomeCourseId(courseId);
-    router.push(`/?courseId=${courseId}`);
+    const validId = ParkOnStorage.normalizeCourseId(courseId);
+    ParkOnStorage.setHomeCourseId(validId);
+    ParkOnStorage.addFavoriteHomeCourse(validId);
+    setHomeCourseId(validId);
+    router.push('/');
   };
 
   // Perform search on magnifying glass click or Enter key
@@ -1115,6 +1136,7 @@ export default function CoursesPage() {
             ) : (
               filteredCourses.map((c) => {
                 const isHome = homeCourseId === c.id;
+                const isFavorite = favoriteHomeCourseIds.includes(c.id);
 
                 return (
                   <div
@@ -1122,6 +1144,8 @@ export default function CoursesPage() {
                     className={`p-4 rounded-3xl border-2 transition shadow-sm space-y-3 ${
                       isHome
                         ? 'bg-emerald-50/70 border-emerald-500 ring-2 ring-emerald-500/20'
+                        : isFavorite
+                        ? 'bg-amber-50/50 border-amber-400/80 ring-2 ring-amber-400/20'
                         : 'bg-white border-stone-200 hover:border-emerald-300'
                     }`}
                   >
@@ -1142,11 +1166,15 @@ export default function CoursesPage() {
                               공인 검증
                             </span>
                           )}
-                          {isHome && (
+                          {isHome ? (
                             <span className="text-[10px] bg-emerald-700 text-white font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
                               ★ 현재 선택됨
                             </span>
-                          )}
+                          ) : isFavorite ? (
+                            <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                              ★ 내 홈구장
+                            </span>
+                          ) : null}
                         </div>
                         <p className="text-xs text-stone-700 mt-1 font-semibold flex items-center gap-1">
                           <MapPin className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
@@ -1265,16 +1293,18 @@ export default function CoursesPage() {
 
                       <button
                         type="button"
-                        onClick={() => handleSetHomeCourse(c.id)}
+                        onClick={() => handleToggleFavoriteHomeCourse(c.id)}
                         className={`px-3 py-3 rounded-xl border text-xs font-black flex items-center gap-1 transition cursor-pointer ${
                           isHome
-                            ? 'bg-emerald-100 text-emerald-950 border-emerald-400'
+                            ? 'bg-emerald-100 text-emerald-950 border-emerald-400 ring-2 ring-emerald-500/20'
+                            : isFavorite
+                            ? 'bg-amber-100 text-amber-950 border-amber-400'
                             : 'bg-white text-stone-800 border-stone-300 hover:bg-stone-50'
                         }`}
-                        title="내 지정 홈 구장으로 설정"
+                        title="내 지정 홈 구장으로 설정/해제"
                       >
-                        <Star className={`w-3.5 h-3.5 ${isHome ? 'fill-current text-yellow-500' : ''}`} />
-                        <span>{isHome ? '지정됨' : '홈 지정'}</span>
+                        <Star className={`w-3.5 h-3.5 ${isHome || isFavorite ? 'fill-current text-yellow-500' : ''}`} />
+                        <span>{isHome ? '현재 선택됨' : isFavorite ? '내 구장' : '홈 지정'}</span>
                       </button>
 
                       {c.id.startsWith('custom-course-') && (

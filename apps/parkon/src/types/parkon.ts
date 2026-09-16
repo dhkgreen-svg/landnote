@@ -66,6 +66,7 @@ export interface RoundPlayer {
   name: string;
   isLeader?: boolean; // 조장 여부 (조장은 항상 1번에 배치)
   isSelf?: boolean;   // 본인 여부
+  isGuest?: boolean;  // 게스트(비회원) 여부: 실시간 공유 전용, 본인 폰 기록 미반영
   isOut?: boolean;    // 사정상 중도 퇴장/기권 여부 (기존 홀 기록 보존, 이후 홀 제외)
   departedHole?: number; // 몇 번 홀에서 중도 퇴장했는지 표시용
   scores: Record<number, number>; // hole -> strokes
@@ -90,8 +91,31 @@ export interface RoundSession {
   status: 'IN_PROGRESS' | 'COMPLETED';
   isOfficial?: boolean; // true = 공식 전적/평균타수 반영, false = 연습/테스트 라운드(미반영)
   isVirtual?: boolean;  // true = 가상 라운딩 (체험/연습 모드, 시간 무제한, 종료 시 기록 제로 미보존)
+  matchType?: 'CLUB_MATCH' | 'TOURNAMENT' | 'CASUAL'; // 클럽전 | 정규대회 | 개인친선
   clubRoomId?: string;
   clubGroupNumber?: number;
+}
+
+export interface CourseSkillRankItem {
+  rank: number;
+  rankLabel: string;
+  name: string;
+  clubName: string;
+  score: number;
+  grade: string;
+  date: string;
+  matchType: '클럽전' | '정규대회' | '개인친선';
+  isMe?: boolean;
+  isOutRank?: boolean; // 비공식 친선일 때 '등외 점수'
+}
+
+export interface CourseActivityRankItem {
+  rank: number;
+  name: string;
+  clubName?: string;
+  rounds: number;
+  tier: string;
+  isMe?: boolean;
 }
 
 export type GrassCondition = 'GOOD' | 'NORMAL' | 'BAD';

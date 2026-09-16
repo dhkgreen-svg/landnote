@@ -1,7 +1,7 @@
 import { TournamentNotice, ParkGolfNewsItem, UserVoiceItem, FreeBoardPost } from '@/types/board';
 
 const STORAGE_KEYS = {
-  NOTICES: 'parkon_tournament_notices_v3',
+  NOTICES: 'parkon_tournament_notices_v4',
   NEWS: 'parkon_news_items_v2',
   VOICES: 'parkon_user_voices_v1',
   POSTS: 'parkon_free_posts_v1',
@@ -30,11 +30,14 @@ export const DEFAULT_NOTICES: TournamentNotice[] = [
     courseId: 'course-changwon-daesan',
     status: 'RECRUITING',
     periodStr: '2026.09.15 ~ 10.05 (협회 공고)',
-    eventDateStr: '2026년 10월 19일(월) ~ 20일(화)',
+    eventDateStr: '2026년 10월 20일(화) ~ 21일(수)',
     entryFee: '1인 30,000원',
     targetCount: '전국 시·도 대표선수단 총 600명',
     qualification: '대한파크골프협회 2026 등록 정회원 및 시·도 선발 선수',
-    linkUrl: 'https://www.kpga7330.com/competitions',
+    linkUrl: 'https://www.kpga7330.com/competitions/e1472f5c-4ae0-4bd2-86ff-a619617ab70e/register',
+    directNoticeUrl: 'https://www.kpga7330.com/competitions/e1472f5c-4ae0-4bd2-86ff-a619617ab70e/register',
+    pdfUrl: 'https://d366hz6313pnn3.cloudfront.net/uploads/events/1789456462652/1789456462652-_4__________________________.pdf',
+    pdfFileName: '제4회 문화체육관광부장관기 전국 파크골프대회 대회요강.pdf',
     isAiCurated: true,
     createdAt: '2026-09-15',
     lat: 35.3352,
@@ -49,11 +52,14 @@ export const DEFAULT_NOTICES: TournamentNotice[] = [
     courseId: 'course-yangpyeong-gangsang',
     status: 'RECRUITING',
     periodStr: '2026.09.10 ~ 09.30',
-    eventDateStr: '2026년 10월 23일(금) ~ 24일(토)',
+    eventDateStr: '2026년 10월 24일(토)',
     entryFee: '1인 30,000원',
     targetCount: '전국 동호인 360명 (선착순)',
     qualification: '전국 파크골프 동호인 (대한파크골프협회 등록회원)',
-    linkUrl: 'https://www.kpga7330.com/competitions',
+    linkUrl: 'https://www.kpga7330.com/competitions/173bf931-f2ae-4e88-bdb3-27cc5562e70a/register',
+    directNoticeUrl: 'https://www.kpga7330.com/competitions/173bf931-f2ae-4e88-bdb3-27cc5562e70a/register',
+    pdfUrl: 'https://d366hz6313pnn3.cloudfront.net/uploads/events/1788771126178/1788771126178-_9____________________.pdf',
+    pdfFileName: '제9회 물맑은 양평 전국 파크골프대회 요강.pdf',
     isAiCurated: true,
     createdAt: '2026-09-14',
     lat: 37.4912,
@@ -73,6 +79,7 @@ export const DEFAULT_NOTICES: TournamentNotice[] = [
     targetCount: '대구 및 영남권 동호인 총 288명',
     qualification: '대구광역시 및 전국 파크골프협회 등록 동호인',
     linkUrl: 'https://parkgolf.daegu.go.kr',
+    directNoticeUrl: 'https://parkgolf.daegu.go.kr',
     isAiCurated: true,
     createdAt: '2026-09-13',
     lat: 35.8583,
@@ -85,13 +92,16 @@ export const DEFAULT_NOTICES: TournamentNotice[] = [
     region: '충북 제천',
     courseName: '제천 청풍호 파크골프장 (36홀)',
     courseId: 'course-jecheon-cheongpung',
-    status: 'UPCOMING',
-    periodStr: '2026.10.01 ~ 10.15 접수 예정',
-    eventDateStr: '2026년 10월 23일(금) 09:00',
+    status: 'RECRUITING',
+    periodStr: '2026.09.12 ~ 10.15',
+    eventDateStr: '2026년 10월 24일(토) 09:00',
     entryFee: '1인 25,000원',
     targetCount: '전국 동호인 240명',
     qualification: '대한파크골프협회 등록 동호인 누구나',
-    linkUrl: 'https://www.kpga7330.com/competitions',
+    linkUrl: 'https://www.kpga7330.com/competitions/0be3091d-8450-44e2-b3df-993272d89780/register',
+    directNoticeUrl: 'https://www.kpga7330.com/competitions/0be3091d-8450-44e2-b3df-993272d89780/register',
+    pdfUrl: 'https://d366hz6313pnn3.cloudfront.net/uploads/events/1788996814733/1788996814733-_2___________________.pdf',
+    pdfFileName: '제2회 청풍호반배 전국 파크골프대회 요강.pdf',
     isAiCurated: true,
     createdAt: '2026-09-12',
     lat: 36.9852,
@@ -106,15 +116,40 @@ export const DEFAULT_NOTICES: TournamentNotice[] = [
     courseId: 'course-incheon-asiad',
     status: 'RECRUITING',
     periodStr: '2026.09.08 ~ 09.25',
-    eventDateStr: '2026년 10월 18일(일) 08:30',
+    eventDateStr: '2026년 10월 19일(월) 08:30',
     entryFee: '1인 30,000원',
     targetCount: '전국 320명 (오픈 챔피언십)',
     qualification: '전국 파크골프 동호인 (볼빅 공인구 사용 필수)',
-    linkUrl: 'https://www.kpga7330.com/competitions',
+    linkUrl: 'https://www.kpga7330.com/competitions/582a3e52-685f-448f-b034-bd2363f79ceb/register',
+    directNoticeUrl: 'https://www.kpga7330.com/competitions/582a3e52-685f-448f-b034-bd2363f79ceb/register',
+    pdfUrl: 'https://d366hz6313pnn3.cloudfront.net/uploads/events/1788768779771/1788768779771-2026___________________.pdf',
+    pdfFileName: '2026 볼빅 전국 파크골프 챔피언십 요강.pdf',
     isAiCurated: true,
     createdAt: '2026-09-10',
     lat: 37.5458,
     lng: 126.6625,
+  },
+  {
+    id: 'notice-kpga-6',
+    title: '🏆 제2회 달성군·MBN 전국파크골프대회',
+    host: '달성군체육회 / MBN 매일방송 / 사단법인 대한파크골프협회',
+    region: '대구 달성',
+    courseName: '다사세천 파크골프장 (36홀)',
+    courseId: 'course-daegu-dasa',
+    status: 'RECRUITING',
+    periodStr: '2026.09.10 ~ 10.05',
+    eventDateStr: '2026년 10월 17일(토) ~ 18일(일)',
+    entryFee: '1인 30,000원',
+    targetCount: '전국 480명',
+    qualification: '전국 파크골프 동호인 누구나',
+    linkUrl: 'https://www.kpga7330.com/competitions/41b69b51-f5b8-4756-b7c1-0c8bfb820cea/register',
+    directNoticeUrl: 'https://www.kpga7330.com/competitions/41b69b51-f5b8-4756-b7c1-0c8bfb820cea/register',
+    pdfUrl: 'https://d366hz6313pnn3.cloudfront.net/uploads/events/1787303710069/1787303710069-_2_____MBN___________.pdf',
+    pdfFileName: '제2회 달성군 MBN 전국파크골프대회 요강.pdf',
+    isAiCurated: true,
+    createdAt: '2026-09-08',
+    lat: 35.8752,
+    lng: 128.4612,
   },
 ];
 
@@ -321,8 +356,17 @@ export class BoardStorage {
     }
     try {
       const parsed: TournamentNotice[] = JSON.parse(raw);
-      // 구버전 가상 링크(/club 등)가 포함된 경우 최신 공식 공고 실데이터로 즉시 자동 정화
-      if (parsed.some((item) => !item.linkUrl || item.linkUrl.includes('/club') || item.linkUrl.includes('parkongolf.com/club') || item.id === 'notice-1')) {
+      // 구버전 범용 목록 링크(/competitions) 또는 가상 링크가 포함된 경우 최신 공식 공고 직통 실데이터로 즉시 자동 정화
+      if (
+        parsed.some(
+          (item) =>
+            !item.linkUrl ||
+            item.linkUrl === 'https://www.kpga7330.com/competitions' ||
+            item.linkUrl === 'https://www.kpga7330.com/competitions/' ||
+            item.linkUrl.includes('/club') ||
+            item.id === 'notice-1'
+        )
+      ) {
         this.saveNotices(DEFAULT_NOTICES);
         return DEFAULT_NOTICES;
       }

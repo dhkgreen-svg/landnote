@@ -1884,7 +1884,7 @@ export const DEFAULT_COURSES: Course[] = [
   },
   {
     id: 'course-26ed6cca-09c6-42fe-8e1e-773f23a30db1',
-    name: '구미 양포파크골프장',
+    name: '구미 양포(양호)파크골프장',
     region: '경북 구미시',
     totalCourses: 2,
     totalHoles: 18,

@@ -22,6 +22,7 @@ import {
   Compass,
   Home,
   Check,
+  FileText,
 } from 'lucide-react';
 import { TournamentNotice, ParkGolfNewsItem, UserVoiceItem, FreeBoardPost } from '@/types/board';
 import { BoardStorage, calculateDistanceKm } from '@/lib/boardStorage';
@@ -388,6 +389,14 @@ export default function CommunityBoardPage() {
                             ✓ 지자체 공인 원본
                           </span>
                         )}
+                        <span className="bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-black px-2 py-0.5 rounded-full">
+                          🎯 해당 공고 직통
+                        </span>
+                        {item.pdfUrl && (
+                          <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full">
+                            📄 요강 PDF 탑재
+                          </span>
+                        )}
                       </div>
                       <h3 className="text-sm sm:text-base font-black text-stone-950 leading-snug">
                         {item.title}
@@ -425,20 +434,33 @@ export default function CommunityBoardPage() {
                       href={item.linkUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 min-h-[44px] bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="flex-1 min-h-[44px] bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer px-2 text-center"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                       <span>공식 접수 공고 보기</span>
                     </a>
+
+                    {item.pdfUrl && (
+                      <a
+                        href={item.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="min-h-[44px] bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-98 flex items-center justify-center gap-1 cursor-pointer px-3 shrink-0"
+                        title="대회 요강 원본 PDF 즉시 열람"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>요강 PDF</span>
+                      </a>
+                    )}
 
                     <button
                       type="button"
                       onClick={() => {
-                        const shareText = `📢 [파크온 시합 공고]\n${item.title}\n- 일시: ${item.eventDateStr}\n- 장소: ${item.courseName}\n- 접수: ${item.periodStr}\n\n공식 접수 바로가기: ${item.linkUrl}`;
+                        const shareText = `📢 [파크온 시합 공고]\n${item.title}\n- 일시: ${item.eventDateStr}\n- 장소: ${item.courseName}\n- 접수: ${item.periodStr}\n\n👉 공식 공고 바로가기: ${item.linkUrl}${item.pdfUrl ? `\n👉 대회요강 PDF: ${item.pdfUrl}` : ''}`;
                         navigator.clipboard?.writeText(shareText);
-                        showToast('📋 대회 공고 내용이 복사되었습니다! 단톡방이나 밴드에 공유하세요.');
+                        showToast('📋 대회 공고 및 직통 주소가 복사되었습니다! 단톡방이나 밴드에 공유하세요.');
                       }}
-                      className="px-3.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl border border-stone-300 transition active:scale-95 flex items-center justify-center gap-1 shrink-0 cursor-pointer"
+                      className="px-3 min-h-[44px] bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl border border-stone-300 transition active:scale-95 flex items-center justify-center gap-1 shrink-0 cursor-pointer"
                       title="카톡/밴드 공유"
                     >
                       <Share2 className="w-3.5 h-3.5" />
