@@ -9,6 +9,7 @@ interface ConditionVoteModalProps {
   courseId: string;
   courseName: string;
   isOpen: boolean;
+  isVirtual?: boolean;
   onClose: () => void;
   onVoteUpdated?: (state: CourseConditionState) => void;
 }
@@ -17,6 +18,7 @@ export function ConditionVoteModal({
   courseId,
   courseName,
   isOpen,
+  isVirtual = false,
   onClose,
   onVoteUpdated,
 }: ConditionVoteModalProps) {
@@ -47,6 +49,10 @@ export function ConditionVoteModal({
     value: string,
     label: string
   ) => {
+    if (isVirtual) {
+      alert('가상 상태에서는 작동이 안 됩니다.');
+      return;
+    }
     const updated = ParkOnStorage.voteFieldCondition(courseId, category, value);
     refreshState();
     setToastMessage(`'${label}' 반영 완료! (3시간 실시간 리포트에 갱신)`);
@@ -240,6 +246,19 @@ export function ConditionVoteModal({
 
         {/* 안내 배너 및 실시간 상태 배지 */}
         <div className="p-4 space-y-3 overflow-y-auto flex-1 overscroll-contain">
+          {/* 가상 라운딩(체험 모드) 제보 불가 안내 배너 */}
+          {isVirtual && (
+            <div className="bg-amber-100 border-2 border-amber-300 text-amber-950 p-3 rounded-2xl text-xs font-black flex items-center gap-2.5 shadow-xs">
+              <span className="text-xl shrink-0">⚠️</span>
+              <div className="min-w-0">
+                <div className="text-xs font-black text-amber-950">가상 상태에서는 작동이 안 됩니다</div>
+                <div className="text-[10.5px] text-amber-800 font-medium leading-tight mt-0.5">
+                  가상 라운딩(체험 모드) 중에는 실제 구장의 잔디 상태가 오염되지 않도록 제보 입력이 제한됩니다.
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 시간대 최신성 뱃지 */}
           <div className="flex items-center justify-between bg-stone-50 px-3 py-2 rounded-xl border border-stone-200">
             <div className="flex items-center gap-1.5 text-xs font-black">
