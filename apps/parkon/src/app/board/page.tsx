@@ -379,6 +379,15 @@ export default function CommunityBoardPage() {
                             🚗 내 위치서 {item.distKm}km
                           </span>
                         )}
+                        {item.linkUrl.includes('kpga7330') ? (
+                          <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-full">
+                            ✓ 협회 공인 원본
+                          </span>
+                        ) : (
+                          <span className="bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-black px-2 py-0.5 rounded-full">
+                            ✓ 지자체 공인 원본
+                          </span>
+                        )}
                       </div>
                       <h3 className="text-sm sm:text-base font-black text-stone-950 leading-snug">
                         {item.title}
@@ -412,13 +421,15 @@ export default function CommunityBoardPage() {
 
                   {/* 하단 액션 버튼 */}
                   <div className="flex gap-2 pt-1">
-                    <Link
+                    <a
                       href={item.linkUrl}
-                      className="flex-1 min-h-[44px] bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-98 flex items-center justify-center gap-1.5"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 min-h-[44px] bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                       <span>공식 접수 공고 보기</span>
-                    </Link>
+                    </a>
 
                     <button
                       type="button"
@@ -427,7 +438,7 @@ export default function CommunityBoardPage() {
                         navigator.clipboard?.writeText(shareText);
                         showToast('📋 대회 공고 내용이 복사되었습니다! 단톡방이나 밴드에 공유하세요.');
                       }}
-                      className="px-3.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl border border-stone-300 transition active:scale-95 flex items-center justify-center gap-1 shrink-0"
+                      className="px-3.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl border border-stone-300 transition active:scale-95 flex items-center justify-center gap-1 shrink-0 cursor-pointer"
                       title="카톡/밴드 공유"
                     >
                       <Share2 className="w-3.5 h-3.5" />
@@ -459,9 +470,12 @@ export default function CommunityBoardPage() {
                 {news
                   .filter((n) => n.category === 'MAJOR')
                   .map((item) => (
-                    <div
+                    <a
                       key={item.id}
-                      className="p-3 bg-purple-50/60 rounded-2xl border border-purple-100 space-y-1 hover:bg-purple-50 transition"
+                      href={item.linkUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block p-3 bg-purple-50/60 rounded-2xl border border-purple-100 space-y-1 hover:bg-purple-100/70 transition cursor-pointer"
                     >
                       <div className="flex items-center justify-between text-[11px] text-purple-900 font-black">
                         <span className="bg-purple-200/80 px-2 py-0.2 rounded">전국 이슈</span>
@@ -469,7 +483,7 @@ export default function CommunityBoardPage() {
                       </div>
                       <h4 className="text-xs font-black text-stone-900 leading-snug">{item.title}</h4>
                       <p className="text-[11px] text-stone-600 font-medium leading-relaxed">{item.summary}</p>
-                    </div>
+                    </a>
                   ))}
               </div>
             </div>
@@ -517,9 +531,12 @@ export default function CommunityBoardPage() {
                     return n.region.includes(newsRegionFilter);
                   })
                   .map((item) => (
-                    <div
+                    <a
                       key={item.id}
-                      className="bg-white rounded-2xl p-3.5 border border-stone-200 shadow-2xs space-y-1.5"
+                      href={item.linkUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block bg-white rounded-2xl p-3.5 border border-stone-200 shadow-2xs space-y-1.5 hover:bg-stone-50/80 transition cursor-pointer"
                     >
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="font-black text-purple-900 bg-purple-50 px-2 py-0.5 rounded">
@@ -529,7 +546,7 @@ export default function CommunityBoardPage() {
                       </div>
                       <h4 className="text-xs font-black text-stone-900 leading-snug">{item.title}</h4>
                       <p className="text-[11px] text-stone-600 leading-relaxed font-medium">{item.summary}</p>
-                    </div>
+                    </a>
                   ))}
               </div>
             </div>
