@@ -85,17 +85,17 @@ export const BusinessCardStorage = {
       console.error('Failed to parse my business card:', e);
     }
 
-    const selfName = ParkOnStorage.getUserDisplayName() || '김대희';
+    const selfName = ParkOnStorage.getUserDisplayName() || '플레이어';
     const defaultCard: UserBusinessCard = {
       id: 'my_card_' + Date.now(),
       userId: 'self',
       name: selfName,
-      company: '나우공인중개사사무소',
-      title: '대표',
-      phone: '010-3814-1422',
-      email: 'dhkgreen@naver.com',
-      region: '경북 구미 · 대구',
-      industry: '부동산/중개/자산',
+      company: '',
+      title: '골퍼',
+      phone: '',
+      email: '',
+      region: '전국',
+      industry: '파크골프/일반',
       bio: '즐거운 파크골프 라운딩과 활발한 동호인 인맥 교류를 응원합니다!',
       visibility: 'PUBLIC',
       updatedAt: new Date().toISOString().split('T')[0],

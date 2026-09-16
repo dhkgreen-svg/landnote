@@ -36,7 +36,7 @@ function NewRoundForm() {
   const [startHoleIndex, setStartHoleIndex] = useState<number>(1);
   const [playerCount, setPlayerCount] = useState<number>(4);
   const [playersList, setPlayersList] = useState<SetupPlayer[]>([
-    { id: 'p_self', name: '김대희', isLeader: true, isSelf: true },
+    { id: 'p_self', name: '조장(본인)', isLeader: true, isSelf: true },
     { id: 'p_2', name: '동반자1', isLeader: false, isSelf: false },
     { id: 'p_3', name: '동반자2', isLeader: false, isSelf: false },
     { id: 'p_4', name: '동반자3', isLeader: false, isSelf: false },
@@ -50,7 +50,7 @@ function NewRoundForm() {
 
   useEffect(() => {
     const selfName = getDefaultSelfName();
-    if (selfName) {
+    if (selfName && selfName !== '플레이어' && selfName !== '조장(본인)') {
       setPlayersList((prev) =>
         prev.map((p, idx) => (idx === 0 || p.isSelf ? { ...p, name: selfName, isSelf: true } : p))
       );

@@ -81,14 +81,14 @@ export function BusinessCardModal({
 
     const updated: UserBusinessCard = {
       ...myCard,
-      name: editName.trim() || '김대희',
-      company: editCompany.trim() || '나우공인중개사사무소',
-      title: editTitle.trim() || '대표',
-      phone: editPhone.trim() || '010-3814-1422',
+      name: editName.trim() || myCard.name || ParkOnStorage.getUserDisplayName() || '플레이어',
+      company: editCompany.trim(),
+      title: editTitle.trim() || '골퍼',
+      phone: editPhone.trim(),
       email: editEmail.trim(),
-      region: editRegion.trim() || '경북 구미 · 대구',
+      region: editRegion.trim() || '전국',
       industry: editIndustry,
-      bio: editBio.trim() || '파크골프와 함께하는 건강한 비즈니스 파트너',
+      bio: editBio.trim() || '파크골프와 함께하는 즐거운 라운딩 파트너',
       visibility: editVisibility,
     };
 

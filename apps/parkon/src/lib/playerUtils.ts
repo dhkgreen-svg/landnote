@@ -6,13 +6,13 @@ import { ParkOnStorage, KakaoAuthUser } from './storage';
  * (사용자 프로필, 카카오 실명/가명, 또는 기본값 '김대희')
  */
 export function getDefaultSelfName(): string {
-  if (typeof window === 'undefined') return '김대희';
+  if (typeof window === 'undefined') return '플레이어';
   try {
-    return ParkOnStorage.getUserDisplayName();
+    return ParkOnStorage.getUserDisplayName() || '플레이어';
   } catch (e) {
     console.error(e);
   }
-  return '김대희';
+  return '플레이어';
 }
 
 /**

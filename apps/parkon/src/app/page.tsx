@@ -89,10 +89,12 @@ export default function HomePage() {
 
     loadData();
     window.addEventListener('storage', loadData);
+    window.addEventListener('parkon_profile_updated', loadData);
     window.addEventListener('parkon_round_completed', loadData);
     window.addEventListener('parkon_favorite_courses_updated', loadData);
     return () => {
       window.removeEventListener('storage', loadData);
+      window.removeEventListener('parkon_profile_updated', loadData);
       window.removeEventListener('parkon_round_completed', loadData);
       window.removeEventListener('parkon_favorite_courses_updated', loadData);
     };
@@ -715,8 +717,11 @@ export default function HomePage() {
 
   return (
     <div className="p-4 max-w-md mx-auto space-y-4 pb-12">
-      {/* -1. 첫 방문자 환영 모달 (PC·모바일 1초 앱 깔기 vs 그냥 시작하기) */}
-      <WelcomeModal />
+      {/* -1. 첫 방문자 환영 및 로그인/게스트 선택 관문 모달 */}
+      <WelcomeModal
+        onOpenKakaoLogin={() => setShowKakaoModal(true)}
+        onOpenInstallGuide={() => setShowInstallGuideModal(true)}
+      />
 
       {/* -1.8. 스마트폰 바탕화면 앱 설치 가이드 모달 */}
       <InstallGuideModal
