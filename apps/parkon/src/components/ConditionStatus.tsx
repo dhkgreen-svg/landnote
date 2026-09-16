@@ -272,28 +272,6 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
         </div>
       </div>
 
-      {/* 리포트가 없을 때: 친절한 1초 제보 안내 배너 */}
-      {!hasActiveReport && (
-        <div
-          onClick={() => setShowVoteModal(true)}
-          className="bg-amber-50/95 hover:bg-amber-100/90 border border-amber-300/80 rounded-xl p-2.5 flex items-center justify-between cursor-pointer transition active:scale-[0.99] shadow-2xs group"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-base group-hover:scale-110 transition shrink-0">📢</span>
-            <div className="min-w-0">
-              <p className="text-xs font-black text-amber-950 truncate">
-                지금 구장에 계신가요? 1초 잔디 상태를 제보해 주세요!
-              </p>
-              <p className="text-[10px] text-amber-800 font-medium mt-0.5 truncate">
-                터치 한 번으로 공 구름성·습도를 등록하면 동호인들에게 즉시 공유됩니다.
-              </p>
-            </div>
-          </div>
-          <span className="shrink-0 text-[11px] font-black text-emerald-900 bg-white border border-amber-300 px-2 py-0.5 rounded-lg shadow-2xs whitespace-nowrap ml-1.5 group-hover:bg-emerald-50">
-            제보하기 &gt;
-          </span>
-        </div>
-      )}
 
       {/* 리포트 칸 세 개 (공 구름성, 지면 습도, 잔디 길이 - 터치 시 입력 팝업 오픈) */}
       <div className="grid grid-cols-3 gap-2">

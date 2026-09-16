@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ShieldCheck, Info, FileText } from 'lucide-react';
+import { ShieldCheck, Info, FileText, Key } from 'lucide-react';
 import { InstallGuideModal } from './InstallGuideModal';
 
 export function Footer() {
@@ -82,17 +82,18 @@ export function Footer() {
         </div>
 
         {/* 저작권 및 운영 안내 (대표님 전용 관제실 진입점 포함) */}
-        <div className="text-[10px] text-stone-400 pt-1 flex flex-col items-center gap-0.5">
-          <p className="flex items-center gap-1">
+        <div className="text-[10px] text-stone-400 pt-2 flex flex-col items-center gap-1.5 border-t border-stone-100">
+          <div className="flex items-center gap-2 flex-wrap justify-center">
             <span>© 2026 ParkOn Team. All rights reserved.</span>
             <Link
               href="/admin"
-              className="text-stone-300 hover:text-stone-500 transition ml-0.5"
-              title="관리자 전용 관제실"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-stone-200/90 hover:bg-amber-100 text-stone-700 hover:text-amber-950 border border-stone-300 transition text-[11px] font-black shadow-2xs cursor-pointer active:scale-95"
+              title="관리자 전용 관제실 (PIN 로그인)"
             >
-              🔒
+              <Key className="w-3.5 h-3.5 text-amber-600 stroke-[2.5]" />
+              <span>관리자 관제실</span>
             </Link>
-          </p>
+          </div>
           <p className="mt-0.5">Contact: contact@parkongolf.com · 문의 및 파크골프장 정보 제보 환영</p>
         </div>
       </div>

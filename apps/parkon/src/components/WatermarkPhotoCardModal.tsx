@@ -35,7 +35,7 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session }: WatermarkP
 
   const companionNames = session?.players
     ? session.players.map((p) => p.name).join(' · ')
-    : `${myName} · 이영호 · 박철수 · 정순자`;
+    : `${myName}`;
 
   // Draw Canvas
   const generatePhotoCard = useCallback((imageSrc: string | null) => {

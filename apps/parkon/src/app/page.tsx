@@ -3,14 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Play, MapPin, History, Award, Flame, Trophy, X, ArrowRight, ChevronDown, Check, Plus, Star, Search, Trash2, Share2, Download, Heart, CreditCard, Smartphone, Target, Sparkles } from 'lucide-react';
+import { Play, MapPin, History, Award, Flame, Trophy, X, ArrowRight, ChevronDown, Check, Plus, Star, Search, Trash2, Share2, Download, Heart, Smartphone, Target, Sparkles } from 'lucide-react';
 import { Course, RoundSession, formatCourseHolesText } from '@/types/parkon';
 import { ParkOnStorage, UserGolfProfile, DEFAULT_USER_PROFILE } from '@/lib/storage';
 import { ClubStorage } from '@/lib/clubStorage';
 import { ConditionStatus } from '@/components/ConditionStatus';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { InstallGuideModal } from '@/components/InstallGuideModal';
-import { BusinessCardModal } from '@/components/BusinessCardModal';
 import { KakaoLoginModal } from '@/components/KakaoLoginModal';
 import { WelcomeModal } from '@/components/WelcomeModal';
 import { RulesWebtoonModal } from '@/components/RulesWebtoonModal';
@@ -19,10 +18,11 @@ import { KakaoAuthUser } from '@/lib/storage';
 
 export default function HomePage() {
   const router = useRouter();
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<Course[]>(() => ParkOnStorage.getAllCourses());
   const [homeCourse, setHomeCourse] = useState<Course | null>(null);
   const [favoriteHomeCourseIds, setFavoriteHomeCourseIds] = useState<string[]>([]);
   const [showHomeModal, setShowHomeModal] = useState<boolean>(false);
+  const [homeModalSearch, setHomeModalSearch] = useState<string>('');
   const [activeRound, setActiveRound] = useState<RoundSession | null>(null);
   const [completedRounds, setCompletedRounds] = useState<RoundSession[]>([]);
   const [userProfile, setUserProfile] = useState<UserGolfProfile>(DEFAULT_USER_PROFILE);
@@ -31,11 +31,14 @@ export default function HomePage() {
   const [showRulesWebtoonModal, setShowRulesWebtoonModal] = useState<boolean>(false);
   const [showRulesSolomonPopup, setShowRulesSolomonPopup] = useState<boolean>(false);
   const [leaderboardTab, setLeaderboardTab] = useState<'FIRST_PLACE' | 'TOP4'>('FIRST_PLACE');
+  const [rankingMainTab, setRankingMainTab] = useState<'SKILL_100' | 'ACTIVITY_100'>('SKILL_100');
+  const [showLeaderboard100Popup, setShowLeaderboard100Popup] = useState<boolean>(false);
   const [statsCourseId, setStatsCourseId] = useState<string>('');
+  const [showStatsSearchModal, setShowStatsSearchModal] = useState<boolean>(false);
+  const [statsSearchQuery, setStatsSearchQuery] = useState<string>('');
   const [clubBadge, setClubBadge] = useState<{ text: string; isPlaying: boolean } | null>(null);
   const [showKakaoModal, setShowKakaoModal] = useState<boolean>(false);
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
-  const [showBusinessCardModal, setShowBusinessCardModal] = useState<boolean>(false);
   const [showInstallGuideModal, setShowInstallGuideModal] = useState<boolean>(false);
 
   useEffect(() => {
@@ -47,9 +50,12 @@ export default function HomePage() {
       const paramCourseId = urlParams ? urlParams.get('courseId') : null;
       if (paramCourseId) {
         ParkOnStorage.setHomeCourseId(paramCourseId);
+        if (typeof window !== 'undefined' && window.location.search) {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
       }
 
-      const homeId = paramCourseId || ParkOnStorage.getHomeCourseId();
+      const homeId = ParkOnStorage.getHomeCourseId();
       const foundHome = allCourses.find((c) => c.id === homeId) || allCourses[0];
       setHomeCourse(foundHome);
 
@@ -84,35 +90,84 @@ export default function HomePage() {
     loadData();
     window.addEventListener('storage', loadData);
     window.addEventListener('parkon_round_completed', loadData);
+    window.addEventListener('parkon_favorite_courses_updated', loadData);
     return () => {
       window.removeEventListener('storage', loadData);
       window.removeEventListener('parkon_round_completed', loadData);
+      window.removeEventListener('parkon_favorite_courses_updated', loadData);
     };
   }, []);
 
+  // 기본 구장 알고리즘: 현재 라운드 진행 중인 구장 > 최근 공식 완주 구장 > 지정 홈구장 > 동락파크골프장
+  const getCurrentActiveCourse = (): Course | null => {
+    // 1. 현재 라운드 진행 중인 구장 (동락에서 치고 있으면 동락, 구미면 구미, 인천이면 인천)
+    const active = ParkOnStorage.getCurrentRound();
+    if (active && active.status === 'IN_PROGRESS' && active.courseId) {
+      const found = courses.find((c) => c.id === ParkOnStorage.normalizeCourseId(active.courseId));
+      if (found) return found;
+    }
+    // 2. 가장 최근에 공식 완주한 구장
+    const completed = ParkOnStorage.getCompletedRounds();
+    if (completed.length > 0 && completed[0].courseId) {
+      const found = courses.find((c) => c.id === ParkOnStorage.normalizeCourseId(completed[0].courseId));
+      if (found) return found;
+    }
+    // 3. 사용자가 지정한 홈구장
+    if (homeCourse) return homeCourse;
+    const homeId = ParkOnStorage.getHomeCourseId();
+    if (homeId) {
+      const found = courses.find((c) => c.id === ParkOnStorage.normalizeCourseId(homeId));
+      if (found) return found;
+    }
+    // 4. 폴백: 동락파크골프장 또는 첫 번째 구장
+    const dongrak = courses.find((c) => c.name.includes('동락'));
+    return dongrak || courses[0] || null;
+  };
+
   const openStatsModalWithCourse = (courseId?: string) => {
-    setStatsCourseId(courseId || homeCourse?.id || courses[0]?.id || '');
+    const currentActive = getCurrentActiveCourse();
+    setStatsCourseId(courseId || currentActive?.id || courses[0]?.id || '');
     setShowStatsModal(true);
   };
 
-  // 구미 양호, 구미 동락, 구미 지산 3개 구장 항목
-  const primaryCourseIds = ['course-gumi-yangho', 'course-gumi-dongrak', 'course-gumi-jisan'];
+  // 내 홈 구장 목록: 사용자가 지정/등록한 모든 홈구장 목록 (구미, 동락, 양포 등 절대 소실 방지)
   const myHomeCourseList = Array.from(
     new Set([
-      ...(homeCourse && !primaryCourseIds.includes(homeCourse.id) ? [homeCourse.id] : []),
-      ...primaryCourseIds,
+      ...(homeCourse ? [ParkOnStorage.normalizeCourseId(homeCourse.id)] : []),
+      ...favoriteHomeCourseIds.map((id) => ParkOnStorage.normalizeCourseId(id)),
     ])
   )
-    .map((id) => courses.find((c) => c.id === id))
+    .map((id) => {
+      return (
+        courses.find((c) => c.id === id) ||
+        (id === 'course-26ed6cca-09c6-42fe-8e1e-773f23a30db1'
+          ? courses.find((c) => c.name.includes('양포') || c.name.includes('양호'))
+          : undefined)
+      );
+    })
     .filter((c): c is Course => !!c);
 
   const handleSelectHomeCourse = (courseId: string) => {
-    ParkOnStorage.setHomeCourseId(courseId);
-    const found = courses.find((c) => c.id === courseId);
+    const validId = ParkOnStorage.normalizeCourseId(courseId);
+    ParkOnStorage.setHomeCourseId(validId);
+    const found = courses.find((c) => c.id === validId);
     if (found) {
       setHomeCourse(found);
     }
     setFavoriteHomeCourseIds(ParkOnStorage.getFavoriteHomeCourseIds());
+    if (typeof window !== 'undefined' && window.location.search) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  };
+
+  const handleRemoveHomeCourse = (e: React.MouseEvent, courseId: string) => {
+    e.stopPropagation();
+    const updated = ParkOnStorage.removeFavoriteHomeCourse(courseId);
+    setFavoriteHomeCourseIds(updated);
+    if (ParkOnStorage.normalizeCourseId(homeCourse?.id || '') === ParkOnStorage.normalizeCourseId(courseId)) {
+      const nextHome = courses.find((c) => c.id === updated[0]);
+      if (nextHome) setHomeCourse(nextHome);
+    }
   };
 
   const handleExportBackup = () => {
@@ -645,20 +700,23 @@ export default function HomePage() {
   };
 
   const currentStats = getCourseStats(homeCourse);
-  const activeStatsCourse = courses.find((c) => c.id === statsCourseId) || homeCourse || courses[0];
+  const fallbackCourse = courses[0] || ParkOnStorage.getAllCourses()[0];
+  const activeStatsCourse =
+    courses.find((c) => c.id === statsCourseId) ||
+    getCurrentActiveCourse() ||
+    fallbackCourse;
   const activeCourseStats = getCourseStats(activeStatsCourse);
   const activeCourseLeaderboard = getCourseLeaderboard(activeStatsCourse, activeCourseStats);
+  const activeLeaderboard100 = ParkOnStorage.getCourseLeaderboard100(
+    activeStatsCourse?.id || 'course-dongrak',
+    activeStatsCourse?.name || '동락파크골프장',
+    userProfile.userName
+  );
 
   return (
     <div className="p-4 max-w-md mx-auto space-y-4 pb-12">
       {/* -1. 첫 방문자 환영 모달 (PC·모바일 1초 앱 깔기 vs 그냥 시작하기) */}
       <WelcomeModal />
-
-      {/* -1.7. 파크온 디지털 명함첩 모달 */}
-      <BusinessCardModal
-        isOpen={showBusinessCardModal}
-        onClose={() => setShowBusinessCardModal(false)}
-      />
 
       {/* -1.8. 스마트폰 바탕화면 앱 설치 가이드 모달 */}
       <InstallGuideModal
@@ -747,50 +805,57 @@ export default function HomePage() {
         <div className="absolute top-0 right-0 -mr-6 -mt-6 w-32 h-32 bg-emerald-700/40 rounded-full blur-xl pointer-events-none" />
         
         <div className="relative z-10 space-y-3">
-          {/* 상단: 내 지정 홈구장 라벨 & 다른 내 홈구장 선택하기 버튼 */}
-          <div className="flex items-center justify-between">
-            <div className="text-emerald-200 text-xs font-bold flex items-center gap-1.5">
-              <span>📍 내 지정 홈 구장</span>
-            </div>
+          {/* 상단: 전국 구장 찾기 & 다른 내 구장 선택하기 2개 버튼 */}
+          <div className="flex items-center justify-between gap-2">
+            <Link
+              href="/courses"
+              className="bg-emerald-700/90 hover:bg-emerald-600 border border-emerald-400/50 text-white text-xs font-black px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
+            >
+              <MapPin className="w-3.5 h-3.5 text-amber-300" />
+              <span>전국 구장 찾기</span>
+            </Link>
 
             {/* 다른 내 구장 선택하기 버튼 */}
             <button
               type="button"
               onClick={() => setShowHomeModal(true)}
-              className="bg-emerald-700/90 hover:bg-emerald-600 border border-emerald-400/50 text-white text-xs font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
+              className="bg-emerald-700/90 hover:bg-emerald-600 border border-emerald-400/50 text-white text-xs font-black px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
             >
               <span>다른 내 구장 선택하기</span>
               <ChevronDown className="w-3.5 h-3.5 text-amber-300" />
             </button>
           </div>
 
-          <div>
-            <h2 className="text-2xl font-black tracking-tight text-white mb-0.5">
-              {homeCourse ? homeCourse.name : '홈구장 불러오는 중...'}
-            </h2>
-            <p className="text-emerald-200 text-xs font-medium">
-              {homeCourse ? `${homeCourse.region} · ${formatCourseHolesText(homeCourse)}` : ''}
-            </p>
+          {/* 검색 결과 창 스타일: 흰색 배경에 선택된 구장 이름과 (지역) 표출 */}
+          <div
+            onClick={() => setShowHomeModal(true)}
+            className="w-full bg-white text-stone-900 rounded-2xl px-4 py-3 shadow-md flex items-center justify-between cursor-pointer hover:bg-stone-50 transition active:scale-[0.99]"
+          >
+            <div className="flex items-center gap-2 truncate">
+              <span className="text-base sm:text-lg font-black text-stone-950 tracking-tight truncate">
+                {homeCourse ? `${homeCourse.name} (${homeCourse.region})` : '구미 동락파크골프장 (경북 구미시)'}
+              </span>
+            </div>
+            <ChevronDown className="w-4 h-4 text-stone-400 shrink-0" />
           </div>
 
           {/* 대표님 제안: 2분할 버튼 [가상 라운딩 하기 (체험)] vs [라운딩 바로 시작하기 (실전)] */}
-          <div className="space-y-2.5 pt-1">
+          <div className="pt-1">
             <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
               {/* 왼쪽: 가상 라운딩 하기 (체험/연습 모드 - 시간 무제한 · 기록 안 남음) */}
               <button
                 type="button"
                 onClick={() => {
-                  const virtualSession = ParkOnStorage.createVirtualRoundSession(homeCourse?.id);
-                  router.push(`/round/${virtualSession.id}`);
+                  router.push(`/round/new?courseId=${homeCourse?.id || ''}&mode=trial`);
                 }}
                 className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-stone-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition active:scale-[0.97] cursor-pointer border-2 border-amber-300 group"
               >
                 <div className="flex items-center gap-1 text-sm sm:text-base font-black leading-tight">
                   <span className="text-base sm:text-lg">🎯</span>
-                  <span className="truncate">가상 라운딩 하기</span>
+                  <span className="truncate">프로그램 체험 연습</span>
                 </div>
                 <span className="text-[10px] sm:text-[10.5px] font-extrabold text-stone-900 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-                  체험·연습 (기록 안 남음)
+                  가상 기록 해보기 (기록 안 남음)
                 </span>
               </button>
 
@@ -807,26 +872,6 @@ export default function HomePage() {
                   실전 필드 공식 기록
                 </span>
               </Link>
-            </div>
-
-            {/* 전국 구장 찾기 & 파크온 디지털 명함첩 2대 보조 버튼 */}
-            <div className="grid grid-cols-2 gap-2">
-              <Link
-                href="/courses"
-                className="w-full bg-emerald-700/80 hover:bg-emerald-700 border border-emerald-400/50 text-white font-black py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-[0.98]"
-              >
-                <MapPin className="w-3.5 h-3.5 text-amber-300" />
-                <span className="truncate">전국 구장 찾기</span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => setShowBusinessCardModal(true)}
-                className="w-full bg-gradient-to-r from-amber-500/90 to-amber-600/90 hover:from-amber-500 hover:to-amber-600 border border-amber-300 text-stone-950 font-black py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-[0.98] shadow-xs cursor-pointer"
-              >
-                <CreditCard className="w-3.5 h-3.5 text-stone-950" />
-                <span className="truncate">동호인 디지털 명함첩</span>
-              </button>
             </div>
           </div>
         </div>
@@ -1374,37 +1419,6 @@ export default function HomePage() {
 
             {/* 스크롤 가능한 본문 영역 */}
             <div className="p-4 space-y-4 overflow-y-auto flex-1 overscroll-contain">
-              {/* 구장 전환 바: 원하는 구장 랭킹을 즉시 선택 */}
-              <div className="bg-stone-50 rounded-2xl p-3 border border-stone-200/80 space-y-2">
-                <div className="flex items-center justify-between text-xs font-black text-stone-800">
-                  <span className="flex items-center gap-1 text-emerald-800">
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>조회할 구장 선택</span>
-                  </span>
-                  <span className="text-[10px] text-stone-500 font-bold">터치 시 해당 구장 랭킹 즉시 조회</span>
-                </div>
-
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                  {courses.slice(0, 6).map((c) => {
-                    const isSelected = activeStatsCourse.id === c.id;
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => setStatsCourseId(c.id)}
-                        className={`px-2.5 py-1 rounded-full text-xs font-black shrink-0 transition cursor-pointer border ${
-                          isSelected
-                            ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
-                            : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-100'
-                        }`}
-                      >
-                        {c.name.replace(/파크골프장|골프장/g, '').trim()}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
               {/* 상단 파키 스코어카드 분석 배너 (37번: 스코어카드와 연필 든 스마트 파키) */}
               <div className="relative rounded-2xl overflow-hidden border border-emerald-300 shadow-xs bg-stone-100 flex items-center bg-gradient-to-r from-emerald-100 to-teal-50 p-2.5 gap-3">
                 <div className="relative w-16 h-16 rounded-xl overflow-hidden shadow-xs border border-emerald-400 shrink-0 bg-white">
@@ -1428,14 +1442,32 @@ export default function HomePage() {
 
               {/* 1. 선택된 구장에서의 [나의 등급 & 실력 요약 카드] */}
               <div className="bg-gradient-to-br from-emerald-800 to-emerald-950 text-white rounded-2xl p-4 space-y-3 shadow-md border border-emerald-700/60">
-                <div className="flex items-center justify-between border-b border-emerald-700/60 pb-2.5">
-                  <div>
-                    <span className="text-[10px] text-emerald-300 font-bold">📍 조회 중인 구장</span>
-                    <h4 className="text-base font-black text-white">{activeStatsCourse.name}</h4>
+                <div className="flex items-center justify-between border-b border-emerald-700/60 pb-2.5 gap-2">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10.5px] text-emerald-300 font-bold flex items-center gap-1">
+                      <span>📍</span>
+                      <span>조회 중인 구장</span>
+                    </span>
+                    {/* 카카오톡 검색 결과 스타일의 깔끔한 흰색 박스 */}
+                    <div className="mt-1.5 bg-white text-stone-950 font-black px-3.5 py-1.5 rounded-xl text-sm shadow-sm border border-stone-200 inline-flex items-center gap-1.5 max-w-full">
+                      <span className="text-emerald-700 text-base leading-none">⛳</span>
+                      <span className="truncate">{activeStatsCourse.name}</span>
+                    </div>
                   </div>
-                  <span className="bg-emerald-700/90 text-amber-300 border border-emerald-500/50 text-xs font-black px-2.5 py-1 rounded-xl shadow-xs">
-                    {activeCourseStats.starGrade}
-                  </span>
+
+                  {/* '미반영' 탭 삭제 -> [ 🔍 다른 구장 검색하기 ] 버튼 탑재 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatsSearchQuery('');
+                      setShowStatsSearchModal(true);
+                    }}
+                    className="bg-[#FEE500] hover:bg-[#FDD835] active:scale-95 text-[#191919] font-black text-xs px-3 py-2 rounded-xl shadow-md border border-[#E6CF00] flex items-center gap-1.5 transition cursor-pointer shrink-0 mt-3"
+                    title="전국 파크골프장 검색 및 조회 구장 변경"
+                  >
+                    <Search className="w-3.5 h-3.5 text-stone-900 stroke-[2.5]" />
+                    <span>다른 구장 검색하기</span>
+                  </button>
                 </div>
 
                 {/* 18홀 성적 요약 */}
@@ -1497,239 +1529,61 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* 2. 🏆 [해당 구장 실력 랭킹 & 역대 1등 명단 (최신순)] */}
-              <div className="bg-white rounded-2xl p-3.5 border border-amber-300/80 shadow-xs space-y-2.5">
-                <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-                  <div className="flex items-center gap-1.5 font-black text-xs text-stone-900">
-                    <span className="w-5 h-5 rounded bg-amber-500 text-white flex items-center justify-center font-black text-xs">
+              {/* 2. 🏆 [구장별 1~100위 랭킹 센터: 2줄 탭 버튼 -> 전용 팝업창 호출] */}
+              <div className="space-y-2 pt-1">
+                {/* 1번 줄: 공인 실력 1위에서 100위 버튼 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRankingMainTab('SKILL_100');
+                    setShowLeaderboard100Popup(true);
+                  }}
+                  className="w-full p-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 font-black rounded-2xl shadow-sm hover:shadow transition flex items-center justify-between cursor-pointer border border-amber-400/80 active:scale-[0.99]"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-8 h-8 rounded-xl bg-white/90 text-amber-950 flex items-center justify-center text-base shadow-2xs shrink-0 font-bold">
                       🏆
                     </span>
-                    <span>{activeStatsCourse.name} 실력 랭킹</span>
-                  </div>
-
-                  {/* 탭: 1등 명단(최신순) vs 전체 순위 */}
-                  <div className="flex items-center bg-stone-100 p-0.5 rounded-lg text-[10px] font-black">
-                    <button
-                      type="button"
-                      onClick={() => setLeaderboardTab('FIRST_PLACE')}
-                      className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
-                        leaderboardTab === 'FIRST_PLACE'
-                          ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
-                          : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      🥇 1등 명단 ({activeCourseLeaderboard.champions1st.length}명)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLeaderboardTab('TOP4')}
-                      className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
-                        leaderboardTab === 'TOP4'
-                          ? 'bg-amber-500 text-stone-950 shadow-2xs font-black'
-                          : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      📊 전체 순위
-                    </button>
-                  </div>
-                </div>
-
-                {/* 1등 명단 뷰 (동점 1위 최신순 정렬) */}
-                {leaderboardTab === 'FIRST_PLACE' ? (
-                  <div className="space-y-2">
-                    {/* 챔피언 트로피 파키 배너 */}
-                    <div className="relative rounded-xl overflow-hidden border border-amber-300 shadow-2xs bg-amber-50 p-2 flex items-center gap-2.5">
-                      <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-amber-400 bg-white">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src="/mascot/사진저장고_사진_20260913_35.jpg"
-                          alt="파크골프 챔피언십 우승 파키"
-                          className="w-full h-full object-cover"
-                        />
+                    <div className="text-left">
+                      <div className="text-xs font-black text-stone-950 flex items-center gap-1.5">
+                        <span>{activeStatsCourse.name} 공인 실력 1위에서 100위</span>
                       </div>
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-black text-amber-950 flex items-center gap-1">
-                          <span>{activeStatsCourse.name} 1등 챔피언 클럽</span>
-                          <span className="text-[8.5px] bg-amber-400 text-stone-950 font-black px-1 rounded">CHAMPION</span>
-                        </div>
-                        <p className="text-[10px] text-amber-900 font-medium leading-tight mt-0.5">
-                          역대 최저타를 기록한 명예로운 챔피언 골퍼들의 최신순 명단입니다!
-                        </p>
+                      <div className="text-[10.5px] text-stone-900/90 font-bold">
+                        클럽전·공식 대회 기준 · 정식 공인 순위
                       </div>
                     </div>
-
-                    <div className="flex items-center justify-between text-[11px] font-bold text-amber-950 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
-                      <span>💡 18홀 최저 <strong>{activeCourseLeaderboard.recordScore}타</strong> 챔피언</span>
-                      <span className="text-[10px] bg-amber-200/80 text-amber-900 px-1.5 py-0.2 rounded font-black">
-                        총 {activeCourseLeaderboard.champions1st.length}명 · 최신순
-                      </span>
-                    </div>
-
-                    <div className="space-y-1.5 max-h-60 overflow-y-auto pr-0.5">
-                      {activeCourseLeaderboard.champions1st.map((champ, idx) => (
-                        <div
-                          key={idx}
-                          className={`p-2.5 rounded-xl border flex items-center justify-between text-xs transition ${
-                            champ.isMe
-                              ? 'bg-amber-100/90 border-amber-400 font-black shadow-xs'
-                              : 'bg-stone-50 border-stone-200/80 font-bold'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">🥇</span>
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-black text-stone-900">
-                                  공동 1위 {champ.name}
-                                </span>
-                                <span className="text-[9.5px] bg-stone-200/80 text-stone-700 px-1.5 py-0.2 rounded font-medium">
-                                  {champ.grade}
-                                </span>
-                              </div>
-                              <div className="text-[10px] text-stone-500 font-medium">
-                                달성일: {champ.date}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-sm font-black text-emerald-800">
-                              {champ.score}타
-                            </span>
-                            <div className="text-[9.5px] text-amber-700 font-bold">
-                              구장 1위
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* 본인이 아직 1등 타수가 아니라면 내 타수와 목표 격려 안내 */}
-                    {activeCourseLeaderboard.mySkillRank && activeCourseLeaderboard.mySkillRank.rank > 1 && (
-                      <div className="bg-stone-50 border border-stone-200 rounded-xl p-2 flex items-center justify-between text-[11px] text-stone-700 font-bold">
-                        <span>
-                          🏅 내 기록: <strong className="text-emerald-800">{activeCourseStats.bestScore18 || activeCourseStats.avgScore18}타</strong> ({activeCourseLeaderboard.mySkillRank.rank}위)
-                        </span>
-                        <span className="text-[10px] text-amber-700 font-black">
-                          {activeCourseLeaderboard.recordScore}타 달성 시 1등 등록!
-                        </span>
-                      </div>
-                    )}
                   </div>
-                ) : (
-                  /* 1·2·3·4등 순위표 뷰 (공동 순위 처리) */
-                  <div className="space-y-1.5">
-                    {activeCourseLeaderboard.skillTop4.map((p, idx) => {
-                      const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '🎖️';
-                      return (
-                        <div
-                          key={idx}
-                          className={`p-2.5 rounded-xl border flex items-center justify-between text-xs transition ${
-                            p.isMe
-                              ? 'bg-amber-100/80 border-amber-400 font-black'
-                              : 'bg-stone-50 border-stone-200/80 font-bold'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">{medal}</span>
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-black text-stone-900">{p.rankLabel} {p.name}</span>
-                                <span className="text-[10px] bg-stone-200/80 text-stone-700 px-1.5 py-0.2 rounded font-medium">
-                                  {p.grade}
-                                </span>
-                              </div>
-                              {p.date && (
-                                <div className="text-[10px] text-stone-500 font-medium">
-                                  기록: {p.date}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <span className="text-sm font-black text-emerald-800">
-                            {p.score}타
-                          </span>
-                        </div>
-                      );
-                    })}
+                  <span className="text-xs font-black text-stone-950 bg-white/80 hover:bg-white px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs shrink-0">
+                    순위 보기 ❯
+                  </span>
+                </button>
 
-                    {/* 1등 명단 전체보기 전환 버튼 */}
-                    <button
-                      type="button"
-                      onClick={() => setLeaderboardTab('FIRST_PLACE')}
-                      className="w-full py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl text-xs font-black text-amber-950 transition flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <span>🥇 역대 1등 달성자 {activeCourseLeaderboard.champions1st.length}명 전체보기 (최신순) ▶</span>
-                    </button>
-
-                    {/* 만약 내가 TOP 4 밖이라면: 내 순위 친절 표기 */}
-                    {activeCourseLeaderboard.mySkillRank && !activeCourseLeaderboard.mySkillRank.isTop4 && (
-                      <div className="bg-amber-50 border border-amber-300 rounded-xl p-2.5 flex items-center justify-between gap-1.5 text-xs font-black text-amber-950">
-                        <span className="flex items-center gap-1.5 whitespace-nowrap">
-                          <span>🏅 내 순위:</span>
-                          <span className="text-amber-800 font-black">{activeCourseLeaderboard.mySkillRank.rank}위</span>
-                          <span className="text-[10.5px] font-bold text-stone-600">({userProfile.userName || '본인'})</span>
-                        </span>
-                        <span className="bg-white px-2 py-0.5 rounded-md border border-amber-300 text-emerald-800 text-[11px] font-black shrink-0">
-                          {activeCourseStats.avgScore18}타 ({activeCourseLeaderboard.mySkillRank.rankLabel})
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* 3. 🔥 [해당 구장 활동 랭킹 TOP 4 (1위 ~ 4위)] */}
-              <div className="bg-white rounded-2xl p-3.5 border border-emerald-300/80 shadow-xs space-y-2.5">
-                <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-                  <div className="flex items-center gap-1.5 font-black text-xs text-stone-900">
-                    <span className="w-5 h-5 rounded bg-emerald-600 text-white flex items-center justify-center font-black text-xs">
+                {/* 2번 줄: 필드 활동 1위에서 100위 버튼 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRankingMainTab('ACTIVITY_100');
+                    setShowLeaderboard100Popup(true);
+                  }}
+                  className="w-full p-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black rounded-2xl shadow-sm hover:shadow transition flex items-center justify-between cursor-pointer border border-emerald-500/80 active:scale-[0.99]"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center text-base shadow-2xs shrink-0 font-bold">
                       🔥
                     </span>
-                    <span>{activeStatsCourse.name} 활동 랭킹 TOP 4</span>
-                  </div>
-                  <span className="text-[10px] text-stone-500 font-bold">최근 30일 완주 기준</span>
-                </div>
-
-                <div className="space-y-1.5">
-                  {activeCourseLeaderboard.activityTop4.map((p) => {
-                    const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '🎖️';
-                    return (
-                      <div
-                        key={p.rank}
-                        className={`p-2.5 rounded-xl border flex items-center justify-between text-xs transition ${
-                          p.isMe
-                            ? 'bg-emerald-100/80 border-emerald-400 font-black'
-                            : 'bg-stone-50 border-stone-200/80 font-bold'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">{medal}</span>
-                          <span className="font-black text-stone-900">{p.rank}위 {p.name}</span>
-                          <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.2 rounded font-medium">
-                            {p.tier}
-                          </span>
-                        </div>
-                        <span className="text-sm font-black text-emerald-900">
-                          월 {p.rounds}회
-                        </span>
+                    <div className="text-left">
+                      <div className="text-xs font-black text-white flex items-center gap-1.5">
+                        <span>{activeStatsCourse.name} 필드 활동 1위에서 100위</span>
                       </div>
-                    );
-                  })}
-                </div>
-
-                {/* 만약 내가 TOP 4 밖이라면: 내 활동 순위 친절 표기 */}
-                {activeCourseLeaderboard.myActivityRank && !activeCourseLeaderboard.myActivityRank.isTop4 && (
-                  <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-2.5 flex items-center justify-between gap-1.5 text-xs font-black text-emerald-950">
-                    <span className="flex items-center gap-1.5 whitespace-nowrap">
-                      <span>🔥 내 활동 순위:</span>
-                      <span className="text-emerald-800 font-black">{activeCourseLeaderboard.myActivityRank.rank}위</span>
-                      <span className="text-[10.5px] font-bold text-stone-600">({userProfile.userName || '본인'})</span>
-                    </span>
-                    <span className="bg-white px-2 py-0.5 rounded-md border border-emerald-300 text-emerald-900 text-[11px] font-black shrink-0">
-                      최근 30일 {activeCourseStats.roundCount18}회 완주
-                    </span>
+                      <div className="text-[10.5px] text-emerald-100 font-medium">
+                        친선·연습 포함 모든 완주 기록 100% 반영
+                      </div>
+                    </div>
                   </div>
-                )}
+                  <span className="text-xs font-black text-emerald-950 bg-white hover:bg-emerald-50 px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs shrink-0">
+                    순위 보기 ❯
+                  </span>
+                </button>
               </div>
 
               {/* 4. 코스별(A, B, C, D) 세부 타수 분석 */}
@@ -1770,71 +1624,6 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* 5. 전국 주요 구장별 18홀 전적 비교 & 원터치 전환 */}
-              <div className="space-y-2 pt-1">
-                <div className="flex items-center justify-between text-xs font-black text-stone-800">
-                  <span>⛳ 전국 주요 구장별 18홀 전적 & 랭킹 보기</span>
-                  <span className="text-[10px] text-stone-500 font-normal">터치 시 해당 구장 전환</span>
-                </div>
-
-                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
-                  {courses.map((c) => {
-                    const stat = getCourseStats(c);
-                    const isSelected = activeStatsCourse.id === c.id;
-                    return (
-                      <div
-                        key={c.id}
-                        onClick={() => setStatsCourseId(c.id)}
-                        className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition active:scale-[0.99] ${
-                          isSelected
-                            ? 'bg-emerald-50 border-emerald-500 ring-1 ring-emerald-400/50'
-                            : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-black text-xs text-stone-900">{c.name}</span>
-                            {isSelected && (
-                              <span className="bg-emerald-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full">
-                                조회 중
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-stone-500 font-medium mt-0.5">
-                            {stat.has18HoleCompleted ? (
-                              <span>{stat.starGrade.split(' ')[1]} · 18홀 완주 {stat.roundCount18}회</span>
-                            ) : stat.has9HoleOnly ? (
-                              <span className="text-amber-700 font-bold">18홀 미완주 (9홀 {stat.roundCount9}회: {stat.avgScore9}타)</span>
-                            ) : (
-                              <span className="text-stone-400">18홀 완주 기록 없음 (0회)</span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="text-right flex items-center gap-2">
-                          <div>
-                            {stat.has18HoleCompleted ? (
-                              <>
-                                <div className="text-xs font-black text-emerald-800">
-                                  18홀 {stat.avgScore18}타
-                                </div>
-                                <div className="text-[10px] text-stone-500 font-medium">
-                                  라베 {stat.bestScore18}타
-                                </div>
-                              </>
-                            ) : (
-                              <div className="text-[11px] font-bold text-stone-400">
-                                랭킹 조회
-                              </div>
-                            )}
-                          </div>
-                          <ArrowRight className="w-3.5 h-3.5 text-stone-400" />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
 
             {/* 카카오 1초 로그인 & 클라우드 안전 보관 배너 */}
             <div className="bg-[#FEE500] p-3.5 rounded-2xl border border-[#E6CF00] shadow-sm text-[#191919] space-y-2">
@@ -1956,6 +1745,446 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* 🔍 다른 구장 검색하기 (전국 구장 검색 & 랭킹 조회 구장 변경 모달) */}
+      {showStatsSearchModal && (
+        <div className="fixed inset-0 z-[60] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl animate-scaleUp max-h-[85vh] flex flex-col overflow-hidden border border-stone-100">
+            {/* 헤더 */}
+            <div className="flex items-center justify-between border-b border-stone-100 p-4 shrink-0 bg-white">
+              <div className="flex items-center gap-2">
+                <span className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-sm shadow-xs shrink-0">
+                  🔍
+                </span>
+                <div>
+                  <h3 className="text-base font-black text-stone-900 leading-tight">전국 구장 검색</h3>
+                  <p className="text-[11px] text-stone-500 font-medium">조회할 파크골프장을 선택하세요</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowStatsSearchModal(false);
+                  setStatsSearchQuery('');
+                }}
+                className="w-8 h-8 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 flex items-center justify-center font-bold text-sm cursor-pointer shrink-0 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 검색 입력창 */}
+            <div className="p-3.5 border-b border-stone-100 bg-stone-50 shrink-0">
+              <div className="relative flex items-center">
+                <Search className="w-4 h-4 text-stone-400 absolute left-3 pointer-events-none" />
+                <input
+                  type="text"
+                  value={statsSearchQuery}
+                  onChange={(e) => setStatsSearchQuery(e.target.value)}
+                  placeholder="구장명 또는 지역 검색 (예: 동락, 구미, 양포, 인천...)"
+                  className="w-full pl-9 pr-8 py-2.5 bg-white border border-stone-300 rounded-xl text-xs font-bold text-stone-900 placeholder:text-stone-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none shadow-2xs"
+                  autoFocus
+                />
+                {statsSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setStatsSearchQuery('')}
+                    className="absolute right-2.5 text-stone-400 hover:text-stone-600 font-bold text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* 내 지정 홈구장 빠른 선택 칩 */}
+              {myHomeCourseList.length > 0 && !statsSearchQuery && (
+                <div className="mt-2.5 space-y-1">
+                  <div className="text-[10.5px] font-black text-stone-600 flex items-center gap-1">
+                    <span>⭐ 내 지정 홈구장 빠른 선택</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {myHomeCourseList.map((hc) => (
+                      <button
+                        key={hc.id}
+                        type="button"
+                        onClick={() => {
+                          setStatsCourseId(hc.id);
+                          setShowStatsSearchModal(false);
+                          setStatsSearchQuery('');
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition border cursor-pointer ${
+                          activeStatsCourse.id === hc.id
+                            ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                            : 'bg-white text-stone-800 border-stone-200 hover:bg-stone-100'
+                        }`}
+                      >
+                        ⛳ {hc.name.replace(/파크골프장|골프장/g, '').trim()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 검색 결과 목록 */}
+            <div className="p-3 space-y-1.5 overflow-y-auto flex-1 divide-y divide-stone-100">
+              {courses
+                .filter((c) => {
+                  if (!statsSearchQuery.trim()) return true;
+                  const q = statsSearchQuery.trim().toLowerCase();
+                  const noSpaceQ = q.replace(/\s+/g, '');
+                  const name = c.name.toLowerCase();
+                  const noSpaceName = name.replace(/\s+/g, '');
+                  const reg = (c.region || '').toLowerCase();
+                  const addr = (c.address || '').toLowerCase();
+                  const isYanghoQuery = q.includes('양포') || q.includes('양호') || noSpaceQ.includes('양포') || noSpaceQ.includes('양호');
+                  const isYanghoCourse = name.includes('양포') || name.includes('양호') || addr.includes('양호');
+                  return (
+                    name.includes(q) ||
+                    noSpaceName.includes(noSpaceQ) ||
+                    reg.includes(q) ||
+                    addr.includes(q) ||
+                    (isYanghoQuery && isYanghoCourse)
+                  );
+                })
+                .slice(0, 50)
+                .map((c) => {
+                  const isCurrent = activeStatsCourse.id === c.id;
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => {
+                        setStatsCourseId(c.id);
+                        setShowStatsSearchModal(false);
+                        setStatsSearchQuery('');
+                      }}
+                      className={`p-2.5 rounded-xl transition cursor-pointer flex items-center justify-between hover:bg-emerald-50/50 ${
+                        isCurrent ? 'bg-emerald-50 border border-emerald-300 font-black' : ''
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1 pr-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-black text-stone-900 truncate">{c.name}</span>
+                          {isCurrent && (
+                            <span className="text-[9px] bg-emerald-700 text-white font-black px-1.5 py-0.2 rounded-full shrink-0">
+                              조회 중
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10.5px] text-stone-500 font-medium mt-0.5">
+                          {c.region} · {formatCourseHolesText(c)}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className={`px-3 py-1.5 rounded-lg text-xs font-black shrink-0 transition ${
+                          isCurrent
+                            ? 'bg-emerald-700 text-white shadow-xs'
+                            : 'bg-white border border-stone-200 text-stone-700 hover:bg-emerald-600 hover:text-white hover:border-emerald-600'
+                        }`}
+                      >
+                        {isCurrent ? '선택됨' : '선택'}
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* 닫기 버튼 */}
+            <div className="p-3 border-t border-stone-100 bg-stone-50 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowStatsSearchModal(false);
+                  setStatsSearchQuery('');
+                }}
+                className="w-full py-2.5 bg-stone-900 hover:bg-black text-white font-black rounded-xl text-xs transition cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🏆 구장별 1~100위 순위 전용 팝업창 (공인 실력 1~100위 / 필드 활동 1~100위) */}
+      {showLeaderboard100Popup && (
+        <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl animate-scaleUp max-h-[90vh] flex flex-col overflow-hidden border border-stone-100">
+            {/* 팝업 헤더 */}
+            <div className="flex items-center justify-between border-b border-stone-100 p-4 shrink-0 bg-white">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className={`w-9 h-9 rounded-2xl flex items-center justify-center text-lg shadow-xs shrink-0 ${
+                  rankingMainTab === 'SKILL_100' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {rankingMainTab === 'SKILL_100' ? '🏆' : '🔥'}
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-base font-black text-stone-900 leading-tight truncate">
+                    {activeStatsCourse.name} 1~100위 랭킹
+                  </h3>
+                  <p className="text-[11px] text-stone-500 font-medium truncate">
+                    {rankingMainTab === 'SKILL_100'
+                      ? '클럽전·공식 대회 정규 18홀 공인 순위'
+                      : '친선·연습 포함 누적 필드 활동 순위'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLeaderboard100Popup(false)}
+                className="w-8 h-8 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 hover:text-stone-800 flex items-center justify-center font-bold text-sm cursor-pointer shrink-0 transition"
+                aria-label="닫기"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 팝업 내부 2대 탭 전환 바 */}
+            <div className="p-3 bg-stone-50 border-b border-stone-100 shrink-0">
+              <div className="grid grid-cols-2 gap-1.5 bg-stone-200/70 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setRankingMainTab('SKILL_100')}
+                  className={`py-2 px-3 rounded-lg text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    rankingMainTab === 'SKILL_100'
+                      ? 'bg-amber-500 text-stone-950 shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <span>🏆</span>
+                  <span>공인 실력 1~100위</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRankingMainTab('ACTIVITY_100')}
+                  className={`py-2 px-3 rounded-lg text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    rankingMainTab === 'ACTIVITY_100'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <span>🔥</span>
+                  <span>필드 활동 1~100위</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 팝업 본문 스크롤 영역 */}
+            <div className="p-3.5 space-y-3 overflow-y-auto flex-1 overscroll-contain">
+              {/* --- 탭 1: 공인 실력 랭킹 1~100위 --- */}
+              {rankingMainTab === 'SKILL_100' && (
+                <div className="space-y-3">
+                  {/* 기준 배지 */}
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-black text-stone-900 flex items-center gap-1">
+                      <span>⛳ {activeStatsCourse.name} 공인 실력 순위</span>
+                    </div>
+                    <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-black">
+                      클럽전·공식 대회 기준
+                    </span>
+                  </div>
+
+                  {/* 내 공인 순위 또는 등외 점수 안내 카드 */}
+                  {activeLeaderboard100.userSkillStatus.hasOfficialMatch ? (
+                    <div className="bg-emerald-50 border-2 border-emerald-400 rounded-xl p-2.5 flex items-center justify-between text-xs font-black text-emerald-950">
+                      <div className="flex items-center gap-1.5">
+                        <span>🏅 내 공인 순위:</span>
+                        <span className="text-emerald-800 text-sm font-black">{activeLeaderboard100.userSkillStatus.officialRank}위</span>
+                        <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded">공인 인증</span>
+                      </div>
+                      <span className="text-sm font-black text-emerald-800">
+                        {activeLeaderboard100.userSkillStatus.officialScore}타
+                      </span>
+                    </div>
+                  ) : activeLeaderboard100.userSkillStatus.hasCasualRound ? (
+                    <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-2.5 space-y-1 text-xs font-bold text-amber-950">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span>🏅 내 최고 기록:</span>
+                          <span className="text-emerald-800 font-black text-sm">{activeLeaderboard100.userSkillStatus.casualScore}타</span>
+                          <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.2 rounded">
+                            등외 점수 (비공식 친선)
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-amber-800 font-black">
+                          상위 {activeLeaderboard100.userSkillStatus.casualRankEquivalent}위권 수준
+                        </span>
+                      </div>
+                      <p className="text-[10.5px] text-amber-900/90 font-medium leading-tight">
+                        👉 개인 친선 라운드 기록으로 훌륭한 실력이지만 비공인입니다. <strong>공식 대회(클럽전)</strong>에 참가하시면 정식 공인 순위표에 등록됩니다!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-center text-xs text-stone-500 font-medium">
+                      아직 이 구장에서의 라운드 기록이 없습니다. 클럽전 또는 라운드를 시작해 보세요!
+                    </div>
+                  )}
+
+                  {/* 1~100위 순위표 */}
+                  <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pr-0.5 border border-stone-200 rounded-xl p-1 bg-stone-50/50 divide-y divide-stone-100">
+                    {activeLeaderboard100.skillTop100.map((player) => {
+                      const isTop1 = player.rank === 1;
+                      const isTop3 = player.rank <= 3;
+                      const medal = isTop1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : null;
+
+                      return (
+                        <div
+                          key={player.rank}
+                          className={`p-2 rounded-xl transition flex items-center justify-between text-xs ${
+                            player.isMe
+                              ? 'bg-amber-100/90 border-2 border-amber-400 font-black shadow-xs'
+                              : 'hover:bg-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0 ${
+                              isTop3 ? 'bg-amber-400 text-amber-950 shadow-2xs' : 'bg-stone-200 text-stone-700'
+                            }`}>
+                              {medal || player.rank}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-black text-stone-900 truncate">
+                                  {player.name}
+                                </span>
+                                <span className="text-[9.5px] bg-stone-200/80 text-stone-700 px-1.5 py-0.2 rounded truncate max-w-[90px]">
+                                  {player.clubName}
+                                </span>
+                                <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1 rounded">
+                                  {player.matchType}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-stone-500 font-medium mt-0.5">
+                                {player.grade} · {player.date}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-sm font-black text-emerald-800">
+                              {player.score}타
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 공인 기준 상세 안내 */}
+                  <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 text-[11px] space-y-1">
+                    <div className="flex items-center gap-1 text-amber-900 font-black">
+                      <span>💡</span>
+                      <span>공인 실력 순위 엄격 집계 기준</span>
+                    </div>
+                    <p className="text-stone-600 font-medium">
+                      공인 실력 랭킹은 공정성을 위해 <strong>파크온이 인증한 공인 클럽전 또는 공식 대회 18홀 완주 기록만</strong> 반영됩니다. 개인 친선 라운드는 등외 점수로 평가됩니다.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* --- 탭 2: 필드 활동 랭킹 1~100위 --- */}
+              {rankingMainTab === 'ACTIVITY_100' && (
+                <div className="space-y-3">
+                  {/* 기준 배지 */}
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-black text-stone-900 flex items-center gap-1">
+                      <span>🔥 {activeStatsCourse.name} 필드 활동 순위</span>
+                    </div>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded-full font-black">
+                      친선·연습·대회 전체 누적
+                    </span>
+                  </div>
+
+                  {/* 내 활동 순위 카드 */}
+                  <div className="bg-emerald-50 border-2 border-emerald-400 rounded-xl p-2.5 flex items-center justify-between text-xs font-black text-emerald-950">
+                    <div className="flex items-center gap-1.5">
+                      <span>🔥 내 활동 순위:</span>
+                      <span className="text-emerald-800 text-sm font-black">{activeLeaderboard100.userActivityStatus.rank}위</span>
+                      <span className="text-[10px] bg-emerald-700 text-white px-1.5 py-0.2 rounded font-bold">
+                        {activeLeaderboard100.userActivityStatus.tier}
+                      </span>
+                    </div>
+                    <span className="text-sm font-black text-emerald-800">
+                      월 {activeLeaderboard100.userActivityStatus.roundsCount30Days}회 완주
+                    </span>
+                  </div>
+
+                  {/* 1~100위 순위표 */}
+                  <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pr-0.5 border border-stone-200 rounded-xl p-1 bg-stone-50/50 divide-y divide-stone-100">
+                    {activeLeaderboard100.activityTop100.map((player) => {
+                      const isTop1 = player.rank === 1;
+                      const isTop3 = player.rank <= 3;
+                      const medal = isTop1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : null;
+
+                      return (
+                        <div
+                          key={player.rank}
+                          className={`p-2 rounded-xl transition flex items-center justify-between text-xs ${
+                            player.isMe
+                              ? 'bg-emerald-100/90 border-2 border-emerald-400 font-black shadow-xs'
+                              : 'hover:bg-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0 ${
+                              isTop3 ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-stone-200 text-stone-700'
+                            }`}>
+                              {medal || player.rank}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-black text-stone-900 truncate">
+                                  {player.name}
+                                </span>
+                                {player.clubName && (
+                                  <span className="text-[9.5px] bg-stone-200/80 text-stone-700 px-1.5 py-0.2 rounded truncate max-w-[90px]">
+                                    {player.clubName}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-emerald-800 font-medium mt-0.5">
+                                {player.tier}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-sm font-black text-emerald-900">
+                              월 {player.rounds}회
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 활동 기준 상세 안내 */}
+                  <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-2.5 text-[11px] space-y-1">
+                    <div className="flex items-center gap-1 text-emerald-900 font-black">
+                      <span>💡</span>
+                      <span>필드 활동 지수 반영 기준 안내</span>
+                    </div>
+                    <p className="text-stone-600 font-medium">
+                      활동 지수는 <strong>정규 리그나 대회 여부와 관계없이</strong>, 필드를 방문하여 혼자 연습하거나 친선으로 플레이한 모든 완주 기록(하루 2~3회 포함)을 <strong>100% 실시간으로 반영</strong>합니다.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 팝업 하단 닫기 버튼 */}
+            <div className="p-3 border-t border-stone-100 bg-stone-50 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowLeaderboard100Popup(false)}
+                className="w-full py-2.5 bg-stone-900 hover:bg-black text-white font-black rounded-xl text-xs transition cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 📍 내 지정 홈구장 선택 팝업 모달 */}
       {showHomeModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
@@ -1980,8 +2209,87 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* Content: 구미 양호, 구미 동락, 구미 지산 항목만 노출 */}
-            <div className="p-4 space-y-2.5">
+            {/* Quick Add Course Search Input */}
+            <div className="p-3.5 bg-stone-100/90 border-b border-stone-200">
+              <div className="relative">
+                <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={homeModalSearch}
+                  onChange={(e) => setHomeModalSearch(e.target.value)}
+                  placeholder="새로운 내 구장 검색 추가 (예: 양포, 양호, 선산, 도개...)"
+                  className="w-full bg-white text-stone-900 pl-9 pr-3 py-2 rounded-xl text-xs border border-stone-300 focus:outline-hidden focus:border-emerald-600 font-bold placeholder:text-stone-400"
+                />
+              </div>
+
+              {/* 검색 결과 드롭다운 */}
+              {homeModalSearch.trim() && (
+                <div className="mt-2 max-h-44 overflow-y-auto bg-white rounded-xl border border-stone-200 shadow-md divide-y divide-stone-100">
+                  {courses
+                    .filter((c) => {
+                      const q = homeModalSearch.trim().toLowerCase();
+                      const noSpaceQ = q.replace(/\s+/g, '');
+                      const name = c.name.toLowerCase();
+                      const noSpaceName = name.replace(/\s+/g, '');
+                      const reg = (c.region || '').toLowerCase();
+                      const addr = (c.address || '').toLowerCase();
+                      const isYanghoQuery = q.includes('양포') || q.includes('양호') || noSpaceQ.includes('양포') || noSpaceQ.includes('양호');
+                      const isYanghoCourse = name.includes('양포') || name.includes('양호') || addr.includes('양호');
+                      return (
+                        name.includes(q) ||
+                        noSpaceName.includes(noSpaceQ) ||
+                        reg.includes(q) ||
+                        addr.includes(q) ||
+                        (isYanghoQuery && isYanghoCourse)
+                      );
+                    })
+                    .slice(0, 8)
+                    .map((sc) => {
+                      const isAlreadyInMyList = myHomeCourseList.some((m) => m.id === sc.id);
+                      return (
+                        <div key={sc.id} className="p-2.5 flex items-center justify-between hover:bg-stone-50 text-xs">
+                          <div>
+                            <div className="font-black text-stone-900">{sc.name}</div>
+                            <div className="text-[10px] text-stone-500">{sc.region} · {formatCourseHolesText(sc)}</div>
+                          </div>
+                          {isAlreadyInMyList ? (
+                            <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">
+                              내 구장 등록됨
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                ParkOnStorage.addFavoriteHomeCourse(sc.id);
+                                setFavoriteHomeCourseIds(ParkOnStorage.getFavoriteHomeCourseIds());
+                                setHomeModalSearch('');
+                              }}
+                              className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-[11px] rounded-lg cursor-pointer transition active:scale-95"
+                            >
+                              + 내 구장 추가
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+
+            {/* Content: 내 구장 목록 */}
+            <div className="p-4 space-y-2.5 max-h-[50vh] overflow-y-auto">
+              <div className="flex items-center justify-between text-xs text-stone-600 font-bold mb-1">
+                <span>내가 지정한 홈 구장 ({myHomeCourseList.length}개소)</span>
+                <Link
+                  href="/courses"
+                  onClick={() => setShowHomeModal(false)}
+                  className="text-emerald-700 hover:text-emerald-900 flex items-center gap-0.5 text-[11px] font-black"
+                >
+                  <span>전국 구장 찾기</span>
+                  <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
+
               {myHomeCourseList.map((c) => {
                 const isSelected = c.id === homeCourse?.id;
                 return (
@@ -2012,16 +2320,29 @@ export default function HomePage() {
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition shrink-0 ${
-                        isSelected
-                          ? 'bg-emerald-700 text-white shadow-xs'
-                          : 'bg-white border border-stone-300 text-stone-700 hover:bg-stone-100'
-                      }`}
-                    >
-                      {isSelected ? '선택됨' : '선택'}
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition ${
+                          isSelected
+                            ? 'bg-emerald-700 text-white shadow-xs'
+                            : 'bg-white border border-stone-300 text-stone-700 hover:bg-stone-100'
+                        }`}
+                      >
+                        {isSelected ? '선택됨' : '선택'}
+                      </button>
+
+                      {myHomeCourseList.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleRemoveHomeCourse(e, c.id)}
+                          className="w-8 h-8 rounded-xl text-stone-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer"
+                          title="내 구장에서 제외"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}

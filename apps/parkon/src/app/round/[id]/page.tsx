@@ -1065,7 +1065,7 @@ export default function RoundPlayPage() {
               </span>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-xs">가상 라운딩 (체험·연습 모드)</span>
+                  <span className="font-extrabold text-xs">프로그램 체험 연습 (가상 기록)</span>
                   <span className="text-[9px] bg-stone-950 text-amber-300 font-black px-1.5 py-0.2 rounded-full">
                     시간 무제한
                   </span>
@@ -3062,7 +3062,7 @@ export default function RoundPlayPage() {
               <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
                 체험 모드 완료
               </span>
-              <h3 className="text-lg font-black text-white">가상 라운딩이 종료되었습니다!</h3>
+              <h3 className="text-lg font-black text-white">체험 연습이 종료되었습니다!</h3>
               <p className="text-xs text-stone-300 leading-relaxed pt-1">
                 이 기록은 전적과 랭킹에 <span className="text-amber-300 font-black underline">아무것도 남지 않는</span> 1회성 연습용입니다.
               </p>

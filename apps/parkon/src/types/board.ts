@@ -12,6 +12,9 @@ export interface TournamentNotice {
   targetCount: string;
   qualification: string;
   linkUrl: string;
+  directNoticeUrl?: string;
+  pdfUrl?: string;
+  pdfFileName?: string;
   isAiCurated: boolean;
   createdAt: string;
   lat?: number;

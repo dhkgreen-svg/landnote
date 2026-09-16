@@ -374,11 +374,11 @@ export function KakaoLoginModal({
                     }}
                     className="py-2.5 px-2 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 active:scale-95 text-white font-black text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-xs cursor-pointer"
                   >
-                    <span>🎯 가상 라운딩 바로가기</span>
+                    <span>🎯 프로그램 체험 연습</span>
                   </button>
                 </div>
                 <div className="text-[10px] text-stone-500 font-medium text-center">
-                  ※ 둘러보기 및 가상 라운딩은 로그인 없이 모든 기능을 자유롭게 이용하실 수 있습니다.
+                  ※ 둘러보기 및 프로그램 체험 연습은 로그인 없이 모든 기능을 자유롭게 이용하실 수 있습니다.
                 </div>
               </div>
 

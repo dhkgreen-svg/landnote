@@ -13,6 +13,8 @@ import { WatermarkPhotoCardModal } from '@/components/WatermarkPhotoCardModal';
 import { PRESCRIPTIONS } from '@/lib/defaultCourses';
 import { AdSenseSlot } from '@/components/AdSenseSlot';
 import { HoleScoreBadge, ScoreBadgeLegend } from '@/components/HoleScoreBadge';
+import { KakaoAuthUser } from '@/lib/storage';
+import { KakaoLoginModal } from '@/components/KakaoLoginModal';
 
 function ResultContent() {
   const searchParams = useSearchParams();
@@ -26,6 +28,9 @@ function ResultContent() {
   const [showPhotoCardModal, setShowPhotoCardModal] = useState<boolean>(false);
   const [showBusinessCardModal, setShowBusinessCardModal] = useState<boolean>(false);
   const [exchangeCardToast, setExchangeCardToast] = useState<string | null>(null);
+  const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
+  const [showKakaoModal, setShowKakaoModal] = useState<boolean>(false);
+  const [saveSuccessToast, setSaveSuccessToast] = useState<string | null>(null);
 
   const handleExchangeCards = () => {
     if (!session) return;
@@ -65,6 +70,7 @@ function ResultContent() {
       setCourse(found);
       // 자동 1촌 연결 & 누적 라운드 카운트 증가
       CompanionStorage.autoConnectRoundCompanions(session);
+      setKakaoUser(ParkOnStorage.getKakaoUser());
     }
   }, [session]);
 
@@ -715,6 +721,39 @@ function ResultContent() {
       {/* Google AdSense Slot */}
       <AdSenseSlot className="pt-2" />
 
+      {/* [대표님 기획] 게스트 -> 정회원 3초 전환 배너 */}
+      {!kakaoUser && (
+        <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 text-stone-950 p-4 sm:p-5 rounded-2xl shadow-xl border-2 border-amber-300 space-y-3 text-center">
+          <div className="inline-flex items-center gap-1.5 bg-stone-950 text-amber-300 px-3 py-1 rounded-full text-xs font-black shadow-xs">
+            <Sparkles className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
+            <span>👑 파크온 공식 전적 등록</span>
+          </div>
+          <div>
+            <h3 className="text-lg sm:text-xl font-black text-stone-950 leading-tight">
+              오늘 달성하신 멋진 스코어를<br />내 휴대폰에 평생 저장할까요? ⛳
+            </h3>
+            <p className="text-xs font-bold text-stone-900 mt-1.5 leading-snug">
+              지금 카카오 1초 로그인하시면 방금 친 18홀 기록이<br />
+              내 휴대폰 <span className="underline font-black decoration-stone-950">[나의 연대기]</span>에 공식 전적으로 영구 보존됩니다!
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowKakaoModal(true)}
+            className="w-full py-3.5 px-4 bg-stone-950 hover:bg-stone-900 text-amber-300 font-black text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer border border-amber-400"
+          >
+            <span>⚡ 카카오 1초 로그인하고 내 기록 평생 저장하기</span>
+            <ArrowRight className="w-4 h-4 text-amber-300" />
+          </button>
+        </div>
+      )}
+
+      {saveSuccessToast && (
+        <div className="bg-emerald-700 text-white text-xs sm:text-sm font-black p-3.5 rounded-xl shadow-lg text-center animate-bounce">
+          {saveSuccessToast}
+        </div>
+      )}
+
       {/* 5. Navigation Buttons */}
       <div className="pt-2 space-y-2">
         {session.clubRoomId && (
@@ -754,6 +793,32 @@ function ResultContent() {
         isOpen={showBusinessCardModal}
         onClose={() => setShowBusinessCardModal(false)}
         initialTab="EXCHANGED"
+      />
+
+      {/* 카카오 1초 로그인 모달 */}
+      <KakaoLoginModal
+        isOpen={showKakaoModal}
+        onClose={() => setShowKakaoModal(false)}
+        onLoginSuccess={(u) => {
+          setKakaoUser(u);
+          setShowKakaoModal(false);
+          // 현재 라운드 세션을 completedRounds에 공식 전적으로 영구 저장!
+          if (session) {
+            const completed = ParkOnStorage.getCompletedRounds();
+            if (!completed.some((r) => r.id === session.id)) {
+              ParkOnStorage.saveCompletedRound({
+                ...session,
+                isOfficial: true,
+                status: 'COMPLETED',
+                completedAt: session.completedAt || new Date().toISOString(),
+              });
+            }
+          }
+          setSaveSuccessToast('🎉 방금 완료한 라운딩이 회원님의 [나의 연대기]에 공식 전적으로 평생 저장되었습니다!');
+          window.dispatchEvent(new Event('storage'));
+        }}
+        title="회원 로그인하고 공식 기록 저장"
+        subtitle="카카오 1초 로그인 시 오늘 친 라운딩 전적이 영구 보존됩니다."
       />
     </div>
   );
