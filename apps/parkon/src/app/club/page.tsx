@@ -42,6 +42,7 @@ import {
   ArrowLeftRight,
   LogOut,
   Mail,
+  Newspaper,
 } from 'lucide-react';
 import { ClubEventRoom, ClubGroup, ClubPlayer, ParkGolfClub, ClubMember, FlashGathering, TournamentType, ClubInvitation } from '@/types/club';
 import { Course } from '@/types/parkon';
@@ -1177,21 +1178,21 @@ ${shareUrl}`;
       </div>
 
       {/* 2. 클럽 & 대회 & 번개 3대 핵심 탭 (대표님 요청 명칭 반영) */}
-      <section className="bg-white p-2 rounded-2xl border-2 border-stone-200 shadow-sm grid grid-cols-3 gap-1.5">
+      <section className="bg-white p-1.5 rounded-2xl border-2 border-stone-200 shadow-sm grid grid-cols-4 gap-1">
         {/* 탭 1: 내 클럽 바로가기 */}
         <button
           type="button"
           onClick={() => setActiveHubTab('CLUBS')}
-          className={`py-3 px-1 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
+          className={`py-2.5 px-0.5 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
             activeHubTab === 'CLUBS'
               ? 'bg-gradient-to-b from-emerald-600 to-emerald-800 text-white border-emerald-900 shadow-md ring-2 ring-emerald-400/40'
               : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
           }`}
         >
-          <Building2 className={`w-5 h-5 ${activeHubTab === 'CLUBS' ? 'text-amber-300' : 'text-emerald-700'}`} />
-          <span className="whitespace-nowrap font-extrabold text-[12px]">내 클럽 바로가기</span>
+          <Building2 className={`w-4 h-4 ${activeHubTab === 'CLUBS' ? 'text-amber-300' : 'text-emerald-700'}`} />
+          <span className="whitespace-nowrap font-extrabold text-[11px]">내 클럽</span>
           <span
-            className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+            className={`text-[9px] px-1 py-0.2 rounded-full font-bold ${
               activeHubTab === 'CLUBS' ? 'bg-emerald-950 text-amber-300' : 'bg-stone-200 text-stone-600'
             }`}
           >
@@ -1203,20 +1204,20 @@ ${shareUrl}`;
         <button
           type="button"
           onClick={() => setActiveHubTab('TOURNAMENTS')}
-          className={`py-3 px-1 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
+          className={`py-2.5 px-0.5 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
             activeHubTab === 'TOURNAMENTS'
               ? 'bg-gradient-to-b from-purple-700 to-purple-900 text-white border-purple-950 shadow-md ring-2 ring-purple-400/40'
               : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
           }`}
         >
-          <Swords className={`w-5 h-5 ${activeHubTab === 'TOURNAMENTS' ? 'text-yellow-300' : 'text-purple-700'}`} />
-          <span className="whitespace-nowrap font-extrabold text-[12px]">새 대회 개설</span>
+          <Swords className={`w-4 h-4 ${activeHubTab === 'TOURNAMENTS' ? 'text-yellow-300' : 'text-purple-700'}`} />
+          <span className="whitespace-nowrap font-extrabold text-[11px]">새 대회</span>
           <span
-            className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+            className={`text-[9px] px-1 py-0.2 rounded-full font-bold ${
               activeHubTab === 'TOURNAMENTS' ? 'bg-purple-950 text-yellow-300' : 'bg-stone-200 text-stone-600'
             }`}
           >
-            대항전·시도대회
+            대항전·시도
           </span>
         </button>
 
@@ -1224,22 +1225,37 @@ ${shareUrl}`;
         <button
           type="button"
           onClick={() => setActiveHubTab('FLASH')}
-          className={`py-3 px-1 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
+          className={`py-2.5 px-0.5 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
             activeHubTab === 'FLASH'
               ? 'bg-gradient-to-b from-amber-500 to-amber-700 text-stone-950 border-amber-800 shadow-md ring-2 ring-amber-300/60'
               : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
           }`}
         >
-          <Zap className={`w-5 h-5 ${activeHubTab === 'FLASH' ? 'text-stone-950 fill-stone-950' : 'text-amber-600'}`} />
-          <span className="whitespace-nowrap font-extrabold text-[12px]">번개 모임 갖기</span>
+          <Zap className={`w-4 h-4 ${activeHubTab === 'FLASH' ? 'text-stone-950 fill-stone-950' : 'text-amber-600'}`} />
+          <span className="whitespace-nowrap font-extrabold text-[11px]">번개 모임</span>
           <span
-            className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+            className={`text-[9px] px-1 py-0.2 rounded-full font-black ${
               activeHubTab === 'FLASH' ? 'bg-amber-950 text-amber-300' : 'bg-stone-200 text-stone-600'
             }`}
           >
-            1촌·클럽전용
+            1촌·동호인
           </span>
         </button>
+
+        {/* 탭 4: 게시판 & 파크골프 뉴스 바로가기 */}
+        <Link
+          href="/board"
+          className="py-2.5 px-0.5 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border bg-gradient-to-b from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-purple-950 border-purple-300 shadow-xs"
+        >
+          <div className="relative">
+            <Newspaper className="w-4 h-4 text-purple-700" />
+            <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+          </div>
+          <span className="whitespace-nowrap font-extrabold text-[11px] text-purple-950">게시판·뉴스</span>
+          <span className="text-[9px] px-1 py-0.2 rounded-full font-black bg-purple-200 text-purple-900">
+            공고·신문고
+          </span>
+        </Link>
       </section>
 
       {/* ========================================================================= */}

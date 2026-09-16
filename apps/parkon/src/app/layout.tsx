@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { BottomNav } from '@/components/BottomNav';
 import { VisitorTracker } from '@/components/VisitorTracker';
 
 export const metadata: Metadata = {
@@ -83,10 +84,11 @@ export default function RootLayout({
       <body className="min-h-screen flex flex-col antialiased bg-stone-100 text-stone-900">
         <VisitorTracker />
         <Header />
-        <main className="flex-1 max-w-md w-full mx-auto pb-6">
+        <main className="flex-1 max-w-md w-full mx-auto pb-20">
           {children}
         </main>
         <Footer />
+        <BottomNav />
       </body>
     </html>
   );

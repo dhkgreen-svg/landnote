@@ -875,6 +875,34 @@ export default function HomePage() {
         </Link>
       </section>
 
+      {/* 4-0. [NEW] 게시판 & 파크골프 뉴스 상단 전면 배치 카드 (GPS 연동·전국 시합 공고·열린 신문고) */}
+      <Link
+        href="/board"
+        className="block bg-gradient-to-r from-purple-950 via-stone-900 to-emerald-950 text-white rounded-3xl p-4 border-2 border-purple-400/60 shadow-md hover:border-purple-300 transition group active:scale-[0.99]"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center font-black shadow-md shrink-0 border border-purple-300/40">
+              <Newspaper className="w-6 h-6 text-amber-300" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-sm sm:text-base font-black text-white group-hover:text-amber-300 transition-colors">
+                  📢 게시판 &amp; 파크골프 뉴스
+                </span>
+                <span className="text-[10px] bg-purple-500 text-white font-black px-2 py-0.5 rounded-full animate-pulse shadow-xs">
+                  GPS 연동
+                </span>
+              </div>
+              <p className="text-xs text-purple-200 mt-0.5 font-medium truncate">
+                전국 시합·대회 공고 · 내 위치 소식 · 열린 신문고(건의/오류)
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-5 h-5 text-purple-300 group-hover:translate-x-1 transition-transform shrink-0" />
+        </div>
+      </Link>
+
       {/* 4-1. 배너 1: 천기섬 사주 오늘의 무료 운세 제휴 배너 */}
       <a
         href="https://cheongiseong-saju.vercel.app"

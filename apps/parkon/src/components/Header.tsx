@@ -154,10 +154,13 @@ export function Header() {
             {/* 0.5. 게시판 & 파크골프 뉴스 */}
             <Link
               href="/board"
-              className="w-9 h-9 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
+              className="relative w-9 h-9 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
               title="게시판 & 파크골프 뉴스 (전국 시합 공고·열린 신문고)"
             >
               <Newspaper className="w-5 h-5 text-purple-700 stroke-[2.5]" />
+              <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-black px-1 rounded-full animate-pulse shadow-xs">
+                N
+              </span>
             </Link>
 
             {/* 1. 룰 솔로몬 (물음표) 버튼 */}
