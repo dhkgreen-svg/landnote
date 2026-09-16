@@ -619,23 +619,16 @@ export default function RoundPlayPage() {
     updateSession({ ...session, players: updatedPlayers });
   };
 
-  // Reset to Par for player (0베이스면 0과 기준타수 토글, Par기준이면 Par로 리셋)
+  // Reset to default for player (0베이스면 0타로 리셋, Par기준이면 해당 홀 기준타수(Par)로 리셋)
   const resetToPar = (playerId: string) => {
     const target = session.players.find((p) => p.id === playerId);
     if (target?.isOut) return;
 
     const curConfirmed = session.confirmedHoles || [];
+    const resetScore = countingMode === 'ZERO_BASE' ? 0 : currentPar;
     const updatedPlayers = session.players.map((p) => {
       if (p.id !== playerId || p.isOut) return p;
-      const cur = p.scores[actualHoleNumber];
-      let nextScore: number;
-      if (countingMode === 'ZERO_BASE') {
-        // In ZERO_BASE, if currently 0 or undefined, tap sets to currentPar; if > 0, tap resets to 0
-        nextScore = (cur === undefined || cur === 0) ? currentPar : 0;
-      } else {
-        nextScore = currentPar;
-      }
-      const newScores = { ...p.scores, [actualHoleNumber]: nextScore };
+      const newScores = { ...p.scores, [actualHoleNumber]: resetScore };
       const totalStrokes = curConfirmed.reduce(
         (acc, hNum) => acc + (newScores[hNum] || 0),
         0
@@ -990,14 +983,30 @@ export default function RoundPlayPage() {
     router.push('/');
   };
 
+  const selectCountingMode = (mode: 'ZERO_BASE' | 'PAR_BASE') => {
+    setCountingMode(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('parkon_counting_mode', mode);
+    }
+    // 미확정 홀일 경우, 모드 전환 시 이전 모드의 기본값(0 또는 Par)으로 남아있던 점수를 새 모드의 기본값으로 즉각 연동
+    if (session && (!session.confirmedHoles || !session.confirmedHoles.includes(actualHoleNumber))) {
+      const prevDefault = mode === 'ZERO_BASE' ? currentPar : 0;
+      const updatedPlayers = session.players.map((p) => {
+        const curScore = p.scores[actualHoleNumber];
+        if (curScore === undefined || curScore === prevDefault) {
+          const newScores = { ...p.scores };
+          delete newScores[actualHoleNumber];
+          return { ...p, scores: newScores };
+        }
+        return p;
+      });
+      updateSession({ ...session, players: updatedPlayers });
+    }
+  };
+
   const toggleCountingMode = () => {
-    setCountingMode((prev) => {
-      const next = prev === 'ZERO_BASE' ? 'PAR_BASE' : 'ZERO_BASE';
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('parkon_counting_mode', next);
-      }
-      return next;
-    });
+    const next = countingMode === 'ZERO_BASE' ? 'PAR_BASE' : 'ZERO_BASE';
+    selectCountingMode(next);
   };
 
   const togglePlayerRest = (playerId: string) => {
@@ -1528,12 +1537,12 @@ export default function RoundPlayPage() {
                 <span>✏️ 현장 제원 수정</span>
               </button>
 
-              {/* 카운트 방식 미니 토글 (localStorage 영구 연동) */}
+              {/* 카운트 방식 2분할 토글 (localStorage 영구 연동) */}
               <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/20">
-                <span className="text-[10px] text-stone-300 font-bold px-1">카운트:</span>
+                <span className="text-[10px] text-stone-300 font-bold px-1">방식:</span>
                 <button
                   type="button"
-                  onClick={toggleCountingMode}
+                  onClick={() => selectCountingMode('ZERO_BASE')}
                   className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
                     countingMode === 'ZERO_BASE'
                       ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
@@ -1544,7 +1553,7 @@ export default function RoundPlayPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={toggleCountingMode}
+                  onClick={() => selectCountingMode('PAR_BASE')}
                   className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
                     countingMode === 'PAR_BASE'
                       ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
@@ -1657,14 +1666,31 @@ export default function RoundPlayPage() {
               </span>
             </div>
 
-            <button
-              type="button"
-              onClick={toggleCountingMode}
-              className="text-xs font-black px-2.5 py-1 rounded-lg bg-yellow-400 text-stone-950 shadow-xs shrink-0 cursor-pointer active:scale-95 transition"
-              title="0베이스 vs Par기준 카운트 방식 전환"
-            >
-              {countingMode === 'ZERO_BASE' ? '0베이스' : 'Par기준'}
-            </button>
+            {/* 카운트 방식 2분할 세그먼트 토글 */}
+            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/20 shrink-0">
+              <button
+                type="button"
+                onClick={() => selectCountingMode('ZERO_BASE')}
+                className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
+                  countingMode === 'ZERO_BASE'
+                    ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
+                    : 'text-stone-300 hover:text-white'
+                }`}
+              >
+                0베이스
+              </button>
+              <button
+                type="button"
+                onClick={() => selectCountingMode('PAR_BASE')}
+                className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
+                  countingMode === 'PAR_BASE'
+                    ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
+                    : 'text-stone-300 hover:text-white'
+                }`}
+              >
+                Par기준
+              </button>
+            </div>
           </div>
 
           {/* 4인 스코어 기입 그리드 */}
@@ -1923,26 +1949,14 @@ export default function RoundPlayPage() {
                       className={`h-13 rounded-xl flex flex-col items-center justify-center active:scale-95 transition border-2 cursor-pointer ${
                         sunlightMode
                           ? 'bg-yellow-400 border-white text-black shadow-md'
-                          : strokes === 0
+                          : countingMode === 'ZERO_BASE' && strokes === 0
                           ? 'bg-stone-50 border-stone-300 hover:border-emerald-400'
                           : 'bg-emerald-50 border-emerald-500'
                       }`}
-                      title={countingMode === 'ZERO_BASE' ? '0타 또는 기준타수(Par) 전환' : '누르면 기준타수(Par)로 초기화'}
+                      title={countingMode === 'ZERO_BASE' ? '누르면 0타로 리셋' : `누르면 기준타수(${currentPar}타)로 리셋`}
                     >
-                      {countingMode === 'PAR_BASE' ? (
-                        <>
-                          <span className={`text-2xl font-black leading-none ${
-                            sunlightMode ? 'text-black' : 'text-emerald-950'
-                          }`}>
-                            {strokes === currentPar ? 'E' : strokes > currentPar ? `+${strokes - currentPar}` : `${strokes - currentPar}`}
-                          </span>
-                          <span className={`text-[10px] font-extrabold mt-0.5 ${
-                            sunlightMode ? 'text-black' : 'text-emerald-700'
-                          }`}>
-                            ({strokes}타 · Par {currentPar})
-                          </span>
-                        </>
-                      ) : (
+                      {countingMode === 'ZERO_BASE' ? (
+                        /* 제로 베이스: 0부터 시작하여 친 타수만큼 1, 2, 3... 카운팅 */
                         <>
                           <span className={`text-3xl font-black leading-none ${
                             sunlightMode
@@ -1957,12 +1971,34 @@ export default function RoundPlayPage() {
                             sunlightMode
                               ? 'text-black'
                               : strokes === 0
-                              ? 'text-stone-600'
+                              ? 'text-stone-500'
+                              : 'text-emerald-700'
+                          }`}>
+                            {strokes === 0 ? '0타' : `${strokes}타`}
+                          </span>
+                        </>
+                      ) : (
+                        /* 파 기준: 기준 파 숫자(Par 3이면 3, 4면 4)부터 시작! */
+                        <>
+                          <span className={`text-3xl font-black leading-none ${
+                            sunlightMode ? 'text-black' : 'text-emerald-950'
+                          }`}>
+                            {strokes}
+                          </span>
+                          <span className={`text-[10px] font-black mt-0.5 ${
+                            sunlightMode
+                              ? 'text-black'
                               : strokes === currentPar
                               ? 'text-emerald-700'
-                              : 'text-stone-600'
+                              : strokes > currentPar
+                              ? 'text-rose-600'
+                              : 'text-blue-600'
                           }`}>
-                            {strokes === 0 ? '0타' : strokes === currentPar ? '파(Par)' : `${strokes}타`}
+                            {strokes === currentPar
+                              ? '파(Par)'
+                              : strokes > currentPar
+                              ? `+${strokes - currentPar} (${strokes}타)`
+                              : `${strokes - currentPar} (${strokes}타)`}
                           </span>
                         </>
                       )}
