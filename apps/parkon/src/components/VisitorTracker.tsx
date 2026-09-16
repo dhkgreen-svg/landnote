@@ -17,36 +17,53 @@ export function VisitorTracker() {
 
     const track = async () => {
       try {
-        let userRegion = '경북 구미';
-        let homeCourse = '구미 동락 파크골프장';
+        let userRegion = '';
+        let homeCourse = '';
         let userName = '일반 골퍼';
 
         if (typeof window !== 'undefined') {
           try {
+            // 1. GPS 위치 우선 확인
+            const gpsRaw = localStorage.getItem('parkon_user_gps_v1');
+            if (gpsRaw) {
+              const gps = JSON.parse(gpsRaw);
+              if (gps.regionName) {
+                userRegion = gps.regionName;
+                homeCourse = `${gps.regionName} 인근 구장`;
+              }
+            }
+
+            // 2. 프로필 정보 확인
             const profileRaw = localStorage.getItem('parkon_user_profile_v1');
             if (profileRaw) {
               const profile = JSON.parse(profileRaw);
               if (profile.userName) userName = profile.userName;
-              if (profile.clubName?.includes('구미')) userRegion = '경북 구미';
-              else if (profile.clubName?.includes('부산')) userRegion = '부산';
-              else if (profile.clubName?.includes('서울') || profile.clubName?.includes('한강')) userRegion = '서울/수도권';
-              else if (profile.clubName?.includes('대구')) userRegion = '대구';
+              if (profile.region) userRegion = profile.region;
+              else if (profile.clubName) {
+                ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'].forEach((r) => {
+                  if (profile.clubName.includes(r)) userRegion = r;
+                });
+              }
             }
 
+            // 3. 홈 구장 설정 확인
             const homeCourseId = localStorage.getItem('parkon_home_course_id_v1');
-            if (homeCourseId) {
+            if (homeCourseId && !userRegion) {
               if (homeCourseId.includes('gumi') || homeCourseId.includes('dongrak') || homeCourseId.includes('yangho') || homeCourseId.includes('jisan')) {
                 userRegion = '경북 구미';
                 homeCourse = '구미 동락/양호/지산 구장';
-              } else if (homeCourseId.includes('daegu') || homeCourseId.includes('gangchang')) {
+              } else if (homeCourseId.includes('daegu') || homeCourseId.includes('gangchang') || homeCourseId.includes('suseong')) {
                 userRegion = '대구';
-                homeCourse = '대구 강창 구장';
+                homeCourse = '대구 수성/강창 구장';
               } else if (homeCourseId.includes('busan') || homeCourseId.includes('samrak')) {
                 userRegion = '부산';
                 homeCourse = '부산 삼락 구장';
               } else if (homeCourseId.includes('seoul') || homeCourseId.includes('yeouido')) {
-                userRegion = '서울/수도권';
+                userRegion = '서울';
                 homeCourse = '여의도 한강 구장';
+              } else if (homeCourseId.includes('yangpyeong')) {
+                userRegion = '경기 양평';
+                homeCourse = '양평 강상 구장';
               }
             }
           } catch {

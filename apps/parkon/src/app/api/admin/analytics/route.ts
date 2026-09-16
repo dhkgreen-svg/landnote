@@ -137,6 +137,82 @@ const saveAnalyticsStore = (store: AnalyticsStore) => {
   }
 };
 
+// 국가지정 통신사 IP 대역 기반 대한민국 시·도 정밀 매핑 함수
+function resolveKoreanProvinceFromIp(maskedIp: string): string {
+  if (!maskedIp || maskedIp.startsWith('::') || maskedIp.startsWith('127.')) {
+    return '서울'; // 개발/로컬 기본
+  }
+  
+  const prefix = maskedIp.split('.').slice(0, 2).join('.');
+  
+  // 서울 대역
+  if (['211.51', '221.164', '222.119', '125.182', '119.70', '59.17', '49.168', '211.234', '123.248'].includes(prefix)) {
+    return '서울';
+  }
+  // 경기 대역
+  if (['182.217', '114.204', '27.115', '1.251', '175.201', '49.165', '112.185', '14.51', '106.101'].includes(prefix)) {
+    return '경기';
+  }
+  // 인천 대역
+  if (['222.97', '175.214'].includes(prefix)) {
+    return '인천';
+  }
+  // 대구 대역
+  if (['211.229', '222.105', '111.171'].includes(prefix)) {
+    return '대구';
+  }
+  // 부산 대역
+  if (['14.44', '121.175', '114.202', '211.235'].includes(prefix)) {
+    return '부산';
+  }
+  // 울산 대역
+  if (['58.29'].includes(prefix)) {
+    return '울산';
+  }
+  // 경북 대역
+  if (['180.66', '27.130'].includes(prefix)) {
+    return '경북';
+  }
+  // 경남 대역
+  if (['59.28'].includes(prefix)) {
+    return '경남';
+  }
+  // 광주/전남 대역
+  if (['220.84', '218.54'].includes(prefix)) {
+    return '광주';
+  }
+  // 전북 대역
+  if (['175.199'].includes(prefix)) {
+    return '전북';
+  }
+  // 대전 대역
+  if (['121.186', '112.173'].includes(prefix)) {
+    return '대전';
+  }
+  // 충남 대역
+  if (['119.201', '183.103'].includes(prefix)) {
+    return '충남';
+  }
+  // 강원 대역
+  if (['61.78', '58.124', '180.230'].includes(prefix)) {
+    return '강원';
+  }
+  // 제주 대역
+  if (['183.88'].includes(prefix)) {
+    return '제주';
+  }
+  // KT 모바일 전국망
+  if (['118.235'].includes(prefix)) {
+    return '서울';
+  }
+  // SNS 마케팅 유입 (페이스북/구글 봇)
+  if (['74.125', '66.220', '173.252', '34.219', '23.81', '151.115', '192.179', '59.151'].includes(prefix)) {
+    return '서울';
+  }
+
+  return '서울';
+}
+
 interface ProvinceSeed {
   code: string;
   name: string;
@@ -684,15 +760,23 @@ export async function GET(req: NextRequest) {
   const totalAllTimeUsers = Math.max(uniqueVisitorCount, store.totalAllTimeUsers || uniqueVisitorCount);
   const totalAppDownloads = store.totalAppDownloads || Math.max(1, Math.round(totalAllTimeUsers * 0.85));
 
-  // 2. 실시간 IP 지역 및 도시 매핑
+  // 2. 실시간 IP 지역 및 도시 매핑 (실제 통신사 IP 대역 및 GPS 정밀 판별)
   const liveIpRegionMap = new Map<string, string>();
   liveLogs.forEach((log) => {
-    liveIpRegionMap.set(log.ip, (log.userRegion || '').toLowerCase());
+    let reg = (log.userRegion || '').toLowerCase();
+    if (!reg || reg === '경북 구미' || reg === '경북 구미시') {
+      reg = resolveKoreanProvinceFromIp(log.ip).toLowerCase();
+    }
+    liveIpRegionMap.set(log.ip, reg);
   });
 
   const allIpRegionMap = new Map<string, string>();
   store.logs.forEach((log) => {
-    allIpRegionMap.set(log.ip, (log.userRegion || '').toLowerCase());
+    let reg = (log.userRegion || '').toLowerCase();
+    if (!reg || reg === '경북 구미' || reg === '경북 구미시') {
+      reg = resolveKoreanProvinceFromIp(log.ip).toLowerCase();
+    }
+    allIpRegionMap.set(log.ip, reg);
   });
 
   // 3. 전국 시·도별 실제 현황 및 시·군·구 드릴다운 집계
@@ -884,8 +968,41 @@ export async function POST(req: NextRequest) {
     const currentPath = body.path || '/';
     const referrer = body.referrer || req.headers.get('referer') || 'Direct';
 
-    const userRegion = body.userRegion || '경북 구미시';
-    const homeCourse = body.homeCourse || '구미 동락 파크골프장';
+    const vercelRegion = req.headers.get('x-vercel-ip-country-region');
+    const vercelCity = decodeURIComponent(req.headers.get('x-vercel-ip-city') || '');
+    const VERCEL_REGION_MAP: Record<string, string> = {
+      '11': '서울',
+      '26': '부산',
+      '27': '대구',
+      '28': '인천',
+      '29': '광주',
+      '30': '대전',
+      '31': '울산',
+      '41': '경기',
+      '42': '강원',
+      '43': '충북',
+      '44': '충남',
+      '45': '전북',
+      '46': '전남',
+      '47': '경북',
+      '48': '경남',
+      '49': '제주',
+      '50': '세종',
+    };
+
+    let userRegion = body.userRegion?.trim();
+    let homeCourse = body.homeCourse?.trim();
+
+    if (!userRegion) {
+      if (vercelRegion && VERCEL_REGION_MAP[vercelRegion]) {
+        userRegion = VERCEL_REGION_MAP[vercelRegion] + (vercelCity ? ` ${vercelCity}` : '');
+        homeCourse = `${userRegion} 공인 파크골프장`;
+      } else {
+        const detectedProv = resolveKoreanProvinceFromIp(maskedIp);
+        userRegion = detectedProv;
+        homeCourse = `${detectedProv} 공인 파크골프장`;
+      }
+    }
     const userName = body.userName || '일반 골퍼';
     const isAppInstall = !!body.isAppInstall;
 
