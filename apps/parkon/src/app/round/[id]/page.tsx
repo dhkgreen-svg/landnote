@@ -1541,23 +1541,32 @@ export default function RoundPlayPage() {
           <span className="text-base shrink-0">🌱</span>
           <div className="min-w-0">
             <div className={`text-xs font-black truncate ${sunlightMode ? 'text-yellow-300' : 'text-emerald-950'}`}>
-              홀 잔디 체감 상태는 어떠신가요?
+              {session?.isVirtual ? '홀 잔디 상태 제보 (가상 모드)' : '홀 잔디 체감 상태는 어떠신가요?'}
             </div>
-            <div className={`text-[10px] font-semibold truncate ${sunlightMode ? 'text-zinc-300' : 'text-emerald-700'}`}>
-              구름성·습도 1초 터치 시 실시간 리포트에 즉시 반영
+            <div className={`text-[10px] font-semibold truncate ${session?.isVirtual ? 'text-amber-700 font-bold' : sunlightMode ? 'text-zinc-300' : 'text-emerald-700'}`}>
+              {session?.isVirtual ? '가상 상태에서는 실제 제보가 제한됩니다' : '구름성·습도 1초 터치 시 실시간 리포트에 즉시 반영'}
             </div>
           </div>
         </div>
         <button
           type="button"
-          onClick={() => setShowConditionModal(true)}
+          onClick={() => {
+            if (session?.isVirtual) {
+              alert('가상 상태에서는 작동이 안 됩니다.');
+              return;
+            }
+            setShowConditionModal(true);
+          }}
           className={`shrink-0 px-3 py-1.5 font-black text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1 border ${
-            sunlightMode
+            session?.isVirtual
+              ? 'bg-stone-200 text-stone-600 border-stone-300 hover:bg-stone-300'
+              : sunlightMode
               ? 'bg-yellow-400 text-black border-white'
               : 'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-600'
           }`}
+          title={session?.isVirtual ? '가상 상태에서는 작동이 안 됩니다' : '잔디 1초 입력'}
         >
-          <span>잔디 1초 입력 ✍️</span>
+          <span>{session?.isVirtual ? '가상 모드 (제보 불가)' : '잔디 1초 입력 ✍️'}</span>
         </button>
       </div>
 
@@ -2728,6 +2737,7 @@ export default function RoundPlayPage() {
           courseId={course.id}
           courseName={course.name}
           isOpen={showConditionModal}
+          isVirtual={Boolean(session?.isVirtual)}
           onClose={() => setShowConditionModal(false)}
         />
       )}
