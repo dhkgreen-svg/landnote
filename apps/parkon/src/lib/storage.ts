@@ -56,7 +56,7 @@ export interface UserGolfProfile {
 }
 
 export const DEFAULT_USER_PROFILE: UserGolfProfile = {
-  userName: '김대희',
+  userName: '플레이어',
   nationalGrade: '기록 준비중',
   clubName: '',
   kakaoUser: null,
@@ -100,7 +100,7 @@ export const ParkOnStorage = {
       if (!data) return DEFAULT_USER_PROFILE;
       const parsed: UserGolfProfile = JSON.parse(data);
       if (!parsed.userName || parsed.userName === '본인(조장)' || parsed.userName === '본인') {
-        parsed.userName = '김대희';
+        parsed.userName = '플레이어';
       }
       if (parsed.clubName === '동락 파크골프 클럽') {
         parsed.clubName = '';
@@ -179,7 +179,7 @@ export const ParkOnStorage = {
       ) {
         return profile.userName;
       }
-      return '김대희';
+      return '플레이어';
     }
 
     if (clubId && user.clubAliases && user.clubAliases[clubId]) {
@@ -195,7 +195,7 @@ export const ParkOnStorage = {
     if (user.realName) {
       return user.realName;
     }
-    return user.aliasName || user.nickname || '김대희';
+    return user.aliasName || user.nickname || '플레이어';
   },
 
   // 클럽별 사용자 활동명 저장

@@ -22,8 +22,8 @@ export function KakaoLoginModal({
   subtitle = '실명과 별명을 설정하고 파크골프 커뮤니티에 참여하세요.',
 }: KakaoLoginModalProps) {
   const [currentUser, setCurrentUser] = useState<KakaoAuthUser | null>(null);
-  const [realName, setRealName] = useState('김대희');
-  const [aliasName, setAliasName] = useState('나이스버디');
+  const [realName, setRealName] = useState('');
+  const [aliasName, setAliasName] = useState('');
   const [preferredDisplay, setPreferredDisplay] = useState<'REAL' | 'ALIAS'>('REAL');
   const [isLoading, setIsLoading] = useState(false);
   const [isSavedNotice, setIsSavedNotice] = useState(false);
@@ -33,12 +33,17 @@ export function KakaoLoginModal({
       const u = ParkOnStorage.getKakaoUser();
       setCurrentUser(u);
       if (u) {
-        setRealName(u.realName || u.nickname || '김대희');
-        setAliasName(u.aliasName || '나이스버디');
+        setRealName(u.realName || u.nickname || '');
+        setAliasName(u.aliasName || '');
         setPreferredDisplay(u.preferredDisplay || 'REAL');
       } else {
-        setRealName('김대희');
-        setAliasName('나이스버디');
+        const prof = ParkOnStorage.getUserProfile();
+        const existingName =
+          prof?.userName && prof.userName !== '플레이어' && prof.userName !== '조장(본인)'
+            ? prof.userName
+            : '';
+        setRealName(existingName);
+        setAliasName('');
         setPreferredDisplay('REAL');
       }
       setIsSavedNotice(false);
@@ -51,8 +56,8 @@ export function KakaoLoginModal({
     setIsLoading(true);
     try {
       const user = await loginWithKakao({
-        realName: realName.trim() || '김대희',
-        aliasName: aliasName.trim() || '나이스버디',
+        realName: realName.trim() || '회원',
+        aliasName: aliasName.trim() || '골퍼',
         preferredDisplay: preferredDisplay,
       });
       setCurrentUser(user);
@@ -60,7 +65,7 @@ export function KakaoLoginModal({
         (preferredDisplay === 'ALIAS' ? aliasName.trim() : realName.trim()) ||
         realName.trim() ||
         aliasName.trim() ||
-        '김대희';
+        '회원';
       syncSelfPlayerNameToActiveRound(effectiveName);
       if (onLoginSuccess) {
         onLoginSuccess(user);
@@ -77,8 +82,8 @@ export function KakaoLoginModal({
   };
 
   const handleSaveProfile = () => {
-    const rName = realName.trim() || '김대희';
-    const aName = aliasName.trim() || '나이스버디';
+    const rName = realName.trim() || '회원';
+    const aName = aliasName.trim() || '골퍼';
     const effectiveName = preferredDisplay === 'ALIAS' ? aName : rName;
 
     if (currentUser) {
@@ -217,7 +222,7 @@ export function KakaoLoginModal({
                       }`}
                     >
                       <UserCheck className="w-3.5 h-3.5" />
-                      <span>실명 ({realName || '김대희'})</span>
+                      <span>실명 ({realName || '실명'})</span>
                     </button>
                     <button
                       type="button"
@@ -229,7 +234,7 @@ export function KakaoLoginModal({
                       }`}
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>가명 ({aliasName || '나이스버디'})</span>
+                      <span>가명 ({aliasName || '가명'})</span>
                     </button>
                   </div>
                 </div>
@@ -318,7 +323,7 @@ export function KakaoLoginModal({
                       }`}
                     >
                       <UserCheck className="w-3.5 h-3.5" />
-                      <span>실명 ({realName || '김대희'})</span>
+                      <span>실명 ({realName || '실명'})</span>
                     </button>
                     <button
                       type="button"
@@ -330,7 +335,7 @@ export function KakaoLoginModal({
                       }`}
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>가명 ({aliasName || '나이스버디'})</span>
+                      <span>별명 ({aliasName || '별명'})</span>
                     </button>
                   </div>
                 </div>
@@ -348,7 +353,7 @@ export function KakaoLoginModal({
                   <span>
                     {isLoading
                       ? '로그인 처리 중...'
-                      : `${preferredDisplay === 'ALIAS' ? aliasName : realName}(으)로 1초 시작하기`}
+                      : `${(preferredDisplay === 'ALIAS' ? aliasName : realName) || '회원'}(으)로 1초 시작하기`}
                   </span>
                 </button>
               </div>
