@@ -6,6 +6,7 @@ import {
   ClubLeaderboardIndividual,
   ParkGolfClub,
   ClubMember,
+  ClubInvitation,
   FlashGathering,
   LuckyDrawWinner,
   AwardRuleConfig,
@@ -18,8 +19,10 @@ const STORAGE_KEYS = {
   ACTIVE_CLUB_ROOM_ID: 'parkon_active_club_room_id_v1',
   CLUBS: 'parkon_clubs_v1',
   MY_CLUB_IDS: 'parkon_my_club_ids_v1',
+  CLUB_INVITATIONS: 'parkon_club_invitations_v1',
   FLASH_GATHERINGS: 'parkon_flash_gatherings_v1',
 };
+
 
 // 기본 공식 동호회 데이터 (가상 인물 배제)
 function generateDefaultSeedClubs(): ParkGolfClub[] {
@@ -1675,12 +1678,12 @@ ${link}`;
     if (typeof window === 'undefined') return defaultIds;
     try {
       const data = localStorage.getItem(STORAGE_KEYS.MY_CLUB_IDS);
-      if (!data) {
+      if (data === null) {
         localStorage.setItem(STORAGE_KEYS.MY_CLUB_IDS, JSON.stringify(defaultIds));
         return defaultIds;
       }
       const parsed = JSON.parse(data);
-      if (!Array.isArray(parsed) || parsed.length === 0) {
+      if (!Array.isArray(parsed)) {
         return defaultIds;
       }
       return parsed;
@@ -1849,8 +1852,30 @@ ${shareUrl}`;
     const list = this.getAllClubs();
     const club = list.find((c) => c.id === clubId);
     if (club) {
-      club.members = club.members.filter((m) => m.name !== memberName);
-      club.memberCount = Math.max(1, club.members.length);
+      // 본인 이름, (본인) 표기, 대표님 실명 매칭 제거
+      club.members = club.members.filter(
+        (m) =>
+          m.name.trim() !== memberName.trim() &&
+          !m.name.includes('(본인)') &&
+          (memberName.includes('김대희') ? !m.name.includes('김대희') : true)
+      );
+      club.memberCount = club.members.length;
+
+      // 만약 총무나 회장이 나간 경우 다음 멤버에게 권한 자동 위임
+      if (
+        (club.managerName.includes(memberName) || club.managerName.includes('김대희') || club.managerName.includes('(본인)')) &&
+        club.members.length > 0
+      ) {
+        club.managerName = club.members[0].name;
+        club.members[0].role = 'MANAGER';
+      }
+      if (
+        (club.presidentName.includes(memberName) || club.presidentName.includes('김대희') || club.presidentName.includes('(본인)')) &&
+        club.members.length > 0
+      ) {
+        club.presidentName = club.members[0].name;
+        club.members[0].role = 'PRESIDENT';
+      }
     }
 
     let myClubs = this.getMyClubIds();
@@ -1864,6 +1889,83 @@ ${shareUrl}`;
       return false;
     }
   },
+
+  // ==========================================
+  // [NEW] 클럽 가입 초청장 관리 (도착한 초청장 수락/거절 & 발송)
+  // ==========================================
+  getClubInvitations(): ClubInvitation[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CLUB_INVITATIONS);
+      if (data === null) {
+        // 기본 1건의 실제감 있는 초청장 시드 제공
+        const seedInvites: ClubInvitation[] = [
+          {
+            id: 'inv-ss-1',
+            clubId: 'club-daegu-suseong',
+            clubName: '대구 수성 에이스 파크골프 클럽',
+            homeCourseName: '팔현 파크골프장',
+            region: '대구 수성구',
+            inviterName: '수성회장 (박대표)',
+            targetUserName: '김대희',
+            message: '김대희 대표님, 저희 수성 에이스 클럽 정기 라운드에 함께해 주시기를 정중히 초청드립니다!',
+            createdAt: '오늘 오전',
+          },
+        ];
+        localStorage.setItem(STORAGE_KEYS.CLUB_INVITATIONS, JSON.stringify(seedInvites));
+        return seedInvites;
+      }
+      return JSON.parse(data) || [];
+    } catch {
+      return [];
+    }
+  },
+
+  acceptClubInvitation(invitationId: string, userName: string): boolean {
+    const invites = this.getClubInvitations();
+    const target = invites.find((inv) => inv.id === invitationId);
+    if (!target) return false;
+
+    // 해당 클럽에 즉시 가입 등록
+    this.joinClub(target.clubId, userName);
+
+    // 초청장 목록에서 제거
+    const updated = invites.filter((inv) => inv.id !== invitationId);
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUB_INVITATIONS, JSON.stringify(updated));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  rejectClubInvitation(invitationId: string): boolean {
+    const invites = this.getClubInvitations();
+    const updated = invites.filter((inv) => inv.id !== invitationId);
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUB_INVITATIONS, JSON.stringify(updated));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  sendClubInvitation(invitation: Omit<ClubInvitation, 'id' | 'createdAt'>): boolean {
+    const invites = this.getClubInvitations();
+    const newInv: ClubInvitation = {
+      ...invitation,
+      id: `inv-${Date.now()}`,
+      createdAt: '방금 전',
+    };
+    invites.unshift(newInv);
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUB_INVITATIONS, JSON.stringify(invites));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
 
   // 특정 클럽에서 내가 사용할 활동명(실명/별명) 변경 저장
   updateClubMemberAlias(clubId: string, newAliasName: string): boolean {

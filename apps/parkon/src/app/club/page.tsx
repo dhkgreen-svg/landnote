@@ -40,8 +40,10 @@ import {
   Play,
   Hand,
   ArrowLeftRight,
+  LogOut,
+  Mail,
 } from 'lucide-react';
-import { ClubEventRoom, ClubGroup, ClubPlayer, ParkGolfClub, ClubMember, FlashGathering, TournamentType } from '@/types/club';
+import { ClubEventRoom, ClubGroup, ClubPlayer, ParkGolfClub, ClubMember, FlashGathering, TournamentType, ClubInvitation } from '@/types/club';
 import { Course } from '@/types/parkon';
 import { ClubStorage } from '@/lib/clubStorage';
 import { CompanionStorage, Companionship, CompanionLightningRound } from '@/lib/companionStorage';
@@ -76,6 +78,7 @@ export default function ClubGatheringHomePage() {
   const [showCreateClubModal, setShowCreateClubModal] = useState(false);
   const [showClubBrowseModal, setShowClubBrowseModal] = useState(false);
   const [selectedClubDetail, setSelectedClubDetail] = useState<ParkGolfClub | null>(null);
+  const [clubInvitations, setClubInvitations] = useState<ClubInvitation[]>([]);
 
   // 회장/총무 클럽 관리 모달 (가입 승인 대기 탭 / 회원 명부 탭)
   const [managingClub, setManagingClub] = useState<ParkGolfClub | null>(null);
@@ -235,6 +238,7 @@ export default function ClubGatheringHomePage() {
     setFlashGatherings(ClubStorage.getAllFlashGatherings());
     setCompanions(CompanionStorage.getCompanions());
     setLightningRounds(CompanionStorage.getLightningRounds());
+    setClubInvitations(ClubStorage.getClubInvitations());
 
     const list = ParkOnStorage.getAllCourses();
     setAllCourses(list);
@@ -931,10 +935,39 @@ ${shareUrl}`;
 
   const handleLeaveClub = (club: ParkGolfClub) => {
     const selfName = getDefaultSelfName();
-    if (confirm(`'${club.name}' 클럽에서 탈퇴하시겠습니까?`)) {
+    const isExecutive =
+      club.managerName.includes(selfName) ||
+      club.presidentName.includes(selfName) ||
+      club.managerName.includes('김대희') ||
+      club.presidentName.includes('김대희');
+
+    const confirmMsg = isExecutive
+      ? `[클럽 관리자 나가기 확인]\n'${club.name}'에서 나가시겠습니까?\n\n확인 시 내 소속 클럽 목록에서 즉시 제외되며, 관리 권한이 정리됩니다.`
+      : `[클럽 탈퇴 확인]\n정말 '${club.name}'에서 탈퇴(나가기)하시겠습니까?\n\n내 소속 클럽 목록에서 즉시 제외됩니다.`;
+
+    if (confirm(confirmMsg)) {
       ClubStorage.leaveClub(club.id, selfName);
       refreshAllData();
-      showToast(`'${club.name}' 클럽에서 탈퇴하였습니다.`);
+      if (managingClub?.id === club.id) setManagingClub(null);
+      showToast(`'${club.name}' 클럽에서 탈퇴(나가기) 완료되었습니다.`);
+    }
+  };
+
+  // 초청 수락 및 거절 핸들러
+  const handleAcceptInvite = (invitationId: string, clubName: string) => {
+    const selfName = getDefaultSelfName();
+    const success = ClubStorage.acceptClubInvitation(invitationId, selfName);
+    if (success) {
+      refreshAllData();
+      showToast(`🎉 '${clubName}' 초청을 수락하여 가입 완료되었습니다!`);
+    }
+  };
+
+  const handleRejectInvite = (invitationId: string, clubName: string) => {
+    if (confirm(`'${clubName}' 클럽 초청을 거절하시겠습니까?`)) {
+      ClubStorage.rejectClubInvitation(invitationId);
+      refreshAllData();
+      showToast(`'${clubName}' 클럽 초청을 사양했습니다.`);
     }
   };
 
@@ -1250,6 +1283,93 @@ ${shareUrl}`;
             </div>
           </div>
 
+          {/* ======================================================== */}
+          {/* [NEW] 도착한 클럽 가입 초청장 섹션 (초청 수락 및 거절) */}
+          {/* ======================================================== */}
+          {clubInvitations.length > 0 && (
+            <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 rounded-2xl p-4 border-2 border-amber-400 shadow-md space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center font-black text-sm shadow-xs">
+                    📨
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="font-extrabold text-sm text-stone-900">
+                        도착한 클럽 가입 초청장
+                      </h3>
+                      <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse">
+                        {clubInvitations.length}건
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-stone-600 font-bold mt-0.5">
+                      클럽 집행부로부터 정회원 가입 초청을 받았습니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2.5 pt-0.5">
+                {clubInvitations.map((inv) => (
+                  <div
+                    key={inv.id}
+                    className="bg-white rounded-xl p-3.5 border border-amber-300/80 shadow-xs space-y-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="bg-amber-100 text-amber-950 text-[10px] font-black px-2 py-0.5 rounded-md">
+                            초청장
+                          </span>
+                          <span className="text-[11px] text-stone-500 font-bold">
+                            {inv.createdAt}
+                          </span>
+                        </div>
+                        <h4 className="font-black text-sm text-stone-900 mt-1">
+                          {inv.clubName}
+                        </h4>
+                        <p className="text-xs text-stone-500 font-medium flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>
+                            {inv.region} · {inv.homeCourseName}
+                          </span>
+                        </p>
+                        <p className="text-xs text-emerald-800 font-bold mt-1">
+                          초청자: {inv.inviterName}
+                        </p>
+                      </div>
+                    </div>
+
+                    {inv.message && (
+                      <p className="text-xs text-stone-700 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/60 leading-relaxed font-medium">
+                        💬 &ldquo;{inv.message}&rdquo;
+                      </p>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleAcceptInvite(inv.id, inv.clubName)}
+                        className="py-2.5 px-3 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Check className="w-4 h-4" />
+                        <span>🤝 초청 수락 (가입)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRejectInvite(inv.id, inv.clubName)}
+                        className="py-2.5 px-3 bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-700 font-bold text-xs rounded-xl border border-stone-300 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <X className="w-4 h-4 text-stone-500" />
+                        <span>정중히 거절</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* 내 소속 클럽 카드 리스트 */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between text-xs font-black text-stone-800 px-1">
@@ -1362,10 +1482,12 @@ ${shareUrl}`;
                     ) : (
                       <button
                         type="button"
-                        onClick={() => setSelectedClubDetail(club)}
-                        className="text-stone-600 hover:text-stone-900 px-2.5 py-1.5 rounded-xl text-xs font-bold border border-stone-200 bg-stone-50 cursor-pointer shrink-0"
+                        onClick={() => handleLeaveClub(club)}
+                        className="text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1.5 rounded-xl text-xs font-bold border border-rose-200 bg-white cursor-pointer flex items-center gap-1 shrink-0 transition active:scale-95"
+                        title="클럽 탈퇴 및 나가기"
                       >
-                        회원 명부
+                        <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                        <span>클럽 나가기</span>
                       </button>
                     )}
                   </div>
@@ -1454,7 +1576,7 @@ ${shareUrl}`;
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={(e) => handleCopyClubInvite(e, club)}
@@ -1467,14 +1589,24 @@ ${shareUrl}`;
                         {copiedClubId === club.id ? (
                           <>
                             <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
-                            <span>✅ 카톡 가입 초청장 복사 완료!</span>
+                            <span>✅ 복사 완료!</span>
                           </>
                         ) : (
                           <>
                             <Share2 className="w-3.5 h-3.5 text-stone-700" />
-                            <span>📢 카톡 클럽 가입 초청장 복사</span>
+                            <span>📢 초청장 복사</span>
                           </>
                         )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleLeaveClub(club)}
+                        className="py-2.5 px-3 bg-white hover:bg-rose-50 active:scale-95 text-rose-700 text-xs font-black rounded-xl border border-rose-300 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                        title="소속 클럽 탈퇴 및 나가기"
+                      >
+                        <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                        <span>🚪 클럽 나가기</span>
                       </button>
                     </div>
                   </div>
@@ -2888,8 +3020,20 @@ ${shareUrl}`;
               )}
             </div>
 
-            {/* 하단 닫기 바 */}
-            <div className="p-3 border-t border-stone-200 flex justify-end bg-stone-50">
+            {/* 하단 버튼 바 (클럽 나가기 / 탈퇴 + 닫기) */}
+            <div className="p-3 border-t border-stone-200 flex items-center justify-between bg-stone-50">
+              <button
+                type="button"
+                onClick={() => {
+                  if (managingClub) handleLeaveClub(managingClub);
+                }}
+                className="px-3 py-2 bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 font-black rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition active:scale-95 shadow-2xs"
+                title="클럽 관리자 권한 인계 및 클럽 탈퇴"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                <span>🚪 이 클럽 나가기 (탈퇴)</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setManagingClub(null)}

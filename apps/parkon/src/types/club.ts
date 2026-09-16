@@ -163,3 +163,17 @@ export interface ClubLeaderboardIndividual {
   handicap?: number; // [NEW] 신페리오 핸디캡
   netScore?: number; // [NEW] 핸디캡 적용 네트 스코어
 }
+
+// 3. 클럽 가입 초청장 인터페이스
+export interface ClubInvitation {
+  id: string;
+  clubId: string;
+  clubName: string;
+  homeCourseName: string;
+  region: string;
+  inviterName: string;
+  targetUserName: string;
+  message?: string;
+  createdAt: string;
+}
+
