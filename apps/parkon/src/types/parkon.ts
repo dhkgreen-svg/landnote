@@ -68,7 +68,9 @@ export interface RoundPlayer {
   isSelf?: boolean;   // 본인 여부
   isGuest?: boolean;  // 게스트(비회원) 여부: 실시간 공유 전용, 본인 폰 기록 미반영
   isOut?: boolean;    // 사정상 중도 퇴장/기권 여부 (기존 홀 기록 보존, 이후 홀 제외)
-  departedHole?: number; // 몇 번 홀에서 중도 퇴장했는지 표시용
+  departedHole?: number; // 퇴장 시점 홀 번호
+  isResting?: boolean; // ☕ 잠시 빠짐 (휴식 중) - 현재 홀 입력 비활성화
+  restingHoles?: number[]; // 휴식한 홀 목록
   scores: Record<number, number>; // hole -> strokes
   obCount: Record<number, number>; // hole -> ob count
   totalStrokes: number;
@@ -91,6 +93,11 @@ export interface RoundSession {
   status: 'IN_PROGRESS' | 'COMPLETED';
   isOfficial?: boolean; // true = 공식 전적/평균타수 반영, false = 연습/테스트 라운드(미반영)
   isVirtual?: boolean;  // true = 가상 라운딩 (체험/연습 모드, 시간 무제한, 종료 시 기록 제로 미보존)
+  isUnlimitedRound?: boolean; // 무제한 자유 라운드 여부 (기본 true)
+  targetHolesCount?: number;  // 목표 홀 수 (예: 18홀)
+  countingMode?: 'ZERO_BASE' | 'PAR_BASE'; // 0베이스 vs Par기준
+  isRefereeMode?: boolean;    // 공식 시합용 홀 전담 심판 모드
+  refereeHole?: number;       // 심판 배정 홀
   matchType?: 'CLUB_MATCH' | 'TOURNAMENT' | 'CASUAL'; // 클럽전 | 정규대회 | 개인친선
   clubRoomId?: string;
   clubGroupNumber?: number;
