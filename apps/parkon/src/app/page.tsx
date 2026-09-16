@@ -1,5 +1,5 @@
 'use client';
-
+// Build: 2026-09-16-clean-home
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
