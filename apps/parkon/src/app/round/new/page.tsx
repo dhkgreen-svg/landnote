@@ -47,6 +47,8 @@ function NewRoundForm() {
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [joinSimulationToast, setJoinSimulationToast] = useState<string | null>(null);
   const [showPlayStartNotice, setShowPlayStartNotice] = useState<boolean>(false);
+  const [isUnlimitedRound, setIsUnlimitedRound] = useState<boolean>(true);
+  const [targetHolesCount, setTargetHolesCount] = useState<number>(18);
 
   useEffect(() => {
     const selfName = getDefaultSelfName();
@@ -437,7 +439,7 @@ function NewRoundForm() {
       courseName: currentCourse.name,
       startedAt: new Date().toISOString(),
       currentHole: 1, // 1st hole of the session (which corresponds to orderedHoleNumbers[0])
-      totalHoles: 9,
+      totalHoles: isUnlimitedRound ? 999 : targetHolesCount,
       selectedCourseLetters: [selectedCourseLetter],
       selectedHoleNumbers: orderedHoleNumbers,
       confirmedHoles: [],
@@ -445,6 +447,8 @@ function NewRoundForm() {
       status: 'IN_PROGRESS',
       isOfficial: !isTrialMode,
       isVirtual: isTrialMode,
+      isUnlimitedRound,
+      targetHolesCount: isUnlimitedRound ? 999 : targetHolesCount,
     };
 
     // 3. 서버 룸(Room)에 라운드 시작 알림 -> 대기실의 동반자들도 즉시 스코어카드로 자동 이동!
@@ -645,6 +649,87 @@ function NewRoundForm() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* 2-1. 유연한 라운드 설정: 무제한 자유 라운드(기본 추천) vs 목표 홀 설정 */}
+      <div className="bg-white rounded-2xl p-3.5 border border-stone-200 shadow-sm space-y-2.5">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-black text-stone-900 flex items-center gap-1.5">
+            <span>🔄</span>
+            <span>라운드 진행 방식 (유연한 라운드)</span>
+          </label>
+          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2.5 py-0.5 rounded-full">
+            {isUnlimitedRound ? '무제한 자유 순환' : `목표 ${targetHolesCount}홀 설정`}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setIsUnlimitedRound(true)}
+            className={`p-3 rounded-xl border-2 text-left transition flex flex-col justify-between active:scale-95 cursor-pointer ${
+              isUnlimitedRound
+                ? 'bg-emerald-50 border-emerald-600 shadow-sm ring-1 ring-emerald-400'
+                : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-black text-xs text-stone-900 flex items-center gap-1">
+                <span>♾️</span>
+                <span>무제한 자유 라운드</span>
+              </span>
+              <span className="text-[9px] bg-emerald-600 text-white font-black px-1.5 py-0.5 rounded-full">
+                추천
+              </span>
+            </div>
+            <p className="text-[10.5px] text-stone-600 mt-1 leading-tight font-medium">
+              홀 수 강제 없이 원하는 만큼 순환 후 언제든 직접 종료
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsUnlimitedRound(false)}
+            className={`p-3 rounded-xl border-2 text-left transition flex flex-col justify-between active:scale-95 cursor-pointer ${
+              !isUnlimitedRound
+                ? 'bg-amber-50 border-amber-600 shadow-sm ring-1 ring-amber-400'
+                : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-black text-xs text-stone-900 flex items-center gap-1">
+                <span>🎯</span>
+                <span>목표 홀 설정 라운드</span>
+              </span>
+              {!isUnlimitedRound && <span className="text-xs text-amber-600 font-black">✓</span>}
+            </div>
+            <p className="text-[10.5px] text-stone-600 mt-1 leading-tight font-medium">
+              목표 홀 도달 시 [더 치기] vs [종료하기] 심플 선택
+            </p>
+          </button>
+        </div>
+
+        {!isUnlimitedRound && (
+          <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
+            <span className="text-xs font-bold text-stone-700">목표 홀 수:</span>
+            <div className="flex items-center gap-1.5">
+              {[9, 18, 27, 36].map((hCount) => (
+                <button
+                  key={hCount}
+                  type="button"
+                  onClick={() => setTargetHolesCount(hCount)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition active:scale-95 cursor-pointer ${
+                    targetHolesCount === hCount
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-stone-100 text-stone-700 border border-stone-200 hover:bg-stone-200'
+                  }`}
+                >
+                  {hCount}홀
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3. Players Input with Dynamic Player Count & Leader Selection */}
