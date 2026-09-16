@@ -3,10 +3,12 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Award, Share2, Copy, Check, Home, BookmarkCheck, ArrowRight, ShieldAlert, Sparkles, Trophy, Camera } from 'lucide-react';
+import { Award, Share2, Copy, Check, Home, BookmarkCheck, ArrowRight, ShieldAlert, Sparkles, Trophy, Camera, CreditCard } from 'lucide-react';
 import { RoundSession, Course } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
 import { CompanionStorage } from '@/lib/companionStorage';
+import { BusinessCardStorage } from '@/lib/businessCardStorage';
+import { BusinessCardModal } from '@/components/BusinessCardModal';
 import { WatermarkPhotoCardModal } from '@/components/WatermarkPhotoCardModal';
 import { PRESCRIPTIONS } from '@/lib/defaultCourses';
 import { AdSenseSlot } from '@/components/AdSenseSlot';
@@ -22,6 +24,16 @@ function ResultContent() {
   const [copied, setCopied] = useState<boolean>(false);
   const [savedPlayerId, setSavedPlayerId] = useState<string | null>(null);
   const [showPhotoCardModal, setShowPhotoCardModal] = useState<boolean>(false);
+  const [showBusinessCardModal, setShowBusinessCardModal] = useState<boolean>(false);
+  const [exchangeCardToast, setExchangeCardToast] = useState<string | null>(null);
+
+  const handleExchangeCards = () => {
+    if (!session) return;
+    const added = BusinessCardStorage.exchangeWithRoundCompanions(session.players);
+    setExchangeCardToast(`동반자 ${added}명의 디지털 명함이 내 명함첩에 안전하게 보관되었습니다!`);
+    setTimeout(() => setExchangeCardToast(null), 3500);
+    setShowBusinessCardModal(true);
+  };
 
   useEffect(() => {
     if (!roundId) {
@@ -222,7 +234,40 @@ function ResultContent() {
   const totalObs = Object.values(mostOBPlayer?.obCount || {}).reduce((x, y) => x + y, 0);
 
   return (
-    <div className="p-4 space-y-5">
+    <div className="p-4 space-y-4 max-w-lg mx-auto">
+      {/* 0. 가상 라운딩 연습 성적표 안내 배너 */}
+      {session.isVirtual && (
+        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-stone-950 p-4 rounded-2xl border-2 border-amber-300 shadow-md space-y-2 animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🎯</span>
+            <div>
+              <span className="text-[10px] bg-stone-950 text-amber-300 font-black px-2 py-0.5 rounded-full">
+                체험 모드 성적표
+              </span>
+              <h3 className="text-sm font-black text-stone-950 mt-0.5">가상 라운딩 연습 성적표 (미저장)</h3>
+            </div>
+          </div>
+          <p className="text-xs text-stone-900 font-bold leading-relaxed">
+            이 성적표는 사용법 연습용으로 <span className="underline font-black">실제 전적이나 랭킹에 저장되지 않습니다.</span>
+          </p>
+          <div className="pt-1">
+            <Link
+              href={`/round/new?courseId=${session.courseId}`}
+              className="inline-flex items-center justify-center gap-1.5 w-full bg-stone-950 hover:bg-stone-900 text-amber-300 font-black py-2.5 rounded-xl text-xs shadow-md transition active:scale-98"
+            >
+              <span>⛳ 실제 필드에서 [정식 라운딩] 시작하기 ▶</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* 명함 교환 알림 토스트 */}
+      {exchangeCardToast && (
+        <div className="bg-amber-400 text-stone-950 text-xs font-black text-center py-2.5 px-4 rounded-xl shadow-md animate-bounce">
+          ✨ {exchangeCardToast}
+        </div>
+      )}
+
       {/* 1. Header Trophy Card */}
       <div className="bg-gradient-to-br from-emerald-800 to-emerald-950 text-white rounded-3xl p-5 shadow-xl text-center relative overflow-hidden">
         {/* 파키의 완주 응원 배너 */}
@@ -615,6 +660,18 @@ function ResultContent() {
             )}
           </button>
         </div>
+
+        {/* [NEW] 동반자 4인 디지털 명함 교환 버튼 */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={handleExchangeCards}
+            className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-95 transition cursor-pointer border border-emerald-400/40"
+          >
+            <CreditCard className="w-4 h-4 text-amber-300" />
+            <span>🤝 동반자 4인과 디지털 명함 교환하기</span>
+          </button>
+        </div>
       </div>
 
       {/* 4. Weak Point Diagnostic & Prescription */}
@@ -690,6 +747,13 @@ function ResultContent() {
         isOpen={showPhotoCardModal}
         onClose={() => setShowPhotoCardModal(false)}
         session={session}
+      />
+
+      {/* Digital Business Card Modal */}
+      <BusinessCardModal
+        isOpen={showBusinessCardModal}
+        onClose={() => setShowBusinessCardModal(false)}
+        initialTab="EXCHANGED"
       />
     </div>
   );

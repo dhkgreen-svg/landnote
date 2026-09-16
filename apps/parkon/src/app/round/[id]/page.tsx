@@ -47,6 +47,7 @@ export default function RoundPlayPage() {
 
   // Official vs Practice/Test Completion Modal State ("오늘 스코어를 반영할까요?")
   const [showFinishOfficialModal, setShowFinishOfficialModal] = useState<boolean>(false);
+  const [showVirtualFinishModal, setShowVirtualFinishModal] = useState<boolean>(false);
 
   // 📶 오프라인 강변 음영 지역 안심 자동 저장 상태
   const [isOnline, setIsOnline] = useState<boolean>(true);
@@ -803,10 +804,18 @@ export default function RoundPlayPage() {
   };
 
   const handleFinishRound = () => {
+    if (session?.isVirtual) {
+      setShowVirtualFinishModal(true);
+      return;
+    }
     setShowFinishOfficialModal(true);
   };
 
   const handleEarlyFinishConfirm = () => {
+    if (session?.isVirtual) {
+      setShowVirtualFinishModal(true);
+      return;
+    }
     setShowFinishOfficialModal(true);
   };
 
@@ -1045,6 +1054,50 @@ export default function RoundPlayPage() {
           <span>{sunlightMode ? '☀️ 햇빛모드 ON' : '☀️ 햇빛모드'}</span>
         </button>
       </div>
+
+      {/* [NEW] 가상 라운딩(체험/연습 모드) 전용 배너 - 시간 무제한 · 종료 시 기록 제로 */}
+      {session.isVirtual && (
+        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-stone-950 p-3 rounded-2xl border-2 border-amber-300 shadow-md animate-fadeIn">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-7 h-7 rounded-xl bg-stone-950 text-amber-300 flex items-center justify-center font-black text-xs shadow-xs">
+                🎯
+              </span>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-xs">가상 라운딩 (체험·연습 모드)</span>
+                  <span className="text-[9px] bg-stone-950 text-amber-300 font-black px-1.5 py-0.2 rounded-full">
+                    시간 무제한
+                  </span>
+                </div>
+                <p className="text-[10px] text-stone-900 font-bold">
+                  종료 시 기록이 전혀 남지 않는 연습용입니다. 마음껏 눌러보세요!
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleFinishRound}
+              className="bg-stone-950 hover:bg-stone-900 text-amber-300 font-black text-[11px] px-2.5 py-1.5 rounded-xl transition active:scale-95 shrink-0 shadow-xs cursor-pointer"
+            >
+              연습 종료 ✕
+            </button>
+          </div>
+
+          {/* Senior Tutorial Guide */}
+          <div className="mt-2 pt-2 border-t border-amber-600/30 grid grid-cols-3 gap-1.5 text-[9.5px] font-bold text-stone-950">
+            <div className="bg-white/80 rounded-lg p-1.5 text-center shadow-2xs">
+              1. <span className="font-black text-emerald-900">[+/-] 타수</span> 조절
+            </div>
+            <div className="bg-white/80 rounded-lg p-1.5 text-center shadow-2xs">
+              2. <span className="font-black text-rose-900">[+1 OB] 2벌타</span> 확인
+            </div>
+            <div className="bg-white/80 rounded-lg p-1.5 text-center shadow-2xs">
+              3. <span className="font-black text-purple-900">[다음 홀▶]</span> 이동
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 클럽 모임/대회 연동 알림 배너 */}
       {session.clubRoomId && (
@@ -2992,6 +3045,61 @@ export default function RoundPlayPage() {
               >
                 <span>✓</span>
                 <span>정렬 적용 및 저장</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* [NEW] 가상 라운딩 종료 안내 모달 (기록 제로 보장) */}
+      {showVirtualFinishModal && session && course && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-stone-900 rounded-3xl w-full max-w-sm shadow-2xl border-2 border-amber-400/80 overflow-hidden flex flex-col p-5 text-white space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-stone-950 flex items-center justify-center font-black text-2xl mx-auto shadow-lg">
+              🎯
+            </div>
+            <div className="text-center space-y-1">
+              <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
+                체험 모드 완료
+              </span>
+              <h3 className="text-lg font-black text-white">가상 라운딩이 종료되었습니다!</h3>
+              <p className="text-xs text-stone-300 leading-relaxed pt-1">
+                이 기록은 전적과 랭킹에 <span className="text-amber-300 font-black underline">아무것도 남지 않는</span> 1회성 연습용입니다.
+              </p>
+            </div>
+
+            <div className="bg-stone-950 rounded-xl p-3 border border-stone-800 text-[11px] text-stone-400 space-y-1">
+              <div className="flex justify-between">
+                <span>체험 구장:</span>
+                <span className="font-bold text-white">{course.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>연습 상태:</span>
+                <span className="font-bold text-emerald-400">정상 종료 (기록 미저장)</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  ParkOnStorage.clearCurrentRound();
+                  router.push(`/round/new?courseId=${session.courseId}`);
+                }}
+                className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-stone-950 font-black py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition active:scale-98 cursor-pointer"
+              >
+                <span>⛳ 실제 필드에서 [정식 라운딩] 시작하기</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  ParkOnStorage.clearCurrentRound();
+                  router.push('/');
+                }}
+                className="w-full bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-1 transition active:scale-98 cursor-pointer"
+              >
+                <span>🏠 홈으로 돌아가기</span>
               </button>
             </div>
           </div>

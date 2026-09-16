@@ -2,12 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Play, MapPin, History, Award, Flame, Trophy, X, ArrowRight, ChevronDown, Check, Plus, Star, Search, Trash2, Share2, Download, Heart, Newspaper } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Play, MapPin, History, Award, Flame, Trophy, X, ArrowRight, ChevronDown, Check, Plus, Star, Search, Trash2, Share2, Download, Heart, Newspaper, CreditCard, Smartphone, Target, Sparkles } from 'lucide-react';
 import { Course, RoundSession, formatCourseHolesText } from '@/types/parkon';
 import { ParkOnStorage, UserGolfProfile, DEFAULT_USER_PROFILE } from '@/lib/storage';
 import { ClubStorage } from '@/lib/clubStorage';
 import { ConditionStatus } from '@/components/ConditionStatus';
 import { InstallPrompt } from '@/components/InstallPrompt';
+import { InstallGuideModal } from '@/components/InstallGuideModal';
+import { BusinessCardModal } from '@/components/BusinessCardModal';
 import { KakaoLoginModal } from '@/components/KakaoLoginModal';
 import { WelcomeModal } from '@/components/WelcomeModal';
 import { RulesWebtoonModal } from '@/components/RulesWebtoonModal';
@@ -15,6 +18,7 @@ import { CompanionFeedWidget } from '@/components/CompanionFeedWidget';
 import { KakaoAuthUser } from '@/lib/storage';
 
 export default function HomePage() {
+  const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
   const [homeCourse, setHomeCourse] = useState<Course | null>(null);
   const [favoriteHomeCourseIds, setFavoriteHomeCourseIds] = useState<string[]>([]);
@@ -31,6 +35,8 @@ export default function HomePage() {
   const [clubBadge, setClubBadge] = useState<{ text: string; isPlaying: boolean } | null>(null);
   const [showKakaoModal, setShowKakaoModal] = useState<boolean>(false);
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
+  const [showBusinessCardModal, setShowBusinessCardModal] = useState<boolean>(false);
+  const [showInstallGuideModal, setShowInstallGuideModal] = useState<boolean>(false);
 
   useEffect(() => {
     const loadData = () => {
@@ -478,17 +484,17 @@ export default function HomePage() {
         ]
       : isDongrak
       ? [
-          { rank: 1, name: '김동식', score: 48, date: '2026.09.11', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '오세진', score: 48, date: '2026.09.04', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '윤미경', score: 48, date: '2026.08.27', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '배준호', score: 48, date: '2026.08.12', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '류승완', score: 48, date: '2026.07.30', grade: '5스타 마스터', isMe: false },
+          { rank: 1, name: '[예시] 김동식', score: 48, date: '2026.09.11', grade: '5스타 마스터', isMe: false },
+          { rank: 1, name: '[예시] 오세진', score: 48, date: '2026.09.04', grade: '5스타 마스터', isMe: false },
+          { rank: 1, name: '[예시] 윤미경', score: 48, date: '2026.08.27', grade: '5스타 마스터', isMe: false },
+          { rank: 1, name: '[샘플] 배준호', score: 48, date: '2026.08.12', grade: '5스타 마스터', isMe: false },
+          { rank: 1, name: '[체험용] 류승완', score: 48, date: '2026.07.30', grade: '5스타 마스터', isMe: false },
         ]
       : [
-          { rank: 1, name: '이진호', score: 49, date: '2026.09.10', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '김현수', score: 49, date: '2026.09.02', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '서미정', score: 49, date: '2026.08.20', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '홍길동', score: 49, date: '2026.08.08', grade: '5스타 마스터', isMe: false },
+          { rank: 1, name: '[예시] 이진호', score: 49, date: '2026.09.10', grade: '5스타 마스터', isMe: false },
+          { rank: 1, name: '[예시] 김현수', score: 49, date: '2026.09.02', grade: '5스타 마스터', isMe: false },
+          { rank: 1, name: '[샘플] 서미정', score: 49, date: '2026.08.20', grade: '5스타 마스터', isMe: false },
+          { rank: 1, name: '[예시] 홍길동', score: 49, date: '2026.08.08', grade: '5스타 마스터', isMe: false },
         ];
 
     const recordScore = champions1st[0]?.score || 49;
@@ -521,23 +527,23 @@ export default function HomePage() {
     // 3. 구장별 기준 활동 랭킹 명단 (최근 30일 완주 횟수)
     const baselineActivity = isHaepyeong
       ? [
-          { rank: 1, name: '정태호', rounds: 48, tier: '하루 2~3게임 열정왕' },
-          { rank: 2, name: '최경숙', rounds: 38, tier: '매일 라운딩' },
-          { rank: 3, name: '오성근', rounds: 29, tier: '주 4~5회 완주' },
-          { rank: 4, name: '한상우', rounds: 22, tier: '주 3~4회 완주' },
+          { rank: 1, name: '[예시] 정태호', rounds: 48, tier: '하루 2~3게임 열정왕' },
+          { rank: 2, name: '[예시] 최경숙', rounds: 38, tier: '매일 라운딩' },
+          { rank: 3, name: '[샘플] 오성근', rounds: 29, tier: '주 4~5회 완주' },
+          { rank: 4, name: '[체험용] 한상우', rounds: 22, tier: '주 3~4회 완주' },
         ]
       : isDongrak
       ? [
-          { rank: 1, name: '이재홍', rounds: 54, tier: '하루 2~3게임 열정왕' },
-          { rank: 2, name: '김말선', rounds: 44, tier: '매일 라운딩' },
-          { rank: 3, name: '박진태', rounds: 33, tier: '주 4~5회 완주' },
-          { rank: 4, name: '서정민', rounds: 26, tier: '주 3~4회 완주' },
+          { rank: 1, name: '[예시] 이재홍', rounds: 54, tier: '하루 2~3게임 열정왕' },
+          { rank: 2, name: '[예시] 김말선', rounds: 44, tier: '매일 라운딩' },
+          { rank: 3, name: '[샘플] 박진태', rounds: 33, tier: '주 4~5회 완주' },
+          { rank: 4, name: '[체험용] 서정민', rounds: 26, tier: '주 3~4회 완주' },
         ]
       : [
-          { rank: 1, name: '장석호', rounds: 46, tier: '하루 2~3게임 열정왕' },
-          { rank: 2, name: '권영미', rounds: 37, tier: '매일 라운딩' },
-          { rank: 3, name: '백운기', rounds: 28, tier: '주 4~5회 완주' },
-          { rank: 4, name: '송인철', rounds: 21, tier: '주 3~4회 완주' },
+          { rank: 1, name: '[예시] 장석호', rounds: 46, tier: '하루 2~3게임 열정왕' },
+          { rank: 2, name: '[예시] 권영미', rounds: 37, tier: '매일 라운딩' },
+          { rank: 3, name: '[샘플] 백운기', rounds: 28, tier: '주 4~5회 완주' },
+          { rank: 4, name: '[체험용] 송인철', rounds: 21, tier: '주 3~4회 완주' },
         ];
 
     // 나의 실력 순위 판정
@@ -648,6 +654,18 @@ export default function HomePage() {
       {/* -1. 첫 방문자 환영 모달 (PC·모바일 1초 앱 깔기 vs 그냥 시작하기) */}
       <WelcomeModal />
 
+      {/* -1.7. 파크온 디지털 명함첩 모달 */}
+      <BusinessCardModal
+        isOpen={showBusinessCardModal}
+        onClose={() => setShowBusinessCardModal(false)}
+      />
+
+      {/* -1.8. 스마트폰 바탕화면 앱 설치 가이드 모달 */}
+      <InstallGuideModal
+        isOpen={showInstallGuideModal}
+        onClose={() => setShowInstallGuideModal(false)}
+      />
+
       {/* -2. 파키의 파크골프 웹툰북 & 룰 Q&A 모달 */}
       <RulesWebtoonModal
         isOpen={showRulesWebtoonModal}
@@ -755,23 +773,61 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* 대형 0초 시작 버튼 및 구장 찾기 버튼 */}
+          {/* 대표님 제안: 2분할 버튼 [가상 라운딩 하기 (체험)] vs [라운딩 바로 시작하기 (실전)] */}
           <div className="space-y-2.5 pt-1">
-            <Link
-              href={`/round/new?courseId=${homeCourse?.id}`}
-              className="w-full bg-emerald-400 hover:bg-emerald-300 text-emerald-950 text-xl font-black py-4 px-6 rounded-2xl shadow-lg flex items-center justify-center gap-3 transition active:scale-[0.98]"
-            >
-              <Play className="w-6 h-6 fill-current text-emerald-950" />
-              <span>0초 바로 라운드 시작</span>
-            </Link>
+            <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+              {/* 왼쪽: 가상 라운딩 하기 (체험/연습 모드 - 시간 무제한 · 기록 안 남음) */}
+              <button
+                type="button"
+                onClick={() => {
+                  const virtualSession = ParkOnStorage.createVirtualRoundSession(homeCourse?.id);
+                  router.push(`/round/${virtualSession.id}`);
+                }}
+                className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-stone-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition active:scale-[0.97] cursor-pointer border-2 border-amber-300 group"
+              >
+                <div className="flex items-center gap-1 text-sm sm:text-base font-black leading-tight">
+                  <span className="text-base sm:text-lg">🎯</span>
+                  <span className="truncate">가상 라운딩 하기</span>
+                </div>
+                <span className="text-[10px] sm:text-[10.5px] font-extrabold text-stone-900 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
+                  체험·연습 (기록 안 남음)
+                </span>
+              </button>
 
-            <Link
-              href="/courses"
-              className="w-full bg-emerald-700/80 hover:bg-emerald-700 border border-emerald-400/50 text-white font-black py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition active:scale-[0.98]"
-            >
-              <MapPin className="w-4 h-4 text-amber-300" />
-              <span>🔍 전국 구장 찾기 (다른 구장 찾기)</span>
-            </Link>
+              {/* 오른쪽: 라운딩 바로 시작하기 (실전 정식 기록) */}
+              <Link
+                href={`/round/new?courseId=${homeCourse?.id}`}
+                className="bg-gradient-to-br from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 text-emerald-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition active:scale-[0.97] border-2 border-emerald-300 group"
+              >
+                <div className="flex items-center gap-1 text-sm sm:text-base font-black leading-tight">
+                  <Play className="w-4 h-4 sm:w-4.5 sm:h-4.5 fill-current text-emerald-950" />
+                  <span className="truncate">라운딩 바로 시작하기</span>
+                </div>
+                <span className="text-[10px] sm:text-[10.5px] font-extrabold text-emerald-950 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
+                  실전 필드 공식 기록
+                </span>
+              </Link>
+            </div>
+
+            {/* 전국 구장 찾기 & 파크온 디지털 명함첩 2대 보조 버튼 */}
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                href="/courses"
+                className="w-full bg-emerald-700/80 hover:bg-emerald-700 border border-emerald-400/50 text-white font-black py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-[0.98]"
+              >
+                <MapPin className="w-3.5 h-3.5 text-amber-300" />
+                <span className="truncate">전국 구장 찾기</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => setShowBusinessCardModal(true)}
+                className="w-full bg-gradient-to-r from-amber-500/90 to-amber-600/90 hover:from-amber-500 hover:to-amber-600 border border-amber-300 text-stone-950 font-black py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-[0.98] shadow-xs cursor-pointer"
+              >
+                <CreditCard className="w-3.5 h-3.5 text-stone-950" />
+                <span className="truncate">동호인 디지털 명함첩</span>
+              </button>
+            </div>
           </div>
         </div>
       </section>

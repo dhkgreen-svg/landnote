@@ -353,6 +353,35 @@ export function KakaoLoginModal({
                 </button>
               </div>
 
+              {/* 게스트 1초 둘러보기 & 가상 라운딩 바로가기 (가입 장벽 제로) */}
+              <div className="pt-2 border-t border-stone-200/80 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                    }}
+                    className="py-2.5 px-2 bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-700 font-black text-[11px] rounded-xl transition flex items-center justify-center gap-1 border border-stone-300 cursor-pointer"
+                  >
+                    <span>👉 가입 없이 둘러보기</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const virtualSession = ParkOnStorage.createVirtualRoundSession();
+                      onClose();
+                      window.location.href = `/round/${virtualSession.id}`;
+                    }}
+                    className="py-2.5 px-2 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 active:scale-95 text-white font-black text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                  >
+                    <span>🎯 가상 라운딩 바로가기</span>
+                  </button>
+                </div>
+                <div className="text-[10px] text-stone-500 font-medium text-center">
+                  ※ 둘러보기 및 가상 라운딩은 로그인 없이 모든 기능을 자유롭게 이용하실 수 있습니다.
+                </div>
+              </div>
+
               <div className="text-[10px] text-stone-500 font-medium text-center leading-relaxed">
                 ※ 가입 후 각 클럽별로 서로 다른 활동명을 언제든지 변경 지정할 수 있습니다.
               </div>

@@ -501,6 +501,29 @@ function NewRoundForm() {
         </div>
       </div>
 
+      {/* 🎯 가상 라운딩 1초 체험 배너 (기록 걱정 없이 언제든 테스트 가능) */}
+      <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-3 text-white shadow-md flex items-center justify-between gap-2.5">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-1 font-black text-xs text-stone-950 bg-amber-200/90 w-fit px-2 py-0.5 rounded-full">
+            <span>🎯</span>
+            <span>기록 부담 없는 가상 라운딩 체험</span>
+          </div>
+          <p className="text-[11px] text-amber-100 font-medium leading-tight">
+            시간 무제한 · 종료 시 기록 제로(무흔적) 안심 연습
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const virtualSession = ParkOnStorage.createVirtualRoundSession(currentCourse?.id || selectedCourseId);
+            router.push(`/round/${virtualSession.id}`);
+          }}
+          className="bg-stone-950 hover:bg-stone-900 text-amber-300 font-black text-xs px-3 py-2 rounded-xl shrink-0 shadow transition active:scale-95 flex items-center gap-1 cursor-pointer"
+        >
+          <span>1초 체험 ▶</span>
+        </button>
+      </div>
+
       {/* 1. Current Play Course Display Card (구장에만 집중: 선택창/검색버튼/라벨 완전 제거) */}
       {currentCourse && (
         <div className="bg-white rounded-2xl p-3.5 border border-stone-200 shadow-sm">

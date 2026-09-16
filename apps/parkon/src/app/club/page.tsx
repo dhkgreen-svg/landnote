@@ -87,8 +87,8 @@ export default function ClubGatheringHomePage() {
 
   // 클럽 가입 신청 모달 상태
   const [applyingClub, setApplyingClub] = useState<ParkGolfClub | null>(null);
-  const [applicantName, setApplicantName] = useState('홍길동(본인)');
-  const [applicantPhone, setApplicantPhone] = useState('010-9988-7766');
+  const [applicantName, setApplicantName] = useState('김대희(본인)');
+  const [applicantPhone, setApplicantPhone] = useState('010-3814-1422');
   const [applicantMessage, setApplicantMessage] = useState('클럽에 가입하여 매너 라운드 함께하고 싶습니다!');
 
   // 새 클럽 창단 폼 상태

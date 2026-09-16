@@ -89,6 +89,7 @@ export interface RoundSession {
   players: RoundPlayer[];
   status: 'IN_PROGRESS' | 'COMPLETED';
   isOfficial?: boolean; // true = 공식 전적/평균타수 반영, false = 연습/테스트 라운드(미반영)
+  isVirtual?: boolean;  // true = 가상 라운딩 (체험/연습 모드, 시간 무제한, 종료 시 기록 제로 미보존)
   clubRoomId?: string;
   clubGroupNumber?: number;
 }

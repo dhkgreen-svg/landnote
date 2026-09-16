@@ -288,6 +288,77 @@ export const ParkOnStorage = {
     }
   },
 
+  // 2-1. 가상 라운딩(체험/연습 모드) 세션 생성 (시간 제한 없음, 종료 시 기록 제로)
+  createVirtualRoundSession(courseId?: string): RoundSession {
+    const all = this.getAllCourses();
+    const targetCourseId = courseId || this.getHomeCourseId();
+    const targetCourse = all.find((c) => c.id === targetCourseId) || all[0];
+    const selfName = this.getUserDisplayName();
+
+    const virtualId = `virtual_${Date.now()}`;
+    const selectedHoles = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+    const virtualSession: RoundSession = {
+      id: virtualId,
+      courseId: targetCourse.id,
+      courseName: targetCourse.name,
+      startedAt: new Date().toISOString(),
+      currentHole: 1,
+      totalHoles: 9,
+      selectedCourseLetters: ['A'],
+      selectedHoleNumbers: selectedHoles,
+      confirmedHoles: [],
+      players: [
+        {
+          id: 'p_self',
+          name: selfName,
+          isLeader: true,
+          isSelf: true,
+          scores: { 1: 3 },
+          obCount: { 1: 0 },
+          totalStrokes: 3,
+          totalParDiff: 0,
+        },
+        {
+          id: 'p_v1',
+          name: '[예시] 홍길동',
+          isLeader: false,
+          isSelf: false,
+          scores: { 1: 3 },
+          obCount: { 1: 0 },
+          totalStrokes: 3,
+          totalParDiff: 0,
+        },
+        {
+          id: 'p_v2',
+          name: '[체험용] 김파크',
+          isLeader: false,
+          isSelf: false,
+          scores: { 1: 4 },
+          obCount: { 1: 0 },
+          totalStrokes: 4,
+          totalParDiff: 1,
+        },
+        {
+          id: 'p_v3',
+          name: '[SAMPLE] 이온',
+          isLeader: false,
+          isSelf: false,
+          scores: { 1: 3 },
+          obCount: { 1: 0 },
+          totalStrokes: 3,
+          totalParDiff: 0,
+        },
+      ],
+      status: 'IN_PROGRESS',
+      isOfficial: false,
+      isVirtual: true,
+    };
+
+    this.saveCurrentRound(virtualSession);
+    return virtualSession;
+  },
+
   clearCurrentRound(): void {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(STORAGE_KEYS.CURRENT_ROUND);
@@ -306,6 +377,11 @@ export const ParkOnStorage = {
 
   saveCompletedRound(session: RoundSession): void {
     if (typeof window === 'undefined') return;
+    // 가상 라운딩(체험 모드)인 경우 영구 기록/전적에 저장하지 않고 종료 (기록 제로 보장)
+    if (session.isVirtual) {
+      this.clearCurrentRound();
+      return;
+    }
     try {
       const existing = this.getCompletedRounds();
       const updated = [session, ...existing.filter((r) => r.id !== session.id)].slice(0, 50);
