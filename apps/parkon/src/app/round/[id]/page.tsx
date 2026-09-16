@@ -78,6 +78,7 @@ export default function RoundPlayPage() {
   const [showPlayerCrossCheckModal, setShowPlayerCrossCheckModal] = useState<boolean>(false);
   const [crossCheckToast, setCrossCheckToast] = useState<string | null>(null);
   const [showRefereeAssignModal, setShowRefereeAssignModal] = useState<boolean>(false);
+  const [showRefereeInviteModal, setShowRefereeInviteModal] = useState<boolean>(false);
 
   // 조장 및 동반자 관리 모달 열기 (본인 이름 및 동반자 이름 유실 방지 자동 보정)
   const openPlayerEditModal = () => {
@@ -212,6 +213,11 @@ export default function RoundPlayPage() {
       const savedMode = localStorage.getItem('parkon_counting_mode');
       if (savedMode === 'ZERO_BASE' || savedMode === 'PAR_BASE') {
         setCountingMode(savedMode);
+      }
+      // 주최자로부터 심판으로 지정받아 입장한 링크인지 확인 (?referee=true or ?role=referee)
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get('referee') === 'true' || searchParams.get('role') === 'referee') {
+        setShowRefereeInviteModal(true);
       }
     }
 
@@ -1270,23 +1276,6 @@ export default function RoundPlayPage() {
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* 심판 모드 토글 */}
-          <button
-            type="button"
-            onClick={() => setIsRefereeMode(!isRefereeMode)}
-            className={`flex items-center gap-1 text-[11px] font-black px-2 py-1.5 rounded-xl border transition active:scale-95 cursor-pointer ${
-              isRefereeMode
-                ? 'bg-purple-600 text-white border-purple-400 shadow-sm ring-1 ring-purple-300'
-                : sunlightMode
-                ? 'bg-stone-900 text-stone-300 border-stone-700'
-                : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
-            }`}
-            title="공식 시합용 홀 전담 심판 모드 활성화"
-          >
-            <span>⚖️</span>
-            <span>{isRefereeMode ? '심판ON' : '심판'}</span>
-          </button>
-
           {/* 햇빛모드 토글 */}
           <button
             type="button"
@@ -1320,13 +1309,23 @@ export default function RoundPlayPage() {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowRefereeAssignModal(true)}
-            className="bg-white/20 hover:bg-white/30 text-white text-[11px] font-black px-2.5 py-1.5 rounded-xl transition active:scale-95 shrink-0 border border-purple-300 cursor-pointer"
-          >
-            🔄 홀 위치 변경
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowRefereeAssignModal(true)}
+              className="bg-white/20 hover:bg-white/30 text-white text-[11px] font-black px-2.5 py-1.5 rounded-xl transition active:scale-95 border border-purple-300 cursor-pointer"
+            >
+              🔄 홀 위치 변경
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsRefereeMode(false)}
+              className="bg-rose-600/80 hover:bg-rose-600 text-white text-[11px] font-black px-2 py-1.5 rounded-xl transition active:scale-95 border border-rose-400 cursor-pointer"
+              title="심판 모드 종료하고 플레이어 화면으로 전환"
+            >
+              ✕ 심판 종료
+            </button>
+          </div>
         </div>
       )}
 
@@ -2742,6 +2741,58 @@ export default function RoundPlayPage() {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚖️ 공식 시합: 홀 전담 심판 수락 팝업 (주최자로부터 심판 지정받았을 때만 출현) */}
+      {showRefereeInviteModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-5 space-y-4 shadow-2xl border-2 border-purple-400 text-center animate-scaleUp">
+            <div className="w-14 h-14 bg-purple-100 text-purple-800 rounded-3xl flex items-center justify-center text-3xl mx-auto shadow-inner">
+              ⚖️
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-black text-stone-900">
+                공식 시합: 홀 전담 심판 임명
+              </h3>
+              <p className="text-xs text-stone-600 font-medium leading-relaxed">
+                대회 주최자로부터 본 라운드의 <strong className="text-purple-700 font-black">[홀 전담 심판]</strong>으로 공식 지정되었습니다.<br />
+                심판 모드로 입장하시겠습니까?
+              </p>
+            </div>
+
+            <div className="bg-purple-50 rounded-2xl p-3 border border-purple-200 text-left space-y-1 text-xs text-purple-900 font-bold">
+              <div>📍 <strong>담당 코스:</strong> {course.name} ({courseLetter}-{holeInCourse}번 홀)</div>
+              <div>✍️ <strong>역할:</strong> 조별 4인 타수 공식 기입 및 실시간 교차 검증</div>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRefereeMode(true);
+                  setShowRefereeInviteModal(false);
+                  setCrossCheckToast(`⚖️ 심판 모드로 수락되었습니다. (${courseLetter}-${holeInCourse}번 홀 전담)`);
+                  setTimeout(() => setCrossCheckToast(null), 3500);
+                }}
+                className="w-full bg-purple-700 hover:bg-purple-600 text-white font-black py-3.5 rounded-2xl text-sm shadow-md transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <span>✍️ 수락하고 심판 모드로 입장</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRefereeMode(false);
+                  setShowRefereeInviteModal(false);
+                }}
+                className="w-full bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold py-2.5 rounded-xl text-xs transition active:scale-95 cursor-pointer"
+              >
+                일반 플레이어로 참여하기
+              </button>
             </div>
           </div>
         </div>
