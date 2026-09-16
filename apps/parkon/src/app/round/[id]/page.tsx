@@ -642,6 +642,46 @@ export default function RoundPlayPage() {
     setShowCoursePicker(true);
   };
 
+  // 🔔 맑은 "띵~똥!" 차임벨 효과음 (Web Audio API 신디사이저 무지연 즉각 합성)
+  const playDingDong = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      const now = ctx.currentTime;
+      // 1음: "띵" (A5 880Hz, 맑고 경쾌한 높은 톤)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, now);
+      gain1.gain.setValueAtTime(0.28, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.35);
+
+      // 2음: "똥" (D5 587.33Hz, 0.16초 후 부드러운 안도감의 톤)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(587.33, now + 0.16);
+      gain2.gain.setValueAtTime(0.001, now);
+      gain2.gain.setValueAtTime(0.32, now + 0.16);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.16);
+      osc2.stop(now + 0.65);
+    } catch (e) {
+      // Ignore audio synthesis fallback
+    }
+  };
+
   // Confirm scores and save to storage
   const handleConfirmHole = () => {
     // 1. Add current hole to confirmedHoles if not already present
@@ -675,17 +715,20 @@ export default function RoundPlayPage() {
     };
     updateSession(updatedSession);
 
-    setConfirmedFeedback(true);
+    // 🔔 띵똥 소리 및 드르륵 햅틱 진동 즉시 발동
+    playDingDong();
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
       try {
-        navigator.vibrate?.(40);
+        navigator.vibrate?.([60, 40, 60]); // 드르륵 2회 햅틱 진동
       } catch (e) {
         // Ignore vibration errors
       }
     }
+
+    setConfirmedFeedback(true);
     setTimeout(() => {
       setConfirmedFeedback(false);
-    }, 1200);
+    }, 2000);
   };
 
   // Switch to another course and hole (e.g. B코스 5번 홀 or C코스 2회차)
@@ -1381,6 +1424,19 @@ export default function RoundPlayPage() {
         </div>
       )}
 
+      {/* 🔔 띵똥 & 드르륵 타수 확정 피드백 알림 배너 */}
+      {confirmedFeedback && (
+        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white font-black p-3 rounded-2xl shadow-xl border-2 border-yellow-300 flex items-center justify-between animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-yellow-300 shrink-0 animate-bounce" />
+            <span className="text-xs sm:text-sm">
+              🔔 {courseLetter}-{holeInCourse}번 홀 타수가 정상 확정 저장되었습니다!
+            </span>
+          </div>
+          <span className="text-yellow-300 text-xs font-black shrink-0">띵~똥 🎵</span>
+        </div>
+      )}
+
       {/* ========================================================================= */}
       {/* ⛳ [5대 마스터 아키텍처 1단계]: 티샷 전 [코스 안내 대형 전광판 & 제원 확인] */}
       {/* ========================================================================= */}
@@ -1945,25 +2001,122 @@ export default function RoundPlayPage() {
             })}
           </div>
 
-          {/* 잔디 체감 상태 입력 바 */}
-          <div
-            className={`rounded-2xl p-2.5 flex items-center justify-between shadow-xs border ${
-              sunlightMode
-                ? 'bg-zinc-900 border-yellow-400 text-white'
-                : 'bg-emerald-50/90 border-emerald-300/80'
-            }`}
-          >
-            <div className="flex items-center gap-2 min-w-0 pr-2">
-              <span className="text-base shrink-0">🌱</span>
-              <div className="min-w-0">
-                <div className={`text-xs font-black truncate ${sunlightMode ? 'text-yellow-300' : 'text-emerald-950'}`}>
-                  {session?.isVirtual ? '홀 잔디 상태 제보 (가상 모드)' : '홀 잔디 체감 상태는 어떠신가요?'}
-                </div>
-                <div className={`text-[10px] font-semibold truncate ${session?.isVirtual ? 'text-amber-700 font-bold' : sunlightMode ? 'text-zinc-300' : 'text-emerald-700'}`}>
-                  {session?.isVirtual ? '가상 상태에서는 실제 제보가 제한됩니다' : '구름성·습도 1초 터치 시 실시간 리포트에 즉시 반영'}
-                </div>
-              </div>
-            </div>
+          {/* [대표님 특명 UX 1]: 홀아웃 완료 2개 분리 (좌: [✔️ 확인] vs 우: [다음 홀 이동 ➔]) */}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            {/* 좌측: [✔️ 확인] 버튼 (타수 확정 + 드르륵 진동 + 띵똥 차임벨) */}
+            <button
+              type="button"
+              onClick={handleConfirmHole}
+              className={`h-15 rounded-2xl font-black text-base sm:text-lg shadow-lg border-2 transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer ${
+                confirmedFeedback
+                  ? 'bg-yellow-400 text-black border-yellow-500 ring-4 ring-yellow-400/50'
+                  : sunlightMode
+                  ? 'bg-zinc-900 text-yellow-300 border-yellow-400 hover:bg-zinc-800'
+                  : 'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-500 shadow-emerald-900/20'
+              }`}
+            >
+              <CheckCircle2 className={`w-5 h-5 ${confirmedFeedback ? 'text-black' : 'text-yellow-300'}`} />
+              <span>{confirmedFeedback ? '확인 완료!' : '확인 (저장)'}</span>
+            </button>
+
+            {/* 우측: [다음 홀 이동 ➔] 버튼 (다음 홀 전환 ➔ 1단계 전광판 안내창) */}
+            {isRefereeMode ? (
+              <button
+                type="button"
+                onClick={handleNextHole}
+                className={`h-15 rounded-2xl font-black text-sm sm:text-base shadow-lg border-2 transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
+                  sunlightMode
+                    ? 'bg-purple-600 text-white border-white ring-4 ring-purple-400/40 hover:bg-purple-500'
+                    : 'bg-gradient-to-r from-purple-700 to-indigo-700 text-white border-purple-400'
+                }`}
+              >
+                <span>✍️</span>
+                <span>선수 확인요청</span>
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleNextHole}
+                className={`h-15 rounded-2xl font-black text-base sm:text-lg shadow-lg border-2 transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
+                  sunlightMode
+                    ? 'bg-yellow-400 text-black border-white ring-4 ring-yellow-400/40 hover:bg-yellow-300'
+                    : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white border-emerald-400 ring-2 ring-emerald-400/30'
+                }`}
+              >
+                <span>다음 홀 이동</span>
+                <ChevronRight className="w-5 h-5 ml-0.5" />
+              </button>
+            )}
+          </div>
+
+          {/* [대표님 특명 UX 2]: 현재 실시간 스코어보드판 보기 (누적 현황) - 홀아웃 버튼 아래로 이동 및 크기 최적화 */}
+          <div className="pt-0.5">
+            <button
+              type="button"
+              onClick={() => setShowTotalScoreModal(true)}
+              className={`w-full py-3.5 px-4 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm border transition active:scale-[0.99] cursor-pointer ${
+                sunlightMode
+                  ? 'bg-black text-yellow-300 border-yellow-400/70 hover:bg-zinc-900'
+                  : 'bg-stone-900 hover:bg-stone-800 text-amber-300 border-stone-700'
+              }`}
+            >
+              <BarChart2 className="w-4 h-4 text-amber-400" />
+              <span>📋 현재 실시간 스코어보드판 보기 ({confirmedHoles.length}홀 누적 현황)</span>
+            </button>
+          </div>
+
+          {/* 하단 보조 액션 링크들 (이전 홀 보기, 다른 코스/홀 이동, 잠시 빠지기, 경기 종료) */}
+          <div className="flex items-center justify-between px-1 text-xs pt-1.5 pb-1">
+            <button
+              type="button"
+              onClick={handlePrevHole}
+              disabled={currentHole === 1}
+              className={`font-bold flex items-center gap-0.5 cursor-pointer ${
+                currentHole === 1
+                  ? 'text-stone-400 cursor-not-allowed'
+                  : sunlightMode
+                  ? 'text-yellow-300 hover:underline'
+                  : 'text-stone-700 hover:text-stone-950'
+              }`}
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span>이전 홀 보기</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={openCoursePicker}
+              className={`font-extrabold flex items-center gap-1 cursor-pointer ${
+                sunlightMode ? 'text-yellow-400 hover:underline' : 'text-emerald-800 hover:underline'
+              }`}
+            >
+              <span>🔄 다른 코스/홀 이동</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePauseAndGoHome}
+              className={`font-bold cursor-pointer hover:underline ${
+                sunlightMode ? 'text-zinc-300 hover:text-white' : 'text-amber-900 hover:text-amber-950'
+              }`}
+            >
+              ☕ 잠시 빠지기
+            </button>
+
+            <button
+              type="button"
+              onClick={handleEarlyFinishConfirm}
+              className={`font-bold underline cursor-pointer ${
+                sunlightMode ? 'text-zinc-300 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              경기 종료
+            </button>
+          </div>
+
+          {/* [대표님 특명 UX 3]: 맨 밑 '현재 잔디 상태 1초 제보하기' (다른 코스 이동, 잠시 빠지기, 경기 종료 바로 밑) */}
+          <div className="pt-1.5 border-t border-stone-200/60">
             <button
               type="button"
               onClick={() => {
@@ -1973,115 +2126,17 @@ export default function RoundPlayPage() {
                 }
                 setShowConditionModal(true);
               }}
-              className={`shrink-0 px-3 py-1.5 font-black text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1 border ${
+              className={`w-full py-2.5 px-3 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer border flex items-center justify-center gap-1.5 ${
                 session?.isVirtual
-                  ? 'bg-stone-200 text-stone-600 border-stone-300 hover:bg-stone-300'
+                  ? 'bg-stone-100 text-stone-500 border-stone-300'
                   : sunlightMode
-                  ? 'bg-yellow-400 text-black border-white'
-                  : 'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-600'
-              }`}
-              title={session?.isVirtual ? '가상 상태에서는 작동이 안 됩니다' : '잔디 1초 입력'}
-            >
-              <span>{session?.isVirtual ? '가상 모드 (제보 불가)' : '잔디 1초 입력 ✍️'}</span>
-            </button>
-          </div>
-
-          {/* [5대 마스터 아키텍처 3]: 실시간 스코어보드판 보기 상시 고정 버튼 */}
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={() => setShowTotalScoreModal(true)}
-              className={`w-full py-3.5 px-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-md border-2 transition active:scale-[0.99] cursor-pointer ${
-                sunlightMode
-                  ? 'bg-black text-yellow-300 border-yellow-400 hover:bg-zinc-900'
-                  : 'bg-stone-900 hover:bg-stone-800 text-amber-300 border-stone-700'
+                  ? 'bg-zinc-900 text-yellow-300 border-yellow-500/50 hover:bg-zinc-800'
+                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-300 shadow-2xs'
               }`}
             >
-              <BarChart2 className="w-5 h-5 text-amber-400" />
-              <span>📋 현재 실시간 스코어보드판 보기 ({confirmedHoles.length}홀 누적 현황)</span>
+              <span>🌱</span>
+              <span>현재 잔디 상태 1초 제보하기</span>
             </button>
-          </div>
-
-          {/* [5대 마스터 아키텍처 2]: 하단 메인 액션 버튼 (홀아웃 완료 ➔ 다음 홀 1단계 전광판 자동 전환) */}
-          <div className="space-y-2 pt-0.5">
-            {isRefereeMode ? (
-              <button
-                type="button"
-                onClick={handleNextHole}
-                className={`w-full h-15 rounded-2xl font-black text-base sm:text-lg shadow-xl border-2 transition flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer ${
-                  sunlightMode
-                    ? 'bg-purple-600 text-white border-white ring-4 ring-purple-400/40 hover:bg-purple-500'
-                    : 'bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-700 text-white border-purple-400 shadow-purple-900/30'
-                }`}
-              >
-                <span>✍️</span>
-                <span>공식 기록 확정 (선수 확인 요청)</span>
-                <ChevronRight className="w-5 h-5 ml-1" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleNextHole}
-                className={`w-full h-15 rounded-2xl font-black text-base sm:text-lg shadow-xl border-2 transition flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer ${
-                  sunlightMode
-                    ? 'bg-yellow-400 text-black border-white ring-4 ring-yellow-400/40 hover:bg-yellow-300'
-                    : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white border-emerald-400 ring-2 ring-emerald-400/30'
-                }`}
-              >
-                <CheckCircle2 className="w-5 h-5" />
-                <span>홀아웃 완료 (다음 홀 이동)</span>
-                <ChevronRight className="w-5 h-5 ml-1" />
-              </button>
-            )}
-
-            {/* 하단 보조 액션 링크들 */}
-            <div className="flex items-center justify-between px-1 text-xs pt-1">
-              <button
-                type="button"
-                onClick={handlePrevHole}
-                disabled={currentHole === 1}
-                className={`font-bold flex items-center gap-0.5 cursor-pointer ${
-                  currentHole === 1
-                    ? 'text-stone-400 cursor-not-allowed'
-                    : sunlightMode
-                    ? 'text-yellow-300 hover:underline'
-                    : 'text-stone-700 hover:text-stone-950'
-                }`}
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-                <span>이전 홀 보기</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={openCoursePicker}
-                className={`font-extrabold flex items-center gap-1 cursor-pointer ${
-                  sunlightMode ? 'text-yellow-400 hover:underline' : 'text-emerald-800 hover:underline'
-                }`}
-              >
-                <span>🔄 다른 코스/홀 이동</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handlePauseAndGoHome}
-                className={`font-bold cursor-pointer hover:underline ${
-                  sunlightMode ? 'text-zinc-300 hover:text-white' : 'text-amber-900 hover:text-amber-950'
-                }`}
-              >
-                ☕ 잠시 빠지기
-              </button>
-
-              <button
-                type="button"
-                onClick={handleEarlyFinishConfirm}
-                className={`font-bold underline cursor-pointer ${
-                  sunlightMode ? 'text-zinc-300 hover:text-white' : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                경기 종료
-              </button>
-            </div>
           </div>
         </div>
       )}
