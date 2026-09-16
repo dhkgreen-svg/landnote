@@ -207,6 +207,14 @@ export default function RoundPlayPage() {
     // 햇빛 모드 상태 복원
     setSunlightModeState(ParkOnStorage.getSunlightMode());
 
+    // 카운트 방식(0베이스 vs Par기준) 영구 상태 복원
+    if (typeof window !== 'undefined') {
+      const savedMode = localStorage.getItem('parkon_counting_mode');
+      if (savedMode === 'ZERO_BASE' || savedMode === 'PAR_BASE') {
+        setCountingMode(savedMode);
+      }
+    }
+
     // 스마트폰 물리 뒤로가기 & 제스처 실수 방어막 (History Lock)
     if (typeof window !== 'undefined') {
       window.history.pushState({ parkonRoundLock: true }, '');
@@ -556,8 +564,10 @@ export default function RoundPlayPage() {
     const curConfirmed = session.confirmedHoles || [];
     const updatedPlayers = session.players.map((p) => {
       if (p.id !== playerId || p.isOut) return p;
-      const currentStrokes = p.scores[actualHoleNumber] ?? currentPar;
-      const newStrokes = Math.max(1, currentStrokes + delta);
+      const defaultStroke = countingMode === 'ZERO_BASE' ? 0 : currentPar;
+      const currentStrokes = p.scores[actualHoleNumber] ?? defaultStroke;
+      const minStroke = countingMode === 'ZERO_BASE' ? 0 : 1;
+      const newStrokes = Math.max(minStroke, currentStrokes + delta);
 
       const newScores = { ...p.scores, [actualHoleNumber]: newStrokes };
       const totalStrokes = curConfirmed.reduce(
@@ -587,7 +597,8 @@ export default function RoundPlayPage() {
     const curConfirmed = session.confirmedHoles || [];
     const updatedPlayers = session.players.map((p) => {
       if (p.id !== playerId || p.isOut) return p;
-      const currentStrokes = p.scores[actualHoleNumber] ?? currentPar;
+      const defaultStroke = countingMode === 'ZERO_BASE' ? 0 : currentPar;
+      const currentStrokes = p.scores[actualHoleNumber] ?? defaultStroke;
       const currentOb = p.obCount[actualHoleNumber] ?? 0;
 
       const newScores = { ...p.scores, [actualHoleNumber]: currentStrokes + 2 };
@@ -608,7 +619,7 @@ export default function RoundPlayPage() {
     updateSession({ ...session, players: updatedPlayers });
   };
 
-  // Reset to Par for player (tapping center button sets par score explicitly)
+  // Reset to Par for player (0베이스면 0과 기준타수 토글, Par기준이면 Par로 리셋)
   const resetToPar = (playerId: string) => {
     const target = session.players.find((p) => p.id === playerId);
     if (target?.isOut) return;
@@ -616,7 +627,15 @@ export default function RoundPlayPage() {
     const curConfirmed = session.confirmedHoles || [];
     const updatedPlayers = session.players.map((p) => {
       if (p.id !== playerId || p.isOut) return p;
-      const newScores = { ...p.scores, [actualHoleNumber]: currentPar };
+      const cur = p.scores[actualHoleNumber];
+      let nextScore: number;
+      if (countingMode === 'ZERO_BASE') {
+        // In ZERO_BASE, if currently 0 or undefined, tap sets to currentPar; if > 0, tap resets to 0
+        nextScore = (cur === undefined || cur === 0) ? currentPar : 0;
+      } else {
+        nextScore = currentPar;
+      }
+      const newScores = { ...p.scores, [actualHoleNumber]: nextScore };
       const totalStrokes = curConfirmed.reduce(
         (acc, hNum) => acc + (newScores[hNum] || 0),
         0
@@ -693,7 +712,8 @@ export default function RoundPlayPage() {
     // 2. Lock in score for current hole for active players (preserve departed isOut players)
     const updatedPlayers = session.players.map((p) => {
       if (p.isOut) return p;
-      const currentVal = p.scores[actualHoleNumber] ?? currentPar;
+      const defaultVal = countingMode === 'ZERO_BASE' ? 0 : currentPar;
+      const currentVal = p.scores[actualHoleNumber] ?? defaultVal;
       const newScores = { ...p.scores, [actualHoleNumber]: currentVal };
       const newOb = { ...p.obCount, [actualHoleNumber]: p.obCount[actualHoleNumber] ?? 0 };
       const totalStrokes = currentConfirmed.reduce(
@@ -854,7 +874,8 @@ export default function RoundPlayPage() {
     }
 
     const updatedPlayers = session.players.map((p) => {
-      const currentVal = p.scores[actualHoleNumber] ?? currentPar;
+      const defaultVal = countingMode === 'ZERO_BASE' ? 0 : currentPar;
+      const currentVal = p.scores[actualHoleNumber] ?? defaultVal;
       const newScores = { ...p.scores, [actualHoleNumber]: currentVal };
       const newOb = { ...p.obCount, [actualHoleNumber]: p.obCount[actualHoleNumber] ?? 0 };
       const totalStrokes = currentConfirmed.reduce((sum, hNum) => sum + (newScores[hNum] || 0), 0);
@@ -898,7 +919,8 @@ export default function RoundPlayPage() {
     }
 
     const updatedPlayers = session.players.map((p) => {
-      const currentVal = p.scores[actualHoleNumber] ?? currentPar;
+      const defaultVal = countingMode === 'ZERO_BASE' ? 0 : currentPar;
+      const currentVal = p.scores[actualHoleNumber] ?? defaultVal;
       const newScores = { ...p.scores, [actualHoleNumber]: currentVal };
       const newOb = { ...p.obCount, [actualHoleNumber]: p.obCount[actualHoleNumber] ?? 0 };
       const totalStrokes = currentConfirmed.reduce(
@@ -1040,7 +1062,8 @@ export default function RoundPlayPage() {
         };
       }
 
-      const currentVal = p.scores[actualHoleNumber] ?? currentPar;
+      const defaultVal = countingMode === 'ZERO_BASE' ? 0 : currentPar;
+      const currentVal = p.scores[actualHoleNumber] ?? defaultVal;
       const newScores = { ...p.scores, [actualHoleNumber]: currentVal };
       const newOb = { ...p.obCount, [actualHoleNumber]: p.obCount[actualHoleNumber] ?? 0 };
 
@@ -1674,7 +1697,8 @@ export default function RoundPlayPage() {
             </div>
 
             {session.players.map((player, idx) => {
-              const strokes = player.scores[actualHoleNumber] ?? currentPar;
+              const defaultStroke = countingMode === 'ZERO_BASE' ? 0 : currentPar;
+              const strokes = player.scores[actualHoleNumber] ?? defaultStroke;
               const obCount = player.obCount[actualHoleNumber] ?? 0;
               const isResting = restingPlayerIds.includes(player.id);
 
@@ -1899,9 +1923,11 @@ export default function RoundPlayPage() {
                       className={`h-13 rounded-xl flex flex-col items-center justify-center active:scale-95 transition border-2 cursor-pointer ${
                         sunlightMode
                           ? 'bg-yellow-400 border-white text-black shadow-md'
+                          : strokes === 0
+                          ? 'bg-stone-50 border-stone-300 hover:border-emerald-400'
                           : 'bg-emerald-50 border-emerald-500'
                       }`}
-                      title="누르면 기준타수(Par)로 초기화"
+                      title={countingMode === 'ZERO_BASE' ? '0타 또는 기준타수(Par) 전환' : '누르면 기준타수(Par)로 초기화'}
                     >
                       {countingMode === 'PAR_BASE' ? (
                         <>
@@ -1919,14 +1945,24 @@ export default function RoundPlayPage() {
                       ) : (
                         <>
                           <span className={`text-3xl font-black leading-none ${
-                            sunlightMode ? 'text-black' : 'text-emerald-900'
+                            sunlightMode
+                              ? 'text-black'
+                              : strokes === 0
+                              ? 'text-stone-800'
+                              : 'text-emerald-900'
                           }`}>
                             {strokes}
                           </span>
                           <span className={`text-[10px] font-black mt-0.5 ${
-                            sunlightMode ? 'text-black' : 'text-emerald-700'
+                            sunlightMode
+                              ? 'text-black'
+                              : strokes === 0
+                              ? 'text-stone-600'
+                              : strokes === currentPar
+                              ? 'text-emerald-700'
+                              : 'text-stone-600'
                           }`}>
-                            {strokes === currentPar ? '파(Par)' : '타수 (리셋)'}
+                            {strokes === 0 ? '0타' : strokes === currentPar ? '파(Par)' : `${strokes}타`}
                           </span>
                         </>
                       )}
@@ -2589,7 +2625,8 @@ export default function RoundPlayPage() {
                 <span>판정</span>
               </div>
               {session.players.filter((p) => !p.isOut).map((p) => {
-                const s = p.scores[actualHoleNumber] ?? currentPar;
+                const defaultVal = countingMode === 'ZERO_BASE' ? 0 : currentPar;
+                const s = p.scores[actualHoleNumber] ?? defaultVal;
                 const ob = p.obCount[actualHoleNumber] ?? 0;
                 const isRest = restingPlayerIds.includes(p.id);
                 return (
@@ -3196,7 +3233,8 @@ export default function RoundPlayPage() {
               </div>
               <div className="pt-1 grid grid-cols-2 gap-1.5 text-[11px]">
                 {session.players.map((p) => {
-                  const strokes = (session.confirmedHoles || []).reduce((sum, h) => sum + (p.scores[h] || 0), 0) + (session.confirmedHoles?.includes(actualHoleNumber) ? 0 : (p.scores[actualHoleNumber] || currentPar));
+                  const defaultVal = countingMode === 'ZERO_BASE' ? 0 : currentPar;
+                  const strokes = (session.confirmedHoles || []).reduce((sum, h) => sum + (p.scores[h] || 0), 0) + (session.confirmedHoles?.includes(actualHoleNumber) ? 0 : (p.scores[actualHoleNumber] ?? defaultVal));
                   return (
                     <div key={p.id} className="bg-white px-2 py-1.5 rounded-xl border border-stone-200/60 flex items-center justify-between font-bold shadow-2xs">
                       <span className="text-stone-700 truncate max-w-[70px]">{p.name}</span>
