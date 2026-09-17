@@ -454,24 +454,16 @@ export default function AdminDashboardPage() {
             setUserRoundSearchTerm('');
             setUserRoundPageChunk(0);
           }}
-          className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-98 group flex flex-col justify-between"
+          className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-98 group"
         >
-          <div className="flex items-center justify-between gap-1 w-full">
-            <span className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-              총 가입자 수
-            </span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 font-bold shrink-0">
-              실태 분석
-            </span>
+          <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+            총 가입자 수
           </div>
-          <div className="my-1.5 flex items-baseline justify-center gap-1">
+          <div className="mt-1.5 flex items-baseline justify-center gap-1">
             <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">
               {metrics?.totalAllTimeUsers ?? 0}
             </span>
             <span className="text-xs sm:text-sm font-bold text-zinc-500">명</span>
-          </div>
-          <div className="text-[10px] sm:text-[11px] text-zinc-400 dark:text-zinc-500 font-medium truncate w-full">
-            실제 라운딩 {metrics?.userRoundAnalytics?.playedUsersCount ?? 0}명 ({metrics?.userRoundAnalytics?.playedUsersPercentage ?? 0}%)
           </div>
         </button>
 
@@ -515,7 +507,38 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 전국 시·도별 현황 열기 (간결한 작은 카드) */}
+      {/* 1. 실시간 필드 라운딩 관제 센터 (간결한 작은 카드: 클릭 시 경기 진행 상세 팝업) */}
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3 sm:p-3.5 shadow-xs">
+        <button
+          onClick={() => setShowLiveRoundsModal(true)}
+          className="w-full py-2.5 px-3 sm:px-4 bg-red-50/60 hover:bg-red-100/70 dark:bg-red-950/30 dark:hover:bg-red-950/60 border border-red-200/80 dark:border-red-800/60 hover:border-red-500 rounded-xl transition-all flex items-center justify-between gap-3 text-left group cursor-pointer active:scale-99"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+              <Radio className="w-4 h-4 animate-pulse" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                  실시간 필드 라운딩 관제 센터
+                </span>
+                <span className="text-[10px] px-1.5 py-0.2 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 rounded font-bold shrink-0">
+                  {metrics?.liveRounds && metrics.liveRounds.length > 0 ? `${metrics.liveRounds.length}개 팀 활동 중` : '대기'}
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 whitespace-nowrap overflow-hidden text-ellipsis mt-0.5">
+                클릭하시면 현재 필드에서 누가 어떻게 경기 중인지 상세 팝업이 열립니다.
+              </p>
+            </div>
+          </div>
+          <div className="px-3 py-1.5 bg-red-600 group-hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shrink-0 whitespace-nowrap shadow-xs">
+            <span>실시간 경기 현황 열기</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </div>
+        </button>
+      </div>
+
+      {/* 2. 전국 16개 시·도별 현황 열기 (간결한 작은 카드) */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3 sm:p-3.5 shadow-xs">
         <button
           onClick={() => setShowAllProvincesModal(true)}
@@ -544,6 +567,77 @@ export default function AdminDashboardPage() {
             <ChevronRight className="w-3.5 h-3.5" />
           </div>
         </button>
+      </div>
+
+      {/* 3. 전국 구장별 실시간 라운딩 랭킹 (동일한 크기의 작은 카드: 클릭 시 1위~ 순위표 팝업) */}
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3 sm:p-3.5 shadow-xs">
+        <button
+          onClick={() => setShowCourseRankingsModal(true)}
+          className="w-full py-2.5 px-3 sm:px-4 bg-amber-50/60 hover:bg-amber-100/70 dark:bg-amber-950/30 dark:hover:bg-amber-950/60 border border-amber-200/80 dark:border-amber-800/60 hover:border-amber-500 rounded-xl transition-all flex items-center justify-between gap-3 text-left group cursor-pointer active:scale-99"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
+              <Trophy className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                  전국 구장별 실시간 라운딩 랭킹
+                </span>
+                <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 rounded font-bold shrink-0">
+                  1위~ 순위표
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 whitespace-nowrap overflow-hidden text-ellipsis mt-0.5">
+                클릭하시면 전국 구장별 실제 라운딩 순위 집계표(1위부터)가 팝업됩니다.
+              </p>
+            </div>
+          </div>
+          <div className="px-3 py-1.5 bg-amber-600 group-hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shrink-0 whitespace-nowrap shadow-xs">
+            <span>전국 구장 랭킹 열기</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </div>
+        </button>
+      </div>
+
+      {/* 4. 전국 구장 라이브 랭킹 롤링 전광판 (글자가 나오고 이동하는 코너) */}
+      <div className="bg-zinc-900 text-zinc-100 rounded-2xl p-3 sm:p-3.5 shadow-md border border-zinc-800 flex items-center gap-3 overflow-hidden">
+        <div className="flex items-center gap-1.5 bg-red-600 text-white text-[11px] font-black px-2.5 py-1 rounded-lg shrink-0 animate-pulse shadow-xs">
+          <Radio className="w-3.5 h-3.5" />
+          <span className="whitespace-nowrap">LIVE 속보</span>
+        </div>
+        <div
+          className="flex-1 overflow-hidden relative cursor-pointer"
+          onClick={() => setShowCourseRankingsModal(true)}
+          title="클릭 시 전체 랭킹 및 현황 팝업"
+        >
+          <div className="whitespace-nowrap flex items-center gap-8 text-xs sm:text-sm font-medium text-zinc-200 animate-marquee">
+            <span className="text-amber-400 font-bold">🏆 [전국 구장 누적 랭킹]</span>
+            {metrics?.courseRankings && metrics.courseRankings.length > 0 ? (
+              metrics.courseRankings.slice(0, 6).map((c) => (
+                <span key={c.courseId} className="inline-flex items-center gap-1 shrink-0">
+                  <strong className="text-amber-300 font-black">{c.rank}위</strong>
+                  <span>{c.courseName}</span>
+                  <span className="text-zinc-400 text-[11px]">({c.totalRounds}회 · {c.totalPlayers}명)</span>
+                  {c.isCurrentlyActive && <span className="text-red-400 font-black text-[11px] ml-1 animate-pulse">🔴라운딩중</span>}
+                </span>
+              ))
+            ) : (
+              <span>구장별 실시간 집계 중...</span>
+            )}
+            <span className="text-zinc-600">|</span>
+            <span className="text-emerald-400 font-bold">⚡ [필드 라이브]</span>
+            {metrics?.liveRounds && metrics.liveRounds.length > 0 ? (
+              metrics.liveRounds.map((r) => (
+                <span key={r.roomId} className="text-emerald-300 shrink-0">
+                  ⛳ {r.courseName} ({r.leaderName}조 {r.playerCount}인 {r.courseLetter}-{r.currentHole}번홀 경기 중)
+                </span>
+              ))
+            ) : (
+              <span className="text-zinc-400 shrink-0">새 라운드 시작 시 이곳에 즉시 실시간 연결됩니다</span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* 전국 16개 시·도 전체 카드 팝업 모달 */}
@@ -1302,19 +1396,11 @@ export default function AdminDashboardPage() {
 
       {/* 접속 및 이용 추이: 일별, 주별, 월별, 연별 4대 정사각형 버튼 타일 */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
-          <div>
-            <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-600" />
-              접속 및 이용 추이
-            </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              각 버튼을 클릭하시면 시간별·일별·주별·월별 세부 추이 팝업이 열립니다.
-            </p>
-          </div>
-          <span className="text-xs font-semibold px-2.5 py-1 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg">
-            버튼 클릭 시 상세 팝업
-          </span>
+        <div className="border-b border-zinc-100 dark:border-zinc-800 pb-3">
+          <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-blue-600" />
+            접속 및 이용 추이
+          </h2>
         </div>
 
         {/* 4대 기간별 정사각형 버튼 */}
@@ -1990,107 +2076,7 @@ export default function AdminDashboardPage() {
         );
       })()}
 
-      {/* 2. 실시간 라운딩 관제 센터 (간결한 작은 카드: 클릭 시 경기 진행 상세 팝업) */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3 sm:p-3.5 shadow-xs">
-        <button
-          onClick={() => setShowLiveRoundsModal(true)}
-          className="w-full py-2.5 px-3 sm:px-4 bg-red-50/60 hover:bg-red-100/70 dark:bg-red-950/30 dark:hover:bg-red-950/60 border border-red-200/80 dark:border-red-800/60 hover:border-red-500 rounded-xl transition-all flex items-center justify-between gap-3 text-left group cursor-pointer active:scale-99"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-              <Radio className="w-4 h-4 animate-pulse" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 whitespace-nowrap">
-                <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  실시간 필드 라운딩 관제 센터
-                </span>
-                <span className="text-[10px] px-1.5 py-0.2 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 rounded font-bold shrink-0">
-                  {metrics?.liveRounds && metrics.liveRounds.length > 0 ? `${metrics.liveRounds.length}개 팀 활동 중` : '대기'}
-                </span>
-              </div>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 whitespace-nowrap overflow-hidden text-ellipsis mt-0.5">
-                클릭하시면 현재 필드에서 누가 어떻게 경기 중인지 상세 팝업이 열립니다.
-              </p>
-            </div>
-          </div>
-          <div className="px-3 py-1.5 bg-red-600 group-hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shrink-0 whitespace-nowrap shadow-xs">
-            <span>실시간 경기 현황 열기</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </div>
-        </button>
-      </div>
 
-      {/* 3. 전국 구장별 실시간 라운딩 랭킹 (동일한 크기의 작은 카드: 클릭 시 1위~ 순위표 팝업) */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3 sm:p-3.5 shadow-xs">
-        <button
-          onClick={() => setShowCourseRankingsModal(true)}
-          className="w-full py-2.5 px-3 sm:px-4 bg-amber-50/60 hover:bg-amber-100/70 dark:bg-amber-950/30 dark:hover:bg-amber-950/60 border border-amber-200/80 dark:border-amber-800/60 hover:border-amber-500 rounded-xl transition-all flex items-center justify-between gap-3 text-left group cursor-pointer active:scale-99"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
-              <Trophy className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 whitespace-nowrap">
-                <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  전국 구장별 실시간 라운딩 랭킹
-                </span>
-                <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 rounded font-bold shrink-0">
-                  1위~ 순위표
-                </span>
-              </div>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 whitespace-nowrap overflow-hidden text-ellipsis mt-0.5">
-                클릭하시면 전국 구장별 실제 라운딩 순위 집계표(1위부터)가 팝업됩니다.
-              </p>
-            </div>
-          </div>
-          <div className="px-3 py-1.5 bg-amber-600 group-hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shrink-0 whitespace-nowrap shadow-xs">
-            <span>전국 구장 랭킹 열기</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </div>
-        </button>
-      </div>
-
-      {/* 4. 전국 구장 라이브 랭킹 롤링 전광판 (글자가 나오고 이동하는 코너) */}
-      <div className="bg-zinc-900 text-zinc-100 rounded-2xl p-3 sm:p-3.5 shadow-md border border-zinc-800 flex items-center gap-3 overflow-hidden">
-        <div className="flex items-center gap-1.5 bg-red-600 text-white text-[11px] font-black px-2.5 py-1 rounded-lg shrink-0 animate-pulse shadow-xs">
-          <Radio className="w-3.5 h-3.5" />
-          <span className="whitespace-nowrap">LIVE 속보</span>
-        </div>
-        <div
-          className="flex-1 overflow-hidden relative cursor-pointer"
-          onClick={() => setShowCourseRankingsModal(true)}
-          title="클릭 시 전체 랭킹 및 현황 팝업"
-        >
-          <div className="whitespace-nowrap flex items-center gap-8 text-xs sm:text-sm font-medium text-zinc-200 animate-marquee">
-            <span className="text-amber-400 font-bold">🏆 [전국 구장 누적 랭킹]</span>
-            {metrics?.courseRankings && metrics.courseRankings.length > 0 ? (
-              metrics.courseRankings.slice(0, 6).map((c) => (
-                <span key={c.courseId} className="inline-flex items-center gap-1 shrink-0">
-                  <strong className="text-amber-300 font-black">{c.rank}위</strong>
-                  <span>{c.courseName}</span>
-                  <span className="text-zinc-400 text-[11px]">({c.totalRounds}회 · {c.totalPlayers}명)</span>
-                  {c.isCurrentlyActive && <span className="text-red-400 font-black text-[11px] ml-1 animate-pulse">🔴라운딩중</span>}
-                </span>
-              ))
-            ) : (
-              <span>구장별 실시간 집계 중...</span>
-            )}
-            <span className="text-zinc-600">|</span>
-            <span className="text-emerald-400 font-bold">⚡ [필드 라이브]</span>
-            {metrics?.liveRounds && metrics.liveRounds.length > 0 ? (
-              metrics.liveRounds.map((r) => (
-                <span key={r.roomId} className="text-emerald-300 shrink-0">
-                  ⛳ {r.courseName} ({r.leaderName}조 {r.playerCount}인 {r.courseLetter}-{r.currentHole}번홀 경기 중)
-                </span>
-              ))
-            ) : (
-              <span className="text-zinc-400 shrink-0">새 라운드 시작 시 이곳에 즉시 실시간 연결됩니다</span>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* 실시간 필드 라운딩 라이브 관제 팝업 모달 */}
       {showLiveRoundsModal && (
