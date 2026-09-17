@@ -34,10 +34,15 @@ import {
 export interface ProvinceUserItem {
   id: string;
   name: string;
+  isNamedUser?: boolean;
   city: string;
   homeCourse: string;
   lastPath: string;
   lastActiveTime: string;
+  firstActiveTime?: string;
+  visitCount?: number;
+  deviceType?: string;
+  trafficSource?: string;
   timestamp: number;
   isLive: boolean;
 }
@@ -776,17 +781,30 @@ export default function AdminDashboardPage() {
                       currentUsers.map((u, idx) => (
                         <div
                           key={u.id || idx}
-                          className="p-2.5 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-xl flex items-center justify-between hover:border-emerald-400 transition-colors text-xs"
+                          className={`p-2.5 rounded-xl border transition-colors text-xs flex items-center justify-between gap-2 ${
+                            u.isNamedUser
+                              ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-800/60 hover:border-amber-400'
+                              : 'bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800 hover:border-emerald-400'
+                          }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <span className="w-7 text-[11px] font-mono text-zinc-400 text-center shrink-0">
                               #{startIdx + idx + 1}
                             </span>
                             <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`font-bold truncate ${u.isNamedUser ? 'text-amber-950 dark:text-amber-200 font-black' : 'text-zinc-900 dark:text-zinc-100'}`}>
                                   {u.name}
                                 </span>
+                                {u.isNamedUser ? (
+                                  <span className="inline-flex items-center px-1.5 py-0.2 bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[10px] font-black rounded-md border border-amber-300 dark:border-amber-700">
+                                    ✨ 닉네임 회원
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-1.5 py-0.2 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-[10px] font-medium rounded-md">
+                                    일반 방문
+                                  </span>
+                                )}
                                 {u.isLive && (
                                   <span className="inline-flex items-center gap-1 px-1.5 py-0.2 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-black rounded-full">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -794,17 +812,30 @@ export default function AdminDashboardPage() {
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[11px] text-zinc-400 truncate flex items-center gap-2 mt-0.5">
+                              <div className="text-[11px] text-zinc-400 truncate flex items-center gap-1.5 mt-0.5 flex-wrap">
                                 <span>📍 {u.city}</span>
                                 <span>·</span>
-                                <span>⛳ {u.homeCourse}</span>
+                                <span>{u.deviceType || '📱 모바일'}</span>
+                                <span>·</span>
+                                <span className="text-zinc-500 font-medium">{u.trafficSource || '직접 접속'}</span>
+                                {u.visitCount && u.visitCount > 1 && (
+                                  <>
+                                    <span>·</span>
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">누적 {u.visitCount}회</span>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className="text-[10px] text-zinc-400 block font-mono">
-                              {u.lastActiveTime}
+                            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-mono">
+                              최근: {u.lastActiveTime}
                             </span>
+                            {u.firstActiveTime && u.firstActiveTime !== u.lastActiveTime && (
+                              <span className="text-[9px] text-zinc-400 block font-mono">
+                                최초: {u.firstActiveTime.split(' ')[0]}
+                              </span>
+                            )}
                           </div>
                         </div>
                       ))
@@ -837,18 +868,31 @@ export default function AdminDashboardPage() {
                       liveUsers.map((u, idx) => (
                         <div
                           key={u.id || idx}
-                          className="p-2.5 bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/60 rounded-xl flex items-center justify-between text-xs"
+                          className={`p-2.5 rounded-xl border flex items-center justify-between text-xs gap-2 ${
+                            u.isNamedUser
+                              ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 shadow-2xs'
+                              : 'bg-zinc-50 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700'
+                          }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                             <div className="min-w-0">
-                              <div className="font-bold text-zinc-900 dark:text-zinc-100 truncate">
-                                {u.name}
+                              <div className="flex items-center gap-1.5">
+                                <span className={`font-bold truncate ${u.isNamedUser ? 'text-amber-950 dark:text-amber-200 font-black' : 'text-zinc-900 dark:text-zinc-100'}`}>
+                                  {u.name}
+                                </span>
+                                {u.isNamedUser && (
+                                  <span className="inline-flex items-center px-1.5 py-0.2 bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[10px] font-black rounded-md border border-amber-300 dark:border-amber-700">
+                                    ✨ 닉네임 회원
+                                  </span>
+                                )}
                               </div>
-                              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate flex items-center gap-2 mt-0.5">
+                              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate flex items-center gap-1.5 mt-0.5">
                                 <span>📍 {u.city}</span>
                                 <span>·</span>
-                                <span>페이지: {u.lastPath}</span>
+                                <span>{u.deviceType || '📱 모바일'}</span>
+                                <span>·</span>
+                                <span>{u.trafficSource || '직접 접속'}</span>
                               </div>
                             </div>
                           </div>

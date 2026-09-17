@@ -58,10 +58,15 @@ export interface CityDetailStat {
 export interface ProvinceUserItem {
   id: string;
   name: string;
+  isNamedUser: boolean;
   city: string;
   homeCourse: string;
   lastPath: string;
   lastActiveTime: string;
+  firstActiveTime: string;
+  visitCount: number;
+  deviceType: string;
+  trafficSource: string;
   timestamp: number;
   isLive: boolean;
 }
@@ -217,6 +222,34 @@ function formatKST(timestamp: number | Date = Date.now()) {
     kstMonthStart,
     kstYearStart,
   };
+}
+
+function parseDeviceType(userAgent: string = ''): string {
+  const ua = userAgent.toLowerCase();
+  if (ua.includes('iphone')) return '📱 아이폰 (iOS)';
+  if (ua.includes('ipad')) return '📱 아이패드 (iPadOS)';
+  if (ua.includes('android')) return '📱 안드로이드 모바일';
+  if (ua.includes('macintosh') || ua.includes('mac os')) return '💻 Mac (데스크톱)';
+  if (ua.includes('windows')) return '💻 Windows PC';
+  if (ua.includes('linux')) return '💻 Linux PC';
+  if (ua.includes('mobile')) return '📱 스마트폰';
+  return '🌐 웹 브라우저';
+}
+
+function parseTrafficSource(referrer: string = '', path: string = ''): string {
+  const ref = (referrer || '').toLowerCase();
+  const p = (path || '').toLowerCase();
+  if (ref.includes('band.us') || p.includes('utm_source=band') || p.includes('band')) return '네이버 밴드 유입';
+  if (ref.includes('facebook.com') || ref.includes('fb.com') || p.includes('utm_source=fb')) return '페이스북 유입';
+  if (ref.includes('instagram.com')) return '인스타그램 유입';
+  if (ref.includes('cafe.naver.com') || p.includes('naver_cafe')) return '네이버 카페 유입';
+  if (ref.includes('blog.naver.com')) return '네이버 블로그 유입';
+  if (ref.includes('search.naver.com')) return '네이버 검색 유입';
+  if (ref.includes('google.')) return '구글 검색 유입';
+  if (ref.includes('daum.net') || ref.includes('kakao.com')) return '카카오/다음 유입';
+  if (p.includes('standalone') || p.includes('pwa')) return '홈화면 앱 (PWA)';
+  if (ref.includes('parkongolf.com') || ref.includes('localhost')) return '직접 접속 (URL/북마크)';
+  return ref ? '외부 웹사이트 링크' : '직접 접속 (URL/북마크)';
 }
 
 const getSupabaseClient = () => {
@@ -849,20 +882,114 @@ export async function GET(req: NextRequest) {
       }
     });
 
+    // 해당 시·도에 속하는 모든 방문 로그 추출 및 고유 유저(중복 제거) 집계
+    interface UserGroupData {
+      userKey: string;
+      isNamedUser: boolean;
+      rawName: string;
+      ips: Set<string>;
+      cityCounts: Map<string, number>;
+      homeCourse: string;
+      latestLog: VisitorLog;
+      earliestLog: VisitorLog;
+      visitCount: number;
+      isLive: boolean;
+    }
+
+    const userGroups = new Map<string, UserGroupData>();
+
+    store.logs.forEach((log) => {
+      const reg = (log.userRegion || allIpRegionMap.get(log.ip) || '').toLowerCase();
+      const provName = prov.name.toLowerCase();
+      const isProvLog =
+        provIps.has(log.ip) ||
+        reg.includes(provName) ||
+        (prov.name === '서울' && (reg.includes('seoul') || reg.includes('영등포') || reg.includes('송파') || reg.includes('마포') || reg.includes('gangseo') || reg.includes('강서') || reg.includes('서초') || reg.includes('강남'))) ||
+        (prov.name === '경북' && (reg.includes('gumi') || reg.includes('구미') || reg.includes('포항') || reg.includes('경주') || reg.includes('김천') || reg.includes('안동'))) ||
+        (prov.name === '대구' && (reg.includes('daegu') || reg.includes('수성') || reg.includes('달서') || reg.includes('성서'))) ||
+        (prov.name === '부산' && (reg.includes('busan') || reg.includes('사상') || reg.includes('연제') || reg.includes('해운대') || reg.includes('대저')));
+
+      if (!isProvLog) return;
+
+      const cleanName = (log.userName || '').trim();
+      const isNamed = !!cleanName && cleanName !== '일반 골퍼';
+      const userKey = isNamed ? `named:${cleanName}` : `anon:${log.ip}`;
+
+      // 시·군·구 매칭
+      let detectedCity = '';
+      const rawReg = (log.userRegion || allIpRegionMap.get(log.ip) || '').trim();
+      for (const city of prov.cities) {
+        const cleanCity = city.name.replace(/[시구군]/g, '').toLowerCase();
+        if (rawReg.toLowerCase().includes(cleanCity) || (city.aliases && city.aliases.some((a) => rawReg.toLowerCase().includes(a.toLowerCase())))) {
+          detectedCity = city.name;
+          break;
+        }
+      }
+      if (!detectedCity) {
+        detectedCity = rawReg.replace(prov.name, '').trim() || `${prov.name} 관내`;
+      }
+
+      const isLogLive = liveIpRegionMap.has(log.ip) || log.timestamp >= tenMinsAgo;
+
+      if (!userGroups.has(userKey)) {
+        const cityCounts = new Map<string, number>();
+        cityCounts.set(detectedCity, 1);
+        userGroups.set(userKey, {
+          userKey,
+          isNamedUser: isNamed,
+          rawName: isNamed ? cleanName : '',
+          ips: new Set([log.ip]),
+          cityCounts,
+          homeCourse: log.homeCourse || '',
+          latestLog: log,
+          earliestLog: log,
+          visitCount: 1,
+          isLive: isLogLive,
+        });
+      } else {
+        const group = userGroups.get(userKey)!;
+        group.visitCount++;
+        group.ips.add(log.ip);
+        group.cityCounts.set(detectedCity, (group.cityCounts.get(detectedCity) || 0) + 1);
+        if (isLogLive) group.isLive = true;
+        if (log.timestamp > group.latestLog.timestamp) {
+          group.latestLog = log;
+          if (log.homeCourse) group.homeCourse = log.homeCourse;
+        }
+        if (log.timestamp < group.earliestLog.timestamp) {
+          group.earliestLog = log;
+        }
+      }
+    });
+
     // 해당 시·도의 실제 등록 클럽 조회
     const provClubs = REAL_REGISTERED_CLUBS.filter((c) => c.province === prov.name);
     const provClubCount = provClubs.length;
 
-    // 해당 시·도의 실시간 동시 접속자
+    // 해당 시·도의 실시간 동시 접속자 (중복 제거된 고유 유저 기준)
     let provLiveUsers = 0;
-    liveIpRegionMap.forEach((reg, ip) => {
-      if (provIps.has(ip)) provLiveUsers++;
+    userGroups.forEach((g) => {
+      if (g.isLive) provLiveUsers++;
     });
 
-    const provUserCount = provIps.size;
+    const provUserCount = userGroups.size;
 
-    // 시·군·구별 정밀 매핑 (특정 구/시에 실제 확인된 유저만 카운트, 거짓 데이터 배제)
-    const matchedCityIps = new Set<string>();
+    // 각 유저 그룹의 주 활동 시·군·구 매핑
+    const userCityMap = new Map<string, string>();
+    userGroups.forEach((g, uKey) => {
+      let bestCity = '';
+      let bestCount = 0;
+      g.cityCounts.forEach((cnt, city) => {
+        if (cnt > bestCount) {
+          bestCount = cnt;
+          bestCity = city;
+        }
+      });
+      userCityMap.set(uKey, bestCity || `${prov.name} 관내`);
+    });
+
+    // 시·군·구별 정밀 매핑 (특정 구/시에 실제 확인된 고유 유저만 카운트, 거짓 데이터 배제)
+    const matchedUsers = new Set<string>();
     const cities: CityDetailStat[] = prov.cities.map((c) => {
       let cityUsers = 0;
       let cityLive = 0;
@@ -870,14 +997,13 @@ export async function GET(req: NextRequest) {
       const aliases = c.aliases || [];
       const cleanCity = c.name.replace(/[시구군]/g, '').toLowerCase();
 
-      provIps.forEach((ip) => {
-        const reg = (allIpRegionMap.get(ip) || '').toLowerCase();
-        // 반드시 해당 구/시 명칭이나 alias가 명시된 경우만 매칭 (광역 시도 전체 유저를 일괄 배정하지 않음)
-        const matches = reg.includes(cleanCity) || aliases.some((a) => reg.includes(a.toLowerCase()));
+      userGroups.forEach((g, uKey) => {
+        const uCity = (userCityMap.get(uKey) || '').toLowerCase();
+        const matches = uCity.includes(cleanCity) || aliases.some((a) => uCity.includes(a.toLowerCase()));
         if (matches) {
           cityUsers++;
-          matchedCityIps.add(ip);
-          if (liveIpRegionMap.has(ip)) {
+          matchedUsers.add(uKey);
+          if (g.isLive) {
             cityLive++;
           }
         }
@@ -971,11 +1097,11 @@ export async function GET(req: NextRequest) {
     });
 
     // 세부 구/시가 명시되지 않고 광역 시·도로만 유입된 유저 (정직한 '세부 위치 미확인' 표기)
-    const unassignedCount = provUserCount - matchedCityIps.size;
+    const unassignedCount = provUserCount - matchedUsers.size;
     if (unassignedCount > 0) {
       let unassignedLive = 0;
-      provIps.forEach((ip) => {
-        if (!matchedCityIps.has(ip) && liveIpRegionMap.has(ip)) {
+      userGroups.forEach((g, uKey) => {
+        if (!matchedUsers.has(uKey) && g.isLive) {
           unassignedLive++;
         }
       });
@@ -1009,65 +1135,85 @@ export async function GET(req: NextRequest) {
         ? '이용 거점 (B+)'
         : '신규 거점 (B)';
 
-    // 4. 해당 시·도의 전체 유저 및 실시간 접속 유저 목록 추출 (가나다순 한국어 정렬)
+    // 4. 해당 시·도의 전체 유저 및 실시간 접속 유저 목록 추출 (가나다순 한국어 정렬 & 닉네임 유저 상단 정렬)
     const provUserList: ProvinceUserItem[] = [];
     const provLiveUserList: ProvinceUserItem[] = [];
 
-    provIps.forEach((ip) => {
-      // 해당 IP의 최신 방문 로그 추출
-      let latestLog: VisitorLog | null = null;
-      for (let i = store.logs.length - 1; i >= 0; i--) {
-        if (store.logs[i].ip === ip) {
-          latestLog = store.logs[i];
-          break;
-        }
-      }
+    const namedList: UserGroupData[] = [];
+    const anonList: UserGroupData[] = [];
 
-      if (latestLog) {
-        const isLive = liveIpRegionMap.has(ip);
-
-        // 시·군·구 추론
-        let userCity = '';
-        const reg = (latestLog.userRegion || allIpRegionMap.get(ip) || '').trim();
-        for (const city of prov.cities) {
-          const cleanCity = city.name.replace(/[시구군]/g, '').toLowerCase();
-          if (reg.includes(cleanCity) || (city.aliases && city.aliases.some((a) => reg.toLowerCase().includes(a.toLowerCase())))) {
-            userCity = city.name;
-            break;
-          }
-        }
-        if (!userCity) {
-          userCity = reg.replace(prov.name, '').trim() || `${prov.name} 관내`;
-        }
-
-        // 유저명 / 닉네임 (실명 입력자는 실명, 미입력자는 지역 골퍼+마스킹)
-        let displayName = (latestLog.userName || '').trim();
-        if (!displayName || displayName === '일반 골퍼') {
-          const ipTail = ip.replace(/^::ffff:/, '');
-          displayName = `${userCity ? userCity.replace(/[시구군]$/, '') : prov.name} 골퍼 (${ipTail})`;
-        }
-
-        const userItem: ProvinceUserItem = {
-          id: latestLog.id,
-          name: displayName,
-          city: userCity,
-          homeCourse: latestLog.homeCourse || `${userCity} 인근 구장`,
-          lastPath: latestLog.path || '/',
-          lastActiveTime: `${latestLog.dateStr} ${latestLog.timeStr}`,
-          timestamp: latestLog.timestamp,
-          isLive,
-        };
-
-        provUserList.push(userItem);
-        if (isLive) {
-          provLiveUserList.push(userItem);
-        }
+    userGroups.forEach((g) => {
+      if (g.isNamedUser) {
+        namedList.push(g);
+      } else {
+        anonList.push(g);
       }
     });
 
-    // 가나다순 (한국어 사전순) 기본 정렬
-    provUserList.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
-    provLiveUserList.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+    // 닉네임 실명 등록 유저는 한국어 가나다순 정렬
+    namedList.sort((a, b) => a.rawName.localeCompare(b.rawName, 'ko'));
+    // 일반 방문자는 최신 활동순 정렬
+    anonList.sort((a, b) => b.latestLog.timestamp - a.latestLog.timestamp);
+
+    // 1) 실명/닉네임 회원 등록 (중복 IP 통합 1인 1계정 박제)
+    namedList.forEach((g) => {
+      const uCity = userCityMap.get(g.userKey) || `${prov.name} 관내`;
+      const item: ProvinceUserItem = {
+        id: g.latestLog.id,
+        name: g.rawName,
+        isNamedUser: true,
+        city: uCity,
+        homeCourse: g.homeCourse || `${uCity} 인근 구장`,
+        lastPath: g.latestLog.path || '/',
+        lastActiveTime: `${g.latestLog.dateStr} ${g.latestLog.timeStr}`,
+        firstActiveTime: `${g.earliestLog.dateStr} ${g.earliestLog.timeStr}`,
+        visitCount: g.visitCount,
+        deviceType: parseDeviceType(g.latestLog.userAgent),
+        trafficSource: parseTrafficSource(g.latestLog.referrer, g.latestLog.path),
+        timestamp: g.latestLog.timestamp,
+        isLive: g.isLive,
+      };
+      provUserList.push(item);
+      if (g.isLive) {
+        provLiveUserList.push(item);
+      }
+    });
+
+    // 2) 일반 방문자 (IP 숫자 제거, 친절한 지역 방문 골퍼 명칭 표기)
+    const cityAnonCounter = new Map<string, number>();
+    anonList.forEach((g) => {
+      const uCity = userCityMap.get(g.userKey) || `${prov.name} 관내`;
+      const cityKey = uCity.replace(/[시구군]$/, '').trim() || prov.name;
+      const c = (cityAnonCounter.get(cityKey) || 0) + 1;
+      cityAnonCounter.set(cityKey, c);
+
+      const displayName = `${cityKey} 방문 골퍼 #${c}`;
+      const item: ProvinceUserItem = {
+        id: g.latestLog.id,
+        name: displayName,
+        isNamedUser: false,
+        city: uCity,
+        homeCourse: g.homeCourse || `${uCity} 인근 구장`,
+        lastPath: g.latestLog.path || '/',
+        lastActiveTime: `${g.latestLog.dateStr} ${g.latestLog.timeStr}`,
+        firstActiveTime: `${g.earliestLog.dateStr} ${g.earliestLog.timeStr}`,
+        visitCount: g.visitCount,
+        deviceType: parseDeviceType(g.latestLog.userAgent),
+        trafficSource: parseTrafficSource(g.latestLog.referrer, g.latestLog.path),
+        timestamp: g.latestLog.timestamp,
+        isLive: g.isLive,
+      };
+      provUserList.push(item);
+      if (g.isLive) {
+        provLiveUserList.push(item);
+      }
+    });
+
+    // 가나다순 (한국어 사전순) 정렬: 닉네임 회원이 상단에서 가나다순, 그 뒤에 방문 골퍼 가나다순
+    provLiveUserList.sort((a, b) => {
+      if (a.isNamedUser !== b.isNamedUser) return a.isNamedUser ? -1 : 1;
+      return a.name.localeCompare(b.name, 'ko');
+    });
 
     // 해당 시·도의 등록 클럽 상세
     const provClubDetails: CityClubDetail[] = [];
