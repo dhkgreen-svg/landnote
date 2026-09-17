@@ -24,29 +24,9 @@ const STORAGE_KEYS = {
 };
 
 
-// 기본 공식 동호회 데이터 (가상 인물 배제)
+// 기본 공식 동호회 데이터 (가상/테스트 더미 데이터 100% 제거, 실제 가입/창단 클럽만 유지)
 function generateDefaultSeedClubs(): ParkGolfClub[] {
-  return [
-    {
-      id: 'club-gumi-dongrak',
-      name: '구미 동락 파크골프 클럽',
-      region: '경북 구미',
-      homeCourseId: 'course-gumi-dongrak',
-      homeCourseName: '구미 동락 파크골프장',
-      description: '구미 동락구장을 사랑하는 동호인 공식 클럽입니다. 정기 월례회 및 친선 라운드 진행.',
-      presidentName: '동락회장',
-      managerName: '김대희',
-      contactPhone: '054-480-4918',
-      memberCount: 1,
-      members: [
-        { id: 'm1', name: '김대희', role: 'MANAGER', joinedAt: '2026-01-01', phone: '054-480-4918' },
-      ],
-      pendingMembers: [],
-      isPublic: true,
-      badgeColor: 'emerald',
-      createdAt: '2026-01-01',
-    },
-  ];
+  return [];
 }
 
 // 기본 번개 데이터 (사용자 직접 개설 전에는 빈 목록 유지)
@@ -1313,36 +1293,30 @@ ${link}`;
   // [NEW] 클럽 커뮤니티 관리 (창단, 가입, 다중 클럽 관리)
   // ==========================================
   getAllClubs(): ParkGolfClub[] {
-    if (typeof window === 'undefined') return generateDefaultSeedClubs();
+    if (typeof window === 'undefined') return [];
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CLUBS);
       if (!data) {
-        const seeds = generateDefaultSeedClubs();
-        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(seeds));
-        localStorage.setItem(
-          STORAGE_KEYS.MY_CLUB_IDS,
-          JSON.stringify(['club-gumi-dongrak', 'club-busan-samrak'])
-        );
-        return seeds;
+        return [];
       }
       const parsed: ParkGolfClub[] = JSON.parse(data);
-      const seeds = generateDefaultSeedClubs();
-      let changed = false;
-      seeds.forEach((sc) => {
-        if (!parsed.some((c) => c.id === sc.id)) {
-          parsed.push(sc);
-          changed = true;
-        }
-      });
-      if (changed) {
-        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(parsed));
+      // 가상/테스트용 더미 클럽('club-gumi-dongrak', 'club-busan-samrak' 등) 완벽 필터링 및 영구 정리
+      const realClubs = parsed.filter(
+        (c) =>
+          c &&
+          c.id !== 'club-gumi-dongrak' &&
+          c.id !== 'club-busan-samrak' &&
+          !(c.name && c.name.includes('구미 동락 파크골프 클럽'))
+      );
+      if (realClubs.length !== parsed.length) {
+        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(realClubs));
       }
-      return parsed.map((c) => ({
+      return realClubs.map((c) => ({
         ...c,
         pendingMembers: c.pendingMembers || [],
       }));
     } catch {
-      return generateDefaultSeedClubs();
+      return [];
     }
   },
 

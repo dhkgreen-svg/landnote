@@ -599,28 +599,20 @@ export default function AdminDashboardPage() {
                       </div>
                       <div className="flex items-center gap-3 text-xs">
                         <div>
-                          <span className="text-zinc-400 text-[10px] mr-1">유저</span>
+                          <span className="text-zinc-400 text-[10px] mr-1">방문</span>
                           <strong className={city.userCount > 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-zinc-400 dark:text-zinc-500 font-medium"}>
                             {city.userCount}명
                           </strong>
                         </div>
                         <div>
-                          <span className="text-zinc-400 text-[10px] mr-1">접속</span>
+                          <span className="text-zinc-400 text-[10px] mr-1">실시간</span>
                           <strong className={city.liveUsers > 0 ? "text-amber-600 dark:text-amber-400 font-bold" : "text-zinc-400 dark:text-zinc-500 font-medium"}>
                             {city.liveUsers}명
                           </strong>
                         </div>
-                        <div
-                          onClick={() => {
-                            if (city.clubDetails && city.clubDetails.length > 0) {
-                              setSelectedClubDetailModal(city.clubDetails[0]);
-                            }
-                          }}
-                          className={city.clubCount > 0 ? "cursor-pointer group" : ""}
-                          title={city.clubCount > 0 ? "클릭 시 클럽 상세 관제 팝업 열기" : ""}
-                        >
+                        <div>
                           <span className="text-zinc-400 text-[10px] mr-1">클럽</span>
-                          <strong className={city.clubCount > 0 ? "text-purple-600 dark:text-purple-400 font-bold group-hover:underline underline-offset-2" : "text-zinc-400 dark:text-zinc-500 font-medium"}>
+                          <strong className={city.clubCount > 0 ? "text-purple-600 dark:text-purple-400 font-bold" : "text-zinc-400 dark:text-zinc-500 font-medium"}>
                             {city.clubCount}개
                           </strong>
                         </div>

@@ -339,22 +339,8 @@ interface RegisteredClub {
   description: string;
 }
 
-// 실제 등록된 공식 클럽 목록 (가짜 클럽 100% 제거, 팩트 기반 운영)
-const REAL_REGISTERED_CLUBS: RegisteredClub[] = [
-  {
-    id: 'club-gumi-dongrak',
-    name: '구미 동락 파크골프 클럽',
-    province: '경북',
-    city: '구미시',
-    homeCourseName: '구미 동락 파크골프장',
-    memberCount: 1,
-    managerName: '김대희',
-    presidentName: '동락회장',
-    contactPhone: '054-480-4918',
-    createdAt: '2026-01-01',
-    description: '구미 동락구장을 사랑하는 동호인 공식 클럽입니다. 정기 월례회 및 친선 라운드 진행.',
-  },
-];
+// 실제 등록된 공식 클럽 목록 (가상/테스트 더미 클럽 100% 영구 제거, 실제 사용자가 가입/창단한 공식 클럽만 동적으로 유지)
+const REAL_REGISTERED_CLUBS: RegisteredClub[] = [];
 
 interface CitySeedConfig {
   name: string;
@@ -889,15 +875,13 @@ export async function GET(req: NextRequest) {
       );
 
       const clubDetails: CityClubDetail[] = matchedClubs.map((club) => {
-        // 실제 완료된 라운드 방에서 해당 클럽 또는 홈구장 기록 매칭 (가상 모드 원천 제외)
+        // 실제 완료된 라운드 방에서 해당 클럽 고유 ID가 연동된 공식 경기만 매칭 (가상 및 단순 구장 테스트 방 원천 배제)
         const clubRounds = allRooms.filter((r) => {
           if (!r) return false;
           if (r.roundSession?.isVirtual === true || r.roundSession?.isOfficial === false) return false;
-          const course = (r.courseName || r.courseId || '').toLowerCase();
+          const clubIdInRoom = r.clubId || '';
           const clubNameInRoom = (r.clubName || '').toLowerCase();
-          const isDongrakCourse = course.includes('동락') || course.includes('dongrak');
-          const isDongrakClub = clubNameInRoom.includes('동락');
-          return isDongrakCourse || isDongrakClub;
+          return clubIdInRoom === club.id || (clubNameInRoom && clubNameInRoom === club.name.toLowerCase());
         });
 
         const actualRoundsCount = clubRounds.length;
@@ -909,7 +893,7 @@ export async function GET(req: NextRequest) {
         const sortedClubRounds = [...clubRounds].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
         sortedClubRounds.forEach((r) => {
-          const pCount = r.playerCount || (r.players ? r.players.length : 4);
+          const pCount = r.playerCount || (r.players ? r.players.length : 0);
           totalPlayersCount += pCount;
           const upMs = r.updatedAt || 0;
           if (upMs > lastPlayedMs) lastPlayedMs = upMs;
@@ -918,49 +902,34 @@ export async function GET(req: NextRequest) {
             const k = formatKST(upMs || Date.now());
             recentActivities.push({
               date: `${k.dateStr} ${k.timeStr}`,
-              courseName: r.courseName || club.homeCourseName || '구미 동락 파크골프장',
+              courseName: r.courseName || club.homeCourseName || '공식 경기장',
               playerCount: pCount,
-              leaderName: r.leaderName || r.players?.[0]?.name || '조장',
+              leaderName: r.leaderName || r.players?.[0]?.name || '진행자',
               status: r.status === 'STARTED' ? '경기 진행' : '완주 완료',
             });
           }
         });
 
         const lastKst = lastPlayedMs > 0 ? formatKST(lastPlayedMs) : null;
-        const lastPlayedAtStr = lastKst ? `${lastKst.dateStr} ${lastKst.timeStr}` : '2026-09-16 16:44:41';
+        const lastPlayedAtStr = lastKst ? `${lastKst.dateStr} ${lastKst.timeStr}` : '경기 기록 없음';
 
         return {
           id: club.id,
           name: club.name,
           province: club.province,
           city: club.city,
-          homeCourseName: club.homeCourseName || '구미 동락 파크골프장',
-          memberCount: club.memberCount || 1,
-          managerName: club.managerName || '김대희',
-          presidentName: club.presidentName || '동락회장',
-          contactPhone: club.contactPhone || '054-480-4918',
-          createdAt: club.createdAt || '2026-01-01',
-          description: club.description || '구미 동락구장을 사랑하는 동호인 공식 클럽입니다.',
+          homeCourseName: club.homeCourseName || '홈구장 미정',
+          memberCount: club.memberCount || 0,
+          managerName: club.managerName || '미지정',
+          presidentName: club.presidentName || '미지정',
+          contactPhone: club.contactPhone || '',
+          createdAt: club.createdAt || '',
+          description: club.description || '',
           isActualParticipated: actualRoundsCount > 0,
-          actualRoundsCount: actualRoundsCount || 13,
-          totalPlayersCount: totalPlayersCount || 51,
+          actualRoundsCount,
+          totalPlayersCount,
           lastPlayedAtStr,
-          recentActivities: recentActivities.length > 0 ? recentActivities : [
-            {
-              date: '2026-09-16 16:44:41',
-              courseName: '구미 동락 파크골프장 (A코스)',
-              playerCount: 4,
-              leaderName: '김대희',
-              status: '완주 완료',
-            },
-            {
-              date: '2026-09-15 21:44:38',
-              courseName: '구미 동락 파크골프장 (B코스)',
-              playerCount: 4,
-              leaderName: '일반 골퍼',
-              status: '완주 완료',
-            }
-          ],
+          recentActivities,
         };
       });
 
