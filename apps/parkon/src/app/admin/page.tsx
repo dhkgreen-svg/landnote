@@ -485,15 +485,21 @@ export default function AdminDashboardPage() {
                       <div className="flex items-center gap-3 text-xs">
                         <div>
                           <span className="text-zinc-400 text-[10px] mr-1">유저</span>
-                          <strong className="text-emerald-600 font-bold">{city.userCount}명</strong>
+                          <strong className={city.userCount > 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-zinc-400 dark:text-zinc-500 font-medium"}>
+                            {city.userCount}명
+                          </strong>
                         </div>
                         <div>
                           <span className="text-zinc-400 text-[10px] mr-1">접속</span>
-                          <strong className="text-amber-600 font-bold">{city.liveUsers}명</strong>
+                          <strong className={city.liveUsers > 0 ? "text-amber-600 dark:text-amber-400 font-bold" : "text-zinc-400 dark:text-zinc-500 font-medium"}>
+                            {city.liveUsers}명
+                          </strong>
                         </div>
                         <div>
                           <span className="text-zinc-400 text-[10px] mr-1">클럽</span>
-                          <strong className="text-purple-600 font-bold">{city.clubCount}개</strong>
+                          <strong className={city.clubCount > 0 ? "text-purple-600 dark:text-purple-400 font-bold" : "text-zinc-400 dark:text-zinc-500 font-medium"}>
+                            {city.clubCount}개
+                          </strong>
                         </div>
                       </div>
                     </div>
@@ -501,13 +507,17 @@ export default function AdminDashboardPage() {
                     {/* Clubs */}
                     <div className="text-xs text-zinc-600 dark:text-zinc-400 flex items-start gap-1.5 border-t border-zinc-200/50 dark:border-zinc-700/50 pt-2">
                       <span className="font-semibold text-zinc-700 dark:text-zinc-300 shrink-0">소속 클럽:</span>
-                      <span className="text-zinc-600 dark:text-zinc-300">{city.clubs.join(' · ')}</span>
+                      <span className={city.clubs.length > 0 ? "text-purple-600 dark:text-purple-400 font-bold" : "text-zinc-400 dark:text-zinc-500"}>
+                        {city.clubs.length > 0 ? city.clubs.join(' · ') : '등록 클럽 없음 (0개)'}
+                      </span>
                     </div>
 
                     {/* Courses */}
                     <div className="text-xs text-zinc-600 dark:text-zinc-400 flex items-start gap-1.5">
                       <span className="font-semibold text-zinc-700 dark:text-zinc-300 shrink-0">주요 구장:</span>
-                      <span className="text-emerald-700 dark:text-emerald-300">{city.majorCourses.join(' · ')}</span>
+                      <span className="text-emerald-700 dark:text-emerald-300">
+                        {city.majorCourses && city.majorCourses.length > 0 ? city.majorCourses.join(' · ') : '인근 구장 정보 수집 중'}
+                      </span>
                     </div>
                   </div>
                 ))}

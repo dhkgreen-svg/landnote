@@ -140,7 +140,7 @@ const saveAnalyticsStore = (store: AnalyticsStore) => {
 // 국가지정 통신사 IP 대역 기반 대한민국 시·도 정밀 매핑 함수
 function resolveKoreanProvinceFromIp(maskedIp: string): string {
   if (!maskedIp || maskedIp.startsWith('::') || maskedIp.startsWith('127.')) {
-    return '서울'; // 개발/로컬 기본
+    return '경북'; // 로컬 테스트 기본
   }
   
   const prefix = maskedIp.split('.').slice(0, 2).join('.');
@@ -210,485 +210,407 @@ function resolveKoreanProvinceFromIp(maskedIp: string): string {
     return '서울';
   }
 
-  return '서울';
+  return '미확인';
 }
 
-interface ProvinceSeed {
+interface RegisteredClub {
+  id: string;
+  name: string;
+  province: string;
+  city: string;
+}
+
+// 실제 등록된 공식 클럽 목록 (가짜 클럽 100% 제거, 팩트 기반 운영)
+const REAL_REGISTERED_CLUBS: RegisteredClub[] = [
+  {
+    id: 'club-gumi-dongrak',
+    name: '구미 동락 파크골프 클럽',
+    province: '경북',
+    city: '구미시',
+  },
+];
+
+interface CitySeedConfig {
+  name: string;
+  aliases?: string[];
+  courses: string[];
+}
+
+interface ProvinceSeedConfig {
   code: string;
   name: string;
-  baseClubCount: number;
-  activityLabel: string;
-  cities: Array<{
-    name: string;
-    clubCount: number;
-    clubs: string[];
-    courses: string[];
-    activity: string;
-  }>;
+  cities: CitySeedConfig[];
 }
 
-const PROVINCE_SEEDS: ProvinceSeed[] = [
+const PROVINCE_CONFIGS: ProvinceSeedConfig[] = [
   {
     code: 'GB',
     name: '경북',
-    baseClubCount: 14,
-    activityLabel: '최고 활성 거점 (A+)',
     cities: [
       {
         name: '구미시',
-        clubCount: 5,
-        clubs: ['구미 동락 에이스 클럽', '구미 지산사랑 동호회', '구미 양호 버디클럽', '선산 그린회'],
+        aliases: ['구미', 'gumi'],
         courses: ['동락 파크골프장(36홀)', '지산 구장(63홀)', '양호 구장(36홀)', '선산 구장'],
-        activity: '매일 조기/주말 라운드 집중 (A+)',
       },
       {
         name: '포항시',
-        clubCount: 3,
-        clubs: ['포항 형산강 파크클럽', '포항 송도 동호회'],
+        aliases: ['포항', 'pohang'],
         courses: ['형산강 파크골프장(27홀)', '송도 구장'],
-        activity: '정기 월례회 활발 (A)',
       },
       {
         name: '경주시',
-        clubCount: 3,
-        clubs: ['경주 토함 파크회', '보문 호반클럽'],
+        aliases: ['경주', 'gyeongju'],
         courses: ['경주 안강 구장(18홀)', '보문 구장'],
-        activity: '주말 원정 라운드 우수 (A)',
       },
       {
         name: '김천시',
-        clubCount: 2,
-        clubs: ['김천 직지 파크클럽', '혁신도시 파크동호회'],
+        aliases: ['김천', 'gimcheon'],
         courses: ['김천 강변 파크골프장'],
-        activity: '평일/주말 상시 이용 (B+)',
       },
       {
         name: '안동시',
-        clubCount: 1,
-        clubs: ['안동 낙동강 클럽'],
+        aliases: ['안동', 'andong'],
         courses: ['안동 낙동강변 구장'],
-        activity: '정기 라운드 진행 (B)',
-      },
-    ],
-  },
-  {
-    code: 'DG',
-    name: '대구',
-    baseClubCount: 10,
-    activityLabel: '매우 활발 (A+)',
-    cities: [
-      {
-        name: '달서구',
-        clubCount: 4,
-        clubs: ['대구 달서 사랑방', '성서 그린클럽'],
-        courses: ['강창 파크골프장', '호림 강변 구장'],
-        activity: '월례회 및 번개 모임 활발 (A+)',
-      },
-      {
-        name: '수성구',
-        clubCount: 3,
-        clubs: ['수성 패밀리 파크클럽', '팔현 생태동호회'],
-        courses: ['수성 파크골프장', '팔현 구장'],
-        activity: '주말 집중 라운드 (A)',
-      },
-      {
-        name: '북구',
-        clubCount: 2,
-        clubs: ['금호강 그린회'],
-        courses: ['사수 파크골프장', '불로 구장'],
-        activity: '평일 오전 라운드 (B+)',
-      },
-      {
-        name: '동구',
-        clubCount: 1,
-        clubs: ['팔공 버디회'],
-        courses: ['봉무 구장', '율하체육공원 구장'],
-        activity: '신규 회원 유입 활발 (B)',
-      },
-    ],
-  },
-  {
-    code: 'BS',
-    name: '부산',
-    baseClubCount: 8,
-    activityLabel: '매우 활발 (A)',
-    cities: [
-      {
-        name: '사상구',
-        clubCount: 3,
-        clubs: ['부산 낙동 사랑방', '삼락 에이스'],
-        courses: ['삼락 생태공원 파크골프장(36홀)'],
-        activity: '대형 클럽 주말 라운드 집중 (A+)',
-      },
-      {
-        name: '강서구',
-        clubCount: 2,
-        clubs: ['부산 대저 그린클럽'],
-        courses: ['대저 생태공원 구장'],
-        activity: '평일 조기 라운드 활발 (A)',
-      },
-      {
-        name: '북구',
-        clubCount: 2,
-        clubs: ['화명 강변 파크회'],
-        courses: ['화명 생태 구장'],
-        activity: '정기 월례회 가동 (B+)',
-      },
-      {
-        name: '해운대구',
-        clubCount: 1,
-        clubs: ['해운대 파크클럽'],
-        courses: ['해운대 수목원 구장'],
-        activity: '주말 동호인 모임 (B)',
       },
     ],
   },
   {
     code: 'SO',
     name: '서울',
-    baseClubCount: 9,
-    activityLabel: '수도권 중심 (A)',
     cities: [
       {
         name: '영등포구',
-        clubCount: 4,
-        clubs: ['한강 시니어 파크골프회', '여의도 버디클럽'],
+        aliases: ['영등포', '여의도', 'yeongdeungpo'],
         courses: ['여의도 한강 파크골프장(18홀)'],
-        activity: '주중/주말 상시 풀 라운드 (A+)',
       },
       {
         name: '송파구',
-        clubCount: 2,
-        clubs: ['잠실 파크사랑회'],
+        aliases: ['송파', '잠실', 'songpa'],
         courses: ['잠실 파크골프장'],
-        activity: '주말 번개 모임 활발 (A)',
+      },
+      {
+        name: '강서구',
+        aliases: ['강서', 'gangseo'],
+        courses: ['강서 개화 구장'],
+      },
+      {
+        name: '서초구',
+        aliases: ['서초', '양재', 'seocho'],
+        courses: ['양재천 강변 구장'],
       },
       {
         name: '마포구',
-        clubCount: 2,
-        clubs: ['마포 월드 파크클럽'],
+        aliases: ['마포', 'mapo', '상암'],
         courses: ['월드컵공원 노을 구장'],
-        activity: '평일 오전 라운드 (B+)',
       },
       {
-        name: '강남/서초',
-        clubCount: 1,
-        clubs: ['양재천 그린회'],
-        courses: ['양재천 강변 구장'],
-        activity: '동호인 친목 라운드 (B)',
+        name: '강남구',
+        aliases: ['강남', 'gangnam'],
+        courses: ['탄천 강남 구장'],
+      },
+    ],
+  },
+  {
+    code: 'BS',
+    name: '부산',
+    cities: [
+      {
+        name: '사상구',
+        aliases: ['사상', 'sasang'],
+        courses: ['삼락 생태공원 파크골프장(36홀)'],
+      },
+      {
+        name: '연제구',
+        aliases: ['연제', 'yeonje'],
+        courses: ['온천천 구장'],
+      },
+      {
+        name: '강서구',
+        aliases: ['강서', '대저', 'gangseo'],
+        courses: ['대저 생태공원 구장'],
+      },
+      {
+        name: '북구',
+        aliases: ['북구', '화명'],
+        courses: ['화명 생태 구장'],
+      },
+      {
+        name: '해운대구',
+        aliases: ['해운대', 'haeundae'],
+        courses: ['해운대 수목원 구장'],
+      },
+    ],
+  },
+  {
+    code: 'DG',
+    name: '대구',
+    cities: [
+      {
+        name: '달서구',
+        aliases: ['달서', 'dalseo', '성서'],
+        courses: ['강창 파크골프장', '호림 강변 구장'],
+      },
+      {
+        name: '수성구',
+        aliases: ['수성', 'suseong', '팔현'],
+        courses: ['수성 파크골프장', '팔현 구장'],
+      },
+      {
+        name: '북구',
+        aliases: ['북구', '사수'],
+        courses: ['사수 파크골프장', '불로 구장'],
+      },
+      {
+        name: '동구',
+        aliases: ['동구', '봉무', '율하'],
+        courses: ['봉무 구장', '율하체육공원 구장'],
       },
     ],
   },
   {
     code: 'GG',
     name: '경기',
-    baseClubCount: 11,
-    activityLabel: '수도권 광역 (A)',
     cities: [
       {
         name: '수원시',
-        clubCount: 3,
-        clubs: ['경기 수레바퀴 클럽', '서호 파크회'],
+        aliases: ['수원', 'suwon'],
         courses: ['수원 서호 파크골프장'],
-        activity: '정기 월례회 운영 (A)',
       },
       {
         name: '성남시',
-        clubCount: 3,
-        clubs: ['분당 탄천 그린동호회'],
+        aliases: ['성남', 'seongnam', '분당'],
         courses: ['탄천 성남 파크골프장'],
-        activity: '주중 라운드 활발 (A)',
       },
       {
         name: '양평군',
-        clubCount: 2,
-        clubs: ['양평 맑은물 파크클럽'],
+        aliases: ['양평', 'yangpyeong'],
         courses: ['양평 강상 파크골프장'],
-        activity: '전국 원정 투어 명소 (A)',
       },
       {
         name: '용인시',
-        clubCount: 2,
-        clubs: ['용인 처인 파크회'],
+        aliases: ['용인', 'yongin'],
         courses: ['용인 모현 구장'],
-        activity: '회원 모집 확대 중 (B+)',
       },
       {
         name: '고양시',
-        clubCount: 1,
-        clubs: ['일산 호수 파크클럽'],
+        aliases: ['고양', 'goyang', '일산'],
         courses: ['고양 대화 구장'],
-        activity: '주말 번개 활발 (B)',
       },
     ],
   },
   {
     code: 'US',
     name: '울산',
-    baseClubCount: 5,
-    activityLabel: '활발 (B+)',
     cities: [
       {
-        name: '남구/중구',
-        clubCount: 3,
-        clubs: ['울산 태화강 동호인회', '남구 삼호 클럽'],
-        courses: ['태화강 파크골프장(36홀)', '삼호 구장'],
-        activity: '새벽 조기 라운드 집중 (A)',
+        name: '남구',
+        aliases: ['남구', 'nam-gu'],
+        courses: ['삼호 구장'],
+      },
+      {
+        name: '중구',
+        aliases: ['중구', 'jung-gu', '태화강'],
+        courses: ['태화강 파크골프장(36홀)'],
       },
       {
         name: '울주군',
-        clubCount: 2,
-        clubs: ['울주 영남알프스회'],
+        aliases: ['울주', 'ulju'],
         courses: ['울주 작천정 구장'],
-        activity: '주말 정기 모임 (B+)',
       },
     ],
   },
   {
     code: 'GN',
     name: '경남',
-    baseClubCount: 7,
-    activityLabel: '활발 (A)',
     cities: [
       {
+        name: '양산시',
+        aliases: ['양산', 'yangsan'],
+        courses: ['황산 파크골프장'],
+      },
+      {
         name: '창원시',
-        clubCount: 3,
-        clubs: ['창원 대산 에이스', '의창 그린회'],
+        aliases: ['창원', 'changwon'],
         courses: ['창원 대산 파크골프장(72홀)'],
-        activity: '전국 최대 규모 대회 성지 (A+)',
       },
       {
         name: '김해시',
-        clubCount: 2,
-        clubs: ['김해 가야 파크골프회'],
+        aliases: ['김해', 'gimhae'],
         courses: ['술뫼 파크골프장'],
-        activity: '정기 라운드 활발 (A)',
       },
       {
         name: '진주시',
-        clubCount: 2,
-        clubs: ['진주 남강 그린클럽'],
+        aliases: ['진주', 'jinju'],
         courses: ['진주 남강 구장'],
-        activity: '회원 친선 라운드 (B+)',
       },
     ],
   },
   {
     code: 'IC',
     name: '인천',
-    baseClubCount: 4,
-    activityLabel: '보통 (B+)',
     cities: [
       {
         name: '서구',
-        clubCount: 2,
-        clubs: ['인천 청라 버디회'],
+        aliases: ['서구', 'seo-gu', '청라'],
         courses: ['청라 파크골프장'],
-        activity: '주말 라운드 집중 (B+)',
       },
       {
         name: '연수구',
-        clubCount: 2,
-        clubs: ['송도 해돋이 파크클럽'],
+        aliases: ['연수', 'yeonsu', '송도'],
         courses: ['송도 달빛공원 구장'],
-        activity: '평일 라운드 (B)',
       },
     ],
   },
   {
     code: 'GW',
     name: '강원',
-    baseClubCount: 5,
-    activityLabel: '대회 명소 (A)',
     cities: [
       {
-        name: '화천군',
-        clubCount: 2,
-        clubs: ['화천 산천어 전국동호회'],
-        courses: ['산천어 파크골프장(36홀)'],
-        activity: '전국 대회 원정 성지 (A+)',
+        name: '강릉시',
+        aliases: ['강릉', 'gangneung'],
+        courses: ['강릉 파크골프장'],
       },
       {
         name: '춘천시',
-        clubCount: 2,
-        clubs: ['춘천 호반 파크클럽'],
+        aliases: ['춘천', 'chuncheon'],
         courses: ['의암호 구장'],
-        activity: '주말 정기 라운드 (B+)',
       },
       {
         name: '원주시',
-        clubCount: 1,
-        clubs: ['원주 섬강 그린회'],
+        aliases: ['원주', 'wonju'],
         courses: ['섬강 파크골프장'],
-        activity: '회원 모집 중 (B)',
+      },
+      {
+        name: '화천군',
+        aliases: ['화천', 'hwacheon'],
+        courses: ['산천어 파크골프장(36홀)'],
       },
     ],
   },
   {
     code: 'CB',
     name: '충북',
-    baseClubCount: 3,
-    activityLabel: '보통 (B)',
     cities: [
       {
         name: '청주시',
-        clubCount: 2,
-        clubs: ['청주 직지 파크클럽'],
+        aliases: ['청주', 'cheongju'],
         courses: ['무심천 파크골프장'],
-        activity: '월례회 운영 (B+)',
       },
       {
         name: '충주시',
-        clubCount: 1,
-        clubs: ['충주 사과향 파크회'],
+        aliases: ['충주', 'chungju'],
         courses: ['호암지 구장'],
-        activity: '주말 라운드 (B)',
       },
     ],
   },
   {
     code: 'CN',
     name: '충남',
-    baseClubCount: 6,
-    activityLabel: '활발 (B+)',
     cities: [
       {
         name: '천안시',
-        clubCount: 3,
-        clubs: ['천안 삼거리 파크회'],
+        aliases: ['천안', 'cheonan'],
         courses: ['천안 도솔 구장'],
-        activity: '정기 라운드 활발 (B+)',
       },
       {
         name: '아산시',
-        clubCount: 2,
-        clubs: ['아산 온천 그린클럽'],
+        aliases: ['아산', 'asan'],
         courses: ['이순신 파크골프장'],
-        activity: '월례회 활성 (B+)',
       },
       {
         name: '공주시',
-        clubCount: 1,
-        clubs: ['공주 백제 파크동호회'],
+        aliases: ['공주', 'gongju'],
         courses: ['금강 파크골프장'],
-        activity: '친목 라운드 (B)',
       },
     ],
   },
   {
     code: 'DJ',
     name: '대전/세종',
-    baseClubCount: 4,
-    activityLabel: '보통 (B+)',
     cities: [
       {
         name: '대전 유성구/서구',
-        clubCount: 2,
-        clubs: ['대전 한빛 파크골프회'],
+        aliases: ['유성', 'yuseong', '서구'],
         courses: ['갑천 파크골프장'],
-        activity: '평일/주말 라운드 (B+)',
       },
       {
         name: '세종시',
-        clubCount: 2,
-        clubs: ['세종 금강 파크사랑'],
+        aliases: ['세종', 'sejong'],
         courses: ['세종 금강 구장'],
-        activity: '신규 유저 유입 (B+)',
       },
     ],
   },
   {
     code: 'JB',
     name: '전북',
-    baseClubCount: 4,
-    activityLabel: '보통 (B)',
     cities: [
       {
         name: '전주시',
-        clubCount: 2,
-        clubs: ['전주 온고을 파크회'],
+        aliases: ['전주', 'jeonju'],
         courses: ['만경강 파크골프장'],
-        activity: '월례회 진행 (B+)',
       },
       {
         name: '익산시',
-        clubCount: 2,
-        clubs: ['익산 보석 파크클럽'],
+        aliases: ['익산', 'iksan'],
         courses: ['익산 만경 구장'],
-        activity: '주말 라운드 (B)',
+      },
+      {
+        name: '군산시',
+        aliases: ['군산', 'gunsan'],
+        courses: ['군산 금강 구장'],
       },
     ],
   },
   {
     code: 'JN',
     name: '전남',
-    baseClubCount: 5,
-    activityLabel: '활발 (B+)',
     cities: [
       {
         name: '순천시',
-        clubCount: 2,
-        clubs: ['순천만 갈대 파크회'],
+        aliases: ['순천', 'suncheon'],
         courses: ['순천만 국가정원 구장'],
-        activity: '정기 월례회 (A)',
       },
       {
         name: '목포시',
-        clubCount: 2,
-        clubs: ['목포 유달산 파크클럽'],
+        aliases: ['목포', 'mokpo'],
         courses: ['갓바위 구장'],
-        activity: '주말 라운드 (B+)',
       },
       {
         name: '나주시',
-        clubCount: 1,
-        clubs: ['나주 배꽃 파크동호회'],
+        aliases: ['나주', 'naju'],
         courses: ['영산강 구장'],
-        activity: '친목 라운드 (B)',
       },
     ],
   },
   {
     code: 'GJ',
     name: '광주',
-    baseClubCount: 3,
-    activityLabel: '보통 (B)',
     cities: [
       {
         name: '광산구',
-        clubCount: 2,
-        clubs: ['빛고을 광주 파크클럽'],
+        aliases: ['광산', 'gwangsan'],
         courses: ['영산강 구장'],
-        activity: '정기 모임 (B+)',
       },
       {
         name: '북구',
-        clubCount: 1,
-        clubs: ['광주 무등 파크사랑'],
+        aliases: ['북구'],
         courses: ['첨단 체육공원 구장'],
-        activity: '평일 라운드 (B)',
       },
     ],
   },
   {
     code: 'JJ',
     name: '제주',
-    baseClubCount: 3,
-    activityLabel: '관광/투어 (B+)',
     cities: [
       {
         name: '제주시',
-        clubCount: 2,
-        clubs: ['제주 한라 파크골프회'],
+        aliases: ['제주시', 'jeju'],
         courses: ['제주 회천 구장'],
-        activity: '도민 및 여행객 라운드 (B+)',
       },
       {
         name: '서귀포시',
-        clubCount: 1,
-        clubs: ['서귀포 칠십리 클럽'],
+        aliases: ['서귀포', 'seogwipo'],
         courses: ['칠십리 구장'],
-        activity: '주말 라운드 (B)',
       },
     ],
   },
@@ -763,74 +685,148 @@ export async function GET(req: NextRequest) {
   // 2. 실시간 IP 지역 및 도시 매핑 (실제 통신사 IP 대역 및 GPS 정밀 판별)
   const liveIpRegionMap = new Map<string, string>();
   liveLogs.forEach((log) => {
-    let reg = (log.userRegion || '').toLowerCase();
-    if (!reg || reg === '경북 구미' || reg === '경북 구미시') {
-      reg = resolveKoreanProvinceFromIp(log.ip).toLowerCase();
+    let reg = (log.userRegion || '').trim();
+    if (!reg) {
+      reg = resolveKoreanProvinceFromIp(log.ip);
     }
     liveIpRegionMap.set(log.ip, reg);
   });
 
   const allIpRegionMap = new Map<string, string>();
   store.logs.forEach((log) => {
-    let reg = (log.userRegion || '').toLowerCase();
-    if (!reg || reg === '경북 구미' || reg === '경북 구미시') {
-      reg = resolveKoreanProvinceFromIp(log.ip).toLowerCase();
+    let reg = (log.userRegion || '').trim();
+    if (!reg) {
+      reg = resolveKoreanProvinceFromIp(log.ip);
     }
     allIpRegionMap.set(log.ip, reg);
   });
 
-  // 3. 전국 시·도별 실제 현황 및 시·군·구 드릴다운 집계
-  const provinceStats: ProvinceStat[] = PROVINCE_SEEDS.map((seed) => {
-    let provUserCount = 0;
+  // 3. 전국 시·도별 실제 현황 및 시·군·구 드릴다운 집계 (가짜 클럽 100% 제거, 팩트 기반)
+  const provinceStats: ProvinceStat[] = PROVINCE_CONFIGS.map((prov) => {
+    // 1. 해당 시·도에 속한 모든 고유 IP 추출
+    const provIps = new Set<string>();
+    allIpRegionMap.forEach((reg, ip) => {
+      const r = reg.toLowerCase();
+      const provName = prov.name.toLowerCase();
+      if (
+        r.includes(provName) ||
+        (prov.name === '서울' && (r.includes('seoul') || r.includes('영등포') || r.includes('송파') || r.includes('마포') || r.includes('gangseo') || r.includes('강서') || r.includes('서초') || r.includes('강남'))) ||
+        (prov.name === '경북' && (r.includes('gumi') || r.includes('구미') || r.includes('포항') || r.includes('경주') || r.includes('김천') || r.includes('안동'))) ||
+        (prov.name === '대구' && (r.includes('daegu') || r.includes('수성') || r.includes('달서') || r.includes('성서'))) ||
+        (prov.name === '부산' && (r.includes('busan') || r.includes('사상') || r.includes('연제') || r.includes('해운대') || r.includes('대저')))
+      ) {
+        provIps.add(ip);
+      }
+    });
+
+    // 해당 시·도의 실제 등록 클럽 조회
+    const provClubs = REAL_REGISTERED_CLUBS.filter((c) => c.province === prov.name);
+    const provClubCount = provClubs.length;
+
+    // 해당 시·도의 실시간 동시 접속자
     let provLiveUsers = 0;
-
-    allIpRegionMap.forEach((reg) => {
-      if (reg.includes(seed.name.toLowerCase())) {
-        provUserCount++;
-      }
+    liveIpRegionMap.forEach((reg, ip) => {
+      if (provIps.has(ip)) provLiveUsers++;
     });
 
-    liveIpRegionMap.forEach((reg) => {
-      if (reg.includes(seed.name.toLowerCase())) {
-        provLiveUsers++;
-      }
-    });
+    const provUserCount = provIps.size;
 
-    const cities: CityDetailStat[] = seed.cities.map((c) => {
+    // 시·군·구별 정밀 매핑 (특정 구/시에 실제 확인된 유저만 카운트, 거짓 데이터 배제)
+    const matchedCityIps = new Set<string>();
+    const cities: CityDetailStat[] = prov.cities.map((c) => {
       let cityUsers = 0;
       let cityLive = 0;
-      allIpRegionMap.forEach((reg) => {
-        if (reg.includes(c.name.toLowerCase()) || reg.includes(seed.name.toLowerCase())) {
+
+      const aliases = c.aliases || [];
+      const cleanCity = c.name.replace(/[시구군]/g, '').toLowerCase();
+
+      provIps.forEach((ip) => {
+        const reg = (allIpRegionMap.get(ip) || '').toLowerCase();
+        // 반드시 해당 구/시 명칭이나 alias가 명시된 경우만 매칭 (광역 시도 전체 유저를 일괄 배정하지 않음)
+        const matches = reg.includes(cleanCity) || aliases.some((a) => reg.includes(a.toLowerCase()));
+        if (matches) {
           cityUsers++;
+          matchedCityIps.add(ip);
+          if (liveIpRegionMap.has(ip)) {
+            cityLive++;
+          }
         }
       });
-      liveIpRegionMap.forEach((reg) => {
-        if (reg.includes(c.name.toLowerCase()) || reg.includes(seed.name.toLowerCase())) {
-          cityLive++;
-        }
-      });
+
+      // 해당 시·군·구의 실제 등록 클럽만 매칭 (가짜 클럽 100% 제거)
+      const cityClubs = provClubs.filter(
+        (club) => club.city === c.name || club.city.includes(cleanCity)
+      );
+
+      let activityIndex = '활동 대기 (0명)';
+      if (cityUsers >= 10 || cityClubs.length > 0) {
+        activityIndex = '매우 활발 (A+)';
+      } else if (cityUsers >= 3) {
+        activityIndex = '이용 활성 (A)';
+      } else if (cityUsers > 0) {
+        activityIndex = '접속 확인 (B+)';
+      } else {
+        activityIndex = '활동 대기 (0명)';
+      }
 
       return {
         cityName: c.name,
         userCount: cityUsers,
         liveUsers: cityLive,
-        clubCount: c.clubCount,
-        clubs: c.clubs,
+        clubCount: cityClubs.length,
+        clubs: cityClubs.map((club) => club.name),
         majorCourses: c.courses,
-        activityIndex: c.activity,
+        activityIndex,
       };
     });
 
-    const userPercentage = totalAllTimeUsers > 0 ? Math.round((provUserCount / totalAllTimeUsers) * 100) : 0;
+    // 세부 구/시가 명시되지 않고 광역 시·도로만 유입된 유저 (정직한 '세부 위치 미확인' 표기)
+    const unassignedCount = provUserCount - matchedCityIps.size;
+    if (unassignedCount > 0) {
+      let unassignedLive = 0;
+      provIps.forEach((ip) => {
+        if (!matchedCityIps.has(ip) && liveIpRegionMap.has(ip)) {
+          unassignedLive++;
+        }
+      });
+
+      cities.push({
+        cityName: '세부 위치 미확인 (광역 유입)',
+        userCount: unassignedCount,
+        liveUsers: unassignedLive,
+        clubCount: 0,
+        clubs: [],
+        majorCourses: ['광역 공공 파크골프장'],
+        activityIndex: '위치 권한 미허용 / 광역 IP 접속',
+      });
+    }
+
+    // 유저 수 순 정렬 (단, '세부 위치 미확인'은 최하단 배치)
+    cities.sort((a, b) => {
+      if (a.cityName.includes('미확인')) return 1;
+      if (b.cityName.includes('미확인')) return -1;
+      return b.userCount - a.userCount;
+    });
+
+    const userPercentage =
+      totalAllTimeUsers > 0 ? Math.round((provUserCount / totalAllTimeUsers) * 100) : 0;
+    const activityLabel =
+      provUserCount >= 20
+        ? '최고 활성 거점 (A+)'
+        : provUserCount >= 5
+        ? '활발 (A)'
+        : provUserCount > 0
+        ? '이용 거점 (B+)'
+        : '신규 거점 (B)';
 
     return {
-      code: seed.code,
-      name: seed.name,
+      code: prov.code,
+      name: prov.name,
       userCount: provUserCount,
       liveUsers: provLiveUsers,
-      clubCount: seed.baseClubCount,
+      clubCount: provClubCount,
       userPercentage,
-      activityLabel: seed.activityLabel,
+      activityLabel,
       cities,
     };
   }).sort((a, b) => b.userCount - a.userCount);
