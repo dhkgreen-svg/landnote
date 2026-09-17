@@ -25,7 +25,9 @@ import {
   ChevronRight,
   Flame,
   Award,
-  Download
+  Download,
+  Trophy,
+  Flag
 } from 'lucide-react';
 
 interface CityDetailStat {
@@ -49,6 +51,34 @@ interface ProvinceStat {
   cities: CityDetailStat[];
 }
 
+export interface CourseRoundRanking {
+  rank: number;
+  courseId: string;
+  courseName: string;
+  region: string;
+  totalRounds: number;
+  totalPlayers: number;
+  isCurrentlyActive: boolean;
+  activeRoomsCount: number;
+  lastPlayedAtStr: string;
+}
+
+export interface LiveRoundInfo {
+  roomId: string;
+  courseId: string;
+  courseName: string;
+  courseLetter: string;
+  leaderName: string;
+  playerCount: number;
+  players: { id: string; name: string; isLeader?: boolean }[];
+  currentHole: number;
+  totalHoles: number;
+  status: 'WAITING' | 'STARTED';
+  startedAtStr: string;
+  elapsedMinutes: number;
+  updatedAt: number;
+}
+
 interface Metrics {
   liveUsers: number;
   todayDAU: number;
@@ -60,6 +90,8 @@ interface Metrics {
   totalAllTimeUsers: number;
   totalAppDownloads: number;
   provinceStats: ProvinceStat[];
+  courseRankings?: CourseRoundRanking[];
+  liveRounds?: LiveRoundInfo[];
   hourlyTrend?: Array<{ key: string; label: string; pageviews: number; uniqueVisitors: number }>;
   dailyTrend: Array<{ key: string; label: string; pageviews: number; uniqueVisitors: number }>;
   weeklyTrend: Array<{ key: string; label: string; pageviews: number; uniqueVisitors: number }>;
@@ -90,6 +122,8 @@ export default function AdminDashboardPage() {
   const [lastRefreshed, setLastRefreshed] = useState<string>('');
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  // 전국 시·도별 전체 모달 상태
+  const [showAllProvincesModal, setShowAllProvincesModal] = useState(false);
   // 시·도 상세 드릴다운 팝업 모달 상태
   const [selectedProvinceModal, setSelectedProvinceModal] = useState<ProvinceStat | null>(null);
   // 추이 상세 팝업 모달 상태 (일별, 주별, 월별, 연별)
@@ -360,53 +394,100 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 전국 시·도별 실제 현황 (유저 수 1순위, 현재 접속자 2순위, 클릭 시 상세 시·군 조회) */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4">
+      {/* 전국 시·도별 실제 인프라 현황 (컴팩트 버튼 바: 클릭 시 전체 팝업) */}
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-3.5 w-full sm:w-auto">
+          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center shrink-0 shadow-inner">
+            <MapPin className="w-5 h-5" />
+          </div>
           <div>
-            <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-emerald-600" />
-              전국 시·도별 실제 현황
-            </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              각 지역 카드를 클릭하시면 해당 시·도의 <strong>세부 시·군·구별 유저 수, 실시간 접속자, 클럽 및 주요 구장</strong> 상세 정보가 열립니다.
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100">
+                전국 16개 시·도별 실제 인프라 현황
+              </h3>
+              <span className="text-[10px] px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-full font-bold">
+                100% 팩트
+              </span>
+            </div>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              전국 시도별 현황을 클릭해서 자세히 보세요 (각 지역별 실제 유저 수, 실시간 접속자 및 클럽 현황)
             </p>
           </div>
-          <span className="text-xs font-semibold px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-lg self-start sm:self-auto">
-            클릭하여 세부 시·군 조회
-          </span>
         </div>
-
-        {/* 한 줄에 4개씩 4줄 배치 (총 16개 시·도 정사각형 미니멀 카드) */}
-        <div className="grid grid-cols-4 gap-2 sm:gap-3.5">
-          {provinces.map((prov) => (
-            <button
-              key={prov.code}
-              onClick={() => setSelectedProvinceModal(prov)}
-              className="aspect-square p-2 sm:p-3 bg-zinc-50 dark:bg-zinc-800/70 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 rounded-xl sm:rounded-2xl text-center shadow-xs transition-all flex flex-col justify-between items-center group cursor-pointer active:scale-98"
-            >
-              {/* 상단: 지역명 */}
-              <span className="text-sm sm:text-base font-black text-zinc-800 dark:text-zinc-100 group-hover:text-emerald-600 transition-colors">
-                {prov.name}
-              </span>
-
-              {/* 중앙: 유저 수 (단위/글자 없이 굵은 숫자만) */}
-              <div className="my-auto py-0.5">
-                <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
-                  {prov.userCount}
-                </span>
-              </div>
-
-              {/* 하단: 접속자 및 클럽 수 */}
-              <div className="w-full pt-1 sm:pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 text-[10px] sm:text-xs text-zinc-500 flex flex-col sm:flex-row items-center justify-center sm:gap-1.5 leading-tight">
-                <span>접속 <strong className="text-amber-600 dark:text-amber-400 font-bold">{prov.liveUsers}명</strong></span>
-                <span className="hidden sm:inline text-zinc-300 dark:text-zinc-600">·</span>
-                <span>클럽 {prov.clubCount}개</span>
-              </div>
-            </button>
-          ))}
-        </div>
+        <button
+          onClick={() => setShowAllProvincesModal(true)}
+          className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs text-xs transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer active:scale-98"
+        >
+          <span>전국 시·도별 현황 열기 (클릭)</span>
+          <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
+
+      {/* 전국 16개 시·도 전체 카드 팝업 모달 */}
+      {showAllProvincesModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center font-bold">
+                  <MapPin className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                    전국 16개 시·도별 실제 현황
+                    <span className="text-xs px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold rounded">100% 팩트</span>
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    원하시는 지역 카드를 클릭하시면 해당 시·도의 <strong>세부 시·군·구별 유저 수, 접속자, 클럽</strong> 정보가 열립니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAllProvincesModal(false)}
+                className="w-8 h-8 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-500 flex items-center justify-center font-bold text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5 pt-1">
+              {provinces.map((prov) => (
+                <button
+                  key={prov.code}
+                  onClick={() => {
+                    setShowAllProvincesModal(false);
+                    setSelectedProvinceModal(prov);
+                  }}
+                  className="aspect-square p-2.5 sm:p-3 bg-zinc-50 dark:bg-zinc-800/70 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 rounded-xl sm:rounded-2xl text-center shadow-xs transition-all flex flex-col justify-between items-center group cursor-pointer active:scale-98"
+                >
+                  <span className="text-sm sm:text-base font-black text-zinc-800 dark:text-zinc-100 group-hover:text-emerald-600 transition-colors">
+                    {prov.name}
+                  </span>
+                  <div className="my-auto py-0.5">
+                    <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                      {prov.userCount}
+                    </span>
+                  </div>
+                  <div className="w-full pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 text-[10px] sm:text-xs text-zinc-500 flex flex-col sm:flex-row items-center justify-center sm:gap-1.5 leading-tight">
+                    <span>접속 <strong className="text-amber-600 dark:text-amber-400 font-bold">{prov.liveUsers}명</strong></span>
+                    <span className="hidden sm:inline text-zinc-300 dark:text-zinc-600">·</span>
+                    <span>클럽 {prov.clubCount}개</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => setShowAllProvincesModal(false)}
+                className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 시·도 상세 드릴다운 팝업 모달 (예: 경북 클릭 시 구미, 포항, 경주, 김천, 안동 등 세부 현황) */}
       {selectedProvinceModal && (
@@ -748,78 +829,266 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-            {/* 실시간 방문자 로그 (최근 30건 상세 기록) */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
+            {/* 실시간 라운딩 상세 관제 센터 (패널 1: 전국 구장별 실제 라운딩 랭킹 집계표, 패널 2: 실시간 필드 라운딩 라이브 관제) */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs">
           <div>
-            <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-emerald-600" />
-              실시간 방문자 로그 (최근 30건 상세)
+            <h2 className="text-base sm:text-lg font-black text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-emerald-600" />
+              실시간 라운딩 상세 관제 센터
             </h2>
             <p className="text-xs text-zinc-400 mt-0.5">
-              개인정보 보호법에 따라 IP 뒷자리는 안전하게 마스킹 처리되며, 실제 접속 지역 및 기기를 표기합니다.
+              전국 파크골프장의 실제 필드 라운딩 랭킹과 현재 실시간 경기 진행 상황을 100% 팩트 기반으로 모니터링합니다.
             </p>
           </div>
-          <span className="text-xs font-semibold px-2.5 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg">
-            총 {metrics?.recentVisitors?.length ?? 0}개 기록
-          </span>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800 font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              15초 자동 갱신
+            </span>
+            <button
+              onClick={() => fetchMetrics(pin || '768517')}
+              disabled={isLoading}
+              className="px-3 py-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              새로고침
+            </button>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400">
-                <th className="py-2.5 px-3 font-semibold">방문 일시</th>
-                <th className="py-2.5 px-3 font-semibold">지역 거점</th>
-                <th className="py-2.5 px-3 font-semibold">접속 경로</th>
-                <th className="py-2.5 px-3 font-semibold">마스킹 IP</th>
-                <th className="py-2.5 px-3 font-semibold">기기 / 브라우저</th>
-                <th className="py-2.5 px-3 font-semibold">유입 경로</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {metrics?.recentVisitors && metrics.recentVisitors.length > 0 ? (
-                metrics.recentVisitors.map((v) => {
-                  const dev = parseDevice(v.userAgent);
-                  const DevIcon = dev.icon;
-                  return (
-                    <tr key={v.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/40 transition-colors">
-                      <td className="py-2.5 px-3 font-mono text-zinc-500 whitespace-nowrap">
-                        {v.dateStr} {v.timeStr}
-                      </td>
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded font-medium text-[11px] bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                          {v.userRegion || '경북 구미시'}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 font-semibold text-zinc-800 dark:text-zinc-200">
-                        {getPageTitle(v.path)}
-                        <span className="text-[11px] text-zinc-400 font-mono ml-1">({v.path})</span>
-                      </td>
-                      <td className="py-2.5 px-3 font-mono text-zinc-500">
-                        {v.ip}
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                          <DevIcon className={`w-3.5 h-3.5 ${dev.color}`} />
-                          <span>{dev.type}</span>
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 text-zinc-500 max-w-xs truncate">
-                        {v.referrer}
-                      </td>
+        {/* 칸 2개 그리드 (좌측: 전국 구장별 누적 랭킹 집계표, 우측: 실시간 필드 라운딩 라이브 관제) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* [칸 1] 전국 구장별 실제 라운딩 랭킹 (1위부터 집계표) - lg:col-span-7 */}
+          <div className="lg:col-span-7 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4">
+            <div>
+              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-amber-500" />
+                  <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100">
+                    전국 구장별 실제 라운딩 랭킹
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded">
+                    1위~ 누적 집계
+                  </span>
+                </div>
+                <span className="text-xs text-zinc-400">
+                  총 {metrics?.courseRankings?.length ?? 0}개 구장
+                </span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-2">
+                실제 회원들이 필드에서 개설하고 플레이한 누적 라운드 건수 및 총 플레이어 기준 1위부터 순위입니다.
+              </p>
+
+              <div className="overflow-x-auto mt-3.5">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400">
+                      <th className="py-2.5 px-3 font-semibold w-12 text-center">순위</th>
+                      <th className="py-2.5 px-3 font-semibold">구장명 및 소재지</th>
+                      <th className="py-2.5 px-3 font-semibold text-right">누적 라운딩</th>
+                      <th className="py-2.5 px-3 font-semibold text-right">누적 플레이어</th>
+                      <th className="py-2.5 px-3 font-semibold text-center">현재 라운딩 상태</th>
                     </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={6} className="text-center py-8 text-zinc-400">
-                    아직 기록된 방문 로그가 없습니다. 새 창에서 www.parkongolf.com 을 탐색하면 실시간으로 나타납니다!
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {metrics?.courseRankings && metrics.courseRankings.length > 0 ? (
+                      metrics.courseRankings.map((c) => {
+                        const isTop1 = c.rank === 1;
+                        const isTop2 = c.rank === 2;
+                        const isTop3 = c.rank === 3;
+                        return (
+                          <tr
+                            key={c.courseId + c.courseName}
+                            className={`hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40 transition-colors ${
+                              c.isCurrentlyActive ? 'bg-emerald-50/40 dark:bg-emerald-950/20' : ''
+                            }`}
+                          >
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              {isTop1 ? (
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-400 text-amber-950 font-black text-xs shadow-xs">
+                                  🥇
+                                </span>
+                              ) : isTop2 ? (
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-300 text-slate-900 font-black text-xs">
+                                  🥈
+                                </span>
+                              ) : isTop3 ? (
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-700 text-amber-100 font-black text-xs">
+                                  🥉
+                                </span>
+                              ) : (
+                                <span className="font-bold text-zinc-500 font-mono">
+                                  {c.rank}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                                <span>{c.courseName}</span>
+                                {c.isCurrentlyActive && (
+                                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping shrink-0" />
+                                )}
+                              </div>
+                              <div className="text-[11px] text-zinc-400 flex items-center gap-1 mt-0.5">
+                                <MapPin className="w-3 h-3 text-zinc-400 shrink-0" />
+                                <span>{c.region}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-right whitespace-nowrap">
+                              <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono text-sm">
+                                {c.totalRounds}
+                              </span>
+                              <span className="text-zinc-500 text-[11px] ml-0.5">회</span>
+                            </td>
+                            <td className="py-3 px-3 text-right whitespace-nowrap">
+                              <span className="font-bold text-blue-600 dark:text-blue-400 font-mono text-sm">
+                                {c.totalPlayers}
+                              </span>
+                              <span className="text-zinc-500 text-[11px] ml-0.5">명</span>
+                            </td>
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              {c.isCurrentlyActive ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 animate-pulse shadow-xs">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                  현재 라운딩 중 ({c.activeRoomsCount}개 조)
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-400">
+                                  대기
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-zinc-400">
+                          아직 집계된 구장별 라운딩 기록이 없습니다.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 text-[11px] text-zinc-400 flex items-center justify-between">
+              <span>* 동점 시 누적 플레이어 수 우선 정렬</span>
+              <span>100% 실시간 공식 집계</span>
+            </div>
+          </div>
+
+          {/* [칸 2] 현재 실시간 필드 라운딩 라이브 관제 - lg:col-span-5 */}
+          <div className="lg:col-span-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4">
+            <div>
+              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Radio className="w-5 h-5 text-red-500 animate-pulse" />
+                  <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100">
+                    실시간 필드 라운딩 라이브 관제
+                  </h3>
+                </div>
+                <span className="text-xs font-bold px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-md">
+                  {metrics?.liveRounds?.length ?? 0}개 팀 활동 중
+                </span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-2">
+                현재 전국 구장에서 우리 회원 사용자들이 실시간으로 볼을 치고 있는 조 현황입니다.
+              </p>
+
+              <div className="mt-3.5 space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                {metrics?.liveRounds && metrics.liveRounds.length > 0 ? (
+                  metrics.liveRounds.map((room) => {
+                    const isStarted = room.status === 'STARTED';
+                    return (
+                      <div
+                        key={room.roomId}
+                        className={`p-4 rounded-xl border transition-all ${
+                          isStarted
+                            ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 shadow-xs'
+                            : 'bg-zinc-50 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700'
+                        }`}
+                      >
+                        {/* 상단: 구장명 및 상태 배지 */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 font-black text-sm text-zinc-900 dark:text-zinc-100 truncate">
+                            <Flag className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className="truncate">{room.courseName}</span>
+                            <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200">
+                              {room.courseLetter}코스
+                            </span>
+                          </div>
+                          <span
+                            className={`text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 shrink-0 ${
+                              isStarted
+                                ? 'bg-red-500 text-white animate-pulse'
+                                : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
+                            }`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                            {isStarted ? '경기 진행 중' : '티샷 대기 중'}
+                          </span>
+                        </div>
+
+                        {/* 조원 명단 */}
+                        <div className="mt-2 text-xs">
+                          <div className="text-zinc-500 text-[11px] mb-0.5">
+                            참여 인원 ({room.playerCount}인 1조):
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {room.players.map((p, pIdx) => (
+                              <span
+                                key={p.id || pIdx}
+                                className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                                  p.isLeader || pIdx === 0
+                                    ? 'bg-emerald-600 text-white font-bold'
+                                    : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700'
+                                }`}
+                              >
+                                {p.isLeader || pIdx === 0 ? `👑 ${p.name}(조장)` : p.name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 진행 홀 및 시간 정보 */}
+                        <div className="mt-3 pt-2.5 border-t border-zinc-200/70 dark:border-zinc-700/70 flex items-center justify-between text-xs font-medium">
+                          <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-300 font-bold">
+                            <span>⛳ {room.courseLetter}-{room.currentHole}번홀</span>
+                            <span className="text-zinc-400 font-normal">/ {room.totalHoles}홀</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-zinc-500 text-[11px]">
+                            <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                            <span>{room.startedAtStr} 티샷</span>
+                            <span className="font-bold text-amber-600 dark:text-amber-400">({room.elapsedMinutes}분 경과)</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-12 px-4 text-center space-y-2 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50/50 dark:bg-zinc-800/30">
+                    <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-400 mx-auto flex items-center justify-center">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                      현재 필드에서 진행 중인 라운드가 없습니다.
+                    </div>
+                    <p className="text-[11px] text-zinc-400 max-w-xs mx-auto">
+                      회원이 모바일에서 <strong>[새 라운드 시작]</strong>을 누르면 1초 만에 실시간으로 감지되어 이곳에 자동 표출됩니다.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 text-[11px] text-zinc-400 flex items-center justify-between">
+              <span>* 실시간 홀 변경 및 타수 입력 자동 동기화</span>
+              <span className="text-emerald-600 font-bold">🟢 라이브 레이더 가동</span>
+            </div>
+          </div>
         </div>
       </div>
 

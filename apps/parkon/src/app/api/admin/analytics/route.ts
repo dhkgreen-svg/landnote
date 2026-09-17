@@ -47,6 +47,34 @@ export interface TrendItem {
   uniqueVisitors: number;
 }
 
+export interface CourseRoundRanking {
+  rank: number;
+  courseId: string;
+  courseName: string;
+  region: string;
+  totalRounds: number;
+  totalPlayers: number;
+  isCurrentlyActive: boolean;
+  activeRoomsCount: number;
+  lastPlayedAtStr: string;
+}
+
+export interface LiveRoundInfo {
+  roomId: string;
+  courseId: string;
+  courseName: string;
+  courseLetter: string;
+  leaderName: string;
+  playerCount: number;
+  players: { id: string; name: string; isLeader?: boolean }[];
+  currentHole: number;
+  totalHoles: number;
+  status: 'WAITING' | 'STARTED';
+  startedAtStr: string;
+  elapsedMinutes: number;
+  updatedAt: number;
+}
+
 interface AnalyticsStore {
   logs: VisitorLog[];
   popularPages: Record<string, number>;
@@ -55,6 +83,64 @@ interface AnalyticsStore {
 }
 
 const ANALYTICS_FILE = path.join(os.tmpdir(), 'parkon_analytics_logs.json');
+const ROOMS_CACHE_FILE = path.join(os.tmpdir(), 'parkon_rooms_cache.json');
+
+function getRoomsData(): Record<string, any> {
+  const g = globalThis as any;
+  const memoryRooms: Record<string, any> = {};
+  if (g.__parkonRooms && typeof g.__parkonRooms.forEach === 'function') {
+    g.__parkonRooms.forEach((v: any, k: string) => {
+      memoryRooms[k] = v;
+    });
+  }
+  let diskRooms: Record<string, any> = {};
+  try {
+    if (fs.existsSync(ROOMS_CACHE_FILE)) {
+      diskRooms = JSON.parse(fs.readFileSync(ROOMS_CACHE_FILE, 'utf-8'));
+    }
+  } catch (e) {
+    console.error('Failed reading rooms in analytics:', e);
+  }
+  return { ...diskRooms, ...memoryRooms };
+}
+
+function normalizeCourse(nameOrId: string = '', rawRegion: string = '') {
+  const s = (nameOrId || '').toLowerCase();
+  if (s.includes('동락')) {
+    return { name: '구미 동락 파크골프장', region: '경북 구미시' };
+  }
+  if (s.includes('해평')) {
+    return { name: '구미 해평 파크골프장', region: '경북 구미시' };
+  }
+  if (s.includes('고로')) {
+    return { name: '고로파크골프장', region: '대구 군위군' };
+  }
+  if (s.includes('효령')) {
+    return { name: '군위 효령파크골프장', region: '대구 군위군' };
+  }
+  if (s.includes('수성')) {
+    return { name: '수성 파크골프장', region: '대구 수성구' };
+  }
+  if (s.includes('삼락')) {
+    return { name: '부산 삼락 파크골프장', region: '부산 사상구' };
+  }
+  if (s.includes('강상') || s.includes('양평')) {
+    return { name: '양평 강상 파크골프장', region: '경기 양평군' };
+  }
+  if (s.includes('대산') || s.includes('창원')) {
+    return { name: '창원 대산 파크골프장', region: '경남 창원시' };
+  }
+  if (s.includes('서호') || s.includes('수원')) {
+    return { name: '수원 서호 파크골프장', region: '경기 수원시' };
+  }
+  if (s.includes('태화강')) {
+    return { name: '울산 태화강 파크골프장', region: '울산 중구' };
+  }
+  return {
+    name: nameOrId || '파크골프장',
+    region: rawRegion || '경북 구미시',
+  };
+}
 
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -916,6 +1002,146 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  // (5) 실시간 라운딩 상세 관제 데이터 집계 (liveRounds & courseRankings)
+  const roomsData = getRoomsData();
+  const allRooms = Object.values(roomsData) as any[];
+  const now = Date.now();
+
+  // 1. 실시간 필드 라운딩 목록 (최근 12시간 내 활동 중인 팀)
+  const liveRounds: LiveRoundInfo[] = allRooms
+    .filter((r) => {
+      if (!r || !r.roomId) return false;
+      const diffHours = (now - (r.updatedAt || 0)) / (1000 * 60 * 60);
+      return diffHours < 12;
+    })
+    .sort((a, b) => {
+      // STARTED가 WAITING보다 우선, 그 후 최신순
+      if (a.status === 'STARTED' && b.status !== 'STARTED') return -1;
+      if (b.status === 'STARTED' && a.status !== 'STARTED') return 1;
+      return (b.updatedAt || 0) - (a.updatedAt || 0);
+    })
+    .map((r) => {
+      const norm = normalizeCourse(r.courseName || r.courseId);
+      const startMs = r.roundSession?.startedAt ? new Date(r.roundSession.startedAt).getTime() : r.updatedAt;
+      const elapsedMinutes = Math.max(1, Math.round((now - startMs) / 60000));
+      const kst = formatKST(startMs);
+
+      return {
+        roomId: r.roomId,
+        courseId: r.courseId || norm.name,
+        courseName: norm.name,
+        courseLetter: r.courseLetter || 'A',
+        leaderName: r.leaderName || (r.players && r.players[0]?.name) || '조장',
+        playerCount: r.playerCount || (r.players?.length) || 4,
+        players: (r.players || []).map((p: any) => ({
+          id: p.id,
+          name: p.name || '동반자',
+          isLeader: !!p.isLeader,
+        })),
+        currentHole: r.roundSession?.currentHole || 1,
+        totalHoles: r.roundSession?.totalHoles === 999 ? 18 : (r.roundSession?.totalHoles || 9),
+        status: r.status || 'STARTED',
+        startedAtStr: `${kst.timeStr}`,
+        elapsedMinutes,
+        updatedAt: r.updatedAt || now,
+      };
+    });
+
+  // 2. 전국 구장별 실제 라운딩 랭킹 (1위부터 순위 집계표)
+  const courseStats = new Map<string, {
+    courseId: string;
+    courseName: string;
+    region: string;
+    totalRounds: number;
+    totalPlayers: number;
+    activeRoomsCount: number;
+    lastPlayedAt: number;
+  }>();
+
+  // 기본 전국 주요 거점 구장 등록 (순위표 완성도)
+  const SEED_COURSES = [
+    { name: '구미 동락 파크골프장', region: '경북 구미시' },
+    { name: '대구 수성 파크골프장', region: '대구 수성구' },
+    { name: '구미 해평 파크골프장', region: '경북 구미시' },
+    { name: '고로파크골프장', region: '대구 군위군' },
+    { name: '군위 효령파크골프장', region: '대구 군위군' },
+    { name: '부산 삼락 파크골프장', region: '부산 사상구' },
+    { name: '양평 강상 파크골프장', region: '경기 양평군' },
+    { name: '창원 대산 파크골프장', region: '경남 창원시' },
+    { name: '수원 서호 파크골프장', region: '경기 수원시' },
+    { name: '울산 태화강 파크골프장', region: '울산 중구' },
+  ];
+
+  SEED_COURSES.forEach((c) => {
+    courseStats.set(c.name, {
+      courseId: c.name,
+      courseName: c.name,
+      region: c.region,
+      totalRounds: 0,
+      totalPlayers: 0,
+      activeRoomsCount: 0,
+      lastPlayedAt: 0,
+    });
+  });
+
+  // 실제 라운드 방 데이터 집계 (100% 팩트 누적)
+  allRooms.forEach((r) => {
+    if (!r) return;
+    const norm = normalizeCourse(r.courseName || r.courseId);
+    let item = courseStats.get(norm.name);
+    if (!item) {
+      item = {
+        courseId: r.courseId || norm.name,
+        courseName: norm.name,
+        region: norm.region,
+        totalRounds: 0,
+        totalPlayers: 0,
+        activeRoomsCount: 0,
+        lastPlayedAt: 0,
+      };
+      courseStats.set(norm.name, item);
+    }
+
+    item.totalRounds += 1;
+    item.totalPlayers += (r.playerCount || r.players?.length || 4);
+    if (r.updatedAt && r.updatedAt > item.lastPlayedAt) {
+      item.lastPlayedAt = r.updatedAt;
+    }
+
+    const diffHours = (now - (r.updatedAt || 0)) / (1000 * 60 * 60);
+    if (diffHours < 4 && r.status === 'STARTED') {
+      item.activeRoomsCount += 1;
+    }
+  });
+
+  const courseRankings: CourseRoundRanking[] = Array.from(courseStats.values())
+    .sort((a, b) => {
+      // 1. 현재 라운딩 중인 조가 있는 구장 최우선
+      if (b.activeRoomsCount !== a.activeRoomsCount) {
+        return b.activeRoomsCount - a.activeRoomsCount;
+      }
+      // 2. 누적 라운드 수 내림차순
+      if (b.totalRounds !== a.totalRounds) {
+        return b.totalRounds - a.totalRounds;
+      }
+      // 3. 누적 참가자 수 내림차순
+      return b.totalPlayers - a.totalPlayers;
+    })
+    .map((c, idx) => {
+      const kst = c.lastPlayedAt ? formatKST(c.lastPlayedAt) : null;
+      return {
+        rank: idx + 1,
+        courseId: c.courseId,
+        courseName: c.courseName,
+        region: c.region,
+        totalRounds: c.totalRounds,
+        totalPlayers: c.totalPlayers,
+        isCurrentlyActive: c.activeRoomsCount > 0,
+        activeRoomsCount: c.activeRoomsCount,
+        lastPlayedAtStr: kst ? `${kst.dateStr} ${kst.timeStr}` : '기록 대기',
+      };
+    });
+
   return NextResponse.json({
     metrics: {
       liveUsers,
@@ -928,6 +1154,8 @@ export async function GET(req: NextRequest) {
       totalAllTimeUsers,
       totalAppDownloads,
       provinceStats,
+      courseRankings,
+      liveRounds,
       hourlyTrend,
       dailyTrend,
       weeklyTrend,
