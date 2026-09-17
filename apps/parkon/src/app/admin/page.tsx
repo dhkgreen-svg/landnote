@@ -1042,10 +1042,10 @@ export default function AdminDashboardPage() {
                     <Clock className="w-5 h-5" />
                   </div>
                   <div className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
-                    현재 필드에서 진행 중인 라운드가 없습니다.
+                    현재 필드에서 진행 중인 실시간 정식 라운드가 없습니다.
                   </div>
-                  <p className="text-xs text-zinc-400 max-w-sm mx-auto">
-                    회원이 모바일에서 <strong>[새 라운드 시작]</strong>을 누르면 1초 만에 실시간으로 감지되어 이곳에 자동 표출됩니다.
+                  <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
+                    가상/테스트 라운딩 및 25분 이상 방치된 세션은 <strong>5단계 팩트 검증 엔진</strong>에 의해 100% 자동 필터링됩니다. 회원이 필드에서 실제 정식 라운드를 진행하면 즉시 감지되어 표출됩니다.
                   </p>
                 </div>
               )}

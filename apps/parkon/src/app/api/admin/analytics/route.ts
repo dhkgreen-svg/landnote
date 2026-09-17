@@ -1002,17 +1002,42 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // (5) 실시간 라운딩 상세 관제 데이터 집계 (liveRounds & courseRankings)
+  // (5) 실시간 라운딩 상세 관제 데이터 집계 (엄격한 5단계 팩트 검증 엔진 적용)
   const roomsData = getRoomsData();
   const allRooms = Object.values(roomsData) as any[];
   const now = Date.now();
 
-  // 1. 실시간 필드 라운딩 목록 (최근 12시간 내 활동 중인 팀)
+  // 1. 실시간 필드 라운딩 목록 (가상/체험 모드 원천 배제, 타임아웃, 유기 세션 100% 차단)
   const liveRounds: LiveRoundInfo[] = allRooms
     .filter((r) => {
       if (!r || !r.roomId) return false;
-      const diffHours = (now - (r.updatedAt || 0)) / (1000 * 60 * 60);
-      return diffHours < 12;
+
+      // ① 1단계: 가상(Virtual)/체험 모드 및 비공식 테스트 원천 배제
+      const isVirtual = r.roundSession?.isVirtual === true || r.roundSession?.isOfficial === false;
+      if (isVirtual) return false;
+
+      // ② 2단계: 경기 상태 (STARTED 또는 WAITING)
+      if (r.status !== 'STARTED' && r.status !== 'WAITING') return false;
+
+      const updatedAt = r.updatedAt || 0;
+      const startMs = r.roundSession?.startedAt ? new Date(r.roundSession.startedAt).getTime() : updatedAt;
+      const elapsedMinutes = Math.max(1, Math.round((now - startMs) / 60000));
+      const idleMinutes = Math.max(0, Math.round((now - updatedAt) / 60000));
+
+      // ③ 3단계: 시간 한도 검증 (18홀 통상 90~120분, 최대 150분 초과 시 자동 종료/탈락)
+      if (elapsedMinutes > 150) return false;
+
+      // ④ 4단계: 유기/방치 세션 감지 (최근 25분간 아무런 스코어/활동 업데이트 없으면 탈락)
+      if (idleMinutes > 25) return false;
+
+      // ⑤ 5단계: 홀 진행성 검증 (시작 후 30분이 넘었는데 스코어 없이 1번홀에 정체되어 있으면 유령 세션 탈락)
+      const currentHole = r.roundSession?.currentHole || 1;
+      const hasScores = r.roundSession?.players?.some(
+        (p: any) => p.scores && Object.keys(p.scores).length > 0
+      );
+      if (elapsedMinutes > 30 && currentHole <= 1 && !hasScores) return false;
+
+      return true;
     })
     .sort((a, b) => {
       // STARTED가 WAITING보다 우선, 그 후 최신순
@@ -1047,7 +1072,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-  // 2. 전국 구장별 실제 라운딩 랭킹 (1위부터 순위 집계표)
+  // 2. 전국 구장별 실제 라운딩 랭킹 (1위부터 순위 집계표: 가상 라운딩 원천 제외)
   const courseStats = new Map<string, {
     courseId: string;
     courseName: string;
@@ -1084,9 +1109,14 @@ export async function GET(req: NextRequest) {
     });
   });
 
-  // 실제 라운드 방 데이터 집계 (100% 팩트 누적)
+  // 실제 라운드 방 데이터 집계 (100% 팩트 누적: 가상/체험 모드 원천 제외)
   allRooms.forEach((r) => {
     if (!r) return;
+    // 가상 모드 및 비공식 테스트는 공식 통계에서도 배제
+    if (r.roundSession?.isVirtual === true || r.roundSession?.isOfficial === false) {
+      return;
+    }
+
     const norm = normalizeCourse(r.courseName || r.courseId);
     let item = courseStats.get(norm.name);
     if (!item) {
@@ -1108,8 +1138,9 @@ export async function GET(req: NextRequest) {
       item.lastPlayedAt = r.updatedAt;
     }
 
-    const diffHours = (now - (r.updatedAt || 0)) / (1000 * 60 * 60);
-    if (diffHours < 4 && r.status === 'STARTED') {
+    // 현재 5단계 팩트 검증을 통과한 활성 라이브 라운드 여부
+    const isLive = liveRounds.some((live) => live.roomId === r.roomId);
+    if (isLive) {
       item.activeRoomsCount += 1;
     }
   });
