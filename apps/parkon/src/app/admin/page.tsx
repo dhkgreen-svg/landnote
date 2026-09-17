@@ -394,32 +394,34 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 전국 시·도별 실제 인프라 현황 (컴팩트 버튼 바: 클릭 시 전체 팝업) */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-3.5 w-full sm:w-auto">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center shrink-0 shadow-inner">
-            <MapPin className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100">
-                전국 16개 시·도별 실제 인프라 현황
-              </h3>
-              <span className="text-[10px] px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-full font-bold">
-                100% 팩트
-              </span>
-            </div>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              전국 시도별 현황을 클릭해서 자세히 보세요 (각 지역별 실제 유저 수, 실시간 접속자 및 클럽 현황)
-            </p>
-          </div>
-        </div>
+      {/* 전국 시·도별 현황 열기 (간결한 작은 카드) */}
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3 sm:p-3.5 shadow-xs">
         <button
           onClick={() => setShowAllProvincesModal(true)}
-          className="w-full sm:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs text-xs transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer active:scale-98"
+          className="w-full py-2.5 px-3 sm:px-4 bg-emerald-50/60 hover:bg-emerald-100/70 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/60 hover:border-emerald-500 rounded-xl transition-all flex items-center justify-between gap-3 text-left group cursor-pointer active:scale-99"
         >
-          <span>전국 시·도별 현황 열기 (클릭)</span>
-          <ChevronRight className="w-4 h-4" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+              <MapPin className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                  전국 16개 시·도별 현황
+                </span>
+                <span className="text-[10px] px-1.5 py-0.2 bg-emerald-200/70 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 rounded font-bold shrink-0">
+                  100% 팩트
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 whitespace-nowrap overflow-hidden text-ellipsis mt-0.5">
+                클릭하시면 16개 시·도별 실제 유저 수, 접속자 및 클럽 현황이 팝업됩니다.
+              </p>
+            </div>
+          </div>
+          <div className="px-3 py-1.5 bg-emerald-600 group-hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shrink-0 whitespace-nowrap shadow-xs">
+            <span>전국 시·도별 현황 열기</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </div>
         </button>
       </div>
 
