@@ -831,32 +831,13 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-            {/* 실시간 라운딩 상세 관제 센터 (패널 1: 전국 구장별 실제 라운딩 랭킹 집계표, 패널 2: 실시간 필드 라운딩 라이브 관제) */}
+      {/* 실시간 라운딩 상세 관제 센터 */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs">
-          <div>
-            <h2 className="text-base sm:text-lg font-black text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-emerald-600" />
-              실시간 라운딩 상세 관제 센터
-            </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              전국 파크골프장의 실제 필드 라운딩 랭킹과 현재 실시간 경기 진행 상황을 100% 팩트 기반으로 모니터링합니다.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              15초 자동 갱신
-            </span>
-            <button
-              onClick={() => fetchMetrics(pin || '768517')}
-              disabled={isLoading}
-              className="px-3 py-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-              새로고침
-            </button>
-          </div>
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xs">
+          <h2 className="text-base sm:text-lg font-black text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-emerald-600" />
+            실시간 라운딩 상세 관제 센터
+          </h2>
         </div>
 
         {/* 칸 2개 그리드 (좌측: 전국 구장별 누적 랭킹 집계표, 우측: 실시간 필드 라운딩 라이브 관제) */}
