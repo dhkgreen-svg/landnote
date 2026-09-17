@@ -55,6 +55,17 @@ export interface CityDetailStat {
   activityIndex: string;
 }
 
+export interface ProvinceUserItem {
+  id: string;
+  name: string;
+  city: string;
+  homeCourse: string;
+  lastPath: string;
+  lastActiveTime: string;
+  timestamp: number;
+  isLive: boolean;
+}
+
 export interface ProvinceStat {
   code: string;
   name: string;
@@ -64,6 +75,9 @@ export interface ProvinceStat {
   userPercentage: number;
   activityLabel: string;
   cities: CityDetailStat[];
+  users?: ProvinceUserItem[];
+  liveUserList?: ProvinceUserItem[];
+  clubDetails?: CityClubDetail[];
 }
 
 export interface TrendItem {
@@ -995,6 +1009,74 @@ export async function GET(req: NextRequest) {
         ? '이용 거점 (B+)'
         : '신규 거점 (B)';
 
+    // 4. 해당 시·도의 전체 유저 및 실시간 접속 유저 목록 추출 (가나다순 한국어 정렬)
+    const provUserList: ProvinceUserItem[] = [];
+    const provLiveUserList: ProvinceUserItem[] = [];
+
+    provIps.forEach((ip) => {
+      // 해당 IP의 최신 방문 로그 추출
+      let latestLog: VisitorLog | null = null;
+      for (let i = store.logs.length - 1; i >= 0; i--) {
+        if (store.logs[i].ip === ip) {
+          latestLog = store.logs[i];
+          break;
+        }
+      }
+
+      if (latestLog) {
+        const isLive = liveIpRegionMap.has(ip);
+
+        // 시·군·구 추론
+        let userCity = '';
+        const reg = (latestLog.userRegion || allIpRegionMap.get(ip) || '').trim();
+        for (const city of prov.cities) {
+          const cleanCity = city.name.replace(/[시구군]/g, '').toLowerCase();
+          if (reg.includes(cleanCity) || (city.aliases && city.aliases.some((a) => reg.toLowerCase().includes(a.toLowerCase())))) {
+            userCity = city.name;
+            break;
+          }
+        }
+        if (!userCity) {
+          userCity = reg.replace(prov.name, '').trim() || `${prov.name} 관내`;
+        }
+
+        // 유저명 / 닉네임 (실명 입력자는 실명, 미입력자는 지역 골퍼+마스킹)
+        let displayName = (latestLog.userName || '').trim();
+        if (!displayName || displayName === '일반 골퍼') {
+          const ipTail = ip.replace(/^::ffff:/, '');
+          displayName = `${userCity ? userCity.replace(/[시구군]$/, '') : prov.name} 골퍼 (${ipTail})`;
+        }
+
+        const userItem: ProvinceUserItem = {
+          id: latestLog.id,
+          name: displayName,
+          city: userCity,
+          homeCourse: latestLog.homeCourse || `${userCity} 인근 구장`,
+          lastPath: latestLog.path || '/',
+          lastActiveTime: `${latestLog.dateStr} ${latestLog.timeStr}`,
+          timestamp: latestLog.timestamp,
+          isLive,
+        };
+
+        provUserList.push(userItem);
+        if (isLive) {
+          provLiveUserList.push(userItem);
+        }
+      }
+    });
+
+    // 가나다순 (한국어 사전순) 기본 정렬
+    provUserList.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+    provLiveUserList.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+
+    // 해당 시·도의 등록 클럽 상세
+    const provClubDetails: CityClubDetail[] = [];
+    cities.forEach((city) => {
+      if (city.clubDetails && city.clubDetails.length > 0) {
+        provClubDetails.push(...city.clubDetails);
+      }
+    });
+
     return {
       code: prov.code,
       name: prov.name,
@@ -1004,6 +1086,9 @@ export async function GET(req: NextRequest) {
       userPercentage,
       activityLabel,
       cities,
+      users: provUserList,
+      liveUserList: provLiveUserList,
+      clubDetails: provClubDetails,
     };
   }).sort((a, b) => b.userCount - a.userCount);
 

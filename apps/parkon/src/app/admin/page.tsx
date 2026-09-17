@@ -24,11 +24,23 @@ import {
   Building2,
   ChevronRight,
   Flame,
-  Award,
-  Download,
-  Trophy,
-  Flag
+  Award, 
+  Download, 
+  Trophy, 
+  Flag,
+  Search
 } from 'lucide-react';
+
+export interface ProvinceUserItem {
+  id: string;
+  name: string;
+  city: string;
+  homeCourse: string;
+  lastPath: string;
+  lastActiveTime: string;
+  timestamp: number;
+  isLive: boolean;
+}
 
 export interface CityClubDetail {
   id: string;
@@ -75,6 +87,9 @@ interface ProvinceStat {
   userPercentage: number;
   activityLabel: string;
   cities: CityDetailStat[];
+  users?: ProvinceUserItem[];
+  liveUserList?: ProvinceUserItem[];
+  clubDetails?: CityClubDetail[];
 }
 
 export interface CourseRoundRanking {
@@ -156,6 +171,12 @@ export default function AdminDashboardPage() {
   const [showCourseRankingsModal, setShowCourseRankingsModal] = useState(false);
   // 시·도 상세 드릴다운 팝업 모달 상태
   const [selectedProvinceModal, setSelectedProvinceModal] = useState<ProvinceStat | null>(null);
+  // 시·도 상세 팝업 내 활성 탭 ('CITIES': 시·군 인프라 | 'USERS': 총 유저 가나다순 | 'LIVE': 실시간 접속 | 'CLUBS': 등록 클럽)
+  const [provSubTab, setProvSubTab] = useState<'CITIES' | 'USERS' | 'LIVE' | 'CLUBS'>('CITIES');
+  // 100명 단위 페이지네이션 인덱스 (0 = 1~100, 1 = 101~200, ...)
+  const [userPageChunk, setUserPageChunk] = useState(0);
+  // 유저 검색 필터어
+  const [userSearchTerm, setUserSearchTerm] = useState('');
   // 추이 상세 팝업 모달 상태 (일별, 주별, 월별, 연별)
   const [selectedTrendModal, setSelectedTrendModal] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | null>(null);
   // 클럽 상세 관제 팝업 모달 상태 (관리자 뷰어 모드)
@@ -555,34 +576,360 @@ export default function AdminDashboardPage() {
               </button>
             </div>
 
-            {/* Core Summary Cards */}
+            {/* Core Summary Cards -> 3 Interactive Clickable Tabs */}
             <div className="grid grid-cols-3 gap-2.5 text-center">
-              <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-xl">
-                <div className="text-xs text-zinc-500 font-medium">총 유저 수</div>
-                <div className="text-xl font-black text-emerald-600 mt-0.5">{selectedProvinceModal.userCount}명</div>
-                <div className="text-[10px] text-zinc-400">전국 대비 {selectedProvinceModal.userPercentage}%</div>
-              </div>
-              <div className="p-3 bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl">
-                <div className="text-xs text-zinc-500 font-medium">현재 실시간 접속</div>
-                <div className="text-xl font-black text-amber-600 mt-0.5">{selectedProvinceModal.liveUsers}명</div>
-                <div className="text-[10px] text-zinc-400">동시 활동 골퍼</div>
-              </div>
-              <div className="p-3 bg-purple-50/50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/60 rounded-xl">
-                <div className="text-xs text-zinc-500 font-medium">등록 클럽 수</div>
-                <div className="text-xl font-black text-purple-600 mt-0.5">{selectedProvinceModal.clubCount}개</div>
-                <div className="text-[10px] text-zinc-400">정규 클럽/동호회</div>
+              {/* Tab 1: 총 유저 수 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setProvSubTab(provSubTab === 'USERS' ? 'CITIES' : 'USERS');
+                  setUserPageChunk(0);
+                  setUserSearchTerm('');
+                }}
+                className={`p-3 rounded-2xl border transition-all text-center cursor-pointer active:scale-97 group ${
+                  provSubTab === 'USERS'
+                    ? 'bg-emerald-100/90 dark:bg-emerald-950/90 border-emerald-500 shadow-md ring-2 ring-emerald-400/50'
+                    : 'bg-emerald-50/50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100/60'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1 text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                  <Users className="w-3.5 h-3.5" />
+                  총 유저 수
+                </div>
+                <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  {selectedProvinceModal.userCount}명
+                </div>
+                <div className="text-[10px] text-zinc-400 flex items-center justify-center gap-1 mt-0.5">
+                  <span>전국 대비 {selectedProvinceModal.userPercentage}%</span>
+                  <span className="text-emerald-600 font-bold">▶ 가나다순</span>
+                </div>
+              </button>
+
+              {/* Tab 2: 현재 실시간 접속 */}
+              <button
+                type="button"
+                onClick={() => setProvSubTab(provSubTab === 'LIVE' ? 'CITIES' : 'LIVE')}
+                className={`p-3 rounded-2xl border transition-all text-center cursor-pointer active:scale-97 group ${
+                  provSubTab === 'LIVE'
+                    ? 'bg-amber-100/90 dark:bg-amber-950/90 border-amber-500 shadow-md ring-2 ring-amber-400/50'
+                    : 'bg-amber-50/50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60 hover:bg-amber-100/60'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1 text-xs font-bold text-amber-800 dark:text-amber-300">
+                  <Radio className="w-3.5 h-3.5 animate-pulse" />
+                  현재 실시간 접속
+                </div>
+                <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-0.5">
+                  {selectedProvinceModal.liveUsers}명
+                </div>
+                <div className="text-[10px] text-zinc-400 flex items-center justify-center gap-1 mt-0.5">
+                  <span>동시 활동 중</span>
+                  <span className="text-amber-600 font-bold">▶ 실시간</span>
+                </div>
+              </button>
+
+              {/* Tab 3: 등록 클럽 수 */}
+              <button
+                type="button"
+                onClick={() => setProvSubTab(provSubTab === 'CLUBS' ? 'CITIES' : 'CLUBS')}
+                className={`p-3 rounded-2xl border transition-all text-center cursor-pointer active:scale-97 group ${
+                  provSubTab === 'CLUBS'
+                    ? 'bg-purple-100/90 dark:bg-purple-950/90 border-purple-500 shadow-md ring-2 ring-purple-400/50'
+                    : 'bg-purple-50/50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800/60 hover:bg-purple-100/60'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1 text-xs font-bold text-purple-800 dark:text-purple-300">
+                  <Trophy className="w-3.5 h-3.5" />
+                  등록 클럽 수
+                </div>
+                <div className="text-xl font-black text-purple-600 dark:text-purple-400 mt-0.5">
+                  {selectedProvinceModal.clubCount}개
+                </div>
+                <div className="text-[10px] text-zinc-400 flex items-center justify-center gap-1 mt-0.5">
+                  <span>정규 클럽</span>
+                  <span className="text-purple-600 font-bold">▶ 목록 보기</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Sub-view Navigation Pills */}
+            <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+              <div className="flex items-center gap-1 text-xs overflow-x-auto">
+                <button
+                  type="button"
+                  onClick={() => setProvSubTab('CITIES')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                    provSubTab === 'CITIES'
+                      ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-xs'
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'
+                  }`}
+                >
+                  🏛️ 시·군별 인프라 ({selectedProvinceModal.cities.length}개)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProvSubTab('USERS');
+                    setUserPageChunk(0);
+                    setUserSearchTerm('');
+                  }}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                    provSubTab === 'USERS'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'
+                  }`}
+                >
+                  👥 전체 유저 ({selectedProvinceModal.users?.length || selectedProvinceModal.userCount}명 · 가나다순)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProvSubTab('LIVE')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                    provSubTab === 'LIVE'
+                      ? 'bg-amber-500 text-white shadow-xs'
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'
+                  }`}
+                >
+                  🟢 실시간 접속 ({selectedProvinceModal.liveUsers}명)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProvSubTab('CLUBS')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                    provSubTab === 'CLUBS'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'
+                  }`}
+                >
+                  🏆 등록 클럽 ({selectedProvinceModal.clubCount}개)
+                </button>
               </div>
             </div>
 
-            {/* Detailed Cities/Districts Breakdown */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                <span className="flex items-center gap-1.5">
-                  <Building2 className="w-4 h-4 text-emerald-600" />
-                  {selectedProvinceModal.name} 소속 시·군별 상세 내역 ({selectedProvinceModal.cities.length}개 거점)
-                </span>
-                <span className="text-[11px] text-zinc-400 font-normal">유저 순 정렬</span>
-              </div>
+            {/* Sub-view Content: USERS (가나다순 전체 유저 100명 단위 끊기) */}
+            {provSubTab === 'USERS' && (() => {
+              const allUsers = selectedProvinceModal.users || [];
+              const filteredUsers = allUsers.filter((u) => {
+                if (!userSearchTerm.trim()) return true;
+                const term = userSearchTerm.toLowerCase();
+                return (
+                  u.name.toLowerCase().includes(term) ||
+                  u.city.toLowerCase().includes(term) ||
+                  u.homeCourse.toLowerCase().includes(term)
+                );
+              });
+              const chunkSize = 100;
+              const totalChunks = Math.ceil(filteredUsers.length / chunkSize);
+              const startIdx = userPageChunk * chunkSize;
+              const currentUsers = filteredUsers.slice(startIdx, startIdx + chunkSize);
+
+              return (
+                <div className="space-y-3 animate-in fade-in duration-150">
+                  {/* Search and Pagination Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="relative flex-1">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                      <input
+                        type="text"
+                        value={userSearchTerm}
+                        onChange={(e) => {
+                          setUserSearchTerm(e.target.value);
+                          setUserPageChunk(0);
+                        }}
+                        placeholder="이름, 시·군(구미, 포항 등), 구장명 검색..."
+                        className="w-full pl-8 pr-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <span className="text-[11px] text-zinc-400 font-medium shrink-0">
+                      총 {filteredUsers.length}명 (가나다순 정렬)
+                    </span>
+                  </div>
+
+                  {/* 100명 단위 페이지네이션 버튼 (100명 이상일 경우) */}
+                  {totalChunks > 1 && (
+                    <div className="flex flex-wrap items-center gap-1.5 p-2 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
+                      <span className="text-[10px] text-zinc-400 font-semibold mr-1">100명 단위 이동:</span>
+                      {Array.from({ length: totalChunks }, (_, idx) => {
+                        const start = idx * chunkSize + 1;
+                        const end = Math.min((idx + 1) * chunkSize, filteredUsers.length);
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setUserPageChunk(idx)}
+                            className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                              userPageChunk === idx
+                                ? 'bg-emerald-600 text-white shadow-xs'
+                                : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100'
+                            }`}
+                          >
+                            {start} ~ {end}번
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* User List Items */}
+                  <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+                    {currentUsers.length > 0 ? (
+                      currentUsers.map((u, idx) => (
+                        <div
+                          key={u.id || idx}
+                          className="p-2.5 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-xl flex items-center justify-between hover:border-emerald-400 transition-colors text-xs"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-7 text-[11px] font-mono text-zinc-400 text-center shrink-0">
+                              #{startIdx + idx + 1}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                                  {u.name}
+                                </span>
+                                {u.isLive && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-black rounded-full">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    접속 중
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-zinc-400 truncate flex items-center gap-2 mt-0.5">
+                                <span>📍 {u.city}</span>
+                                <span>·</span>
+                                <span>⛳ {u.homeCourse}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-[10px] text-zinc-400 block font-mono">
+                              {u.lastActiveTime}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center text-xs text-zinc-400">
+                        {userSearchTerm ? '검색된 유저가 없습니다.' : '등록된 유저 목록이 없습니다.'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Sub-view Content: LIVE (현재 실시간 접속 유저) */}
+            {provSubTab === 'LIVE' && (() => {
+              const liveUsers = selectedProvinceModal.liveUserList || [];
+
+              return (
+                <div className="space-y-3 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between text-xs border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                    <span className="font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                      실시간 동시 활동 골퍼 ({liveUsers.length}명)
+                    </span>
+                    <span className="text-[10px] text-zinc-400">최근 10분 내 활동</span>
+                  </div>
+
+                  <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+                    {liveUsers.length > 0 ? (
+                      liveUsers.map((u, idx) => (
+                        <div
+                          key={u.id || idx}
+                          className="p-2.5 bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/60 rounded-xl flex items-center justify-between text-xs"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                            <div className="min-w-0">
+                              <div className="font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                                {u.name}
+                              </div>
+                              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate flex items-center gap-2 mt-0.5">
+                                <span>📍 {u.city}</span>
+                                <span>·</span>
+                                <span>페이지: {u.lastPath}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-mono text-amber-700 dark:text-amber-400 font-bold shrink-0">
+                            {u.lastActiveTime.split(' ')[1] || '활동 중'}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center text-xs text-zinc-400">
+                        현재 해당 시·도에서 실시간 접속 중인 유저가 없습니다.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Sub-view Content: CLUBS (등록 클럽 목록) */}
+            {provSubTab === 'CLUBS' && (() => {
+              const clubs = selectedProvinceModal.clubDetails || [];
+
+              return (
+                <div className="space-y-3 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between text-xs border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                    <span className="font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                      <Trophy className="w-4 h-4 text-purple-600" />
+                      공식 등록 클럽 목록 ({selectedProvinceModal.clubCount}개)
+                    </span>
+                    <span className="text-[10px] text-zinc-400">정규 클럽 및 동호회</span>
+                  </div>
+
+                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                    {clubs.length > 0 ? (
+                      clubs.map((c) => (
+                        <div
+                          key={c.id}
+                          className="p-3 bg-white dark:bg-zinc-900 border border-purple-200 dark:border-purple-800/80 rounded-xl flex items-center justify-between text-xs"
+                        >
+                          <div>
+                            <div className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                              <span>🏆</span> {c.name}
+                            </div>
+                            <div className="text-[11px] text-zinc-400 mt-0.5">
+                              {c.city} · 홈: {c.homeCourseName} · 회원 {c.memberCount}명
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedClubDetailModal(c)}
+                            className="px-2.5 py-1 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700 cursor-pointer"
+                          >
+                            상세 내역 ↗
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 space-y-1">
+                        <div className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                          현재 공식 등록된 클럽이 없습니다. (0개)
+                        </div>
+                        <p className="text-[11px] text-zinc-400">
+                          실제 사용자가 클럽을 창단하고 활동할 때만 실명 데이터가 정직하게 등록됩니다.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Sub-view Content: CITIES (시·군별 상세 내역) */}
+            {provSubTab === 'CITIES' && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                  <span className="flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-emerald-600" />
+                    {selectedProvinceModal.name} 소속 시·군별 상세 내역 ({selectedProvinceModal.cities.length}개 거점)
+                  </span>
+                  <span className="text-[11px] text-zinc-400 font-normal">유저 순 정렬</span>
+                </div>
 
               <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
                 {selectedProvinceModal.cities.map((city) => (
@@ -662,6 +1009,7 @@ export default function AdminDashboardPage() {
                 ))}
               </div>
             </div>
+          )}
 
             {/* Close Button */}
             <div className="pt-2">
