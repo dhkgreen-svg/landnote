@@ -490,9 +490,10 @@ function NewRoundForm() {
       return;
     }
     if (typeof window !== 'undefined') {
+      const isPermanent = localStorage.getItem('parkon_hide_round_notice_permanent') === 'true';
       const hideDate = localStorage.getItem('parkon_hide_round_notice_date');
       const today = new Date().toISOString().slice(0, 10);
-      if (hideDate === today) {
+      if (isPermanent || hideDate === today) {
         startRound();
         return;
       }
