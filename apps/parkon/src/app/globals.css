@@ -32,3 +32,36 @@ button, input, select {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Dynamic Live Button Animations (Glow & Slide) */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.75), 0 0 4px rgba(251, 191, 36, 0.5);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(251, 191, 36, 1), 0 0 8px rgba(245, 158, 11, 0.9);
+    transform: scale(1.04);
+  }
+}
+
+@keyframes arrow-slide {
+  0%, 100% {
+    transform: translateX(0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateX(4px);
+    opacity: 1;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 1.4s ease-in-out infinite;
+}
+
+.animate-arrow-slide {
+  display: inline-block;
+  animation: arrow-slide 0.9s ease-in-out infinite;
+}
+

@@ -228,32 +228,32 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
   };
 
   return (
-    <div className="bg-white rounded-2xl p-3.5 shadow-sm border border-stone-200 space-y-2.5">
+    <div className="bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/80 rounded-2xl p-4 shadow-md border-2 border-emerald-500/80 space-y-3">
       {/* 상단 타이틀 & 실시간 상태 배지 */}
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 min-w-0">
             {isRealtime1Hour ? (
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
+              <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
             ) : (
-              <Clock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+              <span className="text-emerald-700 text-sm">🌱</span>
             )}
             <h3 className="font-black text-xs sm:text-sm text-stone-900 leading-snug">
               오늘 {courseName} 잔디 실전 리포트
             </h3>
           </div>
 
-          <span className="text-[10px] text-stone-400 font-bold shrink-0">
+          <span className="text-[10px] text-stone-500 font-bold shrink-0">
             {formattedCurrentDate} {formattedCurrentTime}
           </span>
         </div>
 
         <div className="flex items-center justify-between gap-1.5 flex-wrap">
           <span
-            className={`text-[11px] font-black px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+            className={`text-[11px] font-black px-2.5 py-0.5 rounded-full border flex items-center gap-1 shadow-2xs ${
               isRealtime1Hour
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                : 'bg-stone-100 text-stone-600 border-stone-200'
+                ? 'bg-emerald-100 text-emerald-900 border-emerald-400'
+                : 'bg-white text-stone-700 border-stone-300'
             }`}
           >
             <span>{hasActiveReport ? statusBadgeText : '⏱️ 최근 3시간 내 잔디 리포트 없음'}</span>
@@ -263,7 +263,7 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
           <button
             type="button"
             onClick={() => setShowVoteModal(true)}
-            className="flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:scale-95 text-white font-black text-[11px] rounded-full shadow-2xs transition cursor-pointer"
+            className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:scale-95 text-white font-black text-[11px] rounded-full shadow-xs transition cursor-pointer"
           >
             <span>🌱</span>
             <span>{hasActiveReport ? '잔디 상태 추가 제보' : '잔디 상태 제보하기'}</span>
@@ -272,25 +272,24 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
         </div>
       </div>
 
-
       {/* 리포트 칸 세 개 (공 구름성, 지면 습도, 잔디 길이 - 터치 시 입력 팝업 오픈) */}
       <div className="grid grid-cols-3 gap-2">
         {/* 1. 공 구름성 */}
         <div
           onClick={() => setShowVoteModal(true)}
-          className={`p-2 rounded-xl border flex flex-col items-center text-center transition cursor-pointer hover:border-emerald-400 hover:shadow-2xs active:scale-98 ${
+          className={`p-2.5 rounded-xl border-2 flex flex-col items-center text-center transition cursor-pointer hover:border-emerald-500 hover:shadow-sm active:scale-98 ${
             hasActiveReport
-              ? speedInfo.cardColor
-              : 'bg-stone-50 border-stone-200 text-stone-500'
+              ? `${speedInfo.cardColor} shadow-2xs`
+              : 'bg-white/95 border-emerald-200/90 text-stone-700 shadow-2xs'
           }`}
           title="클릭하여 공 구름성 제보/수정"
         >
-          <span className="text-[10px] font-bold opacity-75">공 구름성</span>
-          <span className="font-black text-xs mt-0.5 flex items-center gap-1 whitespace-nowrap">
+          <span className="text-[10px] font-bold text-stone-600">공 구름성</span>
+          <span className="font-black text-xs sm:text-sm mt-0.5 flex items-center gap-1 whitespace-nowrap text-stone-900">
             <span>{hasActiveReport ? speedInfo.icon : '⛳'}</span>
             <span>{hasActiveReport ? speedInfo.label : '미등록'}</span>
           </span>
-          <span className="text-[9px] font-semibold mt-0.5 opacity-75">
+          <span className="text-[9px] font-bold mt-0.5 text-emerald-700">
             {hasActiveReport ? `${speedInfo.votes}표 우세` : '터치하여 제보'}
           </span>
         </div>
@@ -298,19 +297,19 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
         {/* 2. 지면 습도 */}
         <div
           onClick={() => setShowVoteModal(true)}
-          className={`p-2 rounded-xl border flex flex-col items-center text-center transition cursor-pointer hover:border-emerald-400 hover:shadow-2xs active:scale-98 ${
+          className={`p-2.5 rounded-xl border-2 flex flex-col items-center text-center transition cursor-pointer hover:border-emerald-500 hover:shadow-sm active:scale-98 ${
             hasActiveReport
-              ? moistureInfo.cardColor
-              : 'bg-stone-50 border-stone-200 text-stone-500'
+              ? `${moistureInfo.cardColor} shadow-2xs`
+              : 'bg-white/95 border-emerald-200/90 text-stone-700 shadow-2xs'
           }`}
           title="클릭하여 지면 습도 제보/수정"
         >
-          <span className="text-[10px] font-bold opacity-75">지면 습도</span>
-          <span className="font-black text-xs mt-0.5 flex items-center gap-1 whitespace-nowrap">
+          <span className="text-[10px] font-bold text-stone-600">지면 습도</span>
+          <span className="font-black text-xs sm:text-sm mt-0.5 flex items-center gap-1 whitespace-nowrap text-stone-900">
             <span>{hasActiveReport ? moistureInfo.icon : '💧'}</span>
             <span>{hasActiveReport ? moistureInfo.label : '미등록'}</span>
           </span>
-          <span className="text-[9px] font-semibold mt-0.5 opacity-75">
+          <span className="text-[9px] font-bold mt-0.5 text-emerald-700">
             {hasActiveReport ? `${moistureInfo.votes}표 우세` : '터치하여 제보'}
           </span>
         </div>
@@ -318,19 +317,19 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
         {/* 3. 잔디 길이 */}
         <div
           onClick={() => setShowVoteModal(true)}
-          className={`p-2 rounded-xl border flex flex-col items-center text-center transition cursor-pointer hover:border-emerald-400 hover:shadow-2xs active:scale-98 ${
+          className={`p-2.5 rounded-xl border-2 flex flex-col items-center text-center transition cursor-pointer hover:border-emerald-500 hover:shadow-sm active:scale-98 ${
             hasActiveReport
-              ? lengthInfo.cardColor
-              : 'bg-stone-50 border-stone-200 text-stone-500'
+              ? `${lengthInfo.cardColor} shadow-2xs`
+              : 'bg-white/95 border-emerald-200/90 text-stone-700 shadow-2xs'
           }`}
           title="클릭하여 잔디 길이 제보/수정"
         >
-          <span className="text-[10px] font-bold opacity-75">잔디 길이</span>
-          <span className="font-black text-xs mt-0.5 flex items-center gap-1 whitespace-nowrap">
+          <span className="text-[10px] font-bold text-stone-600">잔디 길이</span>
+          <span className="font-black text-xs sm:text-sm mt-0.5 flex items-center gap-1 whitespace-nowrap text-stone-900">
             <span>{hasActiveReport ? lengthInfo.icon : '🌱'}</span>
             <span>{hasActiveReport ? lengthInfo.label : '미등록'}</span>
           </span>
-          <span className="text-[9px] font-semibold mt-0.5 opacity-75">
+          <span className="text-[9px] font-bold mt-0.5 text-emerald-700">
             {hasActiveReport ? `${lengthInfo.votes}표 우세` : '터치하여 제보'}
           </span>
         </div>

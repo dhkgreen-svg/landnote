@@ -8,6 +8,8 @@ import { Course, RoundSession, formatCourseHolesText } from '@/types/parkon';
 import { ParkOnStorage, UserGolfProfile, DEFAULT_USER_PROFILE } from '@/lib/storage';
 import { ClubStorage } from '@/lib/clubStorage';
 import { ConditionStatus } from '@/components/ConditionStatus';
+import { CourseTodayModal } from '@/components/CourseTodayModal';
+import { CourseDetailModal } from '@/components/CourseDetailModal';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { InstallGuideModal } from '@/components/InstallGuideModal';
 import { KakaoLoginModal } from '@/components/KakaoLoginModal';
@@ -27,6 +29,7 @@ export default function HomePage() {
   const [completedRounds, setCompletedRounds] = useState<RoundSession[]>([]);
   const [userProfile, setUserProfile] = useState<UserGolfProfile>(DEFAULT_USER_PROFILE);
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
+  const [statsSubTab, setStatsSubTab] = useState<'GRADE_RANK' | 'RECENT_ROUNDS'>('GRADE_RANK');
   const [showNationalStatsModal, setShowNationalStatsModal] = useState<boolean>(false);
   const [showRulesWebtoonModal, setShowRulesWebtoonModal] = useState<boolean>(false);
   const [showRulesSolomonPopup, setShowRulesSolomonPopup] = useState<boolean>(false);
@@ -40,6 +43,8 @@ export default function HomePage() {
   const [showKakaoModal, setShowKakaoModal] = useState<boolean>(false);
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
   const [showInstallGuideModal, setShowInstallGuideModal] = useState<boolean>(false);
+  const [showCourseTodayModal, setShowCourseTodayModal] = useState<boolean>(false);
+  const [selectedCourseForDetail, setSelectedCourseForDetail] = useState<Course | null>(null);
 
   useEffect(() => {
     const loadData = () => {
@@ -126,9 +131,13 @@ export default function HomePage() {
     return dongrak || courses[0] || null;
   };
 
-  const openStatsModalWithCourse = (courseId?: string) => {
+  const openStatsModalWithCourse = (
+    courseId?: string,
+    defaultTab: 'GRADE_RANK' | 'RECENT_ROUNDS' = 'GRADE_RANK'
+  ) => {
     const currentActive = getCurrentActiveCourse();
     setStatsCourseId(courseId || currentActive?.id || courses[0]?.id || '');
+    setStatsSubTab(defaultTab);
     setShowStatsModal(true);
   };
 
@@ -784,10 +793,47 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 3. Today's Course Condition Traffic Light */}
-      {homeCourse && (
-        <ConditionStatus courseId={homeCourse.id} courseName={homeCourse.name} />
-      )}
+      {/* 3. 오늘 구장 정보 & 실시간 상태 보기 원터치 탭 (클릭 시 날씨·휴장·잔디리포트·내비 올인원 팝업) */}
+      {(() => {
+        const targetCourse = homeCourse || getCurrentActiveCourse() || courses[0];
+        if (!targetCourse) return null;
+        return (
+          <section>
+            <button
+              type="button"
+              onClick={() => setShowCourseTodayModal(true)}
+              className="w-full bg-gradient-to-r from-emerald-800 via-emerald-900 to-teal-950 text-white rounded-2xl p-2.5 sm:p-3 shadow-md border border-emerald-500/50 hover:border-emerald-300 transition active:scale-[0.98] cursor-pointer flex items-center justify-between gap-2.5 group text-left"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="w-9 h-9 rounded-xl bg-white/15 border border-emerald-400/40 flex items-center justify-center text-amber-300 text-base shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                  🌿
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs sm:text-sm font-black text-white tracking-tight truncate leading-tight">
+                    오늘 {targetCourse.name} 정보 &amp; 상태 보기
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                    <span className="text-[9.5px] font-black bg-emerald-400 text-stone-950 px-1.5 py-0.2 rounded-full shadow-2xs shrink-0">
+                      실시간
+                    </span>
+                    <span className="text-[10.5px] text-emerald-200/90 font-medium truncate">
+                      오늘 날씨 · 정기 휴장일 · 잔디 상태 리포트
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 text-stone-950 px-3 py-1.5 rounded-xl text-[11px] font-black border border-yellow-200 shadow-md animate-pulse-glow whitespace-nowrap">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+                </span>
+                <span>상태 확인</span>
+                <span className="text-[11px] font-black animate-arrow-slide">▶</span>
+              </div>
+            </button>
+          </section>
+        );
+      })()}
 
       {/* 4. Quick Actions (슬림형 컴팩트 탭) */}
       <section className="grid grid-cols-2 gap-2.5">
@@ -928,389 +974,39 @@ export default function HomePage() {
             </p>
           </div>
         </div>
-        <span className="text-[10px] font-black text-amber-300 bg-white/10 group-hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded-xl shrink-0 whitespace-nowrap transition-colors">
-          운세 보기 ▶
+        <span className="flex items-center gap-1.5 shrink-0 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 text-stone-950 px-3 py-1.5 rounded-xl text-[11px] font-black border border-yellow-200 shadow-md animate-pulse-glow whitespace-nowrap">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+          </span>
+          <span>운세 보기</span>
+          <span className="text-[11px] font-black animate-arrow-slide">▶</span>
         </span>
       </a>
 
-      {/* 4-2. 배너 2: 파크골프 룰 솔로몬 & 만화 웹툰 가이드 바로가기 배너 */}
-      <button
-        type="button"
-        onClick={() => setShowRulesSolomonPopup(true)}
-        className="bg-gradient-to-r from-stone-800 via-emerald-950 to-stone-900 text-white rounded-2xl p-3 shadow-sm border border-emerald-700/50 hover:border-emerald-400 transition active:scale-[0.99] cursor-pointer flex items-center justify-between gap-3 group text-left w-full"
-        title="파크골프 룰 솔로몬 & 만화 웹툰 가이드 팝업 열기"
-      >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="relative w-12 h-12 rounded-xl overflow-hidden shadow-xs border border-emerald-400 shrink-0 bg-stone-100 group-hover:scale-105 transition-transform">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/mascot/사진저장고_사진_20260913_1.jpg"
-              alt="파크골프 룰 솔로몬 & 만화 웹툰 가이드"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-black text-white tracking-tight">
-                파크골프 룰 솔로몬 & 만화 웹툰
-              </span>
-              <span className="text-[9px] font-black bg-emerald-400 text-stone-950 px-1.5 py-0.2 rounded shadow-2xs">
-                만화로 보는 룰
-              </span>
-            </div>
-            <p className="text-[10.5px] text-stone-300 font-medium truncate mt-0.5">
-              필드 분쟁 즉시 판정 · 챕터별 만화 가이드 · 공인 규정 준거
-            </p>
-          </div>
-        </div>
-        <span className="text-[10px] font-black text-emerald-300 bg-white/10 group-hover:bg-white/20 border border-white/20 px-2.5 py-1.5 rounded-xl shrink-0 whitespace-nowrap transition-colors">
-          룰 솔로몬 보기 ▶
-        </span>
-      </button>
 
-      {/* 4.5. 나의 파크골프 연대기 & 1촌 바로가기 카드 */}
-      <Link
-        href="/chronicle"
-        className="block bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 text-white rounded-3xl p-4 border border-emerald-500/40 shadow-sm hover:border-amber-400 transition group active:scale-[0.99]"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-amber-400 text-emerald-950 flex items-center justify-center font-black shadow-md shrink-0">
-              <Trophy className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm sm:text-base font-black text-white group-hover:text-amber-300 transition-colors">
-                  📖 나의 파크골프 연대기 &amp; 1촌 인연
-                </span>
-                <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full">
-                  신규
-                </span>
-              </div>
-              <p className="text-xs text-emerald-200 mt-0.5 font-medium">
-                커리어 마일스톤 · 1촌 친목 번개 띄우기 · 전국 구장 도장깨기
-              </p>
-            </div>
-          </div>
-          <ArrowRight className="w-5 h-5 text-amber-300 group-hover:translate-x-1 transition-transform shrink-0" />
-        </div>
-      </Link>
 
       {/* 4.6. 1촌 실시간 응원 피드 위젯 */}
       <CompanionFeedWidget />
 
-      {/* 5. Recent Completed Rounds */}
-      {completedRounds.length > 0 && (
-        <section className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-1.5 font-extrabold text-base text-stone-900">
-              <History className="w-5 h-5 text-emerald-700" />
-              <span>최근 내 라운드 성적표</span>
-            </div>
-            <span className="text-xs text-stone-700 font-bold">
-              총 {completedRounds.length}회 기록
-            </span>
-          </div>
 
-          <div className="space-y-2.5">
-            {completedRounds.slice(0, 3).map((r) => {
-              const bestPlayer = [...r.players].sort((a, b) => a.totalStrokes - b.totalStrokes)[0];
-              const is18Holes = r.totalHoles >= 18 || Object.keys(bestPlayer?.scores || {}).length >= 18;
-              const isOfficial = r.isOfficial !== false;
-              return (
-                <div
-                  key={r.id}
-                  className="bg-stone-50 rounded-xl p-3 border border-stone-200 flex items-center justify-between"
-                >
-                  <div>
-                    <div className="font-bold text-sm text-stone-900 flex items-center gap-1.5">
-                      <span>{r.courseName}</span>
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${isOfficial ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-600'}`}>
-                        {isOfficial ? '🏆 공식' : '🧪 연습·테스트'}
-                      </span>
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${is18Holes ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
-                        {is18Holes ? '18홀' : '9홀'}
-                      </span>
-                    </div>
-                    <div className="text-xs text-stone-700 mt-0.5">
-                      {r.completedAt ? new Date(r.completedAt).toLocaleDateString('ko-KR') : '최근'} · {r.players.length}명 참여
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs font-bold text-emerald-700">
-                      1위 {bestPlayer?.name}
-                    </div>
-                    <div className="text-sm font-black text-stone-800">
-                      {bestPlayer?.totalStrokes}타 ({bestPlayer?.totalParDiff >= 0 ? `+${bestPlayer?.totalParDiff}` : bestPlayer?.totalParDiff})
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
 
-      {/* 6. 전국 내 실력 등급 & 활동 지수 (슬림형 반절 배너 - 클릭 시 상세 분석 모달 오픈) */}
-      <section
-        onClick={() => setShowNationalStatsModal(true)}
-        className="bg-gradient-to-br from-white via-amber-50/20 to-emerald-50/30 rounded-2xl p-3.5 border border-amber-200/90 shadow-xs hover:shadow-sm transition active:scale-[0.99] cursor-pointer"
-      >
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-2xs">
-              ⭐
-            </span>
-            <div>
-              <h3 className="font-extrabold text-sm text-stone-900 leading-tight flex items-center gap-1.5">
-                <span>전국 내 실력 등급 & 활동 지수</span>
-                <span className="text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded">
-                  공인 분석
-                </span>
-              </h3>
-              <p className="text-[10.5px] text-stone-500 font-medium mt-0.5">
-                전국 백분위(상위 %) 및 필드 열정 랭킹
-              </p>
-            </div>
-          </div>
-          <span className="text-[10px] font-black text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-2 py-1 rounded-lg shrink-0">
-            상세 보기 ▶
-          </span>
-        </div>
-
-        {/* 2대 요약 지표 한눈에 (실력 & 활동) */}
-        <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-stone-200/70 text-xs">
-          <div className="bg-white/90 rounded-xl p-2 border border-amber-200 flex items-center justify-between shadow-2xs">
-            <div>
-              <div className="text-[10px] text-stone-500 font-bold flex items-center gap-1">
-                <span>🎯</span>
-                <span>공인 실력</span>
-              </div>
-              <div className="font-black text-stone-900 text-[11px] mt-0.5">
-                {userExpStats.hasCompleted ? userExpStats.skillStarTitle : '산출 대기'}
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-xs font-black text-emerald-800">
-                {userExpStats.hasCompleted ? `${userExpStats.avgScore}타` : '-'}
-              </span>
-              <div className="text-[9.5px] font-black text-amber-800">
-                {userExpStats.hasCompleted ? `상위 ${userExpStats.rankPercent}%` : ''}
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/90 rounded-xl p-2 border border-emerald-200 flex items-center justify-between shadow-2xs">
-            <div>
-              <div className="text-[10px] text-stone-500 font-bold flex items-center gap-1">
-                <span>🔥</span>
-                <span>활동 지수</span>
-              </div>
-              <div className="font-black text-emerald-900 text-[11px] mt-0.5 truncate max-w-[70px]">
-                {userExpStats.activityTier}
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-xs font-black text-emerald-900">
-                {userExpStats.activityPercent}%
-              </span>
-              <div className="text-[9.5px] font-bold text-stone-500">
-                월 {userExpStats.roundCount30Days}회
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 🏆 전국 내 실력 등급 & 활동 지수 상세 분석 모달 */}
-      {showNationalStatsModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl animate-scaleUp max-h-[90vh] flex flex-col overflow-hidden border border-stone-100">
-            {/* 고정 헤더: 스크롤을 내려도 항상 상단 고정 */}
-            <div className="flex items-center justify-between border-b border-stone-100 p-4 shrink-0 bg-white z-10">
-              <div className="flex items-center gap-2">
-                <span className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-black text-base shadow-sm shrink-0">
-                  🏆
-                </span>
-                <div>
-                  <h3 className="text-base font-black text-stone-900 leading-tight">
-                    전국 내 실력 등급 & 활동 지수
-                  </h3>
-                  <p className="text-[11px] text-stone-500 font-medium">
-                    18홀 공인 실력 및 최근 30일 필드 열정 정밀 분석
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowNationalStatsModal(false)}
-                className="w-8 h-8 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 hover:text-stone-800 flex items-center justify-center font-bold text-sm cursor-pointer shrink-0 transition"
-                aria-label="닫기"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* 스크롤 본문 */}
-            <div className="p-4 space-y-4 overflow-y-auto flex-1 overscroll-contain">
-              {/* 상단 파키 전국 명예의 전당 배너 (1번: 5스타 4.9점 트로피 파키) */}
-              <div className="relative rounded-2xl overflow-hidden border border-amber-300 shadow-xs bg-stone-100 flex items-center bg-gradient-to-r from-amber-100 to-amber-50 p-2.5 gap-3">
-                <div className="relative w-16 h-16 rounded-xl overflow-hidden shadow-xs border border-amber-400 shrink-0 bg-white">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/mascot/사진저장고_사진_20260913_1.jpg"
-                    alt="전국 공인 5스타 트로피 파키"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-black text-amber-950 flex items-center gap-1">
-                    <span>전국 파크골프 공인 명예의 전당</span>
-                    <span className="text-[9px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded">5-STAR</span>
-                  </div>
-                  <p className="text-[10.5px] text-amber-900 font-medium leading-tight mt-0.5">
-                    전국 공식 18홀 완주 기록을 기반으로 산출되는 대한민국 표준 공인 등급입니다.
-                  </p>
-                </div>
-              </div>
-
-              {/* 1. 전국 공인 실력 지수 */}
-              <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-3.5 flex items-center justify-between shadow-xs">
-                <div>
-                  <div className="text-[11px] font-extrabold text-amber-950/80 mb-1 flex items-center gap-1">
-                    <span>🎯 전국 공인 실력 지수</span>
-                    {userExpStats.hasCompleted && (
-                      <span className="text-[10px] bg-amber-200/80 text-amber-900 px-1.5 py-0.2 rounded font-bold">
-                        공인 등급
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {renderExperienceStars(userExpStats.hasCompleted ? userExpPercent : 0, 'text-xl')}
-                    <span className="font-black text-base text-stone-900">
-                      {userExpStats.hasCompleted ? userExpStats.skillStarTitle : '미반영'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="text-right shrink-0">
-                  <div className="text-[11px] text-stone-500 font-bold">18홀 환산 평균</div>
-                  <div className="text-lg font-black text-emerald-800">
-                    {userExpStats.hasCompleted ? `${userExpStats.avgScore}타` : '-'}
-                  </div>
-                  {userExpStats.hasCompleted && (
-                    <div className="text-[10px] font-bold text-emerald-700">
-                      ({userExpStats.parDiffText})
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 전국 상위 백분위 게이지 바 */}
-              {userExpStats.hasCompleted ? (
-                <div className="space-y-1.5 bg-stone-50 p-3 rounded-xl border border-stone-200/70">
-                  <div className="flex items-center justify-between text-xs font-bold text-stone-800">
-                    <span className="flex items-center gap-1">
-                      <span>🏆 전국 실력 백분위</span>
-                    </span>
-                    <span className="font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md text-[11px]">
-                      상위 {userExpStats.rankPercent}% 고수
-                    </span>
-                  </div>
-                  <div className="w-full bg-stone-200 rounded-full h-2.5 overflow-hidden">
-                    <div
-                      className="bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-600 h-2.5 rounded-full transition-all duration-700"
-                      style={{ width: `${Math.max(15, 100 - (userExpStats.rankPercent || 45))}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-stone-500 font-bold px-0.5">
-                    <span>초급 (상위 45%~)</span>
-                    <span>중급 (상위 25%)</span>
-                    <span>상급 (상위 10%)</span>
-                    <span>마스터 (상위 1%)</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-stone-50 rounded-xl p-3 border border-stone-200/80 text-center text-xs text-stone-500 font-medium">
-                  ⛳ 라운드를 1회 이상 완주하시면 지금까지 친 스코어를 종합 분석하여 <strong>별 5개 전국 등급과 상위 %(퍼센트)</strong>가 자동으로 산출됩니다.
-                </div>
-              )}
-
-              {/* 2. 전국 필드 활동 지수 (열정 지수) 박스 */}
-              <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-3.5 space-y-2.5 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 font-black text-xs text-emerald-950">
-                    <span className="text-sm">🔥</span>
-                    <span>전국 필드 활동 지수 (열정 랭킹)</span>
-                  </div>
-                  <span className="text-[11px] font-black text-emerald-900 bg-white px-2 py-0.5 rounded-lg border border-emerald-300 shadow-2xs">
-                    {userExpStats.activityPercent > 0 ? `${userExpStats.activityPercent}% (${userExpStats.activityTier})` : '0% (기록 없음)'}
-                  </span>
-                </div>
-
-                <div className="w-full bg-stone-200 rounded-full h-2.5 overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-700 h-2.5 rounded-full transition-all duration-700"
-                    style={{ width: `${Math.max(8, userExpStats.activityPercent)}%` }}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between text-[10px] text-emerald-900 font-bold px-0.5">
-                  <span>월 1~2회 즐김</span>
-                  <span>주 1~2회 정기</span>
-                  <span>주 2~3회 활발</span>
-                  <span>하루 2~3게임 열정왕</span>
-                </div>
-
-                <p className="text-[10.5px] text-emerald-800 leading-snug bg-white/80 p-2 rounded-xl border border-emerald-200/60 font-medium">
-                  💡 <strong>활동 지수란?</strong> 타수 실력(스타 등급)과 별개로, 필드를 얼마나 자주 찾고 열심히 라운드를 즐기는지를 반영합니다. (최근 30일 공식 완주: <strong>{userExpStats.roundCount30Days}회</strong>)
-                </p>
-              </div>
-
-              {/* 구장별 랭킹 모달로 전환하는 링크 버튼 */}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowNationalStatsModal(false);
-                  openStatsModalWithCourse(homeCourse?.id);
-                }}
-                className="w-full py-3 bg-gradient-to-r from-emerald-700 to-teal-800 text-white font-black rounded-xl text-xs transition flex items-center justify-center gap-2 active:scale-[0.99] shadow-sm cursor-pointer"
-              >
-                <span>🏆 각 구장별 1등 명단 & 랭킹 보기</span>
-                <ArrowRight className="w-3.5 h-3.5 text-amber-300" />
-              </button>
-            </div>
-
-            {/* 고정 하단 닫기 버튼 */}
-            <div className="p-3 border-t border-stone-100 shrink-0 bg-white">
-              <button
-                type="button"
-                onClick={() => setShowNationalStatsModal(false)}
-                className="w-full py-3 bg-stone-100 hover:bg-stone-200 text-stone-800 font-black rounded-xl text-sm transition cursor-pointer"
-              >
-                닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 7. 구장별 나의 등급 & 코스별 세부 성적 상세 리포트 모달 */}
+      {/* 7. [통합] 나의 등급 & 성적 종합 리포트 모달 (2대 서브 탭 탑재) */}
       {showStatsModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl animate-scaleUp max-h-[90vh] flex flex-col overflow-hidden border border-stone-100">
             {/* 고정 헤더: 스크롤을 아무리 내려도 항상 상단에 고정되어 바로 닫을 수 있음 */}
-            <div className="flex items-center justify-between border-b border-stone-100 p-4 shrink-0 bg-white z-10">
+            <div className="flex items-center justify-between border-b border-stone-100 p-3.5 sm:p-4 shrink-0 bg-white z-10">
               <div className="flex items-center gap-2">
                 <span className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-black text-base shadow-sm shrink-0">
                   🏆
                 </span>
                 <div>
                   <h3 className="text-base font-black text-stone-900 leading-tight">
-                    구장별 내 등급 & 실력·활동 랭킹
+                    나의 등급 &amp; 성적 종합 리포트
                   </h3>
                   <p className="text-[11px] text-stone-500 font-medium">
-                    18홀 완주 기준 스타 등급 및 구장별 1·2·3·4등 랭킹 분석
+                    공인 5스타 등급 · 최근 라운드 성적표 · 100위 랭킹
                   </p>
                 </div>
               </div>
@@ -1324,318 +1020,524 @@ export default function HomePage() {
               </button>
             </div>
 
+            {/* 고대비 2대 서브 탭 바 */}
+            <div className="flex items-center bg-stone-100 p-1.5 border-b border-stone-200 shrink-0 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setStatsSubTab('GRADE_RANK')}
+                className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  statsSubTab === 'GRADE_RANK'
+                    ? 'bg-white text-emerald-950 shadow-xs border border-emerald-500/40'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
+                }`}
+              >
+                <span className="text-sm">🏆</span>
+                <span>내 실력 등급 &amp; 랭킹</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatsSubTab('RECENT_ROUNDS')}
+                className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  statsSubTab === 'RECENT_ROUNDS'
+                    ? 'bg-white text-emerald-950 shadow-xs border border-emerald-500/40'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
+                }`}
+              >
+                <span className="text-sm">📋</span>
+                <span>최근 성적표 &amp; 구장 분석</span>
+              </button>
+            </div>
+
             {/* 스크롤 가능한 본문 영역 */}
             <div className="p-4 space-y-4 overflow-y-auto flex-1 overscroll-contain">
-              {/* 상단 파키 스코어카드 분석 배너 (37번: 스코어카드와 연필 든 스마트 파키) */}
-              <div className="relative rounded-2xl overflow-hidden border border-emerald-300 shadow-xs bg-stone-100 flex items-center bg-gradient-to-r from-emerald-100 to-teal-50 p-2.5 gap-3">
-                <div className="relative w-16 h-16 rounded-xl overflow-hidden shadow-xs border border-emerald-400 shrink-0 bg-white">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/mascot/사진저장고_사진_20260913_37.jpg"
-                    alt="스코어카드 기록 분석 파키"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-black text-emerald-950 flex items-center gap-1">
-                    <span>파키의 구장별 정밀 스코어 리포트</span>
-                    <span className="text-[9px] bg-emerald-700 text-white font-black px-1.5 py-0.2 rounded">공식 전적</span>
-                  </div>
-                  <p className="text-[10.5px] text-emerald-900 font-medium leading-tight mt-0.5">
-                    구장별 18홀 정규 라운드 기록으로 산출된 평균 타수와 순위표입니다.
-                  </p>
-                </div>
-              </div>
-
-              {/* 1. 선택된 구장에서의 [나의 등급 & 실력 요약 카드] */}
-              <div className="bg-gradient-to-br from-emerald-800 to-emerald-950 text-white rounded-2xl p-4 space-y-3 shadow-md border border-emerald-700/60">
-                <div className="flex items-center justify-between border-b border-emerald-700/60 pb-2.5 gap-2">
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[10.5px] text-emerald-300 font-bold flex items-center gap-1">
-                      <span>📍</span>
-                      <span>조회 중인 구장</span>
-                    </span>
-                    {/* 카카오톡 검색 결과 스타일의 깔끔한 흰색 박스 */}
-                    <div className="mt-1.5 bg-white text-stone-950 font-black px-3.5 py-1.5 rounded-xl text-sm shadow-sm border border-stone-200 inline-flex items-center gap-1.5 max-w-full">
-                      <span className="text-emerald-700 text-base leading-none">⛳</span>
-                      <span className="truncate">{activeStatsCourse.name}</span>
+              {/* ======================= [탭 1: 🏆 내 실력 등급 & 랭킹] ======================= */}
+              {statsSubTab === 'GRADE_RANK' && (
+                <>
+                  {/* 상단 파키 전국 명예의 전당 배너 (1번: 5스타 4.9점 트로피 파키) */}
+                  <div className="relative rounded-2xl overflow-hidden border border-amber-300 shadow-xs bg-stone-100 flex items-center bg-gradient-to-r from-amber-100 to-amber-50 p-2.5 gap-3">
+                    <div className="relative w-16 h-16 rounded-xl overflow-hidden shadow-xs border border-amber-400 shrink-0 bg-white">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/mascot/사진저장고_사진_20260913_1.jpg"
+                        alt="전국 공인 5스타 트로피 파키"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-black text-amber-950 flex items-center gap-1">
+                        <span>전국 파크골프 공인 명예의 전당</span>
+                        <span className="text-[9px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded">5-STAR</span>
+                      </div>
+                      <p className="text-[10.5px] text-amber-900 font-medium leading-tight mt-0.5">
+                        전국 공식 18홀 완주 기록을 기반으로 산출되는 대한민국 표준 공인 등급입니다.
+                      </p>
                     </div>
                   </div>
 
-                  {/* '미반영' 탭 삭제 -> [ 🔍 다른 구장 검색하기 ] 버튼 탑재 */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStatsSearchQuery('');
-                      setShowStatsSearchModal(true);
-                    }}
-                    className="bg-[#FEE500] hover:bg-[#FDD835] active:scale-95 text-[#191919] font-black text-xs px-3 py-2 rounded-xl shadow-md border border-[#E6CF00] flex items-center gap-1.5 transition cursor-pointer shrink-0 mt-3"
-                    title="전국 파크골프장 검색 및 조회 구장 변경"
-                  >
-                    <Search className="w-3.5 h-3.5 text-stone-900 stroke-[2.5]" />
-                    <span>다른 구장 검색하기</span>
-                  </button>
-                </div>
-
-                {/* 18홀 성적 요약 */}
-                {activeCourseStats.has18HoleCompleted ? (
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-white/10 rounded-xl p-2 border border-white/10">
-                      <div className="text-[10px] text-emerald-200 font-medium">18홀 평균</div>
-                      <div className="text-lg font-black text-yellow-300 mt-0.5">
-                        {activeCourseStats.avgScore18}타
+                  {/* 1. 전국 공인 실력 지수 카드 */}
+                  <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-3.5 flex items-center justify-between shadow-xs">
+                    <div>
+                      <div className="text-[11px] font-extrabold text-amber-950/80 mb-1 flex items-center gap-1">
+                        <span>🎯 전국 공인 실력 지수</span>
+                        {userExpStats.hasCompleted && (
+                          <span className="text-[10px] bg-amber-200/80 text-amber-900 px-1.5 py-0.2 rounded font-bold">
+                            공인 등급
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {renderExperienceStars(userExpStats.hasCompleted ? userExpPercent : 0, 'text-xl')}
+                        <span className="font-black text-base text-stone-900">
+                          {userExpStats.hasCompleted ? userExpStats.skillStarTitle : '미반영'}
+                        </span>
                       </div>
                     </div>
-                    <div className="bg-white/10 rounded-xl p-2 border border-white/10">
-                      <div className="text-[10px] text-emerald-200 font-medium">18홀 라베</div>
-                      <div className="text-lg font-black text-white mt-0.5">
-                        {activeCourseStats.bestScore18}타
+
+                    <div className="text-right shrink-0">
+                      <div className="text-[11px] text-stone-500 font-bold">18홀 환산 평균</div>
+                      <div className="text-lg font-black text-emerald-800">
+                        {userExpStats.hasCompleted ? `${userExpStats.avgScore}타` : '-'}
                       </div>
-                    </div>
-                    <div className="bg-white/10 rounded-xl p-2 border border-white/10">
-                      <div className="text-[10px] text-emerald-200 font-medium">18홀 완주</div>
-                      <div className="text-lg font-black text-emerald-100 mt-0.5">
-                        {activeCourseStats.roundCount18}회
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-emerald-900/60 border border-emerald-600/40 rounded-xl p-2.5 text-center text-xs text-emerald-200">
-                    <div className="font-black text-amber-300">⚠️ 아직 이 구장에서의 18홀 완주 기록이 없습니다</div>
-                    <div className="text-[10.5px] text-emerald-200 mt-0.5">
-                      18홀을 완주하시면 정규 평균 타수와 순위가 자동으로 등록됩니다.
+                      {userExpStats.hasCompleted && (
+                        <div className="text-[10px] font-bold text-emerald-700">
+                          ({userExpStats.parDiffText})
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
 
-                {/* 구장 내 나의 순위 현황 (실력 순위 & 활동 순위) */}
-                <div className="space-y-1.5 pt-1 border-t border-emerald-700/60 text-xs">
-                  <div className="bg-white/15 rounded-xl p-2.5 flex items-center justify-between font-bold">
-                    <span className="flex items-center gap-1.5 text-amber-200">
-                      <span>🏅</span>
-                      <span>{activeStatsCourse.name} 실력 순위</span>
-                    </span>
-                    <span className="font-black text-white">
-                      {activeCourseLeaderboard.mySkillRank
-                        ? activeCourseLeaderboard.mySkillRank.rankLabel
-                        : '완주 시 등록'}
-                    </span>
-                  </div>
-
-                  <div className="bg-white/15 rounded-xl p-2.5 flex items-center justify-between font-bold">
-                    <span className="flex items-center gap-1.5 text-emerald-200">
-                      <span>🔥</span>
-                      <span>{activeStatsCourse.name} 활동 순위</span>
-                    </span>
-                    <span className="font-black text-white">
-                      {activeCourseLeaderboard.myActivityRank
-                        ? activeCourseLeaderboard.myActivityRank.rankLabel
-                        : '라운드 시 등록'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. 🏆 [구장별 1~100위 랭킹 센터: 2줄 탭 버튼 -> 전용 팝업창 호출] */}
-              <div className="space-y-2 pt-1">
-                {/* 1번 줄: 공인 실력 1위에서 100위 버튼 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRankingMainTab('SKILL_100');
-                    setShowLeaderboard100Popup(true);
-                  }}
-                  className="w-full p-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 font-black rounded-2xl shadow-sm hover:shadow transition flex items-center justify-between cursor-pointer border border-amber-400/80 active:scale-[0.99]"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-8 h-8 rounded-xl bg-white/90 text-amber-950 flex items-center justify-center text-base shadow-2xs shrink-0 font-bold">
-                      🏆
-                    </span>
-                    <div className="text-left">
-                      <div className="text-xs font-black text-stone-950 flex items-center gap-1.5">
-                        <span>{activeStatsCourse.name} 공인 실력 1위에서 100위</span>
+                  {/* 전국 상위 백분위 게이지 바 */}
+                  {userExpStats.hasCompleted ? (
+                    <div className="space-y-1.5 bg-stone-50 p-3 rounded-xl border border-stone-200/70">
+                      <div className="flex items-center justify-between text-xs font-bold text-stone-800">
+                        <span className="flex items-center gap-1">
+                          <span>🏆 전국 실력 백분위</span>
+                        </span>
+                        <span className="font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md text-[11px]">
+                          상위 {userExpStats.rankPercent}% 고수
+                        </span>
                       </div>
-                      <div className="text-[10.5px] text-stone-900/90 font-bold">
-                        클럽전·공식 대회 기준 · 정식 공인 순위
+                      <div className="w-full bg-stone-200 rounded-full h-2.5 overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-600 h-2.5 rounded-full transition-all duration-700"
+                          style={{ width: `${Math.max(15, 100 - (userExpStats.rankPercent || 45))}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-stone-500 font-bold px-0.5">
+                        <span>초급 (상위 45%~)</span>
+                        <span>중급 (상위 25%)</span>
+                        <span>상급 (상위 10%)</span>
+                        <span>마스터 (상위 1%)</span>
                       </div>
                     </div>
-                  </div>
-                  <span className="text-xs font-black text-stone-950 bg-white/80 hover:bg-white px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs shrink-0">
-                    순위 보기 ❯
-                  </span>
-                </button>
-
-                {/* 2번 줄: 필드 활동 1위에서 100위 버튼 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRankingMainTab('ACTIVITY_100');
-                    setShowLeaderboard100Popup(true);
-                  }}
-                  className="w-full p-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black rounded-2xl shadow-sm hover:shadow transition flex items-center justify-between cursor-pointer border border-emerald-500/80 active:scale-[0.99]"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center text-base shadow-2xs shrink-0 font-bold">
-                      🔥
-                    </span>
-                    <div className="text-left">
-                      <div className="text-xs font-black text-white flex items-center gap-1.5">
-                        <span>{activeStatsCourse.name} 필드 활동 1위에서 100위</span>
-                      </div>
-                      <div className="text-[10.5px] text-emerald-100 font-medium">
-                        친선·연습 포함 모든 완주 기록 100% 반영
-                      </div>
+                  ) : (
+                    <div className="bg-stone-50 rounded-xl p-3 border border-stone-200/80 text-center text-xs text-stone-500 font-medium">
+                      ⛳ 라운드를 1회 이상 완주하시면 지금까지 친 스코어를 종합 분석하여 <strong>별 5개 전국 등급과 상위 %(퍼센트)</strong>가 자동으로 산출됩니다.
                     </div>
-                  </div>
-                  <span className="text-xs font-black text-emerald-950 bg-white hover:bg-emerald-50 px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs shrink-0">
-                    순위 보기 ❯
-                  </span>
-                </button>
-              </div>
+                  )}
 
-              {/* 4. 코스별(A, B, C, D) 세부 타수 분석 */}
-              {activeCourseStats.subCourses.length > 0 && (
-                <div className="bg-stone-50 rounded-2xl p-3.5 border border-stone-200/80 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-black text-stone-800">
-                    <span>⛳ {activeStatsCourse.name} 코스별 타수 분석</span>
-                    <span className="text-[10px] text-stone-500 font-medium">9홀 기준</span>
-                  </div>
+                  {/* 2. 전국 필드 활동 지수 (열정 지수) 박스 */}
+                  <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-3.5 space-y-2.5 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-black text-xs text-emerald-950">
+                        <span className="text-sm">🔥</span>
+                        <span>전국 필드 활동 지수 (열정 랭킹)</span>
+                      </div>
+                      <span className="text-[11px] font-black text-emerald-900 bg-white px-2 py-0.5 rounded-lg border border-emerald-300 shadow-2xs">
+                        {userExpStats.activityPercent > 0 ? `${userExpStats.activityPercent}% (${userExpStats.activityTier})` : '0% (기록 없음)'}
+                      </span>
+                    </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {activeCourseStats.subCourses.map((sc) => (
+                    <div className="w-full bg-stone-200 rounded-full h-2.5 overflow-hidden">
                       <div
-                        key={sc.letter}
-                        className="bg-white rounded-xl p-2.5 border border-stone-200/70 space-y-1 shadow-2xs"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-black text-xs text-stone-800">{sc.name}</span>
-                          <span className="text-[10px] text-stone-500 font-bold bg-stone-100 px-1.5 py-0.2 rounded">
-                            {sc.roundCount}회 완주
-                          </span>
-                        </div>
-                        <div className="flex items-baseline justify-between pt-0.5">
-                          <span className="text-[10px] text-stone-500">평균 타수</span>
-                          <span className="text-xs font-black text-emerald-800">
-                            {sc.roundCount > 0 ? `${sc.avgScore}타` : '기록 없음'}
-                          </span>
-                        </div>
-                        <div className="flex items-baseline justify-between text-[10px] text-stone-600 font-medium">
-                          <span>코스 라베</span>
-                          <span className="font-bold text-amber-700">
-                            {sc.roundCount > 0 ? `${sc.bestScore}타` : '-'}
-                          </span>
+                        className="bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-700 h-2.5 rounded-full transition-all duration-700"
+                        style={{ width: `${Math.max(8, userExpStats.activityPercent)}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-emerald-900 font-bold px-0.5">
+                      <span>월 1~2회 즐김</span>
+                      <span>주 1~2회 정기</span>
+                      <span>주 2~3회 활발</span>
+                      <span>하루 2~3게임 열정왕</span>
+                    </div>
+
+                    <p className="text-[10.5px] text-emerald-800 leading-snug bg-white/80 p-2 rounded-xl border border-emerald-200/60 font-medium">
+                      💡 <strong>활동 지수란?</strong> 타수 실력(스타 등급)과 별개로, 필드를 얼마나 자주 찾고 열심히 라운드를 즐기는지를 반영합니다. (최근 30일 공식 완주: <strong>{userExpStats.roundCount30Days}회</strong>)
+                    </p>
+                  </div>
+
+                  {/* 3. 🏆 [구장별 1~100위 랭킹 센터: 2줄 탭 버튼 -> 전용 팝업창 호출] */}
+                  <div className="space-y-2 pt-1">
+                    {/* 1번 줄: 공인 실력 1위에서 100위 버튼 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRankingMainTab('SKILL_100');
+                        setShowLeaderboard100Popup(true);
+                      }}
+                      className="w-full p-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 font-black rounded-2xl shadow-sm hover:shadow transition flex items-center justify-between cursor-pointer border border-amber-400/80 active:scale-[0.99]"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-8 h-8 rounded-xl bg-white/90 text-amber-950 flex items-center justify-center text-base shadow-2xs shrink-0 font-bold">
+                          🏆
+                        </span>
+                        <div className="text-left">
+                          <div className="text-xs font-black text-stone-950 flex items-center gap-1.5">
+                            <span>{activeStatsCourse.name} 공인 실력 1위에서 100위</span>
+                          </div>
+                          <div className="text-[10.5px] text-stone-900/90 font-bold">
+                            클럽전·공식 대회 기준 · 정식 공인 순위
+                          </div>
                         </div>
                       </div>
-                    ))}
+                      <span className="text-xs font-black text-stone-950 bg-white/80 hover:bg-white px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs shrink-0">
+                        순위 보기 ❯
+                      </span>
+                    </button>
+
+                    {/* 2번 줄: 필드 활동 1위에서 100위 버튼 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRankingMainTab('ACTIVITY_100');
+                        setShowLeaderboard100Popup(true);
+                      }}
+                      className="w-full p-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black rounded-2xl shadow-sm hover:shadow transition flex items-center justify-between cursor-pointer border border-emerald-500/80 active:scale-[0.99]"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center text-base shadow-2xs shrink-0 font-bold">
+                          🔥
+                        </span>
+                        <div className="text-left">
+                          <div className="text-xs font-black text-white flex items-center gap-1.5">
+                            <span>{activeStatsCourse.name} 필드 활동 1위에서 100위</span>
+                          </div>
+                          <div className="text-[10.5px] text-emerald-100 font-medium">
+                            친선·연습 포함 모든 완주 기록 100% 반영
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xs font-black text-emerald-950 bg-white hover:bg-emerald-50 px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs shrink-0">
+                        순위 보기 ❯
+                      </span>
+                    </button>
                   </div>
-                </div>
+
+                  {/* 카카오 1초 로그인 & 클라우드 안전 보관 배너 */}
+                  <div className="bg-[#FEE500] p-3.5 rounded-2xl border border-[#E6CF00] shadow-sm text-[#191919] space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-base leading-none">💬</span>
+                        <span className="text-xs font-black">
+                          {kakaoUser ? `${kakaoUser.nickname}님의 카카오 계정 연동됨` : '카카오톡 1초 평생 전적 보관'}
+                        </span>
+                      </div>
+                      {kakaoUser ? (
+                        <span className="text-[10px] bg-emerald-700 text-white font-black px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                          <Check className="w-2.5 h-2.5" /> 안전 보관 중
+                        </span>
+                      ) : (
+                        <span className="text-[10px] bg-black/10 text-stone-900 font-bold px-2 py-0.5 rounded-full">
+                          추천
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-stone-800 font-medium leading-relaxed">
+                      {kakaoUser
+                        ? '휴대폰을 변경하거나 캐시를 초기화해도 카카오 계정에 모든 전적과 등급이 안전하게 유지됩니다.'
+                        : '카카오톡 1초 연동 시 스마트폰을 바꾸거나 분실해도 모든 성적표와 전국 5스타 등급이 평생 안전 보관됩니다.'}
+                    </p>
+                    {!kakaoUser ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowKakaoModal(true)}
+                        className="w-full py-2.5 bg-stone-950 hover:bg-stone-800 active:scale-95 text-[#FEE500] font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <span className="text-sm leading-none">💬</span>
+                        <span>카카오로 1초 전적 평생 보관하기</span>
+                      </button>
+                    ) : (
+                      <div className="flex items-center justify-between pt-0.5">
+                        <span className="text-[10px] text-stone-700 font-bold">
+                          연동일시: {new Date(kakaoUser.connectedAt).toLocaleDateString()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowKakaoModal(true)}
+                          className="text-[11px] font-black text-stone-900 underline cursor-pointer hover:text-stone-700"
+                        >
+                          계정 관리 / 로그아웃
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 데이터 1초 백업 & 카카오톡 보관 / 복원 카드 */}
+                  <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Share2 className="w-4 h-4 text-emerald-600" />
+                        <span className="text-xs font-black text-stone-900">내 전적 데이터 1초 백업 &amp; 복원</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-stone-600 bg-stone-200/80 px-2 py-0.5 rounded-full">
+                        기기변경/초기화 대비
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-stone-600 font-medium leading-relaxed">
+                      현재까지 기록된 라운드 성적표와 전국 등급(별점) 데이터를 암호화 코드로 복사하여 카카오톡 &apos;나와의 채팅&apos; 등에 안전하게 보관할 수 있습니다.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleExportBackup}
+                        className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                        <span>내 전적 백업 복사</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleImportBackup}
+                        className="py-2.5 px-3 bg-white hover:bg-stone-100 active:scale-95 text-stone-800 font-black text-xs rounded-xl border border-stone-300 shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5 text-stone-600" />
+                        <span>백업 기록 복원</span>
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
 
+              {/* ======================= [탭 2: 📋 최근 성적표 & 코스 분석] ======================= */}
+              {statsSubTab === 'RECENT_ROUNDS' && (
+                <>
+                  {/* 상단 파키 스코어카드 분석 배너 (37번: 스코어카드와 연필 든 스마트 파키) */}
+                  <div className="relative rounded-2xl overflow-hidden border border-emerald-300 shadow-xs bg-stone-100 flex items-center bg-gradient-to-r from-emerald-100 to-teal-50 p-2.5 gap-3">
+                    <div className="relative w-16 h-16 rounded-xl overflow-hidden shadow-xs border border-emerald-400 shrink-0 bg-white">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/mascot/사진저장고_사진_20260913_37.jpg"
+                        alt="스코어카드 기록 분석 파키"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-black text-emerald-950 flex items-center gap-1">
+                        <span>파키의 실전 스코어 분석 리포트</span>
+                        <span className="text-[9px] bg-emerald-700 text-white font-black px-1.5 py-0.2 rounded">공식 전적</span>
+                      </div>
+                      <p className="text-[10.5px] text-emerald-900 font-medium leading-tight mt-0.5">
+                        최근 라운드 상세 전적표 및 구장별 코스 완주 기록입니다.
+                      </p>
+                    </div>
+                  </div>
 
-            {/* 카카오 1초 로그인 & 클라우드 안전 보관 배너 */}
-            <div className="bg-[#FEE500] p-3.5 rounded-2xl border border-[#E6CF00] shadow-sm text-[#191919] space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-base leading-none">💬</span>
-                  <span className="text-xs font-black">
-                    {kakaoUser ? `${kakaoUser.nickname}님의 카카오 계정 연동됨` : '카카오톡 1초 평생 전적 보관'}
-                  </span>
-                </div>
-                {kakaoUser ? (
-                  <span className="text-[10px] bg-emerald-700 text-white font-black px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                    <Check className="w-2.5 h-2.5" /> 안전 보관 중
-                  </span>
-                ) : (
-                  <span className="text-[10px] bg-black/10 text-stone-900 font-bold px-2 py-0.5 rounded-full">
-                    추천
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-stone-800 font-medium leading-relaxed">
-                {kakaoUser
-                  ? '휴대폰을 변경하거나 캐시를 초기화해도 카카오 계정에 모든 전적과 등급이 안전하게 유지됩니다.'
-                  : '카카오톡 1초 연동 시 스마트폰을 바꾸거나 분실해도 모든 성적표와 전국 5스타 등급이 평생 안전 보관됩니다.'}
-              </p>
-              {!kakaoUser ? (
-                <button
-                  type="button"
-                  onClick={() => setShowKakaoModal(true)}
-                  className="w-full py-2.5 bg-stone-950 hover:bg-stone-800 active:scale-95 text-[#FEE500] font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <span className="text-sm leading-none">💬</span>
-                  <span>카카오로 1초 전적 평생 보관하기</span>
-                </button>
-              ) : (
-                <div className="flex items-center justify-between pt-0.5">
-                  <span className="text-[10px] text-stone-700 font-bold">
-                    연동일시: {new Date(kakaoUser.connectedAt).toLocaleDateString()}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowKakaoModal(true)}
-                    className="text-[11px] font-black text-stone-900 underline cursor-pointer hover:text-stone-700"
-                  >
-                    계정 관리 / 로그아웃
-                  </button>
-                </div>
+                  {/* 1. 최근 내 라운드 성적표 리스트 */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between px-0.5">
+                      <div className="flex items-center gap-1.5 font-extrabold text-xs text-stone-900">
+                        <History className="w-4 h-4 text-emerald-700" />
+                        <span>최근 내 라운드 성적표</span>
+                      </div>
+                      <span className="text-[11px] text-stone-600 font-bold">
+                        총 {completedRounds.length}회 기록
+                      </span>
+                    </div>
+
+                    {completedRounds.length > 0 ? (
+                      <div className="space-y-2">
+                        {completedRounds.slice(0, 5).map((r) => {
+                          const bestPlayer = [...r.players].sort((a, b) => a.totalStrokes - b.totalStrokes)[0];
+                          const is18Holes = r.totalHoles >= 18 || Object.keys(bestPlayer?.scores || {}).length >= 18;
+                          const isOfficial = r.isOfficial !== false;
+                          return (
+                            <div
+                              key={r.id}
+                              className="bg-stone-50 rounded-2xl p-3 border border-stone-200/90 flex items-center justify-between shadow-2xs"
+                            >
+                              <div>
+                                <div className="font-bold text-xs sm:text-sm text-stone-900 flex items-center gap-1.5 flex-wrap">
+                                  <span>{r.courseName}</span>
+                                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${isOfficial ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-600'}`}>
+                                    {isOfficial ? '🏆 공식' : '🧪 연습·테스트'}
+                                  </span>
+                                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${is18Holes ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                                    {is18Holes ? '18홀' : '9홀'}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-stone-500 mt-0.5">
+                                  {r.completedAt ? new Date(r.completedAt).toLocaleDateString('ko-KR') : '최근'} · {r.players.length}명 참여
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="text-[10px] font-bold text-emerald-700">
+                                  1위 {bestPlayer?.name}
+                                </div>
+                                <div className="text-sm font-black text-stone-900">
+                                  {bestPlayer?.totalStrokes}타 ({bestPlayer?.totalParDiff >= 0 ? `+${bestPlayer?.totalParDiff}` : bestPlayer?.totalParDiff})
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="bg-stone-50 rounded-2xl p-4 text-center border border-stone-200 text-xs text-stone-500">
+                        아직 완료된 라운드 기록이 없습니다.<br />
+                        첫 라운드를 진행해 보세요! ⛳
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 2. 선택된 구장에서의 [나의 등급 & 실력 요약 카드] */}
+                  <div className="bg-gradient-to-br from-emerald-800 to-emerald-950 text-white rounded-2xl p-4 space-y-3 shadow-md border border-emerald-700/60">
+                    <div className="flex items-center justify-between border-b border-emerald-700/60 pb-2.5 gap-2">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[10.5px] text-emerald-300 font-bold flex items-center gap-1">
+                          <span>📍</span>
+                          <span>조회 중인 구장</span>
+                        </span>
+                        {/* 카카오톡 검색 결과 스타일의 깔끔한 흰색 박스 */}
+                        <div className="mt-1.5 bg-white text-stone-950 font-black px-3.5 py-1.5 rounded-xl text-sm shadow-sm border border-stone-200 inline-flex items-center gap-1.5 max-w-full">
+                          <span className="text-emerald-700 text-base leading-none">⛳</span>
+                          <span className="truncate">{activeStatsCourse.name}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStatsSearchQuery('');
+                          setShowStatsSearchModal(true);
+                        }}
+                        className="bg-[#FEE500] hover:bg-[#FDD835] active:scale-95 text-[#191919] font-black text-xs px-3 py-2 rounded-xl shadow-md border border-[#E6CF00] flex items-center gap-1.5 transition cursor-pointer shrink-0 mt-3"
+                        title="전국 파크골프장 검색 및 조회 구장 변경"
+                      >
+                        <Search className="w-3.5 h-3.5 text-stone-900 stroke-[2.5]" />
+                        <span>다른 구장 검색하기</span>
+                      </button>
+                    </div>
+
+                    {/* 18홀 성적 요약 */}
+                    {activeCourseStats.has18HoleCompleted ? (
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-white/10 rounded-xl p-2 border border-white/10">
+                          <div className="text-[10px] text-emerald-200 font-medium">18홀 평균</div>
+                          <div className="text-lg font-black text-yellow-300 mt-0.5">
+                            {activeCourseStats.avgScore18}타
+                          </div>
+                        </div>
+                        <div className="bg-white/10 rounded-xl p-2 border border-white/10">
+                          <div className="text-[10px] text-emerald-200 font-medium">18홀 라베</div>
+                          <div className="text-lg font-black text-white mt-0.5">
+                            {activeCourseStats.bestScore18}타
+                          </div>
+                        </div>
+                        <div className="bg-white/10 rounded-xl p-2 border border-white/10">
+                          <div className="text-[10px] text-emerald-200 font-medium">18홀 완주</div>
+                          <div className="text-lg font-black text-emerald-100 mt-0.5">
+                            {activeCourseStats.roundCount18}회
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-emerald-900/60 border border-emerald-600/40 rounded-xl p-2.5 text-center text-xs text-emerald-200">
+                        <div className="font-black text-amber-300">⚠️ 아직 이 구장에서의 18홀 완주 기록이 없습니다</div>
+                        <div className="text-[10.5px] text-emerald-200 mt-0.5">
+                          18홀을 완주하시면 정규 평균 타수와 순위가 자동으로 등록됩니다.
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 구장 내 나의 순위 현황 (실력 순위 & 활동 순위) */}
+                    <div className="space-y-1.5 pt-1 border-t border-emerald-700/60 text-xs">
+                      <div className="bg-white/15 rounded-xl p-2.5 flex items-center justify-between font-bold">
+                        <span className="flex items-center gap-1.5 text-amber-200">
+                          <span>🏅</span>
+                          <span>{activeStatsCourse.name} 실력 순위</span>
+                        </span>
+                        <span className="font-black text-white">
+                          {activeCourseLeaderboard.mySkillRank
+                            ? activeCourseLeaderboard.mySkillRank.rankLabel
+                            : '완주 시 등록'}
+                        </span>
+                      </div>
+
+                      <div className="bg-white/15 rounded-xl p-2.5 flex items-center justify-between font-bold">
+                        <span className="flex items-center gap-1.5 text-emerald-200">
+                          <span>🔥</span>
+                          <span>{activeStatsCourse.name} 활동 순위</span>
+                        </span>
+                        <span className="font-black text-white">
+                          {activeCourseLeaderboard.myActivityRank
+                            ? activeCourseLeaderboard.myActivityRank.rankLabel
+                            : '라운드 시 등록'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. 코스별(A, B, C, D) 세부 타수 분석 */}
+                  {activeCourseStats.subCourses.length > 0 && (
+                    <div className="bg-stone-50 rounded-2xl p-3.5 border border-stone-200/80 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-black text-stone-800">
+                        <span>⛳ {activeStatsCourse.name} 코스별 타수 분석</span>
+                        <span className="text-[10px] text-stone-500 font-medium">9홀 기준</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        {activeCourseStats.subCourses.map((sc) => (
+                          <div
+                            key={sc.letter}
+                            className="bg-white rounded-xl p-2.5 border border-stone-200/70 space-y-1 shadow-2xs"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-black text-xs text-stone-800">{sc.name}</span>
+                              <span className="text-[10px] text-stone-500 font-bold bg-stone-100 px-1.5 py-0.2 rounded">
+                                {sc.roundCount}회 완주
+                              </span>
+                            </div>
+                            <div className="flex items-baseline justify-between pt-0.5">
+                              <span className="text-[10px] text-stone-500">평균 타수</span>
+                              <span className="text-xs font-black text-emerald-800">
+                                {sc.roundCount > 0 ? `${sc.avgScore}타` : '기록 없음'}
+                              </span>
+                            </div>
+                            <div className="flex items-baseline justify-between text-[10px] text-stone-600 font-medium">
+                              <span>코스 라베</span>
+                              <span className="font-bold text-amber-700">
+                                {sc.roundCount > 0 ? `${sc.bestScore}타` : '-'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 누적/테스트 기록 전체 비우기 버튼 */}
+                  {completedRounds.length > 0 && (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('기록된 모든 라운드(테스트 포함)를 전부 삭제하고 깨끗한 초기 상태로 되돌리시겠습니까?')) {
+                            ParkOnStorage.clearCompletedRounds();
+                            setCompletedRounds([]);
+                            setShowStatsModal(false);
+                            alert('모든 라운드 및 테스트 기록이 깨끗하게 초기화되었습니다.');
+                          }
+                        }}
+                        className="w-full py-2.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>누적 라운드 및 테스트 기록 전체 삭제 (초기화)</span>
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
-            </div>
-
-            {/* 데이터 1초 백업 & 카카오톡 보관 / 복원 카드 */}
-            <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Share2 className="w-4 h-4 text-emerald-600" />
-                  <span className="text-xs font-black text-stone-900">내 전적 데이터 1초 백업 & 복원</span>
-                </div>
-                <span className="text-[10px] font-bold text-stone-600 bg-stone-200/80 px-2 py-0.5 rounded-full">
-                  기기변경/초기화 대비
-                </span>
-              </div>
-              <p className="text-[11px] text-stone-600 font-medium leading-relaxed">
-                현재까지 기록된 라운드 성적표와 전국 등급(별점) 데이터를 암호화 코드로 복사하여 카카오톡 &apos;나와의 채팅&apos; 등에 안전하게 보관할 수 있습니다.
-              </p>
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleExportBackup}
-                  className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Share2 className="w-3.5 h-3.5" />
-                  <span>내 전적 백업 복사</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleImportBackup}
-                  className="py-2.5 px-3 bg-white hover:bg-stone-100 active:scale-95 text-stone-800 font-black text-xs rounded-xl border border-stone-300 shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5 text-stone-600" />
-                  <span>백업 기록 복원</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 누적/테스트 기록 전체 비우기 버튼 */}
-            {completedRounds.length > 0 && (
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm('기록된 모든 라운드(테스트 포함)를 전부 삭제하고 깨끗한 초기 상태로 되돌리시겠습니까?')) {
-                      ParkOnStorage.clearCompletedRounds();
-                      setCompletedRounds([]);
-                      setShowStatsModal(false);
-                      alert('모든 라운드 및 테스트 기록이 깨끗하게 초기화되었습니다.');
-                    }
-                  }}
-                  className="w-full py-2.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>누적 라운드 및 테스트 기록 전체 삭제 (초기화)</span>
-                </button>
-              </div>
-            )}
-
             </div>
 
             {/* 고정 하단 닫기 버튼 */}
@@ -2312,6 +2214,34 @@ export default function HomePage() {
           setUserProfile(ParkOnStorage.getUserProfile());
         }}
       />
+
+      {/* 오늘 구장 실시간 종합 정보 모달 (날씨·휴장·잔디리포트·주차장 내비) */}
+      {showCourseTodayModal && (() => {
+        const targetCourse = homeCourse || getCurrentActiveCourse() || courses[0];
+        if (!targetCourse) return null;
+        return (
+          <CourseTodayModal
+            isOpen={showCourseTodayModal}
+            onClose={() => setShowCourseTodayModal(false)}
+            course={targetCourse}
+            onOpenCourseDetail={() => setSelectedCourseForDetail(targetCourse)}
+          />
+        );
+      })()}
+
+      {/* 구장 코스 둘러보기 모달 (홀별 거리·파·공략팁) */}
+      {selectedCourseForDetail && (
+        <CourseDetailModal
+          course={selectedCourseForDetail}
+          onClose={() => setSelectedCourseForDetail(null)}
+          onSaved={(updated) => {
+            ParkOnStorage.updateCourse(updated);
+            setSelectedCourseForDetail(updated);
+            const all = ParkOnStorage.getAllCourses();
+            setCourses(all);
+          }}
+        />
+      )}
     </div>
   );
 }

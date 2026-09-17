@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Award, CheckCircle2, Camera, Edit2, Lock, Unlock, Save, ShieldCheck, History, ChevronRight, AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
+import { X, Award, CheckCircle2, Camera, Edit2, Lock, Unlock, Save, ShieldCheck, History, Play, AlertTriangle } from 'lucide-react';
 import { Course, HoleMetadata, CourseContribution } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
+import { generateStandardHoles } from '@/lib/defaultCourses';
 
 interface CourseDetailModalProps {
   course: Course;
@@ -14,38 +16,55 @@ interface CourseDetailModalProps {
 const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
 export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModalProps) {
-  const totalCoursesCount = course.totalCourses || Math.max(1, Math.round(course.totalHoles / 9));
-  const availableCourses = COURSE_LETTERS.slice(0, totalCoursesCount);
+  // 동락파크골프장 또는 36홀 이상인 경우 최소 4코스(A, B, C, D) 보장
+  const isDongrakOr36 = course.name.includes('동락') || (course.totalHoles && course.totalHoles >= 36);
+  const totalCoursesCount = Math.max(
+    course.totalCourses || 0,
+    Math.round((course.totalHoles || 0) / 9),
+    isDongrakOr36 ? 4 : 1
+  );
+  const availableCourses = COURSE_LETTERS.slice(0, Math.max(totalCoursesCount, 4));
+  const totalRequiredHoles = availableCourses.length * 9;
+
+  // 전체 홀 데이터가 부족할 경우 36홀 표준 홀로 자동 보강
+  const initialHoles: HoleMetadata[] = [...(course.holesMetadata || [])];
+  if (initialHoles.length < totalRequiredHoles) {
+    const std = generateStandardHoles(totalRequiredHoles);
+    for (let i = initialHoles.length; i < totalRequiredHoles; i++) {
+      initialHoles.push(std[i] || { hole: i + 1, par: 4, distanceMeter: 70 });
+    }
+  }
 
   const [currentCourseIdx, setCurrentCourseIdx] = useState<number>(0);
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [editedHoles, setEditedHoles] = useState<HoleMetadata[]>(course.holesMetadata);
+  const [editedHoles, setEditedHoles] = useState<HoleMetadata[]>(initialHoles);
   const [editorName, setEditorName] = useState<string>('');
   const [imageUrl, setImageUrl] = useState<string>(course.imageUrl || '');
   const [isLocked, setIsLocked] = useState<boolean>(course.isLocked || false);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
+  const [showPhotoSection, setShowPhotoSection] = useState<boolean>(false);
 
   const currentCourseLetter = availableCourses[currentCourseIdx] || 'A';
   const startHoleNum = currentCourseIdx * 9 + 1;
-  const endHoleNum = Math.min(course.totalHoles, (currentCourseIdx + 1) * 9);
+  const endHoleNum = (currentCourseIdx + 1) * 9;
 
-  // Filter 9 holes for active course
+  // 현재 선택된 코스의 9개 홀 필터링
   const currentHoles = editedHoles.filter(
     (h) => h.hole >= startHoleNum && h.hole <= endHoleNum
   );
 
-  // Total par and distance for current 9-hole course
+  // 현재 9홀 합계 Par 및 거리
   const totalParCurrent = currentHoles.reduce((sum, h) => sum + h.par, 0);
   const totalDistCurrent = currentHoles.reduce((sum, h) => sum + h.distanceMeter, 0);
 
-  // Handle single hole field changes in edit mode
-  const handleHoleChange = (holeNumber: number, field: 'par' | 'distanceMeter' | 'localRule', value: any) => {
+  // 개별 홀 제원 수정 핸들러
+  const handleHoleChange = (holeNumber: number, field: 'par' | 'distanceMeter' | 'localRule' | 'tip', value: any) => {
     setEditedHoles((prev) =>
       prev.map((h) => (h.hole === holeNumber ? { ...h, [field]: value } : h))
     );
   };
 
-  // Image Upload Handler (Convert to Base64)
+  // 이미지 업로드 핸들러
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -58,11 +77,11 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     reader.readAsDataURL(file);
   };
 
-  // Save changes
+  // 제원 정정 저장
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editorName.trim()) {
-      alert('명예의 전당 등록을 위해 기여자 성함(닉네임)을 입력해 주세요.');
+      alert('실측 제원 검증 및 명예의 전당 등록을 위해 기여자 성함(또는 닉네임)을 입력해 주세요.');
       return;
     }
 
@@ -70,7 +89,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     const newHistoryEntry: CourseContribution = {
       author: editorName.trim(),
       date: todayStr,
-      action: `${currentCourseLetter}코스 홀별 거리 및 타수(Par) 실측 제원 정정`,
+      action: `${currentCourseLetter}코스 홀별 거리(m) 및 기준타수(Par) 현장 실측 정정`,
     };
 
     const existingHistory = course.contributionHistory || [];
@@ -78,6 +97,8 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
 
     const updatedCourse: Course = {
       ...course,
+      totalCourses: availableCourses.length,
+      totalHoles: Math.max(course.totalHoles || 0, totalRequiredHoles),
       holesMetadata: editedHoles,
       imageUrl: imageUrl.trim() || undefined,
       isLocked: isLocked,
@@ -93,306 +114,221 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
       onSaved(updatedCourse);
       setIsEditing(false);
       setSavedSuccess(false);
-    }, 1000);
+    }, 800);
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white w-full max-w-lg rounded-3xl p-5 shadow-2xl space-y-4 my-auto animate-scaleUp max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col border border-stone-200 animate-in fade-in zoom-in-95 duration-200">
         {/* 1. Header */}
-        <div className="flex items-start justify-between border-b border-stone-100 pb-3 shrink-0">
-          <div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <h3 className="font-black text-xl text-stone-900 leading-tight">
-                {course.name}
+        <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-teal-950 p-4 text-white flex items-center justify-between shrink-0 shadow-sm">
+          <div className="min-w-0 flex-1 pr-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-black text-base sm:text-lg text-white tracking-tight truncate">
+                {course.name} 실측 정보
               </h3>
-              {course.isLocked ? (
-                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Lock className="w-3 h-3 text-emerald-700" />
-                  <span>공식 제원 확정됨</span>
-                </span>
-              ) : (
-                <span className="text-[10px] bg-amber-100 text-amber-800 font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Unlock className="w-3 h-3 text-amber-700" />
-                  <span>실측 제원 정정 가능</span>
-                </span>
-              )}
+              <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
+                공식 제원
+              </span>
             </div>
-            <p className="text-xs text-stone-600 font-medium mt-0.5">
-              {course.region} · 총 {totalCoursesCount}코스 {course.totalHoles}홀 코스
+            <p className="text-[11px] text-emerald-200 mt-0.5 truncate">
+              {course.region} · 총 {availableCourses.length}코스 {course.totalHoles || 36}홀 실측 제원표
             </p>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 shrink-0"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsEditing(!isEditing)}
+              className={`px-2.5 py-1 rounded-xl text-xs font-black transition flex items-center gap-1 cursor-pointer active:scale-95 ${
+                isEditing
+                  ? 'bg-rose-500 hover:bg-rose-600 text-white'
+                  : 'bg-white/20 hover:bg-white/30 text-amber-300 border border-white/20'
+              }`}
+            >
+              <Edit2 className="w-3 h-3" />
+              <span>{isEditing ? '정정 취소' : '제원 정정'}</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm font-bold transition cursor-pointer"
+              title="닫기"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-          {/* 2. 👑 Course Master & Hall of Fame Banner */}
-          <div className="bg-gradient-to-r from-amber-50 to-amber-100/70 border border-amber-300 rounded-2xl p-3.5 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="w-9 h-9 rounded-full bg-amber-400 text-amber-950 font-black flex items-center justify-center text-lg shadow-sm">
-                👑
-              </span>
-              <div>
-                <div className="text-[11px] font-black text-amber-900">
-                  구장 마스터 명예의 전당
-                </div>
-                <div className="text-sm font-black text-stone-900">
-                  {course.courseMaster || course.contributorName || '구미파크골프협회 (검증 대기)'}
-                </div>
-              </div>
-            </div>
+        {/* 2. [핵심] A, B, C, D 코스 대형 탭 버튼 (상단 고정 노출) */}
+        <div className="p-3 bg-stone-100 border-b border-stone-200 shrink-0 space-y-2">
+          <div className="grid grid-cols-4 gap-1.5">
+            {availableCourses.map((letter, idx) => {
+              const isActive = currentCourseIdx === idx;
 
-            <div className="text-right">
-              <span className="text-[10px] bg-white border border-amber-300 text-amber-950 font-black px-2 py-1 rounded-lg">
-                기여도 Karma +50
-              </span>
-            </div>
-          </div>
-
-          {/* 3. Course Map Photo Section */}
-          <div className="bg-stone-50 rounded-2xl p-3.5 border border-stone-200 space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-black text-stone-800 flex items-center gap-1.5">
-                <Camera className="w-4 h-4 text-emerald-700" />
-                <span>구장 코스 안내도 & 현장 스코어카드 사진</span>
-              </label>
-              {isEditing && (
-                <label className="text-[11px] bg-emerald-600 text-white font-black px-2 py-1 rounded-lg cursor-pointer hover:bg-emerald-500 transition">
-                  <span>+ 사진 등록/변경</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                </label>
-              )}
-            </div>
-
-            {imageUrl ? (
-              <div className="relative rounded-xl overflow-hidden border border-stone-200 max-h-44 bg-black/5 flex items-center justify-center">
-                <img
-                  src={imageUrl}
-                  alt={`${course.name} 안내도`}
-                  className="w-full h-auto object-cover"
-                />
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-stone-300 rounded-xl p-4 text-center text-stone-500 text-xs">
-                {isEditing ? (
-                  <label className="cursor-pointer font-bold text-emerald-700 hover:underline">
-                    여기를 눌러 현장 스코어카드 사진이나 구장 안내판 사진을 업로드하세요.
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
-                ) : (
-                  <span>등록된 현장 안내도 사진이 없습니다. [제원 정정 모드]에서 사진을 등록할 수 있습니다.</span>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* 4. Course Letter Tabs (A, B, C, D, E, F, G ...) */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-bold text-stone-700">
-              <span>코스 선택 (각 코스 9홀)</span>
-              <span className="text-emerald-800 font-black">
-                {currentCourseLetter}코스 ({startHoleNum}~{endHoleNum}번 홀)
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-              {availableCourses.map((letter, idx) => (
+              return (
                 <button
                   key={letter}
                   type="button"
                   onClick={() => setCurrentCourseIdx(idx)}
-                  className={`px-3.5 py-1.5 rounded-xl font-black text-xs transition border ${
-                    currentCourseIdx === idx
-                      ? 'bg-emerald-700 text-white border-emerald-700 shadow'
-                      : 'bg-stone-100 text-stone-700 border-stone-200 hover:bg-stone-200'
+                  className={`py-2 px-1 rounded-2xl text-center transition cursor-pointer active:scale-97 border ${
+                    isActive
+                      ? 'bg-emerald-800 text-white border-emerald-900 shadow-md ring-2 ring-emerald-500'
+                      : 'bg-white text-stone-700 hover:bg-stone-50 border-stone-200/80 shadow-2xs'
                   }`}
                 >
-                  {letter}코스
+                  <div className={`text-sm sm:text-base font-black leading-tight ${isActive ? 'text-amber-300' : 'text-stone-900'}`}>
+                    {letter} 코스
+                  </div>
+                  <div className={`text-[10px] font-bold mt-0.5 ${isActive ? 'text-emerald-200' : 'text-stone-500'}`}>
+                    1~9홀 (9홀)
+                  </div>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
 
-          {/* 5. Holes Metadata Table (Par, Distance, Local Rule) */}
-          <div className="bg-white rounded-2xl border-2 border-stone-200 overflow-hidden shadow-sm">
-            <div className="bg-stone-100 px-3 py-2 border-b border-stone-200 flex items-center justify-between">
-              <span className="font-extrabold text-xs text-stone-800">
-                {currentCourseLetter}코스 홀별 상세 제원표
-              </span>
-              <div className="text-xs font-black text-emerald-900 flex items-center gap-2">
-                <span>합계: Par {totalParCurrent}</span>
-                <span>·</span>
-                <span>총 {totalDistCurrent}m</span>
-              </div>
+          {/* 현재 코스 요약 띠 */}
+          <div className="flex items-center justify-between px-1 text-xs">
+            <span className="font-black text-stone-800 flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+              <span>{currentCourseLetter}코스 상세 제원 (1~9번 홀)</span>
+            </span>
+            <div className="font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-lg border border-emerald-200">
+              Par {totalParCurrent} · 총 {totalDistCurrent}m
             </div>
+          </div>
+        </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-center text-xs">
-                <thead>
-                  <tr className="bg-stone-50 border-b border-stone-200 text-stone-600 font-bold">
-                    <th className="py-2 px-1.5">홀</th>
-                    <th className="py-2 px-1.5">기준타수(Par)</th>
-                    <th className="py-2 px-1.5">거리(m)</th>
-                    <th className="py-2 px-2 text-left">현장 로컬룰 및 공략</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100 font-semibold text-stone-900">
-                  {currentHoles.map((h, i) => (
-                    <tr key={h.hole} className={i % 2 === 0 ? 'bg-white' : 'bg-stone-50/50'}>
-                      {/* Hole number */}
-                      <td className="py-2.5 px-1.5 font-black text-emerald-800">
-                        {h.hole}홀 ({i + 1})
-                      </td>
+        {/* 3. 본문 스크롤: 9개 홀 카드 리스트 */}
+        <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5">
+          {/* 정정 모드 안내 배너 */}
+          {isEditing && (
+            <div className="bg-amber-50 border border-amber-300 rounded-2xl p-3 text-xs text-amber-950 font-bold space-y-1">
+              <div className="flex items-center gap-1 text-amber-800 font-black">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                <span>[실측 제원 정정 모드]가 활성화되었습니다.</span>
+              </div>
+              <p className="text-[11px] text-amber-900 leading-snug">
+                현장 티박스 공식 팻말에 적힌 거리(m)와 Par를 정확히 입력해 주시면 전체 골퍼에게 공유됩니다.
+              </p>
+            </div>
+          )}
 
-                      {/* Par */}
-                      <td className="py-2.5 px-1.5">
-                        {isEditing ? (
+          {/* 9개 홀 상세 카드 (오직 C-1, C-2... 스타일로 표기) */}
+          <div className="space-y-2">
+            {currentHoles.map((h, i) => {
+              const holeInCourse = ((h.hole - 1) % 9) + 1;
+
+              return (
+                <div
+                  key={h.hole}
+                  className={`rounded-2xl p-3 border transition flex flex-col gap-1.5 shadow-2xs ${
+                    isEditing
+                      ? 'bg-amber-50/40 border-amber-300 ring-1 ring-amber-300'
+                      : 'bg-white hover:bg-stone-50/80 border-stone-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    {/* 홀 번호: 오직 C-1, C-2 형태로만 표기 */}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-10 h-10 rounded-xl bg-emerald-800 text-amber-300 font-black text-sm flex items-center justify-center shrink-0 shadow-2xs">
+                        {currentCourseLetter}-{holeInCourse}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-black text-base text-stone-900 tracking-tight">
+                            {currentCourseLetter}-{holeInCourse}홀
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-emerald-800 font-bold leading-tight mt-0.5 truncate">
+                          {h.localRule ? `⚠️ ${h.localRule}` : h.tip ? `💡 ${h.tip}` : '중앙 페어웨이 안전 공략'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Par & 거리 */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isEditing ? (
+                        <div className="flex items-center gap-1.5">
                           <select
                             value={h.par}
-                            onChange={(e) =>
-                              handleHoleChange(h.hole, 'par', Number(e.target.value))
-                            }
-                            className="bg-white border-2 border-emerald-500 rounded-lg px-1.5 py-1 font-black text-xs outline-none"
+                            onChange={(e) => handleHoleChange(h.hole, 'par', Number(e.target.value))}
+                            className="bg-white border-2 border-emerald-600 rounded-lg px-2 py-1 font-black text-xs text-stone-900 outline-none"
                           >
                             <option value={3}>Par 3</option>
                             <option value={4}>Par 4</option>
                             <option value={5}>Par 5</option>
                           </select>
-                        ) : (
-                          <span className="font-black bg-stone-100 px-2 py-0.5 rounded text-stone-800">
-                            Par {h.par}
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Distance Meter */}
-                      <td className="py-2.5 px-1.5">
-                        {isEditing ? (
-                          <div className="flex items-center justify-center gap-0.5">
+                          <div className="flex items-center gap-0.5">
                             <input
                               type="number"
                               value={h.distanceMeter}
-                              onChange={(e) =>
-                                handleHoleChange(h.hole, 'distanceMeter', Number(e.target.value))
-                              }
-                              className="w-14 bg-white border-2 border-emerald-500 rounded-lg px-1 py-1 font-black text-xs text-center outline-none"
+                              onChange={(e) => handleHoleChange(h.hole, 'distanceMeter', Number(e.target.value))}
+                              className="w-14 bg-white border-2 border-emerald-600 rounded-lg px-1 py-1 font-black text-xs text-center text-stone-900 outline-none"
                             />
-                            <span className="text-[10px] text-stone-500">m</span>
+                            <span className="text-xs font-black text-stone-600">m</span>
                           </div>
-                        ) : (
-                          <span className="font-black text-stone-800">{h.distanceMeter}m</span>
-                        )}
-                      </td>
+                        </div>
+                      ) : (
+                        <div className="text-right">
+                          <div className="flex items-center gap-1.5 justify-end">
+                            <span className="bg-stone-100 text-stone-800 text-xs font-black px-2 py-0.5 rounded-lg border border-stone-200">
+                              Par {h.par}
+                            </span>
+                            <span className="text-sm font-black text-emerald-800">
+                              {h.distanceMeter}m
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                      {/* Local Rule / Tip */}
-                      <td className="py-2.5 px-2 text-left">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={h.localRule || ''}
-                            onChange={(e) =>
-                              handleHoleChange(h.hole, 'localRule', e.target.value)
-                            }
-                            placeholder="예: 우측 안전망 2벌타 OB"
-                            className="w-full bg-white border border-stone-300 rounded-lg px-2 py-1 text-xs font-medium outline-none focus:border-emerald-500"
-                          />
-                        ) : (
-                          <span className="text-[11px] text-stone-700 truncate max-w-[140px] block">
-                            {h.localRule || '정상 플레이'}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  {/* 정정 모드 시 로컬룰/공략팁 직접 편집 */}
+                  {isEditing && (
+                    <div className="pt-1 border-t border-amber-200/60 mt-0.5">
+                      <input
+                        type="text"
+                        placeholder="현장 로컬룰 또는 공략 팁 (예: 좌측 OB 주의, 1클럽 구제 등)"
+                        value={h.localRule || h.tip || ''}
+                        onChange={(e) => handleHoleChange(h.hole, 'localRule', e.target.value)}
+                        className="w-full bg-white border border-stone-300 rounded-lg px-2.5 py-1 text-xs text-stone-800 placeholder:text-stone-400 outline-none focus:border-emerald-600"
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          {/* 6. Edit & Save Section */}
-          {!isEditing ? (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 flex items-center justify-between">
+          {/* 제원 정정 저장 폼 */}
+          {isEditing && (
+            <form onSubmit={handleSave} className="bg-stone-50 rounded-2xl p-3.5 border-2 border-amber-400 space-y-2.5 mt-3">
               <div>
-                <div className="text-xs font-black text-emerald-950">
-                  실제 구장과 타수나 거리가 다른가요?
-                </div>
-                <div className="text-[11px] text-emerald-800 mt-0.5">
-                  누구나 터치 한 번으로 실제 스코어카드 제원으로 정정할 수 있습니다.
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditorName(course.contributorName || '');
-                  setIsEditing(true);
-                }}
-                className="bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs px-3 py-2 rounded-xl shadow flex items-center gap-1 shrink-0"
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-                <span>제원 정정하기</span>
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSave} className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-amber-950 flex items-center gap-1">
-                  <Edit2 className="w-4 h-4 text-amber-700" />
-                  <span>실측 제원 수정 및 명예의 전당 기여</span>
-                </span>
-                <label className="flex items-center gap-1 text-[11px] font-bold text-stone-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isLocked}
-                    onChange={(e) => setIsLocked(e.target.checked)}
-                    className="rounded text-emerald-600"
-                  />
-                  <span>검증 완료 후 제원 잠금</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-stone-800 mb-1">
-                  기여자 성함 또는 닉네임 *
+                <label className="text-xs font-black text-stone-800 block mb-1">
+                  👑 기여자 성함 또는 닉네임 (명예의 전당 등록)
                 </label>
                 <input
                   type="text"
-                  required
+                  placeholder="예: 김프로, 구미파크클럽 대장"
                   value={editorName}
                   onChange={(e) => setEditorName(e.target.value)}
-                  placeholder="예: 구미지산총무, 홍길동 (명예의 전당 영구 기록)"
-                  className="w-full bg-white border border-amber-300 rounded-xl px-3 py-2 text-sm font-bold text-stone-900 outline-none focus:border-emerald-600"
+                  className="w-full bg-white border border-stone-300 rounded-xl px-3 py-2 text-xs font-bold text-stone-900 outline-none focus:border-emerald-600"
                 />
               </div>
 
-              <div className="flex gap-2 pt-1">
+              <div className="flex gap-2">
                 <button
                   type="submit"
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 rounded-xl text-sm shadow flex items-center justify-center gap-1"
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black py-2.5 rounded-xl text-xs shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <Save className="w-4 h-4" />
-                  <span>제원 확정 저장 및 명예 등록 👑</span>
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{currentCourseLetter}코스 실측 제원 확정 저장 ✍️</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
-                  className="px-3 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs"
+                  className="px-3 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold rounded-xl text-xs cursor-pointer"
                 >
                   취소
                 </button>
@@ -400,37 +336,88 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
             </form>
           )}
 
-          {/* 7. Contribution History Timeline */}
-          {course.contributionHistory && course.contributionHistory.length > 0 && (
-            <div className="bg-white rounded-2xl p-3.5 border border-stone-200 space-y-2">
-              <div className="text-xs font-black text-stone-800 flex items-center gap-1.5">
-                <History className="w-3.5 h-3.5 text-emerald-700" />
-                <span>명예의 전당 기여 히스토리</span>
-              </div>
-              <div className="space-y-1.5 text-[11px]">
-                {course.contributionHistory.map((h, idx) => (
-                  <div key={idx} className="flex items-center justify-between bg-stone-50 p-2 rounded-lg text-stone-700">
-                    <div className="flex items-center gap-1.5 font-bold text-stone-900">
-                      <span>👑 {h.author}</span>
-                      <span className="text-stone-500 font-medium">({h.action})</span>
-                    </div>
-                    <span className="text-[10px] text-stone-600 shrink-0">{h.date}</span>
-                  </div>
-                ))}
-              </div>
+          {/* 성공 메시지 */}
+          {savedSuccess && (
+            <div className="bg-emerald-600 text-white font-black text-xs p-3 rounded-xl text-center shadow animate-pulse">
+              🎉 {currentCourseLetter}코스 실측 제원이 성공적으로 저장되었습니다!
             </div>
           )}
+
+          {/* 보조: 안내도 사진 및 명예의 전당 (접기/펼치기) */}
+          <div className="pt-2 border-t border-stone-200">
+            <button
+              type="button"
+              onClick={() => setShowPhotoSection(!showPhotoSection)}
+              className="text-xs font-bold text-stone-500 hover:text-stone-800 flex items-center justify-between w-full py-1 cursor-pointer"
+            >
+              <span>📷 구장 안내도 사진 및 명예의 전당 히스토리</span>
+              <span>{showPhotoSection ? '▲ 닫기' : '▼ 보기'}</span>
+            </button>
+
+            {showPhotoSection && (
+              <div className="space-y-3 pt-2">
+                {/* 사진 */}
+                <div className="bg-stone-50 rounded-2xl p-3 border border-stone-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-stone-700 flex items-center gap-1">
+                      <Camera className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>구장 코스 안내도 &amp; 스코어카드 사진</span>
+                    </span>
+                    <label className="text-[10px] bg-emerald-700 hover:bg-emerald-600 text-white font-black px-2 py-1 rounded-lg cursor-pointer transition">
+                      <span>+ 사진 업로드</span>
+                      <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                    </label>
+                  </div>
+                  {imageUrl ? (
+                    <div className="rounded-xl overflow-hidden border border-stone-200 max-h-48 bg-black/5 flex items-center justify-center">
+                      <img src={imageUrl} alt="구장 안내도" className="w-full h-auto object-cover" />
+                    </div>
+                  ) : (
+                    <div className="border border-dashed border-stone-300 rounded-xl p-3 text-center text-stone-400 text-xs">
+                      등록된 안내도 사진이 없습니다.
+                    </div>
+                  )}
+                </div>
+
+                {/* 명예의 전당 */}
+                {course.contributionHistory && course.contributionHistory.length > 0 && (
+                  <div className="bg-stone-50 rounded-2xl p-3 border border-stone-200 space-y-1.5">
+                    <div className="text-xs font-black text-stone-700 flex items-center gap-1">
+                      <History className="w-3.5 h-3.5 text-amber-600" />
+                      <span>명예의 전당 제원 기여 히스토리</span>
+                    </div>
+                    <div className="space-y-1 text-[11px]">
+                      {course.contributionHistory.map((h, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-white p-2 rounded-lg border border-stone-100">
+                          <span className="font-bold text-stone-900">👑 {h.author} ({h.action})</span>
+                          <span className="text-[10px] text-stone-400">{h.date}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* 8. Footer Close Button */}
-        <div className="pt-2 border-t border-stone-100 shrink-0">
+        {/* 4. Footer */}
+        <div className="p-3 bg-stone-50 border-t border-stone-200 flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="w-full bg-stone-800 hover:bg-stone-700 text-white font-black py-3 rounded-xl text-sm shadow transition"
+            className="flex-1 py-3 bg-stone-200 hover:bg-stone-300 active:scale-98 text-stone-800 font-black rounded-xl text-xs transition cursor-pointer"
           >
-            확인 완료 및 닫기
+            창 닫기
           </button>
+          <Link
+            href={`/round/new?courseId=${course.id}`}
+            onClick={onClose}
+            className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>이 구장서 라운딩 시작</span>
+          </Link>
         </div>
       </div>
     </div>
