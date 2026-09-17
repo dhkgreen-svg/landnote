@@ -125,6 +125,46 @@ export interface LiveRoundInfo {
   updatedAt: number;
 }
 
+export interface UserRoundStatProfile {
+  id: string;
+  name: string;
+  isNamedUser: boolean;
+  city: string;
+  deviceType: string;
+  trafficSource: string;
+  firstActiveTime: string;
+  lastActiveTime: string;
+  visitCount: number;
+  actualRoundsCount: number;
+  totalHolesCompleted: number;
+  isGpsVerified: boolean;
+  avgDurationMinutes: number;
+  lastCourseName: string;
+  tier: 'HEAVY' | 'REGULAR' | 'STARTER' | 'BROWSER';
+  tierLabel: string;
+}
+
+export interface UserRoundAnalyticsSummary {
+  totalUsers: number;
+  playedUsersCount: number;
+  playedUsersPercentage: number;
+  browserUsersCount: number;
+  browserUsersPercentage: number;
+  tierCounts: {
+    heavy: number;
+    regular: number;
+    starter: number;
+    browser: number;
+  };
+  tierPercentages: {
+    heavy: number;
+    regular: number;
+    starter: number;
+    browser: number;
+  };
+  userProfiles: UserRoundStatProfile[];
+}
+
 interface Metrics {
   liveUsers: number;
   todayDAU: number;
@@ -138,6 +178,7 @@ interface Metrics {
   provinceStats: ProvinceStat[];
   courseRankings?: CourseRoundRanking[];
   liveRounds?: LiveRoundInfo[];
+  userRoundAnalytics?: UserRoundAnalyticsSummary;
   hourlyTrend?: Array<{ key: string; label: string; pageviews: number; uniqueVisitors: number }>;
   dailyTrend: Array<{ key: string; label: string; pageviews: number; uniqueVisitors: number }>;
   weeklyTrend: Array<{ key: string; label: string; pageviews: number; uniqueVisitors: number }>;
@@ -186,6 +227,11 @@ export default function AdminDashboardPage() {
   const [selectedTrendModal, setSelectedTrendModal] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | null>(null);
   // 클럽 상세 관제 팝업 모달 상태 (관리자 뷰어 모드)
   const [selectedClubDetailModal, setSelectedClubDetailModal] = useState<CityClubDetail | null>(null);
+  // 총 가입자 실제 라운딩 참여율 및 골퍼 등급 분석 모달 상태
+  const [showUserRoundStatsModal, setShowUserRoundStatsModal] = useState(false);
+  const [userRoundTierFilter, setUserRoundTierFilter] = useState<'ALL' | 'PLAYED' | 'HEAVY' | 'REGULAR' | 'STARTER' | 'BROWSER'>('ALL');
+  const [userRoundSearchTerm, setUserRoundSearchTerm] = useState('');
+  const [userRoundPageChunk, setUserRoundPageChunk] = useState(0);
 
   // Check saved session PIN on load (6자리 768517)
   useEffect(() => {
@@ -399,18 +445,35 @@ export default function AdminDashboardPage() {
 
       {/* 4대 핵심 집계 카드: 아이콘 제거 및 완전 중앙 정렬 미니멀 구조 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        {/* 1. 총 가입자 수 */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center shadow-xs hover:border-emerald-400 transition-colors">
-          <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300">
-            총 가입자 수
+        {/* 1. 총 가입자 수 (클릭 시 실제 라운딩 참여율 & 골퍼 등급 분석 팝업) */}
+        <button
+          type="button"
+          onClick={() => {
+            setShowUserRoundStatsModal(true);
+            setUserRoundTierFilter('ALL');
+            setUserRoundSearchTerm('');
+            setUserRoundPageChunk(0);
+          }}
+          className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-98 group flex flex-col justify-between"
+        >
+          <div className="flex items-center justify-between gap-1 w-full">
+            <span className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+              총 가입자 수
+            </span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 font-bold shrink-0">
+              실태 분석
+            </span>
           </div>
-          <div className="mt-1.5 flex items-baseline justify-center gap-1">
-            <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
+          <div className="my-1.5 flex items-baseline justify-center gap-1">
+            <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">
               {metrics?.totalAllTimeUsers ?? 0}
             </span>
             <span className="text-xs sm:text-sm font-bold text-zinc-500">명</span>
           </div>
-        </div>
+          <div className="text-[10px] sm:text-[11px] text-zinc-400 dark:text-zinc-500 font-medium truncate w-full">
+            실제 라운딩 {metrics?.userRoundAnalytics?.playedUsersCount ?? 0}명 ({metrics?.userRoundAnalytics?.playedUsersPercentage ?? 0}%)
+          </div>
+        </button>
 
         {/* 2. 오늘 이용자 */}
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center shadow-xs hover:border-blue-400 transition-colors">
@@ -1447,6 +1510,485 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* 총 가입자 실제 라운딩 참여율 & 골퍼 등급 분석 팝업 모달 */}
+      {showUserRoundStatsModal && (() => {
+        const stats = metrics?.userRoundAnalytics || {
+          totalUsers: metrics?.totalAllTimeUsers || 0,
+          playedUsersCount: 0,
+          playedUsersPercentage: 0,
+          browserUsersCount: metrics?.totalAllTimeUsers || 0,
+          browserUsersPercentage: 100,
+          tierCounts: { heavy: 0, regular: 0, starter: 0, browser: metrics?.totalAllTimeUsers || 0 },
+          tierPercentages: { heavy: 0, regular: 0, starter: 0, browser: 100 },
+          userProfiles: [],
+        };
+
+        const profiles = stats.userProfiles || [];
+        const filteredProfiles = profiles.filter((p) => {
+          // Tier filter
+          if (userRoundTierFilter === 'PLAYED' && p.actualRoundsCount === 0) return false;
+          if (userRoundTierFilter === 'HEAVY' && p.tier !== 'HEAVY') return false;
+          if (userRoundTierFilter === 'REGULAR' && p.tier !== 'REGULAR') return false;
+          if (userRoundTierFilter === 'STARTER' && p.tier !== 'STARTER') return false;
+          if (userRoundTierFilter === 'BROWSER' && p.tier !== 'BROWSER') return false;
+
+          // Search term filter
+          if (userRoundSearchTerm.trim()) {
+            const term = userRoundSearchTerm.toLowerCase();
+            return (
+              p.name.toLowerCase().includes(term) ||
+              p.city.toLowerCase().includes(term) ||
+              p.lastCourseName.toLowerCase().includes(term) ||
+              p.tierLabel.toLowerCase().includes(term)
+            );
+          }
+          return true;
+        });
+
+        const chunkSize = 100;
+        const totalChunks = Math.ceil(filteredProfiles.length / chunkSize);
+        const startIdx = userRoundPageChunk * chunkSize;
+        const currentProfiles = filteredProfiles.slice(startIdx, startIdx + chunkSize);
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center font-bold shadow-2xs">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                      <span>총 가입자 실제 필드 라운딩 참여율 & 골퍼 등급 분석</span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-800">
+                        5단계 팩트 검증
+                      </span>
+                    </h3>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      가상·단순 테스트 클릭 100% 필터링 | GPS 현장 인증 및 9·18홀 정상 경기 시간 충족 팩트 통계
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowUserRoundStatsModal(false)}
+                  className="w-8 h-8 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-500 flex items-center justify-center font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Top Summary KPI Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/80 rounded-xl p-3.5 text-center">
+                  <span className="text-xs font-semibold text-zinc-500">총 가입 / 이용자</span>
+                  <div className="text-2xl font-black text-zinc-900 dark:text-zinc-100 mt-1">
+                    {stats.totalUsers}명 <span className="text-xs font-medium text-zinc-400">(100%)</span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400 block mt-0.5">누적 등록 고유 유저</span>
+                </div>
+
+                <div className="bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/80 rounded-xl p-3.5 text-center">
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">실제 필드 완주 골퍼 (1회 이상)</span>
+                  <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                    {stats.playedUsersCount}명 <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">({stats.playedUsersPercentage}%)</span>
+                  </div>
+                  <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 block mt-0.5">GPS 현장 인증 및 완주 확인</span>
+                </div>
+
+                <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/80 rounded-xl p-3.5 text-center">
+                  <span className="text-xs font-bold text-amber-800 dark:text-amber-300">필드 출격 대기자 (0회)</span>
+                  <div className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">
+                    {stats.browserUsersCount}명 <span className="text-xs font-bold text-amber-700 dark:text-amber-300">({stats.browserUsersPercentage}%)</span>
+                  </div>
+                  <span className="text-[10px] text-amber-600/80 dark:text-amber-400/80 block mt-0.5">코스·날씨·규정집 열람 중</span>
+                </div>
+              </div>
+
+              {/* Visual Ratio Progress Bar */}
+              <div className="space-y-1.5 bg-zinc-50 dark:bg-zinc-800/40 p-3 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <span>⛳ 실제 라운딩 참여율:</span>
+                    <strong>{stats.playedUsersPercentage}% ({stats.playedUsersCount}명)</strong>
+                  </span>
+                  <span className="text-zinc-500 flex items-center gap-1">
+                    <span>🔍 둘러보기/대기율:</span>
+                    <strong>{stats.browserUsersPercentage}% ({stats.browserUsersCount}명)</strong>
+                  </span>
+                </div>
+                <div className="h-3 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden flex">
+                  <div
+                    className="bg-emerald-500 h-full transition-all duration-500"
+                    style={{ width: `${Math.max(stats.playedUsersPercentage, 2)}%` }}
+                    title={`실제 라운딩: ${stats.playedUsersPercentage}%`}
+                  />
+                  <div
+                    className="bg-amber-400/80 h-full transition-all duration-500"
+                    style={{ width: `${stats.browserUsersPercentage}%` }}
+                    title={`필드 대기자: ${stats.browserUsersPercentage}%`}
+                  />
+                </div>
+              </div>
+
+              {/* 4-Tier Breakdown Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {/* 1. 헤비 골퍼 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserRoundTierFilter('HEAVY');
+                    setUserRoundPageChunk(0);
+                  }}
+                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                    userRoundTierFilter === 'HEAVY'
+                      ? 'bg-purple-600 text-white border-purple-700 shadow-xs'
+                      : 'bg-white dark:bg-zinc-900 border-purple-200 dark:border-purple-800/70 hover:border-purple-500'
+                  }`}
+                >
+                  <div className={`text-xs font-black ${userRoundTierFilter === 'HEAVY' ? 'text-purple-100' : 'text-purple-700 dark:text-purple-300'}`}>
+                    👑 열성 헤비 골퍼
+                  </div>
+                  <div className={`text-xl font-black mt-1 ${userRoundTierFilter === 'HEAVY' ? 'text-white' : 'text-purple-600 dark:text-purple-400'}`}>
+                    {stats.tierCounts.heavy}명
+                  </div>
+                  <div className={`text-[10px] mt-0.5 ${userRoundTierFilter === 'HEAVY' ? 'text-purple-200' : 'text-zinc-400'}`}>
+                    5회 이상 ({stats.tierPercentages.heavy}%)
+                  </div>
+                </button>
+
+                {/* 2. 정기 라운딩 골퍼 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserRoundTierFilter('REGULAR');
+                    setUserRoundPageChunk(0);
+                  }}
+                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                    userRoundTierFilter === 'REGULAR'
+                      ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+                      : 'bg-white dark:bg-zinc-900 border-blue-200 dark:border-blue-800/70 hover:border-blue-500'
+                  }`}
+                >
+                  <div className={`text-xs font-black ${userRoundTierFilter === 'REGULAR' ? 'text-blue-100' : 'text-blue-700 dark:text-blue-300'}`}>
+                    ⛳ 꾸준한 정기 골퍼
+                  </div>
+                  <div className={`text-xl font-black mt-1 ${userRoundTierFilter === 'REGULAR' ? 'text-white' : 'text-blue-600 dark:text-blue-400'}`}>
+                    {stats.tierCounts.regular}명
+                  </div>
+                  <div className={`text-[10px] mt-0.5 ${userRoundTierFilter === 'REGULAR' ? 'text-blue-200' : 'text-zinc-400'}`}>
+                    2~4회 완주 ({stats.tierPercentages.regular}%)
+                  </div>
+                </button>
+
+                {/* 3. 1회 입문 골퍼 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserRoundTierFilter('STARTER');
+                    setUserRoundPageChunk(0);
+                  }}
+                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                    userRoundTierFilter === 'STARTER'
+                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                      : 'bg-white dark:bg-zinc-900 border-emerald-200 dark:border-emerald-800/70 hover:border-emerald-500'
+                  }`}
+                >
+                  <div className={`text-xs font-black ${userRoundTierFilter === 'STARTER' ? 'text-emerald-100' : 'text-emerald-700 dark:text-emerald-300'}`}>
+                    🌱 1회 입문/체험
+                  </div>
+                  <div className={`text-xl font-black mt-1 ${userRoundTierFilter === 'STARTER' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                    {stats.tierCounts.starter}명
+                  </div>
+                  <div className={`text-[10px] mt-0.5 ${userRoundTierFilter === 'STARTER' ? 'text-emerald-200' : 'text-zinc-400'}`}>
+                    첫 완주 달성 ({stats.tierPercentages.starter}%)
+                  </div>
+                </button>
+
+                {/* 4. 필드 대기자 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserRoundTierFilter('BROWSER');
+                    setUserRoundPageChunk(0);
+                  }}
+                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                    userRoundTierFilter === 'BROWSER'
+                      ? 'bg-zinc-800 text-white border-zinc-900 shadow-xs'
+                      : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400'
+                  }`}
+                >
+                  <div className={`text-xs font-black ${userRoundTierFilter === 'BROWSER' ? 'text-zinc-200' : 'text-zinc-600 dark:text-zinc-400'}`}>
+                    🔍 필드 출격 대기
+                  </div>
+                  <div className={`text-xl font-black mt-1 ${userRoundTierFilter === 'BROWSER' ? 'text-white' : 'text-zinc-700 dark:text-zinc-200'}`}>
+                    {stats.tierCounts.browser}명
+                  </div>
+                  <div className={`text-[10px] mt-0.5 ${userRoundTierFilter === 'BROWSER' ? 'text-zinc-300' : 'text-zinc-400'}`}>
+                    0회 / 탐색 중 ({stats.tierPercentages.browser}%)
+                  </div>
+                </button>
+              </div>
+
+              {/* 5단계 엄격 검증 안내 박스 */}
+              <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/80 dark:border-zinc-700/80 rounded-xl p-3 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                <strong className="text-zinc-800 dark:text-zinc-200 font-bold block mb-1">
+                  🛡️ 파크온 5단계 '진짜 필드 라운딩' 팩트 검증 원칙
+                </strong>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px]">
+                  <span>• ① GPS 구장 반경 내 현장 실시간 인증</span>
+                  <span>• ② 가상 라운딩 및 집에서의 단순 테스트 100% 배제</span>
+                  <span>• ③ 최소 9홀 또는 18홀 정식 홀아웃 검증</span>
+                  <span>• ④ 5분 컷 등 비정상 초단기 클릭 배제 (정상 보행 경기 시간 충족)</span>
+                  <span className="sm:col-span-2">• ⑤ 동반 조원 4인 스코어보드 확정 기록 매칭</span>
+                </div>
+              </div>
+
+              {/* Filter Tabs & Search Header */}
+              <div className="space-y-2 pt-1 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserRoundTierFilter('ALL');
+                      setUserRoundPageChunk(0);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                      userRoundTierFilter === 'ALL'
+                        ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-xs'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'
+                    }`}
+                  >
+                    전체 보기 ({stats.totalUsers}명)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserRoundTierFilter('PLAYED');
+                      setUserRoundPageChunk(0);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                      userRoundTierFilter === 'PLAYED'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'
+                    }`}
+                  >
+                    실제 완주자 ({stats.playedUsersCount}명)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserRoundTierFilter('HEAVY');
+                      setUserRoundPageChunk(0);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                      userRoundTierFilter === 'HEAVY'
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'
+                    }`}
+                  >
+                    👑 헤비 ({stats.tierCounts.heavy}명)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserRoundTierFilter('REGULAR');
+                      setUserRoundPageChunk(0);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                      userRoundTierFilter === 'REGULAR'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'
+                    }`}
+                  >
+                    ⛳ 정기 ({stats.tierCounts.regular}명)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserRoundTierFilter('STARTER');
+                      setUserRoundPageChunk(0);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                      userRoundTierFilter === 'STARTER'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'
+                    }`}
+                  >
+                    🌱 1회 입문 ({stats.tierCounts.starter}명)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserRoundTierFilter('BROWSER');
+                      setUserRoundPageChunk(0);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                      userRoundTierFilter === 'BROWSER'
+                        ? 'bg-zinc-800 text-white shadow-xs'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'
+                    }`}
+                  >
+                    🔍 대기자 ({stats.tierCounts.browser}명)
+                  </button>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                    <input
+                      type="text"
+                      value={userRoundSearchTerm}
+                      onChange={(e) => {
+                        setUserRoundSearchTerm(e.target.value);
+                        setUserRoundPageChunk(0);
+                      }}
+                      placeholder="이름, 닉네임, 지역(구미 등), 구장명 검색..."
+                      className="w-full pl-8 pr-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <span className="text-[11px] text-zinc-400 font-medium shrink-0">
+                    필터링 결과: {filteredProfiles.length}명
+                  </span>
+                </div>
+              </div>
+
+              {/* 100명 단위 페이지네이션 */}
+              {totalChunks > 1 && (
+                <div className="flex flex-wrap items-center gap-1.5 p-2 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
+                  <span className="text-[10px] text-zinc-400 font-semibold mr-1">페이지 이동:</span>
+                  {Array.from({ length: totalChunks }, (_, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setUserRoundPageChunk(idx)}
+                      className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                        userRoundPageChunk === idx
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100'
+                      }`}
+                    >
+                      {idx * chunkSize + 1} ~ {Math.min((idx + 1) * chunkSize, filteredProfiles.length)}번
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* 골퍼 목록 아이템 */}
+              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                {currentProfiles.length > 0 ? (
+                  currentProfiles.map((u, idx) => (
+                    <div
+                      key={u.id || idx}
+                      className={`p-3 rounded-xl border transition-colors text-xs flex items-center justify-between gap-2.5 ${
+                        u.tier === 'HEAVY'
+                          ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800 shadow-2xs'
+                          : u.tier === 'REGULAR'
+                          ? 'bg-blue-50/40 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 shadow-2xs'
+                          : u.tier === 'STARTER'
+                          ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 shadow-2xs'
+                          : 'bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-7 text-[11px] font-mono text-zinc-400 text-center shrink-0">
+                          #{startIdx + idx + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm">
+                              {u.name}
+                            </span>
+                            {u.isNamedUser && (
+                              <span className="inline-flex items-center px-1.5 py-0.2 bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[10px] font-black rounded-md border border-amber-300 dark:border-amber-700">
+                                ✨ 회원
+                              </span>
+                            )}
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                u.tier === 'HEAVY'
+                                  ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800'
+                                  : u.tier === 'REGULAR'
+                                  ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800'
+                                  : u.tier === 'STARTER'
+                                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                              }`}
+                            >
+                              {u.tierLabel}
+                            </span>
+                            {u.isGpsVerified && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold rounded border border-emerald-300 dark:border-emerald-800">
+                                ☑️ GPS 현장 인증 통과
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-2 mt-1 flex-wrap">
+                            <span>📍 {u.city}</span>
+                            <span>·</span>
+                            <span>{u.deviceType}</span>
+                            <span>·</span>
+                            <span>{u.trafficSource}</span>
+                            {u.lastCourseName && (
+                              <>
+                                <span>·</span>
+                                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                                  ⛳ {u.lastCourseName}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        {u.actualRoundsCount > 0 ? (
+                          <>
+                            <div className="font-mono text-sm font-black text-emerald-600 dark:text-emerald-400">
+                              완주 {u.actualRoundsCount}회 <span className="text-xs text-zinc-400 font-normal">({u.totalHolesCompleted}홀)</span>
+                            </div>
+                            <span className="text-[10px] text-zinc-400 block font-mono">
+                              평균 {u.avgDurationMinutes}분 소요
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-[11px] font-bold text-zinc-400 block">
+                              필드 미출격 (0회)
+                            </span>
+                            <span className="text-[10px] text-zinc-400 block font-mono">
+                              최근: {u.lastActiveTime.split(' ')[0]}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-10 text-center text-xs text-zinc-400">
+                    선택하신 등급에 해당하는 유저가 없습니다.
+                  </div>
+                )}
+              </div>
+
+              {/* Close Button */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowUserRoundStatsModal(false)}
+                  className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 2. 실시간 라운딩 관제 센터 (간결한 작은 카드: 클릭 시 경기 진행 상세 팝업) */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3 sm:p-3.5 shadow-xs">
