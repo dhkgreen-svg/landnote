@@ -364,7 +364,7 @@ export const ParkOnStorage = {
         },
         {
           id: 'p_v1',
-          name: '[예시] 홍길동',
+          name: '동반 골퍼 1',
           isLeader: false,
           isSelf: false,
           scores: { 1: 3 },
@@ -374,7 +374,7 @@ export const ParkOnStorage = {
         },
         {
           id: 'p_v2',
-          name: '[체험용] 김파크',
+          name: '동반 골퍼 2',
           isLeader: false,
           isSelf: false,
           scores: { 1: 4 },
@@ -384,7 +384,7 @@ export const ParkOnStorage = {
         },
         {
           id: 'p_v3',
-          name: '[SAMPLE] 이온',
+          name: '동반 골퍼 3',
           isLeader: false,
           isSelf: false,
           scores: { 1: 3 },
@@ -1213,7 +1213,7 @@ export const ParkOnStorage = {
     }
   },
 
-  // 11. 구장별 100위 랭킹 산출 (공인 실력 1~100위 vs 필드 활동 1~100위 엄격 이분화)
+  // 11. 구장별 100위 랭킹 산출 (100% 팩트 기반: 가짜/예시 시드 데이터 원천 배제)
   getCourseLeaderboard100(
     courseId: string,
     courseName: string,
@@ -1243,18 +1243,40 @@ export const ParkOnStorage = {
     const myName = customUserName || profile.userName || '나이스버디';
     const myClub = profile.clubName || '소속 클럽 미지정';
 
-    // 1. 유저의 해당 구장 완료 라운드 분석
+    // 1. 해당 구장의 실제 완주 라운드 필터링 (가상/체험 모드 원천 배제)
     const allCompleted = this.getCompletedRounds();
     const courseRounds = allCompleted.filter(
-      (r) => this.normalizeCourseId(r.courseId) === validCourseId && r.isOfficial !== false
+      (r) =>
+        this.normalizeCourseId(r.courseId) === validCourseId &&
+        r.isOfficial !== false &&
+        (r as any).isVirtual !== true
     );
 
-    // 최근 30일 이내 완주 라운드 (활동 지수는 정규/일반/솔로/하루 N회 무관하게 100% 카운트)
+    // 최근 30일 이내 완주 라운드
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
     const user30DaysRounds = courseRounds.filter(
       (r) => new Date(r.completedAt || r.startedAt).getTime() >= thirtyDaysAgo
     );
     const userRoundsCount = user30DaysRounds.length;
+
+    // 18홀 환산 타수 추출 헬퍼
+    const getGradeByScore = (sc: number): string => {
+      if (sc <= 54) return '5스타 마스터';
+      if (sc <= 58) return '4스타 상급';
+      if (sc <= 62) return '3스타 중급';
+      if (sc <= 66) return '2스타 중초급';
+      if (sc <= 72) return '1스타 초급';
+      return '일반 루키';
+    };
+
+    const getActivityTier = (cnt: number): string => {
+      if (cnt >= 40) return '하루 2~3게임 열정왕';
+      if (cnt >= 25) return '매일 라운딩';
+      if (cnt >= 15) return '주 3~4회 완주';
+      if (cnt >= 8) return '주 1~2회 정기';
+      if (cnt >= 3) return '월 3~4회 즐김';
+      return '새싹 골퍼';
+    };
 
     // 공식 클럽전/대회 라운드 vs 개인 친선 라운드 판별
     const officialMatches = courseRounds.filter(
@@ -1264,7 +1286,6 @@ export const ParkOnStorage = {
       (r) => !(r.matchType === 'CLUB_MATCH' || r.matchType === 'TOURNAMENT' || !!r.clubRoomId)
     );
 
-    // 18홀 환산 타수 추출 헬퍼
     const getBestScore = (rounds: RoundSession[]): number | null => {
       let best: number | null = null;
       rounds.forEach((r) => {
@@ -1282,183 +1303,125 @@ export const ParkOnStorage = {
     const myOfficialBest = getBestScore(officialMatches);
     const myCasualBest = getBestScore(casualMatches);
 
-    // 2. [공인 실력 랭킹 1~100위] 베이스 시드 생성 (클럽전·공식 대회 참가자 기반)
-    const SEED_CLUBS = [
-      '구미사랑클럽', '수성버디클럽', '동락파크사랑방', '칠곡힐링클럽', '대구수성클럽',
-      '양포버디클럽', '비산파크골프', '형곡에이스클럽', '옥성단풍클럽', '선산강변클럽',
-      '해평철새클럽', '인동초클럽', '봉곡어울림', '상모사곡클럽', '원평드림클럽',
-      '황상에이스', '진미행복클럽', '양호물결클럽', '송정그린클럽', '도량한마음'
-    ];
-    const SEED_NAMES = [
-      '김동식', '이재홍', '최민호', '박상철', '김영환', '정태호', '권영미', '윤미경', '오세진', '배준호',
-      '장석호', '최경숙', '송철원', '정다혜', '김말선', '박진태', '백운기', '한상우', '서미정', '류승완',
-      '홍길동', '김현수', '이진호', '송인철', '서정민', '오성근', '이정숙', '황보경', '차명석', '고두환',
-      '유재선', '임동혁', '문병호', '노영진', '배성철', '강진수', '신동호', '안태양', '남궁민', '허정우',
-      '서진영', '조광현', '구자철', '민태식', '전명환', '배기준', '손성훈', '추승우', '곽도원', '탁재훈',
-      '변상일', '하태경', '주동수', '채정호', '엄기준', '원상필', '심형래', '석진호', '양경원', '천상욱',
-      '표동철', '나기주', '도재명', '어성호', '염동진', '용환수', '기우제', '라상준', '모영철', '사공민',
-      '우형태', '옥동열', '진병규', '팽기태', '함은호', '황명석', '길병우', '단재완', '마상훈', '방기호',
-      '사도진', '안병기', '제갈원', '풍성철', '호준혁', '공선우', '구명준', '노희철', '문도현', '민상훈',
-      '복성수', '선우진', '소병훈', '시동환', '예종석', '옥재민', '원도연', '위선우', '은상일', '임형찬'
-    ];
+    // 2. [공인 실력 랭킹] 100% 실제 공식 경기 완주자 집계 (가짜 시드 데이터 완전 제거)
+    const playerOfficialBestMap = new Map<string, {
+      name: string;
+      clubName: string;
+      score: number;
+      date: string;
+      matchType: '클럽전' | '정규대회';
+      isMe: boolean;
+    }>();
 
-    const baseSkillScores = [
-      48, 48, 49, 49, 50, 50, 51, 51, 51, 52,
-      52, 52, 53, 53, 53, 54, 54, 54, 54, 55,
-      55, 55, 55, 56, 56, 56, 56, 57, 57, 57,
-      57, 58, 58, 58, 58, 59, 59, 59, 59, 60,
-      60, 60, 60, 61, 61, 61, 61, 62, 62, 62,
-      62, 62, 63, 63, 63, 63, 64, 64, 64, 64,
-      64, 65, 65, 65, 65, 66, 66, 66, 66, 66,
-      67, 67, 67, 67, 68, 68, 68, 68, 68, 69,
-      69, 69, 69, 70, 70, 70, 70, 70, 71, 71,
-      71, 71, 72, 72, 72, 72, 73, 73, 74, 75
-    ];
+    officialMatches.forEach((r) => {
+      const matchTypeLabel: '클럽전' | '정규대회' = r.matchType === 'TOURNAMENT' ? '정규대회' : '클럽전';
+      const roundDateStr = (r.completedAt || r.startedAt)
+        ? new Date(r.completedAt || r.startedAt).toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          }).replace(/\. /g, '.').replace(/\.$/, '')
+        : '2026.09.16';
 
-    const getGradeByScore = (sc: number): string => {
-      if (sc <= 54) return '5스타 마스터';
-      if (sc <= 58) return '4스타 상급';
-      if (sc <= 62) return '3스타 중급';
-      if (sc <= 66) return '2스타 중초급';
-      if (sc <= 72) return '1스타 초급';
-      return '일반 루키';
-    };
+      (r.players || []).forEach((p, pIdx) => {
+        if (!p || !p.name) return;
+        const isMe = !!(pIdx === 0 || p.name === myName || p.isLeader);
+        const displayName = isMe ? `${myName} (본인)` : p.name;
+        const strokes = p.totalStrokes || 0;
+        if (strokes <= 0) return;
 
-    let skillTop100: CourseSkillRankItem[] = baseSkillScores.map((score, idx) => {
-      const rank = idx + 1;
-      const name = SEED_NAMES[idx % SEED_NAMES.length];
-      const club = SEED_CLUBS[idx % SEED_CLUBS.length];
-      const mType: '클럽전' | '정규대회' = idx % 3 === 0 ? '정규대회' : '클럽전';
-      const mMonth = Math.max(1, 9 - Math.floor(idx / 15));
-      const mDay = ((idx * 7) % 28) + 1;
-      const dateStr = `2026.${String(mMonth).padStart(2, '0')}.${String(mDay).padStart(2, '0')}`;
+        const holesCount = Object.keys(p.scores || {}).length || r.totalHoles || 9;
+        const score18 = holesCount > 0 ? Math.round((strokes / holesCount) * 18) : strokes;
+        const playerKey = displayName;
 
-      return {
-        rank,
-        rankLabel: `${rank}위`,
-        name: `[예시] ${name}`,
-        clubName: club,
-        score,
-        grade: getGradeByScore(score),
-        date: dateStr,
-        matchType: mType,
-        isMe: false,
-        isOutRank: false,
-      };
+        const existing = playerOfficialBestMap.get(playerKey);
+        if (!existing || score18 < existing.score) {
+          playerOfficialBestMap.set(playerKey, {
+            name: displayName,
+            clubName: isMe ? myClub : ((r as any).clubName || '소속 클럽'),
+            score: score18,
+            date: roundDateStr,
+            matchType: matchTypeLabel,
+            isMe,
+          });
+        }
+      });
     });
 
-    // 만약 유저가 공식 클럽전 기록이 있다면, 해당 순위에 유저를 정확히 삽입/정렬
-    let userOfficialRank: number | null = null;
-    if (myOfficialBest !== null) {
-      const myItem: CourseSkillRankItem = {
-        rank: 1,
-        rankLabel: '1위',
-        name: `${myName} (본인)`,
-        clubName: myClub,
-        score: myOfficialBest,
-        grade: getGradeByScore(myOfficialBest),
-        date: '2026.09.16 (최신)',
-        matchType: '클럽전',
-        isMe: true,
-        isOutRank: false,
-      };
+    // 정렬: 타수 낮은 순(오름차순)
+    const sortedOfficialPlayers = Array.from(playerOfficialBestMap.values()).sort((a, b) => a.score - b.score);
+    const skillTop100: CourseSkillRankItem[] = sortedOfficialPlayers.slice(0, 100).map((p, idx) => ({
+      rank: idx + 1,
+      rankLabel: `${idx + 1}위`,
+      name: p.name,
+      clubName: p.clubName,
+      score: p.score,
+      grade: getGradeByScore(p.score),
+      date: p.date,
+      matchType: p.matchType,
+      isMe: p.isMe,
+      isOutRank: false,
+    }));
 
-      const insertIdx = skillTop100.findIndex((it) => it.score > myOfficialBest);
-      if (insertIdx !== -1) {
-        skillTop100.splice(insertIdx, 0, myItem);
-      } else {
-        skillTop100.push(myItem);
-      }
-      skillTop100 = skillTop100.slice(0, 100).map((it, idx) => ({
-        ...it,
-        rank: idx + 1,
-        rankLabel: `${idx + 1}위`,
-      }));
-      const foundMe = skillTop100.find((it) => it.isMe);
-      userOfficialRank = foundMe ? foundMe.rank : null;
-    }
+    const foundOfficialMe = skillTop100.find((it) => it.isMe);
+    const userOfficialRank = foundOfficialMe ? foundOfficialMe.rank : null;
 
-    // 유저가 비공식 친선으로 친 경우: 등외 점수 산출 (100위권 안 점수라면 등외 순위 표기)
     let userCasualRankEquivalent: number | null = null;
     let isOutRank = false;
     let skillMessage = '';
 
-    if (myOfficialBest !== null) {
+    if (myOfficialBest !== null && userOfficialRank !== null) {
       skillMessage = `공식 클럽전 출전 기록으로 ${userOfficialRank}위에 공인 랭크되었습니다.`;
     } else if (myCasualBest !== null) {
       const eqIdx = skillTop100.findIndex((it) => it.score >= myCasualBest);
-      userCasualRankEquivalent = eqIdx !== -1 ? eqIdx + 1 : 101;
+      userCasualRankEquivalent = eqIdx !== -1 ? eqIdx + 1 : (skillTop100.length + 1);
       isOutRank = true;
-      skillMessage = `내 최고 기록: ${myCasualBest}타 [등외 점수 (비공식 친선)] - 공식 대회(클럽전)에 출전하시면 상위 ${userCasualRankEquivalent}위권으로 공식 랭킹에 즉시 등록됩니다!`;
+      skillMessage = `내 최고 기록: ${myCasualBest}타 [등외 점수 (비공식 친선)] - 공식 대회(클럽전)에 출전하시면 공인 순위에 즉시 등록됩니다!`;
     } else {
-      skillMessage = '아직 이 구장에서의 라운드 기록이 없습니다. 라운드를 시작해 보세요!';
+      skillMessage = '아직 이 구장에서의 공인 대회(클럽전) 완주 기록이 없습니다.';
     }
 
-    // 3. [필드 활동 랭킹 1~100위] 베이스 시드 생성 (일반/친선/솔로/하루 3번 모두 100% 반영)
-    const baseActivityRounds = [
-      54, 52, 48, 47, 45, 44, 42, 41, 40, 38,
-      38, 37, 36, 35, 34, 33, 33, 32, 31, 30,
-      29, 29, 28, 28, 27, 26, 26, 25, 25, 24,
-      24, 23, 23, 22, 22, 21, 21, 20, 20, 19,
-      19, 18, 18, 18, 17, 17, 16, 16, 15, 15,
-      15, 14, 14, 14, 13, 13, 13, 12, 12, 12,
-      11, 11, 11, 10, 10, 10, 9, 9, 9, 8,
-      8, 8, 8, 7, 7, 7, 7, 6, 6, 6,
-      6, 5, 5, 5, 5, 4, 4, 4, 4, 3,
-      3, 3, 3, 2, 2, 2, 2, 1, 1, 1
-    ];
+    // 3. [필드 활동 랭킹] 100% 실제 최근 30일 완주자 집계 (가짜 시드 데이터 완전 제거)
+    const playerActivityMap = new Map<string, {
+      name: string;
+      clubName: string;
+      rounds: number;
+      isMe: boolean;
+    }>();
 
-    const getActivityTier = (cnt: number): string => {
-      if (cnt >= 40) return '하루 2~3게임 열정왕';
-      if (cnt >= 25) return '매일 라운딩';
-      if (cnt >= 15) return '주 3~4회 완주';
-      if (cnt >= 8) return '주 1~2회 정기';
-      if (cnt >= 3) return '월 3~4회 즐김';
-      return '새싹 골퍼';
-    };
+    user30DaysRounds.forEach((r) => {
+      (r.players || []).forEach((p, pIdx) => {
+        if (!p || !p.name) return;
+        const isMe = !!(pIdx === 0 || p.name === myName || p.isLeader);
+        const displayName = isMe ? `${myName} (본인)` : p.name;
+        const playerKey = displayName;
 
-    let activityTop100: CourseActivityRankItem[] = baseActivityRounds.map((rounds, idx) => {
-      const rank = idx + 1;
-      const name = SEED_NAMES[(idx + 13) % SEED_NAMES.length];
-      const club = SEED_CLUBS[(idx + 5) % SEED_CLUBS.length];
-
-      return {
-        rank,
-        name: `[예시] ${name}`,
-        clubName: club,
-        rounds,
-        tier: getActivityTier(rounds),
-        isMe: false,
-      };
+        const existing = playerActivityMap.get(playerKey);
+        if (existing) {
+          existing.rounds += 1;
+        } else {
+          playerActivityMap.set(playerKey, {
+            name: displayName,
+            clubName: isMe ? myClub : ((r as any).clubName || '소속 클럽'),
+            rounds: 1,
+            isMe,
+          });
+        }
+      });
     });
 
-    // 유저의 실제 활동 횟수 (정규/친선/혼자/하루 3번 무관 100% 반영) 삽입
-    let userActivityRank = 100;
-    if (userRoundsCount > 0) {
-      const myActItem: CourseActivityRankItem = {
-        rank: 1,
-        name: `${myName} (본인)`,
-        clubName: myClub,
-        rounds: userRoundsCount,
-        tier: getActivityTier(userRoundsCount),
-        isMe: true,
-      };
+    const sortedActivityPlayers = Array.from(playerActivityMap.values()).sort((a, b) => b.rounds - a.rounds);
+    const activityTop100: CourseActivityRankItem[] = sortedActivityPlayers.slice(0, 100).map((p, idx) => ({
+      rank: idx + 1,
+      name: p.name,
+      clubName: p.clubName,
+      rounds: p.rounds,
+      tier: getActivityTier(p.rounds),
+      isMe: p.isMe,
+    }));
 
-      const actInsertIdx = activityTop100.findIndex((it) => it.rounds <= userRoundsCount);
-      if (actInsertIdx !== -1) {
-        activityTop100.splice(actInsertIdx, 0, myActItem);
-      } else {
-        activityTop100.push(myActItem);
-      }
-
-      activityTop100 = activityTop100.slice(0, 100).map((it, idx) => ({
-        ...it,
-        rank: idx + 1,
-      }));
-
-      const foundAct = activityTop100.find((it) => it.isMe);
-      userActivityRank = foundAct ? foundAct.rank : 101;
-    }
+    const foundActMe = activityTop100.find((it) => it.isMe);
+    const userActivityRank = foundActMe ? foundActMe.rank : (userRoundsCount > 0 ? 1 : 0);
 
     return {
       skillTop100,

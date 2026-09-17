@@ -503,7 +503,7 @@ export default function HomePage() {
     };
   };
 
-  // 구장별 실력(최저타수) 1~4등 & 활동(최다완주) 1~4등 랭킹 및 내 순위 산출
+  // 구장별 실력(최저타수) 1~4등 & 활동(최다완주) 1~4등 랭킹 및 내 순위 산출 (100% 팩트 기반)
   const getCourseLeaderboard = (
     c: Course | null,
     myStats: any
@@ -519,89 +519,29 @@ export default function HomePage() {
       };
     }
 
-    const isHaepyeong = c.name.includes('해평');
-    const isDongrak = c.name.includes('동락');
+    // 100% 팩트 기반 Leaderboard100 조회
+    const lb = ParkOnStorage.getCourseLeaderboard100(c.id, c.name, userProfile.userName);
+    const skillList = lb.skillTop100 || [];
+    const actList = lb.activityTop100 || [];
 
-    // 1. 역대 1등(최저 타수 달성 챔피언) 명단 - 최신순 정렬 (최신 달성자가 위, 오래된 기록은 뒤로)
-    let champions1st: {
-      rank: number;
-      name: string;
-      score: number;
-      date: string;
-      grade: string;
-      isMe?: boolean;
-    }[] = isHaepyeong
-      ? [
-          { rank: 1, name: '박상철', score: 49, date: '2026.09.12', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '최민호', score: 49, date: '2026.09.07', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '이정숙', score: 49, date: '2026.08.31', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '김영환', score: 49, date: '2026.08.18', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '정다혜', score: 49, date: '2026.08.05', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '송철원', score: 49, date: '2026.07.22', grade: '5스타 마스터', isMe: false },
-        ]
-      : isDongrak
-      ? [
-          { rank: 1, name: '[예시] 김동식', score: 48, date: '2026.09.11', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '[예시] 오세진', score: 48, date: '2026.09.04', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '[예시] 윤미경', score: 48, date: '2026.08.27', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '[샘플] 배준호', score: 48, date: '2026.08.12', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '[체험용] 류승완', score: 48, date: '2026.07.30', grade: '5스타 마스터', isMe: false },
-        ]
-      : [
-          { rank: 1, name: '[예시] 이진호', score: 49, date: '2026.09.10', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '[예시] 김현수', score: 49, date: '2026.09.02', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '[샘플] 서미정', score: 49, date: '2026.08.20', grade: '5스타 마스터', isMe: false },
-          { rank: 1, name: '[예시] 홍길동', score: 49, date: '2026.08.08', grade: '5스타 마스터', isMe: false },
-        ];
+    // 1. 역대 1등(최저 타수 달성 챔피언) 명단 - 100% 실제 데이터
+    const bestScore = skillList[0]?.score || (myStats.has18HoleCompleted && myStats.bestScore18 ? myStats.bestScore18 : null);
+    const champions1st = bestScore !== null
+      ? skillList.filter((it) => it.score === bestScore)
+      : [];
 
-    const recordScore = champions1st[0]?.score || 49;
-    const myName = userProfile.userName || '나이스버디';
+    const recordScore = bestScore || 49;
 
-    // 사용자가 해당 구장에서 1등 타수를 쳤거나 갱신했다면 최신순 1등으로 최상단 등록
-    const userBest = myStats.has18HoleCompleted ? (myStats.bestScore18 || myStats.avgScore18) : null;
-    if (userBest !== null && userBest <= recordScore) {
-      champions1st.unshift({
-        rank: 1,
-        name: `${myName} (본인)`,
-        score: userBest,
-        date: '2026.09.13 (최신)',
-        grade: myStats.starGrade.split(' ')[1] || '5스타 마스터',
-        isMe: true,
-      });
-    }
-
-    // 2. 구장별 실력 TOP 4 (동점자가 있으면 공동 1위 처리하여 분별성 없을 때 공정 표기)
-    let skillTop4 = champions1st.slice(0, 4).map((cItem) => ({
-      rank: 1,
-      rankLabel: champions1st.length > 1 ? '공동 1위' : '1위',
+    // 2. 구장별 실력 TOP 4
+    const skillTop4 = skillList.slice(0, 4).map((cItem) => ({
+      rank: cItem.rank,
+      rankLabel: cItem.rankLabel,
       name: cItem.name,
       score: cItem.score,
       grade: cItem.grade,
       date: cItem.date,
       isMe: !!cItem.isMe,
     }));
-
-    // 3. 구장별 기준 활동 랭킹 명단 (최근 30일 완주 횟수)
-    const baselineActivity = isHaepyeong
-      ? [
-          { rank: 1, name: '[예시] 정태호', rounds: 48, tier: '하루 2~3게임 열정왕' },
-          { rank: 2, name: '[예시] 최경숙', rounds: 38, tier: '매일 라운딩' },
-          { rank: 3, name: '[샘플] 오성근', rounds: 29, tier: '주 4~5회 완주' },
-          { rank: 4, name: '[체험용] 한상우', rounds: 22, tier: '주 3~4회 완주' },
-        ]
-      : isDongrak
-      ? [
-          { rank: 1, name: '[예시] 이재홍', rounds: 54, tier: '하루 2~3게임 열정왕' },
-          { rank: 2, name: '[예시] 김말선', rounds: 44, tier: '매일 라운딩' },
-          { rank: 3, name: '[샘플] 박진태', rounds: 33, tier: '주 4~5회 완주' },
-          { rank: 4, name: '[체험용] 서정민', rounds: 26, tier: '주 3~4회 완주' },
-        ]
-      : [
-          { rank: 1, name: '[예시] 장석호', rounds: 46, tier: '하루 2~3게임 열정왕' },
-          { rank: 2, name: '[예시] 권영미', rounds: 37, tier: '매일 라운딩' },
-          { rank: 3, name: '[샘플] 백운기', rounds: 28, tier: '주 4~5회 완주' },
-          { rank: 4, name: '[체험용] 송인철', rounds: 21, tier: '주 3~4회 완주' },
-        ];
 
     // 나의 실력 순위 판정
     let mySkillRank: {
@@ -611,37 +551,30 @@ export default function HomePage() {
       isTop4: boolean;
     } | null = null;
 
-    if (myStats.has18HoleCompleted && myStats.avgScore18 !== null) {
-      const myScore = myStats.avgScore18;
-
-      let computedRank = 1;
-      if (myScore <= recordScore) computedRank = 1;
-      else if (myScore <= recordScore + 2) computedRank = 2;
-      else if (myScore <= recordScore + 3) computedRank = 3;
-      else if (myScore <= recordScore + 4) computedRank = 4;
-      else if (myScore <= recordScore + 6) computedRank = 6;
-      else if (myScore <= recordScore + 9) computedRank = 12;
-      else if (myScore <= recordScore + 13) computedRank = 24;
-      else if (myScore <= recordScore + 17) computedRank = 48;
-      else if (myScore <= recordScore + 23) computedRank = 85;
-      else computedRank = 138;
-
-      const rankLabel = computedRank === 1
-        ? '공동 1위 (최저타 챔피언)'
-        : computedRank <= 4 
-        ? `${computedRank}위 (TOP 4)` 
-        : computedRank <= 100 
-        ? `${computedRank}위 (상위 ${Math.min(99, Math.round(computedRank * 0.8))}%권)`
-        : `${computedRank}위 (전체 참가자 중)`;
-
-      const isTop4 = computedRank <= 4;
+    if (lb.userSkillStatus.hasOfficialMatch && lb.userSkillStatus.officialRank !== null && lb.userSkillStatus.officialScore !== null) {
       mySkillRank = {
-        rank: computedRank,
-        score: myScore,
-        rankLabel,
-        isTop4,
+        rank: lb.userSkillStatus.officialRank,
+        score: lb.userSkillStatus.officialScore,
+        rankLabel: `${lb.userSkillStatus.officialRank}위 (공인)`,
+        isTop4: lb.userSkillStatus.officialRank <= 4,
+      };
+    } else if (lb.userSkillStatus.hasCasualRound && lb.userSkillStatus.casualScore !== null) {
+      mySkillRank = {
+        rank: lb.userSkillStatus.casualRankEquivalent || 1,
+        score: lb.userSkillStatus.casualScore,
+        rankLabel: `등외 (친선 ${lb.userSkillStatus.casualScore}타)`,
+        isTop4: false,
       };
     }
+
+    // 3. 구장별 활동 TOP 4
+    const activityTop4 = actList.slice(0, 4).map((p) => ({
+      rank: p.rank,
+      name: p.name,
+      rounds: p.rounds,
+      tier: p.tier,
+      isMe: !!p.isMe,
+    }));
 
     // 나의 활동 순위 판정
     let myActivityRank: {
@@ -650,45 +583,14 @@ export default function HomePage() {
       rankLabel: string;
       isTop4: boolean;
     } | null = null;
-    let activityTop4 = baselineActivity.map((p) => ({ ...p, isMe: false }));
 
-    if (myStats.roundCount18 > 0) {
-      const myRounds = myStats.roundCount18;
-      const myName = userProfile.userName || '나이스버디';
-
-      let computedRank = 1;
-      if (myRounds >= 48) computedRank = 1;
-      else if (myRounds >= 38) computedRank = 2;
-      else if (myRounds >= 29) computedRank = 3;
-      else if (myRounds >= 22) computedRank = 4;
-      else if (myRounds >= 15) computedRank = 8;
-      else if (myRounds >= 8) computedRank = 18;
-      else if (myRounds >= 4) computedRank = 35;
-      else if (myRounds >= 2) computedRank = 64;
-      else computedRank = 112;
-
-      const rankLabel = computedRank <= 4
-        ? `${computedRank}위 (열정 TOP 4)`
-        : `${computedRank}위`;
-
-      const isTop4 = computedRank <= 4;
+    if (lb.userActivityStatus.roundsCount30Days > 0) {
       myActivityRank = {
-        rank: computedRank,
-        rounds: myRounds,
-        rankLabel,
-        isTop4,
+        rank: lb.userActivityStatus.rank,
+        rounds: lb.userActivityStatus.roundsCount30Days,
+        rankLabel: `${lb.userActivityStatus.rank}위`,
+        isTop4: lb.userActivityStatus.rank <= 4,
       };
-
-      if (isTop4) {
-        activityTop4.splice(computedRank - 1, 0, {
-          rank: computedRank,
-          name: `${myName} (본인)`,
-          rounds: myRounds,
-          tier: myRounds >= 30 ? '하루 2~3게임 열정왕' : '열정 골퍼',
-          isMe: true,
-        });
-        activityTop4 = activityTop4.slice(0, 4).map((p, idx) => ({ ...p, rank: idx + 1 }));
-      }
     }
 
     return {
@@ -2025,63 +1927,78 @@ export default function HomePage() {
                     </div>
                   )}
 
-                  {/* 1~100위 순위표 */}
-                  <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pr-0.5 border border-stone-200 rounded-xl p-1 bg-stone-50/50 divide-y divide-stone-100">
-                    {activeLeaderboard100.skillTop100.map((player) => {
-                      const isTop1 = player.rank === 1;
-                      const isTop3 = player.rank <= 3;
-                      const medal = isTop1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : null;
+                  {/* 1~100위 순위표 (100% 팩트 기반) */}
+                  {activeLeaderboard100.skillTop100.length > 0 ? (
+                    <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pr-0.5 border border-stone-200 rounded-xl p-1 bg-stone-50/50 divide-y divide-stone-100">
+                      {activeLeaderboard100.skillTop100.map((player) => {
+                        const isTop1 = player.rank === 1;
+                        const isTop3 = player.rank <= 3;
+                        const medal = isTop1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : null;
 
-                      return (
-                        <div
-                          key={player.rank}
-                          className={`p-2 rounded-xl transition flex items-center justify-between text-xs ${
-                            player.isMe
-                              ? 'bg-amber-100/90 border-2 border-amber-400 font-black shadow-xs'
-                              : 'hover:bg-white'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0 ${
-                              isTop3 ? 'bg-amber-400 text-amber-950 shadow-2xs' : 'bg-stone-200 text-stone-700'
-                            }`}>
-                              {medal || player.rank}
-                            </span>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-black text-stone-900 truncate">
-                                  {player.name}
-                                </span>
-                                <span className="text-[9.5px] bg-stone-200/80 text-stone-700 px-1.5 py-0.2 rounded truncate max-w-[90px]">
-                                  {player.clubName}
-                                </span>
-                                <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1 rounded">
-                                  {player.matchType}
-                                </span>
-                              </div>
-                              <div className="text-[10px] text-stone-500 font-medium mt-0.5">
-                                {player.grade} · {player.date}
+                        return (
+                          <div
+                            key={player.rank}
+                            className={`p-2 rounded-xl transition flex items-center justify-between text-xs ${
+                              player.isMe
+                                ? 'bg-amber-100/90 border-2 border-amber-400 font-black shadow-xs'
+                                : 'hover:bg-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0 ${
+                                isTop3 ? 'bg-amber-400 text-amber-950 shadow-2xs' : 'bg-stone-200 text-stone-700'
+                              }`}>
+                                {medal || player.rank}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-black text-stone-900 truncate">
+                                    {player.name}
+                                  </span>
+                                  <span className="text-[9.5px] bg-stone-200/80 text-stone-700 px-1.5 py-0.2 rounded truncate max-w-[90px]">
+                                    {player.clubName}
+                                  </span>
+                                  <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1 rounded">
+                                    {player.matchType}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-stone-500 font-medium mt-0.5">
+                                  {player.grade} · {player.date}
+                                </div>
                               </div>
                             </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-sm font-black text-emerald-800">
+                                {player.score}타
+                              </span>
+                            </div>
                           </div>
-                          <div className="text-right shrink-0">
-                            <span className="text-sm font-black text-emerald-800">
-                              {player.score}타
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-12 px-4 text-center space-y-2.5 border border-dashed border-stone-200 rounded-2xl bg-stone-50/60">
+                      <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-800 text-xl mx-auto flex items-center justify-center font-black">
+                        🏆
+                      </div>
+                      <div className="text-sm font-black text-stone-800">
+                        현재 등록된 공인 실력 순위 기록이 없습니다
+                      </div>
+                      <p className="text-xs text-stone-500 max-w-xs mx-auto leading-relaxed">
+                        파크온은 가짜·예시 선수 정보를 일절 표출하지 않습니다.<br/>
+                        실제 필드에서 공식 클럽전 또는 대회(18홀)를 완주하시면 100% 팩트 기반 공인 순위표에 실시간 등록됩니다.
+                      </p>
+                    </div>
+                  )}
 
                   {/* 공인 기준 상세 안내 */}
                   <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 text-[11px] space-y-1">
                     <div className="flex items-center gap-1 text-amber-900 font-black">
                       <span>💡</span>
-                      <span>공인 실력 순위 엄격 집계 기준</span>
+                      <span>공인 실력 순위 100% 팩트 집계 기준</span>
                     </div>
-                    <p className="text-stone-600 font-medium">
-                      공인 실력 랭킹은 공정성을 위해 <strong>파크온이 인증한 공인 클럽전 또는 공식 대회 18홀 완주 기록만</strong> 반영됩니다. 개인 친선 라운드는 등외 점수로 평가됩니다.
+                    <p className="text-stone-600 font-medium leading-relaxed">
+                      공인 실력 랭킹은 <strong>파크온이 인증한 공인 클럽전 또는 공식 대회 18홀 완주 기록만</strong> 정직하게 반영됩니다. 개인 친선 라운드는 등외 점수로 안전하게 분리 평가됩니다.
                     </p>
                   </div>
                 </div>
@@ -2104,7 +2021,7 @@ export default function HomePage() {
                   <div className="bg-emerald-50 border-2 border-emerald-400 rounded-xl p-2.5 flex items-center justify-between text-xs font-black text-emerald-950">
                     <div className="flex items-center gap-1.5">
                       <span>🔥 내 활동 순위:</span>
-                      <span className="text-emerald-800 text-sm font-black">{activeLeaderboard100.userActivityStatus.rank}위</span>
+                      <span className="text-emerald-800 text-sm font-black">{activeLeaderboard100.userActivityStatus.rank > 0 ? `${activeLeaderboard100.userActivityStatus.rank}위` : '기록 대기'}</span>
                       <span className="text-[10px] bg-emerald-700 text-white px-1.5 py-0.2 rounded font-bold">
                         {activeLeaderboard100.userActivityStatus.tier}
                       </span>
@@ -2114,62 +2031,77 @@ export default function HomePage() {
                     </span>
                   </div>
 
-                  {/* 1~100위 순위표 */}
-                  <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pr-0.5 border border-stone-200 rounded-xl p-1 bg-stone-50/50 divide-y divide-stone-100">
-                    {activeLeaderboard100.activityTop100.map((player) => {
-                      const isTop1 = player.rank === 1;
-                      const isTop3 = player.rank <= 3;
-                      const medal = isTop1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : null;
+                  {/* 1~100위 순위표 (100% 팩트 기반) */}
+                  {activeLeaderboard100.activityTop100.length > 0 ? (
+                    <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pr-0.5 border border-stone-200 rounded-xl p-1 bg-stone-50/50 divide-y divide-stone-100">
+                      {activeLeaderboard100.activityTop100.map((player) => {
+                        const isTop1 = player.rank === 1;
+                        const isTop3 = player.rank <= 3;
+                        const medal = isTop1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : null;
 
-                      return (
-                        <div
-                          key={player.rank}
-                          className={`p-2 rounded-xl transition flex items-center justify-between text-xs ${
-                            player.isMe
-                              ? 'bg-emerald-100/90 border-2 border-emerald-400 font-black shadow-xs'
-                              : 'hover:bg-white'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0 ${
-                              isTop3 ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-stone-200 text-stone-700'
-                            }`}>
-                              {medal || player.rank}
-                            </span>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-black text-stone-900 truncate">
-                                  {player.name}
-                                </span>
-                                {player.clubName && (
-                                  <span className="text-[9.5px] bg-stone-200/80 text-stone-700 px-1.5 py-0.2 rounded truncate max-w-[90px]">
-                                    {player.clubName}
+                        return (
+                          <div
+                            key={player.rank}
+                            className={`p-2 rounded-xl transition flex items-center justify-between text-xs ${
+                              player.isMe
+                                ? 'bg-emerald-100/90 border-2 border-emerald-400 font-black shadow-xs'
+                                : 'hover:bg-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0 ${
+                                isTop3 ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-stone-200 text-stone-700'
+                              }`}>
+                                {medal || player.rank}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-black text-stone-900 truncate">
+                                    {player.name}
                                   </span>
-                                )}
-                              </div>
-                              <div className="text-[10px] text-emerald-800 font-medium mt-0.5">
-                                {player.tier}
+                                  {player.clubName && (
+                                    <span className="text-[9.5px] bg-stone-200/80 text-stone-700 px-1.5 py-0.2 rounded truncate max-w-[90px]">
+                                      {player.clubName}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-emerald-800 font-medium mt-0.5">
+                                  {player.tier}
+                                </div>
                               </div>
                             </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-sm font-black text-emerald-900">
+                                월 {player.rounds}회
+                              </span>
+                            </div>
                           </div>
-                          <div className="text-right shrink-0">
-                            <span className="text-sm font-black text-emerald-900">
-                              월 {player.rounds}회
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-12 px-4 text-center space-y-2.5 border border-dashed border-stone-200 rounded-2xl bg-stone-50/60">
+                      <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-800 text-xl mx-auto flex items-center justify-center font-black">
+                        🔥
+                      </div>
+                      <div className="text-sm font-black text-stone-800">
+                        현재 등록된 필드 활동 순위 기록이 없습니다
+                      </div>
+                      <p className="text-xs text-stone-500 max-w-xs mx-auto leading-relaxed">
+                        파크온은 가짜 예시 활동 데이터를 생성하지 않습니다.<br/>
+                        해당 구장에서 라운드를 완주하시면 실제 완주 횟수(최근 30일)에 따라 활동 순위표에 실시간 반영됩니다.
+                      </p>
+                    </div>
+                  )}
 
                   {/* 활동 기준 상세 안내 */}
                   <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-2.5 text-[11px] space-y-1">
                     <div className="flex items-center gap-1 text-emerald-900 font-black">
                       <span>💡</span>
-                      <span>필드 활동 지수 반영 기준 안내</span>
+                      <span>필드 활동 지수 100% 팩트 집계 안내</span>
                     </div>
-                    <p className="text-stone-600 font-medium">
-                      활동 지수는 <strong>정규 리그나 대회 여부와 관계없이</strong>, 필드를 방문하여 혼자 연습하거나 친선으로 플레이한 모든 완주 기록(하루 2~3회 포함)을 <strong>100% 실시간으로 반영</strong>합니다.
+                    <p className="text-stone-600 font-medium leading-relaxed">
+                      활동 지수는 <strong>정규 리그나 대회 여부와 관계없이</strong>, 실제 필드를 방문하여 혼자 연습하거나 친선으로 플레이한 모든 완주 기록(하루 2~3회 포함)을 <strong>100% 실시간으로 반영</strong>합니다.
                     </p>
                   </div>
                 </div>
