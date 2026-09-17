@@ -30,12 +30,38 @@ import {
   Flag
 } from 'lucide-react';
 
+export interface CityClubDetail {
+  id: string;
+  name: string;
+  province: string;
+  city: string;
+  homeCourseName: string;
+  memberCount: number;
+  managerName: string;
+  presidentName: string;
+  contactPhone: string;
+  createdAt: string;
+  description: string;
+  isActualParticipated: boolean;
+  actualRoundsCount: number;
+  totalPlayersCount: number;
+  lastPlayedAtStr: string;
+  recentActivities: {
+    date: string;
+    courseName: string;
+    playerCount: number;
+    leaderName: string;
+    status: string;
+  }[];
+}
+
 interface CityDetailStat {
   cityName: string;
   userCount: number;
   liveUsers: number;
   clubCount: number;
   clubs: string[];
+  clubDetails?: CityClubDetail[];
   majorCourses: string[];
   activityIndex: string;
 }
@@ -132,6 +158,8 @@ export default function AdminDashboardPage() {
   const [selectedProvinceModal, setSelectedProvinceModal] = useState<ProvinceStat | null>(null);
   // 추이 상세 팝업 모달 상태 (일별, 주별, 월별, 연별)
   const [selectedTrendModal, setSelectedTrendModal] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | null>(null);
+  // 클럽 상세 관제 팝업 모달 상태 (관리자 뷰어 모드)
+  const [selectedClubDetailModal, setSelectedClubDetailModal] = useState<CityClubDetail | null>(null);
 
   // Check saved session PIN on load (6자리 768517)
   useEffect(() => {
@@ -582,9 +610,17 @@ export default function AdminDashboardPage() {
                             {city.liveUsers}명
                           </strong>
                         </div>
-                        <div>
+                        <div
+                          onClick={() => {
+                            if (city.clubDetails && city.clubDetails.length > 0) {
+                              setSelectedClubDetailModal(city.clubDetails[0]);
+                            }
+                          }}
+                          className={city.clubCount > 0 ? "cursor-pointer group" : ""}
+                          title={city.clubCount > 0 ? "클릭 시 클럽 상세 관제 팝업 열기" : ""}
+                        >
                           <span className="text-zinc-400 text-[10px] mr-1">클럽</span>
-                          <strong className={city.clubCount > 0 ? "text-purple-600 dark:text-purple-400 font-bold" : "text-zinc-400 dark:text-zinc-500 font-medium"}>
+                          <strong className={city.clubCount > 0 ? "text-purple-600 dark:text-purple-400 font-bold group-hover:underline underline-offset-2" : "text-zinc-400 dark:text-zinc-500 font-medium"}>
                             {city.clubCount}개
                           </strong>
                         </div>
@@ -594,9 +630,33 @@ export default function AdminDashboardPage() {
                     {/* Clubs */}
                     <div className="text-xs text-zinc-600 dark:text-zinc-400 flex items-start gap-1.5 border-t border-zinc-200/50 dark:border-zinc-700/50 pt-2">
                       <span className="font-semibold text-zinc-700 dark:text-zinc-300 shrink-0">소속 클럽:</span>
-                      <span className={city.clubs.length > 0 ? "text-purple-600 dark:text-purple-400 font-bold" : "text-zinc-400 dark:text-zinc-500"}>
-                        {city.clubs.length > 0 ? city.clubs.join(' · ') : '등록 클럽 없음 (0개)'}
-                      </span>
+                      {city.clubDetails && city.clubDetails.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 items-center">
+                          {city.clubDetails.map((club) => (
+                            <button
+                              key={club.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedClubDetailModal(club);
+                              }}
+                              className="px-2.5 py-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/80 dark:hover:bg-purple-900 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-700 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-97 group"
+                              title="클릭하여 클럽 상세 내역 보기"
+                            >
+                              <span>🏆</span>
+                              <span className="group-hover:underline">{club.name}</span>
+                              <span className="text-[10px] px-1.5 py-0.2 bg-purple-600 text-white rounded font-bold">내역 보기 ↗</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : city.clubs.length > 0 ? (
+                        <span className="text-purple-600 dark:text-purple-400 font-bold">
+                          {city.clubs.join(' · ')}
+                        </span>
+                      ) : (
+                        <span className="text-zinc-400 dark:text-zinc-500">
+                          등록 클럽 없음 (0개)
+                        </span>
+                      )}
                     </div>
 
                     {/* Courses */}
@@ -618,6 +678,175 @@ export default function AdminDashboardPage() {
                 className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 font-bold rounded-xl text-xs transition-colors shadow-sm"
               >
                 닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 클럽 상세 실태 관제 팝업 (최고 관리자 전용 실태 조사 뷰어) */}
+      {selectedClubDetailModal && (
+        <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-zinc-900 border border-purple-200 dark:border-purple-800/80 rounded-3xl w-full max-w-2xl p-5 sm:p-6 shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4">
+              <div className="flex items-start gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-purple-100 dark:bg-purple-950/80 text-purple-600 dark:text-purple-300 flex items-center justify-center font-bold text-xl shrink-0 shadow-inner">
+                  🏆
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg sm:text-xl font-black text-zinc-900 dark:text-zinc-100">
+                      {selectedClubDetailModal.name}
+                    </h3>
+                    {selectedClubDetailModal.isActualParticipated ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-xs font-black rounded-full border border-emerald-300 dark:border-emerald-800">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        실제 필드 활동 인증
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs font-bold rounded-full">
+                        활동 이력 확인 중
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 flex items-center gap-2">
+                    <span>📍 {selectedClubDetailModal.province} {selectedClubDetailModal.city}</span>
+                    <span>·</span>
+                    <span>⛳ 홈: {selectedClubDetailModal.homeCourseName}</span>
+                    <span>·</span>
+                    <span className="text-purple-600 dark:text-purple-400 font-semibold">관리자 실태 관제(Read-Only)</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedClubDetailModal(null)}
+                className="w-8 h-8 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-500 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer"
+                title="팝업 닫기"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 4대 실태 요약 통계 */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="bg-purple-50/60 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/50 rounded-2xl p-3 text-center">
+                <div className="text-[11px] font-bold text-purple-600 dark:text-purple-400">소속 회원수</div>
+                <div className="text-xl font-black text-purple-950 dark:text-purple-100 mt-0.5">
+                  {selectedClubDetailModal.memberCount}명
+                </div>
+                <div className="text-[10px] text-zinc-400 mt-0.5">실명 인증 회원</div>
+              </div>
+
+              <div className="bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 rounded-2xl p-3 text-center">
+                <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">실제 누적 라운드</div>
+                <div className="text-xl font-black text-emerald-950 dark:text-emerald-100 mt-0.5">
+                  {selectedClubDetailModal.actualRoundsCount}회
+                </div>
+                <div className="text-[10px] text-zinc-400 mt-0.5">정상 필드 완주</div>
+              </div>
+
+              <div className="bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-3 text-center">
+                <div className="text-[11px] font-bold text-blue-600 dark:text-blue-400">총 참가 골퍼</div>
+                <div className="text-xl font-black text-blue-950 dark:text-blue-100 mt-0.5">
+                  {selectedClubDetailModal.totalPlayersCount}명
+                </div>
+                <div className="text-[10px] text-zinc-400 mt-0.5">동반 플레이어 누적</div>
+              </div>
+
+              <div className="bg-amber-50/60 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 rounded-2xl p-3 text-center">
+                <div className="text-[11px] font-bold text-amber-600 dark:text-amber-400">클럽 등록일</div>
+                <div className="text-sm font-black text-amber-950 dark:text-amber-100 mt-1 truncate">
+                  {selectedClubDetailModal.createdAt}
+                </div>
+                <div className="text-[10px] text-zinc-400 mt-0.5">최초 창립 등록</div>
+              </div>
+            </div>
+
+            {/* 클럽 조직 및 공식 제원 정보 */}
+            <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700/60 rounded-2xl p-4 space-y-3">
+              <div className="text-xs font-black text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5 border-b border-zinc-200/60 dark:border-zinc-700 pb-2">
+                <span>📋</span> 클럽 공식 조직 및 제원
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                <div className="flex items-center justify-between p-2 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                  <span className="text-zinc-500 font-medium">총괄 매니저</span>
+                  <span className="font-bold text-zinc-900 dark:text-zinc-100">{selectedClubDetailModal.managerName}</span>
+                </div>
+                <div className="flex items-center justify-between p-2 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                  <span className="text-zinc-500 font-medium">클럽 대표/회장</span>
+                  <span className="font-bold text-zinc-900 dark:text-zinc-100">{selectedClubDetailModal.presidentName}</span>
+                </div>
+                <div className="flex items-center justify-between p-2 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                  <span className="text-zinc-500 font-medium">지정 공식 홈구장</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">{selectedClubDetailModal.homeCourseName}</span>
+                </div>
+                <div className="flex items-center justify-between p-2 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                  <span className="text-zinc-500 font-medium">사무국 연락처</span>
+                  <span className="font-bold text-zinc-900 dark:text-zinc-100">{selectedClubDetailModal.contactPhone}</span>
+                </div>
+              </div>
+              {selectedClubDetailModal.description && (
+                <div className="p-2.5 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-100 dark:border-zinc-800 text-xs">
+                  <span className="text-zinc-400 text-[11px] block mb-1">클럽 소개</span>
+                  <p className="text-zinc-700 dark:text-zinc-300 font-medium leading-relaxed">
+                    {selectedClubDetailModal.description}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* 최근 실제 필드 라운딩 내역 (언제, 몇 명, 어떻게) */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-black text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                  <span>⛳</span> 최근 실제 필드 라운딩 내역
+                  <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 text-[10px] font-bold rounded">
+                    {selectedClubDetailModal.recentActivities.length}건
+                  </span>
+                </div>
+                <span className="text-[10px] text-zinc-400">GPS 기반 실시간 필드 완주 기록</span>
+              </div>
+
+              {selectedClubDetailModal.recentActivities && selectedClubDetailModal.recentActivities.length > 0 ? (
+                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {selectedClubDetailModal.recentActivities.map((act, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/80 rounded-xl flex items-center justify-between text-xs"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                          <span>{act.courseName}</span>
+                          <span className="text-[10px] font-normal text-zinc-400">{act.date}</span>
+                        </div>
+                        <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                          참여 골퍼: <strong className="text-blue-600 dark:text-blue-400 font-bold">{act.playerCount}명</strong> (진행 조장: {act.leaderName})
+                        </div>
+                      </div>
+                      <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold text-[11px] rounded-lg shrink-0">
+                        {act.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6 bg-zinc-50 dark:bg-zinc-800/40 rounded-2xl text-center text-xs text-zinc-400">
+                  아직 기록된 필드 라운딩 내역이 없습니다.
+                </div>
+              )}
+            </div>
+
+            {/* 안내 및 닫기 버튼 */}
+            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex flex-col gap-2">
+              <div className="text-[11px] text-zinc-400 text-center">
+                ※ 본 화면은 최고 관리자 전용 실태 관제 뷰어입니다. 수정/참여 버튼 없이 실시간 서버 데이터만 조회됩니다.
+              </div>
+              <button
+                onClick={() => setSelectedClubDetailModal(null)}
+                className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 active:scale-99 text-white font-bold rounded-xl text-xs transition-all shadow-sm cursor-pointer"
+              >
+                확인 완료 (닫기)
               </button>
             </div>
           </div>
