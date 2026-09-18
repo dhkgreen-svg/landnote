@@ -56,7 +56,7 @@ export interface ClubEventRoom {
   awardConfig?: AwardRuleConfig; // [NEW] 시상 룰 및 행운상 추첨 커스텀 설정
   groups: ClubGroup[];
   waitingPool?: ClubPlayer[]; // 참가 신청 대기 명단 (조 편성 전)
-  groupingMethod?: 'RANDOM' | 'BALANCED_GENDER' | 'BALANCED_TIER' | 'KEEP_LEADERS' | 'MANUAL';
+  groupingMethod?: 'RANDOM' | 'BALANCED_GENDER' | 'BALANCED_TIER' | 'KEEP_LEADERS' | 'ASSIGN_LEADERS' | 'PARTIAL_ASSIGN' | 'MANUAL';
   status: 'RECRUITING' | 'PLAYING' | 'FINISHED';
   createdAt: string;
 }
@@ -100,6 +100,69 @@ export interface ClubMember {
   phone?: string;
 }
 
+// 🔐 탈퇴 회원 비밀 보관소 (영구 보존 & 복귀 시 원상 회복)
+export interface ArchivedClubMember {
+  id: string;
+  name: string;
+  roleAtLeave: 'PRESIDENT' | 'MANAGER' | 'MEMBER';
+  joinedAt: string; // 최초 가입 일자 (복귀 시 원상 복구)
+  leftAt: string;   // 탈퇴 일자
+  phone?: string;
+  pastTournamentsCount: number; // 과거 출전했던 대회 수
+  pastAwards: string[];         // 과거 수상 내역 (예: "9월 월례회 메달리스트")
+  bestScore?: number;           // 클럽 내 최저 타수
+  secretHash?: string;          // 탈퇴자 비밀 암호화 태그
+}
+
+// 📜 클럽 영구 연대기 (대회 실록 & 명예의 전당)
+export interface ClubChronicleTournament {
+  id: string; // 대회 고유 ID
+  roomId?: string; // 원본 대회방 ID
+  clubId: string;
+  clubName: string;
+  title: string; // 예: 구미 동락클럽 9월 정기 월례회
+  heldAt: string; // 일자 (예: 2026-09-18)
+  courseId: string;
+  courseName: string;
+  totalHoles: number;
+  gameMode?: string;
+  totalParticipants: number;
+  // 명예의 전당 (우승자 / 준우승자 / 신페리오 우승 / 메달리스트)
+  winnerName: string;
+  winnerScore: number;
+  runnerUpName?: string;
+  runnerUpScore?: number;
+  medalistName?: string;
+  medalistScore?: number;
+  // 특별상 및 행운상
+  specialAwards?: SpecialAwardWinner[];
+  luckyDrawWinners?: LuckyDrawWinner[];
+  // 전체 순위 및 참가자별 기록 스냅샷
+  rankings: {
+    rank: number;
+    playerId: string;
+    playerName: string;
+    groupNumber: number;
+    totalStrokes: number;
+    parDiff: number;
+    handicap?: number;
+    netScore?: number;
+    isWinner?: boolean;
+    awards?: string[];
+  }[];
+  // 조별 성적 스냅샷
+  groupResults?: {
+    groupNumber: number;
+    groupName: string;
+    leaderName: string;
+    avgScore: number;
+    totalScore: number;
+    playersCount: number;
+  }[];
+  notes?: string;
+  archivedAt: string;
+}
+
 export interface ParkGolfClub {
   id: string;
   name: string;              // 예: 동락 에이스 클럽
@@ -111,7 +174,9 @@ export interface ParkGolfClub {
   managerName: string;       // 총무
   contactPhone?: string;     // 문의 연락처
   memberCount: number;       // 회원 수
-  members: ClubMember[];     // 소속 회원 명부
+  members: ClubMember[];     // 소속 활성 회원 명부
+  archivedMembers?: ArchivedClubMember[]; // [NEW] 탈퇴 회원 비밀 보관함 (복귀 시 원상 회복)
+  chronicles?: ClubChronicleTournament[]; // [NEW] 클럽 영구 대회 연대기 (실록)
   pendingMembers?: { id: string; name: string; phone?: string; requestedAt: string; message?: string }[]; // 가입 승인 대기 명단
   isPublic: boolean;         // 공개 여부
   badgeColor?: string;       // 뱃지 테마 색상

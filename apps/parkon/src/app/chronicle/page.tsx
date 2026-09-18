@@ -445,108 +445,181 @@ function ChronicleContent() {
         </div>
       )}
 
-      {/* ⚔️ 클럽 대항전 실록 (Match Chronicle) */}
+      {/* ⚔️ 클럽 대항전 및 대회 실록 (Match & Tournament Chronicle) */}
       {activeTab === 'CLUB_MATCH' && (
         <div className="space-y-4">
-          {/* 대항전 공식 전적 요약 카드 */}
-          <div className="bg-gradient-to-br from-purple-900 via-indigo-950 to-stone-950 text-white rounded-3xl p-5 shadow-xl border-2 border-purple-400/40 space-y-4">
-            <div className="flex items-center justify-between border-b border-purple-700/50 pb-3">
-              <div className="flex items-center gap-2">
-                <Swords className="w-5 h-5 text-amber-300" />
-                <h3 className="text-base font-black tracking-tight text-white">소속 클럽 공식 대항전 실록</h3>
-              </div>
-              <span className="text-[10px] bg-amber-400 text-purple-950 font-black px-2.5 py-0.5 rounded-full">
-                공식 인증 전적
-              </span>
-            </div>
+          {(() => {
+            const myClubIds = typeof window !== 'undefined' ? ClubStorage.getMyClubIds() : [];
+            const myClub = myClubIds.length > 0 ? ClubStorage.getClubById(myClubIds[0]) : null;
+            const myPastHistory = myClub ? ClubStorage.getMemberPastHistoryInClub(myClub.id, userName) : [];
+            const totalMatches = myPastHistory.length;
+            const wins = myPastHistory.filter((h) => h.myRecord.isWinner || h.myRecord.rank === 1).length;
+            const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
+            const medalists = myPastHistory.filter((h) => h.myRecord.awards?.some((a) => a.includes('메달리스트'))).length;
+            const avgStrokes =
+              totalMatches > 0
+                ? (myPastHistory.reduce((s, h) => s + h.myRecord.totalStrokes, 0) / totalMatches).toFixed(1)
+                : '-';
 
-            {/* 전적 지표 그리드 */}
-            <div className="grid grid-cols-4 gap-2 text-center">
-              <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
-                <div className="text-[10px] text-purple-200 font-bold">통산 전적</div>
-                <div className="text-lg font-black text-amber-300 mt-0.5">0전 0승 0패</div>
-              </div>
-              <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
-                <div className="text-[10px] text-purple-200 font-bold">승률</div>
-                <div className="text-lg font-black text-white mt-0.5">-%</div>
-              </div>
-              <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
-                <div className="text-[10px] text-purple-200 font-bold">누적 승점</div>
-                <div className="text-lg font-black text-white mt-0.5">0점</div>
-              </div>
-              <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
-                <div className="text-[10px] text-purple-200 font-bold">대항전 평균</div>
-                <div className="text-lg font-black text-emerald-300 mt-0.5">-타</div>
-              </div>
-            </div>
+            if (!myClub) {
+              return (
+                <div className="bg-white rounded-3xl p-6 border border-stone-200 shadow-sm text-center space-y-3">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-2xl">
+                    🛡️
+                  </div>
+                  <h3 className="font-black text-base text-stone-900">소속 클럽 연결 대기 (영구 이력 보존 중)</h3>
+                  <p className="text-xs text-stone-500 font-medium leading-relaxed max-w-sm mx-auto">
+                    현재 소속 클럽이 미등록(또는 탈퇴) 상태입니다.<br />
+                    회원님의 과거 클럽 대회 출전 스코어와 수상 훈장은 <strong>&lsquo;비밀 보관소&rsquo;</strong>에 안전 보존되어 있으며, 클럽에 복귀(재가입)하시면 모든 과거 실록이 100% 원상 복구되어 이곳에 다시 연결됩니다.
+                  </p>
+                  <div className="pt-2">
+                    <Link
+                      href="/club"
+                      className="inline-block px-5 py-2.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black text-xs rounded-xl shadow-sm transition active:scale-95"
+                    >
+                      소속 클럽 가입 및 복귀하러 가기 ▶
+                    </Link>
+                  </div>
+                </div>
+              );
+            }
 
-            {/* 내 대항전 개인 타이틀 뱃지 */}
-            <div className="bg-purple-900/60 rounded-2xl p-3 border border-purple-500/30 flex items-center justify-between text-xs">
-              <span className="text-purple-200 font-bold flex items-center gap-1.5">
-                <span>🎖️</span>
-                <span>대표 선수 영예</span>
-              </span>
-              <span className="text-stone-300 font-bold">
-                공식 클럽 대항전 출전 시 수여
-              </span>
-            </div>
-          </div>
+            return (
+              <>
+                {/* 대항전 공식 전적 요약 카드 */}
+                <div className="bg-gradient-to-br from-purple-900 via-indigo-950 to-stone-950 text-white rounded-3xl p-5 shadow-xl border-2 border-purple-400/40 space-y-4">
+                  <div className="flex items-center justify-between border-b border-purple-700/50 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Swords className="w-5 h-5 text-amber-300" />
+                      <div>
+                        <h3 className="text-base font-black tracking-tight text-white">&lsquo;{myClub.name}&rsquo; 공식 실록</h3>
+                        <p className="text-[10px] text-purple-300">내 대회 출전 이력 100% 실시간 연동</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] bg-amber-400 text-purple-950 font-black px-2.5 py-0.5 rounded-full">
+                      공식 인증 실록
+                    </span>
+                  </div>
 
-          {/* 대항전 특별 훈장 컬렉션 */}
-          <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="w-5 h-5 text-purple-700" />
-              <h3 className="text-sm font-black text-stone-900">클럽 대항전 명예 훈장</h3>
-            </div>
+                  {/* 전적 지표 그리드 */}
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
+                      <div className="text-[10px] text-purple-200 font-bold">통산 출전</div>
+                      <div className="text-lg font-black text-amber-300 mt-0.5">{totalMatches}회</div>
+                    </div>
+                    <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
+                      <div className="text-[10px] text-purple-200 font-bold">우승 횟수</div>
+                      <div className="text-lg font-black text-white mt-0.5">{wins}회</div>
+                    </div>
+                    <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
+                      <div className="text-[10px] text-purple-200 font-bold">승률</div>
+                      <div className="text-lg font-black text-white mt-0.5">{winRate}%</div>
+                    </div>
+                    <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
+                      <div className="text-[10px] text-purple-200 font-bold">평균 타수</div>
+                      <div className="text-lg font-black text-emerald-300 mt-0.5">{avgStrokes}타</div>
+                    </div>
+                  </div>
 
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1">
-                <span className="text-2xl">👑</span>
-                <div className="text-xs font-black text-stone-900">대항전 챔피언</div>
-                <div className="text-base font-black text-stone-600">0회 우승</div>
-                <div className="text-[10px] text-stone-400">기록 대기중</div>
-              </div>
+                  {/* 내 대항전 개인 타이틀 뱃지 */}
+                  <div className="bg-purple-900/60 rounded-2xl p-3 border border-purple-500/30 flex items-center justify-between text-xs">
+                    <span className="text-purple-200 font-bold flex items-center gap-1.5">
+                      <span>🎖️</span>
+                      <span>대표 선수 영예</span>
+                    </span>
+                    <span className="text-stone-300 font-bold">
+                      {totalMatches > 0 ? `'${userName}' 공식 대회 출전 확인` : '공식 클럽 대회 출전 시 수여'}
+                    </span>
+                  </div>
+                </div>
 
-              <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1">
-                <span className="text-2xl">⭐</span>
-                <div className="text-xs font-black text-stone-900">최우수 선수(MVP)</div>
-                <div className="text-base font-black text-stone-600">0회 수상</div>
-                <div className="text-[10px] text-stone-400">기록 대기중</div>
-              </div>
+                {/* 대항전 특별 훈장 컬렉션 */}
+                <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-5 h-5 text-purple-700" />
+                    <h3 className="text-sm font-black text-stone-900">클럽 대회 명예 훈장</h3>
+                  </div>
 
-              <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1">
-                <span className="text-2xl">⚔️</span>
-                <div className="text-xs font-black text-stone-900">라이벌 킬러</div>
-                <div className="text-base font-black text-stone-600">0전 0승</div>
-                <div className="text-[10px] text-stone-400">기록 대기중</div>
-              </div>
-            </div>
-          </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1">
+                      <span className="text-2xl">👑</span>
+                      <div className="text-xs font-black text-stone-900">대회 챔피언</div>
+                      <div className="text-base font-black text-purple-900">{wins}회 우승</div>
+                      <div className="text-[10px] text-stone-400">{wins > 0 ? '공식 우승 인증' : '기록 대기중'}</div>
+                    </div>
 
-          {/* 대항전 출전 상세 매치 히스토리 */}
-          <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-purple-700" />
-                <h3 className="text-sm font-black text-stone-900">공식 대항전 출전 실록</h3>
-              </div>
-              <span className="text-xs text-stone-400 font-medium">영구 기록 보존</span>
-            </div>
+                    <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1">
+                      <span className="text-2xl">⭐</span>
+                      <div className="text-xs font-black text-stone-900">메달리스트</div>
+                      <div className="text-base font-black text-purple-900">{medalists}회 수상</div>
+                      <div className="text-[10px] text-stone-400">{medalists > 0 ? '최저타 인증' : '기록 대기중'}</div>
+                    </div>
 
-            <div className="text-center py-8 bg-stone-50 rounded-2xl border border-dashed border-stone-300 space-y-2">
-              <span className="text-3xl">⚔️</span>
-              <p className="font-black text-xs text-stone-700">공식 클럽 대항전 출전 기록이 없습니다.</p>
-              <p className="text-[11px] text-stone-400">소속 클럽의 공식 대항전 라운드를 완주하면 공인 매치 결과가 이곳에 영구 기록됩니다.</p>
-              <div className="pt-1">
-                <Link
-                  href="/club"
-                  className="inline-block px-3.5 py-2 bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-95"
-                >
-                  클럽 홈 바로가기 ▶
-                </Link>
-              </div>
-            </div>
-          </div>
+                    <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1">
+                      <span className="text-2xl">⚔️</span>
+                      <div className="text-xs font-black text-stone-900">대항전 출전</div>
+                      <div className="text-base font-black text-purple-900">{totalMatches}전 {wins}승</div>
+                      <div className="text-[10px] text-stone-400">{totalMatches > 0 ? '전적 공인' : '기록 대기중'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 대항전 출전 상세 매치 히스토리 */}
+                <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-purple-700" />
+                      <h3 className="text-sm font-black text-stone-900">내 클럽 대회 출전 실록 ({totalMatches}건)</h3>
+                    </div>
+                    <span className="text-xs text-stone-400 font-medium">영구 기록 보존</span>
+                  </div>
+
+                  {totalMatches === 0 ? (
+                    <div className="text-center py-8 bg-stone-50 rounded-2xl border border-dashed border-stone-300 space-y-2">
+                      <span className="text-3xl">⚔️</span>
+                      <p className="font-black text-xs text-stone-700">아직 출전한 클럽 대회 기록이 없습니다.</p>
+                      <p className="text-[11px] text-stone-400">소속 클럽의 정기전이나 대항전 라운드를 완주하면 공인 매치 결과가 이곳에 영구 기록됩니다.</p>
+                      <div className="pt-1">
+                        <Link
+                          href="/club"
+                          className="inline-block px-3.5 py-2 bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-95"
+                        >
+                          클럽 대회 확인하기 ▶
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {myPastHistory.map((h, hIdx) => (
+                        <div
+                          key={h.tournament.id || hIdx}
+                          className="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-stone-900">
+                              {h.tournament.title}
+                            </span>
+                            <span className="text-xs font-black text-purple-800">
+                              {h.myRecord.rank}위 ({h.myRecord.totalStrokes}타)
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] text-stone-500">
+                            <span>📅 {h.tournament.heldAt} · 📍 {h.tournament.courseName}</span>
+                            <span>{h.myRecord.groupNumber}조 출전</span>
+                          </div>
+                          {h.myRecord.awards && h.myRecord.awards.length > 0 && (
+                            <div className="text-[10px] text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-lg font-black inline-block">
+                              🏅 수상: {h.myRecord.awards.join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 

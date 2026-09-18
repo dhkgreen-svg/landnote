@@ -6,6 +6,8 @@ import {
   ClubLeaderboardIndividual,
   ParkGolfClub,
   ClubMember,
+  ArchivedClubMember,
+  ClubChronicleTournament,
   ClubInvitation,
   FlashGathering,
   LuckyDrawWinner,
@@ -21,6 +23,7 @@ const STORAGE_KEYS = {
   MY_CLUB_IDS: 'parkon_my_club_ids_v1',
   CLUB_INVITATIONS: 'parkon_club_invitations_v1',
   FLASH_GATHERINGS: 'parkon_flash_gatherings_v1',
+  CLUB_CHRONICLES: 'parkon_club_chronicles_v1',
 };
 
 
@@ -88,6 +91,11 @@ export const ClubStorage = {
       const rooms = this.getAllRooms().filter((r) => r.id !== room.id);
       rooms.unshift(room);
       localStorage.setItem(STORAGE_KEYS.CLUB_ROOMS, JSON.stringify(rooms));
+
+      // 📜 대회 개최 내용 및 경기 기록을 클럽 연대기(Club Chronicle)에 영구 보존
+      if (room.clubId || (room.groups && room.groups.some((g) => g.players.length > 0))) {
+        this.archiveEventRoomToClubChronicle(room);
+      }
     } catch (e) {
       console.error('Failed to save club room:', e);
     }
@@ -234,67 +242,137 @@ export const ClubStorage = {
     return room;
   },
 
-  // 3-4. 스마트 조 편성 엔진 (완전 랜덤 / 남녀 성비 균형 / 실력 균형 / 조장 사전지정 유지)
+  // 3-4. 스마트 조 편성 엔진 (완전 랜덤 / 조장 지정 고정 / 일부 인원 고정 / 성비 균형 / 실력 균형 / 조장 사전지정 유지)
   autoGroupPlayers(
     roomId: string,
-    method: 'RANDOM' | 'BALANCED_GENDER' | 'BALANCED_TIER' | 'KEEP_LEADERS',
-    customGroupCount?: number
+    method: 'RANDOM' | 'BALANCED_GENDER' | 'BALANCED_TIER' | 'KEEP_LEADERS' | 'ASSIGN_LEADERS' | 'PARTIAL_ASSIGN',
+    customGroupCount?: number,
+    options?: {
+      designatedLeaderIds?: string[];
+      preAssignedGroupMap?: Record<string, number>;
+    }
   ): ClubEventRoom | null {
     const room = this.getRoom(roomId);
     if (!room) return null;
 
-    const leaderMap = new Map<number, ClubPlayer>();
-
-    if (method === 'KEEP_LEADERS') {
-      room.groups.forEach((g) => {
-        const leader = g.players.find((p) => p.isLeader) || g.players[0];
-        if (leader) {
-          leaderMap.set(g.groupNumber, { ...leader, isLeader: true });
-        }
-      });
-    }
-
-    // 풀에 들어갈 일반 인원 수집
-    const candidatePlayers: ClubPlayer[] = [];
+    // 1. 전체 참가자 통합 수집 (대기 풀 + 기존 조원)
+    const allPlayersMap = new Map<string, ClubPlayer>();
     if (room.waitingPool) {
-      candidatePlayers.push(...room.waitingPool);
+      room.waitingPool.forEach((p) => allPlayersMap.set(p.id, { ...p, isLeader: false }));
     }
     room.groups.forEach((g) => {
       g.players.forEach((p) => {
-        if (method === 'KEEP_LEADERS' && leaderMap.get(g.groupNumber)?.id === p.id) {
-          // 조장으로 보존
-        } else {
-          candidatePlayers.push({ ...p, isLeader: false });
+        if (!allPlayersMap.has(p.id)) {
+          allPlayersMap.set(p.id, { ...p, isLeader: false });
         }
       });
     });
 
-    const totalCount = candidatePlayers.length + (method === 'KEEP_LEADERS' ? leaderMap.size : 0);
+    const allPlayers = Array.from(allPlayersMap.values());
+    const totalCount = allPlayers.length;
     if (totalCount === 0) return room;
 
-    // 최적 조 수 및 배분 계산
+    // 2. 최적 조 수 계산
     const optimal = this.calculateOptimalGroups(totalCount);
     let groupCount = customGroupCount || optimal.groupCount;
-    if (method === 'KEEP_LEADERS' && leaderMap.size > 0) {
-      groupCount = Math.max(groupCount, leaderMap.size);
+    if (method === 'ASSIGN_LEADERS' && options?.designatedLeaderIds && options.designatedLeaderIds.length > 0) {
+      groupCount = Math.max(groupCount, options.designatedLeaderIds.length);
+    }
+    if (method === 'PARTIAL_ASSIGN' && options?.preAssignedGroupMap) {
+      const maxPreGroup = Math.max(...Object.values(options.preAssignedGroupMap), 1);
+      groupCount = Math.max(groupCount, maxPreGroup);
     }
 
+    // 3. 조별 정원 배분(distribution) 계산
     let distribution: number[] = [];
     if (customGroupCount && customGroupCount !== optimal.groupCount) {
-      const dist = Array(customGroupCount).fill(0);
-      for (let i = 0; i < totalCount; i++) dist[i % customGroupCount]++;
+      const dist = Array(groupCount).fill(0);
+      for (let i = 0; i < totalCount; i++) dist[i % groupCount]++;
       distribution = dist;
     } else {
       distribution = [...optimal.distribution];
       while (distribution.length < groupCount) {
-        distribution.push(0);
+        distribution.push(4);
       }
     }
 
-    // 알고리즘별 정렬 및 셔플
-    let orderedCandidates = [...candidatePlayers];
+    // 4. 신규 조 객체 초기화 (ABCD 코스 순환)
+    const letters = room.selectedCourseLetters.length > 0 ? room.selectedCourseLetters : ['A', 'B'];
+    const newGroups: ClubGroup[] = [];
+    for (let i = 1; i <= groupCount; i++) {
+      const courseLetter = letters[(i - 1) % letters.length];
+      newGroups.push({
+        groupNumber: i,
+        name: `${i}조`,
+        startCourseLetter: courseLetter,
+        leaderName: '',
+        players: [],
+        status: 'WAITING',
+      });
+    }
 
-    if (method === 'RANDOM' || method === 'KEEP_LEADERS') {
+    // 5. 조건별 사전 고정 배치 처리
+    const placedPlayerIds = new Set<string>();
+
+    // [조건 A] 조장 N명 지정 후 돌리기 (ASSIGN_LEADERS)
+    if (method === 'ASSIGN_LEADERS' && options?.designatedLeaderIds && options.designatedLeaderIds.length > 0) {
+      options.designatedLeaderIds.forEach((leaderId, idx) => {
+        if (idx < groupCount) {
+          const leaderPlayer = allPlayers.find((p) => p.id === leaderId);
+          if (leaderPlayer) {
+            const playerObj: ClubPlayer = {
+              ...leaderPlayer,
+              isLeader: true,
+            };
+            newGroups[idx].players.push(playerObj);
+            newGroups[idx].leaderName = playerObj.name;
+            placedPlayerIds.add(leaderPlayer.id);
+          }
+        }
+      });
+    }
+    // [조건 B] 일부 인원 특정 조 사전 배치 후 나머지 돌리기 (PARTIAL_ASSIGN)
+    else if (method === 'PARTIAL_ASSIGN' && options?.preAssignedGroupMap) {
+      Object.entries(options.preAssignedGroupMap).forEach(([playerId, targetGroupNumber]) => {
+        const player = allPlayers.find((p) => p.id === playerId);
+        const grpIdx = targetGroupNumber - 1;
+        if (player && grpIdx >= 0 && grpIdx < groupCount) {
+          const isFirstInGroup = newGroups[grpIdx].players.length === 0;
+          const playerObj: ClubPlayer = {
+            ...player,
+            isLeader: isFirstInGroup,
+          };
+          newGroups[grpIdx].players.push(playerObj);
+          if (isFirstInGroup) {
+            newGroups[grpIdx].leaderName = playerObj.name;
+          }
+          placedPlayerIds.add(player.id);
+        }
+      });
+    }
+    // [조건 C] 기존 조장 유지 (KEEP_LEADERS)
+    else if (method === 'KEEP_LEADERS') {
+      room.groups.forEach((g, idx) => {
+        if (idx < groupCount) {
+          const leader = g.players.find((p) => p.isLeader) || g.players[0];
+          if (leader) {
+            const playerObj: ClubPlayer = { ...leader, isLeader: true };
+            newGroups[idx].players.push(playerObj);
+            newGroups[idx].leaderName = playerObj.name;
+            placedPlayerIds.add(leader.id);
+          }
+        }
+      });
+    }
+
+    // 6. 나머지 일반 대상 인원(후보군) 수집
+    const remainingCandidates = allPlayers.filter((p) => !placedPlayerIds.has(p.id));
+
+    // 7. 후보군 셔플 및 정렬
+    let orderedCandidates = [...remainingCandidates];
+
+    if (method === 'RANDOM' || method === 'ASSIGN_LEADERS' || method === 'PARTIAL_ASSIGN' || method === 'KEEP_LEADERS') {
+      // 순수 무작위 셔플 (Fisher-Yates)
       for (let i = orderedCandidates.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [orderedCandidates[i], orderedCandidates[j]] = [orderedCandidates[j], orderedCandidates[i]];
@@ -322,29 +400,7 @@ export const ClubStorage = {
       });
     }
 
-    // 신규 조 구성
-    const letters = room.selectedCourseLetters.length > 0 ? room.selectedCourseLetters : ['A', 'B'];
-    const newGroups: ClubGroup[] = [];
-
-    for (let i = 1; i <= groupCount; i++) {
-      const courseLetter = letters[(i - 1) % letters.length];
-      const initialPlayers: ClubPlayer[] = [];
-
-      if (method === 'KEEP_LEADERS' && leaderMap.has(i)) {
-        initialPlayers.push(leaderMap.get(i)!);
-      }
-
-      newGroups.push({
-        groupNumber: i,
-        name: `${i}조`,
-        startCourseLetter: courseLetter,
-        leaderName: initialPlayers[0]?.name || '',
-        players: initialPlayers,
-        status: 'WAITING',
-      });
-    }
-
-    // 스네이크 방식으로 조별 균등 채우기
+    // 8. 스네이크 방식으로 남은 빈 슬롯 균등 분배
     let gIdx = 0;
     let forward = true;
 
@@ -381,7 +437,11 @@ export const ClubStorage = {
         newGroups.sort((a, b) => a.groupNumber - b.groupNumber);
       }
 
-      targetGroup.players.push(player);
+      const isFirst = targetGroup.players.length === 0;
+      targetGroup.players.push({
+        ...player,
+        isLeader: isFirst,
+      });
 
       if (forward) {
         gIdx++;
@@ -398,7 +458,7 @@ export const ClubStorage = {
       }
     });
 
-    // 조장 확정 (첫 번째 사람 또는 기지정 조장)
+    // 9. 최종 조장 확정
     newGroups.forEach((g) => {
       if (g.players.length > 0) {
         if (!g.players.some((p) => p.isLeader)) {
@@ -455,6 +515,80 @@ export const ClubStorage = {
 
     this.saveRoom(room);
     return room;
+  },
+
+  // 3-6. [현장 긴급 대응] 결원(노쇼/지각) 발생 시 대기 1순위자 1초 긴급 투입 & 맞교환
+  replacePlayerWithWaitingCandidate(
+    roomId: string,
+    groupNumber: number,
+    missingPlayerId: string
+  ): {
+    success: boolean;
+    replacedPlayerName?: string;
+    newPlayerName?: string;
+    room?: ClubEventRoom;
+    message: string;
+  } {
+    const room = this.getRoom(roomId);
+    if (!room) return { success: false, message: '모임 방을 찾을 수 없습니다.' };
+
+    const targetGroup = room.groups.find((g) => g.groupNumber === groupNumber);
+    if (!targetGroup) return { success: false, message: `${groupNumber}조를 찾을 수 없습니다.` };
+
+    const pIdx = targetGroup.players.findIndex((p) => p.id === missingPlayerId);
+    if (pIdx === -1) return { success: false, message: '해당 선수를 조에서 찾을 수 없습니다.' };
+
+    const missingPlayer = targetGroup.players[pIdx];
+
+    // 대기자 찾기 (대기 1순위 우선, 없으면 대기 풀 첫 번째)
+    if (!room.waitingPool || room.waitingPool.length === 0) {
+      return { success: false, message: '투입 가능한 대기 신청자(대기 풀)가 없습니다.' };
+    }
+
+    let candIdx = room.waitingPool.findIndex((p) => p.waitNumber === 1);
+    if (candIdx === -1) candIdx = 0;
+
+    const [candidate] = room.waitingPool.splice(candIdx, 1);
+    delete candidate.waitNumber;
+
+    // 조장 여부 승계 또는 신규 배정
+    candidate.isLeader = missingPlayer.isLeader;
+    if (candidate.isLeader) {
+      targetGroup.leaderName = candidate.name;
+    }
+
+    // 조에서 결원자 제거하고 신규 대기자 투입
+    targetGroup.players.splice(pIdx, 1, candidate);
+
+    // 남은 대기자 번호 재정렬
+    let seq = 1;
+    room.waitingPool.forEach((p) => {
+      p.waitNumber = seq++;
+    });
+
+    this.saveRoom(room);
+    return {
+      success: true,
+      replacedPlayerName: missingPlayer.name,
+      newPlayerName: candidate.name,
+      room,
+      message: `'${missingPlayer.name}' 님의 빈자리에 대기 1순위 '${candidate.name}' 님이 1초 만에 즉시 투입되었습니다! ⚡`,
+    };
+  },
+
+  // 3-7. 대회 공식 마감 & 영구 실록 확정
+  finalizeTournament(roomId: string): { success: boolean; room?: ClubEventRoom; message: string } {
+    const room = this.getRoom(roomId);
+    if (!room) return { success: false, message: '모임 방을 찾을 수 없습니다.' };
+
+    room.status = 'FINISHED';
+    this.saveRoom(room);
+
+    return {
+      success: true,
+      room,
+      message: `'${room.title}' 대회가 공식 마감되어 클럽 연대기에 영구 보존되었습니다! 🏆`,
+    };
   },
 
   // 4. 신규 방 생성
@@ -1289,6 +1423,26 @@ ${link}`;
     return report;
   },
 
+  // 12-5. 미납자 타겟 카카오톡 독촉 안내문 생성 (총무 복사용)
+  generateUnpaidKakaoReminderText(room: ClubEventRoom): string {
+    const s = this.getPaymentSummary(room);
+    const feeStr = s.fee > 0 ? `${s.fee.toLocaleString()}원` : '무료';
+    const bankStr = s.bankAccount || '총무에게 문의';
+
+    if (s.unpaidCount === 0) {
+      return `🎉 [${room.title}] 참가자 전원(${s.totalCount}명) 입금 완료되었습니다! 총무로서 회원님들의 신속한 협조에 진심으로 감사드립니다. 🙏`;
+    }
+
+    let text = `📢 [${room.title}] 참가비 입금 확인 안내 (총무 공지)\n\n`;
+    text += `회원 여러분 안녕하세요! 대회의 원활한 진행 및 보험/기념품 준비를 위해 아직 입금 확인이 되지 않은 회원님께서는 입금을 부탁드립니다.\n\n`;
+    text += `💵 1인 참가비: ${feeStr}\n`;
+    text += `🏦 입금 계좌: ${bankStr}\n\n`;
+    text += `⏳ [입금 확인 대기 회원 (${s.unpaidCount}명)]\n`;
+    text += s.unpaidPlayers.map((p, idx) => `${idx + 1}. ${p.name}`).join('\n');
+    text += `\n\n💡 입금 시 입금자명을 본인 성함으로 보내주시면 빠른 확인이 가능합니다. 감사합니다! ⛳`;
+    return text;
+  },
+
   // ==========================================
   // [NEW] 클럽 커뮤니티 관리 (창단, 가입, 다중 클럽 관리)
   // ==========================================
@@ -1426,33 +1580,49 @@ ${link}`;
     }
   },
 
-  // 2. 가입 수락 (승인 -> 정회원으로 등록)
-  approveMember(clubId: string, pendingId: string): boolean {
+  // 2. 가입 수락 (승인 -> 정회원으로 등록, 과거 탈퇴자 복귀 시 원상 회복)
+  approveMember(clubId: string, pendingId: string): { success: boolean; isRestored?: boolean; originalJoinedAt?: string } {
     const list = this.getAllClubs();
     const club = list.find((c) => c.id === clubId);
-    if (!club || !club.pendingMembers) return false;
+    if (!club || !club.pendingMembers) return { success: false };
 
     const pending = club.pendingMembers.find((p) => p.id === pendingId);
-    if (!pending) return false;
+    if (!pending) return { success: false };
 
     // 대기열에서 제거
     club.pendingMembers = club.pendingMembers.filter((p) => p.id !== pendingId);
+
+    // 과거 탈퇴 회원 비밀 보관소에서 복원 검사
+    if (!club.archivedMembers) club.archivedMembers = [];
+    const archivedIdx = club.archivedMembers.findIndex(
+      (a) => a.name.trim() === pending.name.trim() || (pending.phone && a.phone === pending.phone)
+    );
+
+    let isRestored = false;
+    let joinedAtDate = new Date().toISOString().slice(0, 10);
+
+    if (archivedIdx !== -1) {
+      const archived = club.archivedMembers[archivedIdx];
+      club.archivedMembers.splice(archivedIdx, 1);
+      isRestored = true;
+      joinedAtDate = archived.joinedAt; // 최초 가입일 원상 복구!
+    }
 
     // 정회원으로 등록
     club.members.push({
       id: `m_${Date.now()}`,
       name: pending.name,
       role: 'MEMBER',
-      joinedAt: new Date().toISOString().slice(0, 10),
+      joinedAt: joinedAtDate,
       phone: pending.phone,
     });
     club.memberCount = club.members.length;
 
     try {
       localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
-      return true;
+      return { success: true, isRestored, originalJoinedAt: joinedAtDate };
     } catch {
-      return false;
+      return { success: false };
     }
   },
 
@@ -1490,19 +1660,37 @@ ${link}`;
 ${shareUrl}`;
   },
 
-  // 5. 초청장 링크를 통한 즉시 가입
-  directJoinViaInvite(clubId: string, member: { name: string; phone?: string }): boolean {
+  // 5. 초청장 링크를 통한 즉시 가입 (과거 탈퇴자 복귀 시 원상 회복)
+  directJoinViaInvite(
+    clubId: string,
+    member: { name: string; phone?: string }
+  ): { success: boolean; isRestored?: boolean; originalJoinedAt?: string } {
     const list = this.getAllClubs();
     const club = list.find((c) => c.id === clubId);
-    if (!club) return false;
+    if (!club) return { success: false };
 
     const alreadyMember = club.members.some((m) => m.name === member.name);
+    let isRestored = false;
+    let joinedAtDate = new Date().toISOString().slice(0, 10);
+
     if (!alreadyMember) {
+      if (!club.archivedMembers) club.archivedMembers = [];
+      const archivedIdx = club.archivedMembers.findIndex(
+        (a) => a.name.trim() === member.name.trim() || (member.phone && a.phone === member.phone)
+      );
+
+      if (archivedIdx !== -1) {
+        const archived = club.archivedMembers[archivedIdx];
+        club.archivedMembers.splice(archivedIdx, 1);
+        isRestored = true;
+        joinedAtDate = archived.joinedAt;
+      }
+
       club.members.push({
         id: `m_${Date.now()}`,
         name: member.name,
         role: 'MEMBER',
-        joinedAt: new Date().toISOString().slice(0, 10),
+        joinedAt: joinedAtDate,
         phone: member.phone,
       });
       club.memberCount = club.members.length;
@@ -1516,19 +1704,62 @@ ${shareUrl}`;
     try {
       localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
       localStorage.setItem(STORAGE_KEYS.MY_CLUB_IDS, JSON.stringify(myClubs));
-      return true;
+      return { success: true, isRestored, originalJoinedAt: joinedAtDate };
     } catch {
-      return false;
+      return { success: false };
     }
   },
 
-  joinClub(clubId: string, memberName: string, phone?: string): boolean {
+  // 6. 클럽 가입 및 복귀 (과거 탈퇴 회원의 경우 가입일 및 연대기 이력 100% 원상 복구)
+  joinClub(
+    clubId: string,
+    memberName: string,
+    phone?: string
+  ): { success: boolean; isRestored: boolean; originalJoinedAt?: string; pastCount?: number; pastAwards?: string[] } {
     const list = this.getAllClubs();
     const club = list.find((c) => c.id === clubId);
-    if (!club) return false;
+    if (!club) return { success: false, isRestored: false };
 
-    const alreadyMember = club.members.some((m) => m.name === memberName);
-    if (!alreadyMember) {
+    const cleanName = memberName.trim();
+    const alreadyMember = club.members.some(
+      (m) => m.name.trim() === cleanName || (cleanName.includes('김대희') && m.name.includes('김대희'))
+    );
+
+    let isRestored = false;
+    let originalJoinedAt: string | undefined;
+    let pastCount: number | undefined;
+    let pastAwards: string[] | undefined;
+
+    // 🔐 비밀 보관소에서 과거 탈퇴 이력 대조
+    if (!club.archivedMembers) club.archivedMembers = [];
+    const archivedIdx = club.archivedMembers.findIndex(
+      (a) =>
+        a.name.trim() === cleanName ||
+        (cleanName.includes('김대희') && a.name.includes('김대희')) ||
+        (phone && a.phone === phone)
+    );
+
+    if (archivedIdx !== -1) {
+      // 🌟 과거 회원 확인! 원상 회복 절차 수행
+      const archived = club.archivedMembers[archivedIdx];
+      club.archivedMembers.splice(archivedIdx, 1); // 보관함에서 꺼내어 정회원 승격
+      isRestored = true;
+      originalJoinedAt = archived.joinedAt;
+      pastCount = archived.pastTournamentsCount;
+      pastAwards = archived.pastAwards;
+
+      if (!alreadyMember) {
+        club.members.push({
+          id: archived.id || `m_${Date.now()}`,
+          name: memberName,
+          role: 'MEMBER',
+          joinedAt: archived.joinedAt, // 🌟 최초 가입일 100% 원상 복구!
+          phone: phone || archived.phone,
+        });
+        club.memberCount = club.members.length;
+      }
+    } else if (!alreadyMember) {
+      // 신규 가입
       club.members.push({
         id: `m_${Date.now()}`,
         name: memberName,
@@ -1547,52 +1778,278 @@ ${shareUrl}`;
     try {
       localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
       localStorage.setItem(STORAGE_KEYS.MY_CLUB_IDS, JSON.stringify(myClubs));
-      return true;
+      return { success: true, isRestored, originalJoinedAt, pastCount, pastAwards };
     } catch {
-      return false;
+      return { success: false, isRestored: false };
     }
   },
 
-  leaveClub(clubId: string, memberName: string): boolean {
+  // 7. 클럽 안전 탈퇴 (기록 비밀 보관 처리: 일반 목록 비공개 + 비밀 보관소에 가입일/과거대회이력 영구 보존)
+  leaveClub(
+    clubId: string,
+    memberName: string
+  ): { success: boolean; archived?: ArchivedClubMember } {
     const list = this.getAllClubs();
     const club = list.find((c) => c.id === clubId);
-    if (club) {
-      // 본인 이름, (본인) 표기, 대표님 실명 매칭 제거
-      club.members = club.members.filter(
-        (m) =>
-          m.name.trim() !== memberName.trim() &&
-          !m.name.includes('(본인)') &&
-          (memberName.includes('김대희') ? !m.name.includes('김대희') : true)
-      );
-      club.memberCount = club.members.length;
+    if (!club) return { success: false };
 
-      // 만약 총무나 회장이 나간 경우 다음 멤버에게 권한 자동 위임
-      if (
-        (club.managerName.includes(memberName) || club.managerName.includes('김대희') || club.managerName.includes('(본인)')) &&
-        club.members.length > 0
-      ) {
-        club.managerName = club.members[0].name;
-        club.members[0].role = 'MANAGER';
+    // 대상 멤버 조회
+    const targetMember = club.members.find(
+      (m) =>
+        m.name.trim() === memberName.trim() ||
+        (memberName.includes('김대희') && m.name.includes('김대희')) ||
+        (m.name.includes('(본인)') && memberName.includes('(본인)'))
+    );
+
+    // 클럽 연대기에서 해당 회원의 과거 출전 횟수, 수상 이력, 최고 타수 산출
+    const chronicles = this.getClubChronicles(clubId);
+    let pastTournamentsCount = 0;
+    const pastAwards: string[] = [];
+    let bestScore: number | undefined;
+
+    const searchKey = memberName.replace('(본인)', '').trim();
+    chronicles.forEach((chr) => {
+      const myRank = chr.rankings.find(
+        (r) => r.playerName.trim() === memberName.trim() || r.playerName.includes(searchKey)
+      );
+      if (myRank) {
+        pastTournamentsCount++;
+        if (myRank.awards && myRank.awards.length > 0) {
+          myRank.awards.forEach((aw) => pastAwards.push(`[${chr.title.slice(0, 10)}] ${aw}`));
+        }
+        if (!bestScore || (myRank.totalStrokes > 0 && myRank.totalStrokes < bestScore)) {
+          bestScore = myRank.totalStrokes;
+        }
       }
-      if (
-        (club.presidentName.includes(memberName) || club.presidentName.includes('김대희') || club.presidentName.includes('(본인)')) &&
-        club.members.length > 0
-      ) {
-        club.presidentName = club.members[0].name;
-        club.members[0].role = 'PRESIDENT';
-      }
+    });
+
+    // 🔐 비밀 보관소용 아카이브 레코드 생성
+    const archivedRecord: ArchivedClubMember = {
+      id: targetMember?.id || `arch_${Date.now()}`,
+      name: targetMember?.name || memberName,
+      roleAtLeave: targetMember?.role || 'MEMBER',
+      joinedAt: targetMember?.joinedAt || new Date().toISOString().slice(0, 10), // 최초 가입일 영구 보존!
+      leftAt: new Date().toISOString().slice(0, 10),
+      phone: targetMember?.phone,
+      pastTournamentsCount,
+      pastAwards,
+      bestScore,
+      secretHash: `SEC_${Date.now().toString(36)}`,
+    };
+
+    if (!club.archivedMembers) {
+      club.archivedMembers = [];
+    }
+    // 기존 동일인 아카이브가 있다면 최신으로 갱신
+    club.archivedMembers = club.archivedMembers.filter(
+      (a) => a.name.trim() !== memberName.trim() && !a.name.includes(searchKey)
+    );
+    club.archivedMembers.unshift(archivedRecord);
+
+    // 활성 회원 명부에서 제거 (비밀 처리 / 권한 상실)
+    club.members = club.members.filter(
+      (m) =>
+        m.name.trim() !== memberName.trim() &&
+        !m.name.includes('(본인)') &&
+        (memberName.includes('김대희') ? !m.name.includes('김대희') : true)
+    );
+    club.memberCount = club.members.length;
+
+    // 만약 총무나 회장이 나간 경우 다음 멤버에게 권한 자동 위임
+    if (
+      (club.managerName.includes(memberName) || club.managerName.includes('김대희') || club.managerName.includes('(본인)')) &&
+      club.members.length > 0
+    ) {
+      club.managerName = club.members[0].name;
+      club.members[0].role = 'MANAGER';
+    }
+    if (
+      (club.presidentName.includes(memberName) || club.presidentName.includes('김대희') || club.presidentName.includes('(본인)')) &&
+      club.members.length > 0
+    ) {
+      club.presidentName = club.members[0].name;
+      club.members[0].role = 'PRESIDENT';
     }
 
+    // 내 소속 클럽 목록에서 제외 (클럽 내부 실록 접근 권한 제한)
     let myClubs = this.getMyClubIds();
     myClubs = myClubs.filter((id) => id !== clubId);
 
     try {
       localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
       localStorage.setItem(STORAGE_KEYS.MY_CLUB_IDS, JSON.stringify(myClubs));
-      return true;
+      return { success: true, archived: archivedRecord };
     } catch {
-      return false;
+      return { success: false };
     }
+  },
+
+  // 8. 클럽 탈퇴 회원 비밀 보관소 조회
+  getArchivedMembers(clubId: string): ArchivedClubMember[] {
+    const club = this.getClubById(clubId);
+    return club?.archivedMembers || [];
+  },
+
+  // ==========================================
+  // 📜 클럽 영구 연대기 (대회 실록 & 명예의 전당) 영구 보존 및 조회
+  // ==========================================
+  archiveEventRoomToClubChronicle(room: ClubEventRoom): ClubChronicleTournament | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const individuals = this.getIndividualLeaderboard(room);
+      const teams = this.getTeamLeaderboard(room);
+      const specialAwards = this.calculateSpecialAwards(room);
+      const totalParticipants = (room.groups || []).reduce((sum, g) => sum + g.players.length, 0);
+
+      const winner = individuals[0];
+      const runnerUp = individuals[1];
+      const medalist = individuals.reduce<ClubLeaderboardIndividual | null>((best, cur) => {
+        if (!best || (cur.totalStrokes > 0 && cur.totalStrokes < best.totalStrokes)) return cur;
+        return best;
+      }, null);
+
+      const chronicleId = `chronicle_${room.id}`;
+      const chronicleRecord: ClubChronicleTournament = {
+        id: chronicleId,
+        roomId: room.id,
+        clubId: room.clubId || 'default-club',
+        clubName: room.clubName || '공식 파크골프 클럽',
+        title: room.title,
+        heldAt: room.createdAt?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+        courseId: room.courseId,
+        courseName: room.courseName,
+        totalHoles: room.totalHoles,
+        gameMode: room.gameModeTitle || this.getGameModeInfo(room.gameMode).title,
+        totalParticipants,
+        winnerName: winner && winner.totalStrokes > 0 ? winner.playerName : '대회 진행중',
+        winnerScore: winner ? winner.totalStrokes : 0,
+        runnerUpName: runnerUp && runnerUp.totalStrokes > 0 ? runnerUp.playerName : undefined,
+        runnerUpScore: runnerUp ? runnerUp.totalStrokes : undefined,
+        medalistName: medalist && medalist.totalStrokes > 0 ? medalist.playerName : undefined,
+        medalistScore: medalist ? medalist.totalStrokes : undefined,
+        specialAwards: specialAwards.length > 0 ? specialAwards : undefined,
+        luckyDrawWinners: room.awardConfig?.luckyDrawWinners || [],
+        rankings: individuals.map((ind) => {
+          const awardsWon: string[] = [];
+          if (ind.rank === 1) awardsWon.push('우승 🏆');
+          else if (ind.rank === 2) awardsWon.push('준우승 🥈');
+          if (medalist && ind.playerId === medalist.playerId) awardsWon.push('메달리스트 🏅');
+          const spMatch = specialAwards.filter((sp) => sp.winnerName === ind.playerName);
+          spMatch.forEach((sp) => awardsWon.push(`${sp.badge} ${sp.title}`));
+          return {
+            rank: ind.rank,
+            playerId: ind.playerId,
+            playerName: ind.playerName,
+            groupNumber: ind.groupNumber,
+            totalStrokes: ind.totalStrokes,
+            parDiff: ind.parDiff,
+            handicap: ind.handicap,
+            netScore: ind.netScore,
+            isWinner: ind.rank === 1,
+            awards: awardsWon,
+          };
+        }),
+        groupResults: teams.map((t) => ({
+          groupNumber: t.groupNumber,
+          groupName: t.groupName,
+          leaderName: t.leaderName,
+          avgScore: t.avgStrokes,
+          totalScore: t.totalStrokes,
+          playersCount: t.playersCount,
+        })),
+        notes: room.gameRuleNotes,
+        archivedAt: new Date().toISOString(),
+      };
+
+      // 1. 전역 연대기 목록에 영구 저장
+      const allChronicles = this.getAllGlobalChronicles();
+      const existingIdx = allChronicles.findIndex((c) => c.id === chronicleId || c.roomId === room.id);
+      if (existingIdx !== -1) {
+        allChronicles[existingIdx] = chronicleRecord;
+      } else {
+        allChronicles.unshift(chronicleRecord);
+      }
+      localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(allChronicles));
+
+      // 2. 소속 클럽 엔티티에도 영구 반영
+      if (room.clubId) {
+        const clubs = this.getAllClubs();
+        const club = clubs.find((c) => c.id === room.clubId);
+        if (club) {
+          if (!club.chronicles) club.chronicles = [];
+          const cIdx = club.chronicles.findIndex((c) => c.id === chronicleId || c.roomId === room.id);
+          if (cIdx !== -1) {
+            club.chronicles[cIdx] = chronicleRecord;
+          } else {
+            club.chronicles.unshift(chronicleRecord);
+          }
+          localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+        }
+      }
+
+      return chronicleRecord;
+    } catch (e) {
+      console.error('Failed to archive tournament to club chronicle:', e);
+      return null;
+    }
+  },
+
+  getAllGlobalChronicles(): ClubChronicleTournament[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CLUB_CHRONICLES);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  getClubChronicles(clubId: string): ClubChronicleTournament[] {
+    const globalList = this.getAllGlobalChronicles();
+    const club = this.getClubById(clubId);
+    const clubSpecific = club?.chronicles || [];
+
+    const map = new Map<string, ClubChronicleTournament>();
+    clubSpecific.forEach((c) => map.set(c.id, c));
+    globalList.filter((c) => c.clubId === clubId).forEach((c) => map.set(c.id, c));
+
+    // Also include any active rooms that belong to this club as live chronicle entries
+    const allRooms = this.getAllRooms();
+    allRooms
+      .filter((r) => r.clubId === clubId)
+      .forEach((r) => {
+        const chrId = `chronicle_${r.id}`;
+        if (!map.has(chrId)) {
+          const generated = this.archiveEventRoomToClubChronicle(r);
+          if (generated) map.set(generated.id, generated);
+        }
+      });
+
+    return Array.from(map.values()).sort((a, b) => b.heldAt.localeCompare(a.heldAt));
+  },
+
+  // 특정 회원의 클럽 내 과거 대회 출전 이력 조회
+  getMemberPastHistoryInClub(clubId: string, memberName: string) {
+    const chronicles = this.getClubChronicles(clubId);
+    const searchKey = memberName.replace('(본인)', '').trim();
+    const playedChronicles: {
+      tournament: ClubChronicleTournament;
+      myRecord: ClubChronicleTournament['rankings'][0];
+    }[] = [];
+
+    chronicles.forEach((chr) => {
+      const myRec = chr.rankings.find(
+        (r) => r.playerName.trim() === memberName.trim() || r.playerName.includes(searchKey)
+      );
+      if (myRec) {
+        playedChronicles.push({
+          tournament: chr,
+          myRecord: myRec,
+        });
+      }
+    });
+
+    return playedChronicles;
   },
 
   // ==========================================
@@ -1694,6 +2151,51 @@ ${shareUrl}`;
         club.managerName = newAliasName;
       }
     }
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  // 회원의 직책(회장/총무/회원) 배정 및 클럽 공식 직책자 정보 연동
+  updateMemberRole(
+    clubId: string,
+    memberId: string,
+    newRole: 'PRESIDENT' | 'MANAGER' | 'MEMBER'
+  ): boolean {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club) return false;
+
+    const targetMember = club.members.find((m) => m.id === memberId);
+    if (!targetMember) return false;
+
+    if (newRole === 'PRESIDENT') {
+      club.members.forEach((m) => {
+        if (m.role === 'PRESIDENT' && m.id !== memberId) {
+          m.role = 'MEMBER';
+        }
+      });
+      club.presidentName = targetMember.name;
+    } else if (newRole === 'MANAGER') {
+      club.members.forEach((m) => {
+        if (m.role === 'MANAGER' && m.id !== memberId) {
+          m.role = 'MEMBER';
+        }
+      });
+      club.managerName = targetMember.name;
+    } else {
+      if (targetMember.role === 'PRESIDENT') {
+        club.presidentName = '공석';
+      } else if (targetMember.role === 'MANAGER') {
+        club.managerName = '공석';
+      }
+    }
+
+    targetMember.role = newRole;
 
     try {
       localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));

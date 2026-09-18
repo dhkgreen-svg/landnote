@@ -70,8 +70,12 @@ export default function ClubRoomDetailPage() {
 
   // Smart Auto-Grouping Modal State
   const [showAutoGroupModal, setShowAutoGroupModal] = useState<boolean>(false);
-  const [groupMethod, setGroupMethod] = useState<'RANDOM' | 'BALANCED_GENDER' | 'BALANCED_TIER' | 'KEEP_LEADERS'>('RANDOM');
+  const [groupMethod, setGroupMethod] = useState<'RANDOM' | 'ASSIGN_LEADERS' | 'PARTIAL_ASSIGN' | 'BALANCED_GENDER' | 'BALANCED_TIER' | 'KEEP_LEADERS'>('ASSIGN_LEADERS');
   const [customGroupCount, setCustomGroupCount] = useState<number>(0);
+  const [selectedLeaderIds, setSelectedLeaderIds] = useState<string[]>([]);
+  const [preAssignedGroupMap, setPreAssignedGroupMap] = useState<Record<string, number>>({});
+  const [showGroupResults, setShowGroupResults] = useState<boolean>(false);
+  const [searchMyName, setSearchMyName] = useState<string>('');
 
   // Player Move between groups state
   const [movingPlayer, setMovingPlayer] = useState<{ fromGroup: number; playerId: string; playerName: string } | null>(null);
@@ -149,6 +153,10 @@ export default function ClubRoomDetailPage() {
   const groupPlayersCount = room.groups.reduce((sum, g) => sum + g.players.length, 0);
   const waitingPoolCount = (room.waitingPool || []).length;
   const totalAllPlayers = groupPlayersCount + waitingPoolCount;
+  const allCurrentPlayers: ClubPlayer[] = [
+    ...(room.waitingPool || []),
+    ...room.groups.flatMap((g) => g.players),
+  ];
 
   const paymentSummary = ClubStorage.getPaymentSummary(room);
   const gameModeInfo = ClubStorage.getGameModeInfo(room.gameMode);
@@ -349,6 +357,73 @@ export default function ClubRoomDetailPage() {
     }
   };
 
+  // 📋 계좌번호 1초 원터치 복사
+  const handleCopyAccount = () => {
+    if (!room?.bankAccount) {
+      showToast('등록된 입금 계좌가 없습니다. 총무에게 문의해 주세요.');
+      return;
+    }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(room.bankAccount);
+    }
+    showToast(`🏦 '${room.bankAccount}' 계좌가 복사되었습니다! 은행 앱에 붙여넣기 하세요.`);
+  };
+
+  // 📢 미납자 타겟 카카오톡 독촉 안내문 복사
+  const handleCopyUnpaidReminder = () => {
+    if (!room) return;
+    const text = ClubStorage.generateUnpaidKakaoReminderText(room);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+    }
+    showToast('📢 미납자 대상 맞춤 카톡 독촉 안내문이 복사되었습니다!');
+  };
+
+  // ⚡ [현장 긴급 대응] 결원(노쇼) 발생 시 대기 1순위 1초 즉시 투입
+  const handleQuickReplaceMissingPlayer = (groupNumber: number, playerId: string, playerName: string) => {
+    if (!room) return;
+    if (!room.waitingPool || room.waitingPool.length === 0) {
+      alert('현재 대기 신청자(대기 풀)에 등록된 인원이 없습니다.');
+      return;
+    }
+
+    const cand = room.waitingPool.find((p) => p.waitNumber === 1) || room.waitingPool[0];
+    if (
+      !confirm(
+        `🚨 [결원 발생 긴급 대체]\n\n'${playerName}' 회원님의 불참(노쇼)으로\n대기 1순위 '${cand.name}' 님을 [${groupNumber}조]로 즉시 1초 투입하시겠습니까?`
+      )
+    ) {
+      return;
+    }
+
+    const res = ClubStorage.replacePlayerWithWaitingCandidate(room.id, groupNumber, playerId);
+    if (res.success && res.room) {
+      setRoom(res.room);
+      showToast(res.message);
+    } else {
+      alert(res.message);
+    }
+  };
+
+  // 🏆 대회 공식 마감 & 실록 영구 보존
+  const handleFinalizeTournament = () => {
+    if (!room) return;
+    if (
+      !confirm(
+        `🏆 [대회 공식 마감 & 실록 영구 보존]\n\n'${room.title}' 대회를 공식 종료하고, 최종 순위와 스코어보드를 클럽 영구 연대기(실록)에 보존하시겠습니까?`
+      )
+    ) {
+      return;
+    }
+
+    const res = ClubStorage.finalizeTournament(room.id);
+    if (res.success && res.room) {
+      setRoom(res.room);
+      showToast(res.message);
+      handleCopyTournamentReport();
+    }
+  };
+
   // 참가 등록 (특정 조 지정 or 대기 풀 등록)
   const handleConfirmJoin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -437,25 +512,61 @@ export default function ClubRoomDetailPage() {
 
   // 스마트 자동 조 편성 모달 열기
   const openAutoGroupModal = () => {
+    if (!room) return;
     const opt = ClubStorage.calculateOptimalGroups(totalAllPlayers || 16);
-    setCustomGroupCount(opt.groupCount);
+    const targetGroups = opt.groupCount;
+    setCustomGroupCount(targetGroups);
+
+    // 기존 조장들이 있으면 미리 체크해두기
+    const existingLeaderIds: string[] = [];
+    room.groups.forEach((g) => {
+      const leader = g.players.find((p) => p.isLeader) || g.players[0];
+      if (leader && !existingLeaderIds.includes(leader.id)) {
+        existingLeaderIds.push(leader.id);
+      }
+    });
+
+    // 만약 기존 조장이 부족하면 상급자/참가자 우선 채우기
+    if (existingLeaderIds.length < targetGroups) {
+      const allP = [...(room.waitingPool || []), ...room.groups.flatMap((g) => g.players)];
+      for (const p of allP) {
+        if (!existingLeaderIds.includes(p.id) && existingLeaderIds.length < targetGroups) {
+          existingLeaderIds.push(p.id);
+        }
+      }
+    }
+
+    setSelectedLeaderIds(existingLeaderIds.slice(0, targetGroups));
+    setPreAssignedGroupMap({});
     setShowAutoGroupModal(true);
   };
 
-  // 스마트 자동 조 편성 실행
+  // 스마트 자동 조 편성 실행 (RUN)
   const handleExecuteAutoGroup = () => {
     if (totalAllPlayers === 0) {
       alert('참가자가 최소 1명 이상 있어야 조 편성이 가능합니다.');
       return;
     }
+
+    if (groupMethod === 'ASSIGN_LEADERS' && selectedLeaderIds.length === 0) {
+      if (!confirm('조장으로 지정된 인원이 없습니다. 완전 랜덤으로 진행할까요?')) {
+        return;
+      }
+    }
+
     const updated = ClubStorage.autoGroupPlayers(
       room.id,
       groupMethod,
-      customGroupCount > 0 ? customGroupCount : undefined
+      customGroupCount > 0 ? customGroupCount : undefined,
+      {
+        designatedLeaderIds: selectedLeaderIds,
+        preAssignedGroupMap,
+      }
     );
     if (updated) {
       setRoom(updated);
       setShowAutoGroupModal(false);
+      setShowGroupResults(true);
       showToast(`🎯 총 ${updated.groups.length}개 조 스마트 편성이 완료되었습니다!`);
     }
   };
@@ -736,7 +847,7 @@ export default function ClubRoomDetailPage() {
 
       {/* 💰 참가비 수납 현황 대시보드 카드 */}
       <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100/60 border border-amber-300/80 rounded-2xl p-3.5 shadow-xs space-y-2.5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-1.5">
           <div className="flex items-center gap-1.5 font-black text-xs text-amber-950">
             <Coins className="w-4 h-4 text-amber-700 shrink-0" />
             <span>참가비 수납 현황</span>
@@ -745,7 +856,17 @@ export default function ClubRoomDetailPage() {
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 flex-wrap">
+            {paymentSummary.unpaidCount > 0 && (
+              <button
+                type="button"
+                onClick={handleCopyUnpaidReminder}
+                className="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-[11px] font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1 transition cursor-pointer"
+                title="미납자 대상 카톡 독촉 안내문 복사"
+              >
+                <span>독촉 카톡 복사 📢</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={handleCopyPaymentReport}
@@ -753,7 +874,7 @@ export default function ClubRoomDetailPage() {
               title="입금 현황 카톡 복사"
             >
               <Share2 className="w-3.5 h-3.5" />
-              <span>카톡 공유 📢</span>
+              <span>수납 카톡 공유 📢</span>
             </button>
             <button
               type="button"
@@ -772,11 +893,24 @@ export default function ClubRoomDetailPage() {
 
         {/* 계좌 및 실시간 금액 통계 바 */}
         <div className="bg-white/90 p-2.5 rounded-xl border border-amber-200/80 space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-stone-800">
-            <span className="text-[11px] text-stone-600 font-semibold truncate">
-              🏦 {room.bankAccount || '입금 계좌: 총무에게 문의'}
-            </span>
-            <span className="shrink-0 text-amber-800 font-black text-xs">
+          <div className="flex items-center justify-between text-xs font-bold text-stone-800 flex-wrap gap-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-[11px] text-stone-700 font-bold truncate">
+                🏦 {room.bankAccount || '입금 계좌: 총무에게 문의'}
+              </span>
+              {room.bankAccount && (
+                <button
+                  type="button"
+                  onClick={handleCopyAccount}
+                  className="bg-purple-700 hover:bg-purple-800 text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-2xs transition active:scale-95 cursor-pointer shrink-0 flex items-center gap-0.5"
+                  title="계좌번호 1초 복사"
+                >
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>1초 복사</span>
+                </button>
+              )}
+            </div>
+            <span className="shrink-0 text-amber-800 font-black text-xs ml-auto">
               수납률 {paymentSummary.paidRate}%
             </span>
           </div>
@@ -807,6 +941,155 @@ export default function ClubRoomDetailPage() {
               <div className="text-[9px] text-amber-700 font-bold">{paymentSummary.uncollectedAmount.toLocaleString()}원</div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* 🔍 [일반 회원 감동 기능] 내 조 바로 찾기 & 출발 티박스 스마트 검색 위젯 */}
+      <div className="bg-white rounded-2xl p-3 border border-stone-200 shadow-xs space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-xs font-black text-stone-900">
+            <span className="text-base">🔍</span>
+            <span>내 조 바로 찾기 & 출발 위치 안내</span>
+          </div>
+          {searchMyName && (
+            <button
+              type="button"
+              onClick={() => setSearchMyName('')}
+              className="text-[10px] font-bold text-stone-400 hover:text-stone-700"
+            >
+              초기화 ✕
+            </button>
+          )}
+        </div>
+
+        <div className="relative">
+          <input
+            type="text"
+            value={searchMyName}
+            onChange={(e) => setSearchMyName(e.target.value)}
+            placeholder="회원님 성함을 입력하세요 (예: 홍길동)"
+            className="w-full px-3 py-2.5 text-xs font-black bg-stone-50 border border-stone-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-purple-600 text-stone-900 placeholder:text-stone-400"
+          />
+        </div>
+
+        {/* 검색 결과 하이라이트 배너 */}
+        {searchMyName.trim() && (() => {
+          const query = searchMyName.trim().toLowerCase();
+          const matchedGroup = room.groups.find((g) =>
+            g.players.some((p) => p.name.toLowerCase().includes(query))
+          );
+          const matchedPlayer = matchedGroup?.players.find((p) =>
+            p.name.toLowerCase().includes(query)
+          );
+          const matchedWaiting = !matchedGroup && room.waitingPool
+            ? room.waitingPool.find((p) => p.name.toLowerCase().includes(query))
+            : null;
+
+          if (matchedGroup && matchedPlayer) {
+            return (
+              <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 text-white p-3.5 rounded-2xl shadow-md space-y-2 border-2 border-yellow-300 animate-fadeIn">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <span className="text-[10px] font-black bg-black/20 px-2 py-0.5 rounded-full text-yellow-100">
+                    🎯 내 조 찾기 성공
+                  </span>
+                  <span className="text-xs font-black bg-white/20 px-2.5 py-0.5 rounded-lg text-white">
+                    🚩 {matchedGroup.startCourseLetter}코스 1번 홀 동시 출발(샷건)
+                  </span>
+                </div>
+                <div className="text-sm font-black text-white">
+                  👑 <span className="underline decoration-yellow-200 decoration-2">{matchedPlayer.name}</span> 회원님은{' '}
+                  <span className="text-base font-black text-yellow-200">[{matchedGroup.name}]</span> 입니다!
+                </div>
+                <div className="text-xs bg-black/20 p-2 rounded-xl text-yellow-50 font-bold flex items-center justify-between flex-wrap gap-2">
+                  <div className="truncate">
+                    동반 조원: {matchedGroup.players.map((p) => `${p.name}${p.isLeader ? '(조장👑)' : ''}`).join(', ')}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleStartGroupRound(matchedGroup)}
+                    className="bg-white hover:bg-yellow-50 text-amber-950 font-black text-xs px-3 py-1.5 rounded-xl shadow-xs transition active:scale-95 cursor-pointer ml-auto"
+                  >
+                    우리 조 스코어보드 열기 📱
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          if (matchedWaiting) {
+            return (
+              <div className="bg-stone-800 text-white p-3 rounded-2xl shadow-xs space-y-1 animate-fadeIn">
+                <div className="text-xs font-black text-amber-300">
+                  ⏳ '{matchedWaiting.name}' 회원님은 현재 조 편성 대기 중입니다.
+                </div>
+                <div className="text-[11px] text-stone-300 font-medium">
+                  {matchedWaiting.waitNumber
+                    ? `대기 순번: ${matchedWaiting.waitNumber}순위 (결원 발생 시 즉시 자동 투입)`
+                    : '조 편성 실행 시 조에 자동 배정됩니다.'}
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div className="text-center py-2 text-xs font-bold text-stone-400 bg-stone-50 rounded-xl">
+              참가자 명단에서 '{searchMyName.trim()}' 님을 찾을 수 없습니다.
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* 🚩 [본부석 총무 모니터링] 전 조 실시간 홀 진행 현황판 & 대회 공식 마감 바 */}
+      <div className="bg-gradient-to-r from-stone-900 via-purple-950 to-stone-900 text-white p-3.5 rounded-2xl shadow-md space-y-2.5 border border-purple-800/40">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🚩</span>
+            <div>
+              <div className="text-xs font-black flex items-center gap-1.5">
+                <span>전 조 경기 진행 모니터링</span>
+                <span className="bg-purple-500/40 text-purple-200 border border-purple-400/40 text-[10px] font-black px-2 py-0.2 rounded-full">
+                  {room.groups.filter((g) => (g.players[0]?.holesCompleted || 0) >= (room.totalHoles || 18)).length}/{room.groups.length}개 조 완주
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleFinalizeTournament}
+            className="bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 active:scale-95 text-amber-950 font-black text-xs px-3 py-1.5 rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1"
+          >
+            <Trophy className="w-3.5 h-3.5" />
+            <span>대회 공식 마감 & 실록 박제 🏆</span>
+          </button>
+        </div>
+
+        {/* 조별 실시간 홀 진행 배지 목록 */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] font-bold scrollbar-none">
+          {room.groups.map((g) => {
+            const completed = g.players[0]?.holesCompleted || 0;
+            const total = room.totalHoles || 18;
+            const isDone = completed >= total || g.status === 'FINISHED';
+            const inProgress = completed > 0 && !isDone;
+
+            return (
+              <div
+                key={g.groupNumber}
+                className={`px-2.5 py-1 rounded-xl shrink-0 border flex items-center gap-1 ${
+                  isDone
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+                    : inProgress
+                    ? 'bg-purple-500/30 text-purple-200 border-purple-400/50'
+                    : 'bg-white/10 text-stone-300 border-white/10'
+                }`}
+              >
+                <span>{g.name}:</span>
+                <span className="font-black">
+                  {isDone ? '완주 ✅' : inProgress ? `${completed}/${total}홀 🏌️` : '대기 ⏳'}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -881,6 +1164,19 @@ export default function ClubRoomDetailPage() {
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>+ 참가자 등록</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setJoiningGroup(null);
+                    setNewPlayerName('게스트');
+                    setShowJoinModal(true);
+                  }}
+                  className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-black px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
+                  title="외부 게스트 또는 현장 참가자 대기 명단 추가"
+                >
+                  <UserPlus className="w-3.5 h-3.5 text-amber-700" />
+                  <span>➕ 게스트/현장 추가</span>
                 </button>
               </div>
             </div>
@@ -958,212 +1254,270 @@ export default function ClubRoomDetailPage() {
             </div>
           </div>
 
-          {/* 조 목록 렌더링 (동적 3~4인 유연 렌더링) */}
-          <div className="space-y-3">
-            {room.groups.map((group) => {
-              const hasScores = (group.totalScore || 0) > 0;
-
-              return (
-                <div
-                  key={group.groupNumber}
-                  className="bg-white rounded-2xl p-4 border border-stone-200 shadow-xs space-y-3 hover:border-purple-300 transition"
-                >
-                  {/* 조 헤더 */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="bg-purple-700 text-white text-xs font-black px-2.5 py-1 rounded-xl shadow-xs">
-                        {group.name}
-                      </span>
-                      <span className="text-xs font-black text-stone-800">
-                        티샷: {group.startCourseLetter}코스
-                      </span>
-                      <span className="text-[11px] font-bold text-stone-500">
-                        ({group.players.length}명 편성)
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setJoiningGroup(group.groupNumber);
-                          setNewPlayerName(ParkOnStorage.getUserDisplayName(room.clubId));
-                          setJoinAsLeader(group.players.length === 0);
-                          setShowJoinModal(true);
-                        }}
-                        className="bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-300 text-[11px] font-black px-2 py-1 rounded-xl flex items-center gap-1 transition active:scale-95 cursor-pointer"
-                      >
-                        <UserPlus className="w-3 h-3" />
-                        <span>이 조 참가</span>
-                      </button>
-
-                      {group.players.length === 0 && room.groups.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteEmptyGroup(group.groupNumber)}
-                          className="text-stone-400 hover:text-red-600 text-[10px] font-bold px-1.5 py-1 rounded-lg border border-stone-200 cursor-pointer"
-                          title="빈 조 삭제"
-                        >
-                          조 삭제
-                        </button>
-                      )}
-                    </div>
+          {/* 📋 조 편성 결과 보기 탭 & 패널 (터치 시 1조~N조 펼치기/접기) */}
+          <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden transition">
+            <button
+              type="button"
+              onClick={() => setShowGroupResults((prev) => !prev)}
+              className="w-full p-3.5 bg-gradient-to-r from-stone-50 via-purple-50/30 to-stone-50 hover:bg-purple-50/60 transition flex items-center justify-between cursor-pointer border-none text-left"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-xl bg-purple-700 text-white flex items-center justify-center font-black text-xs shadow-xs">
+                  📋
+                </span>
+                <div>
+                  <div className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+                    <span>조 편성 결과 보기</span>
+                    <span className="bg-purple-100 text-purple-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-purple-200">
+                      총 {room.groups.length}개 조 ({groupPlayersCount}명 편성됨)
+                    </span>
                   </div>
+                  <p className="text-[11px] text-stone-500 font-medium mt-0.5">
+                    {showGroupResults
+                      ? '터치하여 조 편성 상세 목록 접기 ▲'
+                      : `터치하여 1조 ~ ${room.groups.length}조 편성 상세 결과 및 출발 코스 확인 ▼`}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className={`text-xs font-black px-2.5 py-1 rounded-lg border transition ${showGroupResults ? 'bg-purple-700 text-white border-purple-700' : 'bg-white text-purple-700 border-purple-200'}`}>
+                  {showGroupResults ? '목록 접기 ▲' : '결과 보기 ▼'}
+                </span>
+              </div>
+            </button>
 
-                  {/* 조원 슬롯 리스트 (동적 유연 렌더링) */}
-                  <div className="grid grid-cols-2 gap-2">
-                    {group.players.map((player, pIdx) => (
+            {/* 조 목록 렌더링 (showGroupResults가 true일 때 펼쳐짐) */}
+            {showGroupResults && (
+              <div className="p-3 border-t border-stone-200 bg-stone-50/40 space-y-3 animate-fadeIn">
+                {room.groups.length === 0 ? (
+                  <div className="text-center py-6 text-stone-400 text-xs font-bold">
+                    아직 편성된 조가 없습니다. 위의 [🎲 스마트 조 편성 룰 설정 & 자동 분배 실행] 버튼을 눌러 조를 배정해 주세요.
+                  </div>
+                ) : (
+                  room.groups.map((group) => {
+                    const hasScores = (group.totalScore || 0) > 0;
+
+                    return (
                       <div
-                        key={player.id}
-                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-1 text-xs font-black ${
-                          player.isLeader
-                            ? 'bg-amber-50/70 border-amber-300 text-stone-900'
-                            : 'bg-stone-50 border-stone-200 text-stone-800'
-                        }`}
+                        key={group.groupNumber}
+                        className="bg-white rounded-2xl p-4 border border-stone-200 shadow-xs space-y-3 hover:border-purple-300 transition"
                       >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          {player.isLeader ? (
-                            <span title="조장 (스코어 입력 권한)">
-                              <Crown className="w-4 h-4 text-amber-500 shrink-0" />
+                        {/* 조 헤더 */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-purple-700 text-white text-xs font-black px-2.5 py-1 rounded-xl shadow-xs">
+                              {group.name}
                             </span>
-                          ) : (
-                            <span className="w-4 text-stone-400 text-center font-bold text-[11px]">
-                              {pIdx + 1}
+                            <span className="text-xs font-black text-purple-900 bg-purple-100/80 px-2 py-0.5 rounded-lg border border-purple-200 flex items-center gap-1">
+                              <span>🚩</span>
+                              <span>{group.startCourseLetter}코스 1번 홀 출발</span>
                             </span>
-                          )}
-                          <div className="min-w-0">
-                            <div className="truncate font-black">{player.name}</div>
-                            <div className="text-[9px] text-stone-500 font-bold flex items-center gap-1 flex-wrap mt-0.5">
-                              <span>
-                                {player.gender === 'F' ? '여' : '남'} ·{' '}
-                                {player.handicapTier === 'ADVANCED'
-                                  ? '상급'
-                                  : player.handicapTier === 'BEGINNER'
-                                  ? '초급'
-                                  : '중급'}
-                              </span>
+                            <span className="text-[11px] font-bold text-stone-500">
+                              ({group.players.length}명 편성)
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setJoiningGroup(group.groupNumber);
+                                setNewPlayerName(ParkOnStorage.getUserDisplayName(room.clubId));
+                                setJoinAsLeader(group.players.length === 0);
+                                setShowJoinModal(true);
+                              }}
+                              className="bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-300 text-[11px] font-black px-2 py-1 rounded-xl flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                            >
+                              <UserPlus className="w-3 h-3" />
+                              <span>이 조 참가</span>
+                            </button>
+
+                            {group.players.length === 0 && room.groups.length > 1 && (
                               <button
                                 type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleTogglePayment(player.id, player.name);
-                                }}
-                                className={`px-1.5 py-0.5 rounded text-[9px] font-black transition active:scale-95 cursor-pointer flex items-center gap-0.5 ${
-                                  player.paymentStatus === 'PAID'
-                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
-                                    : 'bg-stone-200 hover:bg-amber-100 text-stone-600 hover:text-amber-900 border border-stone-300/60'
-                                }`}
-                                title="클릭 시 입금 완료 ↔ 미납 토글"
+                                onClick={() => handleDeleteEmptyGroup(group.groupNumber)}
+                                className="text-stone-400 hover:text-red-600 text-[10px] font-bold px-1.5 py-1 rounded-lg border border-stone-200 cursor-pointer"
+                                title="빈 조 삭제"
                               >
-                                {player.paymentStatus === 'PAID' ? '✓입금' : '미납'}
+                                조 삭제
                               </button>
-                            </div>
+                            )}
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1 shrink-0">
-                          {/* 다른 조로 이동 버튼 */}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setMovingPlayer({
-                                fromGroup: group.groupNumber,
-                                playerId: player.id,
-                                playerName: player.name,
-                              })
-                            }
-                            title="다른 조로 이동"
-                            className="text-[10px] text-indigo-700 hover:text-indigo-900 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-bold cursor-pointer flex items-center gap-0.5"
-                          >
-                            <ArrowRightLeft className="w-2.5 h-2.5" />
-                            <span>이동</span>
-                          </button>
+                        {/* 조원 슬롯 리스트 (동적 유연 렌더링) */}
+                        <div className="grid grid-cols-2 gap-2">
+                          {group.players.map((player, pIdx) => (
+                            <div
+                              key={player.id}
+                              className={`p-2.5 rounded-xl border flex items-center justify-between gap-1 text-xs font-black ${
+                                player.isLeader
+                                  ? 'bg-amber-50/70 border-amber-300 text-stone-900'
+                                  : 'bg-stone-50 border-stone-200 text-stone-800'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                {player.isLeader ? (
+                                  <span title="조장 (스코어 입력 권한)">
+                                    <Crown className="w-4 h-4 text-amber-500 shrink-0" />
+                                  </span>
+                                ) : (
+                                  <span className="w-4 text-stone-400 text-center font-bold text-[11px]">
+                                    {pIdx + 1}
+                                  </span>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="truncate font-black">{player.name}</div>
+                                  <div className="text-[9px] text-stone-500 font-bold flex items-center gap-1 flex-wrap mt-0.5">
+                                    <span>
+                                      {player.gender === 'F' ? '여' : '남'} ·{' '}
+                                      {player.handicapTier === 'ADVANCED'
+                                        ? '상급'
+                                        : player.handicapTier === 'BEGINNER'
+                                        ? '초급'
+                                        : '중급'}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleTogglePayment(player.id, player.name);
+                                      }}
+                                      className={`px-1.5 py-0.5 rounded text-[9px] font-black transition active:scale-95 cursor-pointer flex items-center gap-0.5 ${
+                                        player.paymentStatus === 'PAID'
+                                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
+                                          : 'bg-stone-200 hover:bg-amber-100 text-stone-600 hover:text-amber-900 border border-stone-300/60'
+                                      }`}
+                                      title="클릭 시 입금 완료 ↔ 미납 토글"
+                                    >
+                                      {player.paymentStatus === 'PAID' ? '✓입금' : '미납'}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
 
-                          {/* 조장 위임 버튼 */}
-                          {!player.isLeader && (
+                              <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+                                {/* ⚡ 노쇼 긴급 대체 버튼 */}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleQuickReplaceMissingPlayer(
+                                      group.groupNumber,
+                                      player.id,
+                                      player.name
+                                    )
+                                  }
+                                  title="결원(노쇼) 발생 시 대기 1순위 즉시 대체 투입"
+                                  className="text-[10px] text-amber-900 hover:text-white bg-amber-200 hover:bg-amber-600 border border-amber-300 px-1.5 py-0.5 rounded font-bold cursor-pointer transition active:scale-95 flex items-center gap-0.5 shadow-2xs"
+                                >
+                                  <span>⚡노쇼</span>
+                                </button>
+
+                                {/* 다른 조로 이동 버튼 */}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setMovingPlayer({
+                                      fromGroup: group.groupNumber,
+                                      playerId: player.id,
+                                      playerName: player.name,
+                                    })
+                                  }
+                                  title="다른 조로 이동"
+                                  className="text-[10px] text-indigo-700 hover:text-indigo-900 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-bold cursor-pointer flex items-center gap-0.5"
+                                >
+                                  <ArrowRightLeft className="w-2.5 h-2.5" />
+                                  <span>이동</span>
+                                </button>
+
+                                {/* 조장 위임 버튼 */}
+                                {!player.isLeader && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleMakeLeader(group.groupNumber, player.id, player.name)
+                                    }
+                                    title="조장 위임"
+                                    className="text-[10px] text-amber-700 hover:text-amber-900 bg-amber-100/80 px-1.5 py-0.5 rounded font-bold cursor-pointer"
+                                  >
+                                    조장
+                                  </button>
+                                )}
+
+                                {/* 제외 버튼 */}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleLeaveGroup(group.groupNumber, player.id, player.name)
+                                  }
+                                  title="조에서 제외"
+                                  className="text-stone-400 hover:text-red-600 p-0.5 rounded cursor-pointer"
+                                >
+                                  <LogOut className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* 빈자리 추가 슬롯 */}
+                          {group.players.length < 4 && (
                             <button
                               type="button"
-                              onClick={() =>
-                                handleMakeLeader(group.groupNumber, player.id, player.name)
-                              }
-                              title="조장 위임"
-                              className="text-[10px] text-amber-700 hover:text-amber-900 bg-amber-100/80 px-1.5 py-0.5 rounded font-bold cursor-pointer"
+                              onClick={() => {
+                                setJoiningGroup(group.groupNumber);
+                                setNewPlayerName('');
+                                setJoinAsLeader(group.players.length === 0);
+                                setShowJoinModal(true);
+                              }}
+                              className="p-2.5 rounded-xl border border-dashed border-stone-300 hover:border-purple-400 bg-stone-50/50 hover:bg-purple-50/50 flex items-center justify-center gap-1 text-stone-400 hover:text-purple-700 text-xs font-black transition cursor-pointer"
                             >
-                              조장
+                              <UserPlus className="w-3.5 h-3.5" />
+                              <span>+ 빈자리 참가</span>
                             </button>
                           )}
+                        </div>
 
-                          {/* 제외 버튼 */}
+                        {/* 조 현재 성적 요약 프리뷰 */}
+                        {hasScores && (
+                          <div className="bg-stone-50 p-2 rounded-xl flex items-center justify-between text-xs font-black text-stone-700 border border-stone-200/60">
+                            <span>조 평균 타수</span>
+                            <span className="text-purple-800">
+                              {group.avgScore}타 (합계 {group.totalScore}타)
+                            </span>
+                          </div>
+                        )}
+
+                        {/* 조장 전용 라운드 시작/이어하기 버튼 */}
+                        <div className="pt-1">
                           <button
                             type="button"
-                            onClick={() =>
-                              handleLeaveGroup(group.groupNumber, player.id, player.name)
-                            }
-                            title="조에서 제외"
-                            className="text-stone-400 hover:text-red-600 p-0.5 rounded cursor-pointer"
+                            onClick={() => handleStartGroupRound(group)}
+                            className="w-full py-2.5 bg-gradient-to-r from-emerald-700 to-teal-800 hover:from-emerald-800 hover:to-teal-900 text-white rounded-xl font-black text-xs shadow-xs transition active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer"
                           >
-                            <LogOut className="w-3.5 h-3.5" />
+                            <Play className="w-3.5 h-3.5 fill-white" />
+                            <span>
+                              {hasScores
+                                ? `⛳ [${group.name}] 스코어보드 계속 기록하기 ▶`
+                                : `⛳ [${group.name}] 18홀 라운드 시작 (스코어 기록)`}
+                            </span>
                           </button>
                         </div>
                       </div>
-                    ))}
+                    );
+                  })
+                )}
 
-                    {/* 빈자리 추가 슬롯 */}
-                    {group.players.length < 4 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setJoiningGroup(group.groupNumber);
-                          setNewPlayerName('');
-                          setJoinAsLeader(group.players.length === 0);
-                          setShowJoinModal(true);
-                        }}
-                        className="p-2.5 rounded-xl border border-dashed border-stone-300 hover:border-purple-400 bg-stone-50/50 hover:bg-purple-50/50 flex items-center justify-center gap-1 text-stone-400 hover:text-purple-700 text-xs font-black transition cursor-pointer"
-                      >
-                        <UserPlus className="w-3.5 h-3.5" />
-                        <span>+ 빈자리 참가</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* 조 현재 성적 요약 프리뷰 */}
-                  {hasScores && (
-                    <div className="bg-stone-50 p-2 rounded-xl flex items-center justify-between text-xs font-black text-stone-700 border border-stone-200/60">
-                      <span>조 평균 타수</span>
-                      <span className="text-purple-800">
-                        {group.avgScore}타 (합계 {group.totalScore}타)
-                      </span>
-                    </div>
-                  )}
-
-                  {/* 조장 전용 라운드 시작/이어하기 버튼 */}
-                  <div className="pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleStartGroupRound(group)}
-                      className="w-full py-2.5 bg-gradient-to-r from-emerald-700 to-teal-800 hover:from-emerald-800 hover:to-teal-900 text-white rounded-xl font-black text-xs shadow-xs transition active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-white" />
-                      <span>
-                        {hasScores
-                          ? `⛳ [${group.name}] 스코어보드 계속 기록하기 ▶`
-                          : `⛳ [${group.name}] 18홀 라운드 시작 (스코어 기록)`}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* 신규 조 수동 추가 버튼 */}
-            <button
-              type="button"
-              onClick={handleAddEmptyGroup}
-              className="w-full py-2.5 bg-stone-50 hover:bg-stone-100 border border-dashed border-stone-300 rounded-2xl text-xs font-black text-stone-600 flex items-center justify-center gap-1.5 transition active:scale-98 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 text-stone-400" />
-              <span>새로운 조 추가하기 (+ {room.groups.length + 1}조)</span>
-            </button>
+                {/* 신규 조 수동 추가 버튼 */}
+                <button
+                  type="button"
+                  onClick={handleAddEmptyGroup}
+                  className="w-full py-2.5 bg-stone-50 hover:bg-stone-100 border border-dashed border-stone-300 rounded-2xl text-xs font-black text-stone-600 flex items-center justify-center gap-1.5 transition active:scale-98 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4 text-stone-400" />
+                  <span>새로운 조 추가하기 (+ {room.groups.length + 1}조)</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1544,11 +1898,14 @@ export default function ClubRoomDetailPage() {
                 </div>
               </div>
 
-              {/* 4대 조 편성 룰 선택 */}
+              {/* 5대 조 편성 옵션 선택 (대표님 요청 표준) */}
               <div className="space-y-2">
-                <label className="text-xs font-black text-stone-800">조 편성 룰 선택</label>
+                <label className="text-xs font-black text-stone-800 flex items-center justify-between">
+                  <span>조 편성 옵션 선택</span>
+                  <span className="text-[10px] text-purple-700 font-bold">총무 맞춤 자동 분배</span>
+                </label>
 
-                {/* 룰 1: 완전 랜덤 */}
+                {/* 옵션 1: 무조건 100% 완전 랜덤 */}
                 <button
                   type="button"
                   onClick={() => setGroupMethod('RANDOM')}
@@ -1560,14 +1917,214 @@ export default function ClubRoomDetailPage() {
                 >
                   <Dices className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
                   <div>
-                    <div className="text-xs font-black text-stone-900">🎲 완전 무작위 (랜덤) 편성</div>
+                    <div className="text-xs font-black text-stone-900">🎲 1. 무조건 100% 완전 랜덤 편성</div>
                     <div className="text-[11px] text-stone-500 font-bold mt-0.5">
-                      전체 인원을 완전히 섞어서 순수 난수로 각 조에 골고루 배치합니다.
+                      전체 참가자를 순수 무작위로 추첨하여 각 조에 골고루 배치합니다. (조건 없이 랜덤)
                     </div>
                   </div>
                 </button>
 
-                {/* 룰 2: 남녀 성비 균등 */}
+                {/* 옵션 2: 조장 지정 후 돌리기 (총무 강력 추천) */}
+                <button
+                  type="button"
+                  onClick={() => setGroupMethod('ASSIGN_LEADERS')}
+                  className={`w-full p-3 rounded-2xl border text-left transition active:scale-98 cursor-pointer flex items-start gap-2.5 ${
+                    groupMethod === 'ASSIGN_LEADERS'
+                      ? 'bg-amber-50 border-amber-600 ring-2 ring-amber-300 shadow-xs'
+                      : 'bg-white hover:bg-stone-50 border-stone-200'
+                  }`}
+                >
+                  <Crown className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                      <span>👑 2. 각 조 조장 {customGroupCount}명 지정 후 돌리기</span>
+                      <span className="bg-amber-200/80 text-amber-900 text-[10px] px-1.5 py-0.2 rounded font-black">
+                        총무 추천
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-amber-800/80 font-bold mt-0.5">
+                      스마트폰 입력이나 리딩을 맡을 조장 {customGroupCount}명을 미리 체크하면, 1조부터 {customGroupCount}조에 1명씩 고정하고 나머지를 랜덤 분배합니다.
+                    </div>
+                  </div>
+                </button>
+
+                {/* 조장 지정 모드 선택 시 활성화되는 인터랙티브 체크 명단 패널 */}
+                {groupMethod === 'ASSIGN_LEADERS' && (
+                  <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-3.5 space-y-2.5 animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                        <Crown className="w-4 h-4 text-amber-600" />
+                        <span>조장 체크 ({selectedLeaderIds.length} / {customGroupCount}명 지정됨)</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const candidates = [...allCurrentPlayers];
+                          candidates.sort((a, b) => {
+                            const ta = a.handicapTier === 'ADVANCED' ? 2 : a.handicapTier === 'INTERMEDIATE' ? 1 : 0;
+                            const tb = b.handicapTier === 'ADVANCED' ? 2 : b.handicapTier === 'INTERMEDIATE' ? 1 : 0;
+                            return tb - ta;
+                          });
+                          setSelectedLeaderIds(candidates.slice(0, customGroupCount).map((p) => p.id));
+                        }}
+                        className="text-[10px] font-black bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md cursor-pointer transition shadow-2xs"
+                      >
+                        💡 상급자 우선 자동 추천
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-amber-900 font-medium">
+                      아래 명단에서 각 조를 이끌 조장 <strong>{customGroupCount}명</strong>을 체크해 주세요. 체크된 순서대로 1조, 2조, 3조... 의 조장으로 배정됩니다.
+                    </p>
+
+                    <div className="max-h-52 overflow-y-auto space-y-1 bg-white p-2 rounded-xl border border-amber-200">
+                      {allCurrentPlayers.map((p) => {
+                        const isLeader = selectedLeaderIds.includes(p.id);
+                        const leaderIndex = selectedLeaderIds.indexOf(p.id);
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              if (isLeader) {
+                                setSelectedLeaderIds(selectedLeaderIds.filter((id) => id !== p.id));
+                              } else {
+                                if (selectedLeaderIds.length >= customGroupCount) {
+                                  alert(`이미 조장 정원(${customGroupCount}명)이 모두 찼습니다. 다른 회원을 해제하고 선택하세요.`);
+                                  return;
+                                }
+                                setSelectedLeaderIds([...selectedLeaderIds, p.id]);
+                              }
+                            }}
+                            className={`w-full p-2 rounded-lg border text-xs flex items-center justify-between transition cursor-pointer ${
+                              isLeader
+                                ? 'bg-amber-100/80 border-amber-500 font-black text-amber-950 ring-1 ring-amber-300'
+                                : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-amber-50/50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-black ${
+                                  isLeader ? 'bg-amber-600 text-white' : 'border border-stone-300 bg-white'
+                                }`}
+                              >
+                                {isLeader ? '✓' : ''}
+                              </span>
+                              <span className="font-black">{p.name}</span>
+                              <span className="text-[10px] text-stone-500">
+                                ({p.gender === 'F' ? '여' : '남'}·
+                                {p.handicapTier === 'ADVANCED' ? '상급' : p.handicapTier === 'BEGINNER' ? '초급' : '중급'})
+                              </span>
+                            </div>
+                            {isLeader && (
+                              <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.5 rounded shadow-2xs">
+                                👑 {leaderIndex + 1}조 조장
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 옵션 3: 일부 인원 특정 조 사전 지정 후 돌리기 */}
+                <button
+                  type="button"
+                  onClick={() => setGroupMethod('PARTIAL_ASSIGN')}
+                  className={`w-full p-3 rounded-2xl border text-left transition active:scale-98 cursor-pointer flex items-start gap-2.5 ${
+                    groupMethod === 'PARTIAL_ASSIGN'
+                      ? 'bg-blue-50 border-blue-600 ring-2 ring-blue-200 shadow-xs'
+                      : 'bg-white hover:bg-stone-50 border-stone-200'
+                  }`}
+                >
+                  <Users className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs font-black text-stone-900">📌 3. 일부 인원 조 고정 후 나머지 돌리기</div>
+                    <div className="text-[11px] text-stone-500 font-bold mt-0.5">
+                      부부, 친구, 초보자 동반 등 특정 인원을 원하는 조에 미리 고정 배치하고, 나머지 인원만 빈자리로 자동 분배합니다.
+                    </div>
+                  </div>
+                </button>
+
+                {/* 일부 인원 고정 모드 선택 시 활성화되는 인터랙티브 조 선택 패널 */}
+                {groupMethod === 'PARTIAL_ASSIGN' && (
+                  <div className="bg-blue-50/90 border border-blue-300 rounded-2xl p-3.5 space-y-2.5 animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-blue-950 flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-blue-600" />
+                        <span>특정 조 사전 고정 ({Object.keys(preAssignedGroupMap).length}명 고정됨)</span>
+                      </span>
+                      {Object.keys(preAssignedGroupMap).length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setPreAssignedGroupMap({})}
+                          className="text-[10px] font-bold text-stone-500 hover:underline cursor-pointer"
+                        >
+                          전체 초기화
+                        </button>
+                      )}
+                    </div>
+
+                    <p className="text-[11px] text-blue-900 font-medium">
+                      고정하고 싶은 회원의 조 번호를 선택하세요. '자동 분배'로 둔 회원은 남은 빈자리에 무작위로 분배됩니다.
+                    </p>
+
+                    <div className="max-h-52 overflow-y-auto space-y-1.5 bg-white p-2 rounded-xl border border-blue-200">
+                      {allCurrentPlayers.map((p) => {
+                        const assignedGroup = preAssignedGroupMap[p.id] || 0;
+                        return (
+                          <div
+                            key={p.id}
+                            className={`p-2 rounded-lg border text-xs flex items-center justify-between ${
+                              assignedGroup > 0
+                                ? 'bg-blue-50/80 border-blue-400 font-black text-blue-950'
+                                : 'bg-stone-50 border-stone-200 text-stone-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-black">{p.name}</span>
+                              <span className="text-[10px] text-stone-500">
+                                ({p.gender === 'F' ? '여' : '남'}·
+                                {p.handicapTier === 'ADVANCED' ? '상' : p.handicapTier === 'BEGINNER' ? '초' : '중'})
+                              </span>
+                            </div>
+
+                            <select
+                              value={assignedGroup}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setPreAssignedGroupMap((prev) => {
+                                  const next = { ...prev };
+                                  if (val > 0) {
+                                    next[p.id] = val;
+                                  } else {
+                                    delete next[p.id];
+                                  }
+                                  return next;
+                                });
+                              }}
+                              className={`px-2 py-1 rounded-lg text-xs font-bold border cursor-pointer ${
+                                assignedGroup > 0
+                                  ? 'bg-blue-600 text-white border-blue-700 font-black'
+                                  : 'bg-white text-stone-700 border-stone-300'
+                              }`}
+                            >
+                              <option value={0}>🎲 자동 분배</option>
+                              {Array.from({ length: customGroupCount }, (_, idx) => idx + 1).map((gNum) => (
+                                <option key={gNum} value={gNum}>
+                                  📌 {gNum}조 고정
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 옵션 4: 남녀 성비 균등 */}
                 <button
                   type="button"
                   onClick={() => setGroupMethod('BALANCED_GENDER')}
@@ -1579,14 +2136,14 @@ export default function ClubRoomDetailPage() {
                 >
                   <Scale className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
                   <div>
-                    <div className="text-xs font-black text-stone-900">⚖️ 남녀 성비 균등 분배</div>
+                    <div className="text-xs font-black text-stone-900">⚖️ 4. 남녀 성비 균등 분배</div>
                     <div className="text-[11px] text-stone-500 font-bold mt-0.5">
                       각 조에 남성과 여성이 치우치지 않고 골고루 섞이도록 자동 배분합니다.
                     </div>
                   </div>
                 </button>
 
-                {/* 룰 3: 실력 균등 */}
+                {/* 옵션 5: 실력 균등 */}
                 <button
                   type="button"
                   onClick={() => setGroupMethod('BALANCED_TIER')}
@@ -1598,34 +2155,15 @@ export default function ClubRoomDetailPage() {
                 >
                   <Award className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <div className="text-xs font-black text-stone-900">🏅 실력 균형 분배 (스네이크)</div>
+                    <div className="text-xs font-black text-stone-900">🏅 5. 실력 균형 분배 (스네이크)</div>
                     <div className="text-[11px] text-stone-500 font-bold mt-0.5">
                       상급자, 중급자, 초급자가 한 조에 쏠리지 않도록 밸런스를 맞춥니다.
                     </div>
                   </div>
                 </button>
-
-                {/* 룰 4: 조장 유지 */}
-                <button
-                  type="button"
-                  onClick={() => setGroupMethod('KEEP_LEADERS')}
-                  className={`w-full p-3 rounded-2xl border text-left transition active:scale-98 cursor-pointer flex items-start gap-2.5 ${
-                    groupMethod === 'KEEP_LEADERS'
-                      ? 'bg-purple-50 border-purple-600 ring-2 ring-purple-200'
-                      : 'bg-white hover:bg-stone-50 border-stone-200'
-                  }`}
-                >
-                  <Crown className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                  <div>
-                    <div className="text-xs font-black text-stone-900">👑 조장 사전지정 유지 + 나머지 자동 채우기</div>
-                    <div className="text-[11px] text-stone-500 font-bold mt-0.5">
-                      현재 각 조 1번 조장은 그대로 유지하고, 나머지 조원만 자동 배치합니다.
-                    </div>
-                  </div>
-                </button>
               </div>
 
-              {/* 실행 버튼 */}
+              {/* 실행 버튼 (RUN) */}
               <div className="pt-2 flex gap-2">
                 <button
                   type="button"
@@ -1637,10 +2175,10 @@ export default function ClubRoomDetailPage() {
                 <button
                   type="button"
                   onClick={handleExecuteAutoGroup}
-                  className="w-2/3 py-3 bg-purple-700 hover:bg-purple-800 text-white rounded-xl font-black text-xs shadow-md transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-2/3 py-3 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white rounded-xl font-black text-xs sm:text-sm shadow-md transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer border border-purple-500"
                 >
-                  <Sparkles className="w-4 h-4 text-purple-300" />
-                  <span>스마트 조 편성 적용하기 🎯</span>
+                  <Sparkles className="w-4 h-4 text-yellow-300" />
+                  <span>🚀 조건 적용하여 조 편성 실행 (RUN)</span>
                 </button>
               </div>
             </div>
@@ -1720,7 +2258,7 @@ export default function ClubRoomDetailPage() {
                   <span className="text-[10px] text-stone-500 font-bold">실명 또는 가명</span>
                 </div>
 
-                {/* 실명 vs 가명 빠른 선택 */}
+                {/* 실명 vs 가명 vs 게스트 빠른 선택 */}
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
@@ -1750,19 +2288,32 @@ export default function ClubRoomDetailPage() {
                   >
                     🔘 가명 ({ParkOnStorage.getKakaoUser()?.aliasName || '나이스버디'})
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewPlayerName('게스트');
+                    }}
+                    className={`flex-1 py-1.5 px-2 rounded-lg border text-[11px] font-black transition cursor-pointer text-center ${
+                      newPlayerName.startsWith('게스트')
+                        ? 'bg-amber-100 border-amber-600 text-amber-950 ring-2 ring-amber-200'
+                        : 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-800'
+                    }`}
+                  >
+                    🔘 게스트 (초청)
+                  </button>
                 </div>
 
                 <input
                   type="text"
                   value={newPlayerName}
                   onChange={(e) => setNewPlayerName(e.target.value)}
-                  placeholder="예: 김대희 또는 나이스버디"
+                  placeholder="예: 김대희 또는 게스트1"
                   autoFocus
                   required
                   className="w-full px-3 py-2 border border-stone-300 rounded-xl text-xs font-black focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
                 <p className="text-[10px] text-stone-400 font-medium">
-                  💡 공식 대회는 실명 참가를 추천하며, 모르는 회원과의 친선 경기는 가명/닉네임으로 참가할 수 있습니다.
+                  💡 공식 대회는 실명 참가를 추천하며, 외부 초청인원/당일 현장 방문객은 게스트로 등록해 즉시 조에 편성할 수 있습니다.
                 </p>
               </div>
 
