@@ -1880,17 +1880,17 @@ ${shareUrl}`;
                       <div className="grid grid-cols-3 gap-1.5 pt-1">
                         {isExecutive ? (
                           <>
-                            {/* 1. 직책·회원 관리 (회장/총무) */}
+                            {/* 1. 회원 관리 (회장/총무) */}
                             <button
                               type="button"
                               onClick={() => {
                                 handleOpenClubManagement(club, pendingCount > 0 ? 'PENDING' : 'MEMBERS');
                               }}
                               className="py-2.5 px-1.5 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
-                              title="신규 가입 승인 및 직책(회장/총무) 임명"
+                              title="신규 가입 승인 및 회원 관리"
                             >
-                              <Settings className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                              <span className="truncate">⚙️ 직책·관리</span>
+                              <Users className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                              <span className="truncate">👥 회원 관리</span>
                             </button>
 
                             {/* 2. 클럽 모임 개최 (정기전 / 번개) */}
