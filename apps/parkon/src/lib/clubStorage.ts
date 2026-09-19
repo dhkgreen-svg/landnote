@@ -2412,6 +2412,52 @@ ${shareUrl}`;
     }
   },
 
+  // 클럽 연회비 기준 금액 설정
+  updateClubAnnualDues(clubId: string, amount: number): boolean {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club) return false;
+    club.annualDuesAmount = amount;
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  // 회원별 연회비 납부 상태 토글 및 기록
+  updateMemberDues(
+    clubId: string,
+    memberId: string,
+    duesPaid: boolean,
+    amount?: number,
+    notes?: string
+  ): boolean {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club) return false;
+    const member = club.members.find((m) => m.id === memberId);
+    if (!member) return false;
+
+    member.duesPaid = duesPaid;
+    if (duesPaid) {
+      member.duesPaidAt = new Date().toISOString().slice(0, 10);
+      member.duesAmount = amount || club.annualDuesAmount || 50000;
+      member.duesNotes = notes || '수납 완료';
+    } else {
+      member.duesPaidAt = undefined;
+      member.duesNotes = undefined;
+    }
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
   // ==========================================
   // [NEW] 번개 모임 (실시간 라운드 조인) 관리
   // ==========================================

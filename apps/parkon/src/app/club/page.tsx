@@ -138,7 +138,8 @@ export default function ClubGatheringHomePage() {
 
   // 회장/총무 클럽 통합 관리실 (가입 승인 대기 / 회원 명부 & 직책 배정 / 단원 모집 관리 / 대항전 개설 & 선수 선발)
   const [managingClub, setManagingClub] = useState<ParkGolfClub | null>(null);
-  const [managingClubTab, setManagingClubTab] = useState<'PENDING' | 'MEMBERS' | 'RECRUIT' | 'MATCH' | 'CHRONICLE'>('PENDING');
+  const [managingClubTab, setManagingClubTab] = useState<'PENDING' | 'MEMBERS' | 'DUES'>('MEMBERS');
+  const [clubMatchModal, setClubMatchModal] = useState<ParkGolfClub | null>(null);
   const [editRecruitStatus, setEditRecruitStatus] = useState<ClubRecruitStatus>('RECRUITING');
   const [editRecruitQuota, setEditRecruitQuota] = useState<number>(5);
   const [editRecruitDate, setEditRecruitDate] = useState<string>('');
@@ -1178,8 +1179,45 @@ ${shareUrl}`;
     showToast(`⚔️ '${titleText}'이 개설되었습니다! 우리 클럽 출전 선수 ${players.length}명이 등록되었습니다.`);
   };
 
+  // 회원 연회비 납부 상태 토글
+  const handleToggleMemberDues = (
+    clubId: string,
+    memberId: string,
+    newPaidStatus: boolean,
+    memberName: string
+  ) => {
+    const success = ClubStorage.updateMemberDues(clubId, memberId, newPaidStatus);
+    if (success) {
+      refreshAllData();
+      const updated = ClubStorage.getClubById(clubId);
+      if (updated && managingClub?.id === clubId) {
+        setManagingClub(updated);
+      }
+      showToast(
+        newPaidStatus
+          ? `💰 '${memberName}'님의 연회비 납부 완료가 확인되었습니다.`
+          : `⏳ '${memberName}'님이 미납 상태로 변경되었습니다.`
+      );
+    }
+  };
+
+  // 클럽 연회비 기준 금액 변경
+  const handleUpdateAnnualDuesAmount = (clubId: string, amountStr: string) => {
+    const num = parseInt(amountStr.replace(/[^0-9]/g, ''), 10);
+    if (isNaN(num) || num < 0) return;
+    const success = ClubStorage.updateClubAnnualDues(clubId, num);
+    if (success) {
+      refreshAllData();
+      const updated = ClubStorage.getClubById(clubId);
+      if (updated && managingClub?.id === clubId) {
+        setManagingClub(updated);
+      }
+      showToast(`💰 클럽 기준 연회비가 '${num.toLocaleString()}원'으로 설정되었습니다.`);
+    }
+  };
+
   // 회장/총무 클럽 통합 관리실 오픈
-  const handleOpenClubManagement = (club: ParkGolfClub, defaultTab: 'PENDING' | 'MEMBERS' | 'RECRUIT' | 'MATCH' | 'CHRONICLE' = 'PENDING') => {
+  const handleOpenClubManagement = (club: ParkGolfClub, defaultTab: 'PENDING' | 'MEMBERS' | 'DUES' = 'MEMBERS') => {
     setManagingClub(club);
     setManagingClubTab(defaultTab);
     setEditRecruitStatus(club.recruitStatus || (club.isParkOnClub !== false ? 'RECRUITING' : 'ALWAYS'));
@@ -1916,7 +1954,7 @@ ${shareUrl}`;
                             <button
                               type="button"
                               onClick={() => {
-                                handleOpenClubManagement(club, 'MATCH');
+                                setClubMatchModal(club);
                                 setMatchSelectedMemberIds(club.members.map((m) => m.id));
                               }}
                               className="relative py-2.5 px-1.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
@@ -3801,7 +3839,7 @@ ${shareUrl}`;
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="bg-amber-400 text-emerald-950 text-[10px] font-black px-1.5 py-0.2 rounded-md">
-                    👑 집행부 관리실
+                    👑 클럽 회원 관리실
                   </span>
                   <h3 className="font-extrabold text-base">{managingClub.name}</h3>
                 </div>
@@ -3819,47 +3857,50 @@ ${shareUrl}`;
             </div>
 
             {/* 상단 카톡 가입 초청장 전송 바 */}
-            <div className="bg-emerald-50 px-4 py-2.5 border-b border-emerald-200 flex items-center justify-between">
-              <div className="text-xs font-bold text-emerald-950">
+            <div className="bg-emerald-50 px-4 py-2.5 border-b border-emerald-200 flex items-center justify-between gap-2">
+              <div className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                <span className="text-base">💌</span>
                 <span>신규 회원 카톡 초대하기</span>
               </div>
               <button
                 type="button"
                 onClick={(e) => handleCopyClubInvite(e, managingClub)}
-                className={`px-3 py-1.5 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 flex items-center gap-1 cursor-pointer transition ${
+                className={`px-3.5 py-2 text-white font-black text-xs rounded-xl shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer transition ${
                   copiedClubId === managingClub.id
                     ? 'bg-emerald-600 border border-emerald-400 ring-2 ring-emerald-300 animate-pulse'
-                    : 'bg-emerald-700 hover:bg-emerald-800'
+                    : 'bg-gradient-to-r from-emerald-600 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900'
                 }`}
+                title="카카오톡 단체방이나 지인에게 가입 초대 초청장 전송"
               >
                 {copiedClubId === managingClub.id ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
-                    <span>✅ 복사 완료!</span>
+                    <Check className="w-4 h-4 text-white stroke-[3]" />
+                    <span>✅ 초청장 복사 완료!</span>
                   </>
                 ) : (
                   <>
-                    <Share2 className="w-3.5 h-3.5" />
-                    <span>📢 카톡 가입 초청장 복사</span>
+                    <Share2 className="w-4 h-4" />
+                    <span>📢 카톡 가입 초대하기</span>
                   </>
                 )}
               </button>
             </div>
 
-            {/* 5대 집행부 관리 탭: 가입 승인 대기 / 단원 모집 / 회원 명부 & 직책 배정 / 대항전 개설 / 클럽 대회 실록 */}
-            <div className="grid grid-cols-5 p-2 bg-stone-100 border-b border-stone-200 gap-1 text-[11px] sm:text-xs font-black">
+            {/* 3대 집행부 회원 관리 탭: 신규 가입 신청 / 회원 명단 & 직책 배정 / 회비 관리 */}
+            <div className="grid grid-cols-3 p-2 bg-stone-100 border-b border-stone-200 gap-1.5 text-xs font-black">
+              {/* 1. 신규 가입 신청 명단 */}
               <button
                 type="button"
                 onClick={() => setManagingClubTab('PENDING')}
-                className={`py-2 rounded-xl transition flex items-center justify-center gap-0.5 cursor-pointer ${
+                className={`py-2.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${
                   managingClubTab === 'PENDING'
                     ? 'bg-white text-emerald-950 shadow-xs border border-stone-200'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <span>가입승인</span>
+                <span>가입 신청</span>
                 {(managingClub.pendingMembers?.length || 0) > 0 ? (
-                  <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full">
+                  <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full animate-pulse">
                     {managingClub.pendingMembers?.length}
                   </span>
                 ) : (
@@ -3867,76 +3908,34 @@ ${shareUrl}`;
                 )}
               </button>
 
-              <button
-                type="button"
-                onClick={() => setManagingClubTab('RECRUIT')}
-                className={`py-2 rounded-xl transition flex items-center justify-center gap-0.5 cursor-pointer ${
-                  managingClubTab === 'RECRUIT'
-                    ? 'bg-emerald-700 text-white shadow-xs border border-emerald-800'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                <span>단원모집</span>
-                <span className={`text-[9px] font-black px-1 py-0.2 rounded ${
-                  managingClub.recruitStatus === 'RECRUITING' || managingClub.recruitStatus === 'ALWAYS'
-                    ? 'bg-emerald-200 text-emerald-950'
-                    : 'bg-stone-200 text-stone-600'
-                }`}>
-                  {managingClub.recruitStatus === 'RECRUITING'
-                    ? '모집중'
-                    : managingClub.recruitStatus === 'ALWAYS'
-                    ? '상시'
-                    : managingClub.recruitStatus === 'SCHEDULED'
-                    ? '예정'
-                    : '마감'}
-                </span>
-              </button>
-
+              {/* 2. 회원 명단 & 직책 배정 */}
               <button
                 type="button"
                 onClick={() => setManagingClubTab('MEMBERS')}
-                className={`py-2 rounded-xl transition flex items-center justify-center gap-0.5 cursor-pointer ${
+                className={`py-2.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${
                   managingClubTab === 'MEMBERS'
                     ? 'bg-white text-emerald-950 shadow-xs border border-stone-200'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <span>직책배정</span>
+                <span>회원 명단</span>
                 <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.2 rounded-full">
-                  {managingClub.members.length}
+                  {managingClub.members.length}명
                 </span>
               </button>
 
+              {/* 3. 회비 관리 (연회비 수납 대장) */}
               <button
                 type="button"
-                onClick={() => {
-                  setManagingClubTab('MATCH');
-                  setMatchSelectedMemberIds(managingClub.members.map((m) => m.id));
-                }}
-                className={`py-2 rounded-xl transition flex items-center justify-center gap-0.5 cursor-pointer ${
-                  managingClubTab === 'MATCH'
-                    ? 'bg-purple-700 text-white shadow-xs border border-purple-900'
-                    : 'text-stone-600 hover:text-purple-900'
-                }`}
-              >
-                <Swords className="w-3 h-3" />
-                <span>대항전</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setManagingClubTab('CHRONICLE')}
-                className={`py-2 rounded-xl transition flex items-center justify-center gap-0.5 cursor-pointer ${
-                  managingClubTab === 'CHRONICLE'
-                    ? 'bg-amber-500 text-stone-950 shadow-xs border border-amber-600'
+                onClick={() => setManagingClubTab('DUES')}
+                className={`py-2.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${
+                  managingClubTab === 'DUES'
+                    ? 'bg-white text-amber-950 shadow-xs border border-amber-300 ring-1 ring-amber-200'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <Trophy className="w-3 h-3 text-amber-900" />
-                <span>대회실록</span>
-                <span className="bg-amber-200 text-amber-950 text-[9px] font-black px-1.5 py-0.2 rounded-full">
-                  {ClubStorage.getClubChronicles(managingClub.id).length}
-                </span>
+                <Coins className="w-3.5 h-3.5 text-amber-600" />
+                <span>회비 관리</span>
               </button>
             </div>
 
@@ -4004,147 +4003,6 @@ ${shareUrl}`;
                 </div>
               )}
 
-              {/* 탭 1-2: 신규 단원(회원) 모집 정책 및 정원 관리 */}
-              {managingClubTab === 'RECRUIT' && (
-                <div className="space-y-3.5">
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-[11px] text-emerald-950 font-medium leading-relaxed">
-                    📢 <strong>신규 단원(회원) 모집 관리:</strong><br />
-                    클럽 검색 및 디렉토리에 우리 클럽이 어떻게 노출될지 결정합니다. 모집 마감 시 가입 신청이 제한되며, 모집 예정 시 신청 희망자에게 일정이 안내됩니다.
-                  </div>
-
-                  {/* 모집 상태 선택 */}
-                  <div className="space-y-1.5">
-                    <label className="font-black text-stone-800 text-xs flex items-center justify-between">
-                      <span>단원 모집 상태</span>
-                      <span className="text-[10px] text-stone-400 font-medium">실시간 반영</span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setEditRecruitStatus('RECRUITING')}
-                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
-                          editRecruitStatus === 'RECRUITING'
-                            ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-300'
-                            : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
-                        }`}
-                      >
-                        <span className="w-3 h-3 rounded-full bg-emerald-500 shrink-0" />
-                        <div>
-                          <div className="font-black text-xs text-stone-900">🟢 단원 모집 중</div>
-                          <div className="text-[10px] text-stone-500 font-medium">정원 내 신규 신청 접수</div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setEditRecruitStatus('ALWAYS')}
-                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
-                          editRecruitStatus === 'ALWAYS'
-                            ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-300'
-                            : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
-                        }`}
-                      >
-                        <span className="w-3 h-3 rounded-full bg-teal-500 shrink-0" />
-                        <div>
-                          <div className="font-black text-xs text-stone-900">🟢 상시 모집</div>
-                          <div className="text-[10px] text-stone-500 font-medium">인원 제한 없이 수시 모집</div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setEditRecruitStatus('SCHEDULED')}
-                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
-                          editRecruitStatus === 'SCHEDULED'
-                            ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-300'
-                            : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
-                        }`}
-                      >
-                        <span className="w-3 h-3 rounded-full bg-amber-500 shrink-0" />
-                        <div>
-                          <div className="font-black text-xs text-stone-900">⏳ 모집 예정</div>
-                          <div className="text-[10px] text-stone-500 font-medium">차기 모집 일정 안내</div>
-                        </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setEditRecruitStatus('CLOSED')}
-                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
-                          editRecruitStatus === 'CLOSED'
-                            ? 'bg-stone-100 border-stone-500 ring-2 ring-stone-300'
-                            : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
-                        }`}
-                      >
-                        <span className="w-3 h-3 rounded-full bg-stone-400 shrink-0" />
-                        <div>
-                          <div className="font-black text-xs text-stone-900">🔒 모집 마감</div>
-                          <div className="text-[10px] text-stone-500 font-medium">신규 가입 일시 중단</div>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 모집 정원 (RECRUITING 상태일 때) */}
-                  {editRecruitStatus === 'RECRUITING' && (
-                    <div className="space-y-1 bg-stone-50 p-3 rounded-2xl border border-stone-200">
-                      <label className="font-black text-stone-800 text-xs flex items-center justify-between">
-                        <span>모집 예정 인원(정원)</span>
-                        <span className="text-[10px] text-emerald-700 font-bold">{editRecruitQuota}명 선발 예정</span>
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min={1}
-                          max={100}
-                          value={editRecruitQuota}
-                          onChange={(e) => setEditRecruitQuota(Math.max(1, Number(e.target.value) || 1))}
-                          className="w-24 px-3 py-2 bg-white border border-stone-300 rounded-xl font-black text-stone-900 text-center text-sm"
-                        />
-                        <span className="text-xs font-bold text-stone-600">명 모집 (현재 정회원 {managingClub.memberCount}명)</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 모집 예정 시기 (SCHEDULED 상태일 때) */}
-                  {editRecruitStatus === 'SCHEDULED' && (
-                    <div className="space-y-1 bg-amber-50/60 p-3 rounded-2xl border border-amber-200">
-                      <label className="font-black text-stone-800 text-xs">모집 예정 시기 / 일정 안내</label>
-                      <input
-                        type="text"
-                        value={editRecruitDate}
-                        onChange={(e) => setEditRecruitDate(e.target.value)}
-                        placeholder="예: 2026년 4월 봄철 정기총회 후, 다음 달 초 예정"
-                        className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-stone-900 text-xs"
-                      />
-                    </div>
-                  )}
-
-                  {/* 모집 요강 및 가입 자격 안내 */}
-                  <div className="space-y-1">
-                    <label className="font-black text-stone-800 text-xs">모집 요강 및 가입 요건 (선택)</label>
-                    <textarea
-                      value={editRecruitNotes}
-                      onChange={(e) => setEditRecruitNotes(e.target.value)}
-                      rows={2}
-                      placeholder="예: 구미 관내 거주자 우선, 매월 둘째 주 토요일 월례회 필참, 매너 라운드 필수"
-                      className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl font-medium text-stone-900 text-xs"
-                    />
-                  </div>
-
-                  {/* 저장 버튼 */}
-                  <button
-                    type="button"
-                    onClick={handleSaveRecruitmentSettings}
-                    className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 active:scale-98 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Check className="w-4 h-4 text-emerald-200 stroke-[3]" />
-                    <span>단원 모집 설정 저장 및 디렉토리 즉시 반영</span>
-                  </button>
-                </div>
-              )}
-
-              {/* 탭 2: 전체 회원 명부 & 직책 배정 (회장 임명 / 총무 임명) */}
               {managingClubTab === 'MEMBERS' && (
                 <div className="space-y-2">
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-950 font-medium leading-relaxed">
@@ -4289,284 +4147,166 @@ ${shareUrl}`;
                 </div>
               )}
 
-              {/* 탭 3: 대항전 개설 & 출전 대표 선수단 선발 */}
-              {managingClubTab === 'MATCH' && (
-                <div className="space-y-3.5">
-                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 text-purple-950 space-y-1">
-                    <div className="flex items-center gap-1.5 font-black text-xs">
-                      <Swords className="w-4 h-4 text-purple-700" />
-                      <span>클럽 대항전(교류전) 개설 & 선수단 선발</span>
-                    </div>
-                    <p className="text-[11px] text-purple-800 font-medium leading-relaxed">
-                      타 클럽과의 공식 매치 대회를 개설하고, 우리 클럽 대표로 출전할 선수단을 즉시 선발합니다.
-                    </p>
-                  </div>
+                            {/* 탭 3: 회비 관리 (연회비 수납 대장 & 납부 관리) */}
+              {managingClubTab === 'DUES' && (() => {
+                const defaultDues = managingClub.annualDuesAmount || 50000;
+                const paidList = managingClub.members.filter((m) => !!m.duesPaid);
+                const unpaidList = managingClub.members.filter((m) => !m.duesPaid);
+                const totalCollected = paidList.reduce((acc, m) => acc + (m.duesAmount || defaultDues), 0);
+                const percent = managingClub.members.length > 0 ? Math.round((paidList.length / managingClub.members.length) * 100) : 0;
 
-                  {/* 1. 대항전 상대 클럽 선택 */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-black text-stone-800 flex items-center gap-1">
-                      <span>🎯 대항전 상대 클럽 지정</span>
-                    </label>
-                    <select
-                      value={matchOpponentClubId}
-                      onChange={(e) => setMatchOpponentClubId(e.target.value)}
-                      className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-black focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                    >
-                      <option value="OPEN">🌐 전국 공개 챌린지 (어느 클럽이든 도전 수락 가능)</option>
-                      {clubs
-                        .filter((c) => c.id !== managingClub.id)
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            ⚔️ [{c.region}] {c.name} (회원 {c.memberCount}명)
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-
-                  {/* 2. 출전 엔트리 규모 선택 */}
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between items-center text-xs font-black text-stone-800">
-                      <span>👥 클럽당 출전 엔트리 정원</span>
-                      <span className="text-purple-700">{matchPlayerQuota}명 (총 {matchPlayerQuota * 2}명 매치)</span>
-                    </div>
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {[8, 12, 16, 20].map((q) => (
-                        <button
-                          key={q}
-                          type="button"
-                          onClick={() => setMatchPlayerQuota(q)}
-                          className={`py-2 rounded-xl text-xs font-black border transition cursor-pointer active:scale-95 ${
-                            matchPlayerQuota === q
-                              ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
-                              : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
-                          }`}
-                        >
-                          {q}명
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 3. 소속 회원 중 출전 선수 명단 체크 */}
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex justify-between items-center text-xs font-black text-stone-800">
-                      <span>📋 대표 출전 선수 선택 ({matchSelectedMemberIds.length}/{matchPlayerQuota}명)</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const allIds = managingClub.members.map((m) => m.id);
-                          setMatchSelectedMemberIds(
-                            matchSelectedMemberIds.length === allIds.length ? [] : allIds.slice(0, matchPlayerQuota)
-                          );
-                        }}
-                        className="text-[11px] text-purple-700 hover:underline font-bold cursor-pointer"
-                      >
-                        {matchSelectedMemberIds.length === managingClub.members.length ? '전체 해제' : '정원 일괄 선택'}
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-1.5 max-h-[35vh] overflow-y-auto p-1 bg-stone-50 rounded-2xl border border-stone-200">
-                      {managingClub.members.map((m) => {
-                        const isSelected = matchSelectedMemberIds.includes(m.id);
-                        return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => {
-                              if (isSelected) {
-                                setMatchSelectedMemberIds(matchSelectedMemberIds.filter((id) => id !== m.id));
-                              } else {
-                                if (matchSelectedMemberIds.length >= matchPlayerQuota) {
-                                  showToast(`⚠️ 엔트리 정원(${matchPlayerQuota}명)을 초과할 수 없습니다.`);
-                                  return;
-                                }
-                                setMatchSelectedMemberIds([...matchSelectedMemberIds, m.id]);
-                              }
-                            }}
-                            className={`p-2 rounded-xl border text-xs font-bold flex items-center justify-between transition cursor-pointer text-left ${
-                              isSelected
-                                ? 'bg-purple-100 border-purple-500 text-purple-950 shadow-2xs'
-                                : 'bg-white border-stone-200 text-stone-700 hover:border-purple-200'
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span
-                                className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 ${
-                                  isSelected
-                                    ? 'bg-purple-700 text-white'
-                                    : 'border border-stone-300 bg-stone-50'
-                                }`}
-                              >
-                                {isSelected ? '✓' : ''}
-                              </span>
-                              <span className="font-black truncate">{m.name}</span>
-                              {m.role === 'PRESIDENT' ? (
-                                <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1 rounded shrink-0">회장</span>
-                              ) : m.role === 'MANAGER' ? (
-                                <span className="text-[9px] bg-emerald-100 text-emerald-900 font-bold px-1 rounded shrink-0">총무</span>
-                              ) : null}
-                            </div>
-                            <span className="text-[10px] text-stone-400 font-medium shrink-0">
-                              {isSelected ? '선발됨' : '선택'}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* 4. 개설 및 확정 버튼 */}
-                  <button
-                    type="button"
-                    onClick={() => handleCreateClubMatchSubmit(managingClub)}
-                    className="w-full py-3 bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-800 hover:from-purple-600 hover:to-indigo-600 active:scale-98 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer border border-purple-500 mt-2"
-                  >
-                    <Swords className="w-4 h-4 text-yellow-300" />
-                    <span>대항전 공식 개설 및 선수단 {matchSelectedMemberIds.length}명 확정 🚀</span>
-                  </button>
-                </div>
-              )}
-
-              {/* 탭 4: 클럽 영구 연대기 (대회 실록 & 명예의 전당) */}
-              {managingClubTab === 'CHRONICLE' && (
-                <div className="space-y-3">
-                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-[11px] text-amber-950 font-medium leading-relaxed">
-                    📜 <strong>클럽 영구 대회 실록:</strong> 우리 클럽에서 개최된 모든 정기전 및 대항전 결과는 이곳에 영구 보존됩니다. 우승자, 메달리스트, 전 회원 스코어보드를 언제든 다시 조회할 수 있습니다.
-                  </div>
-
-                  {(() => {
-                    const chronicles = ClubStorage.getClubChronicles(managingClub.id);
-                    if (chronicles.length === 0) {
-                      return (
-                        <div className="text-center py-8 bg-stone-50 rounded-2xl border border-dashed border-stone-300 space-y-2">
-                          <Trophy className="w-8 h-8 text-stone-300 mx-auto" />
-                          <div className="text-xs font-black text-stone-700">아직 개최된 대회 기록이 없습니다.</div>
-                          <div className="text-[11px] text-stone-400">대회를 개최하고 라운드를 진행하면 공식 실록에 영구 등재됩니다.</div>
+                return (
+                  <div className="space-y-3">
+                    {/* 1. 연회비 요약 배너 */}
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-3.5 space-y-3 shadow-xs">
+                      <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
+                        <div className="flex items-center gap-2 font-black text-xs text-amber-950">
+                          <span className="p-1 rounded-lg bg-amber-200/70 text-amber-900">💰</span>
+                          <span>클럽 연회비 납부 현황</span>
                         </div>
-                      );
-                    }
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 bg-white px-2.5 py-1 rounded-xl border border-amber-200 shadow-2xs">
+                          <span>연회비:</span>
+                          <strong className="font-black text-amber-700 font-mono">
+                            {defaultDues.toLocaleString()}원
+                          </strong>
+                        </div>
+                      </div>
 
-                    return (
-                      <div className="space-y-3">
-                        {chronicles.map((chr) => {
-                          const isExpanded = expandedChronicleId === chr.id;
+                      {/* 수납 통계 3분할 카드 */}
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="p-2.5 bg-white rounded-xl border border-amber-200 shadow-2xs">
+                          <span className="text-[10px] text-stone-500 font-bold block">정회원</span>
+                          <strong className="text-sm font-black text-stone-900 font-mono">
+                            {managingClub.members.length}명
+                          </strong>
+                        </div>
+                        <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-300 shadow-2xs">
+                          <span className="text-[10px] text-emerald-800 font-bold block">납부 완료</span>
+                          <strong className="text-sm font-black text-emerald-700 font-mono">
+                            {paidList.length}명 ({percent}%)
+                          </strong>
+                        </div>
+                        <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-300 shadow-2xs">
+                          <span className="text-[10px] text-rose-800 font-bold block">미납 회원</span>
+                          <strong className="text-sm font-black text-rose-700 font-mono">
+                            {unpaidList.length}명
+                          </strong>
+                        </div>
+                      </div>
+
+                      {/* 수납 총액 요약 바 */}
+                      <div className="flex items-center justify-between pt-1 text-xs">
+                        <span className="font-bold text-amber-900">총 수납 누적액:</span>
+                        <span className="font-black text-emerald-800 font-mono text-sm">
+                          {totalCollected.toLocaleString()}원
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 2. 회원별 연회비 수납 대장 목록 */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="font-black text-xs text-stone-800 flex items-center gap-1">
+                          <span>📋</span> <span>회원별 연회비 수납 대장</span>
+                        </span>
+                        <span className="text-[10px] text-stone-400 font-medium">원클릭 납부 확인</span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {managingClub.members.map((m, idx) => {
+                          const isPaid = !!m.duesPaid;
                           return (
                             <div
-                              key={chr.id}
-                              className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden transition"
+                              key={m.id || idx}
+                              className={`p-3 rounded-2xl border transition shadow-2xs space-y-2 ${
+                                isPaid
+                                  ? 'bg-emerald-50/60 border-emerald-300'
+                                  : 'bg-stone-50 border-stone-200'
+                              }`}
                             >
-                              <div className="p-3.5 space-y-2 bg-gradient-to-r from-stone-50 to-amber-50/30">
-                                <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-6 h-6 rounded-full bg-stone-200 text-stone-700 text-[10px] flex items-center justify-center font-black">
+                                    {idx + 1}
+                                  </span>
                                   <div>
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="bg-purple-100 text-purple-900 border border-purple-200 text-[10px] font-black px-2 py-0.5 rounded-md">
-                                        {chr.gameMode || '정규 방식'}
-                                      </span>
-                                      <span className="text-[10px] text-stone-400 font-bold">
-                                        📅 {chr.heldAt}
-                                      </span>
-                                    </div>
-                                    <h5 className="font-black text-xs sm:text-sm text-stone-900 mt-1">
-                                      {chr.title}
-                                    </h5>
-                                    <div className="text-[11px] text-stone-500 font-medium">
-                                      📍 {chr.courseName} · {chr.totalHoles}홀 · {chr.totalParticipants}명 참가
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* 명예의 전당 수상자 배너 */}
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-1">
-                                  <div className="bg-amber-100/70 border border-amber-300/80 rounded-xl p-2 text-center">
-                                    <div className="text-[10px] font-black text-amber-900">👑 우승자</div>
-                                    <div className="text-xs font-black text-stone-900 mt-0.5">{chr.winnerName}</div>
-                                    <div className="text-[9px] text-amber-700 font-bold">{chr.winnerScore > 0 ? `${chr.winnerScore}타` : '진행중'}</div>
-                                  </div>
-
-                                  {chr.runnerUpName && (
-                                    <div className="bg-stone-100 border border-stone-300 rounded-xl p-2 text-center">
-                                      <div className="text-[10px] font-black text-stone-700">🥈 준우승</div>
-                                      <div className="text-xs font-black text-stone-900 mt-0.5">{chr.runnerUpName}</div>
-                                      <div className="text-[9px] text-stone-500 font-bold">{chr.runnerUpScore ? `${chr.runnerUpScore}타` : ''}</div>
-                                    </div>
-                                  )}
-
-                                  {chr.medalistName && (
-                                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-2 text-center col-span-2 sm:col-span-1">
-                                      <div className="text-[10px] font-black text-blue-900">🏅 메달리스트(최저타)</div>
-                                      <div className="text-xs font-black text-stone-900 mt-0.5">{chr.medalistName}</div>
-                                      <div className="text-[9px] text-blue-700 font-bold">{chr.medalistScore ? `${chr.medalistScore}타` : ''}</div>
-                                    </div>
-                                  )}
-                                </div>
-
-                                <button
-                                  type="button"
-                                  onClick={() => setExpandedChronicleId(isExpanded ? null : chr.id)}
-                                  className="w-full py-1.5 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl text-[11px] font-black text-purple-700 flex items-center justify-center gap-1 transition cursor-pointer mt-1"
-                                >
-                                  <span>{isExpanded ? '전체 순위 닫기 ▲' : '📋 참가자 전체 순위 & 스코어보드 보기 ▼'}</span>
-                                </button>
-                              </div>
-
-                              {/* 상세 참가자 순위표 (확장 시) */}
-                              {isExpanded && (
-                                <div className="p-3 border-t border-stone-200 bg-stone-50/50 space-y-2 animate-fadeIn">
-                                  <div className="text-[11px] font-black text-stone-800 flex items-center justify-between">
-                                    <span>대회 공식 전체 순위 ({chr.rankings.length}명)</span>
-                                    <span className="text-[10px] text-stone-400 font-medium">영구 보존 기록</span>
-                                  </div>
-
-                                  <div className="space-y-1">
-                                    {chr.rankings.map((r) => (
-                                      <div
-                                        key={r.playerId}
-                                        className={`p-2 rounded-xl border flex items-center justify-between text-xs ${
-                                          r.rank === 1
-                                            ? 'bg-amber-50 border-amber-300 font-black'
-                                            : r.rank === 2
-                                            ? 'bg-stone-100 border-stone-300 font-bold'
-                                            : 'bg-white border-stone-200 font-medium'
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-black text-stone-900 text-sm">{m.name}</span>
+                                      <span
+                                        className={`text-[9px] px-1.5 py-0.2 rounded font-black ${
+                                          m.role === 'PRESIDENT'
+                                            ? 'bg-amber-400 text-stone-950'
+                                            : m.role === 'MANAGER'
+                                            ? 'bg-emerald-600 text-white'
+                                            : 'bg-stone-200 text-stone-700'
                                         }`}
                                       >
-                                        <div className="flex items-center gap-2">
-                                          <span className={`w-5 text-center text-[11px] font-black ${
-                                            r.rank === 1 ? 'text-amber-700' : 'text-stone-500'
-                                          }`}>
-                                            {r.rank}위
-                                          </span>
-                                          <span className="font-black text-stone-900">{r.playerName}</span>
-                                          <span className="text-[10px] text-stone-400 font-bold">({r.groupNumber}조)</span>
-                                          {r.awards && r.awards.length > 0 && (
-                                            <span className="text-[9px] bg-amber-100 text-amber-900 px-1 rounded font-bold">
-                                              {r.awards[0]}
-                                            </span>
-                                          )}
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                          {r.handicap !== undefined && (
-                                            <span className="text-[10px] text-stone-400">
-                                              (HDCP {r.handicap})
-                                            </span>
-                                          )}
-                                          <span className="font-black text-purple-800">
-                                            {r.totalStrokes}타
-                                          </span>
-                                        </div>
-                                      </div>
-                                    ))}
+                                        {m.role === 'PRESIDENT' ? '👑 회장' : m.role === 'MANAGER' ? '📋 총무' : '회원'}
+                                      </span>
+                                    </div>
+                                    {m.phone && (
+                                      <span className="text-[10px] text-stone-400 font-medium">📞 {m.phone}</span>
+                                    )}
                                   </div>
                                 </div>
-                              )}
+
+                                {/* 납부 상태 배지 */}
+                                <div className="text-right">
+                                  {isPaid ? (
+                                    <div className="space-y-0.5">
+                                      <span className="inline-flex items-center gap-0.5 bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-2xs">
+                                        <Check className="w-3 h-3 stroke-[3]" />
+                                        <span>완납</span>
+                                      </span>
+                                      <span className="text-[9px] text-emerald-800 block font-medium">
+                                        {m.duesPaidAt || '납부 확인'}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-0.5 bg-rose-100 text-rose-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-rose-200">
+                                      <span>미납</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* 수납 관리 버튼 바 */}
+                              <div className="flex items-center justify-between pt-1 border-t border-stone-200/60 text-xs">
+                                <span className="text-[10px] text-stone-500 font-medium">
+                                  {isPaid
+                                    ? `납부액: ${Number(m.duesAmount || defaultDues).toLocaleString()}원 (${m.duesNotes || '수납'})`
+                                    : `연회비 ${defaultDues.toLocaleString()}원 납부 대기`}
+                                </span>
+
+                                <div className="flex items-center gap-1.5">
+                                  {isPaid ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleMemberDues(managingClub.id, m.id, false, m.name)}
+                                      className="px-2.5 py-1 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-[10px] rounded-lg cursor-pointer transition active:scale-95"
+                                    >
+                                      미납으로 변경
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleMemberDues(managingClub.id, m.id, true, m.name)}
+                                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] rounded-lg shadow-2xs cursor-pointer transition active:scale-95 flex items-center gap-1"
+                                    >
+                                      <Coins className="w-3 h-3 text-amber-300" />
+                                      <span>수납 확인 완료</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           );
                         })}
                       </div>
-                    );
-                  })()}
-                </div>
-              )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* 하단 버튼 바 (클럽 설정 + 닫기) */}
@@ -4592,6 +4332,158 @@ ${shareUrl}`;
                 className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-800 font-black rounded-xl text-xs cursor-pointer"
               >
                 닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ⚔️ 클럽 대항전(교류전) 공식 개설 모달 */}
+      {clubMatchModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border-2 border-purple-500 overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-gradient-to-r from-purple-800 via-indigo-800 to-purple-900 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">⚔️</span>
+                <div>
+                  <h3 className="font-extrabold text-base leading-snug">
+                    클럽 대항전(교류전) 공식 개설
+                  </h3>
+                  <p className="text-[11px] text-purple-200">
+                    {clubMatchModal.name} · 대표 선수단 선발
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setClubMatchModal(null)}
+                className="text-stone-300 hover:text-white p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3.5 overflow-y-auto text-xs">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-stone-800 flex items-center gap-1">
+                  <span>🎯 대항전 상대 클럽 지정</span>
+                </label>
+                <select
+                  value={matchOpponentClubId}
+                  onChange={(e) => setMatchOpponentClubId(e.target.value)}
+                  className="w-full p-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-black focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                >
+                  <option value="OPEN">🌐 전국 공개 챌린지 (어느 클럽이든 도전 수락 가능)</option>
+                  {clubs
+                    .filter((c) => c.id !== clubMatchModal.id)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        ⚔️ [{c.region}] {c.name} (회원 {c.memberCount}명)
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center text-xs font-black text-stone-800">
+                  <span>👥 클럽당 출전 엔트리 정원</span>
+                  <span className="text-purple-700">{matchPlayerQuota}명 (총 {matchPlayerQuota * 2}명 매치)</span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[8, 12, 16, 20].map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => setMatchPlayerQuota(q)}
+                      className={`py-2 rounded-xl text-xs font-black border transition cursor-pointer active:scale-95 ${
+                        matchPlayerQuota === q
+                          ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
+                          : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                      }`}
+                    >
+                      {q}명
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5 pt-1">
+                <div className="flex justify-between items-center text-xs font-black text-stone-800">
+                  <span>📋 대표 출전 선수 선택 ({matchSelectedMemberIds.length}/{matchPlayerQuota}명)</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allIds = clubMatchModal.members.map((m) => m.id);
+                      setMatchSelectedMemberIds(
+                        matchSelectedMemberIds.length === allIds.length ? [] : allIds.slice(0, matchPlayerQuota)
+                      );
+                    }}
+                    className="text-[11px] text-purple-700 hover:underline font-bold cursor-pointer"
+                  >
+                    {matchSelectedMemberIds.length === clubMatchModal.members.length ? '전체 해제' : '정원 일괄 선택'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5 max-h-[35vh] overflow-y-auto p-1 bg-stone-50 rounded-2xl border border-stone-200">
+                  {clubMatchModal.members.map((m) => {
+                    const isSelected = matchSelectedMemberIds.includes(m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setMatchSelectedMemberIds(matchSelectedMemberIds.filter((id) => id !== m.id));
+                          } else {
+                            if (matchSelectedMemberIds.length >= matchPlayerQuota) {
+                              showToast(`⚠️ 엔트리 정원(${matchPlayerQuota}명)을 초과할 수 없습니다.`);
+                              return;
+                            }
+                            setMatchSelectedMemberIds([...matchSelectedMemberIds, m.id]);
+                          }
+                        }}
+                        className={`p-2 rounded-xl border text-xs font-bold flex items-center justify-between transition cursor-pointer text-left ${
+                          isSelected
+                            ? 'bg-purple-100 border-purple-500 text-purple-950 shadow-2xs'
+                            : 'bg-white border-stone-200 text-stone-700 hover:border-purple-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 ${
+                              isSelected
+                                ? 'bg-purple-700 text-white'
+                                : 'border border-stone-300 bg-stone-50'
+                            }`}
+                          >
+                            {isSelected ? '✓' : ''}
+                          </span>
+                          <span className="font-black truncate">{m.name}</span>
+                          {m.role === 'PRESIDENT' ? (
+                            <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1 rounded shrink-0">회장</span>
+                          ) : m.role === 'MANAGER' ? (
+                            <span className="text-[9px] bg-emerald-100 text-emerald-900 font-bold px-1 rounded shrink-0">총무</span>
+                          ) : null}
+                        </div>
+                        <span className="text-[10px] text-stone-400 font-medium shrink-0">
+                          {isSelected ? '선발됨' : '선택'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleCreateClubMatchSubmit(clubMatchModal);
+                  setClubMatchModal(null);
+                }}
+                className="w-full py-3 bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-800 hover:from-purple-600 hover:to-indigo-600 active:scale-98 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer border border-purple-500 mt-2"
+              >
+                <Swords className="w-4 h-4 text-yellow-300" />
+                <span>대항전 공식 개설 및 선수단 {matchSelectedMemberIds.length}명 확정 🚀</span>
               </button>
             </div>
           </div>

@@ -98,6 +98,10 @@ export interface ClubMember {
   role: 'PRESIDENT' | 'MANAGER' | 'MEMBER'; // 회장 / 총무 / 회원
   joinedAt: string;
   phone?: string;
+  duesPaid?: boolean; // [NEW] 연회비 납부 여부 (완납 / 미납)
+  duesPaidAt?: string; // [NEW] 연회비 납부 일자 (예: 2026-09-19)
+  duesAmount?: number; // [NEW] 납부 금액 (예: 50000)
+  duesNotes?: string; // [NEW] 납부 방식 / 메모 (예: '계좌 입금', '현금 수납')
 }
 
 // 🔐 탈퇴 회원 비밀 보관소 (영구 보존 & 복귀 시 원상 회복)
@@ -187,6 +191,7 @@ export interface ParkGolfClub {
   recruitQuota?: number;             // [NEW] 모집 인원 (예: 5명, 10명)
   recruitTargetDate?: string;        // [NEW] 모집 예정 시기 (예: '2026년 10월 모집 예정')
   recruitNotes?: string;             // [NEW] 모집 요강 안내
+  annualDuesAmount?: number;         // [NEW] 클럽 기준 연회비 금액 (기본값: 50,000원)
   createdAt: string;
 }
 
