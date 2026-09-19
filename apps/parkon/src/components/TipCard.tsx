@@ -19,7 +19,7 @@ const DUMMY_TIPS = [
 ];
 
 export function TipCard({ hole, tip }: TipCardProps) {
-  const [upvotes, setUpvotes] = useState(14);
+  const [upvotes, setUpvotes] = useState(0);
   const [voted, setVoted] = useState(false);
 
   if (!tip || typeof tip !== 'string' || !tip.trim()) return null;

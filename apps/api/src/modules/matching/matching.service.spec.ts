@@ -31,7 +31,7 @@ describe('MatchingService', () => {
   // ── 카테고리 스코어링 ─────────────────────────────────────
 
   describe('카테고리 스코어링', () => {
-    it('거래 유형 불일치 시 카테고리 점수 포함 전체 0점', () => {
+    it('거래 유형 불일치 시 카테고리 가중치 차감 (0.6 배율)', () => {
       const inquiry = {
         transaction_types: ['sale'],
         category_codes: ['residential'],
@@ -42,10 +42,10 @@ describe('MatchingService', () => {
         category_codes: ['residential'],
       };
       const result = score(inquiry, listing);
-      expect(result.category).toBe(MATCH_WEIGHTS.category * 0.25);
+      expect(result.category).toBe(MATCH_WEIGHTS.category * 0.6);
     });
 
-    it('세부 카테고리 일치 시 40점 (전액)', () => {
+    it('세부 카테고리 일치 시 60점 (전액)', () => {
       const inquiry = {
         transaction_types: ['monthly_rent'],
         category_codes: ['residential'],
@@ -58,10 +58,10 @@ describe('MatchingService', () => {
         subcategory_codes: ['one_room'],
       };
       const result = score(inquiry, listing);
-      expect(result.category).toBe(MATCH_WEIGHTS.category); // 0.40
+      expect(result.category).toBe(MATCH_WEIGHTS.category); // 0.60
     });
 
-    it('대분류만 일치 시 절반 점수', () => {
+    it('대분류만 일치하고 중분류 불일치 시 탈락 (0점)', () => {
       const inquiry = {
         transaction_types: ['monthly_rent'],
         category_codes: ['residential'],
@@ -74,7 +74,7 @@ describe('MatchingService', () => {
         subcategory_codes: ['apartment'],
       };
       const result = score(inquiry, listing);
-      expect(result.category).toBe(MATCH_WEIGHTS.category * 0.25); 
+      expect(result.category).toBe(0); 
     });
   });
 
@@ -136,7 +136,7 @@ describe('MatchingService', () => {
       expect(result.area).toBe(MATCH_WEIGHTS.area * 0.5);
     });
 
-    it('면적 min의 80% 미만 → 0점', () => {
+    it('면적 min의 70% 미만 → 하한 점수 (0.2배율)', () => {
       const inquiry = {
         transaction_types: ['monthly_rent'],
         category_codes: ['residential'],
@@ -145,10 +145,10 @@ describe('MatchingService', () => {
       const listing = {
         transaction_types: ['monthly_rent'],
         category_codes: ['residential'],
-        area_exclusive: 70, // 80% 미만
+        area_exclusive: 60, // 70% 미만 (60 < 70)
       };
       const result = score(inquiry, listing);
-      expect(result.area).toBe(0);
+      expect(result.area).toBe(MATCH_WEIGHTS.area * 0.2);
     });
   });
 

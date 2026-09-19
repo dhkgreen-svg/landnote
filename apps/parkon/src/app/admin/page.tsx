@@ -478,10 +478,10 @@ export default function AdminDashboardPage() {
               💬 카카오 {metrics?.kakaoUsersCount ?? (metrics?.userRoundAnalytics?.kakaoUsersCount ?? 0)}명
             </span>
             <span className="px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
-              ✨ 실명 {metrics?.namedUsersCount ?? 8}명
+              ✨ 실명 {metrics?.namedUsersCount ?? 0}명
             </span>
             <span className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
-              방문 {metrics?.anonymousUsersCount ?? Math.max(0, (metrics?.totalAllTimeUsers ?? 0) - (metrics?.namedUsersCount ?? 8))}명
+              방문 {metrics?.anonymousUsersCount ?? Math.max(0, (metrics?.totalAllTimeUsers ?? 0) - (metrics?.namedUsersCount ?? 0))}명
             </span>
           </div>
         </button>
@@ -610,14 +610,14 @@ export default function AdminDashboardPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 whitespace-nowrap">
                 <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  전국 구장별 실시간 라운딩 랭킹
+                  전국 구장별 실제 라운딩 랭킹
                 </span>
                 <span className="text-[10px] px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 rounded font-bold shrink-0">
-                  1위~ 순위표
+                  {metrics?.courseRankings && metrics.courseRankings.length > 0 ? `${metrics.courseRankings.length}개 구장 순위` : '기록 집계 대기'}
                 </span>
               </div>
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400 whitespace-nowrap overflow-hidden text-ellipsis mt-0.5">
-                클릭하시면 전국 구장별 실제 라운딩 순위 집계표(1위부터)가 팝업됩니다.
+                클릭하시면 전국 구장별 실제 라운딩 순위 집계표가 팝업됩니다.
               </p>
             </div>
           </div>
@@ -651,7 +651,7 @@ export default function AdminDashboardPage() {
                 </span>
               ))
             ) : (
-              <span>구장별 실시간 집계 중...</span>
+              <span className="text-zinc-400">정식 완주된 실제 구장 라운딩 기록을 실시간 대기 중입니다</span>
             )}
             <span className="text-zinc-600">|</span>
             <span className="text-emerald-400 font-bold">⚡ [필드 라이브]</span>

@@ -189,6 +189,27 @@ function getRoomsData(): Record<string, any> {
   try {
     if (fs.existsSync(ROOMS_CACHE_FILE)) {
       diskRooms = JSON.parse(fs.readFileSync(ROOMS_CACHE_FILE, 'utf-8'));
+      // 스코어가 1개도 없고 방치된 개발 테스트 찌꺼기 방 자동 위생 정리
+      const now = Date.now();
+      let cleaned = false;
+      const validDiskRooms: Record<string, any> = {};
+      for (const [k, v] of Object.entries(diskRooms)) {
+        const r = v as any;
+        const players = r.players || r.roundSession?.players || [];
+        const hasScores = players.some((p: any) => p.scores && Object.keys(p.scores).length > 0);
+        const ageHours = (now - (r.updatedAt || 0)) / (1000 * 60 * 60);
+        if (hasScores || r.status === 'FINISHED' || ageHours < 2) {
+          validDiskRooms[k] = r;
+        } else {
+          cleaned = true;
+        }
+      }
+      if (cleaned) {
+        try {
+          fs.writeFileSync(ROOMS_CACHE_FILE, JSON.stringify(validDiskRooms, null, 2), 'utf-8');
+        } catch {}
+        diskRooms = validDiskRooms;
+      }
     }
   } catch (e) {
     console.error('Failed reading rooms in analytics:', e);
@@ -899,14 +920,14 @@ export async function GET(req: NextRequest) {
   const allUniqueIps = new Set(store.logs.map((l) => l.ip));
   const uniqueVisitorCount = allUniqueIps.size;
 
-  // 총 누적 가입/이용 유저 수 (절대 줄어들지 않고 과거 최대치 이상을 영구 누적 보존)
+  // 총 누적 고유 이용자 수 (100% 실측치 집계)
   const totalAllTimeUsers = Math.max(
     uniqueVisitorCount,
-    store.totalAllTimeUsers || 0,
-    91 // 대표님 확인 기준 고유 방문자 최저치 안전 보장
+    store.totalAllTimeUsers || 0
   );
   store.totalAllTimeUsers = totalAllTimeUsers;
-  const totalAppDownloads = store.totalAppDownloads || Math.max(1, Math.round(totalAllTimeUsers * 0.85));
+  // 실제 PWA 앱 설치 이벤트 실측치만 반영 (추정치 완전 제거)
+  const totalAppDownloads = store.totalAppDownloads || 0;
 
   // 2. 실시간 IP 지역 및 도시 매핑 (실제 통신사 IP 대역 및 GPS 정밀 판별)
   const liveIpRegionMap = new Map<string, string>();
@@ -1464,7 +1485,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-  // 2. 전국 구장별 실제 라운딩 랭킹 (1위부터 순위 집계표: 가상 라운딩 원천 제외)
+  // 2. 전국 구장별 실제 라운딩 랭킹 (1위부터 순위 집계표: 실제 1회 이상 완주 또는 실시간 진행 중인 구장만 팩트 등록)
   const courseStats = new Map<string, {
     courseId: string;
     courseName: string;
@@ -1475,37 +1496,28 @@ export async function GET(req: NextRequest) {
     lastPlayedAt: number;
   }>();
 
-  // 기본 전국 주요 거점 구장 등록 (순위표 완성도)
-  const SEED_COURSES = [
-    { name: '구미 동락 파크골프장', region: '경북 구미시' },
-    { name: '대구 수성 파크골프장', region: '대구 수성구' },
-    { name: '구미 해평 파크골프장', region: '경북 구미시' },
-    { name: '고로파크골프장', region: '대구 군위군' },
-    { name: '군위 효령파크골프장', region: '대구 군위군' },
-    { name: '부산 삼락 파크골프장', region: '부산 사상구' },
-    { name: '양평 강상 파크골프장', region: '경기 양평군' },
-    { name: '창원 대산 파크골프장', region: '경남 창원시' },
-    { name: '수원 서호 파크골프장', region: '경기 수원시' },
-    { name: '울산 태화강 파크골프장', region: '울산 중구' },
-  ];
-
-  SEED_COURSES.forEach((c) => {
-    courseStats.set(c.name, {
-      courseId: c.name,
-      courseName: c.name,
-      region: c.region,
-      totalRounds: 0,
-      totalPlayers: 0,
-      activeRoomsCount: 0,
-      lastPlayedAt: 0,
-    });
-  });
-
-  // 실제 라운드 방 데이터 집계 (100% 팩트 누적: 가상/체험 모드 원천 제외)
+  // 실제 라운드 방 데이터 집계 (100% 팩트 누적: 빈 방/테스트 클릭 원천 배제, 실제 스코어 입력 및 완료 경기만 인정)
   allRooms.forEach((r) => {
-    if (!r) return;
-    // 가상 모드 및 비공식 테스트는 공식 통계에서도 배제
-    if (r.roundSession?.isVirtual === true || r.roundSession?.isOfficial === false) {
+    if (!r || !r.roomId) return;
+    // ① 가상(Virtual) 모드 및 비공식 테스트는 공식 통계에서도 배제
+    if (r.roundSession?.isVirtual === true || r.roundSession?.isOfficial === false || r.isVirtual === true || r.isOfficial === false) {
+      return;
+    }
+
+    // ② 상태 검증: 단순히 방만 생성하고 퇴장한 'WAITING' 대기 껍데기 방은 누적 라운딩에서 원천 배제!
+    // 정식 종료(FINISHED)되었거나, 현재 5단계 팩트 검증을 통과한 실시간 정상 라운드(liveRounds)만 인정
+    const isLive = liveRounds.some((live) => live.roomId === r.roomId);
+    const isFinished = r.status === 'FINISHED';
+    if (!isFinished && !isLive) {
+      return;
+    }
+
+    // ③ 스코어(타수) 실재성 검증: 실제 최소 1홀 이상의 타수 입력이 존재하는 진짜 라운드만 인정 (빈 방 완전 탈락)
+    const players = r.players || r.roundSession?.players || [];
+    const hasActualScores = players.some(
+      (p: any) => p.scores && Object.keys(p.scores).length > 0
+    );
+    if (!hasActualScores && !isLive) {
       return;
     }
 
@@ -1525,19 +1537,19 @@ export async function GET(req: NextRequest) {
     }
 
     item.totalRounds += 1;
-    item.totalPlayers += (r.playerCount || r.players?.length || 4);
+    item.totalPlayers += (r.playerCount || players.length || 4);
     if (r.updatedAt && r.updatedAt > item.lastPlayedAt) {
       item.lastPlayedAt = r.updatedAt;
     }
 
-    // 현재 5단계 팩트 검증을 통과한 활성 라이브 라운드 여부
-    const isLive = liveRounds.some((live) => live.roomId === r.roomId);
     if (isLive) {
       item.activeRoomsCount += 1;
     }
   });
 
+  // 1회 이상 실제 경기 완주 기록이 있거나 현재 실시간 진행 중인 구장만 정식 랭킹(1위부터)으로 산출 (허수 0건 구장 순위 원천 배제)
   const courseRankings: CourseRoundRanking[] = Array.from(courseStats.values())
+    .filter((c) => c.totalRounds > 0 || c.activeRoomsCount > 0)
     .sort((a, b) => {
       // 1. 현재 라운딩 중인 조가 있는 구장 최우선
       if (b.activeRoomsCount !== a.activeRoomsCount) {
@@ -1741,16 +1753,20 @@ export async function GET(req: NextRequest) {
         tierLabel = '🌱 1회 입문/체험 골퍼 (1회)';
       }
 
+      const sortedRounds = [...rounds].sort((a, b) => a.updatedAt - b.updatedAt);
+      const earliestKst = formatKST(sortedRounds[0].updatedAt);
+      const latestKst = formatKST(sortedRounds[sortedRounds.length - 1].updatedAt);
+
       allUserProfiles.push({
         id: `user_round_${Math.random().toString(36).substring(2, 8)}`,
         name: pName,
         isNamedUser: true,
         isKakaoUser: pName.includes('김대희'),
-        city: '경북 구미시',
-        deviceType: '📱 안드로이드 모바일',
-        trafficSource: '직접 접속 (URL/북마크)',
-        firstActiveTime: '2026-09-13 11:53:18',
-        lastActiveTime: '2026-09-17 19:13:17',
+        city: sortedRounds[sortedRounds.length - 1].courseName || '필드 라운드 참가',
+        deviceType: '📱 모바일',
+        trafficSource: '직접 라운딩 참여',
+        firstActiveTime: `${earliestKst.dateStr} ${earliestKst.timeStr}`,
+        lastActiveTime: `${latestKst.dateStr} ${latestKst.timeStr}`,
         visitCount: count,
         actualRoundsCount: count,
         totalHolesCompleted: holes,
