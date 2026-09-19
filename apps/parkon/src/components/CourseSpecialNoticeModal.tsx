@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { X, Check, AlertTriangle } from 'lucide-react';
 import { ParkOnStorage } from '@/lib/storage';
 import { CourseSpecialReport } from '@/types/parkon';
 
@@ -20,7 +20,7 @@ export function CourseSpecialNoticeModal({
   onClose,
   onReportAdded,
 }: CourseSpecialNoticeModalProps) {
-  const [selectedType, setSelectedType] = useState<'EVENT' | 'CONSTRUCTION' | 'CLOSURE' | 'WAITING' | 'OTHER'>('EVENT');
+  const [selectedType, setSelectedType] = useState<'EVENT' | 'CONSTRUCTION' | 'CLOSURE' | 'WAITING' | 'OTHER' | null>(null);
   const [memo, setMemo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -72,6 +72,10 @@ export function CourseSpecialNoticeModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedType) {
+      alert('제보하실 유형(대회, 공사, 휴장 등)을 먼저 선택해 주세요.');
+      return;
+    }
     setIsSubmitting(true);
     try {
       const profile = ParkOnStorage.getUserProfile?.() || null;
@@ -122,9 +126,14 @@ export function CourseSpecialNoticeModal({
         {/* 제보 폼 영역 */}
         <form onSubmit={handleSubmit} className="p-4 space-y-3.5 overflow-y-auto flex-1 text-stone-900">
           <div className="space-y-1.5">
-            <label className="text-[11px] font-black text-stone-700 flex items-center gap-1">
-              <span>📌</span>
-              <span>제보 유형 선택 (필수)</span>
+            <label className="text-[11px] font-black text-stone-700 flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <span>📌</span>
+                <span>제보 유형 선택 (네모 박스 체크)</span>
+              </span>
+              <span className="text-[10px] text-stone-500 font-bold">
+                {selectedType ? '1개 선택됨 ✓' : '미선택 (터치하여 선택)'}
+              </span>
             </label>
             <div className="space-y-1.5">
               {typeOptions.map((opt) => {
@@ -133,8 +142,8 @@ export function CourseSpecialNoticeModal({
                   <button
                     key={opt.type}
                     type="button"
-                    onClick={() => setSelectedType(opt.type)}
-                    className={`w-full p-2.5 rounded-xl border-2 text-left flex items-center justify-between gap-2.5 transition active:scale-[0.99] cursor-pointer ${
+                    onClick={() => setSelectedType((prev) => (prev === opt.type ? null : opt.type))}
+                    className={`w-full p-2.5 rounded-xl border-2 text-left flex items-center justify-between gap-2.5 transition active:scale-[0.99] cursor-pointer group ${
                       isSelected
                         ? `${opt.badgeBg} border-emerald-600 ring-2 ring-emerald-400/40 shadow-xs font-black`
                         : 'border-stone-200 bg-stone-50/70 hover:bg-stone-100 text-stone-700'
@@ -151,9 +160,16 @@ export function CourseSpecialNoticeModal({
                         </div>
                       </div>
                     </div>
-                    {isSelected && (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                    )}
+                    {/* 네모 체크박스 (체크 안 됐을 땐 빈 네모, 체크 시 초록색 체크 네모, 다시 누르면 해제) */}
+                    <div
+                      className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0 ${
+                        isSelected
+                          ? 'border-emerald-600 bg-emerald-600 text-white shadow-xs'
+                          : 'border-stone-300 bg-white group-hover:border-stone-400'
+                      }`}
+                    >
+                      {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    </div>
                   </button>
                 );
               })}
@@ -197,11 +213,15 @@ export function CourseSpecialNoticeModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:scale-98 text-white font-black rounded-xl text-xs transition cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+              disabled={!selectedType || isSubmitting}
+              className={`flex-1 py-3 rounded-xl text-xs font-black transition cursor-pointer shadow-md flex items-center justify-center gap-1.5 ${
+                selectedType
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:scale-98 text-white'
+                  : 'bg-stone-200 text-stone-400 cursor-not-allowed border border-stone-300'
+              }`}
             >
               <span>✍️</span>
-              <span>특이사항 등록하기</span>
+              <span>{selectedType ? '특이사항 등록하기' : '제보 유형을 선택해 주세요'}</span>
             </button>
           </div>
         </form>
