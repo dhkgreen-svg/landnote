@@ -8,6 +8,7 @@ import {
   ConditionVoteLog,
   CourseSkillRankItem,
   CourseActivityRankItem,
+  CourseSpecialReport,
 } from '@/types/parkon';
 import { DEFAULT_COURSES, generateStandardHoles } from './defaultCourses';
 
@@ -1445,6 +1446,103 @@ export const ParkOnStorage = {
           : '아직 이번 달 완주 기록이 없습니다. 자유롭게 필드를 돌아보세요!',
       },
     };
+  },
+
+  getCourseSpecialReports(courseId: string): CourseSpecialReport[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem(`parkon_special_reports_${courseId}`);
+      if (!raw) return [];
+      const list: CourseSpecialReport[] = JSON.parse(raw);
+      const now = Date.now();
+      // 24시간 이내 유효한 제보만 유지
+      const valid = list.filter((item) => now - item.reportedAt < 24 * 60 * 60 * 1000);
+      return valid;
+    } catch {
+      return [];
+    }
+  },
+
+  addCourseSpecialReport(
+    courseId: string,
+    report: {
+      type: 'EVENT' | 'CONSTRUCTION' | 'CLOSURE' | 'WAITING' | 'OTHER';
+      memo: string;
+      reporterName?: string;
+    }
+  ): CourseSpecialReport {
+    const now = Date.now();
+    const timeStr = new Date().toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+
+    let typeName = '운영 제보';
+    let icon = '📢';
+    let badgeColor = 'bg-teal-600 text-white';
+    let defaultTitle = '현장 운영 특이사항';
+
+    switch (report.type) {
+      case 'EVENT':
+        typeName = '대회·행사 진행';
+        icon = '🏆';
+        badgeColor = 'bg-purple-600 text-white';
+        defaultTitle = '대회 행사로 일반 이용 통제/지연';
+        break;
+      case 'CONSTRUCTION':
+        typeName = '코스 공사·보수';
+        icon = '🚧';
+        badgeColor = 'bg-amber-600 text-white';
+        defaultTitle = '잔디 보식 및 코스 보수 공사 진행 중';
+        break;
+      case 'CLOSURE':
+        typeName = '긴급 임시 휴장';
+        icon = '⛔';
+        badgeColor = 'bg-rose-600 text-white';
+        defaultTitle = '기상 악화/침수/사정상 긴급 휴장';
+        break;
+      case 'WAITING':
+        typeName = '입장 대기 많음';
+        icon = '⏰';
+        badgeColor = 'bg-blue-600 text-white';
+        defaultTitle = '현재 입장 대기 시간이 다소 깁니다';
+        break;
+    }
+
+    const newReport: CourseSpecialReport = {
+      id: `report_${now}_${Math.random().toString(36).substring(2, 6)}`,
+      courseId,
+      type: report.type,
+      typeName,
+      badgeColor,
+      icon,
+      title: report.memo.trim() || defaultTitle,
+      memo: report.memo.trim(),
+      reportedAt: now,
+      reportedTimeStr: timeStr,
+      reporterName: report.reporterName || '현장 골퍼',
+    };
+
+    if (typeof window !== 'undefined') {
+      try {
+        const existing = this.getCourseSpecialReports(courseId);
+        const updated = [newReport, ...existing].slice(0, 20);
+        localStorage.setItem(`parkon_special_reports_${courseId}`, JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Failed to save special report', err);
+      }
+    }
+    return newReport;
+  },
+
+  deleteCourseSpecialReport(courseId: string, reportId: string): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const existing = this.getCourseSpecialReports(courseId);
+      const filtered = existing.filter((r) => r.id !== reportId);
+      localStorage.setItem(`parkon_special_reports_${courseId}`, JSON.stringify(filtered));
+    } catch {}
   },
 };
 

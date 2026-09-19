@@ -40,6 +40,20 @@ export interface Course {
   lng?: number;
 }
 
+export interface CourseSpecialReport {
+  id: string;
+  courseId: string;
+  type: 'EVENT' | 'CONSTRUCTION' | 'CLOSURE' | 'WAITING' | 'OTHER';
+  typeName: string;
+  badgeColor: string;
+  icon: string;
+  title: string;
+  memo?: string;
+  reportedAt: number;
+  reportedTimeStr: string;
+  reporterName?: string;
+}
+
 export function formatCourseHolesText(course: { totalHoles: number; totalCourses?: number }): string {
   const coursesCount = course.totalCourses || Math.max(1, Math.round(course.totalHoles / 9));
   return `총 ${coursesCount}코스 ${course.totalHoles}홀`;

@@ -945,9 +945,9 @@ export default function HomePage() {
         </Link>
       </section>
 
-      {/* 4-1. 배너 1: 천기섬 사주 오늘의 무료 운세 제휴 배너 */}
+      {/* 4-1. 배너 1: 천기성 사주 오늘의 무료 사주 보러 가기 제휴 배너 */}
       <a
-        href="https://cheongiseong-saju.vercel.app"
+        href="https://cheongiseong.com"
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => {
@@ -958,36 +958,37 @@ export default function HomePage() {
             const left = Math.max(0, Math.round((window.screen.width - width) / 2));
             const top = Math.max(0, Math.round((window.screen.height - height) / 2));
             window.open(
-              'https://cheongiseong-saju.vercel.app',
+              'https://cheongiseong.com',
               'CheongiseongSajuApp',
               `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
             );
           }
         }}
         className="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white rounded-2xl p-3 shadow-sm border border-emerald-600/60 hover:border-emerald-400 transition active:scale-[0.99] cursor-pointer flex items-center justify-between gap-3 group"
-        title="천기섬 사주 - 오늘의 무료 운세 바로가기"
+        title="천기성 사주 - 오늘의 무료 운세 보러 가기"
       >
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="relative w-12 h-12 rounded-xl overflow-hidden shadow-xs border border-amber-300 shrink-0 bg-stone-100 group-hover:scale-105 transition-transform">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/mascot/사진저장고_사진_20260913_31.jpg"
-              alt="천기섬 사주 오늘의 무료 운세"
+              alt="천기성 사주 오늘의 무료 운세"
               className="w-full h-full object-cover"
             />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-black text-white tracking-tight">
-                오늘의 무료 운세 보기
-              </span>
-              <span className="text-[9px] font-black bg-amber-400 text-stone-950 px-1.5 py-0.2 rounded shadow-2xs">
-                천기섬 사주
+              <span className="text-[9.5px] font-black bg-gradient-to-r from-amber-400 to-yellow-300 text-stone-950 px-2 py-0.5 rounded shadow-2xs tracking-tight">
+                천기성 사주
               </span>
             </div>
-            <p className="text-[10.5px] text-emerald-200 font-medium truncate mt-0.5">
-              오늘 나의 라운드 재물운 · 홀인원 대박 기운 확인
-            </p>
+            <div className="text-[12.5px] sm:text-[13.5px] font-black text-white tracking-tight flex items-center gap-1 mt-0.5">
+              <span>오늘의</span>
+              <span className="animate-free-sparkle px-0.5 text-yellow-300 font-black text-[13px] sm:text-[14px]">
+                무료
+              </span>
+              <span>운세 보기</span>
+            </div>
           </div>
         </div>
         <span className="flex items-center gap-1.5 shrink-0 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 text-stone-950 px-3 py-1.5 rounded-xl text-[11px] font-black border border-yellow-200 shadow-md animate-pulse-glow whitespace-nowrap">

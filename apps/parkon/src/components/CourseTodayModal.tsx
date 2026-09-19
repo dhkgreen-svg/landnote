@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { X, MapPin, Navigation, Phone, Search, Play, Check, Copy } from 'lucide-react';
 import { Course } from '@/types/parkon';
 import { ConditionStatus } from '@/components/ConditionStatus';
+import { CourseSpecialNoticeCard } from '@/components/CourseSpecialNoticeCard';
 
 interface CourseTodayModalProps {
   isOpen: boolean;
@@ -22,7 +23,6 @@ export function CourseTodayModal({
   onStartRound,
 }: CourseTodayModalProps) {
   const [copied, setCopied] = useState(false);
-  const [showNavModal, setShowNavModal] = useState(false);
   const [weatherData, setWeatherData] = useState<{
     temp: number;
     weatherText: string;
@@ -251,38 +251,8 @@ export function CourseTodayModal({
             <ConditionStatus courseId={course.id} courseName={course.name} />
           </div>
 
-          {/* 3. 주차장 직행 내비게이션 & 주소 원터치 탭 (화이트/소프트 톤으로 상단보다 정돈된 디자인) */}
-          <button
-            type="button"
-            onClick={() => setShowNavModal(true)}
-            className="w-full bg-white hover:bg-emerald-50/70 text-emerald-950 font-black py-3 px-4 rounded-2xl shadow-sm flex items-center justify-center gap-2.5 transition active:scale-[0.98] cursor-pointer group border-2 border-emerald-600/70 text-center"
-          >
-            <div className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-sm group-hover:scale-110 transition-transform shrink-0">
-              🧭
-            </div>
-            <span className="text-xs sm:text-sm font-black text-emerald-950 tracking-tight">
-              주차장 직행 내비게이션 &amp; 주소
-            </span>
-          </button>
-
-          {/* 4. 동락파크골프장 코스 정보 보기 및 정정하기 (화이트/소프트 톤으로 정돈) */}
-          {onOpenCourseDetail && (
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onOpenCourseDetail();
-              }}
-              className="w-full bg-white hover:bg-emerald-50/70 text-emerald-950 font-black py-3 px-4 rounded-2xl shadow-sm flex items-center justify-center gap-2.5 transition active:scale-[0.98] cursor-pointer group border-2 border-emerald-600/70 text-center"
-            >
-              <div className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-black text-sm group-hover:scale-110 transition-transform shrink-0">
-                📐
-              </div>
-              <span className="text-xs sm:text-sm font-black text-emerald-950 tracking-tight">
-                {cName} 코스 정보 보기 및 정정하기
-              </span>
-            </button>
-          )}
+          {/* 3. 실시간 구장 특이사항 & 현장 제보 카드 (공사, 행사, 운영 상태 제보) */}
+          <CourseSpecialNoticeCard courseId={course.id} courseName={course.name} />
         </div>
 
         {/* 하단 푸터 바: 닫기 & 바로 시작하기 */}
@@ -304,128 +274,6 @@ export function CourseTodayModal({
           </Link>
         </div>
       </div>
-
-      {/* 주차장 직행 내비게이션 & 주소 전용 팝업창 모달 */}
-      {showNavModal && (
-        <div className="fixed inset-0 z-60 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border border-stone-200 animate-in fade-in zoom-in-95 duration-150 flex flex-col">
-            {/* 팝업 헤더 */}
-            <div className="bg-gradient-to-r from-emerald-800 to-teal-900 p-4 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-amber-300">
-                  <Navigation className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-black text-sm">{cName}</h3>
-                  <p className="text-[10.5px] text-emerald-200">주차장 직행 내비게이션 &amp; 주소 안내</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowNavModal(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-xs font-bold transition cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* 팝업 내용 */}
-            <div className="p-4 space-y-3">
-              {/* 주차장 시설 배지 */}
-              {course.parking && (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-stone-600">주차 시설</span>
-                  <span className="text-xs font-black text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md">
-                    🅿️ {course.parking}
-                  </span>
-                </div>
-              )}
-
-              {/* 주소 및 원클릭 복사 */}
-              <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3 flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <span className="text-[10px] font-bold text-stone-500 block">구장 공식 주소</span>
-                  <span className="text-xs font-black text-stone-800 break-keep leading-snug">{cAddr}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCopyAddr}
-                  className="shrink-0 bg-stone-200 hover:bg-stone-300 active:scale-95 text-stone-700 text-[10px] font-black px-2.5 py-1.5 rounded-lg transition cursor-pointer"
-                >
-                  {copied ? '복사됨 ✓' : '주소 복사'}
-                </button>
-              </div>
-
-              {/* 3대 내비 앱 원클릭 길안내 버튼 */}
-              <div className="space-y-2 pt-1">
-                {/* 카카오내비 */}
-                <a
-                  href={kakaoNaviUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black py-3 px-4 rounded-xl flex items-center justify-between transition shadow-xs cursor-pointer active:scale-98"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-6 rounded-lg bg-[#191919] text-[#FEE500] font-black text-xs flex items-center justify-center">K</span>
-                    <span className="text-xs font-black">카카오내비 / 카카오맵</span>
-                  </div>
-                  <span className="text-[11px] font-bold text-stone-700">길안내 ▶</span>
-                </a>
-
-                {/* 티맵 */}
-                <a
-                  href={tmapWebUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 px-4 rounded-xl flex items-center justify-between transition shadow-xs cursor-pointer active:scale-98"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-6 rounded-lg bg-white text-blue-600 font-black text-xs flex items-center justify-center">T</span>
-                    <span className="text-xs font-black">티맵(TMAP) 내비</span>
-                  </div>
-                  <span className="text-[11px] font-bold text-blue-100">길안내 ▶</span>
-                </a>
-
-                {/* 네이버 지도 */}
-                <a
-                  href={naverMapUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-[#03C75A] hover:bg-[#02b351] text-white font-black py-3 px-4 rounded-xl flex items-center justify-between transition shadow-xs cursor-pointer active:scale-98"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-6 rounded-lg bg-white text-[#03C75A] font-black text-xs flex items-center justify-center">N</span>
-                    <span className="text-xs font-black">네이버 지도</span>
-                  </div>
-                  <span className="text-[11px] font-bold text-emerald-100">길안내 ▶</span>
-                </a>
-              </div>
-
-              {/* 관리사무소 직통 전화 */}
-              {cPhone && (
-                <a
-                  href={`tel:${cPhone.replace(/[^0-9]/g, '')}`}
-                  className="w-full bg-stone-100 hover:bg-stone-200 text-stone-800 font-black py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition text-xs border border-stone-200 mt-2 cursor-pointer"
-                >
-                  <Phone className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>관리사무소 통화 문의 ({cPhone})</span>
-                </a>
-              )}
-            </div>
-
-            {/* 팝업 닫기 버튼 */}
-            <div className="p-3 bg-stone-50 border-t border-stone-100">
-              <button
-                type="button"
-                onClick={() => setShowNavModal(false)}
-                className="w-full py-2.5 bg-stone-800 hover:bg-stone-900 active:scale-98 text-white font-black rounded-xl text-xs transition cursor-pointer"
-              >
-                창 닫기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

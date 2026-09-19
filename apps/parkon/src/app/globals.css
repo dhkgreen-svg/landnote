@@ -65,3 +65,24 @@ button, input, select {
   animation: arrow-slide 0.9s ease-in-out infinite;
 }
 
+/* Smooth scaling animation for '무료' (커졌다 작아졌다 은은한 강조) */
+@keyframes free-scale-zoom {
+  0%, 100% {
+    transform: scale(1);
+    color: #fde047;
+    filter: drop-shadow(0 0 2px rgba(251, 191, 36, 0.4));
+  }
+  50% {
+    transform: scale(1.22);
+    color: #ffffff;
+    filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.8));
+  }
+}
+
+.animate-free-sparkle {
+  display: inline-block;
+  animation: free-scale-zoom 1.2s ease-in-out infinite;
+  transform-origin: center center;
+  font-weight: 900;
+}
+
