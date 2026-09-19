@@ -163,6 +163,8 @@ export interface ClubChronicleTournament {
   archivedAt: string;
 }
 
+export type ClubRecruitStatus = 'RECRUITING' | 'CLOSED' | 'SCHEDULED' | 'ALWAYS';
+
 export interface ParkGolfClub {
   id: string;
   name: string;              // 예: 동락 에이스 클럽
@@ -180,6 +182,11 @@ export interface ParkGolfClub {
   pendingMembers?: { id: string; name: string; phone?: string; requestedAt: string; message?: string }[]; // 가입 승인 대기 명단
   isPublic: boolean;         // 공개 여부
   badgeColor?: string;       // 뱃지 테마 색상
+  isParkOnClub?: boolean;    // [NEW] 파크온 공식 가입/제휴 클럽 여부 (최우선 상단 정렬 및 👑 배지 표출)
+  recruitStatus?: ClubRecruitStatus; // [NEW] 단원(회원) 모집 상태 ('RECRUITING' | 'CLOSED' | 'SCHEDULED' | 'ALWAYS')
+  recruitQuota?: number;             // [NEW] 모집 인원 (예: 5명, 10명)
+  recruitTargetDate?: string;        // [NEW] 모집 예정 시기 (예: '2026년 10월 모집 예정')
+  recruitNotes?: string;             // [NEW] 모집 요강 안내
   createdAt: string;
 }
 

@@ -67,6 +67,16 @@ export function KakaoLoginModal({
         aliasName.trim() ||
         '회원';
       syncSelfPlayerNameToActiveRound(effectiveName);
+      fetch('/api/admin/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: typeof window !== 'undefined' ? window.location.pathname : '/',
+          userName: effectiveName,
+          isKakaoUser: true,
+          kakaoId: String(user.id || ''),
+        }),
+      }).catch(() => {});
       if (onLoginSuccess) {
         onLoginSuccess(user);
       }
@@ -116,6 +126,16 @@ export function KakaoLoginModal({
 
     setIsSavedNotice(true);
     syncSelfPlayerNameToActiveRound(effectiveName);
+    fetch('/api/admin/analytics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        path: typeof window !== 'undefined' ? window.location.pathname : '/',
+        userName: effectiveName,
+        isKakaoUser: true,
+        kakaoId: currentUser?.id ? String(currentUser.id) : undefined,
+      }),
+    }).catch(() => {});
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: effectiveName } }));
     setTimeout(() => {
@@ -270,13 +290,13 @@ export function KakaoLoginModal({
               <div className="text-center space-y-1">
                 <div className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-100 text-amber-900 rounded-full text-[10px] font-extrabold">
                   <Sparkles className="w-3 h-3 text-amber-600" />
-                  <span>카카오톡 1초 가입 및 회원 등록</span>
+                  <span>비밀번호 없이 카카오톡 [확인]만 누르면 끝!</span>
                 </div>
                 <h4 className="font-black text-stone-900 text-sm">
-                  어떤 이름으로 활동하시겠습니까?
+                  카카오톡 창이 뜨면 [확인]만 누르시면 1초 만에 자동 가입 완료!
                 </h4>
-                <p className="text-[11px] text-stone-500 font-medium">
-                  실명과 별명을 모두 등록하고 상황에 따라 선택할 수 있습니다.
+                <p className="text-[11px] text-emerald-800 font-bold bg-emerald-50 py-1 px-2 rounded-xl border border-emerald-200">
+                  ✓ 복잡한 비밀번호 입력이 전혀 없습니다.
                 </p>
               </div>
 
@@ -352,10 +372,13 @@ export function KakaoLoginModal({
                   <span className="text-lg leading-none">💬</span>
                   <span>
                     {isLoading
-                      ? '로그인 처리 중...'
-                      : `${(preferredDisplay === 'ALIAS' ? aliasName : realName) || '회원'}(으)로 1초 시작하기`}
+                      ? '자동 가입 처리 중...'
+                      : '💬 카카오톡 [확인] 누르고 1초 자동 가입'}
                   </span>
                 </button>
+                <p className="text-[10.5px] text-stone-500 font-medium text-center mt-1.5">
+                  * 한 번만 [확인] 누르시면 다음부터는 들어오기만 해도 바로 내 것으로 자동 로그인됩니다.
+                </p>
               </div>
 
               {/* 게스트 1초 둘러보기 & 가상 라운딩 바로가기 (가입 장벽 제로) */}

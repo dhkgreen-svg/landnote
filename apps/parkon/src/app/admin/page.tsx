@@ -35,6 +35,7 @@ export interface ProvinceUserItem {
   id: string;
   name: string;
   isNamedUser?: boolean;
+  isKakaoUser?: boolean;
   city: string;
   homeCourse: string;
   lastPath: string;
@@ -129,6 +130,7 @@ export interface UserRoundStatProfile {
   id: string;
   name: string;
   isNamedUser: boolean;
+  isKakaoUser?: boolean;
   city: string;
   deviceType: string;
   trafficSource: string;
@@ -146,6 +148,9 @@ export interface UserRoundStatProfile {
 
 export interface UserRoundAnalyticsSummary {
   totalUsers: number;
+  namedUsersCount?: number;
+  anonymousUsersCount?: number;
+  kakaoUsersCount?: number;
   playedUsersCount: number;
   playedUsersPercentage: number;
   browserUsersCount: number;
@@ -174,6 +179,9 @@ interface Metrics {
   totalPageviews: number;
   todayPageviews: number;
   totalAllTimeUsers: number;
+  namedUsersCount?: number;
+  anonymousUsersCount?: number;
+  kakaoUsersCount?: number;
   totalAppDownloads: number;
   provinceStats: ProvinceStat[];
   courseRankings?: CourseRoundRanking[];
@@ -229,7 +237,7 @@ export default function AdminDashboardPage() {
   const [selectedClubDetailModal, setSelectedClubDetailModal] = useState<CityClubDetail | null>(null);
   // 총 가입자 실제 라운딩 참여율 및 골퍼 등급 분석 모달 상태
   const [showUserRoundStatsModal, setShowUserRoundStatsModal] = useState(false);
-  const [userRoundTierFilter, setUserRoundTierFilter] = useState<'ALL' | 'PLAYED' | 'HEAVY' | 'REGULAR' | 'STARTER' | 'BROWSER'>('ALL');
+  const [userRoundTierFilter, setUserRoundTierFilter] = useState<'ALL' | 'NAMED' | 'KAKAO' | 'ANON' | 'PLAYED' | 'HEAVY' | 'REGULAR' | 'STARTER' | 'BROWSER'>('ALL');
   const [userRoundSearchTerm, setUserRoundSearchTerm] = useState('');
   const [userRoundPageChunk, setUserRoundPageChunk] = useState(0);
 
@@ -445,7 +453,7 @@ export default function AdminDashboardPage() {
 
       {/* 4대 핵심 집계 카드: 아이콘 제거 및 완전 중앙 정렬 미니멀 구조 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        {/* 1. 총 가입자 수 (클릭 시 실제 라운딩 참여율 & 골퍼 등급 분석 팝업) */}
+        {/* 1. 총 누적 이용자 (클릭 시 실명 회원 & 일반 방문자 상세 팝업) */}
         <button
           type="button"
           onClick={() => {
@@ -454,55 +462,75 @@ export default function AdminDashboardPage() {
             setUserRoundSearchTerm('');
             setUserRoundPageChunk(0);
           }}
-          className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-98 group"
+          className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-emerald-500 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 text-center shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-98 group flex flex-col justify-between"
         >
-          <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-            총 가입자 수
+          <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors whitespace-nowrap">
+            총 누적 이용자
           </div>
-          <div className="mt-1.5 flex items-baseline justify-center gap-1">
+          <div className="mt-1 flex items-baseline justify-center gap-1">
             <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">
               {metrics?.totalAllTimeUsers ?? 0}
             </span>
             <span className="text-xs sm:text-sm font-bold text-zinc-500">명</span>
           </div>
+          <div className="mt-1.5 flex items-center justify-center gap-1 text-[10px] font-bold whitespace-nowrap flex-wrap">
+            <span className="px-1.5 py-0.5 rounded bg-yellow-400 text-yellow-950 border border-yellow-500/50">
+              💬 카카오 {metrics?.kakaoUsersCount ?? (metrics?.userRoundAnalytics?.kakaoUsersCount ?? 0)}명
+            </span>
+            <span className="px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+              ✨ 실명 {metrics?.namedUsersCount ?? 8}명
+            </span>
+            <span className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
+              방문 {metrics?.anonymousUsersCount ?? Math.max(0, (metrics?.totalAllTimeUsers ?? 0) - (metrics?.namedUsersCount ?? 8))}명
+            </span>
+          </div>
         </button>
 
         {/* 2. 오늘 이용자 */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center shadow-xs hover:border-blue-400 transition-colors">
-          <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 text-center shadow-xs hover:border-blue-400 transition-colors flex flex-col justify-between">
+          <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
             오늘 이용자
           </div>
-          <div className="mt-1.5 flex items-baseline justify-center gap-1">
+          <div className="mt-1 flex items-baseline justify-center gap-1">
             <span className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400">
               {metrics?.todayDAU ?? 0}
             </span>
             <span className="text-xs sm:text-sm font-bold text-zinc-500">명</span>
           </div>
+          <div className="mt-1.5 text-[10px] text-zinc-400 font-medium">
+            KST 00시 기준
+          </div>
         </div>
 
         {/* 3. 현재 접속자 */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center shadow-xs hover:border-amber-400 transition-colors">
-          <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 text-center shadow-xs hover:border-amber-400 transition-colors flex flex-col justify-between">
+          <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
             현재 접속자
           </div>
-          <div className="mt-1.5 flex items-baseline justify-center gap-1">
+          <div className="mt-1 flex items-baseline justify-center gap-1">
             <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">
               {metrics?.liveUsers ?? 0}
             </span>
             <span className="text-xs sm:text-sm font-bold text-zinc-500">명</span>
           </div>
+          <div className="mt-1.5 text-[10px] text-amber-600 dark:text-amber-400 font-bold">
+            실시간 10분내
+          </div>
         </div>
 
         {/* 4. 주간 이용자 */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center shadow-xs hover:border-purple-400 transition-colors">
-          <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 text-center shadow-xs hover:border-purple-400 transition-colors flex flex-col justify-between">
+          <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 whitespace-nowrap">
             주간 이용자
           </div>
-          <div className="mt-1.5 flex items-baseline justify-center gap-1">
+          <div className="mt-1 flex items-baseline justify-center gap-1">
             <span className="text-2xl sm:text-3xl font-black text-purple-600 dark:text-purple-400">
               {metrics?.weeklyWAU ?? 0}
             </span>
             <span className="text-xs sm:text-sm font-bold text-zinc-500">명</span>
+          </div>
+          <div className="mt-1.5 text-[10px] text-purple-600 dark:text-purple-400 font-medium">
+            최근 7일 순방문
           </div>
         </div>
       </div>
@@ -953,7 +981,11 @@ export default function AdminDashboardPage() {
                                 <span className={`font-bold truncate ${u.isNamedUser ? 'text-amber-950 dark:text-amber-200 font-black' : 'text-zinc-900 dark:text-zinc-100'}`}>
                                   {u.name}
                                 </span>
-                                {u.isNamedUser ? (
+                                {u.isKakaoUser ? (
+                                  <span className="inline-flex items-center px-1.5 py-0.2 bg-yellow-400 text-yellow-950 text-[10px] font-black rounded-md border border-yellow-500/50 shadow-2xs">
+                                    💬 카카오
+                                  </span>
+                                ) : u.isNamedUser ? (
                                   <span className="inline-flex items-center px-1.5 py-0.2 bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[10px] font-black rounded-md border border-amber-300 dark:border-amber-700">
                                     ✨ 닉네임 회원
                                   </span>
@@ -1038,7 +1070,12 @@ export default function AdminDashboardPage() {
                                 <span className={`font-bold truncate ${u.isNamedUser ? 'text-amber-950 dark:text-amber-200 font-black' : 'text-zinc-900 dark:text-zinc-100'}`}>
                                   {u.name}
                                 </span>
-                                {u.isNamedUser && (
+                                {u.isKakaoUser && (
+                                  <span className="inline-flex items-center px-1.5 py-0.2 bg-yellow-400 text-yellow-950 text-[10px] font-black rounded-md border border-yellow-500/50 shadow-2xs">
+                                    💬 카카오
+                                  </span>
+                                )}
+                                {u.isNamedUser && !u.isKakaoUser && (
                                   <span className="inline-flex items-center px-1.5 py-0.2 bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[10px] font-black rounded-md border border-amber-300 dark:border-amber-700">
                                     ✨ 닉네임 회원
                                   </span>
@@ -1611,8 +1648,15 @@ export default function AdminDashboardPage() {
         };
 
         const profiles = stats.userProfiles || [];
+        const namedCount = stats.namedUsersCount ?? profiles.filter((p) => p.isNamedUser).length;
+        const anonCount = stats.anonymousUsersCount ?? profiles.filter((p) => !p.isNamedUser).length;
+        const kakaoCount = stats.kakaoUsersCount ?? profiles.filter((p) => p.isKakaoUser).length;
+
         const filteredProfiles = profiles.filter((p) => {
-          // Tier filter
+          // Role & Tier filter
+          if (userRoundTierFilter === 'NAMED' && !p.isNamedUser) return false;
+          if (userRoundTierFilter === 'KAKAO' && !p.isKakaoUser) return false;
+          if (userRoundTierFilter === 'ANON' && p.isNamedUser) return false;
           if (userRoundTierFilter === 'PLAYED' && p.actualRoundsCount === 0) return false;
           if (userRoundTierFilter === 'HEAVY' && p.tier !== 'HEAVY') return false;
           if (userRoundTierFilter === 'REGULAR' && p.tier !== 'REGULAR') return false;
@@ -1648,13 +1692,13 @@ export default function AdminDashboardPage() {
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                      <span>총 가입자 실제 필드 라운딩 참여율 & 골퍼 등급 분석</span>
+                      <span>총 누적 이용자 및 필드 라운딩 팩트 분석</span>
                       <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-800">
                         5단계 팩트 검증
                       </span>
                     </h3>
                     <p className="text-xs text-zinc-400 mt-0.5">
-                      가상·단순 테스트 클릭 100% 필터링 | GPS 현장 인증 및 9·18홀 정상 경기 시간 충족 팩트 통계
+                      가상·테스트 100% 필터링 | 카카오 회원 · 실명 등록 회원 · 일반 방문자 투명 분리 표출
                     </p>
                   </div>
                 </div>
@@ -1667,31 +1711,87 @@ export default function AdminDashboardPage() {
                 </button>
               </div>
 
-              {/* Top Summary KPI Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/80 rounded-xl p-3.5 text-center">
-                  <span className="text-xs font-semibold text-zinc-500">총 가입 / 이용자</span>
-                  <div className="text-2xl font-black text-zinc-900 dark:text-zinc-100 mt-1">
-                    {stats.totalUsers}명 <span className="text-xs font-medium text-zinc-400">(100%)</span>
+              {/* Top Summary KPI Cards (5분할) */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setUserRoundTierFilter('ALL'); setUserRoundPageChunk(0); }}
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                    userRoundTierFilter === 'ALL'
+                      ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-xs'
+                      : 'bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200/80 dark:border-zinc-700/80 hover:border-zinc-400'
+                  }`}
+                >
+                  <span className="text-[10px] font-semibold block opacity-80">총 누적 이용자</span>
+                  <div className="text-lg font-black mt-0.5">
+                    {stats.totalUsers}명
                   </div>
-                  <span className="text-[10px] text-zinc-400 block mt-0.5">누적 등록 고유 유저</span>
-                </div>
+                  <span className="text-[9px] opacity-70 block">전체 고유 유저</span>
+                </button>
 
-                <div className="bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/80 rounded-xl p-3.5 text-center">
-                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">실제 필드 완주 골퍼 (1회 이상)</span>
-                  <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                    {stats.playedUsersCount}명 <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">({stats.playedUsersPercentage}%)</span>
+                <button
+                  type="button"
+                  onClick={() => { setUserRoundTierFilter('KAKAO'); setUserRoundPageChunk(0); }}
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                    userRoundTierFilter === 'KAKAO'
+                      ? 'bg-yellow-400 text-yellow-950 border-yellow-500 shadow-xs'
+                      : 'bg-yellow-50/80 dark:bg-yellow-950/30 border-yellow-300 dark:border-yellow-800/80 hover:border-yellow-500'
+                  }`}
+                >
+                  <span className="text-[10px] font-bold text-yellow-800 dark:text-yellow-300 block">💬 카카오 회원</span>
+                  <div className="text-lg font-black text-yellow-950 dark:text-yellow-200 mt-0.5">
+                    {kakaoCount}명
                   </div>
-                  <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 block mt-0.5">GPS 현장 인증 및 완주 확인</span>
-                </div>
+                  <span className="text-[9px] text-yellow-700 dark:text-yellow-400 block">카카오톡 인증</span>
+                </button>
 
-                <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/80 rounded-xl p-3.5 text-center">
-                  <span className="text-xs font-bold text-amber-800 dark:text-amber-300">필드 출격 대기자 (0회)</span>
-                  <div className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">
-                    {stats.browserUsersCount}명 <span className="text-xs font-bold text-amber-700 dark:text-amber-300">({stats.browserUsersPercentage}%)</span>
+                <button
+                  type="button"
+                  onClick={() => { setUserRoundTierFilter('NAMED'); setUserRoundPageChunk(0); }}
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                    userRoundTierFilter === 'NAMED'
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-xs'
+                      : 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/80 hover:border-amber-500'
+                  }`}
+                >
+                  <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 block">✨ 실명 회원</span>
+                  <div className="text-lg font-black text-amber-800 dark:text-amber-200 mt-0.5">
+                    {namedCount}명
                   </div>
-                  <span className="text-[10px] text-amber-600/80 dark:text-amber-400/80 block mt-0.5">코스·날씨·규정집 열람 중</span>
-                </div>
+                  <span className="text-[9px] text-amber-600 dark:text-amber-400 block">닉네임/회원</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setUserRoundTierFilter('ANON'); setUserRoundPageChunk(0); }}
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                    userRoundTierFilter === 'ANON'
+                      ? 'bg-zinc-700 text-white border-zinc-800 shadow-xs'
+                      : 'bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400'
+                  }`}
+                >
+                  <span className="text-[10px] font-semibold text-zinc-500 dark:text-zinc-400 block">🔍 일반 방문자</span>
+                  <div className="text-lg font-black text-zinc-700 dark:text-zinc-300 mt-0.5">
+                    {anonCount}명
+                  </div>
+                  <span className="text-[9px] text-zinc-400 block">지역 IP 탐색</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setUserRoundTierFilter('PLAYED'); setUserRoundPageChunk(0); }}
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                    userRoundTierFilter === 'PLAYED'
+                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                      : 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/80 hover:border-emerald-500'
+                  }`}
+                >
+                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 block">⛳ 필드 완주</span>
+                  <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    {stats.playedUsersCount}명
+                  </div>
+                  <span className="text-[9px] text-emerald-600/80 dark:text-emerald-400/80 block">9·18홀 완주</span>
+                </button>
               </div>
 
               {/* Visual Ratio Progress Bar */}
@@ -1853,6 +1953,48 @@ export default function AdminDashboardPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      setUserRoundTierFilter('NAMED');
+                      setUserRoundPageChunk(0);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                      userRoundTierFilter === 'NAMED'
+                        ? 'bg-amber-500 text-white shadow-xs'
+                        : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 hover:bg-amber-100'
+                    }`}
+                  >
+                    ✨ 실명 회원 ({namedCount}명)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserRoundTierFilter('KAKAO');
+                      setUserRoundPageChunk(0);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                      userRoundTierFilter === 'KAKAO'
+                        ? 'bg-yellow-400 text-yellow-950 shadow-xs'
+                        : 'bg-yellow-50 dark:bg-yellow-950/40 text-yellow-800 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-800/60 hover:bg-yellow-100'
+                    }`}
+                  >
+                    💬 카카오 회원 ({kakaoCount}명)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserRoundTierFilter('ANON');
+                      setUserRoundPageChunk(0);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                      userRoundTierFilter === 'ANON'
+                        ? 'bg-zinc-700 text-white shadow-xs'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'
+                    }`}
+                  >
+                    🔍 방문 골퍼 ({anonCount}명)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
                       setUserRoundTierFilter('PLAYED');
                       setUserRoundPageChunk(0);
                     }}
@@ -1862,7 +2004,7 @@ export default function AdminDashboardPage() {
                         : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'
                     }`}
                   >
-                    실제 완주자 ({stats.playedUsersCount}명)
+                    ⛳ 실제 완주자 ({stats.playedUsersCount}명)
                   </button>
                   <button
                     type="button"
@@ -1988,7 +2130,12 @@ export default function AdminDashboardPage() {
                             <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm">
                               {u.name}
                             </span>
-                            {u.isNamedUser && (
+                            {u.isKakaoUser && (
+                              <span className="inline-flex items-center px-1.5 py-0.2 bg-yellow-400 text-yellow-950 text-[10px] font-black rounded-md border border-yellow-500/50 shadow-2xs">
+                                💬 카카오
+                              </span>
+                            )}
+                            {u.isNamedUser && !u.isKakaoUser && (
                               <span className="inline-flex items-center px-1.5 py-0.2 bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[10px] font-black rounded-md border border-amber-300 dark:border-amber-700">
                                 ✨ 회원
                               </span>

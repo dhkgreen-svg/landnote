@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Users, Flag, Play, Plus, Trash2, ArrowLeft, MapPin, Edit3, Settings, QrCode, Copy, Check, Sparkles, Share2 } from 'lucide-react';
+import { Users, Flag, Play, Plus, Trash2, ArrowLeft, MapPin, Edit3, Settings, QrCode, Copy, Check, Sparkles, Share2, X } from 'lucide-react';
 import Link from 'next/link';
 import { Course, RoundPlayer, RoundSession, formatCourseHolesText } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
@@ -504,25 +504,54 @@ function NewRoundForm() {
   return (
     <div className="p-3.5 space-y-3.5">
       {/* Top bar */}
-      <div className="flex items-center gap-2">
-        <Link href="/" className="p-1.5 -ml-1.5 text-stone-700 hover:text-stone-950">
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <div>
-          <h2 className="text-lg font-black text-stone-900 leading-tight flex items-center gap-1.5">
-            <span>{isTrialMode ? '🎯 프로그램 체험 연습 (팀 만들기)' : '새 라운드 시작 설정'}</span>
-            {isTrialMode && (
-              <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
-                체험 모드
-              </span>
-            )}
-          </h2>
-          <p className="text-[11px] text-stone-600 font-semibold">
-            {isTrialMode
-              ? '동반자 초대 및 팀 구성을 실전과 똑같이 체험해 보세요 (기록 미저장)'
-              : '플레이할 구장과 코스를 자유롭게 선택하세요'}
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push('/');
+              }
+            }}
+            className="p-1.5 -ml-1.5 text-stone-700 hover:text-stone-950 cursor-pointer"
+            title="이전으로"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h2 className="text-lg font-black text-stone-900 leading-tight flex items-center gap-1.5">
+              <span>{isTrialMode ? '🎯 프로그램 체험 연습 (팀 만들기)' : '새 라운드 시작 설정'}</span>
+              {isTrialMode && (
+                <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
+                  체험 모드
+                </span>
+              )}
+            </h2>
+            <p className="text-[11px] text-stone-600 font-semibold">
+              {isTrialMode
+                ? '동반자 초대 및 팀 구성을 실전과 똑같이 체험해 보세요 (기록 미저장)'
+                : '플레이할 구장과 코스를 자유롭게 선택하세요'}
+            </p>
+          </div>
         </div>
+
+        {/* 대표님 요청: 상단 우측 닫기 (X) 버튼 누르면 항상 직전 화면으로 복귀 */}
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              router.back();
+            } else {
+              router.push('/');
+            }
+          }}
+          className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition cursor-pointer flex items-center justify-center"
+          title="닫기 (이전 화면으로)"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* 🎯 프로그램 체험 연습 안내 가이드 배너 */}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
   Trophy, 
@@ -40,6 +40,7 @@ import { CompanionLightningModal } from '@/components/CompanionLightningModal';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
 
 function ChronicleContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const addFriendParam = searchParams.get('addFriend');
 
@@ -52,6 +53,7 @@ function ChronicleContent() {
   const [showLightningModal, setShowLightningModal] = useState(false);
   const [toastMsg, setToastMsg] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'MILESTONE' | 'CLUB_MATCH' | 'COMPANIONS' | 'STAMP_MAP'>('MILESTONE');
+  const [selectedMedalModal, setSelectedMedalModal] = useState<'HIO' | 'EAGLE' | 'ALBATROSS' | null>(null);
 
   // Handle incoming addFriend query param from QR scan
   useEffect(() => {
@@ -95,11 +97,29 @@ function ChronicleContent() {
     0
   );
 
-  // 사용자 본인 타수 수집 및 훈장(홀인원/이글/버디) 실측 계산
+  // 실제 완주한 구장 및 코스 메타데이터
+  const allCourses = ParkOnStorage.getAllCourses();
+
+  // 훈장 상세 기록 구조 정의
+  interface MedalRecord {
+    date: string;
+    courseName: string;
+    holeNumber: number;
+    holeLabel: string;
+    par: number;
+    strokes: number;
+  }
+
+  // 사용자 본인 타수 수집 및 훈장(홀인원/이글/알바트로스) 실측 계산
   const userScores: number[] = [];
-  let totalHoleInOnes = 0;
-  let totalEagles = 0;
-  let totalBirdies = 0;
+  const hioListPar3: MedalRecord[] = [];
+  const hioListPar4: MedalRecord[] = [];
+  const hioListPar5: MedalRecord[] = [];
+  const eagleListPar4: MedalRecord[] = [];
+  const eagleListPar5: MedalRecord[] = [];
+  const albatrossList: MedalRecord[] = [];
+
+  const parPattern = [4, 3, 4, 3, 4, 4, 3, 3, 5];
 
   completedRounds.forEach((r) => {
     const p = r.players.find(
@@ -109,11 +129,61 @@ function ChronicleContent() {
       userScores.push(p.totalStrokes);
     }
     if (p && p.scores) {
-      Object.values(p.scores).forEach((s) => {
-        if (s === 1) totalHoleInOnes++;
+      const course = allCourses.find((c) => c.id === r.courseId) || DEFAULT_COURSES.find((c) => c.id === r.courseId);
+      const roundDate = new Date(r.completedAt || r.startedAt).toLocaleDateString('ko-KR');
+      const courseName = r.courseName || course?.name || '파크골프장';
+
+      Object.entries(p.scores).forEach(([holeKey, scoreVal]) => {
+        const hNum = Number(holeKey);
+        const stroke = Number(scoreVal);
+        if (!stroke || stroke <= 0) return;
+
+        const meta = course?.holesMetadata?.find((m) => m.hole === hNum);
+        const par = meta?.par || parPattern[(hNum - 1) % 9] || 4;
+        const holeLabel = `${hNum}번 홀`;
+
+        const record: MedalRecord = {
+          date: roundDate,
+          courseName,
+          holeNumber: hNum,
+          holeLabel,
+          par,
+          strokes: stroke,
+        };
+
+        // 1. 홀인원 (1타 만에 홀아웃)
+        if (stroke === 1) {
+          if (par === 3) {
+            hioListPar3.push(record);
+          } else if (par === 4) {
+            hioListPar4.push(record);
+          } else if (par === 5) {
+            hioListPar5.push(record);
+          } else {
+            hioListPar3.push(record);
+          }
+        }
+
+        // 2. 이글 (Par 기준 -2타, 1타 친 홀인원은 제외)
+        if (stroke > 1 && stroke === par - 2) {
+          if (par === 4 && stroke === 2) {
+            eagleListPar4.push(record);
+          } else if (par === 5 && stroke === 3) {
+            eagleListPar5.push(record);
+          }
+        }
+
+        // 3. 알바트로스 (Par 5 롱홀에서 2타 만에 홀아웃, -3타)
+        if (par === 5 && stroke === 2) {
+          albatrossList.push(record);
+        }
       });
     }
   });
+
+  const totalHoleInOnes = hioListPar3.length + hioListPar4.length + hioListPar5.length;
+  const totalEagles = eagleListPar4.length + eagleListPar5.length;
+  const totalAlbatross = albatrossList.length;
 
   const bestScore = userScores.length > 0 ? Math.min(...userScores) : null;
   const avgStrokes =
@@ -151,7 +221,6 @@ function ChronicleContent() {
   const topCompanion = companions.length > 0 ? companions[0] : null;
 
   // 실제 완주한 구장 목록만 도장깨기에 반영
-  const allCourses = ParkOnStorage.getAllCourses();
   const conqueredCourseIds = Array.from(new Set(completedRounds.map((r) => r.courseId)));
   const conqueredCoursesList = allCourses.filter((c) => conqueredCourseIds.includes(c.id));
 
@@ -204,14 +273,31 @@ function ChronicleContent() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowQrModal(true)}
-            className="py-2 px-3 bg-white/15 hover:bg-white/25 border border-white/30 rounded-xl text-xs font-black text-amber-200 flex items-center gap-1.5 backdrop-blur-sm transition active:scale-95 cursor-pointer"
-          >
-            <QrCode className="w-4 h-4 text-amber-300" />
-            <span>내 1촌 QR</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setShowQrModal(true)}
+              className="py-2 px-3 bg-white/15 hover:bg-white/25 border border-white/30 rounded-xl text-xs font-black text-amber-200 flex items-center gap-1.5 backdrop-blur-sm transition active:scale-95 cursor-pointer"
+            >
+              <QrCode className="w-4 h-4 text-amber-300" />
+              <span>내 1촌 QR</span>
+            </button>
+            {/* 대표님 요청: 상단 우측 닫기 (X) 버튼 누르면 항상 직전 화면으로 복귀 */}
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.history.length > 1) {
+                  router.back();
+                } else {
+                  router.push('/');
+                }
+              }}
+              className="p-2 bg-white/15 hover:bg-white/25 border border-white/30 rounded-xl text-white backdrop-blur-sm transition active:scale-95 cursor-pointer flex items-center justify-center"
+              title="닫기 (이전 화면으로)"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* 4대 커리어 핵심 지표 */}
@@ -349,38 +435,91 @@ function ChronicleContent() {
 
           {/* 명예의 전당 특별 훈장 */}
           <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="w-5 h-5 text-emerald-600" />
-              <h3 className="text-sm font-black text-stone-900">명예의 전당 특별 훈장</h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-5 h-5 text-emerald-600" />
+                <h3 className="text-sm font-black text-stone-900">명예의 전당 특별 훈장</h3>
+              </div>
+              <span className="text-[10px] text-stone-400 font-bold bg-stone-100 px-2 py-0.5 rounded-full">
+                훈장 터치 시 상세 실록 🔍
+              </span>
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl space-y-1">
-                <span className="text-2xl">⛳</span>
-                <div className="text-xs font-black text-amber-900">홀인원</div>
-                <div className="text-lg font-black text-amber-700">{totalHoleInOnes}회 달성</div>
-                <div className="text-[10px] text-stone-400">
-                  {totalHoleInOnes > 0 ? '공식 라운드 인증' : '기록 대기'}
+              {/* 1. 홀인원 카드 */}
+              <button
+                type="button"
+                onClick={() => setSelectedMedalModal('HIO')}
+                className="p-3 bg-amber-50 hover:bg-amber-100/70 border border-amber-300/80 rounded-2xl space-y-1.5 transition active:scale-95 cursor-pointer shadow-xs text-center flex flex-col justify-between items-center group w-full"
+              >
+                <div className="space-y-0.5">
+                  <span className="text-2xl group-hover:scale-110 transition inline-block">⛳</span>
+                  <div className="text-xs font-black text-amber-950 flex items-center justify-center gap-0.5">
+                    <span>홀인원</span>
+                    <span className="text-[10px] text-amber-600">🔍</span>
+                  </div>
+                  <div className="text-base font-black text-amber-800">{totalHoleInOnes}회 달성</div>
                 </div>
-              </div>
 
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1">
-                <span className="text-2xl">🦅</span>
-                <div className="text-xs font-black text-emerald-900">이글 훈장</div>
-                <div className="text-lg font-black text-emerald-700">{totalEagles}회 달성</div>
-                <div className="text-[10px] text-stone-400">
-                  {totalEagles > 0 ? '공식 라운드 인증' : '기록 대기'}
+                <div className="w-full space-y-0.5 pt-0.5">
+                  <div className="text-[9px] font-black text-amber-800 bg-amber-100/80 px-1 py-0.5 rounded-md truncate w-full">
+                    P3:{hioListPar3.length} · P4:{hioListPar4.length} · P5:{hioListPar5.length}
+                  </div>
+                  <div className="text-[10px] text-stone-400 font-semibold">
+                    {totalHoleInOnes > 0 ? '상세 실록 보기' : '기록 대기'}
+                  </div>
                 </div>
-              </div>
+              </button>
 
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl space-y-1">
-                <span className="text-2xl">🐦</span>
-                <div className="text-xs font-black text-blue-900">버디 훈장</div>
-                <div className="text-lg font-black text-blue-700">{totalBirdies}회 달성</div>
-                <div className="text-[10px] text-stone-400">
-                  {totalBirdies > 0 ? '공식 라운드 인증' : '기록 대기'}
+              {/* 2. 이글 훈장 카드 */}
+              <button
+                type="button"
+                onClick={() => setSelectedMedalModal('EAGLE')}
+                className="p-3 bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-300/80 rounded-2xl space-y-1.5 transition active:scale-95 cursor-pointer shadow-xs text-center flex flex-col justify-between items-center group w-full"
+              >
+                <div className="space-y-0.5">
+                  <span className="text-2xl group-hover:scale-110 transition inline-block">🦅</span>
+                  <div className="text-xs font-black text-emerald-950 flex items-center justify-center gap-0.5">
+                    <span>이글 훈장</span>
+                    <span className="text-[10px] text-emerald-600">🔍</span>
+                  </div>
+                  <div className="text-base font-black text-emerald-800">{totalEagles}회 달성</div>
                 </div>
-              </div>
+
+                <div className="w-full space-y-0.5 pt-0.5">
+                  <div className="text-[9px] font-black text-emerald-800 bg-emerald-100/80 px-1 py-0.5 rounded-md truncate w-full">
+                    P4:{eagleListPar4.length}회 · P5:{eagleListPar5.length}회
+                  </div>
+                  <div className="text-[10px] text-stone-400 font-semibold">
+                    {totalEagles > 0 ? '상세 실록 보기' : '기록 대기'}
+                  </div>
+                </div>
+              </button>
+
+              {/* 3. 알바트로스 훈장 카드 (버디 훈장에서 교체) */}
+              <button
+                type="button"
+                onClick={() => setSelectedMedalModal('ALBATROSS')}
+                className="p-3 bg-indigo-50 hover:bg-indigo-100/70 border border-indigo-300/80 rounded-2xl space-y-1.5 transition active:scale-95 cursor-pointer shadow-xs text-center flex flex-col justify-between items-center group w-full"
+              >
+                <div className="space-y-0.5">
+                  <span className="text-2xl group-hover:scale-110 transition inline-block">🦢</span>
+                  <div className="text-xs font-black text-indigo-950 flex items-center justify-center gap-0.5">
+                    <span>알바트로스</span>
+                    <span className="text-[10px] text-indigo-600">🔍</span>
+                  </div>
+                  <div className="text-base font-black text-indigo-800">{totalAlbatross}회 달성</div>
+                </div>
+
+                <div className="w-full space-y-0.5 pt-0.5">
+                  <div className="text-[9px] font-black text-indigo-800 bg-indigo-100/80 px-1 py-0.5 rounded-md truncate w-full">
+                    파5 롱홀 2타 완주
+                  </div>
+                  <div className="text-[10px] text-stone-400 font-semibold">
+                    {totalAlbatross > 0 ? '상세 실록 보기' : '기록 대기'}
+                  </div>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -395,18 +534,10 @@ function ChronicleContent() {
             </div>
 
             {completedRounds.length === 0 ? (
-              <div className="text-center py-6 bg-stone-50 rounded-2xl border border-dashed border-stone-300 space-y-2">
+              <div className="text-center py-6 bg-stone-50 rounded-2xl border border-dashed border-stone-300 space-y-1.5">
                 <span className="text-3xl">⛳</span>
                 <p className="font-black text-xs text-stone-700">아직 완료된 공식 라운드 기록이 없습니다.</p>
-                <p className="text-[11px] text-stone-400">필드에서 스코어카드를 완주하고 저장하면 실제 경기 기록이 타임라인에 등록됩니다.</p>
-                <div className="pt-1">
-                  <Link
-                    href="/round/new"
-                    className="inline-block px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-95"
-                  >
-                    첫 공식 라운드 시작 ▶
-                  </Link>
-                </div>
+                <p className="text-[11px] text-stone-400">필드에서 스코어카드를 완주하고 저장하면 실제 경기 기록이 타임라인에 자동으로 등록됩니다.</p>
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -1001,6 +1132,210 @@ function ChronicleContent() {
                 닫기
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🏅 명예의 전당 특별 훈장 상세 모달 */}
+      {selectedMedalModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl border border-stone-200 space-y-4 max-h-[85vh] overflow-y-auto">
+            {/* 모달 헤더 */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">
+                  {selectedMedalModal === 'HIO' ? '⛳' : selectedMedalModal === 'EAGLE' ? '🦅' : '🦢'}
+                </span>
+                <div>
+                  <h3 className="font-black text-sm text-stone-900">
+                    {selectedMedalModal === 'HIO'
+                      ? '홀인원 명예의 전당'
+                      : selectedMedalModal === 'EAGLE'
+                      ? '이글 훈장 명예의 전당'
+                      : '알바트로스 훈장 명예의 전당'}
+                  </h3>
+                  <p className="text-[11px] text-stone-500 font-bold">
+                    {selectedMedalModal === 'HIO'
+                      ? `총 ${totalHoleInOnes}회 달성 (파3 · 파4 · 파5별 실록)`
+                      : selectedMedalModal === 'EAGLE'
+                      ? `총 ${totalEagles}회 달성 (파4 · 파5별 실록)`
+                      : `총 ${totalAlbatross}회 달성 (파5 2타 완주 실록)`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedMedalModal(null)}
+                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center font-bold cursor-pointer transition active:scale-95"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 1. 홀인원 세부 통계 */}
+            {selectedMedalModal === 'HIO' && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-amber-50 p-2.5 rounded-2xl border border-amber-200 space-y-0.5">
+                    <div className="text-[10px] text-amber-800 font-black">파3 홀인원</div>
+                    <div className="text-lg font-black text-amber-700">{hioListPar3.length}회</div>
+                    <div className="text-[9px] text-stone-400 font-medium">숏홀 원샷</div>
+                  </div>
+                  <div className="bg-amber-50 p-2.5 rounded-2xl border border-amber-200 space-y-0.5">
+                    <div className="text-[10px] text-amber-800 font-black">파4 홀인원</div>
+                    <div className="text-lg font-black text-amber-700">{hioListPar4.length}회</div>
+                    <div className="text-[9px] text-stone-400 font-medium">미들홀 기적</div>
+                  </div>
+                  <div className="bg-amber-50 p-2.5 rounded-2xl border border-amber-200 space-y-0.5">
+                    <div className="text-[10px] text-amber-800 font-black">파5 홀인원</div>
+                    <div className="text-lg font-black text-amber-700">{hioListPar5.length}회</div>
+                    <div className="text-[9px] text-stone-400 font-medium">롱홀 콘도르</div>
+                  </div>
+                </div>
+
+                {/* 상세 실록 리스트 */}
+                <div className="space-y-2">
+                  <div className="text-xs font-black text-stone-800 flex items-center gap-1">
+                    <span>📜 공식 홀인원 달성 내역</span>
+                    <span className="text-[10px] text-stone-400">({totalHoleInOnes}건)</span>
+                  </div>
+
+                  {totalHoleInOnes === 0 ? (
+                    <div className="p-4 bg-stone-50 rounded-2xl border border-dashed border-stone-300 text-center space-y-1">
+                      <p className="text-xs font-black text-stone-600">아직 달성된 홀인원 기록이 없습니다.</p>
+                      <p className="text-[10px] text-stone-400">필드에서 1타에 홀인하면 파3/파4/파5별로 영구 실록에 자동 등록됩니다!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {[...hioListPar5, ...hioListPar4, ...hioListPar3].map((item, idx) => (
+                        <div key={idx} className="p-2.5 bg-amber-50/60 rounded-xl border border-amber-200/80 flex items-center justify-between text-xs">
+                          <div>
+                            <div className="font-black text-stone-900 flex items-center gap-1">
+                              <span className="bg-amber-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded">
+                                Par {item.par}
+                              </span>
+                              <span>{item.courseName}</span>
+                              <span className="text-amber-800 font-bold">{item.holeLabel}</span>
+                            </div>
+                            <div className="text-[10px] text-stone-400 mt-0.5">{item.date} 달성</div>
+                          </div>
+                          <span className="font-black text-amber-700 bg-white px-2 py-1 rounded-lg border border-amber-200">
+                            1타 (홀인원)
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 2. 이글 세부 통계 */}
+            {selectedMedalModal === 'EAGLE' && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 space-y-0.5">
+                    <div className="text-[10px] text-emerald-800 font-black">파4 이글</div>
+                    <div className="text-lg font-black text-emerald-700">{eagleListPar4.length}회</div>
+                    <div className="text-[9px] text-stone-400 font-medium">2타 완주 (-2타)</div>
+                  </div>
+                  <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 space-y-0.5">
+                    <div className="text-[10px] text-emerald-800 font-black">파5 이글</div>
+                    <div className="text-lg font-black text-emerald-700">{eagleListPar5.length}회</div>
+                    <div className="text-[9px] text-stone-400 font-medium">3타 완주 (-2타)</div>
+                  </div>
+                </div>
+
+                {/* 상세 실록 리스트 */}
+                <div className="space-y-2">
+                  <div className="text-xs font-black text-stone-800 flex items-center gap-1">
+                    <span>📜 공식 이글 달성 내역</span>
+                    <span className="text-[10px] text-stone-400">({totalEagles}건)</span>
+                  </div>
+
+                  {totalEagles === 0 ? (
+                    <div className="p-4 bg-stone-50 rounded-2xl border border-dashed border-stone-300 text-center space-y-1">
+                      <p className="text-xs font-black text-stone-600">아직 달성된 이글 기록이 없습니다.</p>
+                      <p className="text-[10px] text-stone-400">파4에서 2타, 파5에서 3타로 홀아웃하면 이글 훈장 실록에 자동 등록됩니다!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {[...eagleListPar5, ...eagleListPar4].map((item, idx) => (
+                        <div key={idx} className="p-2.5 bg-emerald-50/60 rounded-xl border border-emerald-200/80 flex items-center justify-between text-xs">
+                          <div>
+                            <div className="font-black text-stone-900 flex items-center gap-1">
+                              <span className="bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded">
+                                Par {item.par}
+                              </span>
+                              <span>{item.courseName}</span>
+                              <span className="text-emerald-800 font-bold">{item.holeLabel}</span>
+                            </div>
+                            <div className="text-[10px] text-stone-400 mt-0.5">{item.date} 달성</div>
+                          </div>
+                          <span className="font-black text-emerald-700 bg-white px-2 py-1 rounded-lg border border-emerald-200">
+                            {item.strokes}타 (-2타)
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 3. 알바트로스 세부 통계 */}
+            {selectedMedalModal === 'ALBATROSS' && (
+              <div className="space-y-3">
+                <div className="bg-indigo-50 p-3.5 rounded-2xl border border-indigo-200 text-center space-y-1">
+                  <div className="text-[11px] text-indigo-900 font-black">파5 롱홀 알바트로스</div>
+                  <div className="text-2xl font-black text-indigo-800">{totalAlbatross}회 달성</div>
+                  <div className="text-[10px] text-indigo-600 font-bold">100~150m 롱홀에서 2타 만에 홀아웃 (-3타 전설)</div>
+                </div>
+
+                {/* 상세 실록 리스트 */}
+                <div className="space-y-2">
+                  <div className="text-xs font-black text-stone-800 flex items-center gap-1">
+                    <span>📜 공식 알바트로스 달성 내역</span>
+                    <span className="text-[10px] text-stone-400">({totalAlbatross}건)</span>
+                  </div>
+
+                  {totalAlbatross === 0 ? (
+                    <div className="p-4 bg-stone-50 rounded-2xl border border-dashed border-stone-300 text-center space-y-1">
+                      <p className="text-xs font-black text-stone-600">아직 달성된 알바트로스 기록이 없습니다.</p>
+                      <p className="text-[10px] text-stone-400">파5 롱홀에서 2타 만에 홀아웃하면 전설의 알바트로스 훈장이 수여됩니다!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {albatrossList.map((item, idx) => (
+                        <div key={idx} className="p-2.5 bg-indigo-50/60 rounded-xl border border-indigo-200/80 flex items-center justify-between text-xs">
+                          <div>
+                            <div className="font-black text-stone-900 flex items-center gap-1">
+                              <span className="bg-indigo-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded">
+                                Par {item.par}
+                              </span>
+                              <span>{item.courseName}</span>
+                              <span className="text-indigo-800 font-bold">{item.holeLabel}</span>
+                            </div>
+                            <div className="text-[10px] text-stone-400 mt-0.5">{item.date} 달성</div>
+                          </div>
+                          <span className="font-black text-indigo-700 bg-white px-2 py-1 rounded-lg border border-indigo-200">
+                            2타 (-3타)
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setSelectedMedalModal(null)}
+              className="w-full py-2.5 bg-stone-800 hover:bg-stone-900 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
+            >
+              닫기
+            </button>
           </div>
         </div>
       )}

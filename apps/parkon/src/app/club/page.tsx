@@ -45,7 +45,7 @@ import {
   Bell,
   AlertTriangle,
 } from 'lucide-react';
-import { ClubEventRoom, ClubGroup, ClubPlayer, ParkGolfClub, ClubMember, FlashGathering, TournamentType, ClubInvitation } from '@/types/club';
+import { ClubEventRoom, ClubGroup, ClubPlayer, ParkGolfClub, ClubMember, FlashGathering, TournamentType, ClubInvitation, ClubRecruitStatus } from '@/types/club';
 import { Course } from '@/types/parkon';
 import { ClubStorage } from '@/lib/clubStorage';
 import { CompanionStorage, Companionship, CompanionLightningRound } from '@/lib/companionStorage';
@@ -60,6 +60,42 @@ export default function ClubGatheringHomePage() {
 
   // 3대 전문 허브 탭: 'CLUBS' (내 클럽 바로가기) | 'TOURNAMENTS' (새 대회 개설) | 'FLASH' (번개 모임 갖기)
   const [activeHubTab, setActiveHubTab] = useState<'CLUBS' | 'TOURNAMENTS' | 'FLASH'>('CLUBS');
+  // 대회 개설 모달 호출 출처 ('HUB' | 'MANAGING_CLUB' | 'CLUB_GATHERING')
+  const [createModalSource, setCreateModalSource] = useState<'HUB' | 'MANAGING_CLUB' | 'CLUB_GATHERING'>('HUB');
+
+  const handleTabSwitch = (tab: 'CLUBS' | 'TOURNAMENTS' | 'FLASH') => {
+    setActiveHubTab(tab);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('parkon_club_active_tab', tab);
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab.toLowerCase());
+        window.history.replaceState({}, '', url.toString());
+      } catch (e) {
+        // ignore
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const tabParam = params.get('tab')?.toUpperCase();
+        if (tabParam === 'TOURNAMENTS' || tabParam === 'FLASH' || tabParam === 'CLUBS') {
+          setActiveHubTab(tabParam as any);
+          localStorage.setItem('parkon_club_active_tab', tabParam);
+        } else {
+          const savedTab = localStorage.getItem('parkon_club_active_tab');
+          if (savedTab === 'TOURNAMENTS' || savedTab === 'FLASH' || savedTab === 'CLUBS') {
+            setActiveHubTab(savedTab as any);
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, []);
 
   // 전국 구장 목록 & 구장 검색 모달 상태
   const [allCourses, setAllCourses] = useState<Course[]>(DEFAULT_COURSES);
@@ -96,10 +132,17 @@ export default function ClubGatheringHomePage() {
   // 클럽 3대 서브 탭 상태: 'SHORTCUT' (클럽 바로가기) | 'CREATE' (새 클럽 창단하기) | 'BROWSE' (클럽 찾아보기 가입)
   const [clubSubTab, setClubSubTab] = useState<'SHORTCUT' | 'CREATE' | 'BROWSE'>('SHORTCUT');
   const [clubBrowseSearch, setClubBrowseSearch] = useState('');
+  const [browseConfirmedSearch, setBrowseConfirmedSearch] = useState('');
+  // [NEW] 단원(회원) 모집 중인 클럽만 보기 필터
+  const [onlyRecruitingFilter, setOnlyRecruitingFilter] = useState(false);
 
-  // 회장/총무 클럽 통합 관리실 (가입 승인 대기 / 회원 명부 & 직책 배정 / 대항전 개설 & 선수 선발)
+  // 회장/총무 클럽 통합 관리실 (가입 승인 대기 / 회원 명부 & 직책 배정 / 단원 모집 관리 / 대항전 개설 & 선수 선발)
   const [managingClub, setManagingClub] = useState<ParkGolfClub | null>(null);
-  const [managingClubTab, setManagingClubTab] = useState<'PENDING' | 'MEMBERS' | 'MATCH' | 'CHRONICLE'>('PENDING');
+  const [managingClubTab, setManagingClubTab] = useState<'PENDING' | 'MEMBERS' | 'RECRUIT' | 'MATCH' | 'CHRONICLE'>('PENDING');
+  const [editRecruitStatus, setEditRecruitStatus] = useState<ClubRecruitStatus>('RECRUITING');
+  const [editRecruitQuota, setEditRecruitQuota] = useState<number>(5);
+  const [editRecruitDate, setEditRecruitDate] = useState<string>('');
+  const [editRecruitNotes, setEditRecruitNotes] = useState<string>('');
   const [showArchivedMembers, setShowArchivedMembers] = useState<boolean>(false);
   const [expandedChronicleId, setExpandedChronicleId] = useState<string | null>(null);
   const [clubDetailTab, setClubDetailTab] = useState<'MEMBERS' | 'CHRONICLE'>('MEMBERS');
@@ -143,7 +186,8 @@ export default function ClubGatheringHomePage() {
   const [matchInviteType, setMatchInviteType] = useState<'DIRECT_CHALLENGE' | 'OPEN_CHALLENGE'>('DIRECT_CHALLENGE');
   const [matchTeamCount, setMatchTeamCount] = useState<number>(2); // 2개 팀, 3개 팀, 4개 팀
   const [playersPerTeam, setPlayersPerTeam] = useState<number>(16); // 클럽당 16명 (기본)
-  const [customOpponentName, setCustomOpponentName] = useState<string>('');
+  const [showOpponentClubPicker, setShowOpponentClubPicker] = useState<boolean>(false);
+  const [opponentClubSearchTerm, setOpponentClubSearchTerm] = useState<string>('');
 
   // 대회 개설 서브 팝업 모달 상태
   const [showCreateFeeModal, setShowCreateFeeModal] = useState(false);
@@ -406,7 +450,7 @@ export default function ClubGatheringHomePage() {
     setTargetPlayers(newTotal);
     const opt = ClubStorage.calculateOptimalGroups(newTotal);
     setGroupCount(opt.groupCount);
-    updateMatchTitle(matchInviteType, count, playersPerTeam, participatingClubIds, customOpponentName);
+    updateMatchTitle(matchInviteType, count, playersPerTeam, participatingClubIds);
   };
 
   // 대항전 팀당 출전 인원(엔트리) 변경
@@ -417,7 +461,25 @@ export default function ClubGatheringHomePage() {
     setTargetPlayers(newTotal);
     const opt = ClubStorage.calculateOptimalGroups(newTotal);
     setGroupCount(opt.groupCount);
-    updateMatchTitle(matchInviteType, matchTeamCount, valid, participatingClubIds, customOpponentName);
+    updateMatchTitle(matchInviteType, matchTeamCount, valid, participatingClubIds);
+  };
+
+  // 대항전 상대 클럽 지목 토글 (대표님 요청: 1개든 10개든 자유롭게 만족할 때까지 선택)
+  const toggleOpponentClub = (clubId: string) => {
+    let next: string[];
+    if (participatingClubIds.includes(clubId)) {
+      next = participatingClubIds.filter((id) => id !== clubId);
+    } else {
+      next = [...participatingClubIds, clubId];
+    }
+    setParticipatingClubIds(next);
+    const newTeamCount = Math.max(2, next.length + 1);
+    setMatchTeamCount(newTeamCount);
+    const newTotal = newTeamCount * playersPerTeam;
+    setTargetPlayers(newTotal);
+    const opt = ClubStorage.calculateOptimalGroups(newTotal);
+    setGroupCount(opt.groupCount);
+    updateMatchTitle(matchInviteType, newTeamCount, playersPerTeam, next);
   };
 
   // 대항전 제목 자동 생성
@@ -425,8 +487,7 @@ export default function ClubGatheringHomePage() {
     inviteType: 'DIRECT_CHALLENGE' | 'OPEN_CHALLENGE',
     teamCount: number,
     perTeam: number,
-    pClubIds: string[],
-    customOpp: string
+    pClubIds: string[]
   ) => {
     const hostClub = clubs.find((c) => c.id === tournamentClubId) || myClubs[0];
     const hostName = hostClub ? hostClub.name.replace(' 파크골프 클럽', '').replace(' 클럽', '') : '우리 클럽';
@@ -436,16 +497,16 @@ export default function ClubGatheringHomePage() {
       return;
     }
 
-    const oppClub = clubs.find((c) => pClubIds.includes(c.id) && c.id !== hostClub?.id);
-    const oppName = oppClub
-      ? oppClub.name.replace(' 파크골프 클럽', '').replace(' 클럽', '')
-      : customOpp.trim() || '부산 삼락';
+    const oppClubs = clubs.filter((c) => pClubIds.includes(c.id) && c.id !== hostClub?.id);
+    const oppNames = oppClubs.map((c) => c.name.replace(' 파크골프 클럽', '').replace(' 클럽', ''));
 
     const total = teamCount * perTeam;
-    if (teamCount === 2) {
-      setTitle(`${hostName} vs ${oppName} ${total}인 친선 대항전 ⚔️`);
+    if (oppNames.length === 1) {
+      setTitle(`${hostName} vs ${oppNames[0]} ${total}인 친선 대항전 ⚔️`);
+    } else if (oppNames.length > 1) {
+      setTitle(`${hostName} 외 ${oppNames.length}개 클럽 (${oppNames.join(', ')}) ${total}인 대항전 ⚔️`);
     } else {
-      setTitle(`${hostName} 외 ${teamCount - 1}개 클럽 친선 삼파전 (${total}인) ⚔️`);
+      setTitle(`${hostName} 클럽 친선 대항전 (${perTeam}인전) ⚔️`);
     }
   };
 
@@ -468,9 +529,6 @@ export default function ClubGatheringHomePage() {
         .filter((c) => participatingClubIds.includes(c.id) && c.id !== linkedClub?.id)
         .forEach((c) => list.push({ clubId: c.id, clubName: c.name }));
 
-      if (customOpponentName.trim() && !list.some((c) => c.clubName === customOpponentName.trim())) {
-        list.push({ clubId: `ext-${Date.now()}`, clubName: customOpponentName.trim() });
-      }
       pClubs = list.length > 0 ? list : undefined;
     }
 
@@ -535,23 +593,14 @@ export default function ClubGatheringHomePage() {
     setTargetPlayers(32);
     setGroupCount(8);
     setSelectedLetters(['A', 'B', 'C', 'D']);
-    if (myClubs.length > 0) {
-      setTournamentClubId(myClubs[0].id);
-      const other = clubs.find((c) => c.id !== myClubs[0].id);
-      if (other) {
-        setParticipatingClubIds([other.id]);
-        setTitle(`${myClubs[0].name.replace(' 파크골프 클럽', '')} vs ${other.name.replace(' 파크골프 클럽', '')} 32인 친선 대항전 ⚔️`);
-      } else {
-        setTitle(`${myClubs[0].name.replace(' 파크골프 클럽', '')} vs 부산 삼락 32인 친선 대항전 ⚔️`);
-      }
-    } else {
-      const first = clubs[0]?.id;
-      const second = clubs[1]?.id;
-      setTournamentClubId(first || '');
-      setParticipatingClubIds(second ? [second] : []);
-      setTitle('구미 동락 vs 부산 삼락 32인 친선 대항전 ⚔️');
-    }
-    setActiveHubTab('TOURNAMENTS');
+    // 대표님 지시: 임의로 상대 클럽을 지정하지 않고 완전한 백지 상태([])로 시작
+    setParticipatingClubIds([]);
+    const hostClub = myClubs[0] || clubs[0];
+    setTournamentClubId(hostClub?.id || '');
+    const hostName = hostClub ? hostClub.name.replace(' 파크골프 클럽', '').replace(' 클럽', '') : '우리 클럽';
+    setTitle(`${hostName} 클럽 대항전 ⚔️`);
+    setCreateModalSource('HUB');
+    handleTabSwitch('TOURNAMENTS');
     setTournamentViewMode('CREATE');
     setShowCreateModal(true);
   };
@@ -565,7 +614,8 @@ export default function ClubGatheringHomePage() {
     setGroupCount(16);
     setSelectedLetters(['A', 'B', 'C', 'D']);
     setTournamentClubId('');
-    setActiveHubTab('TOURNAMENTS');
+    setCreateModalSource('HUB');
+    handleTabSwitch('TOURNAMENTS');
     setTournamentViewMode('CREATE');
     setShowCreateModal(true);
   };
@@ -1128,6 +1178,32 @@ ${shareUrl}`;
     showToast(`⚔️ '${titleText}'이 개설되었습니다! 우리 클럽 출전 선수 ${players.length}명이 등록되었습니다.`);
   };
 
+  // 회장/총무 클럽 통합 관리실 오픈
+  const handleOpenClubManagement = (club: ParkGolfClub, defaultTab: 'PENDING' | 'MEMBERS' | 'RECRUIT' | 'MATCH' | 'CHRONICLE' = 'PENDING') => {
+    setManagingClub(club);
+    setManagingClubTab(defaultTab);
+    setEditRecruitStatus(club.recruitStatus || (club.isParkOnClub !== false ? 'RECRUITING' : 'ALWAYS'));
+    setEditRecruitQuota(club.recruitQuota !== undefined ? club.recruitQuota : 5);
+    setEditRecruitDate(club.recruitTargetDate || '');
+    setEditRecruitNotes(club.recruitNotes || '');
+  };
+
+  // 단원(회원) 모집 설정 저장
+  const handleSaveRecruitmentSettings = () => {
+    if (!managingClub) return;
+    const updated = ClubStorage.updateClubRecruitment(managingClub.id, {
+      recruitStatus: editRecruitStatus,
+      recruitQuota: Number(editRecruitQuota) || 0,
+      recruitTargetDate: editRecruitDate.trim(),
+      recruitNotes: editRecruitNotes.trim(),
+    });
+    if (updated) {
+      setManagingClub(updated);
+      refreshAllData();
+      showToast(`📢 '${managingClub.name}' 신규 단원 모집 설정이 저장되었습니다.`);
+    }
+  };
+
   // 카카오톡 클럽 가입 초청장 복사
   const handleCopyClubInvite = async (e: React.MouseEvent, club: ParkGolfClub) => {
     e.stopPropagation();
@@ -1171,9 +1247,10 @@ ${shareUrl}`;
 
   // 초청장 링크로 즉시 가입
   const handleDirectJoinByInvite = (club: ParkGolfClub) => {
+    const myName = applicantName || getDefaultSelfName() || '김대희(본인)';
     ClubStorage.directJoinViaInvite(club.id, {
-      name: '홍길동(본인)',
-      phone: '010-1234-5678',
+      name: myName,
+      phone: applicantPhone || '010-3814-1422',
     });
     refreshAllData();
     setShowClubBrowseModal(false);
@@ -1187,7 +1264,8 @@ ${shareUrl}`;
     setTournamentClubId(club.id);
     setSelectedCourseId(club.homeCourseId);
     setTitle(`[${club.name}] 정기 월례회`);
-    setActiveHubTab('TOURNAMENTS');
+    setCreateModalSource('MANAGING_CLUB');
+    handleTabSwitch('TOURNAMENTS');
     setShowCreateModal(true);
     showToast(`🏆 '${club.name}' 공식 대회/월례회 개설 화면으로 이동했습니다.`);
   };
@@ -1260,17 +1338,52 @@ ${shareUrl}`;
   const myClubs = clubs.filter((c) => myClubIds.includes(c.id));
   const otherClubs = clubs.filter((c) => !myClubIds.includes(c.id));
 
+  // --- 스마트 'N' 알림 상태 판별 로직 (대표님 맞춤: 번개/대회/클럽 독립 감지) ---
+  // 1. 번개 모임 활성 여부 (개인 1촌 번개 vs 클럽 전용 번개)
+  const hasActive1ChonFlash = Boolean(
+    lightningRounds.some((r) => r.status === 'RECRUITING' || r.status === 'FULL') ||
+    flashGatherings.some((f) => f.type === 'OPEN' && f.status !== 'CLOSED')
+  );
+  const hasActiveClubFlash = Boolean(
+    flashGatherings.some((f) => f.type === 'CLUB_ONLY' && f.status !== 'CLOSED')
+  );
+  const hasFlashNotice = hasActive1ChonFlash || hasActiveClubFlash;
+
+  // 2. 새 대회/대항전 활성 여부 (클럽 대항전 및 시·도 단위 공식대회)
+  const hasTournamentNotice = Boolean(
+    rooms.some(
+      (r) =>
+        (r.status === 'PLAYING' || r.status === 'RECRUITING') &&
+        (r.tournamentType === 'CLUB_MATCH' || r.tournamentType === 'REGIONAL_OPEN')
+    )
+  );
+
+  // 3. 클럽 자체 공지/초청장/승인대기/소속 클럽 활동 여부
+  const hasClubNotice = Boolean(
+    clubInvitations.length > 0 ||
+    hasActiveClubFlash ||
+    rooms.some((r) => r.tournamentType === 'CLUB_INTERNAL' && (r.status === 'PLAYING' || r.status === 'RECRUITING')) ||
+    myClubs.some((c) => (c.pendingMembers?.length || 0) > 0)
+  );
+
   return (
     <div className="p-3 max-w-xl mx-auto space-y-3 pb-12">
       {/* 1. 상단 네비게이션 헤더 */}
       <div className="flex items-center justify-between bg-white rounded-2xl p-3 shadow-xs border border-stone-200">
-        <Link
-          href="/"
-          className="flex items-center gap-1 text-xs font-black text-stone-700 hover:text-stone-900 transition active:scale-95"
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              router.back();
+            } else {
+              router.push('/');
+            }
+          }}
+          className="flex items-center gap-1 text-xs font-black text-stone-700 hover:text-stone-900 transition active:scale-95 cursor-pointer"
         >
           <ChevronLeft className="w-4 h-4" />
-          <span>홈으로</span>
-        </Link>
+          <span>이전으로</span>
+        </button>
         <div className="text-center">
           <h1 className="font-black text-sm text-stone-900 flex items-center justify-center gap-1.5">
             <Users className="w-4 h-4 text-purple-700" />
@@ -1280,7 +1393,21 @@ ${shareUrl}`;
             전국 파크골프 클럽 관리 · 공식 정기 월례회 &amp; 샷건 대회 운영 OS
           </p>
         </div>
-        <div className="w-12" />
+        {/* 대표님 요청: 상단 우측 닫기 (X) 버튼 누르면 항상 직전 화면으로 복귀 */}
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              router.back();
+            } else {
+              router.push('/');
+            }
+          }}
+          className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition cursor-pointer flex items-center justify-center"
+          title="닫기 (이전 화면으로)"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* 안내 토스트 피드백 (스크롤 위치와 상관없이 화면 하단에 항상 고정 플로팅) */}
@@ -1322,13 +1449,21 @@ ${shareUrl}`;
         {/* 탭 1: 내 클럽 바로가기 */}
         <button
           type="button"
-          onClick={() => setActiveHubTab('CLUBS')}
-          className={`py-2.5 px-1 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
+          onClick={() => handleTabSwitch('CLUBS')}
+          className={`relative py-2.5 px-1 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
             activeHubTab === 'CLUBS'
               ? 'bg-gradient-to-b from-emerald-600 to-emerald-800 text-white border-emerald-900 shadow-md ring-2 ring-emerald-400/40'
               : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
           }`}
         >
+          {hasClubNotice && (
+            <span
+              className="absolute top-1 right-1.5 w-3.5 h-3.5 bg-red-600 text-white text-[8.5px] font-black rounded-full flex items-center justify-center shadow-xs animate-pulse ring-1.5 ring-white shrink-0"
+              title="소속 클럽 공지/모임/초청 알림"
+            >
+              N
+            </span>
+          )}
           <Building2 className={`w-4 h-4 ${activeHubTab === 'CLUBS' ? 'text-amber-300' : 'text-emerald-700'}`} />
           <span className="whitespace-nowrap font-extrabold text-[11px]">클럽</span>
           <span
@@ -1343,13 +1478,21 @@ ${shareUrl}`;
         {/* 탭 2: 새 대회 개설 */}
         <button
           type="button"
-          onClick={() => setActiveHubTab('TOURNAMENTS')}
-          className={`py-2.5 px-1 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
+          onClick={() => handleTabSwitch('TOURNAMENTS')}
+          className={`relative py-2.5 px-1 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
             activeHubTab === 'TOURNAMENTS'
               ? 'bg-gradient-to-b from-purple-700 to-purple-900 text-white border-purple-950 shadow-md ring-2 ring-purple-400/40'
               : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
           }`}
         >
+          {hasTournamentNotice && (
+            <span
+              className="absolute top-1 right-1.5 w-3.5 h-3.5 bg-red-600 text-white text-[8.5px] font-black rounded-full flex items-center justify-center shadow-xs animate-pulse ring-1.5 ring-white shrink-0"
+              title="진행/모집 중인 새 대회·대항전 알림"
+            >
+              N
+            </span>
+          )}
           <Swords className={`w-4 h-4 ${activeHubTab === 'TOURNAMENTS' ? 'text-yellow-300' : 'text-purple-700'}`} />
           <span className="whitespace-nowrap font-extrabold text-[11px]">새 대회</span>
           <span
@@ -1364,13 +1507,21 @@ ${shareUrl}`;
         {/* 탭 3: 번개 모임 갖기 */}
         <button
           type="button"
-          onClick={() => setActiveHubTab('FLASH')}
-          className={`py-2.5 px-1 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
+          onClick={() => handleTabSwitch('FLASH')}
+          className={`relative py-2.5 px-1 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
             activeHubTab === 'FLASH'
               ? 'bg-gradient-to-b from-amber-500 to-amber-700 text-stone-950 border-amber-800 shadow-md ring-2 ring-amber-300/60'
               : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
           }`}
         >
+          {hasFlashNotice && (
+            <span
+              className="absolute top-1 right-1.5 w-3.5 h-3.5 bg-red-600 text-white text-[8.5px] font-black rounded-full flex items-center justify-center shadow-xs animate-pulse ring-1.5 ring-white shrink-0"
+              title="진행/모집 중인 번개 모임 알림"
+            >
+              N
+            </span>
+          )}
           <Zap className={`w-4 h-4 ${activeHubTab === 'FLASH' ? 'text-stone-950 fill-stone-950' : 'text-amber-600'}`} />
           <span className="whitespace-nowrap font-extrabold text-[11px]">번개 모임</span>
           <span
@@ -1393,12 +1544,20 @@ ${shareUrl}`;
             <button
               type="button"
               onClick={() => setClubSubTab('SHORTCUT')}
-              className={`py-2 px-1 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
+              className={`relative py-2 px-1 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
                 clubSubTab === 'SHORTCUT'
                   ? 'bg-gradient-to-b from-emerald-600 to-emerald-800 text-white border-emerald-900 shadow-md ring-2 ring-emerald-400/40'
                   : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
               }`}
             >
+              {hasClubNotice && (
+                <span
+                  className="absolute top-1 right-1.5 w-3.5 h-3.5 bg-red-600 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-xs animate-pulse ring-1 ring-white shrink-0"
+                  title="새로운 소속 클럽 알림 있음"
+                >
+                  N
+                </span>
+              )}
               <Building2 className={`w-4 h-4 ${clubSubTab === 'SHORTCUT' ? 'text-amber-300' : 'text-emerald-700'}`} />
               <span className="whitespace-nowrap font-extrabold text-[11px]">내 소속 클럽 바로가기</span>
             </button>
@@ -1418,7 +1577,10 @@ ${shareUrl}`;
 
             <button
               type="button"
-              onClick={() => setClubSubTab('BROWSE')}
+              onClick={() => {
+                setClubSubTab('BROWSE');
+                setShowClubBrowseModal(true);
+              }}
               className={`py-2 px-1 rounded-xl text-xs font-black transition flex flex-col items-center justify-center gap-1 cursor-pointer border ${
                 clubSubTab === 'BROWSE'
                   ? 'bg-gradient-to-b from-purple-700 to-purple-900 text-white border-purple-950 shadow-md ring-2 ring-purple-400/40'
@@ -1568,7 +1730,10 @@ ${shareUrl}`;
                       </button>
                       <button
                         type="button"
-                        onClick={() => setClubSubTab('BROWSE')}
+                        onClick={() => {
+                          setClubSubTab('BROWSE');
+                          setShowClubBrowseModal(true);
+                        }}
                         className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black rounded-xl cursor-pointer shadow-xs transition active:scale-95"
                       >
                         🔍 클럽 찾아보기 (가입)
@@ -1607,6 +1772,19 @@ ${shareUrl}`;
                   const isManager = isExecutive && (actualManager || rolePreviewMode === 'ADMIN');
                   const isPresident = isExecutive && !isManager && actualPresident;
                   const pendingCount = club.pendingMembers?.length || 0;
+
+                  const thisClubHasActiveGathering = Boolean(
+                    flashGatherings.some((f) => f.clubId === club.id && f.status !== 'CLOSED') ||
+                    rooms.some((r) => r.clubId === club.id && r.tournamentType === 'CLUB_INTERNAL' && (r.status === 'PLAYING' || r.status === 'RECRUITING'))
+                  );
+
+                  const thisClubHasActiveMatch = Boolean(
+                    rooms.some((r) =>
+                      (r.clubId === club.id || r.participatingClubs?.some((p) => p.clubId === club.id)) &&
+                      (r.tournamentType === 'CLUB_MATCH' || r.tournamentType === 'REGIONAL_OPEN') &&
+                      (r.status === 'PLAYING' || r.status === 'RECRUITING')
+                    )
+                  );
 
                   return (
                     <div
@@ -1706,8 +1884,7 @@ ${shareUrl}`;
                             <button
                               type="button"
                               onClick={() => {
-                                setManagingClub(club);
-                                setManagingClubTab(pendingCount > 0 ? 'PENDING' : 'MEMBERS');
+                                handleOpenClubManagement(club, pendingCount > 0 ? 'PENDING' : 'MEMBERS');
                               }}
                               className="py-2.5 px-1.5 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
                               title="신규 가입 승인 및 직책(회장/총무) 임명"
@@ -1720,9 +1897,17 @@ ${shareUrl}`;
                             <button
                               type="button"
                               onClick={() => setClubGatheringModal(club)}
-                              className="py-2.5 px-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-stone-950 font-black text-xs rounded-xl shadow-xs transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
+                              className="relative py-2.5 px-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-stone-950 font-black text-xs rounded-xl shadow-xs transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
                               title="클럽 월례회·정기전 개설 또는 당일 번개치기"
                             >
+                              {thisClubHasActiveGathering && (
+                                <span
+                                  className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-600 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-xs animate-pulse ring-1.5 ring-white shrink-0"
+                                  title="진행 중인 클럽 모임·번개 있음"
+                                >
+                                  N
+                                </span>
+                              )}
                               <Calendar className="w-3.5 h-3.5 text-stone-950 shrink-0" />
                               <span className="truncate">⛳ 모임·정기전</span>
                             </button>
@@ -1731,13 +1916,20 @@ ${shareUrl}`;
                             <button
                               type="button"
                               onClick={() => {
-                                setManagingClub(club);
-                                setManagingClubTab('MATCH');
+                                handleOpenClubManagement(club, 'MATCH');
                                 setMatchSelectedMemberIds(club.members.map((m) => m.id));
                               }}
-                              className="py-2.5 px-1.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
-                              title="타 클럽 지목 대항전 또는 전국 공개 대회 개설"
+                              className="relative py-2.5 px-1.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
+                              title="타 클럽 대항전 또는 전국 공개 대회 개설"
                             >
+                              {thisClubHasActiveMatch && (
+                                <span
+                                  className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-600 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-xs animate-pulse ring-1.5 ring-white shrink-0"
+                                  title="진행 중인 클럽 대항전 있음"
+                                >
+                                  N
+                                </span>
+                              )}
                               <Swords className="w-3.5 h-3.5 text-yellow-300 shrink-0" />
                               <span className="truncate">⚔️ 대회·대항전</span>
                             </button>
@@ -1759,14 +1951,19 @@ ${shareUrl}`;
                             <button
                               type="button"
                               onClick={() => {
-                                setSelectedFlashClubId(club.id);
-                                setFlashSubTab('CLUB_ONLY');
-                                setActiveHubTab('FLASH');
-                                showToast(`⚡ '${club.name}' 정기 모임 및 번개 탭으로 이동했습니다.`);
+                                setClubGatheringModal(club);
                               }}
-                              className="py-2.5 px-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-stone-950 font-black text-xs rounded-xl shadow-xs transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
-                              title="우리 클럽 번개 라운드 및 정기 모임 참가"
+                              className="relative py-2.5 px-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-stone-950 font-black text-xs rounded-xl shadow-xs transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
+                              title="우리 클럽 번개 라운드 및 정기 모임 현황 확인/참가"
                             >
+                              {thisClubHasActiveGathering && (
+                                <span
+                                  className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-600 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-xs animate-pulse ring-1.5 ring-white shrink-0"
+                                  title="진행 중인 클럽 모임·번개 있음"
+                                >
+                                  N
+                                </span>
+                              )}
                               <Zap className="w-3.5 h-3.5 text-stone-950 shrink-0" />
                               <span className="truncate">⚡ 번개·정기전</span>
                             </button>
@@ -1779,9 +1976,17 @@ ${shareUrl}`;
                                 setTournamentViewMode('LIVE_BOARD');
                                 showToast(`🏆 '${club.name}' 출전 대항전 및 공식 대회 전광판으로 이동했습니다.`);
                               }}
-                              className="py-2.5 px-1.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
+                              className="relative py-2.5 px-1.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
                               title="진행 중인 클럽 대항전 및 공식 대회 전광판 확인"
                             >
+                              {thisClubHasActiveMatch && (
+                                <span
+                                  className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-600 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-xs animate-pulse ring-1.5 ring-white shrink-0"
+                                  title="진행 중인 클럽 대항전 있음"
+                                >
+                                  N
+                                </span>
+                              )}
                               <Trophy className="w-3.5 h-3.5 text-yellow-300 shrink-0" />
                               <span className="truncate">🏆 대회·대항전</span>
                             </button>
@@ -1951,122 +2156,303 @@ ${shareUrl}`;
           {/* ===================================================================== */}
           {/* 서브 탭 3: 클럽 찾아보기 가입 */}
           {/* ===================================================================== */}
-          {clubSubTab === 'BROWSE' && (
-            <div className="bg-white rounded-2xl p-4 border-2 border-purple-200 shadow-sm space-y-3.5 animate-fadeIn">
-              <div className="border-b border-stone-200 pb-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-xl bg-purple-100 text-purple-900 flex items-center justify-center font-black text-sm">
-                    🔍
-                  </span>
-                  <div>
-                    <h3 className="font-black text-sm sm:text-base text-stone-900">전국 클럽 찾아보기 및 가입</h3>
-                    <p className="text-[11px] text-stone-500 font-bold">
-                      원하는 클럽에 가입 신청을 보내면 총무님의 승인 후 정회원으로 등록됩니다.
-                    </p>
+          {clubSubTab === 'BROWSE' && (() => {
+            const searchTerm = (browseConfirmedSearch || clubBrowseSearch).trim().toLowerCase();
+            const filtered = clubs
+              .filter((c) => {
+                if (onlyRecruitingFilter) {
+                  const isRec = c.recruitStatus === 'RECRUITING' || c.recruitStatus === 'ALWAYS';
+                  if (!isRec) return false;
+                }
+                if (!searchTerm) return true;
+                return (
+                  c.name.toLowerCase().includes(searchTerm) ||
+                  c.region.toLowerCase().includes(searchTerm) ||
+                  c.homeCourseName.toLowerCase().includes(searchTerm) ||
+                  (c.description && c.description.toLowerCase().includes(searchTerm))
+                );
+              })
+              .sort((a, b) => {
+                const aIsParkOn = a.isParkOnClub !== false ? 1 : 0;
+                const bIsParkOn = b.isParkOnClub !== false ? 1 : 0;
+                if (aIsParkOn !== bIsParkOn) return bIsParkOn - aIsParkOn;
+
+                const aRec = a.recruitStatus === 'RECRUITING' || a.recruitStatus === 'ALWAYS' ? 2 : a.recruitStatus === 'SCHEDULED' ? 1 : 0;
+                const bRec = b.recruitStatus === 'RECRUITING' || b.recruitStatus === 'ALWAYS' ? 2 : b.recruitStatus === 'SCHEDULED' ? 1 : 0;
+                if (aRec !== bRec) return bRec - aRec;
+
+                return (b.memberCount || 0) - (a.memberCount || 0);
+              });
+
+            return (
+              <div className="bg-white rounded-2xl p-4 border-2 border-purple-200 shadow-sm space-y-3.5 animate-fadeIn">
+                <div className="border-b border-stone-200 pb-3 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-xl bg-purple-100 text-purple-900 flex items-center justify-center font-black text-sm">
+                        🔍
+                      </span>
+                      <div>
+                        <h3 className="font-black text-sm sm:text-base text-stone-900">전국 클럽 찾아보기 및 가입</h3>
+                        <p className="text-[11px] text-stone-500 font-bold">
+                          원하는 클럽에 가입 신청을 보내면 총무님의 승인 후 정회원으로 등록됩니다.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowClubBrowseModal(true)}
+                      className="px-2.5 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-900 text-xs font-black rounded-xl cursor-pointer transition shrink-0 flex items-center gap-1 shadow-2xs"
+                    >
+                      <span>🪟</span>
+                      <span className="hidden sm:inline">팝업창으로</span>
+                      <span>크게보기</span>
+                    </button>
+                  </div>
+
+                  {/* 실시간 클럽 검색창 & 검색 버튼 */}
+                  <div className="flex gap-2 pt-1">
+                    <div className="relative flex-1">
+                      <Search className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        value={clubBrowseSearch}
+                        onChange={(e) => setClubBrowseSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            setBrowseConfirmedSearch(clubBrowseSearch.trim());
+                          }
+                        }}
+                        placeholder="지역(예: 구미, 대구, 부산) 또는 클럽명 입력..."
+                        className="w-full pl-9 pr-8 py-2 bg-stone-50 border border-stone-300 focus:border-purple-500 rounded-xl text-xs font-bold outline-none focus:bg-white"
+                      />
+                      {clubBrowseSearch && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setClubBrowseSearch('');
+                            setBrowseConfirmedSearch('');
+                          }}
+                          className="absolute right-2.5 top-2 text-stone-400 hover:text-stone-600 text-xs font-bold cursor-pointer p-0.5"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setBrowseConfirmedSearch(clubBrowseSearch.trim())}
+                      className="px-3.5 py-2 bg-purple-700 hover:bg-purple-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs cursor-pointer shrink-0 transition flex items-center gap-1"
+                    >
+                      <Search className="w-3.5 h-3.5 text-amber-300" />
+                      <span>검색</span>
+                    </button>
+                  </div>
+
+                  {/* 단원(회원) 모집 필터 옵션 */}
+                  <div className="flex items-center justify-between text-xs pt-1 px-1">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={onlyRecruitingFilter}
+                        onChange={(e) => setOnlyRecruitingFilter(e.target.checked)}
+                        className="w-4 h-4 accent-emerald-600 rounded cursor-pointer"
+                      />
+                      <span className="font-extrabold text-stone-700 text-xs">
+                        🟢 신규 단원(회원) 모집 중인 클럽만 보기
+                      </span>
+                    </label>
+                    <span className="text-[10px] font-bold text-stone-400">
+                      {onlyRecruitingFilter ? '모집 중 필터 켬' : '전체 상태'}
+                    </span>
+                  </div>
+
+                  {/* 검색 결과 수 안내 */}
+                  <div className="text-[11px] font-black pt-0.5">
+                    {searchTerm ? (
+                      filtered.length > 0 ? (
+                        <span className="text-purple-900">
+                          ✅ '{browseConfirmedSearch || clubBrowseSearch}' 검색 결과: 총 {filtered.length}개 클럽 (👑 파크온 가입 클럽 1순위)
+                        </span>
+                      ) : (
+                        <span className="text-rose-600">
+                          ❌ '{browseConfirmedSearch || clubBrowseSearch}' 검색 결과가 없습니다 (0건)
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-stone-500 font-bold">
+                        전체 클럽 목록 (총 {clubs.length}곳 · 👑 파크온 가입 클럽 최우선 정렬)
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {/* 실시간 클럽 검색창 */}
-                <div className="relative mt-3">
-                  <Search className="w-4 h-4 text-stone-400 absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    value={clubBrowseSearch}
-                    onChange={(e) => setClubBrowseSearch(e.target.value)}
-                    placeholder="클럽 이름 또는 지역으로 검색..."
-                    className="w-full pl-9 pr-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold focus:outline-none focus:border-purple-500 focus:bg-white"
-                  />
-                  {clubBrowseSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setClubBrowseSearch('')}
-                      className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-600 text-xs font-bold cursor-pointer"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* 클럽 검색 목록 */}
-              <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-0.5">
-                {clubs
-                  .filter((c) => {
-                    if (!clubBrowseSearch.trim()) return true;
-                    const term = clubBrowseSearch.trim().toLowerCase();
-                    return (
-                      c.name.toLowerCase().includes(term) ||
-                      c.region.toLowerCase().includes(term) ||
-                      c.homeCourseName.toLowerCase().includes(term)
-                    );
-                  })
-                  .map((club) => {
-                    const isJoined = myClubIds.includes(club.id);
-
-                    return (
-                      <div
-                        key={club.id}
-                        className={`p-3.5 rounded-2xl border transition space-y-2 ${
-                          isJoined
-                            ? 'bg-emerald-50/60 border-emerald-300'
-                            : 'bg-stone-50 hover:bg-stone-100/80 border-stone-200'
-                        }`}
+                {/* 클럽 검색 목록 */}
+                <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-0.5">
+                  {filtered.length === 0 ? (
+                    <div className="p-6 bg-stone-50 border-2 border-dashed border-stone-300 rounded-2xl text-center space-y-3">
+                      <div className="w-10 h-10 rounded-full bg-stone-200 text-stone-500 mx-auto flex items-center justify-center text-lg font-black">
+                        🔍
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="font-black text-stone-900 text-sm">
+                          {searchTerm ? `'${browseConfirmedSearch || clubBrowseSearch}' 검색 결과가 없습니다 (0건)` : '등록된 클럽이 없습니다'}
+                        </p>
+                        <p className="text-xs text-stone-500 font-bold">
+                          현재 등록된 해당 지역 또는 클럽이 없습니다. 직접 첫 번째 클럽을 창단해보세요!
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setClubSubTab('CREATE')}
+                        className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black text-xs rounded-xl shadow-xs active:scale-95 cursor-pointer"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
+                        ➕ 새 클럽 직접 창단하기
+                      </button>
+                    </div>
+                  ) : (
+                    filtered.map((club) => {
+                      const isJoined = myClubIds.includes(club.id);
+                      const isParkOn = club.isParkOnClub !== false;
+
+                      return (
+                        <div
+                          key={club.id}
+                          className={`p-3.5 rounded-2xl border-2 transition space-y-2 ${
+                            isParkOn
+                              ? 'bg-gradient-to-br from-amber-50/70 via-white to-orange-50/50 border-amber-400 shadow-xs'
+                              : isJoined
+                              ? 'bg-emerald-50/60 border-emerald-300'
+                              : 'bg-stone-50 hover:bg-stone-100/80 border-stone-200'
+                          }`}
+                        >
+                          {/* 클럽 구분 배지 (파크온 가입 클럽 최우선 강조 & 단원 모집 상태) */}
+                          <div className="flex items-center justify-between gap-1 flex-wrap">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-black text-sm text-stone-900">{club.name}</span>
-                              {isJoined && (
-                                <span className="bg-emerald-700 text-white text-[9px] font-black px-1.5 py-0.2 rounded-md">
-                                  가입됨
+                              {isParkOn ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-stone-950 font-black text-[10px] shadow-xs border border-amber-600/40">
+                                  <span>👑</span>
+                                  <span>파크온 가입 클럽</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-200 text-stone-600 font-bold text-[10px]">
+                                  일반 동호회
+                                </span>
+                              )}
+
+                              {/* 단원 모집 상태 배지 */}
+                              {club.recruitStatus === 'RECRUITING' && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 font-black text-[10px]">
+                                  <span>🟢</span>
+                                  <span>단원 모집 중 {club.recruitQuota ? `(${club.recruitQuota}명)` : ''}</span>
+                                </span>
+                              )}
+                              {club.recruitStatus === 'ALWAYS' && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 font-black text-[10px]">
+                                  <span>🟢</span>
+                                  <span>단원 상시 모집</span>
+                                </span>
+                              )}
+                              {club.recruitStatus === 'SCHEDULED' && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 font-black text-[10px]">
+                                  <span>⏳</span>
+                                  <span>단원 모집 예정</span>
+                                </span>
+                              )}
+                              {club.recruitStatus === 'CLOSED' && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-200 text-stone-600 font-bold text-[10px]">
+                                  <span>🔒</span>
+                                  <span>모집 마감 (모집 없음)</span>
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-stone-500 font-bold mt-0.5">
-                              📍 {club.region} · {club.homeCourseName} (회원 {club.memberCount}명)
-                            </p>
+
+                            {isJoined && (
+                              <span className="bg-emerald-700 text-white text-[10px] font-black px-2 py-0.5 rounded-md">
+                                내 소속 클럽
+                              </span>
+                            )}
                           </div>
 
-                          <div className="flex flex-col gap-1 shrink-0">
-                            {isJoined ? (
-                              <Link
-                                href={`/club/${club.id}`}
-                                className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 text-center"
-                              >
-                                바로가기
-                              </Link>
-                            ) : (
-                              <>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="space-y-1">
+                              <h4 className="font-black text-sm text-stone-900">{club.name}</h4>
+                              <p className="text-xs text-stone-600 font-bold">
+                                📍 {club.region} · {club.homeCourseName} (회원 {club.memberCount}명)
+                              </p>
+                              <p className="text-[11px] text-stone-400 font-medium">
+                                회장: {club.presidentName || '미지정'} · 총무: {club.managerName || '미지정'}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-col gap-1 shrink-0">
+                              {isJoined ? (
+                                <Link
+                                  href={`/club/${club.id}`}
+                                  className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 text-center flex items-center justify-center gap-1"
+                                >
+                                  <span>바로가기</span>
+                                  <span>⛳</span>
+                                </Link>
+                              ) : club.recruitStatus === 'CLOSED' ? (
+                                <button
+                                  disabled
+                                  className="px-3 py-1.5 bg-stone-200 text-stone-400 font-bold text-xs rounded-xl cursor-not-allowed text-center"
+                                >
+                                  🔒 모집 마감
+                                </button>
+                              ) : club.recruitStatus === 'SCHEDULED' ? (
                                 <button
                                   type="button"
-                                  onClick={() => setApplyingClub(club)}
-                                  className="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 cursor-pointer text-center"
+                                  onClick={() => showToast(`📅 [${club.name}] ${club.recruitTargetDate || '추후'}에 신규 단원 정식 모집 공고가 오픈됩니다.`)}
+                                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-xs cursor-pointer text-center active:scale-95"
                                 >
-                                  가입 신청
+                                  모집 예정 알림 🔔
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDirectJoinByInvite(club)}
-                                  className="px-2 py-1 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-[10px] rounded-lg cursor-pointer text-center"
-                                >
-                                  초청 즉시가입
-                                </button>
-                              </>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => setApplyingClub(club)}
+                                    className="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 cursor-pointer text-center"
+                                  >
+                                    가입 신청 ✍️
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDirectJoinByInvite(club)}
+                                    className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-950 font-black text-[10px] rounded-lg cursor-pointer text-center border border-amber-300 active:scale-95"
+                                  >
+                                    초청 즉시가입 ⚡
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 단원 모집 요강 & 소개글 */}
+                          <div className="space-y-1">
+                            {club.recruitNotes && (
+                              <div className="text-[11px] font-bold text-emerald-900 bg-emerald-50/80 p-2 rounded-xl border border-emerald-200/60 flex items-start gap-1.5">
+                                <span className="shrink-0">📢</span>
+                                <span>{club.recruitNotes}</span>
+                              </div>
+                            )}
+                            {club.description && (
+                              <p className="text-[11px] text-stone-600 font-medium leading-relaxed bg-white/80 p-2 rounded-xl border border-stone-200/60">
+                                {club.description}
+                              </p>
                             )}
                           </div>
                         </div>
-
-                        {club.description && (
-                          <p className="text-[11px] text-stone-600 font-medium leading-relaxed">
-                            {club.description}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
@@ -2075,118 +2461,54 @@ ${shareUrl}`;
       {/* ========================================================================= */}
       {activeHubTab === 'TOURNAMENTS' && (
         <div className="space-y-3 animate-fadeIn">
-          {/* 대회 성격 및 규정 배너 */}
-          <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-stone-900 text-white rounded-3xl p-5 shadow-md space-y-3 border-2 border-purple-500/40">
-            <div className="flex items-center justify-between">
-              <span className="bg-purple-500/30 text-yellow-300 border border-yellow-400/40 text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                <Swords className="w-3.5 h-3.5 text-yellow-300" />
-                <span>클럽 대항전 &amp; 시·도 공식 대회 주최 센터</span>
-              </span>
-              <span className="text-[11px] text-purple-200 font-bold">신페리오 · 샷건 동시 티오프</span>
-            </div>
-            <div>
-              <h2 className="text-lg font-black leading-snug">
-                단일 클럽 월례회를 넘어,<br />클럽 간 대항전 &amp; 시·도 공식 대회를 개설하세요!
-              </h2>
-              <p className="text-xs text-purple-100/90 mt-1.5 leading-relaxed font-medium">
-                단일 클럽 내부 월례회는 <strong className="text-amber-300">[내 클럽 바로가기]</strong>에서 진행하며,{' '}
-                <strong className="text-yellow-300">[새 대회 개설]</strong>은 2개 이상의 클럽 간 맞붙는{' '}
-                <strong>[클럽 대항전(교류전)]</strong> 및 구미시·대구시 등 <strong>[시·도 단위 공식 오픈 대회]</strong>를 개설하고
-                실시간 디지털 전광판을 송출하는 특화 공간입니다.
-              </p>
-            </div>
-
-            {/* 서브 뷰 토글: 대회 개설 모드 vs 실시간 전광판 보기 */}
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setTournamentViewMode('CREATE')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer border ${
-                  tournamentViewMode === 'CREATE'
-                    ? 'bg-yellow-400 text-purple-950 border-yellow-300 shadow-md font-black'
-                    : 'bg-purple-950/60 text-purple-200 border-purple-700/60 hover:bg-purple-900'
-                }`}
-              >
-                <Plus className="w-4 h-4" />
-                <span>대회 개설 센터</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTournamentViewMode('LIVE_BOARD')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer border ${
-                  tournamentViewMode === 'LIVE_BOARD'
-                    ? 'bg-yellow-400 text-purple-950 border-yellow-300 shadow-md font-black'
-                    : 'bg-purple-950/60 text-purple-200 border-purple-700/60 hover:bg-purple-900'
-                }`}
-              >
-                <Trophy className="w-4 h-4 text-amber-300" />
-                <span>실시간 전광판 ({rooms.length}개 방)</span>
-              </button>
-            </div>
+          {/* 서브 뷰 토글: [대회 개설 센터] vs [실시간 전광판] */}
+          <div className="bg-white p-1.5 rounded-2xl border-2 border-stone-200 shadow-sm grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setTournamentViewMode('CREATE')}
+              className={`py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer border ${
+                tournamentViewMode === 'CREATE'
+                  ? 'bg-gradient-to-r from-purple-700 to-purple-800 text-white border-purple-900 shadow-sm'
+                  : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+              }`}
+            >
+              <Plus className="w-4 h-4" />
+              <span>대회 개설 센터</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTournamentViewMode('LIVE_BOARD')}
+              className={`py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer border ${
+                tournamentViewMode === 'LIVE_BOARD'
+                  ? 'bg-gradient-to-r from-purple-700 to-purple-800 text-white border-purple-900 shadow-sm'
+                  : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+              }`}
+            >
+              <Trophy className={`w-4 h-4 ${tournamentViewMode === 'LIVE_BOARD' ? 'text-yellow-300' : 'text-purple-600'}`} />
+              <span>실시간 전광판 ({rooms.length}개 방)</span>
+            </button>
           </div>
 
-          {/* 서브 뷰 1: 대회 개설 센터 */}
+          {/* 서브 뷰 1: 대회 개설 센터 (대표님 지시: 잡다한 글자/카드 전면 삭제, 2대 원터치 버튼만 심플 표출) */}
           {tournamentViewMode === 'CREATE' && (
-            <div className="space-y-3">
-              {/* 대표님 요청: 2대 핵심 대회 모드 카드 (클럽 대항전 vs 시·도 공식 대회) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {/* 카드 A: [클럽 대항전 (교류전)] */}
-                <div className="bg-gradient-to-br from-purple-50 via-white to-purple-50/40 p-4 rounded-3xl border-2 border-purple-300 shadow-sm space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="bg-purple-700 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                      <Swords className="w-3 h-3 text-yellow-300" />
-                      <span>클럽 간 자존심 대결</span>
-                    </span>
-                    <span className="text-[11px] text-purple-700 font-bold">2개 이상 클럽</span>
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-purple-950 flex items-center gap-1.5">
-                      <span>⚔️ 클럽 대항전 (교류전) 개설</span>
-                    </h3>
-                    <p className="text-xs text-stone-600 mt-1 leading-relaxed font-medium">
-                      우리 클럽과 상대 클럽을 지정하여 클럽 간 친선 교류전을 개최합니다.
-                      클럽별 대표 선수의 스코어를 합산하여 클럽 우승을 가립니다!
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleOpenClubMatchTournament}
-                    className="w-full min-h-[48px] bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 text-white font-black text-xs rounded-xl shadow-md transition active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer border border-purple-600"
-                  >
-                    <Swords className="w-4 h-4 text-yellow-300" />
-                    <span>⚔️ 클럽 대항전 개설하기 ▶</span>
-                  </button>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={handleOpenClubMatchTournament}
+                className="w-full py-4 px-4 bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 active:scale-98 text-white font-black text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer border-2 border-purple-600"
+              >
+                <Swords className="w-5 h-5 text-yellow-300 shrink-0" />
+                <span>클럽 대항전 개설하기</span>
+              </button>
 
-                {/* 카드 B: [시·도 단위 공식 오픈 대회] */}
-                <div className="bg-gradient-to-br from-amber-50 via-white to-amber-50/40 p-4 rounded-3xl border-2 border-amber-300 shadow-sm space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="bg-amber-600 text-stone-950 text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                      <Trophy className="w-3 h-3 text-stone-950" />
-                      <span>시·군·구·도 공식</span>
-                    </span>
-                    <span className="text-[11px] text-amber-800 font-bold">전체 동호인 오픈</span>
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-stone-950 flex items-center gap-1.5">
-                      <span>🏆 시·도 공식 대회 (구미시배 등)</span>
-                    </h3>
-                    <p className="text-xs text-stone-600 mt-1 leading-relaxed font-medium">
-                      구미시장배, 대구시 협회장배 등 시·도 단위 공식 대회를 주최합니다.
-                      신페리오 핸디캡 산출, 샷건 티오프, 대형 실시간 전광판을 지원합니다!
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleOpenRegionalOpenTournament}
-                    className="w-full min-h-[48px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-black text-xs rounded-xl shadow-md transition active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer border border-amber-500"
-                  >
-                    <Trophy className="w-4 h-4 text-stone-950" />
-                    <span>🏆 시·도 단위 공식대회 개설하기 ▶</span>
-                  </button>
-                </div>
-              </div>
-
+              <button
+                type="button"
+                onClick={handleOpenRegionalOpenTournament}
+                className="w-full py-4 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-98 text-stone-950 font-black text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer border-2 border-amber-600"
+              >
+                <Trophy className="w-5 h-5 text-stone-950 shrink-0" />
+                <span>시도 단위 대회 개설하기</span>
+              </button>
             </div>
           )}
 
@@ -2370,7 +2692,7 @@ ${shareUrl}`;
                           </span>
                         </span>
                         <span className="text-[10px] text-purple-700 font-extrabold bg-purple-200/70 px-2 py-0.5 rounded-md">
-                          {room.matchInviteType === 'OPEN_CHALLENGE' ? '📢 전국 오픈 챌린지' : '⚔️ 지정 클럽 지목전'}
+                          {room.matchInviteType === 'OPEN_CHALLENGE' ? '📢 전국 오픈 챌린지' : '⚔️ 클럽 대항전'}
                         </span>
                       </div>
                       <button
@@ -2405,33 +2727,25 @@ ${shareUrl}`;
       {/* ========================================================================= */}
       {activeHubTab === 'FLASH' && (
         <div className="space-y-3 animate-fadeIn">
-          {/* 번개 모임 메인 배너 */}
-          <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-emerald-900 text-white rounded-3xl p-5 shadow-md space-y-2 border-2 border-amber-400/50">
-            <div className="flex items-center justify-between">
-              <span className="bg-amber-400 text-stone-950 text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                <Zap className="w-3.5 h-3.5 fill-stone-950" />
-                <span>파크온 번개 모임 센터</span>
-              </span>
-              <span className="text-xs text-amber-200 font-bold">1촌 안심 번개 · 클럽 번개</span>
-            </div>
-            <h2 className="text-base font-black">실시간 파크골프 번개 라운드</h2>
-            <p className="text-xs text-amber-100 leading-relaxed font-medium">
-              불특정 다수가 아닌 <strong>[내 1촌 동반자 네트워크]</strong>에 번개를 띄워 [수락]한 동반자들과 안심 라운드를 즐기거나,{' '}
-              <strong>[소속 클럽]</strong> 회원들 전용 번개를 바로 시작하세요!
-            </p>
-          </div>
-
           {/* 2대 번개 서브 탭 (1촌 전용 번개 vs 클럽원 전용 번개) */}
           <div className="bg-white p-1.5 rounded-2xl border-2 border-stone-200 shadow-sm grid grid-cols-2 gap-1.5">
             <button
               type="button"
               onClick={() => setFlashSubTab('1CHON')}
-              className={`py-3 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer border ${
+              className={`relative py-3 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer border ${
                 flashSubTab === '1CHON'
                   ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-emerald-800 shadow-sm'
                   : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
               }`}
             >
+              {hasActive1ChonFlash && (
+                <span
+                  className="absolute top-1 right-1.5 w-3.5 h-3.5 bg-red-600 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-xs animate-pulse ring-1 ring-white shrink-0"
+                  title="진행 중인 1촌 번개 있음"
+                >
+                  N
+                </span>
+              )}
               <Heart className={`w-4 h-4 ${flashSubTab === '1CHON' ? 'text-amber-300 fill-amber-300' : 'text-emerald-700'}`} />
               <span className="text-xs font-black">⚡ 내 1촌 전용 번개</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
@@ -2444,12 +2758,20 @@ ${shareUrl}`;
             <button
               type="button"
               onClick={() => setFlashSubTab('CLUB_ONLY')}
-              className={`py-3 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer border ${
+              className={`relative py-3 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer border ${
                 flashSubTab === 'CLUB_ONLY'
                   ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 border-amber-700 shadow-sm'
                   : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
               }`}
             >
+              {hasActiveClubFlash && (
+                <span
+                  className="absolute top-1 right-1.5 w-3.5 h-3.5 bg-red-600 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-xs animate-pulse ring-1 ring-white shrink-0"
+                  title="진행 중인 클럽원 번개 있음"
+                >
+                  N
+                </span>
+              )}
               <Users className={`w-4 h-4 ${flashSubTab === 'CLUB_ONLY' ? 'text-stone-950' : 'text-amber-600'}`} />
               <span className="text-xs font-black">👥 클럽원 전용 번개</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
@@ -2723,88 +3045,38 @@ ${shareUrl}`;
           {/* 서브 탭 2: [클럽원 전용 번개] */}
           {flashSubTab === 'CLUB_ONLY' && (
             <div className="space-y-3 animate-fadeIn">
-              {/* 대표님 요청: 자기가 속한 클럽 선택 바 */}
-              <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
-                <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-                  <div className="flex items-center gap-1.5">
-                    <Building2 className="w-4 h-4 text-amber-600" />
-                    <h3 className="text-xs font-black text-stone-900">
-                      소속 클럽 선택 (자기가 속한 클럽 전용 번개)
-                    </h3>
-                  </div>
-                  <span className="text-[10px] text-stone-400 font-bold">회원끼리만 라운드</span>
-                </div>
+              {/* 대표님 요청: 소속 클럽 선택 박스 전면 제거, 슬림한 '번개 개설하기' 버튼 단독 배치 (작은 번개 아이콘) */}
+              <button
+                type="button"
+                onClick={() => {
+                  const targetClub = myClubs[0] || clubs.find((c) => c.id === selectedFlashClubId) || clubs[0];
+                  if (targetClub) {
+                    setSelectedFlashClubId(targetClub.id);
+                  }
+                  setShowCreateClubFlashModal(true);
+                }}
+                className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-98 text-stone-950 font-black text-xs rounded-2xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-amber-500"
+              >
+                <Zap className="w-3.5 h-3.5 text-stone-950 fill-stone-950 shrink-0" />
+                <span>번개 개설하기</span>
+              </button>
 
-                {myClubs.length === 0 ? (
-                  <div className="text-center py-4 space-y-2">
-                    <p className="text-xs text-stone-500 font-bold">소속된 클럽이 없습니다.</p>
-                    <button
-                      type="button"
-                      onClick={() => setActiveHubTab('CLUBS')}
-                      className="px-4 py-2 bg-emerald-700 text-white text-xs font-black rounded-xl"
-                    >
-                      [내 클럽 바로가기]에서 클럽 가입하기
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    {/* 클럽 선택 칩 */}
-                    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                      {myClubs.map((club) => (
-                        <button
-                          key={club.id}
-                          type="button"
-                          onClick={() => setSelectedFlashClubId(club.id)}
-                          className={`shrink-0 py-2 px-3 rounded-xl text-xs font-black transition cursor-pointer border flex items-center gap-1.5 ${
-                            selectedFlashClubId === club.id
-                              ? 'bg-amber-500 text-stone-950 border-amber-600 shadow-xs ring-2 ring-amber-300'
-                              : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
-                          }`}
-                        >
-                          <span>🏛️</span>
-                          <span>{club.name}</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* 선택된 클럽 요약 & 번개 개설 버튼 */}
-                    {(() => {
-                      const selClub = clubs.find((c) => c.id === selectedFlashClubId) || myClubs[0];
-                      if (!selClub) return null;
-                      return (
-                        <div className="pt-1 space-y-2">
-                          <div className="flex items-center justify-between text-xs bg-stone-50 p-2.5 rounded-xl border border-stone-200">
-                            <span className="font-bold text-stone-700">홈구장: {selClub.homeCourseName}</span>
-                            <span className="font-black text-emerald-800">소속 회원 {selClub.memberCount}명</span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => setShowCreateClubFlashModal(true)}
-                            className="w-full min-h-[52px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-98 text-stone-950 font-black text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer border border-amber-500"
-                          >
-                            <Zap className="w-5 h-5 text-stone-950 fill-stone-950" />
-                            <span>⚡ {selClub.name} 전용 번개 개설하기</span>
-                          </button>
-                        </div>
-                      );
-                    })()}
-                  </>
-                )}
-              </div>
-
-              {/* 선택된 클럽의 번개 모집 목록 */}
+              {/* 클럽 번개 모집 목록 */}
               <div className="space-y-2.5">
                 {(() => {
-                  const filtered = flashGatherings.filter((g) => g.clubId === selectedFlashClubId);
-                  const selClub = clubs.find((c) => c.id === selectedFlashClubId);
+                  const currentClubId = selectedFlashClubId || myClubs[0]?.id || clubs[0]?.id;
+                  const selClub = clubs.find((c) => c.id === currentClubId) || myClubs[0];
+                  const filtered = flashGatherings.filter((g) =>
+                    g.type === 'CLUB_ONLY' &&
+                    (currentClubId ? g.clubId === currentClubId : true)
+                  );
 
                   return (
                     <>
                       <div className="flex items-center justify-between text-xs font-black text-stone-800 px-1">
                         <span className="flex items-center gap-1.5">
-                          <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-                          <span>{selClub?.name || '클럽'} 번개 모집 ({filtered.length}개)</span>
+                          <Zap className="w-4 h-4 text-amber-500 fill-amber-500 shrink-0" />
+                          <span>{selClub?.name ? `${selClub.name} ` : ''}번개 모집 ({filtered.length}개)</span>
                         </span>
                       </div>
 
@@ -3120,74 +3392,324 @@ ${shareUrl}`;
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 2: 전국 클럽 찾아보기 및 가입 신청 모달 */}
+      {/* MODAL 2: 전국 클럽 찾아보기 및 가입 신청 모달 (팝업창) */}
       {/* ========================================================================= */}
-      {showClubBrowseModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-stone-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Search className="w-5 h-5 text-amber-300" />
-                <h3 className="font-extrabold text-base">전국 파크골프 클럽 찾아보기</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowClubBrowseModal(false)}
-                className="text-stone-300 hover:text-white p-1 rounded-lg cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {showClubBrowseModal && (() => {
+        const searchTerm = (browseConfirmedSearch || clubBrowseSearch).trim().toLowerCase();
+        const filtered = clubs
+          .filter((c) => {
+            if (onlyRecruitingFilter) {
+              const isRec = c.recruitStatus === 'RECRUITING' || c.recruitStatus === 'ALWAYS';
+              if (!isRec) return false;
+            }
+            if (!searchTerm) return true;
+            return (
+              c.name.toLowerCase().includes(searchTerm) ||
+              c.region.toLowerCase().includes(searchTerm) ||
+              c.homeCourseName.toLowerCase().includes(searchTerm) ||
+              (c.description && c.description.toLowerCase().includes(searchTerm))
+            );
+          })
+          .sort((a, b) => {
+            // 1순위: 파크온 공식 가입 클럽 최우선 상단 정렬
+            const aIsParkOn = a.isParkOnClub !== false ? 1 : 0;
+            const bIsParkOn = b.isParkOnClub !== false ? 1 : 0;
+            if (aIsParkOn !== bIsParkOn) return bIsParkOn - aIsParkOn;
 
-            <div className="p-4 space-y-3 max-h-[75vh] overflow-y-auto">
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-950 font-bold leading-relaxed">
-                ℹ️ 원하는 클럽에 <span className="font-black text-emerald-800">[가입 신청]</span>을 하시면 총무님의 승인 후 정회원으로 등록됩니다. 초청장을 받으신 경우 바로 가입도 가능합니다.
-              </div>
+            // 2순위: 단원 모집 중인 클럽 우선 (RECRUITING / ALWAYS > SCHEDULED > CLOSED)
+            const aRec = a.recruitStatus === 'RECRUITING' || a.recruitStatus === 'ALWAYS' ? 2 : a.recruitStatus === 'SCHEDULED' ? 1 : 0;
+            const bRec = b.recruitStatus === 'RECRUITING' || b.recruitStatus === 'ALWAYS' ? 2 : b.recruitStatus === 'SCHEDULED' ? 1 : 0;
+            if (aRec !== bRec) return bRec - aRec;
 
-              {otherClubs.length === 0 && (
-                <div className="p-6 text-center text-xs text-stone-500 font-bold">
-                  현재 등록된 모든 클럽에 이미 가입되어 있습니다!
+            // 3순위: 회원 수 많은 순
+            return (b.memberCount || 0) - (a.memberCount || 0);
+          });
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[85vh]">
+              {/* 모달 상단 헤더 */}
+              <div className="bg-gradient-to-r from-purple-950 via-purple-900 to-stone-900 text-white p-4 flex items-center justify-between shrink-0 shadow-sm border-b border-purple-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-stone-950 flex items-center justify-center font-black text-sm shadow-xs">
+                    🔍
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base text-white flex items-center gap-1.5">
+                      <span>전국 클럽 찾아보기 및 가입</span>
+                    </h3>
+                    <p className="text-[11px] text-amber-300 font-bold">
+                      지역 또는 클럽명을 검색하여 파크온 가입 클럽을 우선 찾아보세요
+                    </p>
+                  </div>
                 </div>
-              )}
-
-              {otherClubs.map((club) => (
-                <div
-                  key={club.id}
-                  className="p-3.5 bg-stone-50 border border-stone-200 rounded-2xl space-y-2.5"
+                <button
+                  type="button"
+                  onClick={() => setShowClubBrowseModal(false)}
+                  className="text-stone-300 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition cursor-pointer"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h4 className="font-black text-sm text-stone-900">{club.name}</h4>
-                      <p className="text-xs text-stone-500 font-bold mt-0.5">
-                        📍 {club.region} · {club.homeCourseName} (회원 {club.memberCount}명)
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* 검색창 & 단원 모집 필터 (고정 영역) */}
+              <div className="p-3.5 bg-stone-50 border-b border-stone-200 space-y-2.5 shrink-0">
+                {/* 검색 인풋 & 검색 버튼 */}
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
+                    <input
+                      type="text"
+                      value={clubBrowseSearch}
+                      onChange={(e) => setClubBrowseSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          setBrowseConfirmedSearch(clubBrowseSearch.trim());
+                        }
+                      }}
+                      placeholder="지역(예: 구미, 대구, 부산) 또는 클럽명 입력..."
+                      className="w-full pl-9 pr-8 py-2.5 bg-white border-2 border-purple-300 focus:border-purple-600 rounded-xl text-xs font-black placeholder:text-stone-400 outline-none transition shadow-xs"
+                    />
+                    {clubBrowseSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setClubBrowseSearch('');
+                          setBrowseConfirmedSearch('');
+                        }}
+                        className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 text-xs font-bold p-1 cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBrowseConfirmedSearch(clubBrowseSearch.trim())}
+                    className="px-4 py-2.5 bg-gradient-to-r from-purple-700 to-purple-900 hover:from-purple-800 hover:to-purple-950 active:scale-95 text-white font-black text-xs rounded-xl shadow-md cursor-pointer shrink-0 transition flex items-center gap-1.5"
+                  >
+                    <Search className="w-3.5 h-3.5 text-amber-300" />
+                    <span>검색</span>
+                  </button>
+                </div>
+
+                {/* 단원(회원) 모집 중 필터 옵션 (지역 칩 제거 후 신설) */}
+                <div className="flex items-center justify-between text-xs pt-1 px-1">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={onlyRecruitingFilter}
+                      onChange={(e) => setOnlyRecruitingFilter(e.target.checked)}
+                      className="w-4 h-4 accent-emerald-600 rounded cursor-pointer"
+                    />
+                    <span className="font-extrabold text-stone-700 text-xs">
+                      🟢 신규 단원(회원) 모집 중인 클럽만 보기
+                    </span>
+                  </label>
+                  <span className="text-[10px] font-bold text-stone-400">
+                    {onlyRecruitingFilter ? '모집 중 필터 켬' : '전체 상태'}
+                  </span>
+                </div>
+
+                {/* 검색 상태 안내 */}
+                <div className="flex items-center justify-between text-[11px] px-0.5">
+                  {searchTerm ? (
+                    filtered.length > 0 ? (
+                      <span className="font-black text-purple-900 flex items-center gap-1">
+                        <span>✅</span>
+                        <span>'{browseConfirmedSearch || clubBrowseSearch}' 검색 결과: 총 {filtered.length}개 클럽 (👑 파크온 가입 클럽 1순위)</span>
+                      </span>
+                    ) : (
+                      <span className="font-black text-rose-600 flex items-center gap-1">
+                        <span>❌</span>
+                        <span>'{browseConfirmedSearch || clubBrowseSearch}' 검색 결과가 없습니다 (0건)</span>
+                      </span>
+                    )
+                  ) : (
+                    <span className="font-bold text-stone-500">
+                      전국 등록 클럽 전체보기 (총 {clubs.length}곳 · 👑 파크온 가입 클럽 최우선 정렬)
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 검색 결과 리스트 (스크롤 영역) */}
+              <div className="p-3.5 space-y-3 overflow-y-auto flex-1">
+                {filtered.length === 0 ? (
+                  <div className="p-6 bg-stone-50 border-2 border-dashed border-stone-300 rounded-2xl text-center space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-stone-200 text-stone-500 mx-auto flex items-center justify-center text-xl font-black">
+                      🔍
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-black text-stone-900 text-sm">
+                        {searchTerm ? `'${browseConfirmedSearch || clubBrowseSearch}' 검색 결과가 없습니다 (0건)` : '등록된 클럽이 없습니다'}
+                      </p>
+                      <p className="text-xs text-stone-500 font-bold leading-relaxed">
+                        현재 등록되어 있는 해당 클럽이나 지역 동호회가 없습니다.<br />
+                        우리 지역 1호 클럽을 지금 직접 창단해보세요!
                       </p>
                     </div>
-                    <div className="flex flex-col gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setApplyingClub(club)}
-                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 cursor-pointer text-center"
-                      >
-                        가입 신청
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDirectJoinByInvite(club)}
-                        className="px-2 py-1 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-[10px] rounded-lg cursor-pointer text-center"
-                      >
-                        초청 즉시가입
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowClubBrowseModal(false);
+                        setClubSubTab('CREATE');
+                      }}
+                      className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 font-black text-xs rounded-xl shadow-md active:scale-95 cursor-pointer"
+                    >
+                      ➕ 새 클럽 직접 창단하기
+                    </button>
                   </div>
-                  <p className="text-[11px] text-stone-600 font-medium leading-relaxed">
-                    {club.description}
-                  </p>
-                </div>
-              ))}
+                ) : (
+                  filtered.map((club) => {
+                    const isJoined = myClubIds.includes(club.id);
+                    const isParkOn = club.isParkOnClub !== false;
+
+                    return (
+                      <div
+                        key={club.id}
+                        className={`p-3.5 rounded-2xl border-2 transition space-y-2.5 ${
+                          isParkOn
+                            ? 'bg-gradient-to-br from-amber-50/70 via-white to-orange-50/50 border-amber-400 shadow-sm'
+                            : 'bg-stone-50 border-stone-200'
+                        }`}
+                      >
+                        {/* 클럽 구분 배지 (파크온 가입 클럽 최우선 강조 & 단원 모집 상태) */}
+                        <div className="flex items-center justify-between gap-1 flex-wrap">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {isParkOn ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-stone-950 font-black text-[10px] shadow-xs border border-amber-600/40">
+                                <span>👑</span>
+                                <span>파크온 가입 클럽</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-200 text-stone-600 font-bold text-[10px]">
+                                일반 동호회
+                              </span>
+                            )}
+
+                            {/* 단원 모집 상태 배지 */}
+                            {club.recruitStatus === 'RECRUITING' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 font-black text-[10px]">
+                                <span>🟢</span>
+                                <span>단원 모집 중 {club.recruitQuota ? `(${club.recruitQuota}명)` : ''}</span>
+                              </span>
+                            )}
+                            {club.recruitStatus === 'ALWAYS' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 font-black text-[10px]">
+                                <span>🟢</span>
+                                <span>단원 상시 모집</span>
+                              </span>
+                            )}
+                            {club.recruitStatus === 'SCHEDULED' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 font-black text-[10px]">
+                                <span>⏳</span>
+                                <span>단원 모집 예정</span>
+                              </span>
+                            )}
+                            {club.recruitStatus === 'CLOSED' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-200 text-stone-600 font-bold text-[10px]">
+                                <span>🔒</span>
+                                <span>모집 마감 (모집 없음)</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {isJoined && (
+                            <span className="bg-emerald-700 text-white text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <span>✓</span>
+                              <span>내 소속 클럽</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 클럽 기본 정보 & 액션 버튼 */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-1">
+                            <h4 className="font-black text-sm text-stone-900 leading-tight">
+                              {club.name}
+                            </h4>
+                            <p className="text-xs text-stone-600 font-bold">
+                              📍 {club.region} · {club.homeCourseName} (회원 {club.memberCount}명)
+                            </p>
+                            <p className="text-[11px] text-stone-400 font-medium">
+                              회장: {club.presidentName || '미지정'} · 총무: {club.managerName || '미지정'}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col gap-1.5 shrink-0">
+                            {isJoined ? (
+                              <Link
+                                href={`/club/${club.id}`}
+                                onClick={() => setShowClubBrowseModal(false)}
+                                className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 text-center flex items-center justify-center gap-1"
+                              >
+                                <span>바로가기</span>
+                                <span>⛳</span>
+                              </Link>
+                            ) : club.recruitStatus === 'CLOSED' ? (
+                              <button
+                                disabled
+                                className="px-3 py-1.5 bg-stone-200 text-stone-400 font-bold text-xs rounded-xl cursor-not-allowed text-center"
+                              >
+                                🔒 모집 마감
+                              </button>
+                            ) : club.recruitStatus === 'SCHEDULED' ? (
+                              <button
+                                type="button"
+                                onClick={() => showToast(`📅 [${club.name}] ${club.recruitTargetDate || '추후'}에 신규 단원 정식 모집 공고가 오픈됩니다.`)}
+                                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-xs cursor-pointer text-center active:scale-95"
+                              >
+                                모집 예정 알림 🔔
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowClubBrowseModal(false);
+                                    setApplyingClub(club);
+                                  }}
+                                  className="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs cursor-pointer text-center"
+                                >
+                                  가입 신청 ✍️
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDirectJoinByInvite(club)}
+                                  className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-950 font-black text-[10px] rounded-lg cursor-pointer text-center border border-amber-300 active:scale-95"
+                                >
+                                  초청 즉시가입 ⚡
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 단원 모집 요강 & 소개글 */}
+                        <div className="space-y-1">
+                          {club.recruitNotes && (
+                            <div className="text-[11px] font-bold text-emerald-900 bg-emerald-50/80 p-2 rounded-xl border border-emerald-200/60 flex items-start gap-1.5">
+                              <span className="shrink-0">📢</span>
+                              <span>{club.recruitNotes}</span>
+                            </div>
+                          )}
+                          {club.description && (
+                            <p className="text-[11px] text-stone-600 font-medium leading-relaxed bg-white/80 p-2 rounded-xl border border-stone-200/60">
+                              {club.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* MODAL 2-1: 클럽 가입 신청서 작성 모달 */}
@@ -3324,8 +3846,8 @@ ${shareUrl}`;
               </button>
             </div>
 
-            {/* 4대 집행부 관리 탭: 가입 승인 대기 / 회원 명부 & 직책 배정 / 대항전 개설 / 클럽 대회 실록 */}
-            <div className="grid grid-cols-4 p-2 bg-stone-100 border-b border-stone-200 gap-1 text-xs font-black">
+            {/* 5대 집행부 관리 탭: 가입 승인 대기 / 단원 모집 / 회원 명부 & 직책 배정 / 대항전 개설 / 클럽 대회 실록 */}
+            <div className="grid grid-cols-5 p-2 bg-stone-100 border-b border-stone-200 gap-1 text-[11px] sm:text-xs font-black">
               <button
                 type="button"
                 onClick={() => setManagingClubTab('PENDING')}
@@ -3335,7 +3857,7 @@ ${shareUrl}`;
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <span>가입 승인</span>
+                <span>가입승인</span>
                 {(managingClub.pendingMembers?.length || 0) > 0 ? (
                   <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full">
                     {managingClub.pendingMembers?.length}
@@ -3347,6 +3869,31 @@ ${shareUrl}`;
 
               <button
                 type="button"
+                onClick={() => setManagingClubTab('RECRUIT')}
+                className={`py-2 rounded-xl transition flex items-center justify-center gap-0.5 cursor-pointer ${
+                  managingClubTab === 'RECRUIT'
+                    ? 'bg-emerald-700 text-white shadow-xs border border-emerald-800'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span>단원모집</span>
+                <span className={`text-[9px] font-black px-1 py-0.2 rounded ${
+                  managingClub.recruitStatus === 'RECRUITING' || managingClub.recruitStatus === 'ALWAYS'
+                    ? 'bg-emerald-200 text-emerald-950'
+                    : 'bg-stone-200 text-stone-600'
+                }`}>
+                  {managingClub.recruitStatus === 'RECRUITING'
+                    ? '모집중'
+                    : managingClub.recruitStatus === 'ALWAYS'
+                    ? '상시'
+                    : managingClub.recruitStatus === 'SCHEDULED'
+                    ? '예정'
+                    : '마감'}
+                </span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setManagingClubTab('MEMBERS')}
                 className={`py-2 rounded-xl transition flex items-center justify-center gap-0.5 cursor-pointer ${
                   managingClubTab === 'MEMBERS'
@@ -3354,7 +3901,7 @@ ${shareUrl}`;
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <span>직책 배정</span>
+                <span>직책배정</span>
                 <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.2 rounded-full">
                   {managingClub.members.length}
                 </span>
@@ -3386,7 +3933,7 @@ ${shareUrl}`;
                 }`}
               >
                 <Trophy className="w-3 h-3 text-amber-900" />
-                <span>대회 실록</span>
+                <span>대회실록</span>
                 <span className="bg-amber-200 text-amber-950 text-[9px] font-black px-1.5 py-0.2 rounded-full">
                   {ClubStorage.getClubChronicles(managingClub.id).length}
                 </span>
@@ -3454,6 +4001,146 @@ ${shareUrl}`;
                       </div>
                     ))
                   )}
+                </div>
+              )}
+
+              {/* 탭 1-2: 신규 단원(회원) 모집 정책 및 정원 관리 */}
+              {managingClubTab === 'RECRUIT' && (
+                <div className="space-y-3.5">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-[11px] text-emerald-950 font-medium leading-relaxed">
+                    📢 <strong>신규 단원(회원) 모집 관리:</strong><br />
+                    클럽 검색 및 디렉토리에 우리 클럽이 어떻게 노출될지 결정합니다. 모집 마감 시 가입 신청이 제한되며, 모집 예정 시 신청 희망자에게 일정이 안내됩니다.
+                  </div>
+
+                  {/* 모집 상태 선택 */}
+                  <div className="space-y-1.5">
+                    <label className="font-black text-stone-800 text-xs flex items-center justify-between">
+                      <span>단원 모집 상태</span>
+                      <span className="text-[10px] text-stone-400 font-medium">실시간 반영</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditRecruitStatus('RECRUITING')}
+                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
+                          editRecruitStatus === 'RECRUITING'
+                            ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-300'
+                            : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
+                        }`}
+                      >
+                        <span className="w-3 h-3 rounded-full bg-emerald-500 shrink-0" />
+                        <div>
+                          <div className="font-black text-xs text-stone-900">🟢 단원 모집 중</div>
+                          <div className="text-[10px] text-stone-500 font-medium">정원 내 신규 신청 접수</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setEditRecruitStatus('ALWAYS')}
+                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
+                          editRecruitStatus === 'ALWAYS'
+                            ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-300'
+                            : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
+                        }`}
+                      >
+                        <span className="w-3 h-3 rounded-full bg-teal-500 shrink-0" />
+                        <div>
+                          <div className="font-black text-xs text-stone-900">🟢 상시 모집</div>
+                          <div className="text-[10px] text-stone-500 font-medium">인원 제한 없이 수시 모집</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setEditRecruitStatus('SCHEDULED')}
+                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
+                          editRecruitStatus === 'SCHEDULED'
+                            ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-300'
+                            : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
+                        }`}
+                      >
+                        <span className="w-3 h-3 rounded-full bg-amber-500 shrink-0" />
+                        <div>
+                          <div className="font-black text-xs text-stone-900">⏳ 모집 예정</div>
+                          <div className="text-[10px] text-stone-500 font-medium">차기 모집 일정 안내</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setEditRecruitStatus('CLOSED')}
+                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
+                          editRecruitStatus === 'CLOSED'
+                            ? 'bg-stone-100 border-stone-500 ring-2 ring-stone-300'
+                            : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
+                        }`}
+                      >
+                        <span className="w-3 h-3 rounded-full bg-stone-400 shrink-0" />
+                        <div>
+                          <div className="font-black text-xs text-stone-900">🔒 모집 마감</div>
+                          <div className="text-[10px] text-stone-500 font-medium">신규 가입 일시 중단</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 모집 정원 (RECRUITING 상태일 때) */}
+                  {editRecruitStatus === 'RECRUITING' && (
+                    <div className="space-y-1 bg-stone-50 p-3 rounded-2xl border border-stone-200">
+                      <label className="font-black text-stone-800 text-xs flex items-center justify-between">
+                        <span>모집 예정 인원(정원)</span>
+                        <span className="text-[10px] text-emerald-700 font-bold">{editRecruitQuota}명 선발 예정</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={editRecruitQuota}
+                          onChange={(e) => setEditRecruitQuota(Math.max(1, Number(e.target.value) || 1))}
+                          className="w-24 px-3 py-2 bg-white border border-stone-300 rounded-xl font-black text-stone-900 text-center text-sm"
+                        />
+                        <span className="text-xs font-bold text-stone-600">명 모집 (현재 정회원 {managingClub.memberCount}명)</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 모집 예정 시기 (SCHEDULED 상태일 때) */}
+                  {editRecruitStatus === 'SCHEDULED' && (
+                    <div className="space-y-1 bg-amber-50/60 p-3 rounded-2xl border border-amber-200">
+                      <label className="font-black text-stone-800 text-xs">모집 예정 시기 / 일정 안내</label>
+                      <input
+                        type="text"
+                        value={editRecruitDate}
+                        onChange={(e) => setEditRecruitDate(e.target.value)}
+                        placeholder="예: 2026년 4월 봄철 정기총회 후, 다음 달 초 예정"
+                        className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-stone-900 text-xs"
+                      />
+                    </div>
+                  )}
+
+                  {/* 모집 요강 및 가입 자격 안내 */}
+                  <div className="space-y-1">
+                    <label className="font-black text-stone-800 text-xs">모집 요강 및 가입 요건 (선택)</label>
+                    <textarea
+                      value={editRecruitNotes}
+                      onChange={(e) => setEditRecruitNotes(e.target.value)}
+                      rows={2}
+                      placeholder="예: 구미 관내 거주자 우선, 매월 둘째 주 토요일 월례회 필참, 매너 라운드 필수"
+                      className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl font-medium text-stone-900 text-xs"
+                    />
+                  </div>
+
+                  {/* 저장 버튼 */}
+                  <button
+                    type="button"
+                    onClick={handleSaveRecruitmentSettings}
+                    className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 active:scale-98 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Check className="w-4 h-4 text-emerald-200 stroke-[3]" />
+                    <span>단원 모집 설정 저장 및 디렉토리 즉시 반영</span>
+                  </button>
                 </div>
               )}
 
@@ -4388,335 +5075,536 @@ ${shareUrl}`;
       {/* ========================================================================= */}
       {/* MODAL: 클럽 모임 개최 선택 모달 (정기전 / 월례회 / 번개치기) */}
       {/* ========================================================================= */}
-      {clubGatheringModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-stone-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-8 h-8 rounded-xl bg-emerald-700 flex items-center justify-center text-base">
-                  ⛳
-                </span>
-                <div>
-                  <h3 className="font-extrabold text-base">클럽 모임 개최</h3>
-                  <p className="text-[11px] text-emerald-200">{clubGatheringModal.name}</p>
+      {clubGatheringModal && (() => {
+        const c = clubGatheringModal;
+        const selfName = ParkOnStorage.getUserDisplayName(c.id);
+        const activeClubFlash = flashGatherings.filter((f) => f.clubId === c.id && f.status !== 'CLOSED');
+        const activeClubRooms = rooms.filter((r) => r.clubId === c.id && r.status !== 'FINISHED');
+        const totalActiveCount = activeClubFlash.length + activeClubRooms.length;
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white rounded-3xl w-full max-w-xl max-h-[90vh] shadow-2xl border border-stone-200 overflow-hidden flex flex-col">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-2xl bg-emerald-700/80 border border-emerald-500/40 flex items-center justify-center text-xl shadow-inner">
+                    ⛳
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-black text-base sm:text-lg tracking-tight">클럽 모임 · 정기전 관제</h3>
+                      <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
+                        {c.name}
+                      </span>
+                    </div>
+                    <p className="text-xs text-emerald-200/90 mt-0.5">
+                      현재 모집·진행 중인 모임 현황 및 새 모임 개설
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setClubGatheringModal(null)}
+                  className="text-stone-300 hover:text-white p-2 rounded-xl hover:bg-emerald-700/50 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="p-4 sm:p-5 overflow-y-auto space-y-5">
+                {/* ------------------------------------------------------------- */}
+                {/* 1. 상단: [🔥 현재 모집/진행 중인 클럽 모임 (N건)] */}
+                {/* ------------------------------------------------------------- */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-black text-sm text-stone-900 flex items-center gap-1.5">
+                      <span className="text-rose-500">🔥</span>
+                      <span>현재 모집 · 진행 중인 클럽 모임</span>
+                      <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-extrabold">
+                        {totalActiveCount}건
+                      </span>
+                    </h4>
+                    {totalActiveCount > 0 && (
+                      <span className="text-[11px] text-stone-400">원터치 참여 & 스코어보드 연동</span>
+                    )}
+                  </div>
+
+                  {totalActiveCount === 0 ? (
+                    /* 빈 상태 안내 배너 */
+                    <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 text-center space-y-1.5">
+                      <p className="text-sm font-bold text-stone-700">
+                        ⚡ 현재 모집 중인 번개나 진행 중인 정기전이 없습니다.
+                      </p>
+                      <p className="text-xs text-stone-500">
+                        아래 <strong className="text-amber-600">[+ 새 모임 추가 개설하기]</strong> 버튼을 눌러 오늘 첫 번개 라운드나 정기전을 개설해 보세요!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* 번개 라운드 목록 */}
+                      {activeClubFlash.map((flash) => {
+                        const isJoined = flash.currentParticipants.some((p) => p.name === selfName);
+                        const isHost = flash.hostName === selfName;
+                        const pCount = flash.currentParticipants.length;
+                        const maxCount = flash.targetCount === 999 ? '무제한' : `${flash.targetCount}명`;
+                        const canStart = pCount >= 2;
+
+                        return (
+                          <div
+                            key={flash.id}
+                            className="p-4 rounded-2xl bg-amber-50/70 border-2 border-amber-300 shadow-xs space-y-3 hover:border-amber-400 transition"
+                          >
+                            {/* 구장명, 일시 및 상태 배지 */}
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-base">⚡</span>
+                                <span className="font-black text-sm text-stone-900">
+                                  [{flash.courseName}] {flash.playDate} {flash.playTime}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                {canStart ? (
+                                  <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-emerald-600 text-white shadow-xs animate-pulse">
+                                    🟢 2인 이상 출발 가능! ({pCount}/{maxCount})
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-500 text-stone-950 shadow-xs">
+                                    🟡 1명 모집 중 ({pCount}/{maxCount})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* 모임 제목 & 메모 */}
+                            <div>
+                              <p className="font-bold text-xs text-stone-800">{flash.title}</p>
+                              {flash.notes && (
+                                <p className="text-[11px] text-stone-500 mt-0.5">💬 {flash.notes}</p>
+                              )}
+                            </div>
+
+                            {/* 참가자 명단 표출 */}
+                            <div className="p-2.5 rounded-xl bg-white/80 border border-amber-200/80 text-xs text-stone-700 flex flex-wrap items-center gap-2">
+                              <span className="font-black text-amber-900 shrink-0">👥 참가자:</span>
+                              <div className="flex flex-wrap items-center gap-1.5 font-bold">
+                                {flash.currentParticipants.map((p, idx) => (
+                                  <span
+                                    key={p.id || idx}
+                                    className={`px-2 py-0.5 rounded-lg text-xs ${
+                                      p.name === flash.hostName
+                                        ? 'bg-amber-100 text-amber-900 border border-amber-300 font-black'
+                                        : 'bg-stone-100 text-stone-800'
+                                    }`}
+                                  >
+                                    {p.name === flash.hostName ? `👑 ${p.name}(방장)` : p.name}
+                                  </span>
+                                ))}
+                                {flash.waitingList && flash.waitingList.length > 0 && (
+                                  <span className="text-stone-400 text-[11px]">
+                                    (대기 {flash.waitingList.length}명)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* 원터치 액션 버튼 바 */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                              {/* 1. 회원용: 나도 번개 참여하기 / 취소 */}
+                              {isJoined ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleLeaveClubFlash(flash.id)}
+                                  className="py-2.5 px-3 bg-stone-200 hover:bg-stone-300 active:scale-95 text-stone-700 font-bold text-xs rounded-xl transition cursor-pointer text-center"
+                                >
+                                  ✕ 번개 참여 취소
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleJoinClubFlash(flash.id)}
+                                  className="py-2.5 px-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-95 text-stone-950 font-black text-xs rounded-xl shadow-xs transition cursor-pointer text-center flex items-center justify-center gap-1.5"
+                                >
+                                  <span>✋</span>
+                                  <span>나도 번개 참여하기</span>
+                                </button>
+                              )}
+
+                              {/* 2. 방장/참가자용: 스코어보드 경기 시작 */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setClubGatheringModal(null);
+                                  handleStartClubFlashRound(flash);
+                                }}
+                                className="py-2.5 px-3 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer text-center flex items-center justify-center gap-1.5"
+                              >
+                                <span>🏌️</span>
+                                <span>스코어보드 경기 시작</span>
+                              </button>
+
+                              {/* 3. 카톡 단톡방 공유 */}
+                              <button
+                                type="button"
+                                onClick={() => handleShareClubFlashKakao(flash)}
+                                className="py-2.5 px-3 bg-yellow-400 hover:bg-yellow-500 active:scale-95 text-stone-950 font-black text-xs rounded-xl shadow-xs transition cursor-pointer text-center flex items-center justify-center gap-1.5"
+                                title="클럽 단톡방에 번개 초대장 즉시 공유"
+                              >
+                                <span>📢</span>
+                                <span>카톡 단톡방 공유</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* 클럽 공식 대회 / 월례회 목록 */}
+                      {activeClubRooms.map((room) => {
+                        const totalPlayers = room.groups.reduce((acc, g) => acc + g.players.length, 0);
+
+                        return (
+                          <div
+                            key={room.id}
+                            className="p-4 rounded-2xl bg-emerald-50/80 border-2 border-emerald-300 shadow-xs space-y-3 hover:border-emerald-400 transition"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-base">🏆</span>
+                                <span className="font-black text-sm text-emerald-950">
+                                  {room.title}
+                                </span>
+                              </div>
+                              <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-emerald-700 text-white shadow-xs">
+                                18홀 월례회 · {room.groups.length}개 조 ({totalPlayers}명)
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-stone-600 font-medium">
+                              구장: <strong className="text-stone-800">{room.courseName}</strong> | 주최: {room.hostName}
+                            </p>
+
+                            <div className="flex justify-end gap-2 pt-1">
+                              <Link
+                                href={`/club/${room.id}`}
+                                onClick={() => setClubGatheringModal(null)}
+                                className="py-2.5 px-4 bg-emerald-800 hover:bg-emerald-900 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                              >
+                                <span>📊</span>
+                                <span>실시간 대회 룸 입장 (전광판)</span>
+                              </Link>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* ------------------------------------------------------------- */}
+                {/* 2. 하단: [ ➕ 새 모임 추가 개설하기 ] */}
+                {/* ------------------------------------------------------------- */}
+                <div className="pt-2 border-t border-stone-200 space-y-3">
+                  <h4 className="font-black text-sm text-stone-900 flex items-center gap-1.5">
+                    <span className="text-emerald-700">➕</span>
+                    <span>새 모임 추가 개설하기</span>
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* [ + 새 당일 번개 추가 ] */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClubGatheringModal(null);
+                        setSelectedFlashClubId(c.id);
+                        setClubFlashCourseId(c.homeCourseId);
+                        setClubFlashTitle(`[${c.name}] 오늘 당일 번개 라운드 ⚡`);
+                        setShowCreateClubFlashModal(true);
+                      }}
+                      className="p-4 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-98 text-stone-950 font-black text-left transition cursor-pointer shadow-md space-y-1"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-black flex items-center gap-1.5">
+                          <span>⚡</span>
+                          <span>+ 새 당일 번개 추가</span>
+                        </span>
+                        <span className="text-[10px] bg-stone-950 text-white font-black px-2 py-0.5 rounded-full">
+                          당일 라운드
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-900/90 font-medium leading-relaxed">
+                        오늘 바로 라운드할 클럽 동료를 2인/4인/무제한 단위로 빠르게 모집합니다.
+                      </p>
+                    </button>
+
+                    {/* [ + 정기 월례회 대회 개설 ] */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClubGatheringModal(null);
+                        setTournamentClubId(c.id);
+                        setTitle(`[${c.name}] 제${new Date().getMonth() + 1}회 정기 월례회 ⛳`);
+                        setSelectedCourseId(c.homeCourseId);
+                        setHostName(c.managerName || c.presidentName || '총무');
+                        setTournamentType('CLUB_INTERNAL');
+                        setCreateModalSource('CLUB_GATHERING');
+                        setShowCreateModal(true);
+                      }}
+                      className="p-4 rounded-2xl bg-gradient-to-br from-emerald-700 to-teal-800 hover:from-emerald-800 hover:to-teal-900 active:scale-98 text-white font-black text-left transition cursor-pointer shadow-md space-y-1"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-black flex items-center gap-1.5">
+                          <span>🏆</span>
+                          <span>+ 정기 월례회 대회 개설</span>
+                        </span>
+                        <span className="text-[10px] bg-emerald-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
+                          18홀 정규
+                        </span>
+                      </div>
+                      <p className="text-xs text-emerald-100 font-medium leading-relaxed">
+                        회원 전원이 참가하는 정기전입니다. 샷건 동시 티샷, 조 편성, 신페리오 전광판을 지원합니다.
+                      </p>
+                    </button>
+                  </div>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setClubGatheringModal(null)}
-                className="text-stone-300 hover:text-white p-1 rounded-lg cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            <div className="p-4 space-y-3">
-              {/* 1. 클럽 공식 월례회 / 정기전 개설 */}
-              <button
-                type="button"
-                onClick={() => {
-                  const c = clubGatheringModal;
-                  setClubGatheringModal(null);
-                  setTournamentClubId(c.id);
-                  setTitle(`[${c.name}] 제${new Date().getMonth() + 1}회 정기 월례회 ⛳`);
-                  setSelectedCourseId(c.homeCourseId);
-                  setHostName(c.managerName || c.presidentName || '김총무');
-                  setTournamentType('CLUB_INTERNAL');
-                  setShowCreateModal(true);
-                }}
-                className="w-full p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100/70 hover:from-emerald-100 hover:to-emerald-200 border-2 border-emerald-300 text-left transition cursor-pointer shadow-xs active:scale-98 space-y-1"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-black text-sm text-emerald-950 flex items-center gap-1.5">
-                    <span>🏆</span>
-                    <span>클럽 공식 월례회 · 정기전 개설</span>
-                  </span>
-                  <span className="text-[10px] bg-emerald-700 text-white font-black px-2 py-0.5 rounded-full">
-                    18홀 정규
-                  </span>
-                </div>
-                <p className="text-xs text-stone-600 font-medium leading-relaxed">
-                  회원 전원이 참가하는 정기 월례회입니다. 샷건 동시 티샷, 신페리오/스트로크 대회 룸을 개설하고 조 편성을 시작합니다.
-                </p>
-              </button>
-
-              {/* 2. 당일 클럽원 전용 번개치기 */}
-              <button
-                type="button"
-                onClick={() => {
-                  const c = clubGatheringModal;
-                  setClubGatheringModal(null);
-                  setSelectedFlashClubId(c.id);
-                  setClubFlashCourseId(c.homeCourseId);
-                  setClubFlashTitle(`[${c.name}] 오늘 당일 번개 라운드 ⚡`);
-                  setShowCreateClubFlashModal(true);
-                }}
-                className="w-full p-4 rounded-2xl bg-gradient-to-br from-amber-50 to-amber-100/70 hover:from-amber-100 hover:to-amber-200 border-2 border-amber-300 text-left transition cursor-pointer shadow-xs active:scale-98 space-y-1"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-black text-sm text-amber-950 flex items-center gap-1.5">
-                    <span>⚡</span>
-                    <span>당일 클럽원 번개 라운드 치기</span>
-                  </span>
-                  <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-2 py-0.5 rounded-full">
-                    실시간 모집
-                  </span>
-                </div>
-                <p className="text-xs text-stone-600 font-medium leading-relaxed">
-                  오늘 바로 라운드 가능한 클럽 동료들을 2인/4인/무제한 단위로 빠르게 모집합니다.
-                </p>
-              </button>
-            </div>
-
-            <div className="p-3 bg-stone-50 border-t border-stone-200 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setClubGatheringModal(null)}
-                className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-800 font-black rounded-xl text-xs cursor-pointer"
-              >
-                닫기
-              </button>
+              {/* Footer */}
+              <div className="p-3 bg-stone-50 border-t border-stone-200 flex justify-end shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setClubGatheringModal(null)}
+                  className="px-5 py-2.5 bg-stone-200 hover:bg-stone-300 text-stone-800 font-black rounded-xl text-xs cursor-pointer active:scale-95 transition"
+                >
+                  닫기
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* MODAL 4: 새 대회 개설 모달 (주최 클럽 선택 + A-B-C-D 4열 + +/- 오르내림 스테퍼) */}
       {/* ========================================================================= */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-stone-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-purple-800 to-purple-950 text-white p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-yellow-300" />
-                <h3 className="font-extrabold text-base">새 대회 / 월례회 개설</h3>
+      {showCreateModal && (() => {
+        const handleCloseCreateModal = () => {
+          setShowCreateModal(false);
+          if (createModalSource === 'MANAGING_CLUB' && tournamentClubId) {
+            const cl = clubs.find((c) => c.id === tournamentClubId);
+            if (cl) setManagingClub(cl);
+          } else if (createModalSource === 'CLUB_GATHERING' && tournamentClubId) {
+            const cl = clubs.find((c) => c.id === tournamentClubId);
+            if (cl) setClubGatheringModal(cl);
+          }
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-stone-200 overflow-hidden">
+              <div className={`text-white p-4 flex items-center justify-between ${
+                tournamentType === 'CLUB_MATCH'
+                  ? 'bg-gradient-to-r from-purple-800 to-indigo-900'
+                  : tournamentType === 'REGIONAL_OPEN'
+                  ? 'bg-gradient-to-r from-amber-600 to-stone-900'
+                  : 'bg-gradient-to-r from-emerald-800 to-emerald-950'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {tournamentType === 'CLUB_MATCH' ? (
+                    <Swords className="w-5 h-5 text-yellow-300" />
+                  ) : tournamentType === 'REGIONAL_OPEN' ? (
+                    <Trophy className="w-5 h-5 text-yellow-300" />
+                  ) : (
+                    <Trophy className="w-5 h-5 text-emerald-300" />
+                  )}
+                  <h3 className="font-extrabold text-base">
+                    {tournamentType === 'CLUB_MATCH'
+                      ? '새 대회 클럽 대항전 개설'
+                      : tournamentType === 'REGIONAL_OPEN'
+                      ? '새 대회 시·도 공식 대회 개설'
+                      : '새 대회 클럽 정기 월례회 개설'}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCloseCreateModal}
+                  className="text-stone-300 hover:text-white p-1 rounded-lg cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowCreateModal(false)}
-                className="text-stone-300 hover:text-white p-1 rounded-lg cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
             <form onSubmit={handleCreateRoom} className="p-4 space-y-3.5 text-stone-800 max-h-[82vh] overflow-y-auto">
-              {/* 대회 성격 및 모드 선택 (대표님 요청) */}
-              <div className="space-y-1.5 bg-purple-50 p-3 rounded-2xl border border-purple-200">
-                <label className="text-xs font-black text-purple-950 flex items-center gap-1">
-                  <Swords className="w-3.5 h-3.5 text-purple-700" />
-                  <span>대회 성격 및 주최 유형 선택 *</span>
-                </label>
-                <div className="grid grid-cols-3 gap-1.5 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTournamentType('CLUB_MATCH');
-                      if (!title.includes('대항전')) {
-                        setTitle('구미 동락 vs 부산 삼락 파크골프 클럽 친선 대항전 ⚔️');
-                      }
-                    }}
-                    className={`py-2 px-1 text-[11px] font-black rounded-xl border transition cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
-                      tournamentType === 'CLUB_MATCH'
-                        ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
-                        : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                    }`}
-                  >
-                    <span>⚔️ 클럽 대항전</span>
-                    <span className="text-[9px] font-medium opacity-90">(교류전)</span>
-                  </button>
+              {/* 클럽 대항전 전용: 매칭 방식, 팀 수, 상대 클럽 선택 (대표님 지시: 중복 선택 제거 후 직결) */}
+              {tournamentType === 'CLUB_MATCH' && (
+                <div className="space-y-2.5 bg-purple-50 p-3 rounded-2xl border border-purple-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-purple-950 flex items-center gap-1.5">
+                      <Swords className="w-3.5 h-3.5 text-purple-700" />
+                      <span>클럽 대항전 매칭 설정</span>
+                    </span>
+                    <span className="text-[10px] bg-purple-700 text-white font-bold px-2 py-0.5 rounded-full">
+                      클럽 대항전 모드
+                    </span>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTournamentType('REGIONAL_OPEN');
-                      if (!title.includes('오픈') && !title.includes('배')) {
-                        setTitle('2026 제1회 구미시장배 파크골프 오픈 챔피언십 🏆');
-                      }
-                    }}
-                    className={`py-2 px-1 text-[11px] font-black rounded-xl border transition cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
-                      tournamentType === 'REGIONAL_OPEN'
-                        ? 'bg-amber-500 text-stone-950 border-amber-600 shadow-xs'
-                        : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                    }`}
-                  >
-                    <span>🏆 시·도 공식대회</span>
-                    <span className="text-[9px] font-medium opacity-90">(구미시배 등)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTournamentType('CLUB_INTERNAL');
-                      const cl = clubs.find((x) => x.id === tournamentClubId) || myClubs[0];
-                      if (cl) setTitle(`${cl.name} 정기 월례회 🏅`);
-                    }}
-                    className={`py-2 px-1 text-[11px] font-black rounded-xl border transition cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
-                      tournamentType === 'CLUB_INTERNAL'
-                        ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
-                        : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-                    }`}
-                  >
-                    <span>🏅 클럽 월례회</span>
-                    <span className="text-[9px] font-medium opacity-90">(단일 클럽)</span>
-                  </button>
-                </div>
-
-                {/* 대항전인 경우: 매칭 방식, 팀 수, 상대 클럽 선택 (대표님 요청) */}
-                {tournamentType === 'CLUB_MATCH' && (
-                  <div className="pt-2 space-y-2.5">
-                    {/* 1. 초청 및 매칭 방식 (지정 도전장 vs 전국 공개 챌린지) */}
-                    <div className="space-y-1 bg-white p-2.5 rounded-xl border border-purple-200">
-                      <label className="text-[11px] font-black text-purple-950 flex items-center justify-between">
-                        <span>상대 초청 및 매칭 방식 선택</span>
-                        <span className="text-[10px] text-purple-700 font-bold">2가지 트랙 지원</span>
-                      </label>
-                      <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMatchInviteType('DIRECT_CHALLENGE');
-                            updateMatchTitle('DIRECT_CHALLENGE', matchTeamCount, playersPerTeam, participatingClubIds, customOpponentName);
-                          }}
-                          className={`py-2 px-1.5 text-[11px] font-black rounded-lg border transition cursor-pointer flex flex-col items-center justify-center text-center leading-tight ${
-                            matchInviteType === 'DIRECT_CHALLENGE'
-                              ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
-                              : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
-                          }`}
-                        >
-                          <span>⚔️ 지정 클럽 지목</span>
-                          <span className="text-[9px] opacity-90 mt-0.5">(카톡 공식 도전장 발송)</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMatchInviteType('OPEN_CHALLENGE');
-                            updateMatchTitle('OPEN_CHALLENGE', matchTeamCount, playersPerTeam, participatingClubIds, customOpponentName);
-                          }}
-                          className={`py-2 px-1.5 text-[11px] font-black rounded-lg border transition cursor-pointer flex flex-col items-center justify-center text-center leading-tight ${
-                            matchInviteType === 'OPEN_CHALLENGE'
-                              ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
-                              : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
-                          }`}
-                        >
-                          <span>📢 전국 공개 챌린지</span>
-                          <span className="text-[9px] opacity-90 mt-0.5">(도전팀 모집 공고)</span>
-                        </button>
-                      </div>
+                  {/* 1. 초청 및 매칭 방식 (지정 도전장 vs 전국 공개 챌린지) */}
+                  <div className="space-y-1 bg-white p-2.5 rounded-xl border border-purple-200">
+                    <label className="text-[11px] font-black text-purple-950 flex items-center justify-between">
+                      <span>상대 초청 및 매칭 방식 선택</span>
+                      <span className="text-[10px] text-purple-700 font-bold">
+                        {matchInviteType === 'DIRECT_CHALLENGE' ? `${matchTeamCount}개 팀 대결` : '공개 모집'}
+                      </span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMatchInviteType('DIRECT_CHALLENGE');
+                          updateMatchTitle('DIRECT_CHALLENGE', matchTeamCount, playersPerTeam, participatingClubIds);
+                        }}
+                        className={`py-2 px-1.5 text-[11px] font-black rounded-lg border transition cursor-pointer flex flex-col items-center justify-center text-center leading-tight ${
+                          matchInviteType === 'DIRECT_CHALLENGE'
+                            ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
+                            : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1">
+                          <Swords className="w-3.5 h-3.5 text-yellow-300" />
+                          <span>상대 클럽 직접 선택</span>
+                        </span>
+                        <span className="text-[9px] opacity-90 mt-0.5">(특정 클럽 직접 대결)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMatchInviteType('OPEN_CHALLENGE');
+                          updateMatchTitle('OPEN_CHALLENGE', matchTeamCount, playersPerTeam, participatingClubIds);
+                        }}
+                        className={`py-2 px-1.5 text-[11px] font-black rounded-lg border transition cursor-pointer flex flex-col items-center justify-center text-center leading-tight ${
+                          matchInviteType === 'OPEN_CHALLENGE'
+                            ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
+                            : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
+                        }`}
+                      >
+                        <span>📢 전국 공개 챌린지</span>
+                        <span className="text-[9px] opacity-90 mt-0.5">(도전팀 모집 공고)</span>
+                      </button>
                     </div>
+                  </div>
 
-                    {/* 2. 대항전 참가 팀 수 선택 (2팀 / 3팀 / 4팀) */}
-                    <div className="space-y-1 bg-white p-2.5 rounded-xl border border-purple-200">
-                      <label className="text-[11px] font-black text-purple-950 flex items-center justify-between">
-                        <span>대항전 팀 수 선택</span>
-                        <span className="text-[10px] text-purple-700 font-bold">{matchTeamCount}개 팀 대결</span>
-                      </label>
-                      <div className="grid grid-cols-3 gap-1.5 pt-0.5">
-                        {[
-                          { count: 2, label: '2개 팀', sub: '(1 vs 1 맞대결)' },
-                          { count: 3, label: '3개 팀', sub: '(삼파전 교류전)' },
-                          { count: 4, label: '4개 팀', sub: '(4강 연합전)' },
-                        ].map((t) => (
-                          <button
-                            key={t.count}
-                            type="button"
-                            onClick={() => handleMatchTeamCountChange(t.count)}
-                            className={`py-1.5 px-1 text-[11px] font-black rounded-lg border transition cursor-pointer flex flex-col items-center justify-center ${
-                              matchTeamCount === t.count
-                                ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
-                                : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
-                            }`}
-                          >
-                            <span>{t.label}</span>
-                            <span className="text-[9px] opacity-90">{t.sub}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                  {/* 2. 대표님 요청: [2개 팀, 3개 팀, 4개 팀] 버튼 제거하고, 안내문만 표출 */}
+                  <div className="flex items-center justify-between bg-white px-3 py-2.5 rounded-xl border border-purple-200 text-xs">
+                    <span className="font-extrabold text-purple-950 flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-purple-700" />
+                      <span>대항전 팀 수 현황</span>
+                    </span>
+                    <span className="bg-purple-100 text-purple-900 font-black px-2.5 py-1 rounded-md text-[11px]">
+                      {matchInviteType === 'DIRECT_CHALLENGE'
+                        ? participatingClubIds.length === 0
+                          ? '총 2개 팀 대결 예정 (상대 클럽 미선택)'
+                          : `총 ${matchTeamCount}개 팀 대결 (우리 클럽 + 상대 ${participatingClubIds.length}팀)`
+                        : '총 2개 팀 대결 (1 vs 1 맞대결)'}
+                    </span>
+                  </div>
 
-                    {/* 3. 상대 클럽 지정 (지정 지목 시) 또는 전국 공개 공지 안내 */}
-                    {matchInviteType === 'DIRECT_CHALLENGE' ? (
-                      <div className="space-y-1.5 bg-white p-2.5 rounded-xl border border-purple-200">
-                        <label className="text-[11px] font-black text-purple-950 flex items-center justify-between">
-                          <span>상대 맞대결 클럽 선택 ({matchTeamCount - 1}개 클럽)</span>
-                          <span className="text-[10px] text-stone-500">터치하여 선택</span>
+                  {/* 3. 상대 클럽 선택 시: 선택된 상대 클럽 태그 목록 및 [검색/추가] 버튼 */}
+                  {matchInviteType === 'DIRECT_CHALLENGE' && (
+                    <div className="space-y-2 bg-white p-3 rounded-2xl border border-purple-200">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-purple-950 flex items-center gap-1.5">
+                          <Swords className="w-3.5 h-3.5 text-purple-700" />
+                          <span>선택된 상대 클럽 ({participatingClubIds.length}곳)</span>
                         </label>
-                        <div className="flex flex-wrap gap-1.5">
-                          {clubs
-                            .filter((c) => c.id !== tournamentClubId)
-                            .map((c) => {
-                              const isSelected = participatingClubIds.includes(c.id);
-                              return (
-                                <button
-                                  key={c.id}
-                                  type="button"
-                                  onClick={() => {
-                                    let next: string[];
-                                    if (isSelected) {
-                                      next = participatingClubIds.filter((id) => id !== c.id);
-                                    } else {
-                                      if (matchTeamCount === 2) {
-                                        next = [c.id];
-                                      } else {
-                                        next = [...participatingClubIds.filter((id) => id !== tournamentClubId), c.id];
-                                      }
-                                    }
-                                    setParticipatingClubIds(next);
-                                    updateMatchTitle(matchInviteType, matchTeamCount, playersPerTeam, next, customOpponentName);
-                                  }}
-                                  className={`py-1.5 px-2.5 rounded-lg text-xs font-bold border transition cursor-pointer flex items-center gap-1 ${
-                                    isSelected
-                                      ? 'bg-purple-700 text-white border-purple-800'
-                                      : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
-                                  }`}
-                                >
-                                  {isSelected ? '✓' : '+'} {c.name}
-                                </button>
-                              );
-                            })}
-                        </div>
-                        <div className="pt-0.5">
-                          <input
-                            type="text"
-                            value={customOpponentName}
-                            onChange={(e) => {
-                              setCustomOpponentName(e.target.value);
-                              updateMatchTitle(matchInviteType, matchTeamCount, playersPerTeam, participatingClubIds, e.target.value);
-                            }}
-                            placeholder="기타 클럽 직접 입력 (예: 칠곡 왜관 클럽, 대구 달성 클럽)"
-                            className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold focus:outline-none focus:border-purple-600"
-                          />
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowOpponentClubPicker(true)}
+                          className="px-3 py-1.5 bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer border border-purple-600"
+                        >
+                          <Search className="w-3.5 h-3.5 text-yellow-300" />
+                          <span>클럽 검색 &amp; 선택 🔍</span>
+                        </button>
                       </div>
-                    ) : (
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-xs text-amber-950 font-bold space-y-1">
-                        <div className="flex items-center gap-1 font-black text-amber-900">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-                          <span>📢 전국 파크골프 광장 공개 모집 공지</span>
-                        </div>
-                        <p className="text-[11px] text-stone-700 font-medium leading-relaxed">
-                          방 개설 시 파크온 전국 라운지에 <strong>'[도전팀 구함] 친선 교류전'</strong> 공지가 자동 등록되며, 다른 클럽이 [도전 신청]을 누르고 주최자가 승낙하면 대항전이 성립됩니다!
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
 
-                {/* 시·도 공식대회인 경우: 관할 지역 입력 */}
-                {tournamentType === 'REGIONAL_OPEN' && (
-                  <div className="pt-2 space-y-1">
-                    <label className="text-[11px] font-extrabold text-stone-700">공식 주관 시·도 관할 지역</label>
-                    <input
-                      type="text"
-                      value={regionalScope}
-                      onChange={(e) => setRegionalScope(e.target.value)}
-                      placeholder="예: 경상북도 구미시, 대구광역시"
-                      className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500"
-                    />
+                      {participatingClubIds.length === 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowOpponentClubPicker(true)}
+                          className="w-full py-3.5 px-3 bg-purple-50 hover:bg-purple-100 text-purple-800 border-2 border-dashed border-purple-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                        >
+                          <Search className="w-4 h-4 text-purple-600" />
+                          <span>🔍 터치하여 대결할 상대 클럽을 검색·선택하세요 (1~10팀 자유 선택)</span>
+                        </button>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5 items-center">
+                          {participatingClubIds.map((cId) => {
+                            const target = clubs.find((c) => c.id === cId);
+                            if (!target) return null;
+                            return (
+                              <span
+                                key={cId}
+                                className="inline-flex items-center gap-1.5 bg-purple-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs"
+                              >
+                                <span>{target.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleOpponentClub(cId)}
+                                  className="text-purple-200 hover:text-white font-black text-sm ml-0.5 cursor-pointer"
+                                >
+                                  ✕
+                                </button>
+                              </span>
+                            );
+                          })}
+                          <button
+                            type="button"
+                            onClick={() => setShowOpponentClubPicker(true)}
+                            className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold rounded-xl border border-purple-200 transition cursor-pointer flex items-center gap-1"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>클럽 추가 선택</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 전국 공개 공지 안내 (공개 챌린지 시에만 표출) */}
+                  {matchInviteType === 'OPEN_CHALLENGE' && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-xs text-amber-950 font-bold space-y-1">
+                      <div className="flex items-center gap-1 font-black text-amber-900">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                        <span>📢 전국 파크골프 광장 공개 모집 공지</span>
+                      </div>
+                      <p className="text-[11px] text-stone-700 font-medium leading-relaxed">
+                        방 개설 시 파크온 전국 라운지에 <strong>'[도전팀 구함] 친선 교류전'</strong> 공지가 자동 등록되며, 다른 클럽이 [도전 신청]을 누르고 주최자가 승낙하면 대항전이 성립됩니다!
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 시·도 공식대회 전용: 관할 지역 입력 (대표님 지시: 중복 선택 제거 후 직결) */}
+              {tournamentType === 'REGIONAL_OPEN' && (
+                <div className="space-y-1.5 bg-amber-50 p-3 rounded-2xl border border-amber-200">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                      <Trophy className="w-3.5 h-3.5 text-amber-700" />
+                      <span>시·도 공식대회 관할 지역</span>
+                    </span>
+                    <span className="text-[10px] bg-amber-600 text-white font-bold px-2 py-0.5 rounded-full">
+                      공식 대회 모드
+                    </span>
                   </div>
-                )}
-              </div>
+                  <input
+                    type="text"
+                    value={regionalScope}
+                    onChange={(e) => setRegionalScope(e.target.value)}
+                    placeholder="예: 경상북도 구미시, 대구광역시"
+                    className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              )}
 
               {/* 주최 클럽 선택 */}
               <div className="space-y-1">
@@ -4843,10 +5731,10 @@ ${shareUrl}`;
                     const totalP = matchTeamCount * playersPerTeam;
                     const opt = ClubStorage.calculateOptimalGroups(totalP);
                     const hostClub = clubs.find((c) => c.id === tournamentClubId) || myClubs[0];
-                    const oppClub = clubs.find((c) => participatingClubIds.includes(c.id) && c.id !== hostClub?.id);
-                    const oppText = oppClub
-                      ? oppClub.name
-                      : customOpponentName.trim() || (matchInviteType === 'OPEN_CHALLENGE' ? '전국 오픈 도전자 클럽' : '부산 삼락 파크골프 클럽');
+                    const oppClubs = clubs.filter((c) => participatingClubIds.includes(c.id) && c.id !== hostClub?.id);
+                    const oppText = oppClubs.length > 0
+                      ? oppClubs.map((c) => c.name).join(', ')
+                      : (matchInviteType === 'OPEN_CHALLENGE' ? '전국 오픈 도전자 클럽' : '상대 클럽');
 
                     return (
                       <div className="bg-gradient-to-br from-white to-purple-50 p-3 rounded-xl border border-purple-300 text-xs font-bold text-stone-800 space-y-1.5">
@@ -5149,7 +6037,7 @@ ${shareUrl}`;
               <div className="pt-2 flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={handleCloseCreateModal}
                   className="w-1/3 py-3 bg-stone-100 text-stone-600 font-bold text-xs rounded-xl"
                 >
                   취소
@@ -5164,7 +6052,281 @@ ${shareUrl}`;
             </form>
           </div>
         </div>
-      )}
+        );
+      })()}
+
+      {/* ------------------------------------------------------------------------- */}
+      {/* SUB-MODAL: 대항전 상대 클럽 찾기 & 다중 지목 모달 (대표님 요청: 착착착 쌓이는 장바구니/지목 슬롯 & 검색 기반 백지 상태) */}
+      {/* ------------------------------------------------------------------------- */}
+      {showOpponentClubPicker && (() => {
+        // 내가 과거에 대항전을 치렀던 상대 클럽 추출
+        const pastOpponentClubIds = Array.from(
+          new Set(
+            rooms
+              .filter((r) => r.tournamentType === 'CLUB_MATCH')
+              .flatMap((r) => r.participatingClubs?.map((p) => p.clubId) || [])
+              .filter((id) => id && id !== tournamentClubId && !id.startsWith('ext-'))
+          )
+        );
+        const pastOpponentClubs = clubs.filter((c) => pastOpponentClubIds.includes(c.id));
+        const term = opponentClubSearchTerm.trim().toLowerCase();
+
+        // 검색어 입력 시 필터링된 결과
+        const searchResults = term
+          ? clubs.filter((c) => {
+              if (c.id === tournamentClubId) return false;
+              return (
+                c.name.toLowerCase().includes(term) ||
+                c.region.toLowerCase().includes(term) ||
+                (c.homeCourseName && c.homeCourseName.toLowerCase().includes(term))
+              );
+            })
+          : [];
+
+        return (
+          <div
+            className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+            style={{ zIndex: 99999 }}
+          >
+            <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[88vh]">
+              {/* 헤더 */}
+              <div className="bg-gradient-to-r from-purple-800 to-indigo-900 text-white p-4 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <Swords className="w-5 h-5 text-yellow-300" />
+                  <h3 className="font-extrabold text-base">대항전 상대 클럽 찾기 &amp; 선택</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowOpponentClubPicker(false)}
+                  className="text-stone-300 hover:text-white p-1 rounded-lg cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* 1. 선택된 상대 클럽 슬롯 (대표님 요청: 착착착 쌓이는 영역) */}
+              <div className="p-3 bg-purple-50/80 border-b border-purple-200 shrink-0 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-black text-purple-950 flex items-center gap-1.5">
+                    <Swords className="w-3.5 h-3.5 text-purple-700" />
+                    <span>현재 선택된 대결 팀 ({participatingClubIds.length}곳)</span>
+                  </span>
+                  <span className="text-[10px] text-purple-700 font-bold bg-purple-200/80 px-2 py-0.5 rounded-full">
+                    총 {Math.max(2, participatingClubIds.length + 1)}개 팀 대항전
+                  </span>
+                </div>
+
+                {participatingClubIds.length === 0 ? (
+                  <div className="py-2 text-center text-xs text-stone-400 font-bold border border-dashed border-purple-300 rounded-xl bg-white/70">
+                    아래에서 클럽 검색 후 [+ 선택]을 누르면 여기에 착착착 쌓입니다
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pt-0.5">
+                    {participatingClubIds.map((cId) => {
+                      const target = clubs.find((c) => c.id === cId);
+                      if (!target) return null;
+                      return (
+                        <span
+                          key={cId}
+                          className="inline-flex items-center gap-1.5 bg-purple-700 text-white text-xs font-bold px-2.5 py-1 rounded-xl shadow-xs animate-fadeIn"
+                        >
+                          <span>{target.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleOpponentClub(cId)}
+                            className="text-purple-200 hover:text-white font-black text-sm ml-0.5 cursor-pointer"
+                            title="선택 취소"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* 2. 검색창 */}
+              <div className="p-3 bg-stone-50 border-b border-stone-200 shrink-0 space-y-1">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={opponentClubSearchTerm}
+                    onChange={(e) => setOpponentClubSearchTerm(e.target.value)}
+                    placeholder="클럽명 또는 지역(예: 구미, 김천, 부산, 대구) 검색..."
+                    className="w-full pl-9 pr-8 py-2.5 bg-white border-2 border-purple-200 focus:border-purple-600 rounded-xl text-xs font-bold focus:outline-none shadow-2xs"
+                    autoFocus
+                  />
+                  {opponentClubSearchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setOpponentClubSearchTerm('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs font-black p-1 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 3. 본문 목록 (검색 결과 또는 최근 대항전 기록 / 백지 상태) */}
+              <div className="p-3 overflow-y-auto space-y-2 flex-1">
+                {/* Case A: 검색어 입력 시 결과 표출 */}
+                {term ? (
+                  searchResults.length === 0 ? (
+                    <div className="py-12 text-center text-stone-500 space-y-1">
+                      <p className="text-sm font-bold">&apos;{opponentClubSearchTerm}&apos; 검색 결과가 없습니다.</p>
+                      <p className="text-xs text-stone-400">다른 지역명이나 클럽명으로 찾아보세요.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="text-[11px] font-black text-stone-600 px-1">
+                        검색 결과 ({searchResults.length}건) - 원하는 팀을 터치하여 선택하세요
+                      </div>
+                      {searchResults.map((c) => {
+                        const isSelected = participatingClubIds.includes(c.id);
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => toggleOpponentClub(c.id)}
+                            className={`p-3 rounded-2xl border-2 transition cursor-pointer flex items-center justify-between gap-2 ${
+                              isSelected
+                                ? 'bg-purple-50 border-purple-600 shadow-xs'
+                                : 'bg-white border-stone-200 hover:border-purple-300'
+                            }`}
+                          >
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="bg-purple-100 text-purple-900 font-bold text-[10px] px-2 py-0.5 rounded-md">
+                                  📍 {c.region}
+                                </span>
+                                <span className="text-[10px] text-stone-500 font-medium">
+                                  회원 {c.members?.length || c.memberCount || 0}명
+                                </span>
+                              </div>
+                              <h4 className="font-black text-sm text-stone-900 truncate">
+                                {c.name}
+                              </h4>
+                              <p className="text-[11px] text-stone-500 truncate">
+                                ⛳ 홈 구장: {c.homeCourseName}
+                              </p>
+                            </div>
+
+                            <div className="shrink-0">
+                              {isSelected ? (
+                                <span className="px-3 py-1.5 bg-purple-700 text-white font-black text-xs rounded-xl shadow-xs flex items-center gap-1">
+                                  <span>✓</span>
+                                  <span>선택됨</span>
+                                </span>
+                              ) : (
+                                <span className="px-3 py-1.5 bg-stone-100 hover:bg-purple-100 text-purple-700 font-bold text-xs rounded-xl border border-stone-200 transition flex items-center gap-1">
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span>선택</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )
+                ) : (
+                  /* Case B: 검색어가 없을 때 (대표님 요청: 과거 대항전 팀만 띄우고, 없으면 깔끔한 백지 상태 유지) */
+                  pastOpponentClubs.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-black text-purple-900 bg-purple-50 px-2.5 py-1.5 rounded-lg border border-purple-200">
+                        <span className="flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-purple-700" />
+                          <span>⚡ 최근 대항전을 치렀던 팀 (빠른 재선택)</span>
+                        </span>
+                        <span>{pastOpponentClubs.length}곳</span>
+                      </div>
+                      {pastOpponentClubs.map((c) => {
+                        const isSelected = participatingClubIds.includes(c.id);
+                        return (
+                          <div
+                            key={c.id}
+                            onClick={() => toggleOpponentClub(c.id)}
+                            className={`p-3 rounded-2xl border-2 transition cursor-pointer flex items-center justify-between gap-2 ${
+                              isSelected
+                                ? 'bg-purple-50 border-purple-600 shadow-xs'
+                                : 'bg-white border-stone-200 hover:border-purple-300'
+                            }`}
+                          >
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="bg-purple-100 text-purple-900 font-bold text-[10px] px-2 py-0.5 rounded-md">
+                                  📍 {c.region}
+                                </span>
+                                <span className="text-[10px] text-stone-500 font-medium">
+                                  회원 {c.members?.length || c.memberCount || 0}명
+                                </span>
+                              </div>
+                              <h4 className="font-black text-sm text-stone-900 truncate">
+                                {c.name}
+                              </h4>
+                              <p className="text-[11px] text-stone-500 truncate">
+                                ⛳ 홈 구장: {c.homeCourseName}
+                              </p>
+                            </div>
+
+                            <div className="shrink-0">
+                              {isSelected ? (
+                                <span className="px-3 py-1.5 bg-purple-700 text-white font-black text-xs rounded-xl shadow-xs flex items-center gap-1">
+                                  <span>✓</span>
+                                  <span>선택됨</span>
+                                </span>
+                              ) : (
+                                <span className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs rounded-xl border border-purple-200 transition flex items-center gap-1">
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span>재대결 선택</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* 대표님 요청: 과거 대항 팀이 없으면 무작위 클럽을 나열하지 않고 백지 안내 상태 */
+                    <div className="py-14 text-center space-y-3">
+                      <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mx-auto text-2xl shadow-xs">
+                        🔍
+                      </div>
+                      <div className="space-y-1 px-4">
+                        <h4 className="font-extrabold text-stone-800 text-sm">상대 클럽을 검색해 주세요</h4>
+                        <p className="text-xs text-stone-500 font-medium leading-relaxed">
+                          상단 검색창에 대결을 원하는 클럽명이나 지역(예: 구미, 김천, 대구, 부산 등)을 검색하시면<br />
+                          원하는 팀들을 상단 선택 목록에 차곡차곡 담을 수 있습니다.
+                        </p>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+
+              {/* 하단 고정 액션 바 */}
+              <div className="p-3 bg-stone-50 border-t border-stone-200 shrink-0 flex items-center justify-between gap-2">
+                <div className="text-xs">
+                  <span className="text-stone-500 font-bold">선택된 클럽: </span>
+                  <strong className="text-purple-800 font-black">{participatingClubIds.length}곳</strong>
+                  <span className="text-stone-400 text-[11px] ml-1">
+                    (총 {Math.max(2, participatingClubIds.length + 1)}개 팀 대결)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowOpponentClubPicker(false)}
+                  className="px-5 py-2.5 bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 active:scale-95 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
+                >
+                  선택 확인 완료 ({participatingClubIds.length}곳)
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ------------------------------------------------------------------------- */}
       {/* SUB-MODAL: 대회 개설 - 참가비 & 입금 계좌 설정 모달 */}

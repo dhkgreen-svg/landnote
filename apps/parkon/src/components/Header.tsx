@@ -23,6 +23,8 @@ export function Header() {
   const [showKakaoModal, setShowKakaoModal] = useState(false);
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
   const [pendingGuard, setPendingGuard] = useState<NavGuardInfo | null>(null);
+  const [showLoginTip, setShowLoginTip] = useState(false);
+  const [tipUserName, setTipUserName] = useState('');
 
   // 현재 라운딩 진행 중인 화면인지 여부 감지 (/round/[id] 등, /round/new 및 /round/result 제외)
   const isPlayingRound = Boolean(
@@ -36,13 +38,23 @@ export function Header() {
       setKakaoUser(ParkOnStorage.getKakaoUser());
     };
     checkUser();
+
+    const handleShowTip = (e: any) => {
+      const name = e.detail?.name || ParkOnStorage.getUserDisplayName();
+      setTipUserName(name);
+      setShowLoginTip(true);
+    };
+
     window.addEventListener('storage', checkUser);
     window.addEventListener('parkon_profile_updated', checkUser);
     window.addEventListener('parkon_round_player_sync', checkUser);
+    window.addEventListener('parkon_show_header_login_tip', handleShowTip);
+
     return () => {
       window.removeEventListener('storage', checkUser);
       window.removeEventListener('parkon_profile_updated', checkUser);
       window.removeEventListener('parkon_round_player_sync', checkUser);
+      window.removeEventListener('parkon_show_header_login_tip', handleShowTip);
     };
   }, []);
 
@@ -184,6 +196,45 @@ export function Header() {
             </Link>
           </div>
         </div>
+
+        {/* 핑키의 1초 카카오 자동가입 안내 말풍선 팝업 */}
+        {showLoginTip && (
+          <div className="max-w-md mx-auto px-4 relative">
+            <div className="absolute right-4 top-1 z-50 w-72 bg-amber-50 border-2 border-amber-400 rounded-2xl p-3.5 shadow-2xl animate-scaleUp text-stone-900">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <div className="flex items-center gap-1.5 font-black text-xs text-amber-950">
+                  <span className="text-sm leading-none">🐰</span>
+                  <span>핑키의 1초 꿀팁 안내</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowLoginTip(false)}
+                  className="text-stone-400 hover:text-stone-700 font-bold text-xs p-0.5 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="text-xs space-y-1 font-bold text-stone-800 leading-relaxed">
+                <p>
+                  <span className="text-emerald-700 font-black">'{tipUserName || '회원'}'</span> 님으로 등록되었습니다!
+                </p>
+                <p className="text-[11px] text-stone-700">
+                  위에 내 이름을 누르시면 <strong>카카오톡 창</strong>이 뜹니다. <span className="text-amber-900 underline decoration-amber-500 font-black">[확인]만 누르시면</span> 비밀번호 없이 <strong>자동으로 가입 완료</strong>됩니다!
+                </p>
+                <p className="text-[10px] text-stone-500 font-medium">
+                  ※ 평생 무료 이용 & 내 경기 타수가 안전하게 자동 보관됩니다.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLoginTip(false)}
+                className="mt-2 w-full py-1.5 bg-amber-400 hover:bg-amber-500 active:scale-95 text-stone-950 font-black text-xs rounded-xl shadow-xs transition cursor-pointer"
+              >
+                👍 확인 (알겠습니다)
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* ⚠️ 라운드 진행 중 오터치/주머니 방지 안내 모달 */}

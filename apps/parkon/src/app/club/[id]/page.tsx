@@ -680,13 +680,20 @@ export default function ClubRoomDetailPage() {
     <div className="p-3 max-w-xl mx-auto space-y-3 pb-20">
       {/* 상단 네비게이션 헤더 */}
       <div className="flex items-center justify-between bg-white rounded-2xl p-3 shadow-xs border border-stone-200">
-        <Link
-          href="/club"
-          className="flex items-center gap-1 text-xs font-black text-stone-700 hover:text-stone-900 transition active:scale-95"
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              router.back();
+            } else {
+              router.push('/club?tab=tournaments');
+            }
+          }}
+          className="flex items-center gap-1 text-xs font-black text-stone-700 hover:text-stone-900 transition active:scale-95 cursor-pointer"
         >
           <ChevronLeft className="w-4 h-4" />
           <span>목록으로</span>
-        </Link>
+        </button>
         <div className="text-center">
           <h1 className="font-black text-sm text-stone-900 flex items-center justify-center gap-1.5">
             <Trophy className="w-4 h-4 text-purple-700" />
@@ -696,14 +703,31 @@ export default function ClubRoomDetailPage() {
             총 {totalAllPlayers}명 참가 ({room.groups.length}개 조)
           </p>
         </div>
-        <button
-          type="button"
-          onClick={loadRoom}
-          className="p-1.5 rounded-xl text-stone-500 hover:text-stone-800 bg-stone-50 border border-stone-200 active:scale-95 transition cursor-pointer"
-          title="새로고침"
-        >
-          <RefreshCw className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={loadRoom}
+            className="p-1.5 rounded-xl text-stone-500 hover:text-stone-800 bg-stone-50 border border-stone-200 active:scale-95 transition cursor-pointer"
+            title="새로고침"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          {/* 대표님 요청: 상단 우측 닫기 (X) 버튼 누르면 항상 직전 화면으로 복귀 */}
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push('/club?tab=tournaments');
+              }
+            }}
+            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition cursor-pointer flex items-center justify-center"
+            title="닫기 (이전 화면으로)"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* 안내 토스트 피드백 */}

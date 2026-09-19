@@ -874,9 +874,20 @@ export default function CoursesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Link href="/" className="p-2 -ml-2 text-stone-700 hover:text-stone-950">
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push('/');
+              }
+            }}
+            className="p-2 -ml-2 text-stone-700 hover:text-stone-950 cursor-pointer"
+            title="이전으로"
+          >
             <ArrowLeft className="w-6 h-6" />
-          </Link>
+          </button>
           <div>
             <h2 className="text-xl font-black text-stone-900 leading-tight">
               전국 파크골프장 검색
@@ -887,14 +898,31 @@ export default function CoursesPage() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black px-3 py-2 rounded-xl flex items-center gap-1 shadow active:scale-95 transition"
-        >
-          <Plus className="w-4 h-4" />
-          <span>신규 등록</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black px-3 py-2 rounded-xl flex items-center gap-1 shadow active:scale-95 transition cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>신규 등록</span>
+          </button>
+          {/* 대표님 요청: 상단 우측 닫기 (X) 버튼 누르면 항상 직전 화면으로 복귀 */}
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push('/');
+              }
+            }}
+            className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition cursor-pointer"
+            title="닫기 (이전 화면으로)"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* 🔍 SEARCH BAR (도시명 / 구장명 직접 검색 & 돋보기 클릭 시에만 나열) */}

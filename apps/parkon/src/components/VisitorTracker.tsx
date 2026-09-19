@@ -20,6 +20,8 @@ export function VisitorTracker() {
         let userRegion = '';
         let homeCourse = '';
         let userName = '일반 골퍼';
+        let isKakaoUser = false;
+        let kakaoId = '';
 
         if (typeof window !== 'undefined') {
           try {
@@ -66,6 +68,19 @@ export function VisitorTracker() {
                 homeCourse = '양평 강상 구장';
               }
             }
+
+            // 4. 카카오 로그인 정보 확인
+            const kakaoRaw = localStorage.getItem('parkon_kakao_user_v1');
+            if (kakaoRaw) {
+              const kakao = JSON.parse(kakaoRaw);
+              if (kakao && (kakao.id || kakao.nickname)) {
+                isKakaoUser = true;
+                kakaoId = String(kakao.id || '');
+                if (!userName || userName === '일반 골퍼') {
+                  userName = kakao.realName || kakao.aliasName || kakao.nickname || userName;
+                }
+              }
+            }
           } catch {
             // Ignore localStorage read errors
           }
@@ -80,6 +95,8 @@ export function VisitorTracker() {
             userRegion,
             homeCourse,
             userName,
+            isKakaoUser,
+            kakaoId,
           }),
         });
       } catch (e) {

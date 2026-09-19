@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Sparkles,
@@ -38,6 +39,7 @@ import { RuleSituationDiagram } from '@/components/RuleSituationDiagram';
 import { ChapterCutDiagram, ChapterThumbnail } from '@/components/ChapterCutDiagram';
 
 export default function RulesPage() {
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<RuleCategoryId>('ob');
   const [fontSizeMode, setFontSizeMode] = useState<'normal' | 'large' | 'xlarge'>('large');
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -364,24 +366,53 @@ export default function RulesPage() {
   return (
     <div className="p-4 max-w-md mx-auto space-y-4 pb-16">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <Link href="/" className="p-2 -ml-2 text-stone-700 hover:text-stone-950">
-          <ArrowLeft className="w-6 h-6" />
-        </Link>
-        <div className="flex-1">
-          <h2 className="text-xl font-black text-stone-900 flex items-center gap-1.5">
-            <span className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm">
-              ⚖️
-            </span>
-            <span>룰 솔로몬</span>
-            <span className="text-xs bg-amber-400 text-emerald-950 font-black px-2 py-0.5 rounded-full shadow-sm">
-              1초 판정
-            </span>
-          </h2>
-          <p className="text-xs text-stone-600 font-bold mt-0.5">
-            필드 분쟁 즉시 해결 · (사)대한파크골프협회 공인 규정 준거
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push('/');
+              }
+            }}
+            className="p-2 -ml-2 text-stone-700 hover:text-stone-950 cursor-pointer"
+            title="이전으로"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <div className="flex-1">
+            <h2 className="text-xl font-black text-stone-900 flex items-center gap-1.5">
+              <span className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm">
+                ⚖️
+              </span>
+              <span>룰 솔로몬</span>
+              <span className="text-xs bg-amber-400 text-emerald-950 font-black px-2 py-0.5 rounded-full shadow-sm">
+                1초 판정
+              </span>
+            </h2>
+            <p className="text-xs text-stone-600 font-bold mt-0.5">
+              필드 분쟁 즉시 해결 · (사)대한파크골프협회 공인 규정 준거
+            </p>
+          </div>
         </div>
+
+        {/* 대표님 요청: 상단 우측 닫기 (X) 버튼 누르면 항상 직전 화면으로 복귀 */}
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              router.back();
+            } else {
+              router.push('/');
+            }
+          }}
+          className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition cursor-pointer"
+          title="닫기 (이전 화면으로)"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Senior Font Size Controller Bar */}

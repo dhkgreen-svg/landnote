@@ -40,6 +40,7 @@ export default function HomePage() {
   const [showStatsSearchModal, setShowStatsSearchModal] = useState<boolean>(false);
   const [statsSearchQuery, setStatsSearchQuery] = useState<string>('');
   const [clubBadge, setClubBadge] = useState<{ text: string; isPlaying: boolean } | null>(null);
+  const [hasNewClubNotice, setHasNewClubNotice] = useState<boolean>(false);
   const [showKakaoModal, setShowKakaoModal] = useState<boolean>(false);
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
   const [showInstallGuideModal, setShowInstallGuideModal] = useState<boolean>(false);
@@ -78,14 +79,31 @@ export default function HomePage() {
       setUserProfile(ParkOnStorage.getUserProfile());
       setKakaoUser(ParkOnStorage.getKakaoUser());
 
-      // 클럽 앤 번개 대회 실제 상태 연동 (없으면 빈칸, 진행 중이면 대회 진행 중, 준비 중이면 대회 준비 중)
+      // 클럽 앤 번개 대회 실제 상태 연동 및 신규 공지/번개 알림 체크
       const clubRooms = ClubStorage.getAllRooms();
       const activeRoom = clubRooms.find((r) => r.status === 'PLAYING') || clubRooms.find((r) => r.status === 'RECRUITING');
+
+      const flashGatherings = ClubStorage.getAllFlashGatherings();
+      const activeFlash = flashGatherings.find((f) => f.status !== 'CLOSED');
+
+      const invitations = ClubStorage.getClubInvitations();
+      const hasPendingInvites = Boolean(invitations && invitations.length > 0);
+
+      // 클럽에 공지사항이나 번개, 대회, 초대장이 있으면 'N' 깜빡임 활성화
+      const hasNoticeOrActivity = Boolean(activeRoom || activeFlash || hasPendingInvites);
+      setHasNewClubNotice(hasNoticeOrActivity);
+
       if (activeRoom) {
         if (activeRoom.status === 'PLAYING') {
           setClubBadge({ text: '대회 진행 중', isPlaying: true });
         } else {
           setClubBadge({ text: '대회 준비 중', isPlaying: false });
+        }
+      } else if (activeFlash) {
+        if (activeFlash.status === 'FULL') {
+          setClubBadge({ text: '번개 마감', isPlaying: false });
+        } else {
+          setClubBadge({ text: '⚡ 번개 모집 중', isPlaying: false });
         }
       } else {
         setClubBadge(null);
@@ -97,11 +115,13 @@ export default function HomePage() {
     window.addEventListener('parkon_profile_updated', loadData);
     window.addEventListener('parkon_round_completed', loadData);
     window.addEventListener('parkon_favorite_courses_updated', loadData);
+    window.addEventListener('parkon_club_updated', loadData);
     return () => {
       window.removeEventListener('storage', loadData);
       window.removeEventListener('parkon_profile_updated', loadData);
       window.removeEventListener('parkon_round_completed', loadData);
       window.removeEventListener('parkon_favorite_courses_updated', loadData);
+      window.removeEventListener('parkon_club_updated', loadData);
     };
   }, []);
 
@@ -843,19 +863,16 @@ export default function HomePage() {
           onClick={() => openStatsModalWithCourse(homeCourse?.id)}
           className="bg-gradient-to-br from-white via-amber-50/40 to-amber-100/50 p-3 rounded-2xl border-2 border-amber-400/90 hover:border-amber-500 shadow-xs hover:shadow-sm transition text-left group flex flex-col justify-between active:scale-[0.98] cursor-pointer"
         >
-          {/* 상단: 타이틀 + 홈구장 뱃지 */}
+          {/* 상단: 타이틀 */}
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-1.5">
               <span className="w-5 h-5 rounded-md bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-2xs">
                 🏆
               </span>
-              <span className="text-xs font-black text-stone-900 group-hover:text-amber-800 transition">
+              <span className="text-xs font-black text-stone-900 group-hover:text-amber-800 transition whitespace-nowrap">
                 나의 등급 보기
               </span>
             </div>
-            <span className="text-[9.5px] font-black bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded-full truncate max-w-[70px] border border-emerald-300/60">
-              {homeCourse ? homeCourse.name.replace(/파크골프장|골프장/g, '').trim() : '홈구장'}
-            </span>
           </div>
 
           {/* 중앙: 별 5개 게이지 + 스타 등급 + 전국 상위 % */}
@@ -888,17 +905,16 @@ export default function HomePage() {
               <span className="w-5 h-5 rounded-md bg-purple-100 text-purple-800 flex items-center justify-center font-black text-xs shadow-2xs">
                 <Award className="w-3.5 h-3.5 text-purple-700" />
               </span>
-              <span className="text-xs font-black text-stone-900 group-hover:text-purple-700 transition">
+              <span className="text-xs font-black text-stone-900 group-hover:text-purple-700 transition whitespace-nowrap">
                 클럽 &amp; 대회 센터
               </span>
             </div>
-            {clubBadge && (
-              <span className={`text-[9px] font-black px-1.5 py-0.2 rounded ${
-                clubBadge.isPlaying
-                  ? 'bg-purple-100 text-purple-800 animate-pulse'
-                  : 'bg-amber-100 text-amber-900 border border-amber-300'
-              }`}>
-                {clubBadge.text}
+            {hasNewClubNotice && (
+              <span
+                className="inline-flex items-center justify-center w-4 h-4 text-[9px] font-black text-white bg-red-600 rounded-full shadow-xs animate-pulse ring-2 ring-red-200 shrink-0"
+                title="새로운 번개·대회·공지 등록됨"
+              >
+                N
               </span>
             )}
           </div>

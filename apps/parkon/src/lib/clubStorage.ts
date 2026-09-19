@@ -14,7 +14,9 @@ import {
   AwardRuleConfig,
   SpecialAwardWinner,
   SpecialAwardType,
+  ClubRecruitStatus,
 } from '@/types/club';
+import { NATIONWIDE_PARKGOLF_CLUBS } from './clubDirectoryData';
 
 const STORAGE_KEYS = {
   CLUB_ROOMS: 'parkon_club_rooms_v1',
@@ -27,9 +29,140 @@ const STORAGE_KEYS = {
 };
 
 
-// 기본 공식 동호회 데이터 (가상/테스트 더미 데이터 100% 제거, 실제 가입/창단 클럽만 유지)
+// 기본 등록 동호회 데이터 (파크온 공식 가입 클럽 최우선 및 지역별 동호회 데이터)
 function generateDefaultSeedClubs(): ParkGolfClub[] {
-  return [];
+  return [
+    {
+      id: 'club-gumi-dongrak',
+      name: '구미 동락 에이스 파크골프 클럽',
+      region: '경북 구미',
+      homeCourseId: 'course-gumi-dongrak',
+      homeCourseName: '구미 동락 파크골프장',
+      description: '구미 동락구장을 홈으로 활동하는 파크온 공식 제휴 1호 명문 클럽입니다. 매월 정기 월례회 및 친선 대항전 활성화!',
+      presidentName: '박회장',
+      managerName: '김총무',
+      contactPhone: '010-3814-1422',
+      memberCount: 64,
+      members: [
+        { id: 'm_pres_1', name: '박회장', role: 'PRESIDENT', joinedAt: '2026-01-01' },
+        { id: 'm_mgr_1', name: '김총무', role: 'MANAGER', joinedAt: '2026-01-05' },
+        { id: 'm_mem_1', name: '이동락', role: 'MEMBER', joinedAt: '2026-02-01' },
+      ],
+      pendingMembers: [],
+      isPublic: true,
+      badgeColor: 'emerald',
+      isParkOnClub: true,
+      createdAt: '2026-01-01',
+    },
+    {
+      id: 'club-gumi-seonsan',
+      name: '구미 선산 한마음 파크골프 클럽',
+      region: '경북 구미',
+      homeCourseId: 'course-gumi-seonsan',
+      homeCourseName: '구미 선산 파크골프장',
+      description: '낙동강변 선산구장에서 매주 주말 정기 번개 및 클럽 대항전을 펼치는 파크온 공식 가입 클럽입니다.',
+      presidentName: '이선산',
+      managerName: '최총무',
+      contactPhone: '010-9876-5432',
+      memberCount: 48,
+      members: [
+        { id: 'm_pres_2', name: '이선산', role: 'PRESIDENT', joinedAt: '2026-02-10' },
+        { id: 'm_mgr_2', name: '최총무', role: 'MANAGER', joinedAt: '2026-02-12' },
+      ],
+      pendingMembers: [],
+      isPublic: true,
+      badgeColor: 'amber',
+      isParkOnClub: true,
+      createdAt: '2026-02-10',
+    },
+    {
+      id: 'club-daegu-suseong',
+      name: '대구 수성 범어 파크골프 클럽',
+      region: '대구 수성',
+      homeCourseId: 'course-daegu-suseong',
+      homeCourseName: '대구 수성 파크골프장',
+      description: '대구 수성구를 대표하는 명문 클럽! 파크온 실시간 대회 스코어링 및 신페리오 샷건 대회 공식 운영.',
+      presidentName: '정수성',
+      managerName: '강총무',
+      contactPhone: '010-5555-4444',
+      memberCount: 52,
+      members: [
+        { id: 'm_pres_3', name: '정수성', role: 'PRESIDENT', joinedAt: '2026-01-15' },
+        { id: 'm_mgr_3', name: '강총무', role: 'MANAGER', joinedAt: '2026-01-20' },
+      ],
+      pendingMembers: [],
+      isPublic: true,
+      badgeColor: 'blue',
+      isParkOnClub: true,
+      createdAt: '2026-01-15',
+    },
+    {
+      id: 'club-busan-samrak',
+      name: '부산 삼락 센텀 파크골프 클럽',
+      region: '부산 사상',
+      homeCourseId: 'course-busan-samrak',
+      homeCourseName: '부산 삼락 파크골프장',
+      description: '부산 삼락 생태공원 36홀 명품 코스에서 활동하는 남부권 최대 파크온 제휴 명문 클럽입니다.',
+      presidentName: '오삼락',
+      managerName: '윤총무',
+      contactPhone: '010-7777-8888',
+      memberCount: 76,
+      members: [
+        { id: 'm_pres_4', name: '오삼락', role: 'PRESIDENT', joinedAt: '2026-01-10' },
+        { id: 'm_mgr_4', name: '윤총무', role: 'MANAGER', joinedAt: '2026-01-15' },
+      ],
+      pendingMembers: [],
+      isPublic: true,
+      badgeColor: 'purple',
+      isParkOnClub: true,
+      createdAt: '2026-01-10',
+    },
+    {
+      id: 'club-gumi-bisan-local',
+      name: '구미 비산 강변 파크골프 동호회',
+      region: '경북 구미',
+      homeCourseId: 'course-gumi-dongrak',
+      homeCourseName: '구미 비산 파크골프장',
+      description: '비산 체육공원 인근 주민 자생 파크골프 친목 모임입니다.',
+      presidentName: '김비산',
+      managerName: '박총무',
+      memberCount: 32,
+      members: [],
+      isPublic: true,
+      isParkOnClub: false,
+      createdAt: '2026-03-01',
+    },
+    {
+      id: 'club-gumi-dogae-local',
+      name: '구미 도개 파크골프 사랑회',
+      region: '경북 구미',
+      homeCourseId: 'course-gumi-dongrak',
+      homeCourseName: '구미 도개 파크골프장',
+      description: '도개면 주민 파크골프 동호회입니다.',
+      presidentName: '이도개',
+      managerName: '한총무',
+      memberCount: 24,
+      members: [],
+      isPublic: true,
+      isParkOnClub: false,
+      createdAt: '2026-03-05',
+    },
+    {
+      id: 'club-seoul-hangang',
+      name: '서울 한강 월드 파크골프 클럽',
+      region: '서울 영등포',
+      homeCourseId: 'course-seoul-yeouido',
+      homeCourseName: '여의도 파크골프장',
+      description: '수도권 한강변 코스를 사랑하는 골퍼들의 파크온 공식 등록 클럽입니다.',
+      presidentName: '최한강',
+      managerName: '조총무',
+      memberCount: 65,
+      members: [],
+      isPublic: true,
+      isParkOnClub: true,
+      createdAt: '2026-02-20',
+    },
+  ];
 }
 
 // 기본 번개 데이터 (사용자 직접 개설 전에는 빈 목록 유지)
@@ -64,11 +197,32 @@ export const ClubStorage = {
       const data = localStorage.getItem(STORAGE_KEYS.CLUB_ROOMS);
       if (data !== null) {
         const rooms: ClubEventRoom[] = JSON.parse(data);
-        // 사용자가 직접 만든 방만 유지하고 이전 가상 시드 방('dongrak-monthly-sep')은 정리
-        const realRooms = rooms.filter((r) => r.id !== 'dongrak-monthly-sep');
+        // 사용자가 직접 만든 방만 유지하고 이전 가상 시드 방('dongrak-monthly-sep') 및 비정상 복사/홍보 텍스트 방 정리
+        const isCorrupted = (str?: string) => {
+          if (!str) return false;
+          return /160억|준신축|빌딩|수지분석|대로변|메디컬|vercel\.app|https?:\/\//i.test(str) || str.length > 80 || str.includes('\n');
+        };
+
+        const realRooms = rooms.filter((r) => {
+          if (r.id === 'dongrak-monthly-sep') return false;
+          if (isCorrupted(r.title) || isCorrupted(r.clubName)) return false;
+          if (r.participatingClubs?.some((c) => isCorrupted(c.clubName))) return false;
+          return true;
+        });
         if (realRooms.length !== rooms.length) {
           localStorage.setItem(STORAGE_KEYS.CLUB_ROOMS, JSON.stringify(realRooms));
         }
+
+        // 혹시 남아있을 수 있는 구버전 레거시 키의 오염 데이터도 함께 소탕
+        ['parkon_club_rooms', 'parkon_club_event_rooms', 'parkon_tournament_rooms'].forEach((k) => {
+          try {
+            const leg = localStorage.getItem(k);
+            if (leg && /160억|준신축|빌딩|수지분석|대로변|메디컬|vercel\.app|https?:\/\//i.test(leg)) {
+              localStorage.removeItem(k);
+            }
+          } catch {}
+        });
+
         return realRooms;
       }
     } catch {
@@ -1447,36 +1601,77 @@ ${link}`;
   // [NEW] 클럽 커뮤니티 관리 (창단, 가입, 다중 클럽 관리)
   // ==========================================
   getAllClubs(): ParkGolfClub[] {
-    if (typeof window === 'undefined') return [];
+    if (typeof window === 'undefined') return NATIONWIDE_PARKGOLF_CLUBS;
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CLUBS);
-      if (!data) {
-        return [];
+      let userClubs: ParkGolfClub[] = [];
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          userClubs = parsed;
+        }
       }
-      const parsed: ParkGolfClub[] = JSON.parse(data);
-      // 가상/테스트용 더미 클럽('club-gumi-dongrak', 'club-busan-samrak' 등) 완벽 필터링 및 영구 정리
-      const realClubs = parsed.filter(
-        (c) =>
-          c &&
-          c.id !== 'club-gumi-dongrak' &&
-          c.id !== 'club-busan-samrak' &&
-          !(c.name && c.name.includes('구미 동락 파크골프 클럽'))
-      );
-      if (realClubs.length !== parsed.length) {
-        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(realClubs));
-      }
-      return realClubs.map((c) => ({
-        ...c,
-        pendingMembers: c.pendingMembers || [],
-      }));
+
+      // 사용자 직접 창단/수정 클럽 우선 + 전국 파크골프 클럽/동호회 디렉토리 자동 병합 (중복 id 방지)
+      const userClubIds = new Set(userClubs.map((c) => c.id));
+      const directoryClubs = NATIONWIDE_PARKGOLF_CLUBS.filter((c) => !userClubIds.has(c.id));
+
+      const merged: ParkGolfClub[] = [
+        ...userClubs.map((c) => ({
+          ...c,
+          isParkOnClub: c.isParkOnClub !== undefined ? c.isParkOnClub : true,
+          recruitStatus: c.recruitStatus || (c.isParkOnClub !== false ? 'RECRUITING' : 'ALWAYS'),
+          recruitQuota: c.recruitQuota !== undefined ? c.recruitQuota : (c.isParkOnClub !== false ? 5 : undefined),
+          pendingMembers: c.pendingMembers || [],
+        })),
+        ...directoryClubs,
+      ];
+
+      return merged;
     } catch {
-      return [];
+      return NATIONWIDE_PARKGOLF_CLUBS;
     }
   },
 
   getClubById(id: string): ParkGolfClub | null {
     const list = this.getAllClubs();
     return list.find((c) => c.id === id) || null;
+  },
+
+  updateClubRecruitment(
+    clubId: string,
+    recruitment: {
+      recruitStatus: ClubRecruitStatus;
+      recruitQuota?: number;
+      recruitTargetDate?: string;
+      recruitNotes?: string;
+    }
+  ): ParkGolfClub | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const allClubs = this.getAllClubs();
+      const clubIndex = allClubs.findIndex((c) => c.id === clubId);
+      if (clubIndex === -1) return null;
+
+      const updated = {
+        ...allClubs[clubIndex],
+        ...recruitment,
+      };
+
+      const data = localStorage.getItem(STORAGE_KEYS.CLUBS);
+      let userClubs: ParkGolfClub[] = data ? JSON.parse(data) : [];
+      const userIdx = userClubs.findIndex((c) => c.id === clubId);
+      if (userIdx >= 0) {
+        userClubs[userIdx] = updated;
+      } else {
+        userClubs.unshift(updated);
+      }
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(userClubs));
+      return updated;
+    } catch (e) {
+      console.error('Failed to update club recruitment:', e);
+      return null;
+    }
   },
 
   createClub(clubData: {
@@ -1516,6 +1711,7 @@ ${link}`;
       pendingMembers: [],
       isPublic: clubData.isPublic !== false,
       badgeColor: clubData.badgeColor || 'emerald',
+      isParkOnClub: true, // 사용자가 파크온에서 직접 창단한 클럽은 공식 파크온 가입 클럽
       createdAt: new Date().toISOString().slice(0, 10),
     };
 
@@ -1544,8 +1740,7 @@ ${link}`;
       if (!Array.isArray(parsed)) {
         return [];
       }
-      // 사용자가 직접 생성하거나 승인받은 클럽만 유지 (기본 가상 가입 완전 배제)
-      return parsed.filter((id) => id !== 'club-gumi-dongrak' && id !== 'club-busan-samrak');
+      return parsed;
     } catch {
       return [];
     }
@@ -1998,7 +2193,19 @@ ${shareUrl}`;
     if (typeof window === 'undefined') return [];
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CLUB_CHRONICLES);
-      return data ? JSON.parse(data) : [];
+      if (data) {
+        const list: ClubChronicleTournament[] = JSON.parse(data);
+        const isCorrupted = (str?: string) => {
+          if (!str) return false;
+          return /160억|준신축|빌딩|수지분석|대로변|메디컬|vercel\.app|https?:\/\//i.test(str) || str.length > 80 || str.includes('\n');
+        };
+        const cleaned = list.filter((c) => !isCorrupted(c.title) && !isCorrupted(c.clubName));
+        if (cleaned.length !== list.length) {
+          localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(cleaned));
+        }
+        return cleaned;
+      }
+      return [];
     } catch {
       return [];
     }

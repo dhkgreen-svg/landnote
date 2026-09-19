@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Newspaper,
   Trophy,
@@ -30,6 +31,7 @@ import { ParkOnStorage } from '@/lib/storage';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
 
 export default function CommunityBoardPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'NOTICES' | 'NEWS' | 'VOICE' | 'TALK'>('NOTICES');
   const [userName, setUserName] = useState<string>('김대희');
   const [toastMsg, setToastMsg] = useState<string>('');
@@ -223,13 +225,30 @@ export default function CommunityBoardPage() {
             </div>
           </div>
 
-          <Link
-            href="/"
-            className="text-xs bg-white/15 hover:bg-white/25 text-white font-bold py-1.5 px-3 rounded-xl border border-white/20 transition active:scale-95 flex items-center gap-1"
-          >
-            <Home className="w-3.5 h-3.5 text-amber-300" />
-            <span>홈으로</span>
-          </Link>
+          <div className="flex items-center gap-1.5">
+            <Link
+              href="/"
+              className="text-xs bg-white/15 hover:bg-white/25 text-white font-bold py-1.5 px-3 rounded-xl border border-white/20 transition active:scale-95 flex items-center gap-1"
+            >
+              <Home className="w-3.5 h-3.5 text-amber-300" />
+              <span>홈으로</span>
+            </Link>
+            {/* 대표님 요청: 상단 우측 닫기 (X) 버튼 누르면 항상 직전 화면으로 복귀 */}
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.history.length > 1) {
+                  router.back();
+                } else {
+                  router.push('/');
+                }
+              }}
+              className="p-1.5 text-stone-300 hover:text-white hover:bg-white/15 rounded-xl border border-white/20 transition cursor-pointer flex items-center justify-center"
+              title="닫기 (이전 화면으로)"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* 📍 GPS 실시간 내 위치 & 반경 배너 */}
