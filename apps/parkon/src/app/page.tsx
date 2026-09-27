@@ -846,8 +846,8 @@ export default function HomePage() {
                   <span className="text-base sm:text-lg">💡</span>
                   <span className="truncate">초간단 설명서</span>
                 </div>
-                <span className="text-[10px] sm:text-[10.5px] font-extrabold text-stone-900 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-                  1초 만에 배우는 파크골프 올인원 튜토리얼
+                <span className="text-[10px] sm:text-[10.5px] font-extrabold text-stone-900 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap truncate max-w-full">
+                  파크골프 올인원 튜토리얼
                 </span>
               </button>
 
