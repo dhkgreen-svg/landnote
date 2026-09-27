@@ -52,6 +52,51 @@ export default function HomePage() {
   const [showCourseTodayModal, setShowCourseTodayModal] = useState<boolean>(false);
   const [selectedCourseForDetail, setSelectedCourseForDetail] = useState<Course | null>(null);
   const [showQuickGuideModal, setShowQuickGuideModal] = useState<boolean>(false);
+  const [showShareToast, setShowShareToast] = useState<boolean>(false);
+  const [shareToastMessage, setShareToastMessage] = useState<string>('✓ 파크온 주소가 복사되었습니다! 카톡에 붙여넣어 공유하세요.');
+
+  const handleShareParkon = async () => {
+    const shareTitle = '파크온 (ParkOn) - 1초 모바일 파크골프 스코어카드 ⛳';
+    const shareText = `🏌️ [파크온] 종이 스코어카드 없이 스마트폰으로 1초 만에 타수 기록!\n📍 전국 380개 공인 파크골프장 실시간 날씨·코스 안내\n🏆 5스타 실력 등급 & 전국 랭킹 산출\n\n👉 지금 바로 이용해보세요:\nhttps://www.parkongolf.com`;
+    const shareUrl = 'https://www.parkongolf.com';
+
+    // 모바일 환경: 시스템 공유 시트 (카카오톡, 문자 등 직접 전송 가능)
+    if (typeof navigator !== 'undefined' && navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent || '')) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(`${shareTitle}\n\n${shareText}`);
+        setShareToastMessage('✓ 파크온 주소가 복사되었습니다! 카톡에 붙여넣어 공유하세요.');
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 2500);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = `${shareTitle}\n\n${shareText}`;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        setShareToastMessage('✓ 파크온 주소가 복사되었습니다! 카톡에 붙여넣어 공유하세요.');
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 2500);
+      }
+    } catch {
+      setShareToastMessage('URL 복사에 실패했습니다. 브라우저 권한을 확인해주세요.');
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 2500);
+    }
+  };
 
   useEffect(() => {
     const loadData = () => {
@@ -1017,7 +1062,28 @@ export default function HomePage() {
         </span>
       </a>
 
-
+      {/* 4-2. 파크온 소개하기 (카톡 / URL 공유) 버튼 - 운세 보기 밑 컴팩트 버튼 */}
+      <div className="pt-0.5">
+        <button
+          type="button"
+          onClick={handleShareParkon}
+          className="w-full py-2.5 px-3.5 bg-white hover:bg-stone-100 active:scale-[0.99] border border-stone-200/90 text-stone-700 rounded-xl text-xs font-bold shadow-2xs flex items-center justify-between gap-2 transition cursor-pointer group"
+          title="파크온 소개하기 (카카오톡 및 URL 공유)"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-5 h-5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center justify-center text-[11px] font-black shrink-0">
+              ⛳
+            </span>
+            <span className="text-[12px] font-bold text-stone-700 group-hover:text-stone-950 truncate">
+              동반자에게 <strong className="font-black text-stone-900">파크온</strong> 소개하기
+            </span>
+          </div>
+          <span className="shrink-0 flex items-center gap-1.5 text-[11px] font-bold text-stone-600 bg-stone-100 group-hover:bg-amber-100 group-hover:text-amber-900 group-hover:border-amber-300 px-2 py-0.5 rounded-lg border border-stone-200/80 transition">
+            <Share2 className="w-3.5 h-3.5 text-stone-500 group-hover:text-amber-800" />
+            <span>카톡 · URL 복사</span>
+          </span>
+        </button>
+      </div>
 
       {/* 4.6. 1촌 실시간 응원 피드 위젯 */}
       <CompanionFeedWidget />
@@ -2326,6 +2392,14 @@ export default function HomePage() {
         onClose={() => setShowQuickGuideModal(false)}
         homeCourseId={homeCourse?.id}
       />
+
+      {/* 파크온 소개 URL 복사 완료 토스트 */}
+      {showShareToast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-stone-900/95 text-white px-4 py-2.5 rounded-full text-xs font-bold shadow-xl border border-stone-700/60 flex items-center gap-2 animate-fadeIn whitespace-nowrap pointer-events-none">
+          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{shareToastMessage}</span>
+        </div>
+      )}
     </div>
   );
 }
