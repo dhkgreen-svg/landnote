@@ -7,8 +7,8 @@ import { MainWrapper } from '@/components/MainWrapper';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://parkongolf.com'),
-  title: '파크온 (ParkOn) - 모바일 스코어보드',
-  description: '50~70대 시니어를 위한 초간편 1초 스코어보드 & 로컬룰 가이드',
+  title: '파크골프 올인원 (ParkGolf All-in-One) - 전국 400개 구장 포털 & 1초 스코어보드',
+  description: '50~70대 시니어를 위한 전국 400개 구장 날씨·1초 스코어보드·길안내 올인원',
   manifest: '/manifest.json',
   icons: {
     icon: '/icon.png',
@@ -17,18 +17,18 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: '파크온',
+    title: '파크골프 올인원',
   },
   openGraph: {
-    title: '파크온 (ParkOn) - 모바일 스코어보드',
-    description: '1초 스코어링 · 전국 5스타 랭킹 · 룰 솔로몬 AI',
-    siteName: '파크온',
+    title: '파크골프 올인원 (ParkGolf All-in-One)',
+    description: '전국 400개 구장 실시간 날씨 · 1초 스코어링 · 길안내 · 전국 랭킹 올인원',
+    siteName: '파크골프 올인원',
     images: [
       {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: '파크온 (ParkOn) 파크골프 스코어보드',
+        alt: '파크골프 올인원 (ParkGolf All-in-One)',
       },
     ],
     locale: 'ko_KR',
@@ -36,8 +36,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '파크온 (ParkOn) - 모바일 스코어보드',
-    description: '1초 스코어링 · 전국 5스타 랭킹 · 룰 솔로몬 AI',
+    title: '파크골프 올인원 (ParkGolf All-in-One)',
+    description: '전국 400개 구장 실시간 날씨 · 1초 스코어링 · 길안내 · 전국 랭킹 올인원',
     images: ['/og-image.jpg'],
   },
 };

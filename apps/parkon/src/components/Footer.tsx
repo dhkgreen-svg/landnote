@@ -16,13 +16,13 @@ export function Footer() {
           <div className="flex flex-col items-center gap-1">
             <div className="flex items-center gap-1.5 font-black text-sm text-stone-900">
               <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
-              <span>파크온 (ParkOn)</span>
+              <span>파크골프 올인원 (ParkGolf All-in-One)</span>
               <span className="text-[10px] text-amber-700 bg-amber-100 font-bold px-1.5 py-0.5 rounded-full">
-                전국 파크골프 포털
+                대한민국 No.1 포털
               </span>
             </div>
             <p className="text-[11px] text-stone-500 font-medium">
-              전국 380+ 구장 정보 · 1초 스코어링 · AI 룰 솔로몬 · 클럽 대회 실시간 운영
+              전국 400+ 구장 날씨 · 1초 스코어링 · 스마트 길안내 · 전국 랭킹 올인원
             </p>
           </div>
 
@@ -32,7 +32,7 @@ export function Footer() {
               type="button"
               onClick={() => setShowInstallModal(true)}
               className="w-full max-w-xs mx-auto py-2.5 px-4 bg-emerald-800 hover:bg-emerald-900 text-yellow-300 font-extrabold text-xs rounded-2xl shadow-md border border-emerald-600/80 flex items-center justify-center gap-2 cursor-pointer transition active:scale-98"
-              title="스마트폰 또는 PC 바탕화면에 파크온 앱 추가"
+              title="스마트폰 또는 PC 바탕화면에 파크골프 올인원 앱 추가"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -40,7 +40,7 @@ export function Footer() {
                 alt="파키 심볼"
                 className="w-5 h-5 rounded-lg border border-amber-300 object-cover shrink-0"
               />
-              <span>스마트폰 · PC 바탕화면에 파크온 추가</span>
+              <span>스마트폰 · PC 바탕화면에 파크골프 올인원 추가</span>
             </button>
           </div>
 

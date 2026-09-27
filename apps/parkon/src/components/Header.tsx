@@ -121,9 +121,14 @@ export function Header() {
                 파키
               </span>
             </div>
-            <span className="font-extrabold text-xl tracking-tight text-white whitespace-nowrap">
-              파크온
-            </span>
+            <div className="flex flex-col leading-none">
+              <span className="font-black text-base sm:text-lg tracking-tight text-white whitespace-nowrap flex items-center gap-1">
+                파크골프 <span className="text-amber-300">올인원</span>
+              </span>
+              <span className="text-[8.5px] font-bold text-emerald-200 tracking-wider mt-0.5">
+                PARKGOLF ALL-IN-ONE
+              </span>
+            </div>
           </Link>
 
           <div className="flex items-center gap-1.5 shrink-0">

@@ -53,30 +53,15 @@ export default function HomePage() {
   const [selectedCourseForDetail, setSelectedCourseForDetail] = useState<Course | null>(null);
   const [showQuickGuideModal, setShowQuickGuideModal] = useState<boolean>(false);
   const [showShareToast, setShowShareToast] = useState<boolean>(false);
-  const [shareToastMessage, setShareToastMessage] = useState<string>('✓ 파크온 주소(https://www.parkongolf.com)가 복사되었습니다!');
+  const [shareToastMessage, setShareToastMessage] = useState<string>('✓ 파크골프 올인원 주소(https://www.parkgolfallinone.com)가 복사되었습니다!');
 
   const handleShareParkon = async () => {
-    const shareUrl = 'https://www.parkongolf.com';
+    const shareUrl = 'https://www.parkgolfallinone.com';
 
-    // 모바일 환경: 시스템 공유 시트 (카카오톡, 문자 등 직접 전송 가능)
-    if (typeof navigator !== 'undefined' && navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent || '')) {
-      try {
-        await navigator.share({
-          title: '파크온 (ParkOn) - 전국 파크골프 포털',
-          url: shareUrl,
-        });
-        return;
-      } catch (err: any) {
-        if (err?.name === 'AbortError') return;
-      }
-    }
-
+    // 1. 클립보드에 우선 복사 (문자, 밴드, 카톡 등 어디서든 바로 붙여넣기 가능)
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(shareUrl);
-        setShareToastMessage('✓ 파크온 주소(https://www.parkongolf.com)가 복사되었습니다!');
-        setShowShareToast(true);
-        setTimeout(() => setShowShareToast(false), 2500);
       } else {
         const textarea = document.createElement('textarea');
         textarea.value = shareUrl;
@@ -84,14 +69,27 @@ export default function HomePage() {
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        setShareToastMessage('✓ 파크온 주소(https://www.parkongolf.com)가 복사되었습니다!');
-        setShowShareToast(true);
-        setTimeout(() => setShowShareToast(false), 2500);
       }
+      setShareToastMessage('✓ 파크골프 올인원 주소(https://www.parkgolfallinone.com)가 복사되었습니다!');
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 2500);
     } catch {
       setShareToastMessage('URL 복사에 실패했습니다. 브라우저 권한을 확인해주세요.');
       setShowShareToast(true);
       setTimeout(() => setShowShareToast(false), 2500);
+    }
+
+    // 2. 모바일 환경: 문자·카톡·밴드 등 원하는 앱으로 바로 보낼 수 있는 시스템 공유창 호출 (선택)
+    if (typeof navigator !== 'undefined' && navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent || '')) {
+      try {
+        await navigator.share({
+          title: '파크골프 올인원 (ParkGolf All-in-One)',
+          text: '전국 400개 구장 실시간 코스/날씨 & 1초 스마트 스코어보드',
+          url: shareUrl,
+        });
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+      }
     }
   };
 
@@ -849,7 +847,7 @@ export default function HomePage() {
                   <span className="truncate">초간단 설명서</span>
                 </div>
                 <span className="text-[10px] sm:text-[10.5px] font-extrabold text-stone-900 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-                  1초 만에 배우는 파크온 튜토리얼
+                  1초 만에 배우는 파크골프 올인원 튜토리얼
                 </span>
               </button>
 
@@ -1059,25 +1057,25 @@ export default function HomePage() {
         </span>
       </a>
 
-      {/* 4-2. 파크온 소개하기 (카톡 / URL 공유) 버튼 - 운세 보기 밑 컴팩트 버튼 */}
+      {/* 4-2. 파크온 소개하기 (URL 공유) 버튼 - 운세 보기 밑 컴팩트 버튼 */}
       <div className="pt-0.5">
         <button
           type="button"
           onClick={handleShareParkon}
           className="w-full py-2.5 px-3.5 bg-white hover:bg-stone-100 active:scale-[0.99] border border-stone-200/90 text-stone-700 rounded-xl text-xs font-bold shadow-2xs flex items-center justify-between gap-2 transition cursor-pointer group"
-          title="파크온 소개하기 (카카오톡 및 URL 공유)"
+          title="파크골프 올인원 소개하기 (URL 복사)"
         >
           <div className="flex items-center gap-2 min-w-0">
             <span className="w-5 h-5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center justify-center text-[11px] font-black shrink-0">
               ⛳
             </span>
             <span className="text-[12px] font-bold text-stone-700 group-hover:text-stone-950 truncate">
-              동반자에게 <strong className="font-black text-stone-900">파크온</strong> 소개하기
+              동반자에게 <strong className="font-black text-stone-900">파크골프 올인원</strong> 소개하기
             </span>
           </div>
           <span className="shrink-0 flex items-center gap-1.5 text-[11px] font-bold text-stone-600 bg-stone-100 group-hover:bg-amber-100 group-hover:text-amber-900 group-hover:border-amber-300 px-2 py-0.5 rounded-lg border border-stone-200/80 transition">
             <Share2 className="w-3.5 h-3.5 text-stone-500 group-hover:text-amber-800" />
-            <span>카톡 · URL 복사</span>
+            <span>URL 복사</span>
           </span>
         </button>
       </div>
@@ -2021,7 +2019,7 @@ export default function HomePage() {
                         현재 등록된 공인 실력 순위 기록이 없습니다
                       </div>
                       <p className="text-xs text-stone-500 max-w-xs mx-auto leading-relaxed">
-                        파크온은 가짜·예시 선수 정보를 일절 표출하지 않습니다.<br/>
+                        파크골프 올인원은 가짜·예시 선수 정보를 일절 표출하지 않습니다.<br/>
                         실제 필드에서 공식 클럽전 또는 대회(18홀)를 완주하시면 100% 팩트 기반 공인 순위표에 실시간 등록됩니다.
                       </p>
                     </div>
@@ -2034,7 +2032,7 @@ export default function HomePage() {
                       <span>공인 실력 순위 100% 팩트 집계 기준</span>
                     </div>
                     <p className="text-stone-600 font-medium leading-relaxed">
-                      공인 실력 랭킹은 <strong>파크온이 인증한 공인 클럽전 또는 공식 대회 18홀 완주 기록만</strong> 정직하게 반영됩니다. 개인 친선 라운드는 등외 점수로 안전하게 분리 평가됩니다.
+                      공인 실력 랭킹은 <strong>파크골프 올인원이 인증한 공인 클럽전 또는 공식 대회 18홀 완주 기록만</strong> 정직하게 반영됩니다. 개인 친선 라운드는 등외 점수로 안전하게 분리 평가됩니다.
                     </p>
                   </div>
                 </div>
@@ -2124,7 +2122,7 @@ export default function HomePage() {
                         현재 등록된 필드 활동 순위 기록이 없습니다
                       </div>
                       <p className="text-xs text-stone-500 max-w-xs mx-auto leading-relaxed">
-                        파크온은 가짜 예시 활동 데이터를 생성하지 않습니다.<br/>
+                        파크골프 올인원은 가짜 예시 활동 데이터를 생성하지 않습니다.<br/>
                         해당 구장에서 라운드를 완주하시면 실제 완주 횟수(최근 30일)에 따라 활동 순위표에 실시간 반영됩니다.
                       </p>
                     </div>

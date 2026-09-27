@@ -102,7 +102,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
               ⛳
             </span>
             <span className="text-xs font-black tracking-tight">
-              종이 없는 파크골프, 파크온(PARKON)
+              종이 없는 파크골프, 파크골프 올인원
             </span>
           </div>
           <button
@@ -122,7 +122,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/mascot/사진저장고_사진_20260913_28.jpg"
-              alt="파크온 공식 마스코트 핑키 환영인사"
+              alt="파크골프 올인원 공식 마스코트 핑키 환영인사"
               className="w-full h-full object-cover"
             />
             <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-emerald-950/85 via-emerald-950/40 to-transparent p-1.5 text-white">
@@ -136,10 +136,10 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
           {/* 환영 인사 문구 */}
           <div className="space-y-1">
             <h2 className="text-base sm:text-lg font-black text-stone-900 leading-tight">
-              반갑습니다! <span className="text-emerald-700">파크온</span>에 오신 것을 환영합니다!
+              반갑습니다! <span className="text-emerald-700">파크골프 올인원</span>에 오신 것을 환영합니다!
             </h2>
             <p className="text-xs text-stone-600 font-bold">
-              어르신도 터치 한 번으로 바로 쓰는 스마트 스코어보드
+              전국 400개 구장 날씨·길안내부터 1초 스코어보드까지 올인원
             </p>
           </div>
 
