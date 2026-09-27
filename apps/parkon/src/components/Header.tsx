@@ -136,7 +136,7 @@ export function Header() {
                 title="내 프로필 및 활동명 관리"
               >
                 <span className="text-xs leading-none">💬</span>
-                <span className="max-w-[75px] truncate font-extrabold">
+                <span className="max-w-[75px] truncate font-extrabold" suppressHydrationWarning>
                   {ParkOnStorage.getUserDisplayName()}
                 </span>
               </button>

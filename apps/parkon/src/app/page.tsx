@@ -786,7 +786,7 @@ export default function HomePage() {
             className="w-full bg-white text-stone-900 rounded-2xl px-4 py-3 shadow-md flex items-center justify-between cursor-pointer hover:bg-stone-50 transition active:scale-[0.99]"
           >
             <div className="flex items-center gap-2 truncate">
-              <span className="text-base sm:text-lg font-black text-stone-950 tracking-tight truncate">
+              <span className="text-base sm:text-lg font-black text-stone-950 tracking-tight truncate" suppressHydrationWarning>
                 {homeCourse ? `${homeCourse.name} (${homeCourse.region})` : '구미 동락파크골프장 (경북 구미시)'}
               </span>
             </div>
@@ -845,7 +845,7 @@ export default function HomePage() {
                   🌿
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-xs sm:text-sm font-black text-white tracking-tight truncate leading-tight">
+                  <div className="text-xs sm:text-sm font-black text-white tracking-tight truncate leading-tight" suppressHydrationWarning>
                     오늘 {targetCourse.name} 정보 &amp; 상태 보기
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
