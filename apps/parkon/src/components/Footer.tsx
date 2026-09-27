@@ -1,16 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { ShieldCheck, Info, FileText, Key } from 'lucide-react';
-import { InstallGuideModal } from './InstallGuideModal';
 
 export function Footer() {
-  const [showInstallModal, setShowInstallModal] = useState(false);
-
   return (
-    <>
-      <footer className="mt-auto border-t border-stone-200 bg-white/90 text-stone-600 text-xs py-8 px-4">
+    <footer className="mt-auto border-t border-stone-200 bg-white/90 text-stone-600 text-xs py-8 px-4">
         <div className="max-w-md mx-auto space-y-4 text-center">
           {/* 브랜드 & 슬로건 */}
           <div className="flex flex-col items-center gap-1">
@@ -26,26 +22,8 @@ export function Footer() {
             </p>
           </div>
 
-          {/* 스마트폰 & PC 바탕화면 바로가기 추가 버튼 */}
-          <div className="pt-2 pb-1">
-            <button
-              type="button"
-              onClick={() => setShowInstallModal(true)}
-              className="w-full max-w-xs mx-auto py-2.5 px-4 bg-emerald-800 hover:bg-emerald-900 text-yellow-300 font-extrabold text-xs rounded-2xl shadow-md border border-emerald-600/80 flex items-center justify-center gap-2 cursor-pointer transition active:scale-98"
-              title="스마트폰 또는 PC 바탕화면에 파크골프 올인원 앱 추가"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/icon.png"
-                alt="파키 심볼"
-                className="w-5 h-5 rounded-lg border border-amber-300 object-cover shrink-0"
-              />
-              <span>스마트폰 · PC 바탕화면에 파크골프 올인원 추가</span>
-            </button>
-          </div>
-
-        {/* 필수 법적 정책 링크 (구글 애드센스 승인 필수 항목) */}
-        <div className="flex items-center justify-center gap-3 text-stone-600 font-bold text-[11px] pt-1">
+          {/* 필수 법적 정책 링크 (구글 애드센스 승인 필수 항목) */}
+          <div className="flex items-center justify-center gap-3 text-stone-600 font-bold text-[11px] pt-1">
           <Link
             href="/privacy"
             className="hover:text-emerald-700 hover:underline transition flex items-center gap-0.5"
@@ -98,12 +76,5 @@ export function Footer() {
         </div>
       </div>
     </footer>
-
-    {/* PC 및 모바일 공용 앱 설치/바로가기 안내 모달 */}
-    <InstallGuideModal
-      isOpen={showInstallModal}
-      onClose={() => setShowInstallModal(false)}
-    />
-  </>
   );
 }

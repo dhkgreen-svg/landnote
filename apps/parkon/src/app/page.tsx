@@ -1057,26 +1057,43 @@ export default function HomePage() {
         </span>
       </a>
 
-      {/* 4-2. 파크온 소개하기 (URL 공유) 버튼 - 운세 보기 밑 컴팩트 버튼 */}
-      <div className="pt-0.5">
+      {/* 4-2. 파크골프 올인원 소개하기 & 바탕화면 추가 2대 핵심 액션 버튼 세트 */}
+      <div className="pt-0.5 space-y-2">
+        {/* ① 동반자에게 파크골프 올인원 소개하기 (진하고 선명한 테두리) */}
         <button
           type="button"
           onClick={handleShareParkon}
-          className="w-full py-2.5 px-3.5 bg-white hover:bg-stone-100 active:scale-[0.99] border border-stone-200/90 text-stone-700 rounded-xl text-xs font-bold shadow-2xs flex items-center justify-between gap-2 transition cursor-pointer group"
+          className="w-full py-2.5 px-3.5 bg-white hover:bg-emerald-50/40 active:scale-[0.99] border-2 border-stone-800 text-stone-900 rounded-xl text-xs font-bold shadow-xs flex items-center justify-between gap-2 transition cursor-pointer group"
           title="파크골프 올인원 소개하기 (URL 복사)"
         >
           <div className="flex items-center gap-2 min-w-0">
-            <span className="w-5 h-5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center justify-center text-[11px] font-black shrink-0">
+            <span className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center justify-center text-[11px] font-black shrink-0">
               ⛳
             </span>
-            <span className="text-[12px] font-bold text-stone-700 group-hover:text-stone-950 truncate">
-              동반자에게 <strong className="font-black text-stone-900">파크골프 올인원</strong> 소개하기
+            <span className="text-[12px] font-bold text-stone-800 group-hover:text-stone-950 truncate">
+              동반자에게 <strong className="font-black text-stone-950">파크골프 올인원</strong> 소개하기
             </span>
           </div>
-          <span className="shrink-0 flex items-center gap-1.5 text-[11px] font-bold text-stone-600 bg-stone-100 group-hover:bg-amber-100 group-hover:text-amber-900 group-hover:border-amber-300 px-2 py-0.5 rounded-lg border border-stone-200/80 transition">
-            <Share2 className="w-3.5 h-3.5 text-stone-500 group-hover:text-amber-800" />
+          <span className="shrink-0 flex items-center gap-1.5 text-[11px] font-black text-stone-700 bg-stone-100 group-hover:bg-amber-100 group-hover:text-amber-950 group-hover:border-amber-400 px-2 py-0.5 rounded-lg border border-stone-300 transition">
+            <Share2 className="w-3.5 h-3.5 text-stone-600 group-hover:text-amber-800" />
             <span>URL 복사</span>
           </span>
+        </button>
+
+        {/* ② 스마트폰 · PC 바탕화면에 파크골프 올인원 추가 버튼 (소개하기 바로 밑에 배치) */}
+        <button
+          type="button"
+          onClick={() => setShowInstallGuideModal(true)}
+          className="w-full py-2.5 px-3.5 bg-emerald-800 hover:bg-emerald-900 active:scale-[0.99] border-2 border-emerald-600 text-yellow-300 font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition"
+          title="스마트폰 또는 PC 바탕화면에 파크골프 올인원 앱 추가"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icon.png"
+            alt="파키 심볼"
+            className="w-5 h-5 rounded-lg border border-amber-300 object-cover shrink-0"
+          />
+          <span className="truncate">스마트폰 · PC 바탕화면에 파크골프 올인원 추가</span>
         </button>
       </div>
 
@@ -2386,6 +2403,12 @@ export default function HomePage() {
         isOpen={showQuickGuideModal}
         onClose={() => setShowQuickGuideModal(false)}
         homeCourseId={homeCourse?.id}
+      />
+
+      {/* 스마트폰·PC 바탕화면 앱 설치 가이드 모달 */}
+      <InstallGuideModal
+        isOpen={showInstallGuideModal}
+        onClose={() => setShowInstallGuideModal(false)}
       />
 
       {/* 파크온 소개 URL 복사 완료 토스트 */}
