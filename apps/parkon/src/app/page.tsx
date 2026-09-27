@@ -53,19 +53,16 @@ export default function HomePage() {
   const [selectedCourseForDetail, setSelectedCourseForDetail] = useState<Course | null>(null);
   const [showQuickGuideModal, setShowQuickGuideModal] = useState<boolean>(false);
   const [showShareToast, setShowShareToast] = useState<boolean>(false);
-  const [shareToastMessage, setShareToastMessage] = useState<string>('✓ 파크온 주소가 복사되었습니다! 카톡에 붙여넣어 공유하세요.');
+  const [shareToastMessage, setShareToastMessage] = useState<string>('✓ 파크온 주소(https://www.parkongolf.com)가 복사되었습니다!');
 
   const handleShareParkon = async () => {
-    const shareTitle = '파크온 (ParkOn) - 1초 모바일 파크골프 스코어카드 ⛳';
-    const shareText = `🏌️ [파크온] 종이 스코어카드 없이 스마트폰으로 1초 만에 타수 기록!\n📍 전국 380개 공인 파크골프장 실시간 날씨·코스 안내\n🏆 5스타 실력 등급 & 전국 랭킹 산출\n\n👉 지금 바로 이용해보세요:\nhttps://www.parkongolf.com`;
     const shareUrl = 'https://www.parkongolf.com';
 
     // 모바일 환경: 시스템 공유 시트 (카카오톡, 문자 등 직접 전송 가능)
     if (typeof navigator !== 'undefined' && navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent || '')) {
       try {
         await navigator.share({
-          title: shareTitle,
-          text: shareText,
+          title: '파크온 (ParkOn) - 전국 파크골프 포털',
           url: shareUrl,
         });
         return;
@@ -76,18 +73,18 @@ export default function HomePage() {
 
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(`${shareTitle}\n\n${shareText}`);
-        setShareToastMessage('✓ 파크온 주소가 복사되었습니다! 카톡에 붙여넣어 공유하세요.');
+        await navigator.clipboard.writeText(shareUrl);
+        setShareToastMessage('✓ 파크온 주소(https://www.parkongolf.com)가 복사되었습니다!');
         setShowShareToast(true);
         setTimeout(() => setShowShareToast(false), 2500);
       } else {
         const textarea = document.createElement('textarea');
-        textarea.value = `${shareTitle}\n\n${shareText}`;
+        textarea.value = shareUrl;
         document.body.appendChild(textarea);
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        setShareToastMessage('✓ 파크온 주소가 복사되었습니다! 카톡에 붙여넣어 공유하세요.');
+        setShareToastMessage('✓ 파크온 주소(https://www.parkongolf.com)가 복사되었습니다!');
         setShowShareToast(true);
         setTimeout(() => setShowShareToast(false), 2500);
       }
