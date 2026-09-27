@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Users, Flag, Play, Plus, Trash2, ArrowLeft, MapPin, Edit3, Settings, QrCode, Copy, Check, Sparkles, Share2, X } from 'lucide-react';
+import { Users, Flag, Play, Plus, Trash2, ArrowLeft, MapPin, Edit3, Settings, QrCode, Copy, Check, Sparkles, Share2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import { Course, RoundPlayer, RoundSession, formatCourseHolesText } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
@@ -24,6 +24,7 @@ function NewRoundForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialCourseId = searchParams.get('courseId') || searchParams.get('course');
+  const playersParam = searchParams.get('players');
   const joinedPlayer = searchParams.get('joined');
   const isTrialMode =
     searchParams.get('mode') === 'trial' ||
@@ -49,15 +50,46 @@ function NewRoundForm() {
   const [showPlayStartNotice, setShowPlayStartNotice] = useState<boolean>(false);
   const [isUnlimitedRound, setIsUnlimitedRound] = useState<boolean>(true);
   const [targetHolesCount, setTargetHolesCount] = useState<number>(18);
+  const [showRoundModeSelector, setShowRoundModeSelector] = useState<boolean>(false);
 
   useEffect(() => {
-    const selfName = getDefaultSelfName();
-    if (selfName && selfName !== '플레이어' && selfName !== '조장(본인)') {
-      setPlayersList((prev) =>
-        prev.map((p, idx) => (idx === 0 || p.isSelf ? { ...p, name: selfName, isSelf: true } : p))
-      );
+    if (playersParam) {
+      const names = playersParam
+        .split(',')
+        .map((n) => decodeURIComponent(n.trim()))
+        .filter(Boolean);
+
+      if (names.length > 0) {
+        const count = Math.min(4, Math.max(names.length, 4));
+        setPlayerCount(count);
+        const selfName = getDefaultSelfName();
+        const newList: SetupPlayer[] = [];
+        for (let i = 0; i < count; i++) {
+          let name = names[i] || `동반자${i}`;
+          const isFirst = i === 0;
+          if (isFirst && (name === '플레이어' || name === '조장(본인)')) {
+            if (selfName && selfName !== '플레이어' && selfName !== '조장(본인)') {
+              name = selfName;
+            }
+          }
+          newList.push({
+            id: isFirst ? 'p_self' : `p_${i + 1}`,
+            name,
+            isLeader: isFirst,
+            isSelf: isFirst,
+          });
+        }
+        setPlayersList(newList);
+      }
+    } else {
+      const selfName = getDefaultSelfName();
+      if (selfName && selfName !== '플레이어' && selfName !== '조장(본인)') {
+        setPlayersList((prev) =>
+          prev.map((p, idx) => (idx === 0 || p.isSelf ? { ...p, name: selfName, isSelf: true } : p))
+        );
+      }
     }
-  }, []);
+  }, [playersParam]);
 
   // Course correction/expansion modal state
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
@@ -69,6 +101,23 @@ function NewRoundForm() {
     setCourses(all);
     if (initialCourseId && all.some((c) => c.id === initialCourseId)) {
       setSelectedCourseId(initialCourseId);
+    } else if (initialCourseId) {
+      const norm = initialCourseId.toLowerCase().replace(/\s+/g, '');
+      const matched = all.find((c) => {
+        const normName = c.name.toLowerCase().replace(/\s+/g, '');
+        const normId = c.id.toLowerCase().replace(/\s+/g, '');
+        return (
+          normId === norm ||
+          normName.includes(norm) ||
+          norm.includes(normName) ||
+          ((norm.includes('양호') || norm.includes('양포')) && (normName.includes('양호') || normName.includes('양포')))
+        );
+      });
+      if (matched) {
+        setSelectedCourseId(matched.id);
+      } else {
+        setSelectedCourseId(ParkOnStorage.getHomeCourseId());
+      }
     } else {
       setSelectedCourseId(ParkOnStorage.getHomeCourseId());
     }
@@ -449,7 +498,12 @@ function NewRoundForm() {
       isVirtual: isTrialMode,
       isUnlimitedRound,
       targetHolesCount: isUnlimitedRound ? 999 : targetHolesCount,
+      countingMode: 'PAR_BASE',
     };
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('parkon_counting_mode', 'PAR_BASE');
+    }
 
     // 3. 서버 룸(Room)에 라운드 시작 알림 -> 대기실의 동반자들도 즉시 스코어카드로 자동 이동!
     try {
@@ -572,30 +626,28 @@ function NewRoundForm() {
         </div>
       ) : null}
 
-      {/* 1. Current Play Course Display Card (구장에만 집중: 선택창/검색버튼/라벨 완전 제거) */}
+      {/* 1. Current Play Course Display Card (초슬림 1줄: 구장명 + 구장변경 + 코스·홀수 정정) */}
       {currentCourse && (
-        <div className="bg-white rounded-2xl p-3.5 border border-stone-200 shadow-sm">
-          <div className="bg-emerald-50/90 border border-emerald-300 rounded-xl p-3 space-y-1.5 shadow-sm">
-            <div className="flex items-center justify-between flex-wrap gap-1">
-              <span className="text-base font-black text-emerald-950 flex items-center gap-1.5">
-                <span>⛳</span>
-                <span>{currentCourse.name}</span>
-              </span>
-              <span className="text-xs font-black bg-emerald-700 text-white px-2.5 py-0.5 rounded-full shadow-sm">
-                {formatCourseHolesText(currentCourse)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-xs text-stone-700 font-semibold pt-0.5">
-              <p className="flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
-                <span>{currentCourse.region}</span>
-              </p>
+        <div className="bg-white rounded-2xl p-2.5 sm:p-3 border border-stone-200 shadow-sm">
+          <div className="bg-emerald-50/90 border border-emerald-300 rounded-xl px-3 py-2 flex items-center justify-between gap-2 shadow-2xs">
+            <span className="text-sm sm:text-base font-black text-emerald-950 flex items-center gap-1.5 truncate">
+              <span className="shrink-0">⛳</span>
+              <span className="truncate">{currentCourse.name}</span>
+            </span>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Link
+                href="/courses"
+                className="bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 font-bold py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px]"
+              >
+                <span>구장 변경</span>
+              </Link>
               <button
                 type="button"
                 onClick={openEditModal}
-                className="bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-black py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-xs transition active:scale-95 text-[11px]"
+                className="bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-black py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px] cursor-pointer"
               >
-                <Settings className="w-3 h-3 text-emerald-700" />
+                <Settings className="w-3 h-3 text-emerald-700 shrink-0" />
                 <span>코스·홀수 정정</span>
               </button>
             </div>
@@ -603,7 +655,123 @@ function NewRoundForm() {
         </div>
       )}
 
-      {/* 2. Starting Course & Hole Selection (좌측 9개 칩 + 우측 시작 버튼) */}
+      {/* 2. Players Input with Dynamic Player Count & Leader Selection (동반자 명단) */}
+      <div className="bg-white rounded-2xl p-3.5 border border-stone-200 shadow-sm space-y-3">
+        {/* Header: 동반자 명단 + 플레이어 수 원터치 탭 */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-emerald-700" />
+              <span>동반자 명단</span>
+            </label>
+            <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              👑 조장 1번 · 나머지 가나다순 정렬
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between bg-stone-50 p-2 rounded-xl border border-stone-200/80">
+            <span className="text-xs font-bold text-stone-700">플레이어 수:</span>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5, 6].map((num) => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => handlePlayerCountChange(num)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition active:scale-95 cursor-pointer ${
+                    playerCount === num
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100 hover:text-stone-900'
+                  }`}
+                >
+                  {num}명
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Dynamic Player Rows (1 to playerCount) */}
+        <div className="space-y-2 pt-0.5">
+          {playersList.slice(0, playerCount).map((player, idx) => (
+            <div
+              key={player.id}
+              className={`p-2.5 rounded-xl border-2 transition flex items-center gap-2.5 ${
+                player.isLeader
+                  ? 'bg-amber-50/90 border-amber-400 shadow-xs'
+                  : 'bg-stone-50 border-stone-200 hover:bg-stone-100/50'
+              }`}
+            >
+              {/* Number circle */}
+              <span
+                className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0 ${
+                  player.isLeader
+                    ? 'bg-amber-400 text-amber-950 shadow-xs'
+                    : 'bg-stone-200 text-stone-700'
+                }`}
+              >
+                {idx + 1}
+              </span>
+
+              {/* Name input */}
+              <div className="flex-1 relative flex items-center">
+                <input
+                  type="text"
+                  value={player.name}
+                  onChange={(e) => handlePlayerNameChange(idx, e.target.value)}
+                  placeholder={player.isSelf ? '본인 이름 (홍길동/손오공)' : `동반자 ${idx + 1} 이름 입력`}
+                  className="w-full bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-sm font-bold text-stone-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none"
+                />
+                {player.isSelf && (
+                  <span className="absolute right-2 text-[10px] font-black text-blue-700 bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded">
+                    본인
+                  </span>
+                )}
+              </div>
+
+              {/* Rightmost Leader Toggle Button (우측 끝 조장 버튼) */}
+              <button
+                type="button"
+                onClick={() => handleSetLeader(idx)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black shrink-0 transition flex items-center gap-1 active:scale-95 cursor-pointer ${
+                  player.isLeader
+                    ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-300'
+                    : 'bg-white text-stone-600 border border-stone-300 hover:bg-stone-100 hover:text-stone-900'
+                }`}
+                title={player.isLeader ? '현재 조장으로 지정됨 (1번 배치)' : '이 선수를 조장으로 지정'}
+              >
+                <span>👑</span>
+                <span>{player.isLeader ? '조장' : '조장 선택'}</span>
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* 동반자 초대 배너 (QR / 카카오톡 / 문자 초대) - 선수 명단 하단 배치 */}
+        <button
+          type="button"
+          onClick={() => setShowQrModal(true)}
+          className="w-full flex items-center justify-between bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 hover:from-emerald-100 hover:to-teal-100 border border-emerald-300 rounded-xl p-2.5 shadow-xs transition active:scale-[0.99] cursor-pointer text-left"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xl">📱</span>
+            <span className="text-sm font-black text-emerald-950">동반자 초대</span>
+          </div>
+          <div className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs flex items-center gap-1.5 shrink-0">
+            <QrCode className="w-3.5 h-3.5" />
+            <span>QR / 카카오톡 / 문자 초대</span>
+          </div>
+        </button>
+
+        {/* Toast Notification when QR simulation adds a player */}
+        {joinSimulationToast && (
+          <div className="bg-emerald-100 border border-emerald-300 text-emerald-900 px-3 py-2 rounded-xl text-xs font-bold animate-in fade-in flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{joinSimulationToast}</span>
+          </div>
+        )}
+      </div>
+
+      {/* 3. Starting Course & Hole Selection (어느 코스부터 시작하겠습니까?) */}
       <div className="bg-white rounded-2xl p-3.5 border border-stone-200 shadow-sm space-y-2.5">
         <label className="text-sm font-black text-stone-900 flex items-center gap-1.5">
           <Flag className="w-4 h-4 text-emerald-700" />
@@ -640,16 +808,16 @@ function NewRoundForm() {
           })}
         </div>
 
-        {/* ⛳ 홀 번호 선택 (1~9번 홀 3×3 전폭 레이아웃) */}
-        <div className="pt-2 border-t border-stone-100 space-y-2">
+        {/* ⛳ 홀 번호 선택 (1~9번 홀 3×3 컴팩트 레이아웃) */}
+        <div className="pt-1.5 border-t border-stone-100 space-y-1.5">
           <div className="flex items-center justify-between text-xs font-black text-stone-800">
             <span>몇 번 홀에서 티샷을 시작하겠습니까?</span>
-            <span className="text-emerald-800 font-extrabold bg-emerald-100 px-2.5 py-0.5 rounded-full text-xs">
+            <span className="text-emerald-800 font-extrabold bg-emerald-100 px-2 py-0.5 rounded-full text-[11px]">
               {startHoleIndex === 1 ? '1번 정규 출발' : `${startHoleIndex}번 샷건 출발`}
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((hNum) => {
               const isSelected = startHoleIndex === hNum;
               return (
@@ -657,14 +825,14 @@ function NewRoundForm() {
                   key={hNum}
                   type="button"
                   onClick={() => setStartHoleIndex(hNum)}
-                  className={`py-3 rounded-xl font-black text-base transition flex items-center justify-center gap-1 border-2 active:scale-95 ${
+                  className={`py-1.5 rounded-lg font-black text-xs sm:text-sm transition flex items-center justify-center gap-1 border active:scale-95 cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm ring-2 ring-emerald-400/40'
-                      : 'bg-stone-50 text-stone-800 border-stone-200 hover:bg-stone-100'
+                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                      : 'bg-stone-50 text-stone-800 border-stone-200 hover:bg-stone-100 hover:border-stone-300'
                   }`}
                 >
                   <span>{hNum}번 홀</span>
-                  {isSelected && <span className="text-xs text-yellow-300">✓</span>}
+                  {isSelected && <span className="text-xs text-yellow-300 font-black">✓</span>}
                 </button>
               );
             })}
@@ -681,215 +849,128 @@ function NewRoundForm() {
         </div>
       </div>
 
-      {/* 2-1. 유연한 라운드 설정: 무제한 자유 라운드(기본 추천) vs 목표 홀 설정 */}
-      <div className="bg-white rounded-2xl p-3.5 border border-stone-200 shadow-sm space-y-2.5">
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-black text-stone-900 flex items-center gap-1.5">
-            <span>🔄</span>
-            <span>라운드 진행 방식 (유연한 라운드)</span>
-          </label>
-          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2.5 py-0.5 rounded-full">
-            {isUnlimitedRound ? '무제한 자유 순환' : `목표 ${targetHolesCount}홀 설정`}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setIsUnlimitedRound(true)}
-            className={`p-3 rounded-xl border-2 text-left transition flex flex-col justify-between active:scale-95 cursor-pointer ${
-              isUnlimitedRound
-                ? 'bg-emerald-50 border-emerald-600 shadow-sm ring-1 ring-emerald-400'
-                : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-black text-xs text-stone-900 flex items-center gap-1">
-                <span>♾️</span>
-                <span>무제한 자유 라운드</span>
-              </span>
-              <span className="text-[9px] bg-emerald-600 text-white font-black px-1.5 py-0.5 rounded-full">
-                추천
-              </span>
-            </div>
-            <p className="text-[10.5px] text-stone-600 mt-1 leading-tight font-medium">
-              홀 수 강제 없이 원하는 만큼 순환 후 언제든 직접 종료
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsUnlimitedRound(false)}
-            className={`p-3 rounded-xl border-2 text-left transition flex flex-col justify-between active:scale-95 cursor-pointer ${
-              !isUnlimitedRound
-                ? 'bg-amber-50 border-amber-600 shadow-sm ring-1 ring-amber-400'
-                : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-black text-xs text-stone-900 flex items-center gap-1">
-                <span>🎯</span>
-                <span>목표 홀 설정 라운드</span>
-              </span>
-              {!isUnlimitedRound && <span className="text-xs text-amber-600 font-black">✓</span>}
-            </div>
-            <p className="text-[10.5px] text-stone-600 mt-1 leading-tight font-medium">
-              목표 홀 도달 시 [더 치기] vs [종료하기] 심플 선택
-            </p>
-          </button>
-        </div>
-
-        {!isUnlimitedRound && (
-          <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
-            <span className="text-xs font-bold text-stone-700">목표 홀 수:</span>
-            <div className="flex items-center gap-1.5">
-              {[9, 18, 27, 36].map((hCount) => (
-                <button
-                  key={hCount}
-                  type="button"
-                  onClick={() => setTargetHolesCount(hCount)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition active:scale-95 cursor-pointer ${
-                    targetHolesCount === hCount
-                      ? 'bg-amber-600 text-white shadow-xs'
-                      : 'bg-stone-100 text-stone-700 border border-stone-200 hover:bg-stone-200'
-                  }`}
-                >
-                  {hCount}홀
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 3. Players Input with Dynamic Player Count & Leader Selection */}
-      <div className="bg-white rounded-2xl p-3.5 border border-stone-200 shadow-sm space-y-3">
-        {/* Header: 동반자 명단 + 플레이어 수 원터치 탭 */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-black text-stone-900 flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-emerald-700" />
-              <span>동반자 명단</span>
-            </label>
-            <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              👑 조장 1번 · 나머지 가나다순 정렬
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between bg-stone-50 p-2 rounded-xl border border-stone-200/80">
-            <span className="text-xs font-bold text-stone-700">플레이어 수:</span>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5, 6].map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => handlePlayerCountChange(num)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition active:scale-95 cursor-pointer ${
-                    playerCount === num
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100 hover:text-stone-900'
-                  }`}
-                >
-                  {num}명
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 동반자 초대 배너 (QR / 카카오톡 / 문자 초대) */}
+      {/* 4. 라운드 진행 방식 (유연한 라운드) 원터치 1줄 컴팩트 탭 */}
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden transition-all">
+        {/* 한 줄 탭 버튼: 클릭 시 옵션 펼침 / 접힘 */}
         <button
           type="button"
-          onClick={() => setShowQrModal(true)}
-          className="w-full flex items-center justify-between bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 hover:from-emerald-100 hover:to-teal-100 border border-emerald-300 rounded-xl p-2.5 shadow-xs transition active:scale-[0.99] cursor-pointer text-left"
+          onClick={() => setShowRoundModeSelector(!showRoundModeSelector)}
+          className="w-full p-3.5 flex items-center justify-between hover:bg-stone-50 transition active:scale-[0.99] cursor-pointer text-left"
         >
           <div className="flex items-center gap-2">
-            <span className="text-xl">📱</span>
-            <span className="text-sm font-black text-emerald-950">동반자 초대</span>
+            <span className="text-base shrink-0">🔄</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-black text-stone-900">
+                라운드 진행 방식
+              </span>
+              <span className="text-xs font-bold text-stone-500">
+                (선택하세요)
+              </span>
+            </div>
           </div>
-          <div className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs flex items-center gap-1.5 shrink-0">
-            <QrCode className="w-3.5 h-3.5" />
-            <span>QR / 카카오톡 / 문자 초대</span>
+          <div className="flex items-center gap-2 shrink-0">
+            {!isUnlimitedRound && (
+              <span className="text-xs font-black px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-900 border-amber-300">
+                🎯 {targetHolesCount}홀
+              </span>
+            )}
+            {showRoundModeSelector ? (
+              <ChevronUp className="w-5 h-5 text-stone-500 shrink-0" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-stone-500 shrink-0" />
+            )}
           </div>
         </button>
 
-        {/* Toast Notification when QR simulation adds a player */}
-        {joinSimulationToast && (
-          <div className="bg-emerald-100 border border-emerald-300 text-emerald-900 px-3 py-2 rounded-xl text-xs font-bold animate-in fade-in flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{joinSimulationToast}</span>
-          </div>
-        )}
-
-        {/* Dynamic Player Rows (1 to playerCount) */}
-        <div className="space-y-2 pt-0.5">
-          {playersList.slice(0, playerCount).map((player, idx) => (
-            <div
-              key={player.id}
-              className={`p-2.5 rounded-xl border-2 transition flex items-center gap-2.5 ${
-                player.isLeader
-                  ? 'bg-amber-50/90 border-amber-400 shadow-xs'
-                  : 'bg-stone-50 border-stone-200 hover:bg-stone-100/50'
-              }`}
-            >
-              {/* Number circle */}
-              <span
-                className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0 ${
-                  player.isLeader
-                    ? 'bg-amber-400 text-amber-950 shadow-xs'
-                    : 'bg-stone-200 text-stone-700'
-                }`}
-              >
-                {idx + 1}
-              </span>
-
-              {/* Name input */}
-              <div className="flex-1 relative flex items-center">
-                <input
-                  type="text"
-                  value={player.name}
-                  onChange={(e) => handlePlayerNameChange(idx, e.target.value)}
-                  placeholder={player.isSelf ? '본인 이름 (김대희/나이스버디)' : `동반자 ${idx + 1} 이름 입력`}
-                  className="w-full bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-sm font-bold text-stone-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none"
-                />
-                {player.isSelf && (
-                  <span className="absolute right-2 text-[10px] font-black text-blue-700 bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded">
-                    본인
-                  </span>
-                )}
-              </div>
-
-              {/* Rightmost Leader Toggle Button (우측 끝 조장 버튼) */}
+        {/* 클릭했을 때 아래로 깔끔하게 펼쳐지는 선택 화면 */}
+        {showRoundModeSelector && (
+          <div className="p-3.5 pt-2 border-t border-stone-100 bg-stone-50/60 space-y-3 animate-fadeIn">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => handleSetLeader(idx)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black shrink-0 transition flex items-center gap-1 active:scale-95 cursor-pointer ${
-                  player.isLeader
-                    ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-300'
-                    : 'bg-white text-stone-600 border border-stone-300 hover:bg-stone-100 hover:text-stone-900'
+                onClick={() => {
+                  setIsUnlimitedRound(true);
+                }}
+                className={`p-3 rounded-xl border-2 text-left transition flex flex-col justify-between active:scale-95 cursor-pointer ${
+                  isUnlimitedRound
+                    ? 'bg-emerald-50 border-emerald-600 shadow-sm ring-1 ring-emerald-400'
+                    : 'bg-white border-stone-200 hover:bg-stone-100'
                 }`}
-                title={player.isLeader ? '현재 조장으로 지정됨 (1번 배치)' : '이 선수를 조장으로 지정'}
               >
-                <span>👑</span>
-                <span>{player.isLeader ? '조장' : '조장 선택'}</span>
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-xs text-stone-900 flex items-center gap-1">
+                    <span>♾️</span>
+                    <span>무제한 자유 라운드</span>
+                  </span>
+                  <span className="text-[9px] bg-emerald-600 text-white font-black px-1.5 py-0.5 rounded-full">
+                    추천
+                  </span>
+                </div>
+                <p className="text-[10.5px] text-stone-600 mt-1 leading-tight font-medium">
+                  홀 수 강제 없이 원하는 만큼 순환 후 언제든 직접 종료
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsUnlimitedRound(false);
+                }}
+                className={`p-3 rounded-xl border-2 text-left transition flex flex-col justify-between active:scale-95 cursor-pointer ${
+                  !isUnlimitedRound
+                    ? 'bg-amber-50 border-amber-600 shadow-sm ring-1 ring-amber-400'
+                    : 'bg-white border-stone-200 hover:bg-stone-100'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-xs text-stone-900 flex items-center gap-1">
+                    <span>🎯</span>
+                    <span>목표 홀 설정 라운드</span>
+                  </span>
+                  {!isUnlimitedRound && <span className="text-xs text-amber-600 font-black">✓</span>}
+                </div>
+                <p className="text-[10.5px] text-stone-600 mt-1 leading-tight font-medium">
+                  목표 홀 도달 시 [더 치기] vs [종료하기] 심플 선택
+                </p>
               </button>
             </div>
-          ))}
-        </div>
 
-        {/* 조장 지정 및 정렬 안내문 (참고용 - 플레이어 리스트 하단 배치) */}
-        <div className="bg-amber-50 border border-amber-200/90 rounded-xl p-2.5 text-[11px] text-amber-950 font-bold space-y-0.5">
-          <div className="flex items-center gap-1 text-amber-900 font-black">
-            <span>💡</span>
-            <span>조장 지정 및 정렬 안내</span>
+            {!isUnlimitedRound && (
+              <div className="pt-2 border-t border-stone-200 flex items-center justify-between">
+                <span className="text-xs font-bold text-stone-700">목표 홀 수:</span>
+                <div className="flex items-center gap-1.5">
+                  {[9, 18, 27, 36].map((hCount) => (
+                    <button
+                      key={hCount}
+                      type="button"
+                      onClick={() => setTargetHolesCount(hCount)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black transition active:scale-95 cursor-pointer ${
+                        targetHolesCount === hCount
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
+                      }`}
+                    >
+                      {hCount}홀
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-1 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowRoundModeSelector(false)}
+                className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-black px-4 py-1.5 rounded-xl transition active:scale-95 cursor-pointer shadow-xs"
+              >
+                선택 완료 ✓
+              </button>
+            </div>
           </div>
-          <p className="text-stone-600 leading-snug">
-            동반자 이름을 자유롭게 입력하신 후, 우측 끝의 <strong>[👑 조장]</strong> 버튼을 누르면 그 분이 1번으로 자동 지정되고 나머지 분들은 <strong>가나다순</strong>으로 자동 정렬되어 게임이 시작됩니다.
-          </p>
-        </div>
+        )}
       </div>
 
-      {/* 4. Bottom Start Button */}
+      {/* 5. Bottom Start Button */}
       <button
         type="button"
         onClick={handleInitiateStartRound}

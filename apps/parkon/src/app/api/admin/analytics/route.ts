@@ -19,6 +19,7 @@ export interface VisitorLog {
   isAppInstall?: boolean;
   isKakaoUser?: boolean;
   kakaoId?: string;
+  visitorId?: string; // 스마트폰 기기 고유 식별자 (Device UUID)
 }
 
 export interface CityClubDetail {
@@ -893,32 +894,39 @@ export async function GET(req: NextRequest) {
   const nowTime = Date.now();
   const kstInfo = formatKST(nowTime);
 
+  const getLogUserKey = (l: VisitorLog) => {
+    const rawName = (l.userName || '').trim();
+    if (rawName && rawName !== '일반 골퍼') return `named:${normalizeUserName(rawName)}`;
+    if (l.visitorId) return `dev:${l.visitorId}`;
+    return `anon:${l.ip}`;
+  };
+
   // 1. 기간별 실사용자 & 접속자 집계 (한국 표준시 KST 00:00:00 자정 기준 완벽 정렬)
   const tenMinsAgo = nowTime - 10 * 60 * 1000;
   const liveLogs = store.logs.filter((l) => l.timestamp >= tenMinsAgo);
-  const liveUsers = new Set(liveLogs.map((l) => l.ip)).size;
+  const liveUsers = new Set(liveLogs.map(getLogUserKey)).size;
 
   // 오늘 DAU: 오늘 00:00:00 KST부터 현재까지 발생한 순방문자
   const todayLogs = store.logs.filter((l) => l.timestamp >= kstInfo.kstMidnight);
   const todayPageviews = todayLogs.length;
-  const todayDAU = new Set(todayLogs.map((l) => l.ip)).size;
+  const todayDAU = new Set(todayLogs.map(getLogUserKey)).size;
 
   // 주간 WAU: 최근 7일 (7일 전 00:00:00 KST부터 현재까지)
   const sevenDaysAgoTime = kstInfo.kstMidnight - 6 * 24 * 60 * 60 * 1000;
   const last7DaysLogs = store.logs.filter((l) => l.timestamp >= sevenDaysAgoTime);
-  const weeklyWAU = new Set(last7DaysLogs.map((l) => l.ip)).size;
+  const weeklyWAU = new Set(last7DaysLogs.map(getLogUserKey)).size;
 
   // 월간 MAU: 이번 달 (1일 00:00:00 KST부터 현재까지)
   const thisMonthLogs = store.logs.filter((l) => l.timestamp >= kstInfo.kstMonthStart);
-  const monthlyMAU = new Set(thisMonthLogs.map((l) => l.ip)).size;
+  const monthlyMAU = new Set(thisMonthLogs.map(getLogUserKey)).size;
 
   // 연간 YAU: 올해 (1월 1일 00:00:00 KST부터 현재까지)
   const thisYearLogs = store.logs.filter((l) => l.timestamp >= kstInfo.kstYearStart);
-  const yearlyYAU = new Set(thisYearLogs.map((l) => l.ip)).size;
+  const yearlyYAU = new Set(thisYearLogs.map(getLogUserKey)).size;
 
   const totalPageviews = store.logs.length;
-  const allUniqueIps = new Set(store.logs.map((l) => l.ip));
-  const uniqueVisitorCount = allUniqueIps.size;
+  const allUniqueVisitorKeys = new Set(store.logs.map(getLogUserKey));
+  const uniqueVisitorCount = allUniqueVisitorKeys.size;
 
   // 총 누적 고유 이용자 수 (100% 실측치 집계)
   const totalAllTimeUsers = Math.max(
@@ -1004,7 +1012,7 @@ export async function GET(req: NextRequest) {
       const isNamed = !!cleanName && cleanName !== '일반 골퍼';
       const normName = isNamed ? normalizeUserName(cleanName) : '';
       const isKakao = !!log.isKakaoUser || cleanName === '김대희' || cleanName === '나이스버디' || normName.includes('김대희');
-      const userKey = isNamed ? `named:${normName}` : `anon:${log.ip}`;
+      const userKey = isNamed ? `named:${normName}` : (log.visitorId ? `dev:${log.visitorId}` : `anon:${log.ip}`);
 
       // 시·군·구 매칭
       let detectedCity = '';
@@ -1649,7 +1657,7 @@ export async function GET(req: NextRequest) {
     const rawName = (log.userName || '').trim();
     const isNamed = !!rawName && rawName !== '일반 골퍼';
     const cleanName = isNamed ? normalizeUserName(rawName) : '';
-    const userKey = isNamed ? `named:${cleanName}` : `anon:${log.ip}`;
+    const userKey = isNamed ? `named:${cleanName}` : (log.visitorId ? `dev:${log.visitorId}` : `anon:${log.ip}`);
     const isKakao = !!log.isKakaoUser || rawName === '김대희' || rawName === '나이스버디' || cleanName.includes('김대희');
 
     const reg = (log.userRegion || allIpRegionMap.get(log.ip) || '경북 구미시').trim();
@@ -1907,8 +1915,8 @@ export async function POST(req: NextRequest) {
     const ipParts = rawIp.split('.');
     const maskedIp =
       ipParts.length === 4
-        ? ipParts[0] + '.' + ipParts[1] + '.***.***'
-        : rawIp.slice(0, 8) + '...';
+        ? ipParts[0] + '.' + ipParts[1] + '.' + ipParts[2] + '.***'
+        : rawIp.slice(0, 10) + '...';
 
     const userAgent = req.headers.get('user-agent') || 'Unknown';
     const currentPath = body.path || '/';
@@ -1953,6 +1961,7 @@ export async function POST(req: NextRequest) {
     const isAppInstall = !!body.isAppInstall;
     const isKakaoUser = !!body.isKakaoUser || userName === '김대희' || userName === '나이스버디';
     const kakaoId = body.kakaoId ? String(body.kakaoId) : undefined;
+    const visitorId = body.visitorId ? String(body.visitorId).trim().slice(0, 60) : undefined;
 
     const nowTime = Date.now();
     const kstInfo = formatKST(nowTime);
@@ -1974,13 +1983,21 @@ export async function POST(req: NextRequest) {
       isAppInstall,
       isKakaoUser,
       kakaoId,
+      visitorId,
     };
 
     const store = getAnalyticsStore();
     store.logs.push(log);
 
-    const allIps = new Set(store.logs.map((l) => l.ip));
-    store.totalAllTimeUsers = Math.max(store.totalAllTimeUsers || 0, allIps.size);
+    const allVisitorKeys = new Set(
+      store.logs.map((l) => {
+        const rawName = (l.userName || '').trim();
+        if (rawName && rawName !== '일반 골퍼') return `named:${normalizeUserName(rawName)}`;
+        if (l.visitorId) return `dev:${l.visitorId}`;
+        return `anon:${l.ip}`;
+      })
+    );
+    store.totalAllTimeUsers = Math.max(store.totalAllTimeUsers || 0, allVisitorKeys.size);
     if (isAppInstall) {
       store.totalAppDownloads = (store.totalAppDownloads || 0) + 1;
     }

@@ -9,10 +9,18 @@ interface WatermarkPhotoCardModalProps {
   isOpen: boolean;
   onClose: () => void;
   session?: RoundSession | null;
+  initialImage?: string | null;
 }
 
-export function WatermarkPhotoCardModal({ isOpen, onClose, session }: WatermarkPhotoCardModalProps) {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage }: WatermarkPhotoCardModalProps) {
+  const [selectedImage, setSelectedImage] = useState<string | null>(initialImage || null);
+  const [clubTag, setClubTag] = useState<string>('');
+
+  useEffect(() => {
+    if (initialImage) {
+      setSelectedImage(initialImage);
+    }
+  }, [initialImage]);
   const [cardDataUrl, setCardDataUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -155,7 +163,10 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session }: WatermarkP
       // Course Name & Date
       ctx.fillStyle = '#FBBF24'; // Gold
       ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-      ctx.fillText(`📅 ${dateStr} · ${totalHoles}홀 완주`, 90, cardY + 60);
+      const dateText = clubTag.trim()
+        ? `📅 ${dateStr} · 👥 ${clubTag.trim()}`
+        : `📅 ${dateStr} · ${totalHoles}홀 완주`;
+      ctx.fillText(dateText, 90, cardY + 60);
 
       ctx.fillStyle = '#FFFFFF';
       ctx.font = '900 44px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
@@ -218,13 +229,13 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session }: WatermarkP
         renderLayers(null);
       }
     };
-  }, [courseName, dateStr, totalHoles, myStrokes, parDiffStr, companionNames]);
+  }, [courseName, dateStr, totalHoles, myStrokes, parDiffStr, companionNames, clubTag]);
 
   useEffect(() => {
     if (isOpen) {
       generatePhotoCard(selectedImage);
     }
-  }, [isOpen, selectedImage, generatePhotoCard]);
+  }, [isOpen, selectedImage, clubTag, generatePhotoCard]);
 
   if (!isOpen) return null;
 
@@ -335,6 +346,19 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session }: WatermarkP
             <ImageIcon className="w-4 h-4 text-amber-300" />
             <span>{selectedImage ? '사진 변경' : '내 사진 올리기'}</span>
           </button>
+        </div>
+
+        {/* 모임 / 클럽 명칭 (선택 기입 - 워터마크에 자동 반영) */}
+        <div className="bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 flex items-center gap-2 text-xs">
+          <span className="text-amber-400 font-bold shrink-0">👥 모임/클럽:</span>
+          <input
+            type="text"
+            value={clubTag}
+            onChange={(e) => setClubTag(e.target.value)}
+            placeholder="예: 구미 에이스 클럽 정기전 (선택 입력)"
+            maxLength={20}
+            className="w-full bg-transparent text-white font-bold placeholder:text-stone-500 outline-none text-xs"
+          />
         </div>
 
         {savedSuccess && (

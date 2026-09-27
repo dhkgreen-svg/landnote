@@ -7,7 +7,7 @@ import { MainWrapper } from '@/components/MainWrapper';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://parkongolf.com'),
-  title: '파크온 (ParkOn) - 1인 오토파일럿 파크골프',
+  title: '파크온 (ParkOn) - 모바일 스코어보드',
   description: '50~70대 시니어를 위한 초간편 1초 스코어보드 & 로컬룰 가이드',
   manifest: '/manifest.json',
   icons: {
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     title: '파크온',
   },
   openGraph: {
-    title: '파크온 (ParkOn) - 1인 오토파일럿 파크골프',
+    title: '파크온 (ParkOn) - 모바일 스코어보드',
     description: '1초 스코어링 · 전국 5스타 랭킹 · 룰 솔로몬 AI',
     siteName: '파크온',
     images: [
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '파크온 (ParkOn) - 1인 오토파일럿 파크골프',
+    title: '파크온 (ParkOn) - 모바일 스코어보드',
     description: '1초 스코어링 · 전국 5스타 랭킹 · 룰 솔로몬 AI',
     images: ['/og-image.jpg'],
   },
@@ -68,7 +68,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="파크온" />
         <meta name="application-name" content="파크온" />
-        <meta property="og:title" content="파크온 (ParkOn) - 1인 오토파일럿 파크골프" />
+        <meta property="og:title" content="파크온 (ParkOn) - 모바일 스코어보드" />
         <meta property="og:description" content="1초 스코어링 · 전국 5스타 랭킹 · 룰 솔로몬 AI" />
         <meta property="og:image" content="/og-image.jpg" />
         <meta property="og:image:width" content="1200" />

@@ -67,10 +67,12 @@ export function KakaoLoginModal({
         aliasName.trim() ||
         '회원';
       syncSelfPlayerNameToActiveRound(effectiveName);
+      const vId = typeof window !== 'undefined' ? (localStorage.getItem('parkon_visitor_uuid_v1') || undefined) : undefined;
       fetch('/api/admin/analytics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          visitorId: vId,
           path: typeof window !== 'undefined' ? window.location.pathname : '/',
           userName: effectiveName,
           isKakaoUser: true,
@@ -126,10 +128,12 @@ export function KakaoLoginModal({
 
     setIsSavedNotice(true);
     syncSelfPlayerNameToActiveRound(effectiveName);
+    const vIdSave = typeof window !== 'undefined' ? (localStorage.getItem('parkon_visitor_uuid_v1') || undefined) : undefined;
     fetch('/api/admin/analytics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        visitorId: vIdSave,
         path: typeof window !== 'undefined' ? window.location.pathname : '/',
         userName: effectiveName,
         isKakaoUser: true,
@@ -209,7 +213,7 @@ export function KakaoLoginModal({
                     type="text"
                     value={realName}
                     onChange={(e) => setRealName(e.target.value)}
-                    placeholder="예: 김대희, 홍길동"
+                    placeholder="예: 홍길동"
                     className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs"
                   />
                 </div>
@@ -223,7 +227,7 @@ export function KakaoLoginModal({
                     type="text"
                     value={aliasName}
                     onChange={(e) => setAliasName(e.target.value)}
-                    placeholder="예: 나이스버디, 파크달인"
+                    placeholder="예: 손오공"
                     className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs"
                   />
                 </div>
@@ -310,7 +314,7 @@ export function KakaoLoginModal({
                     type="text"
                     value={realName}
                     onChange={(e) => setRealName(e.target.value)}
-                    placeholder="예: 김대희"
+                    placeholder="예: 홍길동"
                     className="w-full px-3 py-2.5 bg-white border border-stone-300 rounded-xl font-bold text-xs"
                   />
                 </div>
@@ -324,7 +328,7 @@ export function KakaoLoginModal({
                     type="text"
                     value={aliasName}
                     onChange={(e) => setAliasName(e.target.value)}
-                    placeholder="예: 나이스버디"
+                    placeholder="예: 손오공"
                     className="w-full px-3 py-2.5 bg-white border border-stone-300 rounded-xl font-bold text-xs"
                   />
                 </div>

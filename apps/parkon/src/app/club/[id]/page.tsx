@@ -35,6 +35,7 @@ import {
   Trash2,
   Settings,
   ShieldCheck,
+  Search,
 } from 'lucide-react';
 import {
   ClubEventRoom,
@@ -104,6 +105,11 @@ export default function ClubRoomDetailPage() {
   const [isSpinning, setIsSpinning] = useState<boolean>(false);
   const [currentCandidateName, setCurrentCandidateName] = useState<string>('');
   const [drawnWinner, setDrawnWinner] = useState<{ id: string; name: string; groupNumber?: number } | null>(null);
+
+  // [대표님 지시] 200인 이상 대규모 대회 리더보드 검색 및 내 순위 바로가기 상태
+  const [leaderboardSearch, setLeaderboardSearch] = useState<string>('');
+  const [leaderboardFilter, setLeaderboardFilter] = useState<'ALL' | 'TOP10' | 'MY_GROUP'>('ALL');
+  const [highlightedPlayerId, setHighlightedPlayerId] = useState<string | null>(null);
 
   const loadRoom = useCallback(() => {
     if (!roomId) return;
@@ -348,12 +354,12 @@ export default function ClubRoomDetailPage() {
     }
   };
 
-  // 최종 대회 결과 리포트 복사
+  // [대표님 지시] 1초 시상식 및 수령 확인 리포트 복사
   const handleCopyTournamentReport = () => {
     const text = ClubStorage.generateTournamentResultReport(room);
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text);
-      showToast('대회 최종 결과 요약 리포트가 복사되었습니다! 카톡에 공유하세요 🏆');
+      showToast('🏆 [시상식 및 수령 확인] 결과 요약 공지가 복사되었습니다! 카톡 단체방에 공유하세요.');
     }
   };
 
@@ -798,10 +804,10 @@ export default function ClubRoomDetailPage() {
           <button
             type="button"
             onClick={handleCopyTournamentReport}
-            className="w-full bg-white/20 hover:bg-white/30 text-white font-black text-xs py-2.5 rounded-xl border border-white/20 shadow-sm transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+            className="w-full bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs py-2.5 rounded-xl border border-amber-300 shadow-sm transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
           >
-            <FileText className="w-4 h-4" />
-            <span>결과 리포트 복사 📋</span>
+            <Trophy className="w-4 h-4 text-stone-950 shrink-0" />
+            <span>📋 1초 시상식 및 수령 확인</span>
           </button>
         </div>
       </div>
@@ -1016,8 +1022,8 @@ export default function ClubRoomDetailPage() {
                   <span className="text-[10px] font-black bg-black/20 px-2 py-0.5 rounded-full text-yellow-100">
                     🎯 내 조 찾기 성공
                   </span>
-                  <span className="text-xs font-black bg-white/20 px-2.5 py-0.5 rounded-lg text-white">
-                    🚩 {matchedGroup.startCourseLetter}코스 1번 홀 동시 출발(샷건)
+                  <span className="text-xs font-black bg-red-600 px-2.5 py-0.5 rounded-lg text-white shadow-2xs">
+                    🚩 {ClubStorage.getGroupStartHole(matchedGroup.groupNumber - 1, room.selectedCourseLetters, matchedGroup.startCourseLetter)} 동시 티샷 출발(샷건)
                   </span>
                 </div>
                 <div className="text-sm font-black text-white">
@@ -1332,9 +1338,9 @@ export default function ClubRoomDetailPage() {
                             <span className="bg-purple-700 text-white text-xs font-black px-2.5 py-1 rounded-xl shadow-xs">
                               {group.name}
                             </span>
-                            <span className="text-xs font-black text-purple-900 bg-purple-100/80 px-2 py-0.5 rounded-lg border border-purple-200 flex items-center gap-1">
+                            <span className="text-[10px] font-black text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 flex items-center gap-1 shadow-2xs">
                               <span>🚩</span>
-                              <span>{group.startCourseLetter}코스 1번 홀 출발</span>
+                              <span>{ClubStorage.getGroupStartHole(group.groupNumber - 1, room.selectedCourseLetters, group.startCourseLetter)} 티샷 출발</span>
                             </span>
                             <span className="text-[11px] font-bold text-stone-500">
                               ({group.players.length}명 편성)
@@ -1680,84 +1686,207 @@ export default function ClubRoomDetailPage() {
             );
           })()}
 
-          {/* 순위 테이블 헤더 */}
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
-            <div className="bg-stone-100/80 px-3 py-2 text-[11px] font-black text-stone-600 flex items-center justify-between border-b border-stone-200">
-              <span className="w-8 text-center">순위</span>
-              <span className="flex-1 pl-2">선수명 / 소속조</span>
-              <span className="text-right">
-                {room.gameMode === 'NEW_PERIO' ? '네트점수 / 핸디' : '총 타수 / 기준타 대비'}
-              </span>
-            </div>
+          {/* [대표님 지시] 200인 이상 대규모 대회 리더보드 검색 및 내 순위 원터치 점프 바 */}
+          {(() => {
+            const selfName = (ParkOnStorage.getUserDisplayName(room.clubId) || '').trim();
+            const myIndividual = individuals.find(
+              (p) =>
+                (selfName && p.playerName.includes(selfName)) ||
+                (selfName.length >= 2 && p.playerName.includes(selfName.slice(0, 2)))
+            );
 
-            <div className="divide-y divide-stone-100">
-              {individuals.map((p) => {
-                const medal =
-                  p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : `${p.rank}위`;
-                const diffStr =
-                  p.parDiff < 0 ? `${p.parDiff}` : p.parDiff > 0 ? `+${p.parDiff}` : 'E';
+            const filteredIndividuals = individuals.filter((p) => {
+              if (leaderboardFilter === 'TOP10' && p.rank > 10) return false;
+              if (leaderboardFilter === 'MY_GROUP') {
+                if (!myIndividual) return true;
+                if (p.groupNumber !== myIndividual.groupNumber) return false;
+              }
+              if (leaderboardSearch.trim()) {
+                const q = leaderboardSearch.toLowerCase().trim();
+                const matchName = p.playerName.toLowerCase().includes(q);
+                const matchGroup = `${p.groupNumber}조`.includes(q) || `${p.groupNumber}` === q;
+                return matchName || matchGroup;
+              }
+              return true;
+            });
 
-                return (
-                  <div
-                    key={p.playerId}
-                    className="p-3 flex items-center justify-between gap-2 hover:bg-stone-50 transition"
+            return (
+              <div className="space-y-2.5">
+                <div className="flex gap-2 items-center">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="선수 이름 또는 조 검색 (예: 김철수, 3조)..."
+                      value={leaderboardSearch}
+                      onChange={(e) => setLeaderboardSearch(e.target.value)}
+                      className="w-full bg-white border border-stone-200 rounded-xl pl-9 pr-8 py-2 text-xs font-bold text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-purple-400 shadow-2xs"
+                    />
+                    {leaderboardSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setLeaderboardSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs font-bold"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  {myIndividual && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLeaderboardFilter('ALL');
+                        setLeaderboardSearch('');
+                        setHighlightedPlayerId(myIndividual.playerId);
+                        setTimeout(() => {
+                          const el = document.getElementById(`player-row-${myIndividual.playerId}`);
+                          el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 100);
+                      }}
+                      className="px-3 py-2 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 flex items-center gap-1 shrink-0 cursor-pointer border border-purple-500 whitespace-nowrap"
+                      title="내 순위로 화면 즉시 이동"
+                    >
+                      <span>🎯 내 순위: {myIndividual.rank}위</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* 3단 퀵 필터 탭 */}
+                <div className="grid grid-cols-3 gap-1.5 p-1 bg-stone-100 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setLeaderboardFilter('ALL')}
+                    className={`py-1.5 text-xs font-black rounded-lg transition cursor-pointer text-center ${
+                      leaderboardFilter === 'ALL'
+                        ? 'bg-white text-stone-900 shadow-2xs'
+                        : 'text-stone-500 hover:text-stone-800'
+                    }`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 text-center font-black text-xs text-stone-700">
-                        {medal}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-black text-xs text-stone-900">{p.playerName}</span>
-                          {p.isLeader && (
-                            <span className="text-[9px] bg-amber-100 text-amber-800 px-1 rounded font-black">
-                              조장
-                            </span>
-                          )}
-                          <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.2 rounded-md font-extrabold">
-                            {p.groupNumber}조
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-stone-400 font-bold mt-0.5">
-                          {p.holesCompleted > 0 ? `${p.holesCompleted}홀 진행` : '시작 전'}
-                        </div>
-                      </div>
-                    </div>
+                    전체 ({individuals.length}명)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLeaderboardFilter('TOP10')}
+                    className={`py-1.5 text-xs font-black rounded-lg transition cursor-pointer text-center ${
+                      leaderboardFilter === 'TOP10'
+                        ? 'bg-amber-500 text-stone-950 shadow-2xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    🏅 TOP 10
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLeaderboardFilter('MY_GROUP')}
+                    className={`py-1.5 text-xs font-black rounded-lg transition cursor-pointer text-center ${
+                      leaderboardFilter === 'MY_GROUP'
+                        ? 'bg-purple-700 text-white shadow-2xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    👥 내 조 보기
+                  </button>
+                </div>
 
-                    <div className="text-right">
-                      {room.gameMode === 'NEW_PERIO' && typeof p.netScore === 'number' ? (
-                        <>
-                          <div className="text-sm font-black text-indigo-900">
-                            네트 {p.netScore}타
-                          </div>
-                          <div className="text-[10px] font-bold text-stone-500">
-                            실타수 {p.totalStrokes}타 (핸디 -{p.handicap})
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="text-sm font-black text-stone-900">
-                            {p.totalStrokes > 0 ? `${p.totalStrokes}타` : '-'}
-                          </div>
+                {/* 순위 테이블 헤더 */}
+                <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
+                  <div className="bg-stone-100/80 px-3 py-2 text-[11px] font-black text-stone-600 flex items-center justify-between border-b border-stone-200">
+                    <span className="w-8 text-center">순위</span>
+                    <span className="flex-1 pl-2">선수명 / 소속조</span>
+                    <span className="text-right">
+                      {room.gameMode === 'NEW_PERIO' ? '네트점수 / 핸디' : '총 타수 / 기준타 대비'}
+                    </span>
+                  </div>
+
+                  <div className="divide-y divide-stone-100">
+                    {filteredIndividuals.length === 0 ? (
+                      <div className="p-8 text-center text-xs text-stone-500 font-bold">
+                        검색 조건에 일치하는 선수가 없습니다.
+                      </div>
+                    ) : (
+                      filteredIndividuals.map((p) => {
+                        const medal =
+                          p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : `${p.rank}위`;
+                        const diffStr =
+                          p.parDiff < 0 ? `${p.parDiff}` : p.parDiff > 0 ? `+${p.parDiff}` : 'E';
+                        const isHighlighted = highlightedPlayerId === p.playerId;
+
+                        return (
                           <div
-                            className={`text-[10px] font-black ${
-                              p.parDiff < 0
-                                ? 'text-red-600'
-                                : p.parDiff > 0
-                                ? 'text-blue-600'
-                                : 'text-stone-500'
+                            key={p.playerId}
+                            id={`player-row-${p.playerId}`}
+                            className={`p-3 flex items-center justify-between gap-2 transition duration-300 ${
+                              isHighlighted
+                                ? 'bg-purple-50 ring-2 ring-purple-500 ring-inset'
+                                : 'hover:bg-stone-50'
                             }`}
                           >
-                            {p.totalStrokes > 0 ? diffStr : ''}
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 text-center font-black text-xs text-stone-700">
+                                {medal}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-black text-xs text-stone-900">{p.playerName}</span>
+                                  {p.isLeader && (
+                                    <span className="text-[9px] bg-amber-100 text-amber-800 px-1 rounded font-black">
+                                      조장
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.2 rounded-md font-extrabold">
+                                    {p.groupNumber}조
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-stone-400 font-bold mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                  <span>{p.holesCompleted > 0 ? `${p.holesCompleted}홀 진행` : '시작 전'}</span>
+                                  {p.tieBreakerReason && (
+                                    <span className="bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded font-black text-[9px] shadow-2xs">
+                                      🎯 {p.tieBreakerReason}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0">
+                              {room.gameMode === 'NEW_PERIO' && typeof p.netScore === 'number' ? (
+                                <>
+                                  <div className="text-sm font-black text-indigo-900">
+                                    네트 {p.netScore}타
+                                  </div>
+                                  <div className="text-[10px] font-bold text-stone-500">
+                                    실타수 {p.totalStrokes}타 (핸디 -{p.handicap})
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="text-sm font-black text-stone-900">
+                                    {p.totalStrokes > 0 ? `${p.totalStrokes}타` : '-'}
+                                  </div>
+                                  <div
+                                    className={`text-[10px] font-black ${
+                                      p.parDiff < 0
+                                        ? 'text-red-600'
+                                        : p.parDiff > 0
+                                        ? 'text-blue-600'
+                                        : 'text-stone-500'
+                                    }`}
+                                  >
+                                    {p.totalStrokes > 0 ? diffStr : ''}
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        </>
-                      )}
-                    </div>
+                        );
+                      })
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* 🎖️ 이색 특별상 수상 현황 카드 */}
           {specialAwards.length > 0 && (
@@ -2288,29 +2417,29 @@ export default function ClubRoomDetailPage() {
                     type="button"
                     onClick={() => {
                       const user = ParkOnStorage.getKakaoUser();
-                      setNewPlayerName(user?.realName || '김대희');
+                      setNewPlayerName(user?.realName || '홍길동');
                     }}
                     className={`flex-1 py-1.5 px-2 rounded-lg border text-[11px] font-black transition cursor-pointer text-center ${
-                      newPlayerName === (ParkOnStorage.getKakaoUser()?.realName || '김대희')
+                      newPlayerName === (ParkOnStorage.getKakaoUser()?.realName || '홍길동')
                         ? 'bg-emerald-100 border-emerald-600 text-emerald-950 ring-2 ring-emerald-200'
                         : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800'
                     }`}
                   >
-                    🔘 실명 ({ParkOnStorage.getKakaoUser()?.realName || '김대희'})
+                    🔘 실명 ({ParkOnStorage.getKakaoUser()?.realName || '홍길동'})
                   </button>
                   <button
                     type="button"
                     onClick={() => {
                       const user = ParkOnStorage.getKakaoUser();
-                      setNewPlayerName(user?.aliasName || '나이스버디');
+                      setNewPlayerName(user?.aliasName || '손오공');
                     }}
                     className={`flex-1 py-1.5 px-2 rounded-lg border text-[11px] font-black transition cursor-pointer text-center ${
-                      newPlayerName === (ParkOnStorage.getKakaoUser()?.aliasName || '나이스버디')
+                      newPlayerName === (ParkOnStorage.getKakaoUser()?.aliasName || '손오공')
                         ? 'bg-purple-100 border-purple-600 text-purple-950 ring-2 ring-purple-200'
                         : 'bg-purple-50 hover:bg-purple-100 border-purple-300 text-purple-800'
                     }`}
                   >
-                    🔘 가명 ({ParkOnStorage.getKakaoUser()?.aliasName || '나이스버디'})
+                    🔘 가명 ({ParkOnStorage.getKakaoUser()?.aliasName || '손오공'})
                   </button>
                   <button
                     type="button"
@@ -2331,7 +2460,7 @@ export default function ClubRoomDetailPage() {
                   type="text"
                   value={newPlayerName}
                   onChange={(e) => setNewPlayerName(e.target.value)}
-                  placeholder="예: 김대희 또는 게스트1"
+                  placeholder="예: 홍길동 또는 게스트1"
                   autoFocus
                   required
                   className="w-full px-3 py-2 border border-stone-300 rounded-xl text-xs font-black focus:ring-2 focus:ring-purple-500 focus:outline-none"
@@ -2729,7 +2858,7 @@ export default function ClubRoomDetailPage() {
                       type="text"
                       value={cfgLastWinnerNames}
                       onChange={(e) => setCfgLastWinnerNames(e.target.value)}
-                      placeholder="예: 박찬호, 김대희"
+                      placeholder="예: 박찬호, 홍길동"
                       className="w-full px-3 py-2 bg-white border border-purple-300 rounded-xl text-xs font-bold focus:outline-none focus:border-purple-600"
                     />
                     <p className="text-[10px] text-purple-800 font-medium">

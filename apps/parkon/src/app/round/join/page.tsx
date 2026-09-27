@@ -41,7 +41,7 @@ function RoundJoinContent() {
       setUserName(user.realName || user.nickname || '회원');
     } else {
       const defaultName = ParkOnStorage.getUserDisplayName();
-      setUserName(defaultName && defaultName !== '파크골퍼' && defaultName !== '김대희' ? defaultName : '');
+      setUserName(defaultName && defaultName !== '파크골퍼' && defaultName !== '김대희' && defaultName !== '홍길동' ? defaultName : '');
     }
   }, [courseParam]);
 
@@ -191,6 +191,19 @@ function RoundJoinContent() {
               </div>
             </div>
           </div>
+
+          {/* 대표님 원칙: 도중 합류 시 가상 점수 부여 금지 & 결번 실타수 집계 안내 */}
+          {roundIdParam && (
+            <div className="bg-amber-50 border border-amber-300 rounded-xl p-2.5 text-xs text-amber-950 flex items-start gap-2">
+              <span className="text-sm shrink-0">⚖️</span>
+              <div className="leading-tight">
+                <span className="font-extrabold text-amber-900 block">공정 기록 원칙 (혼선 방지)</span>
+                <span className="text-[11px] text-amber-800">
+                  가상 점수 없이, 지나간 홀은 <strong>[결번(-)]</strong> 처리되며 지금부터 실제로 친 홀의 타수만 공식 집계됩니다.
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* 피드백 토스트 알림 */}
           {joinedToast && (

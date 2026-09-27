@@ -1,10 +1,219 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 
 interface ChapterCutDiagramProps {
   chapterId: string;
   cutNumber: number;
+}
+
+function Ch2Cut1Diagram() {
+  const [viewMode, setViewMode] = useState<'comic' | 'diagram'>('comic');
+  const [isZoomed, setIsZoomed] = useState(false);
+
+  return (
+    <div className="w-full bg-stone-900 rounded-2xl overflow-hidden border-2 border-emerald-500/80 shadow-md p-3 text-white space-y-2.5">
+      <div className="flex items-center justify-between border-b border-stone-800 pb-2">
+        <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
+          <span>🏷️</span>
+          <span>공인 용구 규격 및 인증 스티커 가이드</span>
+        </div>
+
+        {/* 언제든지 이전 도해로 되돌리거나 만화로 볼 수 있는 토글 스위치 */}
+        <div className="flex items-center bg-stone-800 p-0.5 rounded-xl border border-stone-700 text-[11px] font-black shrink-0">
+          <button
+            type="button"
+            onClick={() => setViewMode('comic')}
+            className={`px-2 py-0.5 rounded-lg transition ${
+              viewMode === 'comic'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-stone-400 hover:text-white'
+            }`}
+          >
+            🎨 6컷 만화
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('diagram')}
+            className={`px-2 py-0.5 rounded-lg transition ${
+              viewMode === 'diagram'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-stone-400 hover:text-white'
+            }`}
+          >
+            📐 기존 도해
+          </button>
+        </div>
+      </div>
+
+      {viewMode === 'comic' ? (
+        <div className="space-y-2">
+          {/* 대표님 제작 6컷 만화 */}
+          <div
+            className="relative w-full rounded-xl overflow-hidden border-2 border-amber-400/90 shadow-lg cursor-pointer group bg-white"
+            onClick={() => setIsZoomed(true)}
+            title="클릭 시 큰 화면으로 확대하여 보실 수 있습니다"
+          >
+            <img
+              src="/mascot/master_cuts/ch-2_comic_guide_6cut.jpg"
+              alt="공식 파크골프 용구 규격 완벽 가이드 6컷 만화"
+              className="w-full h-auto object-contain block transition duration-200 group-hover:scale-[1.01]"
+              loading="eager"
+            />
+            <div className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-xs text-amber-300 px-2.5 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 shadow-md border border-amber-400/40">
+              <span>🔍</span>
+              <span>터치하여 크게 보기</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] px-1 text-emerald-300 font-bold">
+            <span className="flex items-center gap-1">
+              <span>⭐</span>
+              <span>대표님 제작 공식 6컷 만화 연동 완료</span>
+            </span>
+            <span className="text-stone-400 text-[10px]">
+              [📐 기존 도해] 버튼으로 언제든 복원 가능
+            </span>
+          </div>
+
+          {/* 전체 화면 줌 모달 */}
+          {isZoomed && (
+            <div
+              className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn cursor-zoom-out"
+              onClick={() => setIsZoomed(false)}
+            >
+              <div
+                className="relative max-w-lg w-full max-h-[92vh] overflow-y-auto rounded-3xl border-2 border-amber-400 shadow-2xl p-1 bg-white"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-2 flex items-center justify-between border-b border-stone-200 bg-stone-50 rounded-t-2xl">
+                  <span className="text-xs font-black text-stone-900 flex items-center gap-1">
+                    <span>📖</span>
+                    <span>공식 파크골프 용구 규격 완벽 가이드 (6컷 만화)</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsZoomed(false)}
+                    className="w-7 h-7 rounded-full bg-stone-900 text-white font-black text-xs flex items-center justify-center hover:bg-stone-700 transition"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="p-1">
+                  <img
+                    src="/mascot/master_cuts/ch-2_comic_guide_6cut.jpg"
+                    alt="공식 파크골프 용구 규격 완벽 가이드 확대"
+                    className="w-full h-auto rounded-xl"
+                  />
+                </div>
+                <div className="p-2 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setIsZoomed(false)}
+                    className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black rounded-xl shadow-md transition"
+                  >
+                    닫기 (룰북으로 돌아가기)
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* 기존 도해 100% 보존 */
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-end pb-0.5">
+            <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
+              미인증 용구 = 즉시 실격(DQ)
+            </span>
+          </div>
+          <div className="relative w-full aspect-[16/9] bg-stone-950 rounded-xl overflow-hidden border border-stone-800 flex items-center justify-center">
+            <svg viewBox="0 0 420 220" className="w-full h-full">
+              <defs>
+                <linearGradient id="woodGradCh2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#78350f" />
+                  <stop offset="50%" stopColor="#92400e" />
+                  <stop offset="100%" stopColor="#451a03" />
+                </linearGradient>
+                <linearGradient id="goldHoloCh2" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#fef08a" />
+                  <stop offset="50%" stopColor="#eab308" />
+                  <stop offset="100%" stopColor="#ca8a04" />
+                </linearGradient>
+              </defs>
+
+              <rect x="0" y="0" width="420" height="220" fill="#1c1917" />
+
+              <line x1="50" y1="30" x2="150" y2="160" stroke="#94a3b8" strokeWidth="10" strokeLinecap="round" />
+              <line x1="50" y1="30" x2="80" y2="70" stroke="#0f172a" strokeWidth="12" strokeLinecap="round" />
+              <text x="50" y="24" fill="#94a3b8" fontSize="8" fontWeight="800">
+                그립부
+              </text>
+
+              <path
+                d="M 140 150 L 195 130 Q 210 150 195 180 L 145 185 Z"
+                fill="url(#woodGradCh2)"
+                stroke="#b45309"
+                strokeWidth="2"
+              />
+              <line x1="195" y1="130" x2="195" y2="180" stroke="#f59e0b" strokeWidth="4" />
+              <text x="202" y="158" fill="#fbbf24" fontSize="8" fontWeight="900">
+                로프트 0° (직각)
+              </text>
+
+              <g transform="translate(115, 120)">
+                <circle cx="10" cy="10" r="12" fill="url(#goldHoloCh2)" stroke="#ffffff" strokeWidth="1.5" />
+                <text x="10" y="9" textAnchor="middle" fill="#713f12" fontSize="6" fontWeight="900">
+                  KPGA
+                </text>
+                <text x="10" y="15" textAnchor="middle" fill="#713f12" fontSize="5" fontWeight="900">
+                  공인합격
+                </text>
+              </g>
+              <text x="125" y="148" textAnchor="middle" fill="#fde047" fontSize="8" fontWeight="900">
+                ▲ 공인 검정 스티커
+              </text>
+
+              <rect x="235" y="20" width="170" height="180" rx="10" fill="#292524" stroke="#44403c" strokeWidth="1.5" />
+              
+              <text x="320" y="42" textAnchor="middle" fill="#38bdf8" fontSize="11" fontWeight="900">
+                협회 공인 규격 기준
+              </text>
+
+              <g transform="translate(245, 55)">
+                <rect x="0" y="0" width="150" height="26" rx="4" fill="#1c1917" />
+                <text x="8" y="17" fill="#ffffff" fontSize="9" fontWeight="800">
+                  • 클럽 길이: <tspan fill="#4ade80">86cm 이하</tspan>
+                </text>
+              </g>
+
+              <g transform="translate(245, 87)">
+                <rect x="0" y="0" width="150" height="26" rx="4" fill="#1c1917" />
+                <text x="8" y="17" fill="#ffffff" fontSize="9" fontWeight="800">
+                  • 클럽 무게: <tspan fill="#4ade80">600g 이하</tspan>
+                </text>
+              </g>
+
+              <g transform="translate(245, 119)">
+                <rect x="0" y="0" width="150" height="26" rx="4" fill="#1c1917" />
+                <text x="8" y="17" fill="#ffffff" fontSize="9" fontWeight="800">
+                  • 공 규격: <tspan fill="#4ade80">직경 6cm (80~95g)</tspan>
+                </text>
+              </g>
+
+              <rect x="245" y="155" width="150" height="32" rx="6" fill="#7f1d1d" stroke="#ef4444" strokeWidth="1" />
+              <text x="320" y="170" textAnchor="middle" fill="#fecaca" fontSize="9" fontWeight="900">
+                미인증 용구 사용 시
+              </text>
+              <text x="320" y="182" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="900">
+                대회 즉시 【실격 (DQ)】
+              </text>
+            </svg>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramProps) {
@@ -280,105 +489,9 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
   // 제2장 용구와 복장 수칙
   // ==========================================
 
-  // [ch-2-1] 협회 공인 스티커 미부착 시 실격!
+  // [ch-2-1] 협회 공인 스티커 미부착 시 실격! (대표님 6컷 만화 연동 + 기존 도해 토글)
   if (key === 'ch-2-1') {
-    return (
-      <div className="w-full bg-stone-900 rounded-2xl overflow-hidden border-2 border-emerald-500/80 shadow-md p-3 text-white space-y-2">
-        <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
-          <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
-            <span>🏷️</span>
-            <span>공인 용구 규격 및 인증 스티커 필수</span>
-          </div>
-          <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
-            미인증 용구 = 즉시 실격(DQ)
-          </span>
-        </div>
-
-        <div className="relative w-full aspect-[16/9] bg-stone-950 rounded-xl overflow-hidden border border-stone-800 flex items-center justify-center">
-          <svg viewBox="0 0 420 220" className="w-full h-full">
-            <defs>
-              <linearGradient id="woodGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#78350f" />
-                <stop offset="50%" stopColor="#92400e" />
-                <stop offset="100%" stopColor="#451a03" />
-              </linearGradient>
-              <linearGradient id="goldHolo" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#fef08a" />
-                <stop offset="50%" stopColor="#eab308" />
-                <stop offset="100%" stopColor="#ca8a04" />
-              </linearGradient>
-            </defs>
-
-            <rect x="0" y="0" width="420" height="220" fill="#1c1917" />
-
-            <line x1="50" y1="30" x2="150" y2="160" stroke="#94a3b8" strokeWidth="10" strokeLinecap="round" />
-            <line x1="50" y1="30" x2="80" y2="70" stroke="#0f172a" strokeWidth="12" strokeLinecap="round" />
-            <text x="50" y="24" fill="#94a3b8" fontSize="8" fontWeight="800">
-              그립부
-            </text>
-
-            <path
-              d="M 140 150 L 195 130 Q 210 150 195 180 L 145 185 Z"
-              fill="url(#woodGrad)"
-              stroke="#b45309"
-              strokeWidth="2"
-            />
-            <line x1="195" y1="130" x2="195" y2="180" stroke="#f59e0b" strokeWidth="4" />
-            <text x="202" y="158" fill="#fbbf24" fontSize="8" fontWeight="900">
-              로프트 0° (직각)
-            </text>
-
-            <g transform="translate(115, 120)">
-              <circle cx="10" cy="10" r="12" fill="url(#goldHolo)" stroke="#ffffff" strokeWidth="1.5" />
-              <text x="10" y="9" textAnchor="middle" fill="#713f12" fontSize="6" fontWeight="900">
-                KPGA
-              </text>
-              <text x="10" y="15" textAnchor="middle" fill="#713f12" fontSize="5" fontWeight="900">
-                공인합격
-              </text>
-            </g>
-            <text x="125" y="148" textAnchor="middle" fill="#fde047" fontSize="8" fontWeight="900">
-              ▲ 공인 검정 스티커
-            </text>
-
-            <rect x="235" y="20" width="170" height="180" rx="10" fill="#292524" stroke="#44403c" strokeWidth="1.5" />
-            
-            <text x="320" y="42" textAnchor="middle" fill="#38bdf8" fontSize="11" fontWeight="900">
-              협회 공인 규격 기준
-            </text>
-
-            <g transform="translate(245, 55)">
-              <rect x="0" y="0" width="150" height="26" rx="4" fill="#1c1917" />
-              <text x="8" y="17" fill="#ffffff" fontSize="9" fontWeight="800">
-                • 클럽 길이: <tspan fill="#4ade80">86cm 이하</tspan>
-              </text>
-            </g>
-
-            <g transform="translate(245, 87)">
-              <rect x="0" y="0" width="150" height="26" rx="4" fill="#1c1917" />
-              <text x="8" y="17" fill="#ffffff" fontSize="9" fontWeight="800">
-                • 클럽 무게: <tspan fill="#4ade80">600g 이하</tspan>
-              </text>
-            </g>
-
-            <g transform="translate(245, 119)">
-              <rect x="0" y="0" width="150" height="26" rx="4" fill="#1c1917" />
-              <text x="8" y="17" fill="#ffffff" fontSize="9" fontWeight="800">
-                • 공 규격: <tspan fill="#4ade80">직경 6cm (80~95g)</tspan>
-              </text>
-            </g>
-
-            <rect x="245" y="155" width="150" height="32" rx="6" fill="#7f1d1d" stroke="#ef4444" strokeWidth="1" />
-            <text x="320" y="170" textAnchor="middle" fill="#fecaca" fontSize="9" fontWeight="900">
-              미인증 용구 사용 시
-            </text>
-            <text x="320" y="182" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="900">
-              대회 즉시 【실격 (DQ)】
-            </text>
-          </svg>
-        </div>
-      </div>
-    );
+    return <Ch2Cut1Diagram />;
   }
 
   // [ch-2-2] 티 높이는 지면에서 딱 2.3cm 이하!

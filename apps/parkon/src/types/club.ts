@@ -13,6 +13,7 @@ export interface ClubPlayer {
   handicap?: number; // [NEW] 신페리오 등 산출 핸디캡 (예: 7.2)
   netScore?: number; // [NEW] 핸디캡 적용 네트 스코어 (totalStrokes - handicap)
   waitNumber?: number; // [NEW] 정원 초과 시 대기 번호 (예: 1, 2)
+  phone?: string; // [NEW] 동명이인 식별 및 연락용 번호
 }
 
 export interface ClubGroup {
@@ -95,7 +96,8 @@ export interface SpecialAwardWinner {
 export interface ClubMember {
   id: string;
   name: string;
-  role: 'PRESIDENT' | 'MANAGER' | 'MEMBER'; // 회장 / 총무 / 회원
+  role: 'PRESIDENT' | 'VICE_PRESIDENT' | 'MANAGER' | 'AUDITOR' | 'DIRECTOR' | 'CAPTAIN' | 'MEMBER' | string; // 회장 / 부회장 / 총무 / 감사 / 이사 / 경기위원장 / 회원 / 맞춤직책
+  customRoleName?: string; // [NEW] 맞춤 직책명 직접 수정 (예: '수석부회장', '여성부회장', '고문' 등)
   joinedAt: string;
   phone?: string;
   duesPaid?: boolean; // [NEW] 연회비 납부 여부 (완납 / 미납)
@@ -108,7 +110,8 @@ export interface ClubMember {
 export interface ArchivedClubMember {
   id: string;
   name: string;
-  roleAtLeave: 'PRESIDENT' | 'MANAGER' | 'MEMBER';
+  roleAtLeave: string;
+  customRoleNameAtLeave?: string;
   joinedAt: string; // 최초 가입 일자 (복귀 시 원상 복구)
   leftAt: string;   // 탈퇴 일자
   phone?: string;
@@ -239,6 +242,8 @@ export interface ClubLeaderboardIndividual {
   isLeader: boolean;
   handicap?: number; // [NEW] 신페리오 핸디캡
   netScore?: number; // [NEW] 핸디캡 적용 네트 스코어
+  backCountScore?: number; // [NEW] 파크골프 공식 후반 9홀(10~18홀) 합산 타수
+  tieBreakerReason?: string; // [NEW] 파크골프 공식 동타 판정 근거 (예: 백카운트 24타 우선 등)
 }
 
 // 3. 클럽 가입 초청장 인터페이스

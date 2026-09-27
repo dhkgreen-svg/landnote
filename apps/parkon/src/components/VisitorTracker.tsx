@@ -3,6 +3,20 @@
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 
+function getOrCreateVisitorUuid(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    let vid = localStorage.getItem('parkon_visitor_uuid_v1');
+    if (!vid) {
+      vid = 'v_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+      localStorage.setItem('parkon_visitor_uuid_v1', vid);
+    }
+    return vid;
+  } catch {
+    return '';
+  }
+}
+
 export function VisitorTracker() {
   const pathname = usePathname();
   const lastTrackedPath = useRef<string | null>(null);
@@ -17,6 +31,7 @@ export function VisitorTracker() {
 
     const track = async () => {
       try {
+        const visitorId = getOrCreateVisitorUuid();
         let userRegion = '';
         let homeCourse = '';
         let userName = '일반 골퍼';
@@ -90,6 +105,7 @@ export function VisitorTracker() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            visitorId,
             path: pathname || '/',
             referrer: typeof document !== 'undefined' ? document.referrer : '',
             userRegion,

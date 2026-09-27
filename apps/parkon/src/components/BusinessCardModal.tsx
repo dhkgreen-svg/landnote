@@ -278,7 +278,7 @@ export function BusinessCardModal({
                         type="text"
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
-                        placeholder="예: 김대희"
+                        placeholder="예: 홍길동"
                         required
                         className="w-full bg-stone-900 border border-stone-700 text-white rounded-lg px-2.5 py-1.5 text-xs focus:border-amber-400 outline-hidden"
                       />

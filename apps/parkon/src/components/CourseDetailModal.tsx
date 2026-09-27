@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { X, Award, CheckCircle2, Camera, Edit2, Lock, Unlock, Save, ShieldCheck, History, Play, AlertTriangle } from 'lucide-react';
+import { X, Award, CheckCircle2, Camera, Edit2, Lock, Unlock, Save, ShieldCheck, History, Play, AlertTriangle, Trophy } from 'lucide-react';
 import { Course, HoleMetadata, CourseContribution } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
 import { generateStandardHoles } from '@/lib/defaultCourses';
+import { CourseHallOfFameModal } from '@/components/CourseHallOfFameModal';
 
 interface CourseDetailModalProps {
   course: Course;
@@ -43,6 +44,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
   const [isLocked, setIsLocked] = useState<boolean>(course.isLocked || false);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
   const [showPhotoSection, setShowPhotoSection] = useState<boolean>(false);
+  const [showHallOfFameModal, setShowHallOfFameModal] = useState<boolean>(false);
 
   const currentCourseLetter = availableCourses[currentCourseIdx] || 'A';
   const startHoleNum = currentCourseIdx * 9 + 1;
@@ -134,6 +136,14 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
             <p className="text-[11px] text-emerald-200 mt-0.5 truncate">
               {course.region} · 총 {availableCourses.length}코스 {course.totalHoles || 36}홀 실측 제원표
             </p>
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <span className="text-[10px] bg-emerald-700/80 text-emerald-100 font-bold px-2 py-0.5 rounded-md border border-emerald-500/40">
+                🌿 잔디 상태: 우수
+              </span>
+              <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-md shadow-xs">
+                📅 운영: 매주 월요일 휴장 (공휴일 정상 운영)
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
@@ -157,6 +167,18 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
               ✕
             </button>
           </div>
+        </div>
+
+        {/* 대표님 원칙 2단계: 최다 완주 명예의 전당 바로가기 */}
+        <div className="px-3 pt-2.5 bg-stone-100 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setShowHallOfFameModal(true)}
+            className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black text-xs shadow-xs flex items-center justify-center gap-1.5 transition active:scale-98 cursor-pointer"
+          >
+            <Trophy className="w-4 h-4 fill-current text-stone-950" />
+            <span>🏆 이 구장 최다 완주 명예의 전당 (TOP 10 랭킹) 보기</span>
+          </button>
         </div>
 
         {/* 2. [핵심] A, B, C, D 코스 대형 탭 버튼 (상단 고정 노출) */}
@@ -420,6 +442,14 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
           </Link>
         </div>
       </div>
+
+      {/* 대표님 원칙 2단계: 구장별 실시간 명예의 전당 (최다 완주 TOP 10) */}
+      <CourseHallOfFameModal
+        isOpen={showHallOfFameModal}
+        onClose={() => setShowHallOfFameModal(false)}
+        courseId={course.id}
+        courseName={course.name}
+      />
     </div>
   );
 }

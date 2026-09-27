@@ -244,7 +244,9 @@ export const ClubStorage = {
     try {
       const rooms = this.getAllRooms().filter((r) => r.id !== room.id);
       rooms.unshift(room);
-      localStorage.setItem(STORAGE_KEYS.CLUB_ROOMS, JSON.stringify(rooms));
+      // [10만명 3개월 누적 대비] 최근 50개 룸 롤링 보관 (과거 완료 대회는 연대기 실록으로 영구 보존)
+      const cappedRooms = rooms.slice(0, 50);
+      localStorage.setItem(STORAGE_KEYS.CLUB_ROOMS, JSON.stringify(cappedRooms));
 
       // 📜 대회 개최 내용 및 경기 기록을 클럽 연대기(Club Chronicle)에 영구 보존
       if (room.clubId || (room.groups && room.groups.some((g) => g.players.length > 0))) {
@@ -1100,12 +1102,19 @@ export const ClubStorage = {
 
           if (countedHiddenHoles > 0) {
             // 표준 신페리오 공식: (12개 숨은홀 타수 합계 * 1.5 - 기준파(66)) * 0.8
-            // 홀수 비례 보정 적용
             const scale = 12 / countedHiddenHoles;
             const estimatedHiddenSum = hiddenSum * scale;
             const rawHandicap = (estimatedHiddenSum * 1.5 - 66) * 0.8;
             handicap = Math.max(0, Math.round(rawHandicap * 10) / 10);
             netScore = Math.round((p.totalStrokes - handicap) * 10) / 10;
+          }
+        }
+
+        // 파크골프 공식 백카운트(후반 10~18번홀 타수 합계) 산출
+        let backCountScore = 0;
+        for (let h = 10; h <= 18; h++) {
+          if (typeof p.scores[h] === 'number') {
+            backCountScore += p.scores[h];
           }
         }
 
@@ -1120,11 +1129,13 @@ export const ClubStorage = {
           isLeader: p.isLeader,
           handicap,
           netScore,
+          backCountScore,
         });
       });
     });
 
     // 정렬: 신페리오는 네트 스코어 최저타순, 스트로크는 총타수 최저타순
+    // 동타 시 파크골프 공식 룰: 후반 9홀 백카운트 최저타순 우선!
     list.sort((a, b) => {
       if (a.holesCompleted === 0 && b.holesCompleted === 0) return 0;
       if (a.holesCompleted === 0) return 1;
@@ -1133,15 +1144,42 @@ export const ClubStorage = {
       if (isNewPerio && typeof a.netScore === 'number' && typeof b.netScore === 'number') {
         const diff = a.netScore - b.netScore;
         if (diff !== 0) return diff;
-        // 네트 동타 시 실타수(Gross)가 적은 선수 우선
+        // 네트 동타 시: 백카운트(후반 9홀) 적은 선수 우선
+        const bcDiff = (a.backCountScore || 0) - (b.backCountScore || 0);
+        if (bcDiff !== 0) return bcDiff;
+        // 백카운트까지 같으면 실타수(Gross) 적은 선수 우선
         return a.totalStrokes - b.totalStrokes;
       }
 
-      return a.totalStrokes - b.totalStrokes;
+      const strokeDiff = a.totalStrokes - b.totalStrokes;
+      if (strokeDiff !== 0) return strokeDiff;
+
+      // 스트로크 동타 시: 백카운트(후반 9홀) 적은 선수 우선
+      const bcDiff = (a.backCountScore || 0) - (b.backCountScore || 0);
+      if (bcDiff !== 0) return bcDiff;
+
+      return (b.holesCompleted || 0) - (a.holesCompleted || 0);
     });
 
     list.forEach((item, idx) => {
       item.rank = idx + 1;
+      // 동타 발생 여부 감지 및 판정 근거 부여
+      const sameScoreWithNext = idx < list.length - 1 && (
+        (isNewPerio && list[idx + 1].netScore === item.netScore) ||
+        (!isNewPerio && list[idx + 1].totalStrokes === item.totalStrokes)
+      );
+      const sameScoreWithPrev = idx > 0 && (
+        (isNewPerio && list[idx - 1].netScore === item.netScore) ||
+        (!isNewPerio && list[idx - 1].totalStrokes === item.totalStrokes)
+      );
+
+      if (sameScoreWithNext || sameScoreWithPrev) {
+        if (isNewPerio && typeof item.handicap === 'number') {
+          item.tieBreakerReason = `신페리오 -${item.handicap} (백카운트 ${item.backCountScore || 0}타)`;
+        } else if (item.backCountScore && item.backCountScore > 0) {
+          item.tieBreakerReason = `백카운트 우선 (후반 9홀 ${item.backCountScore}타)`;
+        }
+      }
     });
 
     return list;
@@ -1209,29 +1247,57 @@ ${link}`;
     report += `🎯 경기 방식: ${room.gameModeTitle || modeInfo.title}\n\n`;
 
     report += `🥇 [팀 대항전 단체 순위]\n`;
-    teams.forEach((t) => {
+    const displayTeams = teams.slice(0, 5);
+    displayTeams.forEach((t) => {
       const medal = t.rank === 1 ? '🥇' : t.rank === 2 ? '🥈' : t.rank === 3 ? '🥉' : '▪️';
       report += `${medal} ${t.rank}위 ${t.groupName} (조장: ${t.leaderName}) : 평균 ${t.avgStrokes}타\n`;
     });
+    if (teams.length > 5) {
+      report += `  (※ 외 ${teams.length - 5}개 조 전체 순위는 파크온 전광판 링크에서 확인)\n`;
+    }
+
+    // [대표님 지시] 5만명 전국망 대비 동명이인 방지 3중 식별 태그 (이름 + 소속클럽 + 전화뒷자리/조)
+    const getPlayerTag = (playerId: string, defaultName: string, groupNum?: number): string => {
+      let matchedPhone: string | undefined;
+      for (const g of room.groups) {
+        const found = g.players.find((p) => p.name === defaultName || p.id === playerId);
+        if (found?.phone) {
+          matchedPhone = found.phone;
+          break;
+        }
+      }
+      if (!matchedPhone && room.clubId) {
+        const club = this.getClubById(room.clubId);
+        const member = club?.members.find((m) => m.name === defaultName || m.id === playerId);
+        if (member?.phone) {
+          matchedPhone = member.phone;
+        }
+      }
+      const clubPart = room.clubName ? `${room.clubName}` : '';
+      const phoneDigits = matchedPhone ? matchedPhone.replace(/[^0-9]/g, '') : '';
+      const phonePart = phoneDigits.length >= 4 ? `끝자리 ${phoneDigits.slice(-4)}` : '';
+      const parts = [clubPart, phonePart || (groupNum ? `${groupNum}조` : '')].filter(Boolean);
+      return parts.length > 0 ? ` (${parts.join(' / ')})` : (groupNum ? ` (${groupNum}조)` : '');
+    };
 
     if (room.gameMode === 'NEW_PERIO') {
       report += `\n🎯 [신페리오 개인전 최종 순위 (핸디캡 적용)]\n`;
       individuals.slice(0, 5).forEach((p) => {
         const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '▪️';
-        report += `${medal} ${p.rank}위 ${p.playerName} (${p.groupNumber}조) : 네트 ${p.netScore}타 (실타수 ${p.totalStrokes}타, 핸디 ${p.handicap})\n`;
+        report += `${medal} ${p.rank}위 ${p.playerName}${getPlayerTag(p.playerId, p.playerName, p.groupNumber)} : 네트 ${p.netScore}타 (실타수 ${p.totalStrokes}타, 핸디 ${p.handicap})\n`;
       });
 
       const sortedByGross = [...individuals].sort((a, b) => a.totalStrokes - b.totalStrokes);
       const medalist = sortedByGross[0];
       if (medalist) {
-        report += `\n🏅 [메달리스트 (실타수 최저타)] : ${medalist.playerName} (${medalist.groupNumber}조) - 총 ${medalist.totalStrokes}타\n`;
+        report += `\n🏅 [메달리스트 (실타수 최저타)] : ${medalist.playerName}${getPlayerTag(medalist.playerId, medalist.playerName, medalist.groupNumber)} - 총 ${medalist.totalStrokes}타\n`;
       }
     } else {
       report += `\n🎖️ [개인전 TOP 5]\n`;
       individuals.slice(0, 5).forEach((p) => {
         const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '▪️';
         const diffStr = p.parDiff <= 0 ? `${p.parDiff}` : `+${p.parDiff}`;
-        report += `${medal} ${p.rank}위 ${p.playerName} (${p.groupNumber}조) : ${p.totalStrokes}타 (${diffStr})\n`;
+        report += `${medal} ${p.rank}위 ${p.playerName}${getPlayerTag(p.playerId, p.playerName, p.groupNumber)} : ${p.totalStrokes}타 (${diffStr})\n`;
       });
     }
 
@@ -1239,8 +1305,8 @@ ${link}`;
     const graceInfo = this.getWinnerGraceInfo(room, individuals);
     if (graceInfo) {
       report += `\n🛡️ [우승자 시상 유예(독식 방지) 알림]\n`;
-      report += `• 명예 1위: ${graceInfo.originalWinner.playerName} (${graceInfo.originalWinner.totalStrokes}타)\n`;
-      report += `• 🎁 1위 시상품 승계: ${graceInfo.transferredWinner.playerName} (${graceInfo.transferredWinner.totalStrokes}타)\n`;
+      report += `• 명예 1위: ${graceInfo.originalWinner.playerName}${getPlayerTag('', graceInfo.originalWinner.playerName)} (${graceInfo.originalWinner.totalStrokes}타)\n`;
+      report += `• 🎁 1위 시상품 승계: ${graceInfo.transferredWinner.playerName}${getPlayerTag('', graceInfo.transferredWinner.playerName)} (${graceInfo.transferredWinner.totalStrokes}타)\n`;
       report += `  (${graceInfo.reason})\n`;
     }
 
@@ -1264,6 +1330,15 @@ ${link}`;
     if (room.gameRuleNotes) {
       report += `\n📌 대회 룰: ${room.gameRuleNotes}\n`;
     }
+
+    // ✍️ 대표님 지시: 시상식 및 상금·상품 수령 확인 안내 섹션
+    report += `\n══════════════════════════════\n`;
+    report += `📋 [🏆 시상식 및 상금·상품 수령 확인 안내]\n`;
+    report += `• 시상금 및 트로피/시상품은 수상자 본인 확인 후 현장 수령 또는 등록 계좌로 지급됩니다.\n`;
+    report += `• 수령 확인: 수상자 전원 서명 또는 확인 완료 시 클럽 공식 연대기에 영구 등재됩니다.\n`;
+    report += `• 문의 및 수령 확인: 총무 (${room.hostName || '클럽 집행부'})\n`;
+    report += `══════════════════════════════\n`;
+    report += `⛳ 파크온(ParkOn) 공식 대회 관제 센터 실시간 집계\n`;
 
     return report;
   },
@@ -1821,6 +1896,19 @@ ${link}`;
     }
   },
 
+  // 2-1. [대표님 지시] 가입 대기자 전체 1초 일괄 승인
+  approveAllPendingMembers(clubId: string): number {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club || !club.pendingMembers || club.pendingMembers.length === 0) return 0;
+    const count = club.pendingMembers.length;
+    const pendingCopy = [...club.pendingMembers];
+    pendingCopy.forEach((p, idx) => {
+      this.approveMember(clubId, p.id);
+    });
+    return count;
+  },
+
   // 3. 가입 거절
   rejectMember(clubId: string, pendingId: string): boolean {
     const list = this.getAllClubs();
@@ -2164,7 +2252,9 @@ ${shareUrl}`;
       } else {
         allChronicles.unshift(chronicleRecord);
       }
-      localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(allChronicles));
+      // [10만명 3개월 누적 대비] 전역 연대기 캐시는 최신 150건까지만 롤링 보관하여 브라우저 용량(5MB) 초과 방지
+      const cappedChronicles = allChronicles.slice(0, 150);
+      localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(cappedChronicles));
 
       // 2. 소속 클럽 엔티티에도 영구 반영
       if (room.clubId) {
@@ -2177,6 +2267,9 @@ ${shareUrl}`;
             club.chronicles[cIdx] = chronicleRecord;
           } else {
             club.chronicles.unshift(chronicleRecord);
+          }
+          if (club.chronicles.length > 100) {
+            club.chronicles = club.chronicles.slice(0, 100);
           }
           localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
         }
@@ -2367,11 +2460,12 @@ ${shareUrl}`;
     }
   },
 
-  // 회원의 직책(회장/총무/회원) 배정 및 클럽 공식 직책자 정보 연동
+  // 회원의 직책(회장/부회장/총무/감사/이사/경기위원장/맞춤직책) 배정 및 클럽 공식 직책자 정보 연동
   updateMemberRole(
     clubId: string,
     memberId: string,
-    newRole: 'PRESIDENT' | 'MANAGER' | 'MEMBER'
+    newRole: 'PRESIDENT' | 'VICE_PRESIDENT' | 'MANAGER' | 'AUDITOR' | 'DIRECTOR' | 'CAPTAIN' | 'MEMBER' | string,
+    customRoleName?: string
   ): boolean {
     const list = this.getAllClubs();
     const club = list.find((c) => c.id === clubId);
@@ -2380,17 +2474,21 @@ ${shareUrl}`;
     const targetMember = club.members.find((m) => m.id === memberId);
     if (!targetMember) return false;
 
-    if (newRole === 'PRESIDENT') {
+    const effectiveName = customRoleName?.trim() || '';
+
+    if (newRole === 'PRESIDENT' || effectiveName === '회장') {
       club.members.forEach((m) => {
-        if (m.role === 'PRESIDENT' && m.id !== memberId) {
+        if ((m.role === 'PRESIDENT' || m.customRoleName === '회장') && m.id !== memberId) {
           m.role = 'MEMBER';
+          m.customRoleName = undefined;
         }
       });
       club.presidentName = targetMember.name;
-    } else if (newRole === 'MANAGER') {
+    } else if (newRole === 'MANAGER' || effectiveName === '총무') {
       club.members.forEach((m) => {
-        if (m.role === 'MANAGER' && m.id !== memberId) {
+        if ((m.role === 'MANAGER' || m.customRoleName === '총무') && m.id !== memberId) {
           m.role = 'MEMBER';
+          m.customRoleName = undefined;
         }
       });
       club.managerName = targetMember.name;
@@ -2403,6 +2501,7 @@ ${shareUrl}`;
     }
 
     targetMember.role = newRole;
+    targetMember.customRoleName = customRoleName?.trim() ? customRoleName.trim() : undefined;
 
     try {
       localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
@@ -2521,8 +2620,10 @@ ${shareUrl}`;
     };
 
     list.unshift(newGathering);
+    // [10만명 3개월 누적 대비] 번개 모임 목록은 최근 100건으로 롤링 유지하여 무한 누적 방지
+    const cappedList = list.slice(0, 100);
     try {
-      localStorage.setItem(STORAGE_KEYS.FLASH_GATHERINGS, JSON.stringify(list));
+      localStorage.setItem(STORAGE_KEYS.FLASH_GATHERINGS, JSON.stringify(cappedList));
     } catch {
       // ignore
     }
@@ -2690,15 +2791,29 @@ ${shareUrl}`;
     text += `👥 총 ${room.groups.length}개 조 (${totalPlayers}명 배정 완료)\n`;
     text += `---------------------------------\n`;
 
-    room.groups.forEach((g) => {
+    room.groups.forEach((g, gIdx) => {
       const leaderStr = g.leaderName ? ` (조장: ${g.leaderName})` : '';
+      const startHoleStr = `[🚩 ${this.getGroupStartHole(gIdx, room.selectedCourseLetters, g.startCourseLetter)} 티샷]`;
       const members = g.players.map((p) => (p.isLeader ? `👑${p.name}` : p.name)).join(', ');
-      text += `⛳ ${g.name}${leaderStr}\n   👉 ${members || '배정 대기 중'}\n`;
+      text += `⛳ ${g.name} ${startHoleStr}${leaderStr}: ${members || '배정 대기 중'}\n`;
     });
 
     text += `---------------------------------\n`;
     text += `📡 실시간 디지털 전광판 & 스코어보드 바로가기:\n${link}`;
     return text;
+  },
+
+  // [대표님 지시] 50개 조 이상 대규모 샷건 출발 홀 자동 순환 분배 계산
+  getGroupStartHole(groupIndex: number, roomCourseLetters?: string[], groupStartCourseLetter?: string): string {
+    const letters = roomCourseLetters && roomCourseLetters.length > 0 ? roomCourseLetters : ['A', 'B'];
+    const totalPhysicalHoles = letters.length * 9;
+    const holeOffset = groupIndex % totalPhysicalHoles;
+    const courseIndex = Math.floor(holeOffset / 9);
+    const holeNumber = (holeOffset % 9) + 1;
+    const courseLetter = letters[courseIndex] || 'A';
+    const wave = Math.floor(groupIndex / totalPhysicalHoles);
+    const waveSuffix = wave > 0 ? ` (${wave + 1}부)` : '';
+    return `${courseLetter}-${holeNumber}홀${waveSuffix}`;
   },
 };
 

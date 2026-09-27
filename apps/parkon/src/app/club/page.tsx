@@ -55,6 +55,24 @@ import { getDefaultSelfName } from '@/lib/playerUtils';
 
 const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
+function formatKoreanPlayTime(timeStr?: string): string {
+  if (!timeStr) return '오후 2시';
+  const trimmed = timeStr.trim();
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (match) {
+    let hour = parseInt(match[1], 10);
+    const min = parseInt(match[2], 10);
+    const ampm = hour >= 12 ? '오후' : '오전';
+    if (hour > 12) hour -= 12;
+    if (hour === 0) hour = 12;
+    if (min === 0) {
+      return `${ampm} ${hour}시`;
+    }
+    return `${ampm} ${hour}시 ${min}분`;
+  }
+  return trimmed;
+}
+
 export default function ClubGatheringHomePage() {
   const router = useRouter();
 
@@ -63,19 +81,6 @@ export default function ClubGatheringHomePage() {
   // 대회 개설 모달 호출 출처 ('HUB' | 'MANAGING_CLUB' | 'CLUB_GATHERING')
   const [createModalSource, setCreateModalSource] = useState<'HUB' | 'MANAGING_CLUB' | 'CLUB_GATHERING'>('HUB');
 
-  const handleTabSwitch = (tab: 'CLUBS' | 'TOURNAMENTS' | 'FLASH') => {
-    setActiveHubTab(tab);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('parkon_club_active_tab', tab);
-        const url = new URL(window.location.href);
-        url.searchParams.set('tab', tab.toLowerCase());
-        window.history.replaceState({}, '', url.toString());
-      } catch (e) {
-        // ignore
-      }
-    }
-  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -124,8 +129,7 @@ export default function ClubGatheringHomePage() {
   const [clubNoticeAlertEnabled, setClubNoticeAlertEnabled] = useState<boolean>(true);
   const [clubRealtimeSyncEnabled, setClubRealtimeSyncEnabled] = useState<boolean>(true);
 
-  // [NEW] 관리 권한자 화면 vs 일반 회원 화면 뷰 모드 토글 ('AUTO' | 'ADMIN' | 'MEMBER')
-  const [rolePreviewMode, setRolePreviewMode] = useState<'AUTO' | 'ADMIN' | 'MEMBER'>('AUTO');
+
   // [NEW] 클럽 모임(정기전 / 번개) 개최 선택 모달 상태
   const [clubGatheringModal, setClubGatheringModal] = useState<ParkGolfClub | null>(null);
 
@@ -136,9 +140,19 @@ export default function ClubGatheringHomePage() {
   // [NEW] 단원(회원) 모집 중인 클럽만 보기 필터
   const [onlyRecruitingFilter, setOnlyRecruitingFilter] = useState(false);
 
-  // 회장/총무 클럽 통합 관리실 (가입 승인 대기 / 회원 명부 & 직책 배정 / 단원 모집 관리 / 대항전 개설 & 선수 선발)
   const [managingClub, setManagingClub] = useState<ParkGolfClub | null>(null);
-  const [managingClubTab, setManagingClubTab] = useState<'PENDING' | 'MEMBERS' | 'DUES'>('MEMBERS');
+  const [managingClubTab, setManagingClubTab] = useState<'INVITE' | 'PENDING' | 'MEMBERS' | 'DUES'>('MEMBERS');
+  const [roleModalMember, setRoleModalMember] = useState<{
+    memberId: string;
+    memberName: string;
+    currentRole: string;
+    customRoleName?: string;
+  } | null>(null);
+  const [customRoleInput, setCustomRoleInput] = useState('');
+  // [NEW] 50인 이상 대규모 클럽 회원 검색 및 직책 필터 상태
+  const [memberSearchTerm, setMemberSearchTerm] = useState('');
+  const [memberRoleFilter, setMemberRoleFilter] = useState<'ALL' | 'EXECUTIVE' | 'MEMBER'>('ALL');
+  const [duesFilter, setDuesFilter] = useState<'ALL' | 'PAID' | 'UNPAID'>('ALL');
   const [clubMatchModal, setClubMatchModal] = useState<ParkGolfClub | null>(null);
   const [editRecruitStatus, setEditRecruitStatus] = useState<ClubRecruitStatus>('RECRUITING');
   const [editRecruitQuota, setEditRecruitQuota] = useState<number>(5);
@@ -147,6 +161,8 @@ export default function ClubGatheringHomePage() {
   const [showArchivedMembers, setShowArchivedMembers] = useState<boolean>(false);
   const [expandedChronicleId, setExpandedChronicleId] = useState<string | null>(null);
   const [clubDetailTab, setClubDetailTab] = useState<'MEMBERS' | 'CHRONICLE'>('MEMBERS');
+  const [chronicleSearchTerm, setChronicleSearchTerm] = useState('');
+  const [collapsedMonths, setCollapsedMonths] = useState<Record<string, boolean>>({});
 
   // 클럽 대항전 개설 및 대표 선수 선발 상태
   const [matchOpponentClubId, setMatchOpponentClubId] = useState<string>('OPEN');
@@ -155,7 +171,7 @@ export default function ClubGatheringHomePage() {
 
   // 클럽 가입 신청 모달 상태
   const [applyingClub, setApplyingClub] = useState<ParkGolfClub | null>(null);
-  const [applicantName, setApplicantName] = useState('김대희(본인)');
+  const [applicantName, setApplicantName] = useState('홍길동(본인)');
   const [applicantPhone, setApplicantPhone] = useState('010-3814-1422');
   const [applicantMessage, setApplicantMessage] = useState('클럽에 가입하여 매너 라운드 함께하고 싶습니다!');
 
@@ -176,7 +192,7 @@ export default function ClubGatheringHomePage() {
   const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
   const [createdSuccessRoom, setCreatedSuccessRoom] = useState<ClubEventRoom | null>(null);
   const [copiedSuccessInvite, setCopiedSuccessInvite] = useState<boolean>(false);
-  const [tournamentViewMode, setTournamentViewMode] = useState<'CREATE' | 'LIVE_BOARD'>('CREATE');
+  const [tournamentViewMode, setTournamentViewMode] = useState<'CREATE' | 'LIVE_BOARD'>('LIVE_BOARD');
 
   // 대회 성격 및 규정: 클럽 대항전 vs 시·도 단위 공식 대회 vs 클럽 월례회
   const [tournamentType, setTournamentType] = useState<TournamentType>('CLUB_MATCH');
@@ -240,19 +256,20 @@ export default function ClubGatheringHomePage() {
   const [lightningRounds, setLightningRounds] = useState<CompanionLightningRound[]>([]);
   const [flashGatherings, setFlashGatherings] = useState<FlashGathering[]>([]);
   const [selectedFlashClubId, setSelectedFlashClubId] = useState<string>('');
+  const [showPastFlashGatherings, setShowPastFlashGatherings] = useState(false);
 
-  // 1촌 번개 개설 모달 상태 (4인 번개 기본 vs 4인 이상 번개 무제한)
+  // 1촌 번개 개설 모달 상태 (무제한 인원수 제한 없음 기본 추천)
   const [showCreate1ChonModal, setShowCreate1ChonModal] = useState(false);
-  const [ltnLightningScope, setLtnLightningScope] = useState<'FOUR_PLAYERS' | 'MULTI_OPEN'>('FOUR_PLAYERS');
+  const [ltnLightningScope, setLtnLightningScope] = useState<'FOUR_PLAYERS' | 'MULTI_OPEN'>('MULTI_OPEN');
   const [ltnCourseId, setLtnCourseId] = useState('course-gumi-dongrak');
   const [ltnDateStr, setLtnDateStr] = useState('오늘');
   const [ltnTimeStr, setLtnTimeStr] = useState('14:30');
   const [ltnNotes, setLtnNotes] = useState('2인 이상 모이면 바로 출발합니다!');
   const [ltnInvited1Chons, setLtnInvited1Chons] = useState<string[]>([]);
 
-  // 클럽원 전용 번개 개설 모달 상태 (4인 번개 기본 vs 4인 이상 번개 무제한)
+  // 클럽원 전용 번개 개설 모달 상태 (무제한 인원수 제한 없음 기본 추천)
   const [showCreateClubFlashModal, setShowCreateClubFlashModal] = useState(false);
-  const [clubFlashLightningScope, setClubFlashLightningScope] = useState<'FOUR_PLAYERS' | 'MULTI_OPEN'>('FOUR_PLAYERS');
+  const [clubFlashLightningScope, setClubFlashLightningScope] = useState<'FOUR_PLAYERS' | 'MULTI_OPEN'>('MULTI_OPEN');
   const [clubFlashTitle, setClubFlashTitle] = useState('오늘 번개 치실 분! (2인 이상 출발)');
   const [clubFlashCourseId, setClubFlashCourseId] = useState('course-gumi-dongrak');
   const [clubFlashDate, setClubFlashDate] = useState('오늘');
@@ -338,9 +355,100 @@ export default function ClubGatheringHomePage() {
     setApplicantName(selfName);
   };
 
+  // 직책 배지 표시 도우미 (회장/부회장/총무/감사/이사/경기위원장/맞춤직책)
+  const getRoleBadge = (role: string, customRoleName?: string) => {
+    if (customRoleName && customRoleName.trim()) {
+      const name = customRoleName.trim();
+      if (name.includes('회장') && !name.includes('부회장')) {
+        return { text: `👑 ${name}`, style: 'bg-amber-400 text-stone-950 font-black shadow-2xs' };
+      }
+      if (name.includes('부회장')) {
+        return { text: `🥈 ${name}`, style: 'bg-amber-100 text-amber-900 border border-amber-300 font-black' };
+      }
+      if (name.includes('총무') || name.includes('재무') || name.includes('사무')) {
+        return { text: `📋 ${name}`, style: 'bg-emerald-600 text-white font-black shadow-2xs' };
+      }
+      if (name.includes('감사')) {
+        return { text: `⚖️ ${name}`, style: 'bg-indigo-100 text-indigo-900 border border-indigo-300 font-black' };
+      }
+      if (name.includes('이사') || name.includes('위원')) {
+        return { text: `🏛️ ${name}`, style: 'bg-sky-100 text-sky-900 border border-sky-300 font-black' };
+      }
+      if (name.includes('고문')) {
+        return { text: `🎖️ ${name}`, style: 'bg-purple-100 text-purple-900 border border-purple-300 font-black' };
+      }
+      return { text: `🏷️ ${name}`, style: 'bg-teal-100 text-teal-900 border border-teal-300 font-black' };
+    }
+
+    switch (role) {
+      case 'PRESIDENT':
+        return { text: '👑 회장', style: 'bg-amber-400 text-stone-950 font-black shadow-2xs' };
+      case 'VICE_PRESIDENT':
+        return { text: '🥈 부회장', style: 'bg-amber-100 text-amber-900 border border-amber-300 font-black' };
+      case 'MANAGER':
+        return { text: '📋 총무', style: 'bg-emerald-600 text-white font-black shadow-2xs' };
+      case 'AUDITOR':
+        return { text: '⚖️ 감사', style: 'bg-indigo-100 text-indigo-900 border border-indigo-300 font-black' };
+      case 'DIRECTOR':
+        return { text: '🏛️ 이사', style: 'bg-sky-100 text-sky-900 border border-sky-300 font-black' };
+      case 'CAPTAIN':
+        return { text: '🏆 경기위원장', style: 'bg-orange-100 text-orange-900 border border-orange-300 font-black' };
+      case 'MEMBER':
+      default:
+        return { text: '회원', style: 'bg-stone-200 text-stone-700 font-medium' };
+    }
+  };
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // [권한 제어] 특정 클럽의 총무/회장(임원진) 권한 여부 판별 (100% 자동 직책 판별)
+  const isClubExecutive = (club: ParkGolfClub | null | undefined): boolean => {
+    if (!club) return false;
+    const selfName = (ParkOnStorage.getUserDisplayName(club.id) || ParkOnStorage.getUserDisplayName()).trim();
+    const myMemberInfo = club.members?.find(
+      (m) =>
+        m.name.trim() === selfName ||
+        m.name.includes('(본인)') ||
+        m.name === '김대희' ||
+        m.id === 'm1'
+    );
+    const actualManager =
+      myMemberInfo?.role === 'MANAGER' ||
+      club.managerName?.includes(selfName) ||
+      club.managerName?.includes('김대희') ||
+      club.managerName?.includes('본인');
+    const actualPresident =
+      myMemberInfo?.role === 'PRESIDENT' || club.presidentName?.includes(selfName);
+    return Boolean(actualManager || actualPresident);
+  };
+
+  // [권한 제어] 사용자가 속한 클럽 중 하나라도 총무/임원진 권한이 있는지 여부 (100% 자동 직책 판별)
+  const isAnyClubExecutive = (): boolean => {
+    const myClubsList = clubs.filter((c) => myClubIds.includes(c.id));
+    return myClubsList.some((c) => isClubExecutive(c));
+  };
+
+  const handleTabSwitch = (tab: 'CLUBS' | 'TOURNAMENTS' | 'FLASH') => {
+    setActiveHubTab(tab);
+    if (tab === 'TOURNAMENTS') {
+      // 일반 회원은 항상 '실시간 전광판'으로 우선 진입 (대회 개설 센터 강제 진입 차단)
+      if (!isAnyClubExecutive()) {
+        setTournamentViewMode('LIVE_BOARD');
+      }
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('parkon_club_active_tab', tab);
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab.toLowerCase());
+        window.history.replaceState({}, '', url.toString());
+      } catch (e) {
+        // ignore
+      }
+    }
   };
 
   // 모바일 / 카카오톡 인앱 브라우저 완벽 호환 클립보드 복사 함수
@@ -573,6 +681,10 @@ export default function ClubGatheringHomePage() {
 
   // 클럽 홈에서 '이 클럽 자체 월례회 열기' 클릭 시
   const handleOpenTournamentForClub = (club: ParkGolfClub) => {
+    if (!isClubExecutive(club)) {
+      showToast(`🔒 대회 개설은 '${club.name}' 총무 및 임원진 전용 권한입니다. 일반 회원은 개설된 대회 참가만 가능합니다.`);
+      return;
+    }
     setTournamentClubId(club.id);
     setTournamentType('CLUB_INTERNAL');
     setTitle(`${club.name} 정기 월례회 🏅`);
@@ -587,6 +699,10 @@ export default function ClubGatheringHomePage() {
 
   // [⚔️ 클럽 대항전 (교류전)] 모드 개설 팝업 오픈
   const handleOpenClubMatchTournament = () => {
+    if (!isAnyClubExecutive()) {
+      showToast('🔒 클럽 대항전 개설은 클럽 총무 및 임원진 전용 권한입니다. 일반 회원은 개설된 대회 참가만 가능합니다.');
+      return;
+    }
     setTournamentType('CLUB_MATCH');
     setMatchInviteType('DIRECT_CHALLENGE');
     setMatchTeamCount(2);
@@ -608,6 +724,10 @@ export default function ClubGatheringHomePage() {
 
   // [🏆 시·도 단위 공식 오픈 대회] 모드 개설 팝업 오픈
   const handleOpenRegionalOpenTournament = () => {
+    if (!isAnyClubExecutive()) {
+      showToast('🔒 시·도 단위 공식 대회 개설은 클럽 총무 및 임원진 전용 권한입니다. 일반 회원은 개설된 대회 참가만 가능합니다.');
+      return;
+    }
     setTournamentType('REGIONAL_OPEN');
     setRegionalScope('경상북도 구미시');
     setTitle('2026 제1회 구미시장배 파크골프 오픈 챔피언십 🏆');
@@ -816,14 +936,38 @@ ${shareUrl}`;
     showToast(`클럽 번개 참가 신청을 취소하였습니다.`);
   };
 
-  // 클럽 번개 라운드 시작 (4인 이하는 간편 스코어카드, 5인 이상은 조 편성 미리보기 & 전광판)
+  // 클럽 번개 라운드 시작 (4인은 초기 스코어보드 라운드 설정(/round/new) 화면으로 진입, 5인 이상은 조 편성 미리보기 & 전광판)
   const handleStartClubFlashRound = (flash: FlashGathering) => {
-    const rawParticipants = flash.currentParticipants;
-    if (rawParticipants.length === 0) return;
+    const rawParticipants = flash.currentParticipants || [];
+
+    // 구장 ID 매칭 (양호/양포 및 구장명 대응)
+    let targetCourseId = flash.courseId;
+    const allCourses = ParkOnStorage.getAllCourses();
+    const foundCourse = allCourses.find((c) => {
+      if (flash.courseId && c.id === flash.courseId) return true;
+      if (flash.courseName && c.name === flash.courseName) return true;
+      const fName = (flash.courseName || '').toLowerCase().replace(/\s+/g, '');
+      const cName = c.name.toLowerCase().replace(/\s+/g, '');
+      if (fName && (cName.includes(fName) || fName.includes(cName))) return true;
+      if ((fName.includes('양호') || fName.includes('양포')) && (cName.includes('양호') || cName.includes('양포'))) return true;
+      return false;
+    });
+    if (foundCourse) {
+      targetCourseId = foundCourse.id;
+    } else if (!targetCourseId) {
+      targetCourseId = ParkOnStorage.getHomeCourseId();
+    }
 
     if (rawParticipants.length <= 4) {
-      const names = rawParticipants.map((p) => p.name).join(',');
-      router.push(`/score/quick?courseId=${flash.courseId}&players=${encodeURIComponent(names)}`);
+      const names = rawParticipants.map((p) => p.name).filter(Boolean);
+      if (names.length === 0) {
+        const selfName = ParkOnStorage.getUserDisplayName(selectedFlashClubId) || '플레이어';
+        names.push(selfName);
+      }
+      while (names.length < 4) {
+        names.push(`동반자${names.length}`);
+      }
+      router.push(`/round/new?courseId=${encodeURIComponent(targetCourseId)}&players=${encodeURIComponent(names.slice(0, 4).join(','))}`);
       return;
     }
 
@@ -1069,6 +1213,19 @@ ${shareUrl}`;
     }
   };
 
+  // [대표님 지시] 대기 신청자 전체 1초 일괄 승인
+  const handleApproveAllPendingMembers = (clubId: string) => {
+    const count = ClubStorage.approveAllPendingMembers(clubId);
+    if (count > 0) {
+      refreshAllData();
+      const updated = ClubStorage.getClubById(clubId);
+      if (updated && managingClub?.id === clubId) {
+        setManagingClub(updated);
+      }
+      showToast(`🎉 대기 신청자 ${count}명 전원이 정회원으로 1초 일괄 승인되었습니다!`);
+    }
+  };
+
   // 가입 거절
   const handleRejectMember = (clubId: string, pendingId: string, applicantName: string) => {
     if (confirm(`${applicantName}님의 가입 신청을 거절하시겠습니까?`)) {
@@ -1082,22 +1239,40 @@ ${shareUrl}`;
     }
   };
 
-  // 직책 임명 및 위임 (회장 배정 / 총무 배정 / 일반 회원 변경)
+  // 직책 임명 및 위임 (회장 / 부회장 / 총무 / 감사 / 이사 / 경기위원장 / 맞춤직책 / 일반 회원)
   const handleAssignRole = (
     clubId: string,
     memberId: string,
-    newRole: 'PRESIDENT' | 'MANAGER' | 'MEMBER',
-    memberName: string
+    newRole: string,
+    customRoleName?: string,
+    memberName?: string
   ) => {
-    const roleLabel = newRole === 'PRESIDENT' ? '회장' : newRole === 'MANAGER' ? '총무' : '일반 회원';
-    const success = ClubStorage.updateMemberRole(clubId, memberId, newRole);
+    const roleLabel = customRoleName?.trim()
+      ? customRoleName.trim()
+      : newRole === 'PRESIDENT'
+      ? '회장'
+      : newRole === 'VICE_PRESIDENT'
+      ? '부회장'
+      : newRole === 'MANAGER'
+      ? '총무'
+      : newRole === 'AUDITOR'
+      ? '감사'
+      : newRole === 'DIRECTOR'
+      ? '이사'
+      : newRole === 'CAPTAIN'
+      ? '경기위원장'
+      : '일반 회원';
+
+    const success = ClubStorage.updateMemberRole(clubId, memberId, newRole, customRoleName);
     if (success) {
       refreshAllData();
       const updated = ClubStorage.getClubById(clubId);
       if (updated && managingClub?.id === clubId) {
         setManagingClub(updated);
       }
-      showToast(`👑 '${memberName}'님이 '${roleLabel}'(으)로 임명/배정되었습니다.`);
+      showToast(`🎖️ '${memberName || '회원'}'님이 '${roleLabel}'(으)로 임명되었습니다.`);
+      setRoleModalMember(null);
+      setCustomRoleInput('');
     }
   };
 
@@ -1285,7 +1460,7 @@ ${shareUrl}`;
 
   // 초청장 링크로 즉시 가입
   const handleDirectJoinByInvite = (club: ParkGolfClub) => {
-    const myName = applicantName || getDefaultSelfName() || '김대희(본인)';
+    const myName = applicantName || getDefaultSelfName() || '홍길동(본인)';
     ClubStorage.directJoinViaInvite(club.id, {
       name: myName,
       phone: applicantPhone || '010-3814-1422',
@@ -1406,48 +1581,6 @@ ${shareUrl}`;
 
   return (
     <div className="p-3 max-w-xl mx-auto space-y-3 pb-12">
-      {/* 1. 상단 네비게이션 헤더 */}
-      <div className="flex items-center justify-between bg-white rounded-2xl p-3 shadow-xs border border-stone-200">
-        <button
-          type="button"
-          onClick={() => {
-            if (typeof window !== 'undefined' && window.history.length > 1) {
-              router.back();
-            } else {
-              router.push('/');
-            }
-          }}
-          className="flex items-center gap-1 text-xs font-black text-stone-700 hover:text-stone-900 transition active:scale-95 cursor-pointer"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          <span>이전으로</span>
-        </button>
-        <div className="text-center">
-          <h1 className="font-black text-sm text-stone-900 flex items-center justify-center gap-1.5">
-            <Users className="w-4 h-4 text-purple-700" />
-            <span>클럽 &amp; 대회 운영 센터</span>
-          </h1>
-          <p className="text-[10px] text-stone-500 font-bold">
-            전국 파크골프 클럽 관리 · 공식 정기 월례회 &amp; 샷건 대회 운영 OS
-          </p>
-        </div>
-        {/* 대표님 요청: 상단 우측 닫기 (X) 버튼 누르면 항상 직전 화면으로 복귀 */}
-        <button
-          type="button"
-          onClick={() => {
-            if (typeof window !== 'undefined' && window.history.length > 1) {
-              router.back();
-            } else {
-              router.push('/');
-            }
-          }}
-          className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition cursor-pointer flex items-center justify-center"
-          title="닫기 (이전 화면으로)"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-
       {/* 안내 토스트 피드백 (스크롤 위치와 상관없이 화면 하단에 항상 고정 플로팅) */}
       {toastMessage && (
         <div className="fixed bottom-6 inset-x-4 max-w-sm mx-auto z-[9999] bg-stone-950/95 backdrop-blur-sm text-white text-xs font-black p-4 rounded-2xl shadow-2xl border-2 border-emerald-400 flex items-center justify-between animate-bounce">
@@ -1465,21 +1598,28 @@ ${shareUrl}`;
         </div>
       )}
 
-      {/* 3대 핵심 허브 가이드 배너 */}
-      <div className="p-3.5 bg-gradient-to-r from-emerald-950 via-purple-950 to-stone-900 border-2 border-emerald-400/40 rounded-2xl shadow-sm text-white flex items-center justify-between gap-3">
-        <div className="flex items-start gap-2.5 min-w-0">
-          <span className="text-xl shrink-0 mt-0.5">⛳</span>
-          <div className="space-y-0.5">
-            <h2 className="text-xs font-black text-amber-300">
-              파크온 3대 소셜 &amp; 대회 통합 관제 센터
-            </h2>
-            <p className="text-[11px] text-stone-300 leading-snug">
-              <strong className="text-emerald-300">[내 클럽 바로가기]</strong>에서 소속 클럽 관리,{' '}
-              <strong className="text-purple-300">[새 대회 개설]</strong>에서 클럽 대항전 &amp; 시·도 공식대회 주최,{' '}
-              <strong className="text-amber-300">[번개 모임 갖기]</strong>에서 1촌 및 클럽원 전용 번개를 즐기세요!
-            </p>
-          </div>
+      {/* 파크온 3대 소셜 & 대회 통합 관제 센터 타이틀 바 (군더더기 텍스트 완전 제거) */}
+      <div className="px-4 py-3 bg-gradient-to-r from-emerald-950 via-purple-950 to-stone-900 border-2 border-emerald-400/40 rounded-2xl shadow-sm text-white flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-lg shrink-0">⛳</span>
+          <h1 className="text-xs sm:text-sm font-black text-amber-300 tracking-tight truncate">
+            파크온 3대 소셜 &amp; 대회 통합 관제 센터
+          </h1>
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              router.back();
+            } else {
+              router.push('/');
+            }
+          }}
+          className="p-1.5 text-stone-400 hover:text-white hover:bg-white/10 rounded-xl transition cursor-pointer shrink-0"
+          title="닫기"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
       {/* 2. 클럽 & 대회 & 번개 3대 핵심 탭 */}
@@ -1720,31 +1860,6 @@ ${shareUrl}`;
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between text-xs font-black text-stone-800 px-1 gap-2 flex-wrap pb-0.5">
                   <span>내 소속 클럽 ({myClubs.length}곳 가입됨)</span>
-                  <div className="flex items-center gap-1 bg-stone-100 p-0.5 rounded-xl border border-stone-200 text-[11px] font-bold">
-                    <span className="text-stone-400 px-1 text-[10px]">화면 모드:</span>
-                    <button
-                      type="button"
-                      onClick={() => setRolePreviewMode('ADMIN')}
-                      className={`px-2 py-0.5 rounded-lg transition text-[10px] sm:text-xs cursor-pointer ${
-                        rolePreviewMode === 'ADMIN'
-                          ? 'bg-emerald-700 text-white font-black shadow-xs'
-                          : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      👑 관리자 화면
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRolePreviewMode('MEMBER')}
-                      className={`px-2 py-0.5 rounded-lg transition text-[10px] sm:text-xs cursor-pointer ${
-                        rolePreviewMode === 'MEMBER'
-                          ? 'bg-emerald-700 text-white font-black shadow-xs'
-                          : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      ⛳ 일반회원 화면
-                    </button>
-                  </div>
                 </div>
 
                 {myClubs.length === 0 && (
@@ -1800,14 +1915,9 @@ ${shareUrl}`;
                     myMemberInfo?.role === 'PRESIDENT' || club.presidentName.includes(selfName);
                   const actualExecutive = actualManager || actualPresident;
 
-                  // 관리자 화면 / 일반회원 화면 토글 모드 연동
-                  const isExecutive =
-                    rolePreviewMode === 'ADMIN'
-                      ? true
-                      : rolePreviewMode === 'MEMBER'
-                      ? false
-                      : actualExecutive;
-                  const isManager = isExecutive && (actualManager || rolePreviewMode === 'ADMIN');
+                  // 대표님 지시: 클럽별 실제 권한(총무/회장 등)에 따라 100% 자동 직책 판별
+                  const isExecutive = actualExecutive;
+                  const isManager = isExecutive && actualManager;
                   const isPresident = isExecutive && !isManager && actualPresident;
                   const pendingCount = club.pendingMembers?.length || 0;
 
@@ -2503,15 +2613,23 @@ ${shareUrl}`;
           <div className="bg-white p-1.5 rounded-2xl border-2 border-stone-200 shadow-sm grid grid-cols-2 gap-1.5">
             <button
               type="button"
-              onClick={() => setTournamentViewMode('CREATE')}
+              onClick={() => {
+                if (!isAnyClubExecutive()) {
+                  showToast('🔒 대회 개설은 클럽 총무 및 임원진 전용 권한입니다. 일반 회원은 실시간 전광판을 통해 대회에 참가하실 수 있습니다.');
+                  return;
+                }
+                setTournamentViewMode('CREATE');
+              }}
               className={`py-2.5 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer border ${
                 tournamentViewMode === 'CREATE'
                   ? 'bg-gradient-to-r from-purple-700 to-purple-800 text-white border-purple-900 shadow-sm'
-                  : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+                  : isAnyClubExecutive()
+                  ? 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+                  : 'bg-stone-100 hover:bg-stone-200 text-stone-400 border-stone-200'
               }`}
             >
-              <Plus className="w-4 h-4" />
-              <span>대회 개설 센터</span>
+              {isAnyClubExecutive() ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4 text-stone-400" />}
+              <span>{isAnyClubExecutive() ? '대회 개설 센터' : '대회 개설 (총무 전용)'}</span>
             </button>
             <button
               type="button"
@@ -2527,8 +2645,8 @@ ${shareUrl}`;
             </button>
           </div>
 
-          {/* 서브 뷰 1: 대회 개설 센터 (대표님 지시: 잡다한 글자/카드 전면 삭제, 2대 원터치 버튼만 심플 표출) */}
-          {tournamentViewMode === 'CREATE' && (
+          {/* 서브 뷰 1: 대회 개설 센터 (대표님 지시: 총무/임원진만 사용 가능) */}
+          {tournamentViewMode === 'CREATE' && isAnyClubExecutive() && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <button
                 type="button"
@@ -2557,17 +2675,19 @@ ${shareUrl}`;
                 <Trophy className="w-4 h-4 text-amber-500" />
                 <span>개설된 대회 전광판 목록 ({rooms.length}개)</span>
               </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setTournamentViewMode('CREATE');
-                  setShowCreateModal(true);
-                }}
-                className="text-purple-700 hover:text-purple-900 font-black text-xs cursor-pointer flex items-center gap-0.5"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>새 대회 개설</span>
-              </button>
+              {isAnyClubExecutive() && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTournamentViewMode('CREATE');
+                    setShowCreateModal(true);
+                  }}
+                  className="text-purple-700 hover:text-purple-900 font-black text-xs cursor-pointer flex items-center gap-0.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>새 대회 개설</span>
+                </button>
+              )}
             </div>
 
             {rooms.length === 0 && (
@@ -2581,17 +2701,24 @@ ${shareUrl}`;
                     클럽 간 대항전이나 시·도 공식 대회를 개설하여 회원들을 초대해보세요!
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTournamentViewMode('CREATE');
-                    setShowCreateModal(true);
-                  }}
-                  className="px-5 py-2.5 bg-purple-700 hover:bg-purple-800 text-white text-xs font-black rounded-xl shadow-sm transition active:scale-95 cursor-pointer inline-flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-4 h-4 text-purple-300" />
-                  <span>새 대회 개설하기</span>
-                </button>
+                {isAnyClubExecutive() ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTournamentViewMode('CREATE');
+                      setShowCreateModal(true);
+                    }}
+                    className="px-5 py-2.5 bg-purple-700 hover:bg-purple-800 text-white text-xs font-black rounded-xl shadow-sm transition active:scale-95 cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <Sparkles className="w-4 h-4 text-purple-300" />
+                    <span>새 대회 개설하기</span>
+                  </button>
+                ) : (
+                  <div className="inline-flex items-center gap-1.5 text-xs text-stone-500 font-bold bg-stone-100 px-3.5 py-2 rounded-xl border border-stone-200">
+                    <Lock className="w-3.5 h-3.5 text-stone-400" />
+                    <span>대회 개설은 클럽 총무 및 임원진 전용 권한입니다</span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2745,14 +2872,33 @@ ${shareUrl}`;
                   )}
 
                   {/* 전광판 입장 버튼 (Senior Touch 52px Target) */}
-                  <Link
-                    href={`/club/${room.id}`}
-                    className="w-full min-h-[52px] bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 active:scale-98 text-white font-black text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer border border-purple-600"
-                  >
-                    <Trophy className="w-5 h-5 text-yellow-300" />
-                    <span>📡 실시간 디지털 전광판 입장 (조별 스코어 / 리더보드)</span>
-                    <ArrowRight className="w-4 h-4 text-purple-200" />
-                  </Link>
+                  <div className="space-y-1.5 pt-0.5">
+                    {room.status === 'FINISHED' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const reportText = ClubStorage.generateTournamentResultReport(room);
+                          if (navigator.clipboard) {
+                            navigator.clipboard.writeText(reportText);
+                            showToast('🏆 [시상식 및 수령 확인] 결과 요약 공지가 복사되었습니다! 카톡 단체방에 공유하세요.');
+                          }
+                        }}
+                        className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-amber-300 active:scale-95"
+                      >
+                        <Trophy className="w-4 h-4 text-stone-950 shrink-0" />
+                        <span>📋 1초 시상식 및 수령 확인 (공지 복사)</span>
+                      </button>
+                    )}
+
+                    <Link
+                      href={`/club/${room.id}`}
+                      className="w-full min-h-[52px] bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 active:scale-98 text-white font-black text-sm rounded-2xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer border border-purple-600"
+                    >
+                      <Trophy className="w-5 h-5 text-yellow-300" />
+                      <span>📡 실시간 디지털 전광판 입장 (조별 스코어 / 리더보드)</span>
+                      <ArrowRight className="w-4 h-4 text-purple-200" />
+                    </Link>
+                  </div>
                 </div>
               );
             })}
@@ -2866,11 +3012,14 @@ ${shareUrl}`;
                 {/* 1촌 번개방 개설 버튼 (Senior Touch 52px Target) */}
                 <button
                   type="button"
-                  onClick={() => setShowCreate1ChonModal(true)}
+                  onClick={() => {
+                    setLtnLightningScope('MULTI_OPEN');
+                    setShowCreate1ChonModal(true);
+                  }}
                   className="w-full min-h-[52px] bg-gradient-to-r from-emerald-700 via-emerald-800 to-emerald-900 hover:from-emerald-600 hover:to-emerald-800 text-white font-black text-sm rounded-2xl shadow-md transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-emerald-600"
                 >
                   <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
-                  <span>⚡ 내 1촌에게 번개방 개설하기 (4인 라운드 모집)</span>
+                  <span>⚡ 내 1촌에게 번개방 개설하기</span>
                 </button>
               </div>
 
@@ -3023,11 +3172,6 @@ ${shareUrl}`;
                                   ⛳ 현재 {acceptedCount}명으로 지금 바로 출발 ({acceptedCount > 4 ? '실시간 조별 전광판' : '스코어카드'} ▶)
                                 </span>
                               </button>
-                              {!isFull && (
-                                <p className="text-[11px] text-center text-stone-500 font-medium">
-                                  💡 {isMultiOpen ? '추가 1촌을 더 기다리거나, 지금 바로 출발할 수 있습니다.' : '4인을 채울 때까지 더 기다리거나, 2명 이상이면 지금 바로 출발할 수 있습니다.'}
-                                </p>
-                              )}
                             </div>
                           ) : (
                             <div className="w-full py-3 bg-stone-100 border border-dashed border-stone-300 rounded-xl text-center text-xs text-stone-500 font-bold">
@@ -3058,8 +3202,17 @@ ${shareUrl}`;
                               )}
                             </div>
                           ) : isFull ? (
-                            <div className="w-full py-3 bg-stone-100 text-stone-500 rounded-xl text-center text-xs font-bold">
-                              정원 마감 (4인 완료)
+                            <div className="space-y-1.5">
+                              <div className="w-full py-2 bg-stone-100 text-stone-600 rounded-xl text-center text-xs font-bold border border-stone-200">
+                                🎉 4인 정원 마감
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => showToast("⏳ 1촌 번개 대기 접수가 완료되었습니다. 취소 발생 시 우선 알림을 드립니다.")}
+                                className="w-full py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 text-stone-950 font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1 cursor-pointer border border-amber-600 active:scale-95"
+                              >
+                                <span>⏳ 대기자 등록 (취소 발생 시 자동 승계)</span>
+                              </button>
                             </div>
                           ) : (
                             <button
@@ -3091,6 +3244,7 @@ ${shareUrl}`;
                   if (targetClub) {
                     setSelectedFlashClubId(targetClub.id);
                   }
+                  setClubFlashLightningScope('MULTI_OPEN');
                   setShowCreateClubFlashModal(true);
                 }}
                 className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-98 text-stone-950 font-black text-xs rounded-2xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-amber-500"
@@ -3109,181 +3263,273 @@ ${shareUrl}`;
                     (currentClubId ? g.clubId === currentClubId : true)
                   );
 
-                  return (
-                    <>
-                      <div className="flex items-center justify-between text-xs font-black text-stone-800 px-1">
-                        <span className="flex items-center gap-1.5">
-                          <Zap className="w-4 h-4 text-amber-500 fill-amber-500 shrink-0" />
-                          <span>{selClub?.name ? `${selClub.name} ` : ''}번개 모집 ({filtered.length}개)</span>
-                        </span>
-                      </div>
+                  const todayStr = new Date().toISOString().slice(0, 10);
+                  // 오늘 및 향후 번개 (진행 중)
+                  const upcomingGatherings = filtered.filter(
+                    (g) => (!g.playDate || g.playDate >= todayStr) && g.status !== 'CLOSED'
+                  );
+                  // 지난 번개 (과거 날짜 또는 마감/종료)
+                  const pastGatherings = filtered.filter(
+                    (g) => (g.playDate && g.playDate < todayStr) || g.status === 'CLOSED'
+                  );
 
-                      {filtered.length === 0 ? (
-                        <div className="bg-white rounded-3xl p-6 border border-stone-200 text-center space-y-2">
-                          <p className="text-xs text-stone-500 font-bold">진행 중인 클럽 번개가 없습니다.</p>
-                          <p className="text-[11px] text-stone-400 font-medium">위 버튼을 눌러 클럽 회원들에게 번개를 제안해보세요!</p>
+                  const renderFlashCard = (flash: FlashGathering, isPast = false) => {
+                    const selfName = ParkOnStorage.getUserDisplayName(selectedFlashClubId);
+                    const isParticipant = flash.currentParticipants.some((p) => p.name.includes(selfName));
+                    const isHost = flash.hostName.includes(selfName) || flash.currentParticipants[0]?.name.includes(selfName);
+                    const isMultiOpen = flash.lightningScope === 'MULTI_OPEN' || flash.targetCount >= 999;
+                    const isFull = !isMultiOpen && flash.currentParticipants.length >= 4;
+
+                    return (
+                      <div
+                        key={flash.id}
+                        className={`rounded-2xl p-4 border-2 shadow-sm space-y-3 transition ${
+                          isPast
+                            ? 'bg-stone-50 border-stone-200 opacity-80'
+                            : isFull
+                            ? 'bg-amber-50/30 border-amber-400 ring-2 ring-amber-200'
+                            : flash.currentParticipants.length >= 2
+                            ? 'bg-white border-amber-400 ring-1 ring-amber-200'
+                            : 'bg-white border-stone-200'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="bg-amber-100 text-amber-950 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded-md">
+                                🏛️ {flash.clubName}
+                              </span>
+                              <span className="bg-stone-100 text-stone-800 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                                {isMultiOpen ? '👥 4인 이상 번개 (무제한)' : '⛳ 4인 번개'}
+                              </span>
+                              <span className="bg-stone-100 text-stone-800 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                                📅 {flash.playDate} {flash.playTime}
+                              </span>
+                              {isPast ? (
+                                <span className="bg-stone-200 text-stone-700 text-[10px] font-black px-2 py-0.5 rounded-md">
+                                  🏁 지난 번개 (종료)
+                                </span>
+                              ) : isMultiOpen ? (
+                                <span className="bg-amber-200 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-md">
+                                  현재 {flash.currentParticipants.length}명 참여 중 {flash.currentParticipants.length >= 2 ? '· 출발 가능!' : ''}
+                                </span>
+                              ) : isFull ? (
+                                <span className="bg-amber-400 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-md">
+                                  🎉 4인 완료 (출발 가능)
+                                </span>
+                              ) : (
+                                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-md">
+                                  {flash.currentParticipants.length >= 2
+                                    ? `🟢 2인 이상 모임 (${flash.currentParticipants.length}/4명, 출발 가능)`
+                                    : `모집 중 (${flash.currentParticipants.length}/4명)`}
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="font-black text-base text-stone-900 mt-1 leading-snug">
+                              {flash.title}
+                            </h3>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleShareClubFlashKakao(flash)}
+                            className="p-2 text-stone-600 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition cursor-pointer shrink-0"
+                            title="클럽 단톡방 공유"
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </button>
                         </div>
-                      ) : (
-                        filtered.map((flash) => {
-                          const selfName = ParkOnStorage.getUserDisplayName(selectedFlashClubId);
-                          const isParticipant = flash.currentParticipants.some((p) => p.name.includes(selfName));
-                          const isHost = flash.hostName.includes(selfName) || flash.currentParticipants[0]?.name.includes(selfName);
-                          const isMultiOpen = flash.lightningScope === 'MULTI_OPEN' || flash.targetCount >= 999;
-                          const isFull = !isMultiOpen && flash.currentParticipants.length >= 4;
 
-                          return (
-                            <div
-                              key={flash.id}
-                              className={`bg-white rounded-2xl p-4 border-2 shadow-sm space-y-3 transition ${
-                                isFull
-                                  ? 'border-amber-400 ring-2 ring-amber-200 bg-amber-50/30'
-                                  : flash.currentParticipants.length >= 2
-                                  ? 'border-amber-400 ring-1 ring-amber-200'
-                                  : 'border-stone-200'
-                              }`}
+                        <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/80 text-xs space-y-1">
+                          <div className="font-bold text-stone-800">
+                            장소: <strong>{flash.courseName}</strong> · 개설자: {flash.hostName} {isHost && <span className="text-amber-700 font-bold">(본인/방장)</span>}
+                          </div>
+                          {flash.notes && (
+                            <div className="text-[11px] text-stone-600">&quot;{flash.notes}&quot;</div>
+                          )}
+                        </div>
+
+                        {/* 참가자 명단 */}
+                        <div className="flex flex-wrap gap-1.5">
+                          {flash.currentParticipants.map((p, idx) => (
+                            <span
+                              key={idx}
+                              className="bg-emerald-50 border border-emerald-300 text-emerald-950 text-[11px] font-black px-2 py-0.5 rounded-md flex items-center gap-1"
                             >
-                              <div className="flex items-start justify-between gap-2">
-                                <div>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="bg-amber-100 text-amber-950 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded-md">
-                                      🏛️ {flash.clubName}
-                                    </span>
-                                    <span className="bg-stone-100 text-stone-800 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                                      {isMultiOpen ? '👥 4인 이상 번개 (무제한)' : '⛳ 4인 번개'}
-                                    </span>
-                                    <span className="bg-stone-100 text-stone-800 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                                      📅 {flash.playDate} {flash.playTime}
-                                    </span>
-                                    {isMultiOpen ? (
-                                      <span className="bg-amber-200 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-md">
-                                        현재 {flash.currentParticipants.length}명 참여 중 {flash.currentParticipants.length >= 2 ? '· 출발 가능!' : ''}
-                                      </span>
-                                    ) : isFull ? (
-                                      <span className="bg-amber-400 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-md">
-                                        🎉 4인 완료 (출발 가능)
-                                      </span>
-                                    ) : (
-                                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-md">
-                                        {flash.currentParticipants.length >= 2
-                                          ? `🟢 2인 이상 모임 (${flash.currentParticipants.length}/4명, 출발 가능)`
-                                          : `모집 중 (${flash.currentParticipants.length}/4명)`}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <h3 className="font-black text-base text-stone-900 mt-1 leading-snug">
-                                    {flash.title}
-                                  </h3>
-                                </div>
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>{p.name}</span>
+                              {idx === 0 && <span className="text-[9px] text-amber-700 font-bold">(방장)</span>}
+                            </span>
+                          ))}
+                          {!isPast && !isMultiOpen && !isFull && (
+                            <span className="bg-stone-100 text-stone-400 text-[11px] font-bold px-2 py-1 rounded-lg border border-dashed border-stone-300">
+                              + {4 - flash.currentParticipants.length}명 모집 중
+                            </span>
+                          )}
+                        </div>
 
+                        {/* 조작 버튼 영역 */}
+                        <div className="pt-1 space-y-2">
+                          {isPast ? (
+                            <div className="w-full py-2 bg-stone-100 border border-stone-200 rounded-xl text-center text-xs text-stone-500 font-bold">
+                              🏁 경기 완료된 과거 번개입니다 ({flash.currentParticipants.length}명 참가)
+                            </div>
+                          ) : isHost ? (
+                            flash.currentParticipants.length >= 2 ? (
+                              <div className="space-y-1.5">
                                 <button
                                   type="button"
-                                  onClick={() => handleShareClubFlashKakao(flash)}
-                                  className="p-2 text-stone-600 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition cursor-pointer shrink-0"
-                                  title="클럽 단톡방 공유"
+                                  onClick={() => handleStartClubFlashRound(flash)}
+                                  className="w-full min-h-[52px] bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 active:scale-98 text-stone-950 font-black text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer border border-yellow-300"
                                 >
-                                  <Share2 className="w-4 h-4" />
+                                  <Play className="w-5 h-5 text-stone-950 fill-stone-950" />
+                                  <span>
+                                    ⛳ 현재 {flash.currentParticipants.length}명으로 지금 바로 출발 ({flash.currentParticipants.length > 4 ? '실시간 조별 전광판' : '스코어카드'} ▶)
+                                  </span>
                                 </button>
                               </div>
-
-                              <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200/80 text-xs space-y-1">
-                                <div className="font-bold text-stone-800">
-                                  장소: <strong>{flash.courseName}</strong> · 개설자: {flash.hostName} {isHost && <span className="text-amber-700 font-bold">(본인/방장)</span>}
-                                </div>
-                                {flash.notes && (
-                                  <div className="text-[11px] text-stone-600">&quot;{flash.notes}&quot;</div>
+                            ) : (
+                              <div className="w-full py-2.5 bg-stone-100 border border-dashed border-stone-300 rounded-xl text-center text-xs text-stone-500 font-bold">
+                                ⏳ 클럽원 참가 대기 중 (최소 2인 모이면 방장이 바로 출발할 수 있습니다)
+                              </div>
+                            )
+                          ) : (
+                            // 클럽원 입장
+                            isParticipant ? (
+                              <div className="space-y-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleLeaveClubFlash(flash.id)}
+                                  className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl border border-stone-300 cursor-pointer"
+                                >
+                                  참가 신청 취소하기
+                                </button>
+                                {flash.currentParticipants.length >= 2 && (
+                                  <p className="text-[11px] text-center text-emerald-700 font-bold">
+                                    🟢 2명 이상 모였습니다! 방장이 출발 버튼을 누르면 라운드가 시작됩니다.
+                                  </p>
                                 )}
                               </div>
+                            ) : isFull ? (() => {
+                              const isWaiting = flash.waitingList?.some((w) => w.name.includes(selfName));
+                              const waitIdx = (flash.waitingList || []).findIndex((w) => w.name.includes(selfName));
+                              const waitRank = waitIdx >= 0 ? waitIdx + 1 : 0;
+                              const totalWait = flash.waitingList?.length || 0;
 
-                              {/* 참가자 명단 */}
-                              <div className="flex flex-wrap gap-1.5">
-                                {flash.currentParticipants.map((p, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="bg-emerald-50 border border-emerald-300 text-emerald-950 text-[11px] font-black px-2 py-0.5 rounded-md flex items-center gap-1"
-                                  >
-                                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                    <span>{p.name}</span>
-                                    {idx === 0 && <span className="text-[9px] text-amber-700 font-bold">(방장)</span>}
-                                  </span>
-                                ))}
-                                {!isMultiOpen && !isFull && (
-                                  <span className="bg-stone-100 text-stone-400 text-[11px] font-bold px-2 py-1 rounded-lg border border-dashed border-stone-300">
-                                    + {4 - flash.currentParticipants.length}명 모집 중
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* 대표님 요청 핵심: 4인이 안 되어도 번개 친 사람(방장)은 2명이라도 언제든 바로 진행! */}
-                              <div className="pt-1 space-y-2">
-                                {isHost ? (
-                                  flash.currentParticipants.length >= 2 ? (
-                                    <div className="space-y-1.5">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleStartClubFlashRound(flash)}
-                                        className="w-full min-h-[52px] bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 active:scale-98 text-stone-950 font-black text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer border border-yellow-300"
-                                      >
-                                        <Play className="w-5 h-5 text-stone-950 fill-stone-950" />
-                                        <span>
-                                          ⛳ 현재 {flash.currentParticipants.length}명으로 지금 바로 출발 ({flash.currentParticipants.length > 4 ? '실시간 조별 전광판' : '스코어카드'} ▶)
-                                        </span>
-                                      </button>
-                                      {!isFull && (
-                                        <p className="text-[11px] text-center text-stone-500 font-medium">
-                                          💡 {isMultiOpen ? '추가 회원을 더 기다리거나, 지금 바로 출발할 수 있습니다.' : '4인을 채울 때까지 더 기다리거나, 2명 이상이면 지금 바로 출발할 수 있습니다.'}
-                                        </p>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="w-full py-2.5 bg-stone-100 border border-dashed border-stone-300 rounded-xl text-center text-xs text-stone-500 font-bold">
-                                      ⏳ 클럽원 참가 대기 중 (최소 2인 모이면 방장이 바로 출발할 수 있습니다)
-                                    </div>
-                                  )
-                                ) : (
-                                  // 클럽원 입장
-                                  isParticipant ? (
-                                    <div className="space-y-1.5">
+                              return (
+                                <div className="space-y-1.5">
+                                  <div className="w-full py-2 bg-stone-100 text-stone-600 rounded-xl text-center text-xs font-bold border border-stone-200">
+                                    🎉 정원 마감 (4인 완료){totalWait > 0 ? ` · 대기 ${totalWait}명` : ''}
+                                  </div>
+                                  {isWaiting ? (
+                                    <div className="flex gap-2">
+                                      <div className="flex-1 py-2.5 bg-amber-50 text-amber-900 border border-amber-300 rounded-xl text-xs font-black text-center flex items-center justify-center gap-1 shadow-2xs">
+                                        <span>⏳ 대기 {waitRank}순위 등록 완료</span>
+                                      </div>
                                       <button
                                         type="button"
                                         onClick={() => handleLeaveClubFlash(flash.id)}
-                                        className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl border border-stone-300 cursor-pointer"
+                                        className="px-3 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl text-xs font-bold border border-stone-300 cursor-pointer"
                                       >
-                                        참가 신청 취소하기
+                                        대기 취소
                                       </button>
-                                      {flash.currentParticipants.length >= 2 && (
-                                        <p className="text-[11px] text-center text-emerald-700 font-bold">
-                                          🟢 2명 이상 모였습니다! 방장이 출발 버튼을 누르면 라운드가 시작됩니다.
-                                        </p>
-                                      )}
-                                    </div>
-                                  ) : isFull ? (
-                                    <div className="w-full py-2.5 bg-stone-100 text-stone-500 rounded-xl text-center text-xs font-bold">
-                                      정원 마감 (4인 완료)
                                     </div>
                                   ) : (
                                     <button
                                       type="button"
                                       onClick={() => handleJoinClubFlash(flash.id)}
-                                      className="w-full min-h-[48px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-stone-950 font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-amber-600"
+                                      className="w-full min-h-[46px] bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 text-stone-950 font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1 cursor-pointer border border-amber-600 active:scale-95"
                                     >
-                                      <Hand className="w-4 h-4 text-stone-950" />
-                                      <span>✋ 클럽 번개 참가 신청하기</span>
+                                      <span>⏳ 대기자 등록 (취소 발생 시 자동 승계)</span>
                                     </button>
-                                  )
-                                )}
-                              </div>
+                                  )}
+                                </div>
+                              );
+                            })() : (
+                              <button
+                                type="button"
+                                onClick={() => handleJoinClubFlash(flash.id)}
+                                className="w-full min-h-[48px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 text-stone-950 font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-amber-600"
+                              >
+                                <Hand className="w-4 h-4 text-stone-950" />
+                                <span>✋ 클럽 번개 참가 신청하기</span>
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    );
+                  };
+
+                  return (
+                    <>
+                      {/* ⚡ 현재 참여 가능한 오늘/예정 번개 헤더 */}
+                      <div className="flex items-center justify-between text-xs font-black text-stone-800 px-1">
+                        <span className="flex items-center gap-1.5">
+                          <Zap className="w-4 h-4 text-amber-500 fill-amber-500 shrink-0" />
+                          <span>{selClub?.name ? `${selClub.name} ` : ''}참여 가능한 번개 ({upcomingGatherings.length}개)</span>
+                        </span>
+                      </div>
+
+                      {upcomingGatherings.length === 0 ? (
+                        <div className="bg-white rounded-3xl p-6 border border-stone-200 text-center space-y-2">
+                          <p className="text-xs text-stone-500 font-bold">현재 모집 중인 번개가 없습니다.</p>
+                          <p className="text-[11px] text-stone-400 font-medium">위 [번개 개설하기] 버튼을 눌러 클럽 회원들에게 번개를 제안해보세요!</p>
+                        </div>
+                      ) : (
+                        upcomingGatherings.map((flash) => renderFlashCard(flash, false))
+                      )}
+
+                      {/* 📁 지난 번개 완료 내역 (3개월 누적 대비 아코디언 분리) */}
+                      {pastGatherings.length > 0 && (
+                        <div className="pt-2 border-t border-stone-200/80">
+                          <button
+                            type="button"
+                            onClick={() => setShowPastFlashGatherings((prev) => !prev)}
+                            className="w-full min-h-[44px] py-2.5 px-3 bg-stone-100 hover:bg-stone-200/80 active:bg-stone-200 border border-stone-200 rounded-xl flex items-center justify-between text-xs font-bold text-stone-700 transition cursor-pointer"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <span>📁 지난 번개 완료 내역 ({pastGatherings.length}건)</span>
+                            </span>
+                            <span className="text-xs font-bold text-stone-500">
+                              {showPastFlashGatherings ? '접기 ▲' : '펼쳐보기 ▼'}
+                            </span>
+                          </button>
+
+                          {showPastFlashGatherings && (
+                            <div className="space-y-2.5 mt-2.5">
+                              {pastGatherings.map((flash) => renderFlashCard(flash, true))}
                             </div>
-                          );
-                        })
+                          )}
+                        </div>
                       )}
                     </>
                   );
+
                 })()}
               </div>
             </div>
           )}
         </div>
       )}
+
+      {/* 최하단 여유롭고 완만한 와이드 이전으로 복귀 버튼 */}
+      <div className="pt-2 pb-8">
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              router.back();
+            } else {
+              router.push('/');
+            }
+          }}
+          className="w-full py-3.5 px-4 bg-white hover:bg-stone-50 border-2 border-stone-300 hover:border-stone-400 text-stone-800 font-black text-sm rounded-2xl shadow-xs transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <ChevronLeft className="w-5 h-5 text-stone-600" />
+          <span>이전으로</span>
+        </button>
+      </div>
 
       {/* ========================================================================= */}
       {/* MODAL 1: 새 클럽 창단 모달 (회장/총무) */}
@@ -3856,49 +4102,33 @@ ${shareUrl}`;
               </button>
             </div>
 
-            {/* 상단 카톡 가입 초청장 전송 바 */}
-            <div className="bg-emerald-50 px-4 py-2.5 border-b border-emerald-200 flex items-center justify-between gap-2">
-              <div className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                <span className="text-base">💌</span>
-                <span>신규 회원 카톡 초대하기</span>
-              </div>
+            {/* 4대 클럽 회원 관리 탭: 회원 초대장 / 가입 신청 명단 / 회원 명단 / 회비 관리 */}
+            <div className="grid grid-cols-4 p-2 bg-stone-100 border-b border-stone-200 gap-1 text-[11px] font-black">
+              {/* 1. 회원 초대장 탭 */}
               <button
                 type="button"
-                onClick={(e) => handleCopyClubInvite(e, managingClub)}
-                className={`px-3.5 py-2 text-white font-black text-xs rounded-xl shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer transition ${
-                  copiedClubId === managingClub.id
-                    ? 'bg-emerald-600 border border-emerald-400 ring-2 ring-emerald-300 animate-pulse'
-                    : 'bg-gradient-to-r from-emerald-600 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900'
+                onClick={() => setManagingClubTab('INVITE')}
+                className={`py-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                  managingClubTab === 'INVITE'
+                    ? 'bg-white text-emerald-950 shadow-xs border border-stone-200'
+                    : 'text-stone-600 hover:text-stone-900'
                 }`}
-                title="카카오톡 단체방이나 지인에게 가입 초대 초청장 전송"
               >
-                {copiedClubId === managingClub.id ? (
-                  <>
-                    <Check className="w-4 h-4 text-white stroke-[3]" />
-                    <span>✅ 초청장 복사 완료!</span>
-                  </>
-                ) : (
-                  <>
-                    <Share2 className="w-4 h-4" />
-                    <span>📢 카톡 가입 초대하기</span>
-                  </>
-                )}
+                <span>💌</span>
+                <span>회원 초대장</span>
               </button>
-            </div>
 
-            {/* 3대 집행부 회원 관리 탭: 신규 가입 신청 / 회원 명단 & 직책 배정 / 회비 관리 */}
-            <div className="grid grid-cols-3 p-2 bg-stone-100 border-b border-stone-200 gap-1.5 text-xs font-black">
-              {/* 1. 신규 가입 신청 명단 */}
+              {/* 2. 신규 가입 신청 명단 탭 */}
               <button
                 type="button"
                 onClick={() => setManagingClubTab('PENDING')}
-                className={`py-2.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${
+                className={`py-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
                   managingClubTab === 'PENDING'
                     ? 'bg-white text-emerald-950 shadow-xs border border-stone-200'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <span>가입 신청</span>
+                <span>가입 신청 명단</span>
                 {(managingClub.pendingMembers?.length || 0) > 0 ? (
                   <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full animate-pulse">
                     {managingClub.pendingMembers?.length}
@@ -3908,11 +4138,11 @@ ${shareUrl}`;
                 )}
               </button>
 
-              {/* 2. 회원 명단 & 직책 배정 */}
+              {/* 3. 회원 명단 & 직책 배정 탭 */}
               <button
                 type="button"
                 onClick={() => setManagingClubTab('MEMBERS')}
-                className={`py-2.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${
+                className={`py-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
                   managingClubTab === 'MEMBERS'
                     ? 'bg-white text-emerald-950 shadow-xs border border-stone-200'
                     : 'text-stone-600 hover:text-stone-900'
@@ -3924,11 +4154,11 @@ ${shareUrl}`;
                 </span>
               </button>
 
-              {/* 3. 회비 관리 (연회비 수납 대장) */}
+              {/* 4. 회비 관리 (연회비 수납 대장) 탭 */}
               <button
                 type="button"
                 onClick={() => setManagingClubTab('DUES')}
-                className={`py-2.5 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${
+                className={`py-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
                   managingClubTab === 'DUES'
                     ? 'bg-white text-amber-950 shadow-xs border border-amber-300 ring-1 ring-amber-200'
                     : 'text-stone-600 hover:text-stone-900'
@@ -3941,6 +4171,70 @@ ${shareUrl}`;
 
             {/* 내용 영역 */}
             <div className="p-4 space-y-3 max-h-[65vh] overflow-y-auto text-xs">
+              {/* 탭 0: 신규 회원 카톡 가입 초대 */}
+              {managingClubTab === 'INVITE' && (
+                <div className="space-y-3 animate-fadeIn">
+                  <div className="bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100/60 border-2 border-emerald-300 rounded-2xl p-4 text-center space-y-3 shadow-xs">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-700 text-white flex items-center justify-center mx-auto text-2xl shadow-md">
+                      💌
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-emerald-950">
+                        신규 회원 카카오톡 가입 초대장
+                      </h4>
+                      <p className="text-[11px] text-emerald-800 mt-1 leading-relaxed">
+                        카카오톡 단체방이나 지인에게 초청장을 공유하세요.<br />
+                        스마트폰 링크 클릭 한 번으로 간편하게 가입을 신청할 수 있습니다.
+                      </p>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-3 border border-emerald-200 text-left space-y-1.5 shadow-2xs">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-stone-500">
+                        <span>초대 클럽</span>
+                        <span className="text-emerald-950 font-black">{managingClub.name}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] font-bold text-stone-500">
+                        <span>홈 구장</span>
+                        <span className="text-stone-800 font-black">{managingClub.homeCourseName}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] font-bold text-stone-500">
+                        <span>현재 정회원</span>
+                        <span className="text-emerald-700 font-black">{managingClub.members.length}명</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => handleCopyClubInvite(e, managingClub)}
+                      className={`w-full py-3.5 text-white font-black text-xs sm:text-sm rounded-xl shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer transition ${
+                        copiedClubId === managingClub.id
+                          ? 'bg-emerald-600 border border-emerald-400 ring-2 ring-emerald-300 animate-pulse'
+                          : 'bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900'
+                      }`}
+                    >
+                      {copiedClubId === managingClub.id ? (
+                        <>
+                          <Check className="w-5 h-5 text-white stroke-[3]" />
+                          <span>✅ 카톡 초청장 복사 완료!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="w-5 h-5" />
+                          <span>📢 카톡 가입 초대장 복사 & 전송</span>
+                        </>
+                      )}
+                    </button>
+
+                    <div className="p-2.5 bg-white/80 rounded-xl border border-emerald-200 text-left text-[10px] text-stone-600 space-y-1 leading-relaxed">
+                      <p className="font-bold text-emerald-900">💡 카톡 전송 방법 안내:</p>
+                      <p>1. 위 버튼을 누르면 카톡 초대 문구와 전용 링크가 자동 복사됩니다.</p>
+                      <p>2. 카카오톡 단체방이나 개인톡 채팅창을 열고 [붙여넣기]하여 전송해 주세요.</p>
+                      <p>3. 회원이 신청하면 <strong>[가입 신청 명단]</strong> 탭에서 수락하실 수 있습니다.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* 탭 1: 가입 승인 대기 명단 */}
               {managingClubTab === 'PENDING' && (
                 <div className="space-y-2.5">
@@ -3955,7 +4249,29 @@ ${shareUrl}`;
                       </p>
                     </div>
                   ) : (
-                    managingClub.pendingMembers.map((p) => (
+                    <>
+                      {/* [대표님 지시] 가입 대기자 20~50인 몰릴 때 1초 일괄 승인 버튼 */}
+                      <div className="flex items-center justify-between gap-2 p-3 bg-emerald-50 border-2 border-emerald-300 rounded-2xl shadow-xs">
+                        <div>
+                          <div className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                            <Users className="w-4 h-4 text-emerald-700" />
+                            <span>대기 신청자 총 <strong>{managingClub.pendingMembers.length}명</strong></span>
+                          </div>
+                          <p className="text-[10px] text-emerald-800 font-bold mt-0.5">
+                            원클릭으로 대기자 전원을 정회원으로 등록합니다.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleApproveAllPendingMembers(managingClub.id)}
+                          className="px-3.5 py-2.5 bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-800 hover:from-emerald-700 text-white font-black text-xs rounded-xl shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0 border border-emerald-500"
+                        >
+                          <UserCheck className="w-4 h-4" />
+                          <span>✅ 전체 1초 일괄 승인</span>
+                        </button>
+                      </div>
+
+                      {managingClub.pendingMembers.map((p) => (
                       <div
                         key={p.id}
                         className="bg-stone-50 border-2 border-emerald-300 rounded-2xl p-3.5 space-y-2.5 shadow-xs"
@@ -3998,154 +4314,238 @@ ${shareUrl}`;
                           </p>
                         )}
                       </div>
-                    ))
+                    ))}
+                    </>
                   )}
                 </div>
               )}
 
-              {managingClubTab === 'MEMBERS' && (
-                <div className="space-y-2">
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-950 font-medium leading-relaxed">
-                    💡 회원의 직책 버튼을 눌러 <strong>회장 임명, 총무 배정, 일반 회원 변경</strong>을 자유롭게 위임할 수 있습니다.
-                  </div>
+              {managingClubTab === 'MEMBERS' && (() => {
+                const totalMembers = managingClub.members || [];
+                const executiveCount = totalMembers.filter((m) => m.role !== 'MEMBER' || !!(m.customRoleName && m.customRoleName.trim())).length;
+                const regularCount = totalMembers.length - executiveCount;
 
-                  <div className="space-y-2">
-                    {managingClub.members.map((m, idx) => (
-                      <div
-                        key={m.id || idx}
-                        className="p-3 rounded-2xl bg-stone-50 border border-stone-200 space-y-2 shadow-2xs"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-900 text-[10px] flex items-center justify-center font-black">
-                              {idx + 1}
-                            </span>
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-black text-stone-900 text-sm">{m.name}</span>
-                                <span
-                                  className={`text-[10px] px-2 py-0.5 rounded-md font-black ${
-                                    m.role === 'PRESIDENT'
-                                      ? 'bg-amber-400 text-stone-950'
-                                      : m.role === 'MANAGER'
-                                      ? 'bg-emerald-600 text-white'
-                                      : 'bg-stone-200 text-stone-700'
-                                  }`}
-                                >
-                                  {m.role === 'PRESIDENT' ? '👑 회장' : m.role === 'MANAGER' ? '📋 총무' : '회원'}
-                                </span>
-                              </div>
-                              {m.phone && (
-                                <span className="text-[10px] text-stone-400 font-medium">📞 {m.phone}</span>
-                              )}
-                            </div>
-                          </div>
+                const filteredMembers = totalMembers.filter((m) => {
+                  const matchSearch =
+                    !memberSearchTerm.trim() ||
+                    m.name.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
+                    (m.phone && m.phone.includes(memberSearchTerm.trim()));
 
-                          <span className="text-[10px] text-stone-400 font-medium">{m.joinedAt} 가입</span>
-                        </div>
+                  const isExec = m.role !== 'MEMBER' || !!(m.customRoleName && m.customRoleName.trim());
+                  const matchRole =
+                    memberRoleFilter === 'ALL' ||
+                    (memberRoleFilter === 'EXECUTIVE' && isExec) ||
+                    (memberRoleFilter === 'MEMBER' && !isExec);
 
-                        {/* 직책 배정 액션 버튼 바 */}
-                        <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-stone-200/70">
-                          <span className="text-[10px] font-bold text-stone-500 mr-1">직책 배정:</span>
-                          {m.role !== 'PRESIDENT' && (
-                            <button
-                              type="button"
-                              onClick={() => handleAssignRole(managingClub.id, m.id, 'PRESIDENT', m.name)}
-                              className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-950 font-black text-[10px] rounded-lg border border-amber-300 transition cursor-pointer active:scale-95"
-                            >
-                              👑 회장 임명
-                            </button>
-                          )}
-                          {m.role !== 'MANAGER' && (
-                            <button
-                              type="button"
-                              onClick={() => handleAssignRole(managingClub.id, m.id, 'MANAGER', m.name)}
-                              className="px-2 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 font-black text-[10px] rounded-lg border border-emerald-300 transition cursor-pointer active:scale-95"
-                            >
-                              📋 총무 임명
-                            </button>
-                          )}
-                          {m.role !== 'MEMBER' && (
-                            <button
-                              type="button"
-                              onClick={() => handleAssignRole(managingClub.id, m.id, 'MEMBER', m.name)}
-                              className="px-2 py-1 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-[10px] rounded-lg border border-stone-300 transition cursor-pointer active:scale-95"
-                            >
-                              일반 회원
-                            </button>
-                          )}
-                        </div>
+                  return matchSearch && matchRole;
+                });
+
+                return (
+                  <div className="space-y-2.5">
+                    {/* 🔍 50인~100인 대규모 회원 1초 검색 및 직책 필터 바 */}
+                    <div className="bg-white rounded-2xl p-2.5 border border-stone-200 shadow-2xs space-y-2">
+                      <div className="relative">
+                        <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={memberSearchTerm}
+                          onChange={(e) => setMemberSearchTerm(e.target.value)}
+                          placeholder="🔍 회원 이름 또는 전화번호 뒷자리 검색..."
+                          className="w-full pl-9 pr-8 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold focus:outline-none focus:border-emerald-600"
+                        />
+                        {memberSearchTerm && (
+                          <button
+                            type="button"
+                            onClick={() => setMemberSearchTerm('')}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-1 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
-                    ))}
-                    {/* 🔐 탈퇴 회원 비밀 보관소 (영구 보존 & 복귀 시 원상 회복) */}
-                    {(() => {
-                      const archivedList = ClubStorage.getArchivedMembers(managingClub.id);
-                      return (
-                        <div className="mt-4 pt-3 border-t border-stone-200">
-                          <div className="bg-stone-100/90 rounded-2xl p-3 border border-stone-200 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-sm">🔐</span>
-                                <span className="font-black text-xs text-stone-900">
-                                  탈퇴 회원 비밀 보관소 ({archivedList.length}명 보존 중)
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setShowArchivedMembers(!showArchivedMembers)}
-                                className="text-[11px] font-black text-purple-700 hover:text-purple-900 cursor-pointer bg-white px-2 py-0.5 rounded-lg border border-purple-200 shadow-2xs"
-                              >
-                                {showArchivedMembers ? '접기 ▲' : '보관 명부 보기 ▼'}
-                              </button>
-                            </div>
-                            <p className="text-[10px] text-stone-500 font-medium leading-relaxed">
-                              클럽을 탈퇴한 회원의 최초 가입일 및 과거 출전/수상 기록은 삭제되지 않고 안전하게 암호 보존됩니다. 언제든 다시 복귀하면 과거 기록이 100% 원상 복구됩니다.
-                            </p>
 
-                            {showArchivedMembers && (
-                              <div className="space-y-1.5 pt-2 animate-fadeIn">
-                                {archivedList.length === 0 ? (
-                                  <div className="text-center py-4 text-stone-400 text-xs font-bold bg-white rounded-xl">
-                                    현재 보관된 탈퇴 회원이 없습니다.
-                                  </div>
-                                ) : (
-                                  archivedList.map((a, aIdx) => (
-                                    <div
-                                      key={a.id || aIdx}
-                                      className="p-2.5 bg-white rounded-xl border border-stone-200 text-xs space-y-1 shadow-2xs"
-                                    >
-                                      <div className="flex items-center justify-between font-black">
-                                        <span className="text-stone-900 flex items-center gap-1">
-                                          <span>👤 {a.name}</span>
-                                          <span className="bg-stone-100 text-stone-600 text-[9px] px-1.5 py-0.2 rounded font-bold">
-                                            과거 {a.roleAtLeave === 'PRESIDENT' ? '회장' : a.roleAtLeave === 'MANAGER' ? '총무' : '회원'}
-                                          </span>
-                                        </span>
-                                        <span className="text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full font-extrabold border border-emerald-200">
-                                          재가입 시 원상 복구 대기
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center justify-between text-[10px] text-stone-500 font-medium">
-                                        <span>최초 가입: <strong>{a.joinedAt}</strong> (탈퇴: {a.leftAt})</span>
-                                        <span>과거 출전: <strong>{a.pastTournamentsCount}회</strong></span>
-                                      </div>
-                                      {a.pastAwards && a.pastAwards.length > 0 && (
-                                        <div className="text-[10px] text-amber-800 bg-amber-50/80 p-1 rounded font-bold">
-                                          🏅 과거 수상: {a.pastAwards.join(', ')}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))
+                      {/* 직책 필터 탭 */}
+                      <div className="grid grid-cols-3 gap-1 text-[11px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setMemberRoleFilter('ALL')}
+                          className={`py-1.5 rounded-lg transition text-center cursor-pointer ${
+                            memberRoleFilter === 'ALL'
+                              ? 'bg-emerald-700 text-white font-black shadow-xs'
+                              : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
+                          }`}
+                        >
+                          전체 ({totalMembers.length}명)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMemberRoleFilter('EXECUTIVE')}
+                          className={`py-1.5 rounded-lg transition text-center cursor-pointer ${
+                            memberRoleFilter === 'EXECUTIVE'
+                              ? 'bg-emerald-700 text-white font-black shadow-xs'
+                              : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
+                          }`}
+                        >
+                          👑 임원진 ({executiveCount}명)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMemberRoleFilter('MEMBER')}
+                          className={`py-1.5 rounded-lg transition text-center cursor-pointer ${
+                            memberRoleFilter === 'MEMBER'
+                              ? 'bg-emerald-700 text-white font-black shadow-xs'
+                              : 'bg-stone-100 hover:bg-stone-200 text-stone-600'
+                          }`}
+                        >
+                          ⛳ 일반회원 ({regularCount}명)
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[11px] text-amber-950 font-medium leading-relaxed">
+                      💡 직책 배정의 <strong>[🎖️ 직책 임명]</strong> 버튼을 눌러 회장, 부회장, 총무, 감사, 이사 등을 임명하거나 <strong>맞춤 직책(수석부회장, 고문 등)</strong>을 직접 수정할 수 있습니다.
+                    </div>
+
+                    {filteredMembers.length === 0 ? (
+                      <div className="p-8 text-center bg-stone-50 rounded-2xl border border-stone-200 space-y-1">
+                        <p className="text-xs font-black text-stone-700">검색 조건에 일치하는 회원이 없습니다.</p>
+                        <p className="text-[11px] text-stone-400">다른 이름이나 전화번호로 검색해 보세요.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {filteredMembers.map((m, idx) => {
+                      const roleBadge = getRoleBadge(m.role, m.customRoleName);
+                      const isNonRegular = m.role !== 'MEMBER' || !!(m.customRoleName && m.customRoleName.trim());
+                      return (
+                        <div
+                          key={m.id || idx}
+                          className="p-3 rounded-2xl bg-stone-50 border border-stone-200 space-y-2 shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-900 text-[10px] flex items-center justify-center font-black shrink-0">
+                                {idx + 1}
+                              </span>
+                              <div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-black text-stone-900 text-sm">{m.name}</span>
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-md font-black border ${roleBadge.style}`}>
+                                    {roleBadge.text}
+                                  </span>
+                                </div>
+                                {m.phone && (
+                                  <span className="text-[10px] text-stone-400 font-medium">📞 {m.phone}</span>
                                 )}
                               </div>
+                            </div>
+
+                            <span className="text-[10px] text-stone-400 font-medium shrink-0">{m.joinedAt} 가입</span>
+                          </div>
+
+                          {/* 직책 배정 액션 버튼 바 */}
+                          <div className="flex items-center justify-end gap-1.5 pt-1.5 border-t border-stone-200/70">
+                            <span className="text-[10px] font-bold text-stone-500 mr-0.5">직책 배정:</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRoleModalMember({
+                                  memberId: m.id,
+                                  memberName: m.name,
+                                  currentRole: m.role,
+                                  customRoleName: m.customRoleName,
+                                });
+                                setCustomRoleInput(m.customRoleName || '');
+                              }}
+                              className="px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-[11px] rounded-lg shadow-2xs transition cursor-pointer active:scale-95 flex items-center gap-1"
+                            >
+                              <span>🎖️ 직책 임명</span>
+                              <span className="text-[9px]">▾</span>
+                            </button>
+                            {isNonRegular && (
+                              <button
+                                type="button"
+                                onClick={() => handleAssignRole(managingClub.id, m.id, 'MEMBER', undefined, m.name)}
+                                className="px-2 py-1 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold text-[10px] rounded-lg border border-stone-300 transition cursor-pointer active:scale-95"
+                              >
+                                일반 회원
+                              </button>
                             )}
                           </div>
                         </div>
                       );
-                    })()}
+                    })}
                   </div>
-                </div>
-              )}
+                )}
+
+                {/* 🔐 탈퇴 회원 비밀 보관소 (영구 보존 & 복귀 시 원상 회복) */}
+                {(() => {
+                  const archivedList = ClubStorage.getArchivedMembers(managingClub.id);
+                  return (
+                    <div className="mt-4 pt-3 border-t border-stone-200">
+                      <div className="bg-stone-100/90 rounded-2xl p-3 border border-stone-200 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm">🔐</span>
+                            <span className="font-black text-xs text-stone-900">
+                              탈퇴 회원 비밀 보관소 ({archivedList.length}명 보존 중)
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowArchivedMembers(!showArchivedMembers)}
+                            className="text-[11px] font-black text-purple-700 hover:text-purple-900 cursor-pointer bg-white px-2 py-0.5 rounded-lg border border-purple-200 shadow-2xs"
+                          >
+                            {showArchivedMembers ? '접기 ▲' : '보관 명부 보기 ▼'}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-stone-500 font-medium leading-relaxed">
+                          클럽을 탈퇴한 회원의 최초 가입일 및 과거 출전/수상 기록은 삭제되지 않고 안전하게 암호 보존됩니다. 언제든 다시 복귀하면 과거 기록이 100% 원상 복구됩니다.
+                        </p>
+
+                        {showArchivedMembers && (
+                          <div className="space-y-1.5 pt-2 animate-fadeIn">
+                            {archivedList.length === 0 ? (
+                              <div className="text-center py-4 text-stone-400 text-xs font-bold bg-white rounded-xl">
+                                현재 보관된 탈퇴 회원이 없습니다.
+                              </div>
+                            ) : (
+                              archivedList.map((a, aIdx) => (
+                                <div
+                                  key={a.id || aIdx}
+                                  className="p-2.5 bg-white rounded-xl border border-stone-200 text-xs space-y-1 shadow-2xs"
+                                >
+                                  <div className="flex items-center justify-between font-black">
+                                    <span className="text-stone-900 flex items-center gap-1">
+                                      <span>👤 {a.name}</span>
+                                      <span className="bg-stone-100 text-stone-600 text-[9px] px-1.5 py-0.2 rounded font-bold">
+                                        과거 {a.roleAtLeave === 'PRESIDENT' ? '회장' : a.roleAtLeave === 'MANAGER' ? '총무' : '회원'}
+                                      </span>
+                                    </span>
+                                    <span className="text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full font-extrabold border border-emerald-200">
+                                      재가입 시 원상 복구 대기
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[10px] text-stone-500 font-medium">
+                                    <span>최초 가입: <strong>{a.joinedAt}</strong> (탈퇴: {a.leftAt})</span>
+                                    <span>과거 출전: <strong>{a.pastTournamentsCount}회</strong></span>
+                                  </div>
+                                  {a.pastAwards && a.pastAwards.length > 0 && (
+                                    <div className="text-[10px] text-amber-800 bg-amber-50/80 p-1 rounded font-bold">
+                                      🏅 과거 수상: {a.pastAwards.join(', ')}
+                                    </div>
+                                  )}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            );
+          })()}
 
                             {/* 탭 3: 회비 관리 (연회비 수납 대장 & 납부 관리) */}
               {managingClubTab === 'DUES' && (() => {
@@ -4201,9 +4601,29 @@ ${shareUrl}`;
                           {totalCollected.toLocaleString()}원
                         </span>
                       </div>
+                      {/* [대표님 지시] 미납 회원 존재 시 1초 카톡 납부 독려 안내문 복사 */}
+                      {unpaidList.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const text = `📢 [${managingClub.name}] 연회비 납부 현황 및 안내\n` +
+                              `• 연회비: ${(defaultDues).toLocaleString()}원\n` +
+                              `• 납부 현황: 총 ${managingClub.members.length}명 중 ${paidList.length}명 완납 (${percent}%)\n` +
+                              `• 미납 회원 (${unpaidList.length}명): ${unpaidList.map(u => u.name).join(', ')}\n\n` +
+                              `클럽의 원활한 운영과 정기 라운드를 위해 빠른 입금 부탁드립니다. 감사합니다!\n` +
+                              `• 문의 및 확인: 총무 (${managingClub.managerName || '집행부'})`;
+                            navigator.clipboard.writeText(text);
+                            showToast(`📢 미납 ${unpaidList.length}인 납부 독려 공지문이 복사되었습니다! 카톡에 공유하세요.`);
+                          }}
+                          className="w-full py-2.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                        >
+                          <Share2 className="w-3.5 h-3.5 text-rose-600" />
+                          <span>📢 미납 회원 {unpaidList.length}인 카톡 납부 안내문 복사</span>
+                        </button>
+                      )}
                     </div>
 
-                    {/* 2. 회원별 연회비 수납 대장 목록 */}
+                    {/* 2. 회원별 연회비 수납 대장 목록 및 필터 */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between px-1">
                         <span className="font-black text-xs text-stone-800 flex items-center gap-1">
@@ -4212,8 +4632,51 @@ ${shareUrl}`;
                         <span className="text-[10px] text-stone-400 font-medium">원클릭 납부 확인</span>
                       </div>
 
+                      {/* [대표님 지시] 수납 대장 필터 (전체 / 완납 / 미납자) */}
+                      <div className="grid grid-cols-3 gap-1.5 p-1 bg-stone-100 rounded-xl">
+                        <button
+                          type="button"
+                          onClick={() => setDuesFilter('ALL')}
+                          className={`py-1.5 text-xs font-black rounded-lg transition cursor-pointer text-center ${
+                            duesFilter === 'ALL'
+                              ? 'bg-white text-stone-900 shadow-2xs'
+                              : 'text-stone-500 hover:text-stone-800'
+                          }`}
+                        >
+                          전체 ({managingClub.members.length}명)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDuesFilter('PAID')}
+                          className={`py-1.5 text-xs font-black rounded-lg transition cursor-pointer text-center ${
+                            duesFilter === 'PAID'
+                              ? 'bg-emerald-700 text-white shadow-2xs'
+                              : 'text-emerald-700 hover:text-emerald-900'
+                          }`}
+                        >
+                          완납 ({paidList.length}명)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDuesFilter('UNPAID')}
+                          className={`py-1.5 text-xs font-black rounded-lg transition cursor-pointer text-center ${
+                            duesFilter === 'UNPAID'
+                              ? 'bg-rose-600 text-white shadow-2xs'
+                              : 'text-rose-600 hover:text-rose-800'
+                          }`}
+                        >
+                          미납 ({unpaidList.length}명)
+                        </button>
+                      </div>
+
                       <div className="space-y-2">
-                        {managingClub.members.map((m, idx) => {
+                        {managingClub.members
+                          .filter((m) => {
+                            if (duesFilter === 'PAID') return !!m.duesPaid;
+                            if (duesFilter === 'UNPAID') return !m.duesPaid;
+                            return true;
+                          })
+                          .map((m, idx) => {
                           const isPaid = !!m.duesPaid;
                           return (
                             <div
@@ -4232,17 +4695,14 @@ ${shareUrl}`;
                                   <div>
                                     <div className="flex items-center gap-1.5">
                                       <span className="font-black text-stone-900 text-sm">{m.name}</span>
-                                      <span
-                                        className={`text-[9px] px-1.5 py-0.2 rounded font-black ${
-                                          m.role === 'PRESIDENT'
-                                            ? 'bg-amber-400 text-stone-950'
-                                            : m.role === 'MANAGER'
-                                            ? 'bg-emerald-600 text-white'
-                                            : 'bg-stone-200 text-stone-700'
-                                        }`}
-                                      >
-                                        {m.role === 'PRESIDENT' ? '👑 회장' : m.role === 'MANAGER' ? '📋 총무' : '회원'}
-                                      </span>
+                                      {(() => {
+                                        const b = getRoleBadge(m.role, m.customRoleName);
+                                        return (
+                                          <span className={`text-[9px] px-1.5 py-0.2 rounded font-black border ${b.style}`}>
+                                            {b.text}
+                                          </span>
+                                        );
+                                      })()}
                                     </div>
                                     {m.phone && (
                                       <span className="text-[10px] text-stone-400 font-medium">📞 {m.phone}</span>
@@ -4333,6 +4793,205 @@ ${shareUrl}`;
               >
                 닫기
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 3-0-1: 회원 직책 임명 & 맞춤 직책 직접 수정 모달 */}
+      {/* ========================================================================= */}
+      {roleModalMember && managingClub && (
+        <div className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl border border-stone-200 overflow-hidden flex flex-col my-auto max-h-[92vh]">
+            {/* 헤더 */}
+            <div className="bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-950 text-white p-4 flex items-center justify-between shadow-sm shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center text-amber-300 text-base shrink-0">
+                  🎖️
+                </div>
+                <div>
+                  <h4 className="font-black text-sm text-white tracking-tight">
+                    직책 임명 및 위임
+                  </h4>
+                  <p className="text-[11px] text-emerald-200">
+                    <strong className="text-amber-300 font-bold">{roleModalMember.memberName}</strong> 회원님 직책 설정
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setRoleModalMember(null);
+                  setCustomRoleInput('');
+                }}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white text-xs font-bold transition shrink-0 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4 overflow-y-auto flex-1 text-xs">
+              {/* 1. 기본 공식 직책 목록 (원터치 선택) */}
+              <div className="space-y-2">
+                <div className="text-[11px] font-black text-stone-700 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <span>📋</span>
+                    <span>표준 직책 원터치 선택</span>
+                  </span>
+                  <span className="text-[10px] text-stone-400 font-medium">클릭 시 즉시 임명</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    {
+                      role: 'PRESIDENT',
+                      label: '👑 회장',
+                      desc: '클럽 총괄 대표',
+                      style: 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-950 font-black',
+                    },
+                    {
+                      role: 'VICE_PRESIDENT',
+                      label: '🥈 부회장',
+                      desc: '회장단 보좌',
+                      style: 'bg-amber-50/60 hover:bg-amber-100 border-amber-200 text-amber-900 font-black',
+                    },
+                    {
+                      role: 'MANAGER',
+                      label: '📋 총무',
+                      desc: '클럽 살림·재무 총괄',
+                      style: 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-950 font-black',
+                    },
+                    {
+                      role: 'AUDITOR',
+                      label: '⚖️ 감사',
+                      desc: '회계·운영 감사',
+                      style: 'bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-950 font-black',
+                    },
+                    {
+                      role: 'DIRECTOR',
+                      label: '🏛️ 이사',
+                      desc: '운영위원회 위원',
+                      style: 'bg-sky-50 hover:bg-sky-100 border-sky-200 text-sky-950 font-black',
+                    },
+                    {
+                      role: 'CAPTAIN',
+                      label: '🏆 경기위원장',
+                      desc: '대회 조편성·룰 총괄',
+                      style: 'bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-950 font-black',
+                    },
+                  ].map((item) => (
+                    <button
+                      key={item.role}
+                      type="button"
+                      onClick={() =>
+                        handleAssignRole(
+                          managingClub.id,
+                          roleModalMember.memberId,
+                          item.role,
+                          undefined,
+                          roleModalMember.memberName
+                        )
+                      }
+                      className={`p-2.5 rounded-xl border text-left transition active:scale-95 cursor-pointer shadow-2xs ${item.style}`}
+                    >
+                      <div className="text-xs font-black">{item.label}</div>
+                      <div className="text-[10px] text-stone-500 font-medium">{item.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2. 맞춤 직책 직접 입력 / 수정 (대표님 핵심 요구사항) */}
+              <div className="space-y-2 pt-2 border-t border-stone-200">
+                <div className="text-[11px] font-black text-stone-800 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <span>✏️</span>
+                    <span>직책 이름 직접 입력 / 수정</span>
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-bold">자유 맞춤 직책</span>
+                </div>
+
+                <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200 space-y-2.5">
+                  <p className="text-[10px] text-stone-600 font-medium leading-relaxed">
+                    수석부회장, 여성부회장, 고문, 훈련부장 등 우리 클럽만의 직책명을 원하는 대로 직접 적을 수 있습니다.
+                  </p>
+
+                  {/* 빠른 추천 칩 버튼들 */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {['수석부회장', '여성부회장', '고문', '훈련부장', '홍보이사', '경기부장'].map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => setCustomRoleInput(tag)}
+                        className="px-2 py-0.8 bg-white hover:bg-stone-100 text-stone-700 text-[10px] font-bold rounded-lg border border-stone-300 transition cursor-pointer active:scale-95"
+                      >
+                        +{tag}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={customRoleInput}
+                      onChange={(e) => setCustomRoleInput(e.target.value)}
+                      placeholder="직책명 입력 (예: 수석부회장)"
+                      className="flex-1 px-3 py-2 text-xs font-bold border border-stone-300 rounded-xl bg-white focus:outline-hidden focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 text-stone-900"
+                      maxLength={20}
+                    />
+                    <button
+                      type="button"
+                      disabled={!customRoleInput.trim()}
+                      onClick={() => {
+                        if (!customRoleInput.trim()) return;
+                        handleAssignRole(
+                          managingClub.id,
+                          roleModalMember.memberId,
+                          'CUSTOM',
+                          customRoleInput.trim(),
+                          roleModalMember.memberName
+                        );
+                      }}
+                      className={`px-3 py-2 rounded-xl text-xs font-black transition cursor-pointer shadow-xs shrink-0 ${
+                        customRoleInput.trim()
+                          ? 'bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white'
+                          : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+                      }`}
+                    >
+                      임명하기
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. 일반 회원으로 초기화 및 닫기 */}
+              <div className="pt-2 border-t border-stone-200 flex justify-between items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleAssignRole(
+                      managingClub.id,
+                      roleModalMember.memberId,
+                      'MEMBER',
+                      undefined,
+                      roleModalMember.memberName
+                    )
+                  }
+                  className="px-2.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs transition cursor-pointer active:scale-95 border border-stone-300 truncate"
+                >
+                  👤 일반 회원 (해제)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRoleModalMember(null);
+                    setCustomRoleInput('');
+                  }}
+                  className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold rounded-xl text-xs transition cursor-pointer shrink-0"
+                >
+                  닫기
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -4632,8 +5291,8 @@ ${shareUrl}`;
                       </div>
 
                       {(() => {
-                        const chronicles = ClubStorage.getClubChronicles(selectedClubDetail.id);
-                        if (chronicles.length === 0) {
+                        const rawChronicles = ClubStorage.getClubChronicles(selectedClubDetail.id);
+                        if (rawChronicles.length === 0) {
                           return (
                             <div className="text-center py-6 bg-stone-50 rounded-2xl border border-dashed border-stone-300 space-y-1.5">
                               <Trophy className="w-7 h-7 text-stone-300 mx-auto" />
@@ -4643,111 +5302,231 @@ ${shareUrl}`;
                           );
                         }
 
+                        const searchTrimmed = chronicleSearchTerm.trim().toLowerCase();
+                        const filteredChronicles = rawChronicles.filter((c) => {
+                          if (!searchTrimmed) return true;
+                          return (
+                            c.title?.toLowerCase().includes(searchTrimmed) ||
+                            c.courseName?.toLowerCase().includes(searchTrimmed) ||
+                            c.winnerName?.toLowerCase().includes(searchTrimmed) ||
+                            c.medalistName?.toLowerCase().includes(searchTrimmed) ||
+                            c.runnerUpName?.toLowerCase().includes(searchTrimmed) ||
+                            c.rankings?.some((r) => r.playerName?.toLowerCase().includes(searchTrimmed))
+                          );
+                        });
+
+                        // 월별 그룹화 (최신순)
+                        const groupedByMonth: { [key: string]: typeof filteredChronicles } = {};
+                        filteredChronicles.forEach((chr) => {
+                          const clean = chr.heldAt.replace(/[^0-9]/g, '');
+                          const key = clean.length >= 6
+                            ? `${clean.slice(0, 4)}년 ${parseInt(clean.slice(4, 6), 10)}월`
+                            : '기타/미분류';
+                          if (!groupedByMonth[key]) groupedByMonth[key] = [];
+                          groupedByMonth[key].push(chr);
+                        });
+                        const monthKeys = Object.keys(groupedByMonth);
+
                         return (
                           <div className="space-y-3">
-                            {chronicles.map((chr) => {
-                              const isExpanded = expandedChronicleId === chr.id;
-                              return (
-                                <div
-                                  key={chr.id}
-                                  className="bg-white rounded-2xl border border-stone-200 shadow-2xs overflow-hidden"
+                            {/* 🔍 연대기 실록 검색창 및 아코디언 일괄 제어 */}
+                            <div className="bg-stone-50 border border-stone-200 rounded-xl p-2 flex flex-col sm:flex-row items-center gap-2">
+                              <div className="relative flex-1 w-full">
+                                <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                                <input
+                                  type="text"
+                                  value={chronicleSearchTerm}
+                                  onChange={(e) => setChronicleSearchTerm(e.target.value)}
+                                  placeholder="대회명, 골프장, 우승자/선수명 검색..."
+                                  className="w-full pl-8 pr-7 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-bold text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                />
+                                {chronicleSearchTerm && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setChronicleSearchTerm('')}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs font-black p-0.5"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end text-xs font-bold">
+                                <span className="text-stone-500 font-bold shrink-0">총 {filteredChronicles.length}회</span>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const allOpen: Record<string, boolean> = {};
+                                      monthKeys.forEach((k) => (allOpen[k] = false));
+                                      setCollapsedMonths(allOpen);
+                                    }}
+                                    className="px-2.5 py-1.5 min-h-[32px] bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200 rounded-lg text-stone-700 transition cursor-pointer text-xs font-bold"
+                                  >
+                                    전체 펼치기
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const allClosed: Record<string, boolean> = {};
+                                      monthKeys.forEach((k) => (allClosed[k] = true));
+                                      setCollapsedMonths(allClosed);
+                                    }}
+                                    className="px-2.5 py-1.5 min-h-[32px] bg-white hover:bg-stone-100 active:bg-stone-200 border border-stone-200 rounded-lg text-stone-700 transition cursor-pointer text-xs font-bold"
+                                  >
+                                    전체 접기
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            {filteredChronicles.length === 0 ? (
+                              <div className="text-center py-6 bg-stone-50 rounded-2xl border border-stone-200 space-y-1">
+                                <div className="text-xs font-bold text-stone-600">검색 조건에 맞는 대회가 없습니다.</div>
+                                <button
+                                  type="button"
+                                  onClick={() => setChronicleSearchTerm('')}
+                                  className="text-[11px] text-amber-700 font-bold underline cursor-pointer"
                                 >
-                                  <div className="p-3 space-y-2 bg-gradient-to-r from-stone-50 to-amber-50/20">
-                                    <div className="flex items-start justify-between gap-1">
-                                      <div>
-                                        <div className="flex items-center gap-1 flex-wrap">
-                                          <span className="bg-purple-100 text-purple-900 border border-purple-200 text-[9px] font-black px-1.5 py-0.2 rounded">
-                                            {chr.gameMode || '정규 방식'}
-                                          </span>
-                                          <span className="text-[10px] text-stone-400">📅 {chr.heldAt}</span>
-                                        </div>
-                                        <h5 className="font-black text-xs text-stone-900 mt-1">{chr.title}</h5>
-                                        <div className="text-[10px] text-stone-500">
-                                          📍 {chr.courseName} · {chr.totalHoles}홀 · {chr.totalParticipants}명 참가
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {/* 👑 우승자 명예의 전당 */}
-                                    <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-                                      <div className="bg-amber-100/80 border border-amber-300 rounded-xl p-1.5 text-center">
-                                        <div className="text-[9px] font-black text-amber-900">👑 1위 우승자</div>
-                                        <div className="text-xs font-black text-stone-900">{chr.winnerName}</div>
-                                        <div className="text-[9px] text-amber-800 font-bold">{chr.winnerScore > 0 ? `${chr.winnerScore}타` : ''}</div>
-                                      </div>
-
-                                      {chr.medalistName ? (
-                                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-1.5 text-center">
-                                          <div className="text-[9px] font-black text-blue-900">🏅 메달리스트</div>
-                                          <div className="text-xs font-black text-stone-900">{chr.medalistName}</div>
-                                          <div className="text-[9px] text-blue-700 font-bold">{chr.medalistScore ? `${chr.medalistScore}타` : ''}</div>
-                                        </div>
-                                      ) : chr.runnerUpName ? (
-                                        <div className="bg-stone-100 border border-stone-300 rounded-xl p-1.5 text-center">
-                                          <div className="text-[9px] font-black text-stone-700">🥈 준우승</div>
-                                          <div className="text-xs font-black text-stone-900">{chr.runnerUpName}</div>
-                                          <div className="text-[9px] text-stone-500 font-bold">{chr.runnerUpScore ? `${chr.runnerUpScore}타` : ''}</div>
-                                        </div>
-                                      ) : null}
-                                    </div>
-
+                                  검색어 초기화
+                                </button>
+                              </div>
+                            ) : (
+                              monthKeys.map((monthKey) => {
+                                const list = groupedByMonth[monthKey];
+                                const isCollapsed = collapsedMonths[monthKey] === true;
+                                return (
+                                  <div key={monthKey} className="border border-stone-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+                                    {/* 월별 아코디언 헤더 */}
                                     <button
                                       type="button"
-                                      onClick={() => setExpandedChronicleId(isExpanded ? null : chr.id)}
-                                      className="w-full py-1.5 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl text-[10px] font-black text-purple-700 flex items-center justify-center gap-1 transition cursor-pointer"
+                                      onClick={() => setCollapsedMonths((prev) => ({ ...prev, [monthKey]: !isCollapsed }))}
+                                      className="w-full px-3 py-2.5 min-h-[44px] bg-gradient-to-r from-stone-100 via-stone-50 to-amber-50/40 hover:bg-stone-100 active:bg-amber-100/50 flex items-center justify-between border-b border-stone-200 transition cursor-pointer"
                                     >
-                                      <span>{isExpanded ? '전체 순위 닫기 ▲' : '📋 참가자 전체 순위 & 스코어보기 ▼'}</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-black text-xs text-stone-900 flex items-center gap-1">
+                                          📅 {monthKey}
+                                        </span>
+                                        <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full">
+                                          {list.length}회 대회
+                                        </span>
+                                      </div>
+                                      <span className="text-xs font-bold text-stone-500">
+                                        {isCollapsed ? '펼치기 ▼' : '접기 ▲'}
+                                      </span>
                                     </button>
+
+                                    {/* 대회 목록 (아코디언 본문) */}
+                                    {!isCollapsed && (
+                                      <div className="p-2 space-y-2.5 bg-stone-50/30">
+                                        {list.map((chr) => {
+                                          const isExpanded = expandedChronicleId === chr.id;
+                                          return (
+                                            <div
+                                              key={chr.id}
+                                              className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden"
+                                            >
+                                              <div className="p-3 space-y-2 bg-gradient-to-r from-stone-50 to-amber-50/20">
+                                                <div className="flex items-start justify-between gap-1">
+                                                  <div>
+                                                    <div className="flex items-center gap-1 flex-wrap">
+                                                      <span className="bg-purple-100 text-purple-900 border border-purple-200 text-[9px] font-black px-1.5 py-0.2 rounded">
+                                                        {chr.gameMode || '정규 방식'}
+                                                      </span>
+                                                      <span className="text-[10px] text-stone-400">📅 {chr.heldAt}</span>
+                                                    </div>
+                                                    <h5 className="font-black text-xs text-stone-900 mt-1">{chr.title}</h5>
+                                                    <div className="text-[10px] text-stone-500">
+                                                      📍 {chr.courseName} · {chr.totalHoles}홀 · {chr.totalParticipants}명 참가
+                                                    </div>
+                                                  </div>
+                                                </div>
+
+                                                {/* 👑 우승자 명예의 전당 */}
+                                                <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                                                  <div className="bg-amber-100/80 border border-amber-300 rounded-xl p-1.5 text-center">
+                                                    <div className="text-[9px] font-black text-amber-900">👑 1위 우승자</div>
+                                                    <div className="text-xs font-black text-stone-900">{chr.winnerName}</div>
+                                                    <div className="text-[9px] text-amber-800 font-bold">{chr.winnerScore > 0 ? `${chr.winnerScore}타` : ''}</div>
+                                                  </div>
+
+                                                  {chr.medalistName ? (
+                                                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-1.5 text-center">
+                                                      <div className="text-[9px] font-black text-blue-900">🏅 메달리스트</div>
+                                                      <div className="text-xs font-black text-stone-900">{chr.medalistName}</div>
+                                                      <div className="text-[9px] text-blue-700 font-bold">{chr.medalistScore ? `${chr.medalistScore}타` : ''}</div>
+                                                    </div>
+                                                  ) : chr.runnerUpName ? (
+                                                    <div className="bg-stone-100 border border-stone-300 rounded-xl p-1.5 text-center">
+                                                      <div className="text-[9px] font-black text-stone-700">🥈 준우승</div>
+                                                      <div className="text-xs font-black text-stone-900">{chr.runnerUpName}</div>
+                                                      <div className="text-[9px] text-stone-500 font-bold">{chr.runnerUpScore ? `${chr.runnerUpScore}타` : ''}</div>
+                                                    </div>
+                                                  ) : null}
+                                                </div>
+
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setExpandedChronicleId(isExpanded ? null : chr.id)}
+                                                  className="w-full py-1.5 bg-white hover:bg-stone-50 border border-stone-200 rounded-xl text-[10px] font-black text-purple-700 flex items-center justify-center gap-1 transition cursor-pointer"
+                                                >
+                                                  <span>{isExpanded ? '전체 순위 닫기 ▲' : '📋 참가자 전체 순위 & 스코어보기 ▼'}</span>
+                                                </button>
+                                              </div>
+
+                                              {isExpanded && (
+                                                <div className="p-3 border-t border-stone-200 bg-stone-50/50 space-y-1.5 animate-fadeIn">
+                                                  <div className="text-[11px] font-black text-stone-800 flex items-center justify-between">
+                                                    <span>대회 공식 전체 순위 ({chr.rankings.length}명)</span>
+                                                    <span className="text-[9px] text-stone-400">영구 보존</span>
+                                                  </div>
+
+                                                  <div className="space-y-1">
+                                                    {chr.rankings.map((r) => (
+                                                      <div
+                                                        key={r.playerId}
+                                                        className={`p-2.5 rounded-xl border flex items-center justify-between text-xs gap-2 ${
+                                                          r.rank === 1
+                                                            ? 'bg-amber-50 border-amber-300 font-black'
+                                                            : r.rank === 2
+                                                            ? 'bg-stone-100 border-stone-300 font-bold'
+                                                            : 'bg-white border-stone-200'
+                                                        }`}
+                                                      >
+                                                        <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
+                                                          <span className={`w-5 shrink-0 text-center text-[10px] font-black ${
+                                                            r.rank === 1 ? 'text-amber-700' : 'text-stone-500'
+                                                          }`}>
+                                                            {r.rank}위
+                                                          </span>
+                                                          <span className="font-black text-stone-900 break-words">{r.playerName}</span>
+                                                          <span className="text-[10px] text-stone-400 shrink-0">({r.groupNumber}조)</span>
+                                                          {r.awards && r.awards.length > 0 && (
+                                                            <span className="text-[9px] bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold shrink-0">
+                                                              {r.awards[0]}
+                                                            </span>
+                                                          )}
+                                                        </div>
+
+                                                        <div className="flex items-center gap-1.5 shrink-0 text-right">
+                                                          {r.handicap !== undefined && (
+                                                            <span className="text-[10px] text-stone-400">HDCP {r.handicap}</span>
+                                                          )}
+                                                          <span className="font-black text-purple-800 text-sm">{r.totalStrokes}타</span>
+                                                        </div>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
                                   </div>
-
-                                  {isExpanded && (
-                                    <div className="p-3 border-t border-stone-200 bg-stone-50/50 space-y-1.5 animate-fadeIn">
-                                      <div className="text-[11px] font-black text-stone-800 flex items-center justify-between">
-                                        <span>대회 공식 전체 순위 ({chr.rankings.length}명)</span>
-                                        <span className="text-[9px] text-stone-400">영구 보존</span>
-                                      </div>
-
-                                      <div className="space-y-1">
-                                        {chr.rankings.map((r) => (
-                                          <div
-                                            key={r.playerId}
-                                            className={`p-2 rounded-xl border flex items-center justify-between text-xs ${
-                                              r.rank === 1
-                                                ? 'bg-amber-50 border-amber-300 font-black'
-                                                : r.rank === 2
-                                                ? 'bg-stone-100 border-stone-300 font-bold'
-                                                : 'bg-white border-stone-200'
-                                            }`}
-                                          >
-                                            <div className="flex items-center gap-1.5">
-                                              <span className={`w-5 text-center text-[10px] font-black ${
-                                                r.rank === 1 ? 'text-amber-700' : 'text-stone-500'
-                                              }`}>
-                                                {r.rank}위
-                                              </span>
-                                              <span className="font-black text-stone-900">{r.playerName}</span>
-                                              <span className="text-[9px] text-stone-400">({r.groupNumber}조)</span>
-                                              {r.awards && r.awards.length > 0 && (
-                                                <span className="text-[9px] bg-amber-100 text-amber-900 px-1 rounded font-bold">
-                                                  {r.awards[0]}
-                                                </span>
-                                              )}
-                                            </div>
-
-                                            <div className="flex items-center gap-1.5">
-                                              {r.handicap !== undefined && (
-                                                <span className="text-[9px] text-stone-400">HDCP {r.handicap}</span>
-                                              )}
-                                              <span className="font-black text-purple-800">{r.totalStrokes}타</span>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
+                                );
+                              })
+                            )}
                           </div>
                         );
                       })()}
@@ -5005,11 +5784,76 @@ ${shareUrl}`;
               </div>
 
               {/* Scrollable Content */}
-              <div className="p-4 sm:p-5 overflow-y-auto space-y-5">
+              <div className="p-4 sm:p-5 overflow-y-auto space-y-4">
                 {/* ------------------------------------------------------------- */}
-                {/* 1. 상단: [🔥 현재 모집/진행 중인 클럽 모임 (N건)] */}
+                {/* 1. [최우선 상단 배치] 우리 클럽 전용 새 모임 개설 (번개치기 & 대회 개최) */}
                 {/* ------------------------------------------------------------- */}
-                <div className="space-y-3">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-black text-sm text-stone-900 flex items-center gap-1.5">
+                      <span className="text-emerald-700">✨</span>
+                      <span>우리 클럽 전용 새 모임 개설</span>
+                    </h4>
+                    <span className="text-[11px] text-stone-500 font-bold">1초 원터치 주최</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* [ ⚡ 클럽 번개치기 ] */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClubGatheringModal(null);
+                        setSelectedFlashClubId(c.id);
+                        setClubFlashCourseId(c.homeCourseId);
+                        setClubFlashTitle(`[${c.name}] 오늘 당일 번개 라운드 ⚡`);
+                        setClubFlashLightningScope('MULTI_OPEN');
+                        setShowCreateClubFlashModal(true);
+                      }}
+                      className="py-2.5 sm:py-3 px-2 sm:px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-98 text-stone-950 font-black text-xs sm:text-sm text-center transition cursor-pointer shadow-xs flex items-center justify-center gap-1 border border-amber-600/30 whitespace-nowrap"
+                    >
+                      <span>⚡</span>
+                      <span>클럽 번개치기</span>
+                    </button>
+
+                    {/* [ 🏆 대회 개최하기 (월례회 등) ] - 총무/임원진 전용 권한 제어 */}
+                    {(() => {
+                      const isExec = isClubExecutive(c);
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isExec) {
+                              showToast(`🔒 대회 개설은 '${c.name}' 총무 및 임원진 전용 권한입니다. 일반 회원은 개설된 대회 참가만 가능합니다.`);
+                              return;
+                            }
+                            setClubGatheringModal(null);
+                            setTournamentClubId(c.id);
+                            setTitle(`[${c.name}] 제${new Date().getMonth() + 1}회 정기 월례회 ⛳`);
+                            setSelectedCourseId(c.homeCourseId);
+                            setHostName(c.managerName || c.presidentName || '총무');
+                            setTournamentType('CLUB_INTERNAL');
+                            setCreateModalSource('CLUB_GATHERING');
+                            setShowCreateModal(true);
+                          }}
+                          className={`py-2.5 sm:py-3 px-1.5 sm:px-3 rounded-xl active:scale-98 font-black text-[11px] sm:text-xs md:text-sm text-center transition cursor-pointer shadow-xs flex items-center justify-center gap-1 border whitespace-nowrap ${
+                            isExec
+                              ? 'bg-gradient-to-r from-emerald-700 to-teal-800 hover:from-emerald-800 hover:to-teal-900 text-white border-emerald-600/30'
+                              : 'bg-stone-100 hover:bg-stone-200 text-stone-500 border-stone-300'
+                          }`}
+                          title={isExec ? '클럽 정기 월례회 및 자체 대회 개설' : '대회 개설은 총무 및 임원진 전용 권한입니다.'}
+                        >
+                          <span>{isExec ? '🏆' : '🔒'}</span>
+                          <span>{isExec ? '대회 개최하기 (월례회 등)' : '대회 개최 (총무 전용)'}</span>
+                        </button>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* ------------------------------------------------------------- */}
+                {/* 2. [🔥 현재 모집/진행 중인 클럽 모임 (N건)] */}
+                {/* ------------------------------------------------------------- */}
+                <div className="space-y-3 pt-3 border-t border-stone-200">
                   <div className="flex items-center justify-between">
                     <h4 className="font-black text-sm text-stone-900 flex items-center gap-1.5">
                       <span className="text-rose-500">🔥</span>
@@ -5030,7 +5874,7 @@ ${shareUrl}`;
                         ⚡ 현재 모집 중인 번개나 진행 중인 정기전이 없습니다.
                       </p>
                       <p className="text-xs text-stone-500">
-                        아래 <strong className="text-amber-600">[+ 새 모임 추가 개설하기]</strong> 버튼을 눌러 오늘 첫 번개 라운드나 정기전을 개설해 보세요!
+                        위 <strong className="text-amber-600">[번개치기 개설]</strong> 또는 <strong className="text-emerald-700">[대회 개최하기]</strong> 버튼을 눌러 오늘 첫 모임을 개설해 보세요!
                       </p>
                     </div>
                   ) : (
@@ -5048,13 +5892,20 @@ ${shareUrl}`;
                             key={flash.id}
                             className="p-4 rounded-2xl bg-amber-50/70 border-2 border-amber-300 shadow-xs space-y-3 hover:border-amber-400 transition"
                           >
-                            {/* 구장명, 일시 및 상태 배지 */}
-                            <div className="flex flex-wrap items-center justify-between gap-2">
+                            {/* 1. 상단: 제목 [번개 모집 중] 및 우측 상태 배지 */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/80 pb-2">
                               <div className="flex items-center gap-2">
-                                <span className="text-base">⚡</span>
-                                <span className="font-black text-sm text-stone-900">
-                                  [{flash.courseName}] {flash.playDate} {flash.playTime}
+                                <span className="w-8 h-8 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center font-black text-base shadow-xs shrink-0">
+                                  ⚡
                                 </span>
+                                <div>
+                                  <h4 className="font-black text-base text-stone-950 tracking-tight">
+                                    번개 모집 중
+                                  </h4>
+                                  <p className="text-[11px] text-amber-900/80 font-bold">
+                                    {flash.title || `[${c.name}] 오늘 당일 번개 라운드`}
+                                  </p>
+                                </div>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 {canStart ? (
@@ -5063,19 +5914,33 @@ ${shareUrl}`;
                                   </span>
                                 ) : (
                                   <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-amber-500 text-stone-950 shadow-xs">
-                                    🟡 1명 모집 중 ({pCount}/{maxCount})
+                                    🟡 {flash.targetCount === 999 ? '모집 중' : `${Math.max(0, flash.targetCount - pCount)}명 모집 중`} ({pCount}/{maxCount})
                                   </span>
                                 )}
                               </div>
                             </div>
 
-                            {/* 모임 제목 & 메모 */}
-                            <div>
-                              <p className="font-bold text-xs text-stone-800">{flash.title}</p>
-                              {flash.notes && (
-                                <p className="text-[11px] text-stone-500 mt-0.5">💬 {flash.notes}</p>
-                              )}
+                            {/* 2. 핵심 제원: 장소 & 시간 */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white/90 p-2.5 rounded-xl border border-amber-200 text-xs shadow-2xs">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-amber-800 font-black shrink-0">📍 장소:</span>
+                                <span className="text-stone-900 font-black truncate">{flash.courseName}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-amber-800 font-black shrink-0">⏰ 시간:</span>
+                                <span className="text-stone-900 font-black">
+                                  {formatKoreanPlayTime(flash.playTime)} ({flash.playDate})
+                                </span>
+                              </div>
                             </div>
+
+                            {/* 3. 모임 메모 */}
+                            {flash.notes && (
+                              <div className="text-[11px] text-stone-600 bg-amber-100/50 px-2.5 py-1.5 rounded-lg border border-amber-200/60 flex items-center gap-1.5">
+                                <span className="shrink-0">💬</span>
+                                <span>{flash.notes}</span>
+                              </div>
+                            )}
 
                             {/* 참가자 명단 표출 */}
                             <div className="p-2.5 rounded-xl bg-white/80 border border-amber-200/80 text-xs text-stone-700 flex flex-wrap items-center gap-2">
@@ -5123,7 +5988,7 @@ ${shareUrl}`;
                                 </button>
                               )}
 
-                              {/* 2. 방장/참가자용: 스코어보드 경기 시작 */}
+                              {/* 2. 방장/참가자용: 경기 시작하기 */}
                               <button
                                 type="button"
                                 onClick={() => {
@@ -5133,7 +5998,7 @@ ${shareUrl}`;
                                 className="py-2.5 px-3 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer text-center flex items-center justify-center gap-1.5"
                               >
                                 <span>🏌️</span>
-                                <span>스코어보드 경기 시작</span>
+                                <span>경기 시작하기</span>
                               </button>
 
                               {/* 3. 카톡 단톡방 공유 */}
@@ -5191,73 +6056,6 @@ ${shareUrl}`;
                       })}
                     </div>
                   )}
-                </div>
-
-                {/* ------------------------------------------------------------- */}
-                {/* 2. 하단: [ ➕ 새 모임 추가 개설하기 ] */}
-                {/* ------------------------------------------------------------- */}
-                <div className="pt-2 border-t border-stone-200 space-y-3">
-                  <h4 className="font-black text-sm text-stone-900 flex items-center gap-1.5">
-                    <span className="text-emerald-700">➕</span>
-                    <span>새 모임 추가 개설하기</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* [ + 새 당일 번개 추가 ] */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setClubGatheringModal(null);
-                        setSelectedFlashClubId(c.id);
-                        setClubFlashCourseId(c.homeCourseId);
-                        setClubFlashTitle(`[${c.name}] 오늘 당일 번개 라운드 ⚡`);
-                        setShowCreateClubFlashModal(true);
-                      }}
-                      className="p-4 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-98 text-stone-950 font-black text-left transition cursor-pointer shadow-md space-y-1"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-black flex items-center gap-1.5">
-                          <span>⚡</span>
-                          <span>+ 새 당일 번개 추가</span>
-                        </span>
-                        <span className="text-[10px] bg-stone-950 text-white font-black px-2 py-0.5 rounded-full">
-                          당일 라운드
-                        </span>
-                      </div>
-                      <p className="text-xs text-stone-900/90 font-medium leading-relaxed">
-                        오늘 바로 라운드할 클럽 동료를 2인/4인/무제한 단위로 빠르게 모집합니다.
-                      </p>
-                    </button>
-
-                    {/* [ + 정기 월례회 대회 개설 ] */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setClubGatheringModal(null);
-                        setTournamentClubId(c.id);
-                        setTitle(`[${c.name}] 제${new Date().getMonth() + 1}회 정기 월례회 ⛳`);
-                        setSelectedCourseId(c.homeCourseId);
-                        setHostName(c.managerName || c.presidentName || '총무');
-                        setTournamentType('CLUB_INTERNAL');
-                        setCreateModalSource('CLUB_GATHERING');
-                        setShowCreateModal(true);
-                      }}
-                      className="p-4 rounded-2xl bg-gradient-to-br from-emerald-700 to-teal-800 hover:from-emerald-800 hover:to-teal-900 active:scale-98 text-white font-black text-left transition cursor-pointer shadow-md space-y-1"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-black flex items-center gap-1.5">
-                          <span>🏆</span>
-                          <span>+ 정기 월례회 대회 개설</span>
-                        </span>
-                        <span className="text-[10px] bg-emerald-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
-                          18홀 정규
-                        </span>
-                      </div>
-                      <p className="text-xs text-emerald-100 font-medium leading-relaxed">
-                        회원 전원이 참가하는 정기전입니다. 샷건 동시 티샷, 조 편성, 신페리오 전광판을 지원합니다.
-                      </p>
-                    </button>
-                  </div>
                 </div>
               </div>
 
@@ -7133,7 +7931,7 @@ ${shareUrl}`;
                   <span className="font-black text-emerald-800">&lsquo;{aliasTargetClub.name}&rsquo;</span>에서 사용할 회원님의 이름을 정해주세요.
                 </p>
                 <p className="text-[11px] text-stone-500 mt-0.5">
-                  클럽마다 실명(예: 김대희) 또는 닉네임(예: 나이스버디)을 다르게 지정할 수 있습니다.
+                  클럽마다 실명(예: 홍길동) 또는 닉네임(예: 손오공)을 다르게 지정할 수 있습니다.
                 </p>
               </div>
 
@@ -7145,13 +7943,13 @@ ${shareUrl}`;
                     type="button"
                     onClick={() => {
                       const kakaoUser = ParkOnStorage.getKakaoUser();
-                      setAliasInputName(kakaoUser?.realName || '김대희');
+                      setAliasInputName(kakaoUser?.realName || '홍길동');
                     }}
                     className="p-2.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-left transition cursor-pointer"
                   >
                     <div className="text-[10px] font-bold text-emerald-700">실명 적용</div>
                     <div className="text-xs font-black text-emerald-950 truncate">
-                      {ParkOnStorage.getKakaoUser()?.realName || '김대희'}
+                      {ParkOnStorage.getKakaoUser()?.realName || '홍길동'}
                     </div>
                   </button>
 
@@ -7159,13 +7957,13 @@ ${shareUrl}`;
                     type="button"
                     onClick={() => {
                       const kakaoUser = ParkOnStorage.getKakaoUser();
-                      setAliasInputName(kakaoUser?.aliasName || '나이스버디');
+                      setAliasInputName(kakaoUser?.aliasName || '손오공');
                     }}
                     className="p-2.5 rounded-xl border border-purple-300 bg-purple-50 hover:bg-purple-100 text-left transition cursor-pointer"
                   >
                     <div className="text-[10px] font-bold text-purple-700">가명/닉네임 적용</div>
                     <div className="text-xs font-black text-purple-950 truncate">
-                      {ParkOnStorage.getKakaoUser()?.aliasName || '나이스버디'}
+                      {ParkOnStorage.getKakaoUser()?.aliasName || '손오공'}
                     </div>
                   </button>
                 </div>
@@ -7178,7 +7976,7 @@ ${shareUrl}`;
                   type="text"
                   value={aliasInputName}
                   onChange={(e) => setAliasInputName(e.target.value)}
-                  placeholder="예: 김대희 또는 나이스버디"
+                  placeholder="예: 홍길동 또는 손오공"
                   maxLength={15}
                   className="w-full px-3 py-2.5 border-2 border-stone-300 focus:border-emerald-600 rounded-xl text-sm font-black focus:outline-none"
                 />
@@ -7417,27 +8215,7 @@ ${shareUrl}`;
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-stone-800">번개 방식 선택 (2가지) *</label>
                 <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setLtnLightningScope('FOUR_PLAYERS')}
-                    className={`p-3 rounded-2xl border-2 text-left transition cursor-pointer ${
-                      ltnLightningScope === 'FOUR_PLAYERS'
-                        ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-300 shadow-xs'
-                        : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-black text-xs text-stone-900">⛳ 4명 라운드 (기본)</span>
-                      <span className="bg-emerald-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full">
-                        기본 4인
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-stone-500 font-medium mt-1 leading-snug">
-                      최대 4인 (1개 조)<br />
-                      <strong className="text-emerald-800 font-bold">2명만 모여도 즉시 출발!</strong>
-                    </div>
-                  </button>
-
+                  {/* [대표님 지시] 무조건 인원수 제한 없음(무제한)이 먼저 체크되고 기본 추천 */}
                   <button
                     type="button"
                     onClick={() => setLtnLightningScope('MULTI_OPEN')}
@@ -7450,20 +8228,41 @@ ${shareUrl}`;
                     <div className="flex items-center justify-between">
                       <span className="font-black text-xs text-stone-900">👥 인원 수 제한 없음</span>
                       <span className="bg-amber-500 text-stone-950 text-[9px] font-black px-1.5 py-0.2 rounded-full">
-                        무제한
+                        기본 추천
                       </span>
                     </div>
                     <div className="text-[11px] text-stone-500 font-medium mt-1 leading-snug">
                       5인, 10인, 20인 자유 참가<br />
-                      <strong className="text-emerald-800 font-bold">모인 인원으로 자동 조 편성</strong>
+                      <strong className="text-emerald-800 font-bold">10명 오면 3개 조 자동 편성!</strong>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setLtnLightningScope('FOUR_PLAYERS')}
+                    className={`p-3 rounded-2xl border-2 text-left transition cursor-pointer ${
+                      ltnLightningScope === 'FOUR_PLAYERS'
+                        ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-300 shadow-xs'
+                        : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-xs text-stone-900">⛳ 4명 라운드</span>
+                      <span className="bg-stone-200 text-stone-700 text-[9px] font-black px-1.5 py-0.2 rounded-full">
+                        단일 4인
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-stone-500 font-medium mt-1 leading-snug">
+                      최대 4인 마감 (1개 조)<br />
+                      <strong className="text-stone-700 font-bold">2명만 모여도 즉시 출발!</strong>
                     </div>
                   </button>
                 </div>
                 <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-[11px] text-emerald-900 font-medium leading-relaxed">
-                  {ltnLightningScope === 'FOUR_PLAYERS' ? (
-                    <span>💡 <strong>4인 번개</strong>: 4인이 안 되어도 <strong>두 명만 수락하면 방장이 즉시 라운드를 시작</strong>할 수 있습니다.</span>
+                  {ltnLightningScope === 'MULTI_OPEN' ? (
+                    <span>💡 <strong>인원 수 제한 없음 (기본 추천)</strong>: 5명이든, 10명이든 인원 제한 없이 자유롭게 참가할 수 있으며, 2인 이상 모이면 언제든 방장이 조별 전광판 라운드를 시작할 수 있습니다. (10명 모이면 3팀으로 자동 분할!)</span>
                   ) : (
-                    <span>💡 <strong>4인 이상 번개</strong>: 5명이든, 10명이든, 20명이든 인원 제한 없이 참가할 수 있으며, 2인 이상 모이면 언제든 방장이 조별 전광판 라운드를 시작할 수 있습니다.</span>
+                    <span>💡 <strong>4인 번개</strong>: 딱 1개 조(4인)만 모집하며, 4인이 안 되어도 <strong>두 명만 수락하면 방장이 즉시 라운드를 시작</strong>할 수 있습니다.</span>
                   )}
                 </div>
               </div>
@@ -7649,27 +8448,7 @@ ${shareUrl}`;
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-stone-800">클럽 번개 방식 선택 (2가지) *</label>
                 <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setClubFlashLightningScope('FOUR_PLAYERS')}
-                    className={`p-3 rounded-2xl border-2 text-left transition cursor-pointer ${
-                      clubFlashLightningScope === 'FOUR_PLAYERS'
-                        ? 'bg-amber-50 border-amber-600 ring-2 ring-amber-300 shadow-xs'
-                        : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-black text-xs text-stone-900">⛳ 4명 라운드 (기본)</span>
-                      <span className="bg-stone-800 text-amber-300 text-[9px] font-black px-1.5 py-0.2 rounded-full">
-                        기본 4인
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-stone-500 font-medium mt-1 leading-snug">
-                      최대 4인 (1개 조)<br />
-                      <strong className="text-amber-900 font-bold">2명만 모여도 즉시 출발!</strong>
-                    </div>
-                  </button>
-
+                  {/* [대표님 지시] 무조건 인원수 제한 없음(무제한)이 먼저 체크되고 기본 추천 */}
                   <button
                     type="button"
                     onClick={() => setClubFlashLightningScope('MULTI_OPEN')}
@@ -7682,20 +8461,41 @@ ${shareUrl}`;
                     <div className="flex items-center justify-between">
                       <span className="font-black text-xs text-stone-900">👥 인원 수 제한 없음</span>
                       <span className="bg-amber-500 text-stone-950 text-[9px] font-black px-1.5 py-0.2 rounded-full">
-                        무제한
+                        기본 추천
                       </span>
                     </div>
                     <div className="text-[11px] text-stone-500 font-medium mt-1 leading-snug">
                       5인, 10인, 20인 자유 참가<br />
-                      <strong className="text-amber-900 font-bold">모인 인원으로 자동 조 편성</strong>
+                      <strong className="text-amber-900 font-bold">10명 오면 3개 조 자동 편성!</strong>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setClubFlashLightningScope('FOUR_PLAYERS')}
+                    className={`p-3 rounded-2xl border-2 text-left transition cursor-pointer ${
+                      clubFlashLightningScope === 'FOUR_PLAYERS'
+                        ? 'bg-amber-50 border-amber-600 ring-2 ring-amber-300 shadow-xs'
+                        : 'bg-stone-50 border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-xs text-stone-900">⛳ 4명 라운드</span>
+                      <span className="bg-stone-200 text-stone-700 text-[9px] font-black px-1.5 py-0.2 rounded-full">
+                        단일 4인
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-stone-500 font-medium mt-1 leading-snug">
+                      최대 4인 마감 (1개 조)<br />
+                      <strong className="text-stone-700 font-bold">2명만 모여도 즉시 출발!</strong>
                     </div>
                   </button>
                 </div>
                 <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-[11px] text-amber-950 font-medium leading-relaxed">
-                  {clubFlashLightningScope === 'FOUR_PLAYERS' ? (
-                    <span>💡 <strong>4인 번개</strong>: 4인이 안 되어도 <strong>두 명만 모이면 번개 친 사람(방장)이 즉시 라운드를 시작</strong>할 수 있습니다.</span>
+                  {clubFlashLightningScope === 'MULTI_OPEN' ? (
+                    <span>💡 <strong>인원 수 제한 없음 (기본 추천)</strong>: 5명이든, 10명이든, 20명이든 인원 제한 없이 회원이 참가하며, 모인 인원에 맞춰 2~5개 조로 자동 편성되어 전광판 룸이 시작됩니다. (10명 모이면 3팀으로 자동 분할!)</span>
                   ) : (
-                    <span>💡 <strong>4인 이상 번개</strong>: 5명이든, 10명이든, 20명이든 인원 제한 없이 회원이 참가하며, 모인 인원에 맞춰 2~5개 조로 자동 편성되어 전광판 룸이 시작됩니다.</span>
+                    <span>💡 <strong>4인 번개</strong>: 딱 1개 조(4인)만 모집하며, 4인이 안 되어도 <strong>두 명만 모이면 번개 친 사람(방장)이 즉시 라운드를 시작</strong>할 수 있습니다.</span>
                   )}
                 </div>
               </div>
@@ -7800,10 +8600,11 @@ ${shareUrl}`;
                     className="bg-stone-50 border border-stone-200 rounded-2xl p-3 space-y-2"
                   >
                     <div className="flex items-center justify-between border-b border-stone-200/70 pb-1.5">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-black text-xs text-stone-900">{group.name}</span>
-                        <span className="text-[10px] bg-stone-200 text-stone-700 font-bold px-1.5 py-0.2 rounded">
-                          {group.startCourseLetter}코스 출발
+                        <span className="text-[10px] bg-red-600 text-white font-black px-2 py-0.5 rounded-md shadow-2xs flex items-center gap-1">
+                          <span>🚩</span>
+                          <span>{ClubStorage.getGroupStartHole(gIdx, previewRoom.selectedCourseLetters, group.startCourseLetter)} 티샷 출발</span>
                         </span>
                       </div>
                       <span className="text-[11px] font-black text-stone-500">

@@ -15,6 +15,10 @@ import { AdSenseSlot } from '@/components/AdSenseSlot';
 import { HoleScoreBadge, ScoreBadgeLegend } from '@/components/HoleScoreBadge';
 import { KakaoAuthUser } from '@/lib/storage';
 import { KakaoLoginModal } from '@/components/KakaoLoginModal';
+import { DigitalBadgeModal } from '@/components/DigitalBadgeModal';
+import { CourseHallOfFameModal } from '@/components/CourseHallOfFameModal';
+import { NationalTourMapModal } from '@/components/NationalTourMapModal';
+import { BadgeStorage, CourseBadgeRecord, ProvinceInfo } from '@/lib/badgeStorage';
 
 function ResultContent() {
   const searchParams = useSearchParams();
@@ -31,6 +35,12 @@ function ResultContent() {
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
   const [showKakaoModal, setShowKakaoModal] = useState<boolean>(false);
   const [saveSuccessToast, setSaveSuccessToast] = useState<string | null>(null);
+  const [badgeRecord, setBadgeRecord] = useState<CourseBadgeRecord | null>(null);
+  const [showBadgeModal, setShowBadgeModal] = useState<boolean>(false);
+  const [showHallOfFameModal, setShowHallOfFameModal] = useState<boolean>(false);
+  const [showNationalTourModal, setShowNationalTourModal] = useState<boolean>(false);
+  const [newlyUnlockedProvince, setNewlyUnlockedProvince] = useState<ProvinceInfo | null>(null);
+  const [isFull18Completed, setIsFull18Completed] = useState<boolean>(false);
 
   const handleExchangeCards = () => {
     if (!session) return;
@@ -70,7 +80,41 @@ function ResultContent() {
       setCourse(found);
       // 자동 1촌 연결 & 누적 라운드 카운트 증가
       CompanionStorage.autoConnectRoundCompanions(session);
-      setKakaoUser(ParkOnStorage.getKakaoUser());
+      const currentUser = ParkOnStorage.getKakaoUser();
+      setKakaoUser(currentUser);
+      if (currentUser?.id) {
+        BadgeStorage.syncToCloud(currentUser.id, currentUser.nickname);
+      }
+
+      // 대표님 원칙 2단계: 18홀 결번 없는 정상 완주 확인 & 뱃지/당일연타석 스탬프 자동 발급
+      const myPlayer = session.players?.find((p) => p.isSelf) || session.players?.[0];
+      const myScoredCount = myPlayer
+        ? Object.keys(myPlayer.scores || {}).filter((h) => Number(myPlayer.scores[Number(h)]) > 0).length
+        : 0;
+      const isFull18 = myScoredCount >= 18;
+      setIsFull18Completed(isFull18);
+
+      if (isFull18) {
+        const badgeResult = BadgeStorage.recordCompletion(
+          found.id,
+          found.name,
+          myScoredCount,
+          found.region || found.address
+        );
+        setBadgeRecord(badgeResult.badge);
+        if (badgeResult.isNewProvinceUnlocked && badgeResult.unlockedProvince) {
+          setNewlyUnlockedProvince(badgeResult.unlockedProvince);
+        }
+        // 첫 진입 시 자동 팝업
+        const seenKey = `parkon_badge_seen_${session.id}`;
+        if (!sessionStorage.getItem(seenKey)) {
+          setShowBadgeModal(true);
+          sessionStorage.setItem(seenKey, 'true');
+        }
+      } else {
+        const existing = BadgeStorage.getBadge(found.id);
+        if (existing) setBadgeRecord(existing);
+      }
     }
   }, [session]);
 
@@ -274,6 +318,30 @@ function ResultContent() {
         </div>
       )}
 
+      {/* 3단계: 전국 17개 시·도 투어 퍼즐 신규 해금 축하 배너 */}
+      {newlyUnlockedProvince && (
+        <div className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-stone-950 p-4 rounded-3xl border-2 border-yellow-200 shadow-xl flex items-center justify-between gap-3 animate-bounce">
+          <div className="flex items-center gap-2.5">
+            <span className="text-3xl select-none">{newlyUnlockedProvince.symbol}</span>
+            <div>
+              <div className="text-[10px] font-black bg-stone-950 text-yellow-300 px-2 py-0.5 rounded-full inline-block">
+                🎉 전국 17개 시·도 투어 퍼즐 해금!
+              </div>
+              <div className="text-xs font-black text-stone-950 mt-1">
+                [{newlyUnlockedProvince.name}] 조각이 황금빛으로 점등되었습니다!
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowNationalTourModal(true)}
+            className="bg-stone-950 hover:bg-stone-900 text-amber-300 text-xs font-black px-3.5 py-2 rounded-2xl shadow-lg shrink-0 cursor-pointer transition active:scale-95"
+          >
+            지도 보기 ▶
+          </button>
+        </div>
+      )}
+
       {/* 1. Header Trophy Card */}
       <div className="bg-gradient-to-br from-emerald-800 to-emerald-950 text-white rounded-3xl p-5 shadow-xl text-center relative overflow-hidden">
         {/* 파키의 완주 응원 배너 */}
@@ -322,6 +390,33 @@ function ResultContent() {
           </button>
         </div>
 
+        {/* 대표님 원칙 2단계: 18홀 완주 기념 디지털 뱃지 & 홈구장 명예의 전당 버튼 */}
+        <div className="mt-3.5 pt-3 border-t border-emerald-700/60 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (badgeRecord) setShowBadgeModal(true);
+            }}
+            className="p-2.5 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
+          >
+            <Award className="w-4 h-4 fill-current text-stone-950" />
+            <span className="truncate">
+              {isFull18Completed
+                ? `🎖️ 완주 뱃지 (${badgeRecord?.visitCount || 1}회)`
+                : `📋 실타수 증서 (${totalHolesCount}홀)`}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowHallOfFameModal(true)}
+            className="p-2.5 rounded-2xl bg-emerald-900/90 hover:bg-emerald-800/90 border border-emerald-400/50 text-emerald-100 hover:text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
+          >
+            <Trophy className="w-4 h-4 text-amber-300" />
+            <span className="truncate">🏆 구장 명예의 전당</span>
+          </button>
+        </div>
+
         <div className="mt-3.5 inline-flex items-center gap-2 bg-emerald-700/60 border border-emerald-500/40 px-4 py-2 rounded-2xl">
           <span className="text-xs text-yellow-300 font-bold">🥇 1위 우승:</span>
           <span className="text-lg font-black text-white">{winner.name}</span>
@@ -337,33 +432,18 @@ function ResultContent() {
         </div>
       </div>
 
-      {/* 1.5. [최우선 노출] 오늘의 동반 사진 남기기 & 포토카드 공유 CTA (Senior 56px+) */}
-      <div className="bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-500 p-1 rounded-3xl shadow-lg">
+      {/* 1.5. [최우선 노출] 오늘의 동반 사진 남기기 & 공유 CTA */}
+      <div className="bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-500 p-1 rounded-2xl shadow-md">
         <button
           type="button"
           onClick={() => setShowPhotoCardModal(true)}
-          className="w-full min-h-[56px] bg-stone-950 hover:bg-stone-900 text-white font-black px-4 py-3 rounded-[22px] flex items-center justify-between gap-2 shadow-inner transition active:scale-98 cursor-pointer"
+          className="w-full bg-stone-950 hover:bg-stone-900 text-white font-black px-4 py-3 rounded-[14px] flex items-center justify-center gap-2.5 shadow-inner transition active:scale-[0.99] cursor-pointer"
         >
-          <div className="flex items-center gap-3 text-left">
-            <div className="w-11 h-11 rounded-2xl bg-amber-400 text-stone-950 flex items-center justify-center font-black shrink-0 shadow-md">
-              <Camera className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm sm:text-base font-black text-amber-300">
-                  📸 오늘의 동반 사진 남기기 &amp; 공유
-                </span>
-                <span className="text-[10px] bg-red-600 text-white font-black px-1.5 py-0.2 rounded-full">
-                  인기 1위
-                </span>
-              </div>
-              <p className="text-xs text-stone-300 font-medium mt-0.5">
-                동반자 얼굴과 스코어가 담긴 1초 기념 포토카드 생성
-              </p>
-            </div>
+          <div className="w-8 h-8 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center font-black shrink-0 shadow-xs">
+            <Camera className="w-4.5 h-4.5" />
           </div>
-          <span className="text-xs font-black bg-amber-400 hover:bg-amber-300 text-stone-950 px-3 py-2 rounded-xl shrink-0 shadow-sm">
-            만들기 &gt;
+          <span className="text-sm sm:text-base font-black text-amber-300 tracking-tight">
+            오늘의 동반 사진 남기기 &amp; 공유
           </span>
         </button>
       </div>
@@ -819,6 +899,38 @@ function ResultContent() {
         }}
         title="회원 로그인하고 공식 기록 저장"
         subtitle="카카오 1초 로그인 시 오늘 친 라운딩 전적이 영구 보존됩니다."
+      />
+
+      {/* 대표님 원칙 2단계: 18홀 완주 기념 디지털 뱃지 팝업 & 카톡 자랑하기 */}
+      {badgeRecord && (
+        <DigitalBadgeModal
+          isOpen={showBadgeModal}
+          onClose={() => setShowBadgeModal(false)}
+          badge={badgeRecord}
+          onOpenHallOfFame={() => {
+            setShowBadgeModal(false);
+            setShowHallOfFameModal(true);
+          }}
+          onOpenNationalTourMap={() => {
+            setShowBadgeModal(false);
+            setShowNationalTourModal(true);
+          }}
+        />
+      )}
+
+      {/* 대표님 원칙 2단계: 구장별 실시간 명예의 전당 (최다 완주 TOP 10) */}
+      <CourseHallOfFameModal
+        isOpen={showHallOfFameModal}
+        onClose={() => setShowHallOfFameModal(false)}
+        courseId={course.id}
+        courseName={course.name}
+        myVisitCount={badgeRecord?.visitCount || 0}
+      />
+
+      {/* 3단계: 전국 17개 시·도 투어 퍼즐 지도 & 마일스톤 명예 트로피 모달 */}
+      <NationalTourMapModal
+        isOpen={showNationalTourModal}
+        onClose={() => setShowNationalTourModal(false)}
       />
     </div>
   );

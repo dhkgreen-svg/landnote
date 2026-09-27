@@ -12,6 +12,8 @@ import { TipCard } from '@/components/TipCard';
 import { ConditionVoteModal } from '@/components/ConditionVoteModal';
 import { cleanPlayerName, sortPlayersByLeaderAndAlphabetical, getDefaultSelfName, syncRoundSelfNameToUserProfile } from '@/lib/playerUtils';
 import { HoleScoreBadge, ScoreBadgeLegend } from '@/components/HoleScoreBadge';
+import { FloatingCameraFAB } from '@/components/FloatingCameraFAB';
+import { BadgeStorage } from '@/lib/badgeStorage';
 
 export default function RoundPlayPage() {
   const params = useParams();
@@ -61,8 +63,8 @@ export default function RoundPlayPage() {
   // 🏌️ [5대 마스터 아키텍처 1] 2단계 경기 동선: 'TEE_SHOT' (1단계 코스안내 전광판) | 'SCORING' (2단계 스코어 기입창)
   const [holeStep, setHoleStep] = useState<'TEE_SHOT' | 'SCORING'>('TEE_SHOT');
 
-  // 🏌️ [5대 마스터 아키텍처 2] 카운트 방식 토글: 'ZERO_BASE' (0베이스) | 'PAR_BASE' (Par기준) - localStorage 영구 연동
-  const [countingMode, setCountingMode] = useState<'ZERO_BASE' | 'PAR_BASE'>('ZERO_BASE');
+  // 🏌️ [5대 마스터 아키텍처 2] 카운트 방식 토글: 기본값 'PAR_BASE' (Par기준 우선) | 'ZERO_BASE' (0베이스)
+  const [countingMode, setCountingMode] = useState<'ZERO_BASE' | 'PAR_BASE'>('PAR_BASE');
 
   // 🏌️ [5대 마스터 아키텍처 3] 선수별 현재 홀 휴식 상태 (결번 처리)
   const [restingPlayerIds, setRestingPlayerIds] = useState<string[]>([]);
@@ -210,9 +212,11 @@ export default function RoundPlayPage() {
 
     // 카운트 방식(0베이스 vs Par기준) 영구 상태 복원
     if (typeof window !== 'undefined') {
-      const savedMode = localStorage.getItem('parkon_counting_mode');
-      if (savedMode === 'ZERO_BASE' || savedMode === 'PAR_BASE') {
-        setCountingMode(savedMode);
+      if (sanitizedSession.countingMode === 'ZERO_BASE') {
+        setCountingMode('ZERO_BASE');
+      } else {
+        setCountingMode('PAR_BASE');
+        localStorage.setItem('parkon_counting_mode', 'PAR_BASE');
       }
       // 주최자로부터 심판으로 지정받아 입장한 링크인지 확인 (?referee=true or ?role=referee)
       const searchParams = new URLSearchParams(window.location.search);
@@ -995,18 +999,21 @@ export default function RoundPlayPage() {
       localStorage.setItem('parkon_counting_mode', mode);
     }
     // 미확정 홀일 경우, 모드 전환 시 이전 모드의 기본값(0 또는 Par)으로 남아있던 점수를 새 모드의 기본값으로 즉각 연동
-    if (session && (!session.confirmedHoles || !session.confirmedHoles.includes(actualHoleNumber))) {
+    if (session) {
+      const isConfirmed = session.confirmedHoles && session.confirmedHoles.includes(actualHoleNumber);
       const prevDefault = mode === 'ZERO_BASE' ? currentPar : 0;
-      const updatedPlayers = session.players.map((p) => {
-        const curScore = p.scores[actualHoleNumber];
-        if (curScore === undefined || curScore === prevDefault) {
-          const newScores = { ...p.scores };
-          delete newScores[actualHoleNumber];
-          return { ...p, scores: newScores };
-        }
-        return p;
-      });
-      updateSession({ ...session, players: updatedPlayers });
+      const updatedPlayers = isConfirmed
+        ? session.players
+        : session.players.map((p) => {
+            const curScore = p.scores[actualHoleNumber];
+            if (curScore === undefined || curScore === prevDefault) {
+              const newScores = { ...p.scores };
+              delete newScores[actualHoleNumber];
+              return { ...p, scores: newScores };
+            }
+            return p;
+          });
+      updateSession({ ...session, countingMode: mode, players: updatedPlayers });
     }
   };
 
@@ -1166,6 +1173,10 @@ export default function RoundPlayPage() {
     const validatedPar = Math.max(3, Math.min(5, Number(parVal) || 3));
     const targetHoleNum = Number(baseHoleNumber);
 
+    // 대표님 원칙 2단계: 100회 이상 '명예 터줏대감 👑' 유저는 2-Strike 검증 면제! 1회 즉시 공식 DB 반영
+    const isHonoraryMaster = BadgeStorage.hasInstantSpecAccess(course.id);
+    const shouldForce = forceConsensus || isHonoraryMaster;
+
     // 1. Persist in Big Data crowdsourced storage with 10-person consensus & initial registrant logic
     const crowdResult = ParkOnStorage.saveCrowdsourcedHoleSpec(
       course.id,
@@ -1173,8 +1184,12 @@ export default function RoundPlayPage() {
       targetHoleNum,
       validatedPar,
       validatedDist,
-      forceConsensus
+      shouldForce
     );
+
+    if (isHonoraryMaster) {
+      crowdResult.message = '👑 명예 터줏대감(100회 완주) 특권! 2-Strike 검증 없이 즉시 공식 DB에 반영되었습니다.';
+    }
 
     // 2. Update hole metadata in current course (replace or add)
     let found = false;
@@ -1246,51 +1261,7 @@ export default function RoundPlayPage() {
   };
 
   return (
-    <div className={`p-3 space-y-2.5 transition-colors ${sunlightMode ? 'bg-stone-950 text-white min-h-screen' : ''}`}>
-      {/* 0. 상단 네비게이션 바: [ 🏠 홈으로 ] + [ ⚖️ 심판 모드 ] + [ ☀️ 햇빛모드 토글 ] */}
-      <div className={`flex items-center justify-between p-2.5 rounded-2xl border transition ${
-        sunlightMode
-          ? 'bg-black text-white border-stone-800 shadow-md'
-          : 'bg-white text-stone-900 border-stone-200 shadow-xs'
-      }`}>
-        <button
-          type="button"
-          onClick={() => setShowExitConfirm(true)}
-          className={`flex items-center gap-1 text-xs font-black px-2.5 py-1.5 rounded-xl border transition active:scale-95 cursor-pointer ${
-            sunlightMode
-              ? 'bg-stone-900 text-amber-300 border-stone-700 hover:bg-stone-800'
-              : 'bg-stone-100 text-stone-700 border-stone-200 hover:bg-stone-200'
-          }`}
-          title="안전하게 저장하고 홈 화면으로 나가기"
-        >
-          <span>🏠 홈으로</span>
-        </button>
-
-        <div className="text-center font-black text-xs truncate max-w-[140px]">
-          <span className={sunlightMode ? 'text-stone-200' : 'text-stone-800'}>{course.name}</span>
-          {isRefereeMode && (
-            <div className="text-[10px] text-purple-400 font-extrabold flex items-center justify-center gap-0.5">
-              <span>⚖️ 심판 전담 모드</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          {/* 햇빛모드 토글 */}
-          <button
-            type="button"
-            onClick={toggleSunlightMode}
-            className={`flex items-center gap-1 text-xs font-black px-2.5 py-1.5 rounded-xl border transition active:scale-95 cursor-pointer ${
-              sunlightMode
-                ? 'bg-yellow-400 text-stone-950 border-yellow-300 shadow-md'
-                : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
-            }`}
-            title="대낮 직사광선 아래 선글라스를 껴도 선명한 야외 고대비 화면"
-          >
-            <span>{sunlightMode ? '☀️ 햇빛 ON' : '☀️ 햇빛'}</span>
-          </button>
-        </div>
-      </div>
+    <div className={`p-3 pb-28 space-y-2.5 transition-colors ${sunlightMode ? 'bg-stone-950 text-white min-h-screen' : ''}`}>
 
       {/* ⚖️ 공식 시합용 홀 전담 심판 모드 알림 배너 */}
       {isRefereeMode && (
@@ -1541,17 +1512,6 @@ export default function RoundPlayPage() {
                 <span className="text-[10px] text-stone-300 font-bold px-1">방식:</span>
                 <button
                   type="button"
-                  onClick={() => selectCountingMode('ZERO_BASE')}
-                  className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
-                    countingMode === 'ZERO_BASE'
-                      ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
-                      : 'text-stone-300 hover:text-white'
-                  }`}
-                >
-                  0베이스
-                </button>
-                <button
-                  type="button"
                   onClick={() => selectCountingMode('PAR_BASE')}
                   className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
                     countingMode === 'PAR_BASE'
@@ -1560,6 +1520,17 @@ export default function RoundPlayPage() {
                   }`}
                 >
                   Par기준
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectCountingMode('ZERO_BASE')}
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
+                    countingMode === 'ZERO_BASE'
+                      ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
+                      : 'text-stone-300 hover:text-white'
+                  }`}
+                >
+                  0베이스
                 </button>
               </div>
             </div>
@@ -1589,6 +1560,13 @@ export default function RoundPlayPage() {
               <span>확인 완료 (티샷 시작)</span>
               <ChevronRight className="w-6 h-6 ml-1" />
             </button>
+
+            {/* 초보자 안심 안내: 티샷 후 점수판 전환 설명 */}
+            <p className={`text-center text-[11px] font-bold ${
+              sunlightMode ? 'text-yellow-300' : 'text-emerald-800 bg-emerald-50/90 py-1.5 px-3 rounded-xl border border-emerald-200'
+            }`}>
+              💡 티샷을 마치신 후 위 버튼을 터치하시면 4인 스코어(타수) 기입창으로 전환됩니다.
+            </p>
 
             {/* 4. 하단 보조 버튼: [ 🔄 다른 홀로 이동 ] [ ☕ 잠시 빠지기 (저장) ] */}
             <div className="grid grid-cols-2 gap-2 pt-1">
@@ -1632,6 +1610,44 @@ export default function RoundPlayPage() {
               <BarChart2 className="w-4 h-4 text-emerald-600" />
               <span>현재 스코어보드판 보기 ({confirmedHoles.length}홀 누적 현황)</span>
             </button>
+
+            {/* [대표님 요청]: 하단 2분할 버튼 [ 🌱 잔디 상태 1초 제보 ] + [ ☀️ 햇빛모드 ] */}
+            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-stone-200/40">
+              <button
+                type="button"
+                onClick={() => {
+                  if (session?.isVirtual) {
+                    alert('가상 상태에서는 작동이 안 됩니다.');
+                    return;
+                  }
+                  setShowConditionModal(true);
+                }}
+                className={`w-full py-2.5 px-2 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer border flex items-center justify-center gap-1.5 shadow-2xs ${
+                  session?.isVirtual
+                    ? 'bg-stone-100 text-stone-500 border-stone-300'
+                    : sunlightMode
+                    ? 'bg-blue-600 hover:bg-blue-500 text-white border-yellow-300 ring-2 ring-blue-400/30'
+                    : 'bg-gradient-to-r from-blue-600 via-sky-600 to-blue-700 hover:from-blue-500 text-white border-blue-400'
+                }`}
+              >
+                <span className="text-sm">🌱</span>
+                <span className="tracking-tight truncate">잔디 상태 제보</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleSunlightMode}
+                className={`w-full py-2.5 px-2 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer border-2 flex items-center justify-center gap-1.5 shadow-2xs ${
+                  sunlightMode
+                    ? 'bg-yellow-400 text-stone-950 border-white ring-2 ring-yellow-400 shadow-yellow-500/50'
+                    : 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300'
+                }`}
+                title="대낮 직사광선 아래 선글라스를 껴도 선명한 야외 고대비 화면"
+              >
+                <span className="text-sm">☀️</span>
+                <span className="tracking-tight truncate">{sunlightMode ? '햇빛모드 ON' : '햇빛모드'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1669,17 +1685,6 @@ export default function RoundPlayPage() {
             <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/20 shrink-0">
               <button
                 type="button"
-                onClick={() => selectCountingMode('ZERO_BASE')}
-                className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
-                  countingMode === 'ZERO_BASE'
-                    ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
-                    : 'text-stone-300 hover:text-white'
-                }`}
-              >
-                0베이스
-              </button>
-              <button
-                type="button"
                 onClick={() => selectCountingMode('PAR_BASE')}
                 className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
                   countingMode === 'PAR_BASE'
@@ -1688,6 +1693,17 @@ export default function RoundPlayPage() {
                 }`}
               >
                 Par기준
+              </button>
+              <button
+                type="button"
+                onClick={() => selectCountingMode('ZERO_BASE')}
+                className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
+                  countingMode === 'ZERO_BASE'
+                    ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
+                    : 'text-stone-300 hover:text-white'
+                }`}
+              >
+                0베이스
               </button>
             </div>
           </div>
@@ -2040,6 +2056,15 @@ export default function RoundPlayPage() {
             })}
           </div>
 
+          {/* 오입력 안심 안내 문구 */}
+          <div className="text-center pt-0.5 pb-0.5">
+            <span className={`text-[11px] font-bold ${
+              sunlightMode ? 'text-zinc-300' : 'text-stone-600 bg-stone-100 py-1 px-3 rounded-lg border border-stone-200 inline-block'
+            }`}>
+              💡 점수를 잘못 누르셨더라도 [확인] 전에는 언제든 [-] [+] 버튼으로 자유롭게 수정하실 수 있습니다.
+            </span>
+          </div>
+
           {/* [대표님 특명 UX 1]: 홀아웃 완료 2개 분리 (좌: [✔️ 확인] vs 우: [다음 홀 이동 ➔]) - 초대형 크기로 시원하게 확대 */}
           <div className="grid grid-cols-2 gap-2 pt-1">
             {/* 좌측: [✔️ 확인] 버튼 (타수 확정 + 드르륵 진동 + 띵똥 차임벨) */}
@@ -2154,8 +2179,8 @@ export default function RoundPlayPage() {
             </button>
           </div>
 
-          {/* [대표님 특명 UX 3]: 맨 밑 '현재 잔디 상태 1초 제보하기' (눈에 띄는 선명한 파란색 버튼) */}
-          <div className="pt-1.5 border-t border-stone-200/60">
+          {/* [대표님 요청]: 하단 2분할 버튼 [ 🌱 잔디 상태 1초 제보 ] + [ ☀️ 햇빛모드 ] */}
+          <div className="pt-1.5 border-t border-stone-200/60 grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => {
@@ -2165,7 +2190,7 @@ export default function RoundPlayPage() {
                 }
                 setShowConditionModal(true);
               }}
-              className={`w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-black transition active:scale-95 cursor-pointer border flex items-center justify-center gap-2 shadow-sm ${
+              className={`w-full py-3 px-2 rounded-xl text-xs sm:text-sm font-black transition active:scale-95 cursor-pointer border flex items-center justify-center gap-1.5 shadow-sm ${
                 session?.isVirtual
                   ? 'bg-stone-100 text-stone-500 border-stone-300'
                   : sunlightMode
@@ -2174,7 +2199,21 @@ export default function RoundPlayPage() {
               }`}
             >
               <span className="text-base">🌱</span>
-              <span className="tracking-wide">현재 잔디 상태 1초 제보하기</span>
+              <span className="tracking-tight truncate">잔디 상태 1초 제보</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleSunlightMode}
+              className={`w-full py-3 px-2 rounded-xl text-xs sm:text-sm font-black transition active:scale-95 cursor-pointer border-2 flex items-center justify-center gap-1.5 shadow-sm ${
+                sunlightMode
+                  ? 'bg-yellow-400 text-stone-950 border-white ring-2 ring-yellow-400 shadow-yellow-500/50'
+                  : 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300'
+              }`}
+              title="대낮 직사광선 아래 선글라스를 껴도 선명한 야외 고대비 화면"
+            >
+              <span className="text-base">☀️</span>
+              <span className="tracking-tight truncate">{sunlightMode ? '햇빛모드 ON' : '햇빛모드'}</span>
             </button>
           </div>
         </div>
@@ -3849,6 +3888,13 @@ export default function RoundPlayPage() {
           </div>
         </div>
       )}
+
+      {/* 대표님 원칙 1단계: 라운드 중 상시 플로팅 카메라 (FAB) & 실시간 필드 워터마크 인증샷 */}
+      <FloatingCameraFAB
+        session={session}
+        currentHoleNumber={actualHoleNumber}
+        currentCourseName={course?.name}
+      />
     </div>
   );
 }

@@ -16,12 +16,17 @@ import { KakaoLoginModal } from '@/components/KakaoLoginModal';
 import { WelcomeModal } from '@/components/WelcomeModal';
 import { RulesWebtoonModal } from '@/components/RulesWebtoonModal';
 import { CompanionFeedWidget } from '@/components/CompanionFeedWidget';
+import { AutoLocationBanner } from '@/components/AutoLocationBanner';
+import { NationalTourMapModal } from '@/components/NationalTourMapModal';
+import { QuickGuideModal } from '@/components/QuickGuideModal';
+import { BadgeStorage } from '@/lib/badgeStorage';
 import { KakaoAuthUser } from '@/lib/storage';
 
 export default function HomePage() {
   const router = useRouter();
   const [courses, setCourses] = useState<Course[]>(() => ParkOnStorage.getAllCourses());
   const [homeCourse, setHomeCourse] = useState<Course | null>(null);
+  const [showNationalTourModal, setShowNationalTourModal] = useState<boolean>(false);
   const [favoriteHomeCourseIds, setFavoriteHomeCourseIds] = useState<string[]>([]);
   const [showHomeModal, setShowHomeModal] = useState<boolean>(false);
   const [homeModalSearch, setHomeModalSearch] = useState<string>('');
@@ -46,6 +51,7 @@ export default function HomePage() {
   const [showInstallGuideModal, setShowInstallGuideModal] = useState<boolean>(false);
   const [showCourseTodayModal, setShowCourseTodayModal] = useState<boolean>(false);
   const [selectedCourseForDetail, setSelectedCourseForDetail] = useState<Course | null>(null);
+  const [showQuickGuideModal, setShowQuickGuideModal] = useState<boolean>(false);
 
   useEffect(() => {
     const loadData = () => {
@@ -76,8 +82,11 @@ export default function HomePage() {
       }
 
       setCompletedRounds(ParkOnStorage.getCompletedRounds());
-      setUserProfile(ParkOnStorage.getUserProfile());
-      setKakaoUser(ParkOnStorage.getKakaoUser());
+      const kUser = ParkOnStorage.getKakaoUser();
+      setKakaoUser(kUser);
+      if (kUser?.id) {
+        BadgeStorage.syncToCloud(kUser.id, kUser.nickname);
+      }
 
       // 클럽 앤 번개 대회 실제 상태 연동 및 신규 공지/번개 알림 체크
       const clubRooms = ClubStorage.getAllRooms();
@@ -707,6 +716,15 @@ export default function HomePage() {
       {/* 0. PWA 스마트폰 1초 앱 설치 배너 & 가이드 */}
       <InstallPrompt />
 
+      {/* 0-1. 대표님 지침: 현장 100m 정밀 GPS 2버튼 웰컴 배너 (바로 라운드 시작 vs 홈으로 돌아가기) */}
+      <AutoLocationBanner
+        courses={courses}
+        onStartGame={(courseId) => {
+          router.push(`/round/new?courseId=${courseId}`);
+        }}
+      />
+
+
       {/* 1. In-Progress Round Banner (이어하기 - 높이 50% 슬림화) */}
       {activeRound && (
         <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-stone-950 py-2.5 px-3.5 rounded-xl shadow-md flex items-center justify-between border border-amber-300">
@@ -775,23 +793,21 @@ export default function HomePage() {
             <ChevronDown className="w-4 h-4 text-stone-400 shrink-0" />
           </div>
 
-          {/* 대표님 제안: 2분할 버튼 [가상 라운딩 하기 (체험)] vs [라운딩 바로 시작하기 (실전)] */}
+          {/* 대표님 제안: 2분할 버튼 [초간단 설명서 (1초 튜토리얼)] vs [라운딩 바로 시작하기 (실전)] */}
           <div className="pt-1">
             <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-              {/* 왼쪽: 가상 라운딩 하기 (체험/연습 모드 - 시간 무제한 · 기록 안 남음) */}
+              {/* 왼쪽: 💡 1초 초간단 설명서 & 튜토리얼 팝업 */}
               <button
                 type="button"
-                onClick={() => {
-                  router.push(`/round/new?courseId=${homeCourse?.id || ''}&mode=trial`);
-                }}
+                onClick={() => setShowQuickGuideModal(true)}
                 className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-stone-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition active:scale-[0.97] cursor-pointer border-2 border-amber-300 group"
               >
-                <div className="flex items-center gap-1 text-sm sm:text-base font-black leading-tight">
-                  <span className="text-base sm:text-lg">🎯</span>
-                  <span className="truncate">프로그램 체험 연습</span>
+                <div className="flex items-center gap-1.5 text-sm sm:text-base font-black leading-tight">
+                  <span className="text-base sm:text-lg">💡</span>
+                  <span className="truncate">초간단 설명서</span>
                 </div>
                 <span className="text-[10px] sm:text-[10.5px] font-extrabold text-stone-900 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-                  가상 기록 해보기 (기록 안 남음)
+                  1초 만에 배우는 파크온 튜토리얼
                 </span>
               </button>
 
@@ -805,7 +821,7 @@ export default function HomePage() {
                   <span className="truncate">라운딩 바로 시작하기</span>
                 </div>
                 <span className="text-[10px] sm:text-[10.5px] font-extrabold text-emerald-950 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-                  실전 필드 공식 기록
+                  공식 기록 저장
                 </span>
               </Link>
             </div>
@@ -857,7 +873,7 @@ export default function HomePage() {
 
       {/* 4. Quick Actions (슬림형 컴팩트 탭) */}
       <section className="grid grid-cols-2 gap-2.5">
-        {/* 좌측: 나의 등급 보기 (슬림형) */}
+        {/* 좌측: 나의 파크골프 연대기 (슬림형) */}
         <button
           type="button"
           onClick={() => openStatsModalWithCourse(homeCourse?.id)}
@@ -869,8 +885,8 @@ export default function HomePage() {
               <span className="w-5 h-5 rounded-md bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-2xs">
                 🏆
               </span>
-              <span className="text-xs font-black text-stone-900 group-hover:text-amber-800 transition whitespace-nowrap">
-                나의 등급 보기
+              <span className="text-[11px] sm:text-xs font-black text-stone-900 group-hover:text-amber-800 transition whitespace-nowrap">
+                나의 파크골프 연대기
               </span>
             </div>
           </div>
@@ -890,7 +906,7 @@ export default function HomePage() {
 
           {/* 하단 화살표 링크 */}
           <div className="flex items-center justify-between text-[10px] font-black text-emerald-800 pt-0.5 border-t border-amber-200/60">
-            <span>구장별 1등 & 랭킹</span>
+            <span>랭킹 · 전국도장깨기</span>
             <span className="text-emerald-700 font-black">보기 ▶</span>
           </div>
         </button>
@@ -1008,7 +1024,7 @@ export default function HomePage() {
 
 
 
-      {/* 7. [통합] 나의 등급 & 성적 종합 리포트 모달 (2대 서브 탭 탑재) */}
+      {/* 7. [통합] 나의 파크골프 연대기 & 성적 종합 리포트 모달 (2대 서브 탭 탑재) */}
       {showStatsModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl animate-scaleUp max-h-[90vh] flex flex-col overflow-hidden border border-stone-100">
@@ -1020,7 +1036,7 @@ export default function HomePage() {
                 </span>
                 <div>
                   <h3 className="text-base font-black text-stone-900 leading-tight">
-                    나의 등급 &amp; 성적 종합 리포트
+                    나의 파크골프 연대기
                   </h3>
                   <p className="text-[11px] text-stone-500 font-medium">
                     공인 5스타 등급 · 최근 라운드 성적표 · 100위 랭킹
@@ -1183,6 +1199,44 @@ export default function HomePage() {
                       💡 <strong>활동 지수란?</strong> 타수 실력(스타 등급)과 별개로, 필드를 얼마나 자주 찾고 열심히 라운드를 즐기는지를 반영합니다. (최근 30일 공식 완주: <strong>{userExpStats.roundCount30Days}회</strong>)
                     </p>
                   </div>
+
+                  {/* 2-2. 🗺️ 전국 17개 시·도 투어 퍼즐 지도 & 마일스톤 명예 트로피 (대표님 특명: 나의 등급 보기에 통합) */}
+                  {(() => {
+                    const tourSummary = BadgeStorage.getNationalTourSummary();
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowStatsModal(false);
+                          setShowNationalTourModal(true);
+                        }}
+                        className="w-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-stone-950 p-3 rounded-2xl shadow-sm hover:shadow flex items-center justify-between border-2 border-yellow-200 transition active:scale-98 cursor-pointer select-none"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-stone-950 text-amber-300 flex items-center justify-center text-xl font-black shadow shrink-0">
+                            🗺️
+                          </div>
+                          <div className="text-left min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] bg-stone-950 text-amber-300 font-black px-1.5 py-0.5 rounded leading-none">
+                                전국 도장 깨기
+                              </span>
+                              <span className="text-xs font-black text-stone-950">
+                                전국 17개 시·도 투어 퍼즐
+                              </span>
+                            </div>
+                            <div className="text-[11px] font-extrabold text-stone-900 mt-0.5 truncate">
+                              정복: <strong className="text-rose-800">{tourSummary.unlockedCount} / 17 시·도</strong> ({tourSummary.progressPercent}%) · {tourSummary.currentTitle}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs font-black text-stone-950 bg-white/80 px-2.5 py-1.5 rounded-xl shadow-xs shrink-0 ml-2">
+                          <span>지도 보기</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </div>
+                      </button>
+                    );
+                  })()}
 
                   {/* 3. 🏆 [구장별 1~100위 랭킹 센터: 2줄 탭 버튼 -> 전용 팝업창 호출] */}
                   <div className="space-y-2 pt-1">
@@ -2259,6 +2313,19 @@ export default function HomePage() {
           }}
         />
       )}
+
+      {/* 3단계: 전국 17개 시·도 투어 퍼즐 지도 & 마일스톤 명예 트로피 모달 */}
+      <NationalTourMapModal
+        isOpen={showNationalTourModal}
+        onClose={() => setShowNationalTourModal(false)}
+      />
+
+      {/* 💡 초간단 설명서 & 1초 튜토리얼 팝업 */}
+      <QuickGuideModal
+        isOpen={showQuickGuideModal}
+        onClose={() => setShowQuickGuideModal(false)}
+        homeCourseId={homeCourse?.id}
+      />
     </div>
   );
 }
