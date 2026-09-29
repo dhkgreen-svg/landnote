@@ -286,14 +286,6 @@ function ResultContent() {
     }
   };
 
-  const handleShareToBand = () => {
-    const text = generateKakaoText();
-    const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://www.parkongolf.com';
-    const bandUrl = `https://band.us/plugin/share?body=${encodeURIComponent(text)}&route=${encodeURIComponent(shareUrl)}`;
-    if (typeof window !== 'undefined') {
-      window.open(bandUrl, '_blank');
-    }
-  };
 
   const handleCopyKakao = async () => {
     const text = generateKakaoText();
@@ -826,22 +818,12 @@ function ResultContent() {
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={handleShare}
-                className="w-full bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer"
-              >
-                <span>💬 카카오톡 공유</span>
-              </button>
-
-              <button
-                onClick={handleShareToBand}
-                className="w-full bg-[#00C73C] hover:bg-[#00B336] text-white font-black py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer"
-              >
-                <span className="font-extrabold text-sm">band</span>
-                <span>밴드(Band) 공유</span>
-              </button>
-            </div>
+            <button
+              onClick={handleShare}
+              className="w-full bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black py-3.5 px-3 rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm active:scale-95 transition cursor-pointer"
+            >
+              <span>💬 카카오톡으로 동반자에게 성적표 보내기</span>
+            </button>
 
             <button
               onClick={handleCopyKakao}

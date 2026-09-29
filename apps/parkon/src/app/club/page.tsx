@@ -1182,17 +1182,6 @@ ${shareUrl}`;
     );
   };
 
-  const handleSharePreviewRoomBand = async () => {
-    if (!previewRoom) return;
-    const text = ClubStorage.generateGroupFormationKakaoShareText(previewRoom, isJapanese);
-    await copyTextToClipboard(text);
-    if (typeof window !== 'undefined') {
-      const shareUrl = window.location.href;
-      const bandUrl = `https://band.us/plugin/share?body=${encodeURIComponent(text)}&route=${encodeURIComponent(shareUrl)}`;
-      window.open(bandUrl, '_blank');
-    }
-    showToast('📋 전체 조 편성 공지문이 복사되었습니다! 밴드로 이동합니다.');
-  };
 
   // 조 편성 확정 및 실시간 전광판 룸 시작
   const handleConfirmAndStartRound = () => {
@@ -8935,23 +8924,14 @@ ${shareUrl}`;
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={handleSharePreviewRoomKakao}
-                  className="w-full min-h-[46px] bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] border border-[#E6CF00] font-black text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-98"
+                  className="w-full min-h-[46px] bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] border border-[#E6CF00] font-black text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-98"
                 >
                   <Share2 className="w-4 h-4 text-[#191919]" />
-                  <span>💬 카톡 공지 복사</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSharePreviewRoomBand}
-                  className="w-full min-h-[46px] bg-[#00C73C] hover:bg-[#00B336] text-white font-black text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-98"
-                >
-                  <span className="font-extrabold text-sm">band</span>
-                  <span>밴드(Band) 공유</span>
+                  <span>📋 전체 조 편성 카톡 공지 복사</span>
                 </button>
               </div>
             )}
