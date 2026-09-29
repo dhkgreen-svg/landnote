@@ -35,6 +35,14 @@ export function Header() {
     pathname !== '/round/result'
   );
 
+  // 등록된 사용자 이름 산출
+  const userProfile = typeof window !== 'undefined' ? ParkOnStorage.getUserProfile() : null;
+  const currentDisplayName = kakaoUser
+    ? (kakaoUser.preferredDisplay === 'ALIAS' ? kakaoUser.aliasName || kakaoUser.realName : kakaoUser.realName || kakaoUser.nickname)
+    : (userProfile?.userName && userProfile.userName !== '플레이어' && userProfile.userName !== '조장(본인)' ? userProfile.userName : '');
+
+  const hasRegisteredName = Boolean(currentDisplayName && currentDisplayName.trim());
+
   useEffect(() => {
     const checkUser = () => {
       setKakaoUser(ParkOnStorage.getKakaoUser());
@@ -105,7 +113,7 @@ export function Header() {
   return (
     <>
       <header className="sticky top-0 z-40 bg-emerald-700 text-white shadow-md">
-        <div className="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
+        <div className="max-w-md mx-auto px-2.5 sm:px-4 h-14 flex items-center justify-between gap-1">
           <Link
             href="/"
             onClick={(e) => handleNavClick(e, '/', 'HOME')}
@@ -116,7 +124,7 @@ export function Header() {
             <div className="relative shrink-0">
               <img
                 src="/parky.jpg"
-                alt="파크온 마스코트 파키"
+                alt="파크골프 올인원 마스코트 파키"
                 className="w-9 h-9 rounded-full shadow-md border-2 border-amber-300 object-cover"
               />
               <span className="absolute -bottom-1 -right-1 bg-amber-400 text-emerald-950 rounded-full px-1 text-[8px] font-black shadow-xs">
@@ -146,6 +154,26 @@ export function Header() {
           </Link>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* ✍️ 이름 입력 / 회원 프로필 버튼 */}
+            <button
+              type="button"
+              onClick={() => setShowKakaoModal(true)}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black shadow-xs transition active:scale-95 cursor-pointer shrink-0 border ${
+                hasRegisteredName
+                  ? 'bg-emerald-800/90 hover:bg-emerald-900 text-amber-300 border-amber-300/60'
+                  : 'bg-amber-400 hover:bg-amber-300 text-stone-950 border-amber-500 shadow-sm animate-pulse'
+              }`}
+              title={hasRegisteredName ? '내 이름/별명 수정 및 카카오 연동' : '내 이름 입력 및 카카오톡 간편 연동'}
+            >
+              <span className="text-[11px] leading-none">{hasRegisteredName ? '👤' : '✍️'}</span>
+              <span className="truncate max-w-[65px] sm:max-w-[90px] leading-none">
+                {hasRegisteredName
+                  ? (isJapanese ? `${currentDisplayName} 様` : `${currentDisplayName} 님`)
+                  : (isJapanese ? 'お名前入力' : '이름 입력')}
+              </span>
+              {hasRegisteredName && <span className="text-[9px] opacity-75 leading-none">✏️</span>}
+            </button>
+
             {/* 0. 나의 파크골프 연대기 & 1촌 */}
             <Link
               href="/chronicle"
