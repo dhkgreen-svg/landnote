@@ -197,7 +197,7 @@ export function CompanionQRModal({ isOpen, onClose, onCompanionAdded }: Companio
 
           <div className="pt-1 flex items-center justify-center gap-1.5 text-[11px] text-stone-400 font-medium">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>파크온 1촌 네트워크는 안전하게 영구 보존됩니다.</span>
+            <span>파크골프 올인원 1촌 네트워크는 안전하게 영구 보존됩니다.</span>
           </div>
         </div>
       </div>

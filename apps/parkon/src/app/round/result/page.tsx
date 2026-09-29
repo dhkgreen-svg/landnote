@@ -912,7 +912,7 @@ function ResultContent() {
         <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 text-stone-950 p-4 sm:p-5 rounded-2xl shadow-xl border-2 border-amber-300 space-y-3 text-center">
           <div className="inline-flex items-center gap-1.5 bg-stone-950 text-amber-300 px-3 py-1 rounded-full text-xs font-black shadow-xs">
             <Sparkles className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
-            <span>{isJapanese ? '👑 ParkOn 公式戦績登録' : '👑 파크온 공식 전적 등록'}</span>
+            <span>{isJapanese ? '👑 パークゴルフ オールインワン 公式戦績登録' : '👑 파크골프 올인원 공식 전적 등록'}</span>
           </div>
           <div>
             <h3 className="text-lg sm:text-xl font-black text-stone-950 leading-tight">

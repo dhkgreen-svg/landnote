@@ -40,7 +40,7 @@ export function AdSenseSlot({
         <div className="flex items-center justify-between text-[10px] text-emerald-800 font-bold mb-1">
           <span className="flex items-center gap-1">
             <Sparkles className="w-3 h-3 text-emerald-600" />
-            파크온 추천 정보
+            파크골프 올인원 추천 정보
           </span>
           <span className="text-stone-400 font-medium">Sponsored</span>
         </div>
@@ -48,7 +48,7 @@ export function AdSenseSlot({
           🏌️ 전국 380개 공인 파크골프장 탐방 & 시니어 맞춤 용품 가이드
         </div>
         <p className="text-[10px] text-stone-500 mt-0.5 font-medium">
-          파크온은 지속 가능한 무료 서비스를 위해 구글 애드센스 및 공식 파트너 광고를 지원합니다.
+          파크골프 올인원은 지속 가능한 무료 서비스를 위해 구글 애드센스 및 공식 파트너 광고를 지원합니다.
         </p>
       </div>
     );

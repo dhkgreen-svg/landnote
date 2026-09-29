@@ -1197,7 +1197,7 @@ function ChronicleContent() {
           className="w-full min-h-[52px] bg-stone-800 hover:bg-stone-700 text-white font-black rounded-2xl flex items-center justify-center gap-2 text-base shadow active:scale-98 transition"
         >
           <Home className="w-5 h-5" />
-          <span>{isJapanese ? 'ParkOn ホーム画面へ戻る' : '파크온 홈 화면으로 돌아가기'}</span>
+          <span>{isJapanese ? 'パークゴルフ オールインワン ホームへ戻る' : '파크골프 올인원 홈 화면으로 돌아가기'}</span>
         </Link>
       </div>
 

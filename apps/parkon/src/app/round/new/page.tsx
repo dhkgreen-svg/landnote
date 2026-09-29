@@ -185,7 +185,7 @@ function NewRoundForm() {
       totalCourses: coursesCount,
       totalHoles: editHoles,
       holesMetadata: updatedHoles,
-      contributorName: editContributor.trim() || currentCourse.contributorName || '파크온 골퍼',
+      contributorName: editContributor.trim() || currentCourse.contributorName || '파크골프 올인원 골퍼',
       contributedAt: todayStr,
     };
 

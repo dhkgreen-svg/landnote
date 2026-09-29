@@ -104,7 +104,7 @@ export function BusinessCardModal({
   };
 
   const handleCopyCardInfo = (card: UserBusinessCard) => {
-    const text = `[파크온 동호인 명함]\n성함: ${card.name} (${card.title})\n상호: ${card.company}\n업종: ${card.industry}\n지역: ${card.region}\n연락처: ${card.phone}\n소개: ${card.bio}`;
+    const text = `[파크골프 올인원 동호인 명함]\n성함: ${card.name} (${card.title})\n상호: ${card.company}\n업종: ${card.industry}\n지역: ${card.region}\n연락처: ${card.phone}\n소개: ${card.bio}`;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text);
       showToast('명함 정보가 클립보드에 복사되었습니다!');
@@ -132,7 +132,7 @@ export function BusinessCardModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-base text-white">파크온 디지털 명함첩</h3>
+                <h3 className="font-extrabold text-base text-white">파크골프 올인원 디지털 명함첩</h3>
                 <span className="text-[10px] bg-amber-400/90 text-stone-950 font-black px-2 py-0.5 rounded-full shadow-xs">
                   비즈니스 네트워킹
                 </span>

@@ -476,7 +476,7 @@ export default function CoursesPage() {
       totalHoles: newHoles,
       holesMetadata: generateStandardHoles(newHoles),
       isVerified: false,
-      contributorName: newContributor.trim() || '파크온 골퍼',
+      contributorName: newContributor.trim() || '파크골프 올인원 골퍼',
       contributedAt: new Date().toISOString().split('T')[0],
       createdAt: new Date().toISOString(),
     };
@@ -2381,7 +2381,7 @@ export default function CoursesPage() {
                       <span className="text-[10px] bg-amber-500 text-stone-950 font-extrabold px-1.5 py-0.2 rounded">검색 1위 노출</span>
                     </div>
                     <p className="text-[11px] text-amber-900 font-medium">
-                      골프용품·피팅샵 사장님! 파크온 상단 1위 파워링크로 지역 단골을 모으세요. (입찰/등록 문의)
+                      골프용품·피팅샵 사장님! 파크골프 올인원 상단 1위 파워링크로 지역 단골을 모으세요. (입찰/등록 문의)
                     </p>
                   </div>
                 </div>
@@ -2561,7 +2561,7 @@ export default function CoursesPage() {
                   <span>[법적 면책 공시] 회원 간 100% 현장 직거래 안내</span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-rose-800 break-keep">
-                  파크온은 통신판매중개 정보 제공자로서 거래 당사자가 아닙니다. 물품의 상태, 결제, 사기 피해 등 일체의 거래 사고에 대해 법적 책임을 지지 않습니다. <strong>선입금이나 택배 거래를 절대 피하시고, 운동장 현장에서 물건을 직접 확인 후 거래하세요!</strong>
+                  파크골프 올인원은 통신판매중개 정보 제공자로서 거래 당사자가 아닙니다. 물품의 상태, 결제, 사기 피해 등 일체의 거래 사고에 대해 법적 책임을 지지 않습니다. <strong>선입금이나 택배 거래를 절대 피하시고, 운동장 현장에서 물건을 직접 확인 후 거래하세요!</strong>
                 </p>
               </div>
 

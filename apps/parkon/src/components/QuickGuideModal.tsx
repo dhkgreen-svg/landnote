@@ -35,7 +35,7 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
             <div>
               <div className="flex items-center gap-1.5">
                 <h3 className="font-black text-base text-white tracking-tight">
-                  {isJapanese ? 'パークオン 1秒超簡単ガイド' : '파크온 1초 초간단 설명서'}
+                  {isJapanese ? 'パークゴルフ オールインワン 1秒超簡単ガイド' : '파크골프 올인원 1초 초간단 설명서'}
                 </h3>
                 <span className="bg-amber-400/90 text-stone-950 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
                   {isJapanese ? '必読ガイド' : '필독 가이드'}
@@ -300,7 +300,7 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
                 <span className="text-xl">⭐</span>
                 <div>
                   <h4 className="font-extrabold text-sm text-emerald-300">
-                    {isJapanese ? '知っておくと100倍便利なパークオン活用術' : '알아두면 100배 편한 파크온 꿀팁'}
+                    {isJapanese ? '知っておくと100倍便利なパークゴルフ オールインワン活用術' : '알아두면 100배 편한 파크골프 올인원 꿀팁'}
                   </h4>
                   <p className="text-xs text-stone-300 mt-0.5">
                     {isJapanese ? 'コース上で突発的な状況が起きてもご安心ください！' : '필드 현장에서 돌발 상황이 생겨도 당황하지 마세요!'}

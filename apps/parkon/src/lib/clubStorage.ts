@@ -29,7 +29,7 @@ const STORAGE_KEYS = {
 };
 
 
-// 기본 등록 동호회 데이터 (파크온 공식 가입 클럽 최우선 및 지역별 동호회 데이터)
+// 기본 등록 동호회 데이터 (파크골프 올인원 공식 가입 클럽 최우선 및 지역별 동호회 데이터)
 function generateDefaultSeedClubs(): ParkGolfClub[] {
   return [
     {
@@ -38,7 +38,7 @@ function generateDefaultSeedClubs(): ParkGolfClub[] {
       region: '경북 구미',
       homeCourseId: 'course-gumi-dongrak',
       homeCourseName: '구미 동락 파크골프장',
-      description: '구미 동락구장을 홈으로 활동하는 파크온 공식 제휴 1호 명문 클럽입니다. 매월 정기 월례회 및 친선 대항전 활성화!',
+      description: '구미 동락구장을 홈으로 활동하는 파크골프 올인원 공식 제휴 1호 명문 클럽입니다. 매월 정기 월례회 및 친선 대항전 활성화!',
       presidentName: '박회장',
       managerName: '김총무',
       contactPhone: '010-3814-1422',
@@ -60,7 +60,7 @@ function generateDefaultSeedClubs(): ParkGolfClub[] {
       region: '경북 구미',
       homeCourseId: 'course-gumi-seonsan',
       homeCourseName: '구미 선산 파크골프장',
-      description: '낙동강변 선산구장에서 매주 주말 정기 번개 및 클럽 대항전을 펼치는 파크온 공식 가입 클럽입니다.',
+      description: '낙동강변 선산구장에서 매주 주말 정기 번개 및 클럽 대항전을 펼치는 파크골프 올인원 공식 가입 클럽입니다.',
       presidentName: '이선산',
       managerName: '최총무',
       contactPhone: '010-9876-5432',
@@ -81,7 +81,7 @@ function generateDefaultSeedClubs(): ParkGolfClub[] {
       region: '대구 수성',
       homeCourseId: 'course-daegu-suseong',
       homeCourseName: '대구 수성 파크골프장',
-      description: '대구 수성구를 대표하는 명문 클럽! 파크온 실시간 대회 스코어링 및 신페리오 샷건 대회 공식 운영.',
+      description: '대구 수성구를 대표하는 명문 클럽! 파크골프 올인원 실시간 대회 스코어링 및 신페리오 샷건 대회 공식 운영.',
       presidentName: '정수성',
       managerName: '강총무',
       contactPhone: '010-5555-4444',
@@ -102,7 +102,7 @@ function generateDefaultSeedClubs(): ParkGolfClub[] {
       region: '부산 사상',
       homeCourseId: 'course-busan-samrak',
       homeCourseName: '부산 삼락 파크골프장',
-      description: '부산 삼락 생태공원 36홀 명품 코스에서 활동하는 남부권 최대 파크온 제휴 명문 클럽입니다.',
+      description: '부산 삼락 생태공원 36홀 명품 코스에서 활동하는 남부권 최대 파크골프 올인원 제휴 명문 클럽입니다.',
       presidentName: '오삼락',
       managerName: '윤총무',
       contactPhone: '010-7777-8888',
@@ -153,7 +153,7 @@ function generateDefaultSeedClubs(): ParkGolfClub[] {
       region: '서울 영등포',
       homeCourseId: 'course-seoul-yeouido',
       homeCourseName: '여의도 파크골프장',
-      description: '수도권 한강변 코스를 사랑하는 골퍼들의 파크온 공식 등록 클럽입니다.',
+      description: '수도권 한강변 코스를 사랑하는 골퍼들의 파크골프 올인원 공식 등록 클럽입니다.',
       presidentName: '최한강',
       managerName: '조총무',
       memberCount: 65,
@@ -1944,7 +1944,7 @@ ${link}`;
       pendingMembers: [],
       isPublic: clubData.isPublic !== false,
       badgeColor: clubData.badgeColor || 'emerald',
-      isParkOnClub: true, // 사용자가 파크온에서 직접 창단한 클럽은 공식 파크온 가입 클럽
+      isParkOnClub: true, // 사용자가 파크골프 올인원에서 직접 창단한 클럽은 공식 파크골프 올인원 가입 클럽
       createdAt: new Date().toISOString().slice(0, 10),
     };
 
@@ -2090,14 +2090,14 @@ ${link}`;
         ? `${window.location.origin}/club?join=${club.id}`
         : `https://parkongolf.com/club?join=${club.id}`;
 
-    return `[파크온 클럽 가입 초청장 ⛳]
+    return `[파크골프 올인원 클럽 가입 초청장 ⛳]
 "${club.name}"에서 ${club.managerName || '총무'}님이 귀하를 정회원으로 초대합니다!
 
 📍 홈 구장: ${club.homeCourseName} (${club.region})
 👥 회원 수: ${club.memberCount}명 활동 중
 💬 클럽 소개: ${club.description}
 
-👇 아래 링크를 터치하여 파크온에서 즉시 클럽에 입장하세요!
+👇 아래 링크를 터치하여 파크골프 올인원에서 즉시 클럽에 입장하세요!
 ${shareUrl}`;
   },
 
@@ -2921,7 +2921,7 @@ ${shareUrl}`;
       ? `[${flash.clubName}]`
       : isJapanese
       ? '[ParkOn 招集マッチ]'
-      : '[파크온 번개]';
+      : '[파크골프 올인원 번개]';
     const isMultiOpen = flash.lightningScope === 'MULTI_OPEN' || flash.targetCount >= 999;
     const capacityText = isMultiOpen
       ? (isJapanese ? `4人以上 人数無制限 (現在 ${flash.currentParticipants.length}名参加中!)` : `4인 이상 인원 무제한 (현재 ${flash.currentParticipants.length}명 참여 중!)`)
@@ -2948,7 +2948,7 @@ ${shareUrl}`;
 👥 모집: ${capacityText}
 👤 현재 참가: ${flash.currentParticipants.map((p) => p.name).join(', ')}
 ${flash.notes ? `💬 안내: "${flash.notes}"\n` : ''}
-👇 아래 파크온 링크를 눌러 1초 만에 바로 조인하세요!
+👇 아래 파크골프 올인원 링크를 눌러 1초 만에 바로 조인하세요!
 ${shareUrl}`;
   },
 

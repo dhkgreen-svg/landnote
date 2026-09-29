@@ -65,7 +65,7 @@ export function Footer() {
               ? '本アプリで提供するコース情報、リアルタイム天気、AIルール案内は競技利便性のための参考情報であり、実際の競技判定は各主催者および審判委員会の決定を最優先とします。'
               : isEnglish
               ? 'Course information, live weather, and AI rules are for reference only. Tournament rulings follow official organizers and referees.'
-              : '파크온에서 제공하는 전국 구장 상태, 실시간 날씨, AI 룰 솔로몬의 경기 규칙 안내는 경기 편의를 돕기 위한 참고 정보이며, 실제 대회 현장 판정은 해당 주최측 및 심판위원회의 결정을 최우선으로 따릅니다.'}
+              : '파크골프 올인원에서 제공하는 전국 구장 상태, 실시간 날씨, AI 룰 솔로몬의 경기 규칙 안내는 경기 편의를 돕기 위한 참고 정보이며, 실제 대회 현장 판정은 해당 주최측 및 심판위원회의 결정을 최우선으로 따릅니다.'}
           </p>
           <p>
             • <strong>{isJapanese ? '広告・提携案内:' : isEnglish ? 'Advertisements:' : '광고 및 제휴 안내:'}</strong>{' '}
@@ -73,14 +73,14 @@ export function Footer() {
               ? '持続可能な無料サービス提供のため広告を掲載する場合があり、Cookieを活用した最適な環境を提供します。'
               : isEnglish
               ? 'To provide free services, we may display ads and utilize cookies for optimization.'
-              : '파크온은 지속 가능한 무료 서비스 제공을 위해 Google AdSense 및 제휴 광고를 게재할 수 있으며, 쿠키를 활용한 맞춤형 서비스 환경을 제공합니다.'}
+              : '파크골프 올인원은 지속 가능한 무료 서비스 제공을 위해 Google AdSense 및 제휴 광고를 게재할 수 있으며, 쿠키를 활용한 맞춤형 서비스 환경을 제공합니다.'}
           </p>
         </div>
 
         {/* 저작권 및 운영 안내 */}
         <div className="text-[10px] text-stone-400 pt-2 flex flex-col items-center gap-1.5 border-t border-stone-100">
           <div className="flex items-center gap-2 flex-wrap justify-center">
-            <span>© 2026 ParkOn Team. All rights reserved.</span>
+            <span>© 2026 ParkGolf All-in-One Team. All rights reserved.</span>
             <Link
               href="/admin"
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-stone-200/90 hover:bg-amber-100 text-stone-700 hover:text-amber-950 border border-stone-300 transition text-[11px] font-black shadow-2xs cursor-pointer active:scale-95"

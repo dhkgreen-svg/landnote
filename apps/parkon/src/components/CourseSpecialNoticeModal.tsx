@@ -198,7 +198,7 @@ export function CourseSpecialNoticeModal({
           <div className="bg-amber-50 border border-amber-300 rounded-xl p-2.5 flex items-start gap-2 text-[10.5px] text-amber-900 leading-snug">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
             <span>
-              등록된 제보는 파크온 회원 모두에게 24시간 동안 실시간 전광판으로 노출됩니다. 허위 제보는 삼가해 주세요.
+              등록된 제보는 파크골프 올인원 회원 모두에게 24시간 동안 실시간 전광판으로 노출됩니다. 허위 제보는 삼가해 주세요.
             </span>
           </div>
 

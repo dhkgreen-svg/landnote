@@ -143,7 +143,7 @@ export function InstallPrompt() {
 
   return (
     <>
-      {/* 파크온 공식 스마트 대문 (Brand Hero Gate) */}
+      {/* 파크골프 올인원 공식 스마트 대문 (Brand Hero Gate) */}
       {showBanner && (
         <div className="bg-gradient-to-b from-emerald-900 via-emerald-800 to-emerald-950 text-white p-5 rounded-3xl shadow-xl border-2 border-amber-400/80 mb-4 animate-fadeIn relative overflow-hidden text-center">
           {/* 우측 상단 닫기 버튼 */}
@@ -165,7 +165,7 @@ export function InstallPrompt() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/parky.jpg"
-                alt="파크온 마스코트 파키"
+                alt="파크골프 올인원 마스코트 파키"
                 className="w-18 h-18 rounded-2xl shadow-xl border-2 border-amber-300 bg-emerald-950 object-cover"
               />
               <span className="absolute -bottom-1 -right-1 bg-amber-400 text-emerald-950 rounded-full px-1.5 py-0.2 text-[9px] font-black shadow-xs">
@@ -173,50 +173,50 @@ export function InstallPrompt() {
               </span>
             </div>
 
-            {/* 2. 엠블럼 바로 밑: 파크온 대문 타이틀 (확실하고 스마트하게) */}
-            <div className="flex items-center justify-center gap-2">
-              <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-sm">
-                파크온
-              </h2>
-              <span className="bg-gradient-to-r from-amber-400 to-yellow-300 text-emerald-950 text-xs font-black px-2 py-0.5 rounded-md shadow-xs">
-                ParkOn
-              </span>
-            </div>
-
-            {/* 스마트 부제 */}
-            <p className="text-xs text-emerald-200/90 font-medium mt-1">
-              스마트 1초 스코어링 · 전국 5스타 랭킹 · 룰 솔로몬 AI
-            </p>
-
-            {/* 3대 스마트 특징 뱃지 */}
-            <div className="flex items-center justify-center gap-1.5 mt-3 flex-wrap">
-              <span className="bg-emerald-950/80 border border-emerald-600/60 text-emerald-200 text-[11px] font-bold px-2.5 py-1 rounded-full">
-                ⚡ 1초 스코어
-              </span>
-              <span className="bg-emerald-950/80 border border-amber-400/60 text-amber-300 text-[11px] font-bold px-2.5 py-1 rounded-full">
-                ⭐ 전국 5스타
-              </span>
-              <span className="bg-emerald-950/80 border border-emerald-600/60 text-emerald-200 text-[11px] font-bold px-2.5 py-1 rounded-full">
-                🧠 AI 솔로몬
-              </span>
-            </div>
-
-            {/* 3. 스마트폰 홈 화면 앱 설치/실행 상태 안내 버튼 */}
-            {!isStandalone && !isInstalled ? (
-              <button
-                type="button"
-                onClick={handleInstallClick}
-                className="mt-3.5 w-full max-w-xs py-2.5 px-4 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 hover:brightness-105 active:scale-98 text-stone-950 font-black text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer border border-amber-300"
-              >
-                <Smartphone className="w-4 h-4 text-emerald-950" />
-                <span>스마트폰 홈 화면에 앱 추가</span>
-              </button>
-            ) : (
-              <div className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-amber-300 font-bold bg-emerald-950/70 px-3 py-1 rounded-full border border-amber-400/30">
-                <CheckCircle className="w-3.5 h-3.5 text-amber-400" />
-                <span>파크온 공식 앱 모드 실행 중</span>
+              {/* 2. 엠블럼 바로 밑: 파크골프 올인원 대문 타이틀 (확실하고 스마트하게) */}
+              <div className="flex items-center justify-center gap-2">
+                <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-sm">
+                  파크골프 올인원
+                </h2>
+                <span className="bg-gradient-to-r from-amber-400 to-yellow-300 text-emerald-950 text-xs font-black px-2 py-0.5 rounded-md shadow-xs">
+                  ParkGolf All-in-One
+                </span>
               </div>
-            )}
+
+              {/* 스마트 부제 */}
+              <p className="text-xs text-emerald-200/90 font-medium mt-1">
+                스마트 1초 스코어링 · 전국 5스타 랭킹 · 룰 솔로몬 AI
+              </p>
+
+              {/* 3대 스마트 특징 뱃지 */}
+              <div className="flex items-center justify-center gap-1.5 mt-3 flex-wrap">
+                <span className="bg-emerald-950/80 border border-emerald-600/60 text-emerald-200 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                  ⚡ 1초 스코어
+                </span>
+                <span className="bg-emerald-950/80 border border-amber-400/60 text-amber-300 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                  ⭐ 전국 5스타
+                </span>
+                <span className="bg-emerald-950/80 border border-emerald-600/60 text-emerald-200 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                  🧠 AI 솔로몬
+                </span>
+              </div>
+
+              {/* 3. 스마트폰 홈 화면 앱 설치/실행 상태 안내 버튼 */}
+              {!isStandalone && !isInstalled ? (
+                <button
+                  type="button"
+                  onClick={handleInstallClick}
+                  className="mt-3.5 w-full max-w-xs py-2.5 px-4 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 hover:brightness-105 active:scale-98 text-stone-950 font-black text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer border border-amber-300"
+                >
+                  <Smartphone className="w-4 h-4 text-emerald-950" />
+                  <span>스마트폰 홈 화면에 앱 추가</span>
+                </button>
+              ) : (
+                <div className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-amber-300 font-bold bg-emerald-950/70 px-3 py-1 rounded-full border border-amber-400/30">
+                  <CheckCircle className="w-3.5 h-3.5 text-amber-400" />
+                  <span>파크골프 올인원 공식 앱 모드 실행 중</span>
+                </div>
+              )}
           </div>
         </div>
       )}
@@ -247,7 +247,7 @@ export function InstallPrompt() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/icon.png"
-                  alt="파크온 앱 아이콘"
+                  alt="파크골프 올인원 앱 아이콘"
                   className="w-13 h-13 rounded-2xl shadow-md border-2 border-amber-300 shrink-0 object-cover"
                 />
                 <div className="min-w-0">
@@ -551,9 +551,9 @@ export function InstallPrompt() {
                       💻 PC 크롬/엣지 브라우저에서 설치하는 방법:
                     </div>
                     <p>1. 브라우저 주소창 맨 오른쪽의 <strong>[앱 설치 💻]</strong> 아이콘을 클릭합니다.</p>
-                    <p>2. 또는 브라우저 오른쪽 상단 <strong>더보기 [⋮] ➔ [저장 및 공유] ➔ [파크온 설치]</strong>를 누릅니다.</p>
+                    <p>2. 또는 브라우저 오른쪽 상단 <strong>더보기 [⋮] ➔ [저장 및 공유] ➔ [파크골프 올인원 설치]</strong>를 누릅니다.</p>
                     <p className="text-[11px] text-emerald-800 font-bold">
-                      바탕화면과 작업표시줄에 스마트폰 앱처럼 깔끔한 파크온 독립 프로그램이 생성됩니다!
+                      바탕화면과 작업표시줄에 스마트폰 앱처럼 깔끔한 파크골프 올인원 독립 프로그램이 생성됩니다!
                     </p>
                   </div>
                 )}

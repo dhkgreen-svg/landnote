@@ -82,7 +82,7 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/icon.png"
-              alt="파크온 앱 아이콘"
+              alt="파크골프 올인원 앱 아이콘"
               className="w-12 h-12 rounded-2xl shadow-md border-2 border-amber-300 shrink-0 object-cover"
             />
             <div className="min-w-0">
@@ -385,9 +385,9 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
                     💻 PC 크롬/엣지 브라우저에서 설치하는 방법:
                   </div>
                   <p>1. 브라우저 주소창 맨 오른쪽의 <strong>[앱 설치 💻]</strong> 아이콘을 클릭합니다.</p>
-                  <p>2. 또는 브라우저 오른쪽 상단 <strong>더보기 [⋮] ➔ [저장 및 공유] ➔ [파크온 설치]</strong>를 누릅니다.</p>
+                  <p>2. 또는 브라우저 오른쪽 상단 <strong>더보기 [⋮] ➔ [저장 및 공유] ➔ [파크골프 올인원 설치]</strong>를 누릅니다.</p>
                   <p className="text-[11px] text-emerald-800 font-bold">
-                    바탕화면과 작업표시줄에 스마트폰 앱처럼 깔끔한 파크온 독립 프로그램이 생성됩니다!
+                    바탕화면과 작업표시줄에 스마트폰 앱처럼 깔끔한 파크골프 올인원 독립 프로그램이 생성됩니다!
                   </p>
                 </div>
               )}

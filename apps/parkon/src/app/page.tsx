@@ -2520,7 +2520,7 @@ export default function HomePage() {
         onClose={() => setShowInstallGuideModal(false)}
       />
 
-      {/* 파크온 소개 URL 복사 완료 토스트 */}
+      {/* 파크골프 올인원 소개 URL 복사 완료 토스트 */}
       {showShareToast && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-stone-900/95 text-white px-4 py-2.5 rounded-full text-xs font-bold shadow-xl border border-stone-700/60 flex items-center gap-2 animate-fadeIn whitespace-nowrap pointer-events-none">
           <Check className="w-4 h-4 text-emerald-400 shrink-0" />

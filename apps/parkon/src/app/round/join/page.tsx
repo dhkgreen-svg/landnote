@@ -241,7 +241,7 @@ function RoundJoinContent() {
             <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-500 rounded-2xl p-4 text-center space-y-3 shadow-xs">
               <div className="inline-flex items-center gap-1.5 text-emerald-800 text-[11px] font-black bg-emerald-100 px-3 py-1 rounded-full">
                 <Sparkles className="w-3.5 h-3.5 text-yellow-500 fill-yellow-400" />
-                <span>{isJapanese ? 'ParkOn 正会員認証完了' : '파크온 정회원 인증 완료'}</span>
+                <span>{isJapanese ? 'パークゴルフ オールインワン 正会員認証完了' : '파크골프 올인원 정회원 인증 완료'}</span>
               </div>
               <div>
                 <p className="text-lg font-black text-stone-900">
@@ -403,7 +403,7 @@ function RoundJoinContent() {
             className="w-full py-2.5 px-4 bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold text-xs rounded-xl text-center flex items-center justify-center gap-1.5 transition"
           >
             <Home className="w-3.5 h-3.5" />
-            <span>{isJapanese ? 'ParkOn ホームへ移動' : '파크온 홈으로 이동'}</span>
+            <span>{isJapanese ? 'パークゴルフ オールインワン ホームへ移動' : '파크골프 올인원 홈으로 이동'}</span>
           </Link>
         </div>
 
@@ -412,7 +412,7 @@ function RoundJoinContent() {
           <p className="text-[10px] text-stone-600 font-medium">
             {isJapanese
               ? 'ParkOnはアプリのインストール不要で、スマートフォンのブラウザですぐにご利用いただけます。'
-              : '파크온은 별도 앱 설치 없이 스마트폰 브라우저에서 바로 사용하실 수 있습니다.'}
+              : '파크골프 올인원은 별도 앱 설치 없이 스마트폰 브라우저에서 바로 사용하실 수 있습니다.'}
           </p>
         </div>
       </div>

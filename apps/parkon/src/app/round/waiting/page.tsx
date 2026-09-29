@@ -177,7 +177,7 @@ function WaitingContent() {
           <div className="relative w-36 h-36 rounded-2xl overflow-hidden shadow-md border-2 border-emerald-400/40 bg-emerald-800 mb-3.5">
             <Image
               src="/mascot/사진저장고_사진_20260913_28.jpg"
-              alt={isJapanese ? 'パークオン マスコット歓迎パキ' : '파크온 마스코트 환영 파키'}
+              alt={isJapanese ? 'パークゴルフ オールインワン マスコット歓迎パキ' : '파크골프 올인원 마스코트 환영 파키'}
               fill
               className="object-cover"
               priority

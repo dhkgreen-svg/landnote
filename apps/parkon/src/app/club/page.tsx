@@ -937,7 +937,7 @@ export default function ClubGatheringHomePage() {
       ? `4인 이상 인원 무제한 (현재 ${acceptedCount}명 수락, 2인 이상 출발 가능)`
       : `4인 번개 (현재 ${acceptedCount}/4명 수락, 2인 이상 출발 가능)`;
 
-    const text = `⚡ [파크온 1촌 번개 호출]
+    const text = `⚡ [파크골프 올인원 1촌 번개 호출]
 ⛳ 장소: ${round.courseName}
 📅 일시: ${round.dateStr} ${round.timeStr}
 👥 모집: ${capacityText}
@@ -1708,12 +1708,12 @@ ${shareUrl}`;
         </div>
       )}
 
-      {/* 파크온 3대 소셜 & 대회 통합 관제 센터 타이틀 바 (군더더기 텍스트 완전 제거) */}
+      {/* 파크골프 올인원 3대 소셜 & 대회 통합 관제 센터 타이틀 바 (군더더기 텍스트 완전 제거) */}
       <div className="px-4 py-3 bg-gradient-to-r from-emerald-950 via-purple-950 to-stone-900 border-2 border-emerald-400/40 rounded-2xl shadow-sm text-white flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-lg shrink-0">⛳</span>
           <h1 className="text-xs sm:text-sm font-black text-amber-300 tracking-tight truncate">
-            {isJapanese ? 'ParkOn クラブ・大会・交流統合センター' : '파크온 3대 소셜 & 대회 통합 관제 센터'}
+            {isJapanese ? 'パークゴルフ オールインワン クラブ・大会・交流統合センター' : '파크골프 올인원 3대 소셜 & 대회 통합 관제 센터'}
           </h1>
         </div>
         <button
@@ -2576,8 +2576,8 @@ ${shareUrl}`;
                       filtered.length > 0 ? (
                         <span className="text-purple-900">
                           {isJapanese
-                            ? `✅ '${browseConfirmedSearch || clubBrowseSearch}' 検索結果: 全${filtered.length}クラブ (👑 ParkOn加盟クラブ優先)`
-                            : `✅ '${browseConfirmedSearch || clubBrowseSearch}' 검색 결과: 총 ${filtered.length}개 클럽 (👑 파크온 가입 클럽 1순위)`}
+                            ? `✅ '${browseConfirmedSearch || clubBrowseSearch}' 検索結果: 全${filtered.length}クラブ (👑 パークゴルフ オールインワン加盟クラブ優先)`
+                            : `✅ '${browseConfirmedSearch || clubBrowseSearch}' 검색 결과: 총 ${filtered.length}개 클럽 (👑 파크골프 올인원 가입 클럽 1순위)`}
                         </span>
                       ) : (
                         <span className="text-rose-600">
@@ -2589,8 +2589,8 @@ ${shareUrl}`;
                     ) : (
                       <span className="text-stone-500 font-bold">
                         {isJapanese
-                          ? `全クラブ一覧 (全${clubs.length}ヶ所 · 👑 ParkOn加盟クラブ優先表示)`
-                          : `전체 클럽 목록 (총 ${clubs.length}곳 · 👑 파크온 가입 클럽 최우선 정렬)`}
+                          ? `全クラブ一覧 (全${clubs.length}ヶ所 · 👑 パークゴルフ オールインワン加盟クラブ優先表示)`
+                          : `전체 클럽 목록 (총 ${clubs.length}곳 · 👑 파크골프 올인원 가입 클럽 최우선 정렬)`}
                       </span>
                     )}
                   </div>
@@ -2643,13 +2643,13 @@ ${shareUrl}`;
                               : 'bg-stone-50 hover:bg-stone-100/80 border-stone-200'
                           }`}
                         >
-                          {/* 클럽 구분 배지 (파크온 가입 클럽 최우선 강조 & 단원 모집 상태) */}
+                          {/* 클럽 구분 배지 (파크골프 올인원 가입 클럽 최우선 강조 & 단원 모집 상태) */}
                           <div className="flex items-center justify-between gap-1 flex-wrap">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {isParkOn ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-stone-950 font-black text-[10px] shadow-xs border border-amber-600/40">
                                   <span>👑</span>
-                                  <span>{isJapanese ? 'ParkOn加盟クラブ' : '파크온 가입 클럽'}</span>
+                                  <span>{isJapanese ? 'パークゴルフ オールインワン加盟クラブ' : '파크골프 올인원 가입 클럽'}</span>
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-200 text-stone-600 font-bold text-[10px]">
@@ -3875,7 +3875,7 @@ ${shareUrl}`;
             );
           })
           .sort((a, b) => {
-            // 1순위: 파크온 공식 가입 클럽 최우선 상단 정렬
+            // 1순위: 파크골프 올인원 공식 가입 클럽 최우선 상단 정렬
             const aIsParkOn = a.isParkOnClub !== false ? 1 : 0;
             const bIsParkOn = b.isParkOnClub !== false ? 1 : 0;
             if (aIsParkOn !== bIsParkOn) return bIsParkOn - aIsParkOn;
@@ -3903,7 +3903,7 @@ ${shareUrl}`;
                       <span>{isJapanese ? '全国クラブ検索＆加入申請' : '전국 클럽 찾아보기 및 가입'}</span>
                     </h3>
                     <p className="text-[11px] text-amber-300 font-bold">
-                      {isJapanese ? '地域またはクラブ名を検索してParkOn加入クラブを見つけましょう' : '지역 또는 클럽명을 검색하여 파크온 가입 클럽을 우선 찾아보세요'}
+                      {isJapanese ? '地域またはクラブ名を検索してパークゴルフ オールインワン加入クラブを見つけましょう' : '지역 또는 클럽명을 검색하여 파크골프 올인원 가입 클럽을 우선 찾아보세요'}
                     </p>
                   </div>
                 </div>
@@ -3982,7 +3982,7 @@ ${shareUrl}`;
                     filtered.length > 0 ? (
                       <span className="font-black text-purple-900 flex items-center gap-1">
                         <span>✅</span>
-                        <span>{isJapanese ? `「${browseConfirmedSearch || clubBrowseSearch}」検索結果: 計 ${filtered.length}クラブ (👑 ParkOn加入クラブ最優先)` : `'${browseConfirmedSearch || clubBrowseSearch}' 검색 결과: 총 ${filtered.length}개 클럽 (👑 파크온 가입 클럽 1순위)`}</span>
+                        <span>{isJapanese ? `「${browseConfirmedSearch || clubBrowseSearch}」検索結果: 計 ${filtered.length}クラブ (👑 パークゴルフ オールインワン加入クラブ最優先)` : `'${browseConfirmedSearch || clubBrowseSearch}' 검색 결과: 총 ${filtered.length}개 클럽 (👑 파크골프 올인원 가입 클럽 1순위)`}</span>
                       </span>
                     ) : (
                       <span className="font-black text-rose-600 flex items-center gap-1">
@@ -3992,7 +3992,7 @@ ${shareUrl}`;
                     )
                   ) : (
                     <span className="font-bold text-stone-500">
-                      {isJapanese ? `全国登録クラブ一覧 (計 ${clubs.length}か所 · 👑 ParkOn加入クラブ最優先)` : `전국 등록 클럽 전체보기 (총 ${clubs.length}곳 · 👑 파크온 가입 클럽 최우선 정렬)`}
+                      {isJapanese ? `全国登録クラブ一覧 (計 ${clubs.length}か所 · 👑 パークゴルフ オールインワン加入クラブ最優先)` : `전국 등록 클럽 전체보기 (총 ${clubs.length}곳 · 👑 파크골프 올인원 가입 클럽 최우선 정렬)`}
                     </span>
                   )}
                 </div>
@@ -4038,13 +4038,13 @@ ${shareUrl}`;
                             : 'bg-stone-50 border-stone-200'
                         }`}
                       >
-                        {/* 클럽 구분 배지 (파크온 가입 클럽 최우선 강조 & 단원 모집 상태) */}
+                        {/* 클럽 구분 배지 (파크골프 올인원 가입 클럽 최우선 강조 & 단원 모집 상태) */}
                         <div className="flex items-center justify-between gap-1 flex-wrap">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {isParkOn ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-stone-950 font-black text-[10px] shadow-xs border border-amber-600/40">
                                 <span>👑</span>
-                                <span>{isJapanese ? 'ParkOn加入クラブ' : '파크온 가입 클럽'}</span>
+                                <span>{isJapanese ? 'パークゴルフ オールインワン加入クラブ' : '파크골프 올인원 가입 클럽'}</span>
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-200 text-stone-600 font-bold text-[10px]">
@@ -6448,7 +6448,7 @@ ${shareUrl}`;
                         {isJapanese ? (
                           <>ルーム開設時にParkOn全国ラウンジに<strong>「[挑戦チーム募集] 親善交流戦」</strong>告知が自動登録され、他クラブが[挑戦申請]を押し主催者が承認すると対抗戦が成立します！</>
                         ) : (
-                          <>방 개설 시 파크온 전국 라운지에 <strong>'[도전팀 구함] 친선 교류전'</strong> 공지가 자동 등록되며, 다른 클럽이 [도전 신청]을 누르고 주최자가 승낙하면 대항전이 성립됩니다!</>
+                          <>방 개설 시 파크골프 올인원 전국 라운지에 <strong>'[도전팀 구함] 친선 교류전'</strong> 공지가 자동 등록되며, 다른 클럽이 [도전 신청]을 누르고 주최자가 승낙하면 대항전이 성립됩니다!</>
                         )}
                       </p>
                     </div>
@@ -9202,7 +9202,7 @@ ${shareUrl}`;
                     </>
                   ) : (
                     <>
-                      <li><strong>회원 신청</strong>: 회원들이 카톡 링크를 누르거나 파크온에 접속하면 본인 이름으로 1초 만에 신청되어 대기 명단에 쌓입니다.</li>
+                      <li><strong>회원 신청</strong>: 회원들이 카톡 링크를 누르거나 파크골프 올인원에 접속하면 본인 이름으로 1초 만에 신청되어 대기 명단에 쌓입니다.</li>
                       <li><strong>게스트 추가</strong>: 관리실에서 <code>[➕ 게스트/현장 추가]</code>로 외부 초청자나 현장 방문객을 즉시 명단에 추가할 수 있습니다.</li>
                       <li><strong>조 편성</strong>: 접수 마감 후 관리실에서 <code>[🎲 스마트 조 편성]</code>을 누르면 30명 기준 8개 조(4인 6개 + 3인 2개)로 가장 공정하게 자동 분배됩니다.</li>
                     </>
