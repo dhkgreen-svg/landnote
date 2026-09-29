@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { ArrowLeft, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export const metadata = {
-  title: '서비스 이용약관 | 파크온 (ParkOn)',
-  description: '파크온 서비스 이용약관 및 서비스 이용 안내입니다.',
+  title: '서비스 이용약관 | 파크골프 올인원 (ParkGolf All-in-One)',
+  description: '파크골프 올인원 서비스 이용약관 및 서비스 이용 안내입니다.',
 };
 
 export default function TermsOfServicePage() {
@@ -27,11 +27,11 @@ export default function TermsOfServicePage() {
         <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-6 rounded-3xl shadow-xl space-y-2">
           <div className="inline-flex items-center gap-2 bg-emerald-700/60 px-3 py-1 rounded-full text-xs font-bold text-emerald-200">
             <FileText className="w-4 h-4" />
-            파크온 운영 규정
+            파크골프 올인원 운영 규정
           </div>
           <h1 className="text-2xl font-black tracking-tight">서비스 이용약관</h1>
           <p className="text-xs text-emerald-100/90 leading-relaxed font-medium">
-            파크온(ParkOn) 서비스를 이용해 주셔서 감사합니다. 본 약관은 회원의 권리, 의무 및 책임사항을 규정합니다.
+            파크골프 올인원(ParkGolf All-in-One) 서비스를 이용해 주셔서 감사합니다. 본 약관은 회원의 권리, 의무 및 책임사항을 규정합니다.
           </p>
         </div>
 
@@ -44,7 +44,7 @@ export default function TermsOfServicePage() {
               제 1 조 (목적)
             </h2>
             <p className="text-stone-600">
-              본 약관은 파크온(이하 &ldquo;서비스&rdquo;)이 제공하는 전국 파크골프장 정보 검색, 1초 스코어링, AI 룰 솔로몬, 클럽 대회 및 번개 모임 관리 등의 모든 서비스 이용 조건 및 절차를 규정함을 목적으로 합니다.
+              본 약관은 파크골프 올인원(이하 &ldquo;서비스&rdquo;)이 제공하는 전국 파크골프장 정보 검색, 1초 스코어링, AI 룰 솔로몬, 클럽 대회 및 번개 모임 관리 등의 모든 서비스 이용 조건 및 절차를 규정함을 목적으로 합니다.
             </p>
           </section>
 
@@ -73,7 +73,7 @@ export default function TermsOfServicePage() {
                 <strong>AI 룰 솔로몬의 경기 판정:</strong> AI 룰 솔로몬이 제공하는 경기 규칙 해석 및 벌타 안내는 이용자의 이해를 돕기 위한 참고 정보이며 법적 구속력을 갖지 않습니다. 실제 대회 현장의 판정은 해당 주최측 경기심판위원회의 공식 판정을 최우선으로 합니다.
               </li>
               <li>
-                <strong>구장 정보 및 현장 상황:</strong> 전국 구장의 휴장일, 잔디 보식, 날씨, 이용 요금 등은 현장 사정에 따라 변동될 수 있으며, 파크온은 이에 따른 간접적 손해에 대해 책임을 지지 않습니다.
+                <strong>구장 정보 및 현장 상황:</strong> 전국 구장의 휴장일, 잔디 보식, 날씨, 이용 요금 등은 현장 사정에 따라 변동될 수 있으며, 파크골프 올인원은 이에 따른 간접적 손해에 대해 책임을 지지 않습니다.
               </li>
               <li>
                 <strong>클럽 회원 간 거래 및 모임:</strong> 클럽 내 참가비 입금, 정산, 회원 간의 분쟁은 해당 모임의 주최자 및 회원 간의 자율적 책임 하에 이루어집니다.

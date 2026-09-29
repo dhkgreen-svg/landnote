@@ -1185,27 +1185,41 @@ export const ClubStorage = {
     return list;
   },
 
-  // 11. 카카오톡 공유 링크 및 초대 메시지 생성
-  generateKakaoShareText(room: ClubEventRoom): string {
+  // 11. 카카오톡 / LINE 공유 링크 및 초대 메시지 생성
+  generateKakaoShareText(room: ClubEventRoom, isJapanese?: boolean): string {
     const totalCurrentPlayers = room.groups.reduce((sum, g) => sum + g.players.length, 0);
     const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3008';
     const link = `${origin}/club/${room.id}`;
     const modeInfo = this.getGameModeInfo(room.gameMode);
 
     if (room.tournamentType === 'CLUB_MATCH') {
-      const hostClub = room.clubName || '주최 클럽';
+      const hostClub = room.clubName || (isJapanese ? '主催クラブ' : '주최 클럽');
       const oppClubs =
         room.participatingClubs && room.participatingClubs.length > 0
           ? room.participatingClubs
               .map((c) => c.clubName)
               .filter((n) => n !== hostClub)
-              .join(', ') || '상대 클럽'
-          : '전국 파크골프 클럽';
+              .join(', ') || (isJapanese ? '対戦相手クラブ' : '상대 클럽')
+          : (isJapanese ? '全国パークゴルフクラブ' : '전국 파크골프 클럽');
       const teamCount = room.matchTeamCount || 2;
       const perTeam = room.playersPerTeam || Math.round((room.targetTotalPlayers || 32) / teamCount);
       const isDirect = room.matchInviteType !== 'OPEN_CHALLENGE';
 
-      return `⚔️ [파크온 클럽 대항전 공식 ${isDirect ? '도전장' : '오픈 챌린지'}]
+      if (isJapanese) {
+        return `⚔️ [ParkOn クラブ対抗戦 公式${isDirect ? '挑戦状' : 'オープンチャレンジ'}]
+
+🏆 ${room.title}
+🏛️ 対戦カード: [${hostClub}] ⚔️ VS ⚔️ [${oppClubs}]
+📍 コース: ${room.courseName} (${room.totalHoles}ホール)
+👥 出場枠: ${teamCount}チーム (各チーム ${perTeam}名 / 計 ${room.targetTotalPlayers || 32}名)
+🎯 競技方式: ${room.gameModeTitle || modeInfo.title}
+⛳ 組編成: ライバル直接対決組編成 (計 ${room.groups.length}組)
+
+👇 以下のリンクから対抗戦を受諾し、エントリーを行ってください！
+${link}`;
+      }
+
+      return `⚔️ [파크골프 올인원 클럽 대항전 공식 ${isDirect ? '도전장' : '오픈 챌린지'}]
 
 🏆 ${room.title}
 🏛️ 대결 매치: [${hostClub}] ⚔️ VS ⚔️ [${oppClubs}]
@@ -1220,27 +1234,125 @@ ${link}`;
 
     let feeInfo = '';
     if (typeof room.entryFee === 'number' && room.entryFee > 0) {
-      feeInfo = `\n💵 참가비: ${room.entryFee.toLocaleString()}원`;
+      feeInfo = isJapanese
+        ? `\n💵 参加費: ${room.entryFee.toLocaleString()}ウォン`
+        : `\n💵 참가비: ${room.entryFee.toLocaleString()}원`;
       if (room.bankAccount) {
-        feeInfo += `\n🏦 입금계좌: ${room.bankAccount}`;
+        feeInfo += isJapanese ? `\n🏦 振込口座: ${room.bankAccount}` : `\n🏦 입금계좌: ${room.bankAccount}`;
       }
     } else if (room.entryFee === 0) {
-      feeInfo = `\n💵 참가비: 무료`;
+      feeInfo = isJapanese ? `\n💵 参加費: 無料` : `\n💵 참가비: 무료`;
     }
 
-    let rulesInfo = `\n🎯 경기 방식: ${room.gameModeTitle || modeInfo.title}`;
+    let rulesInfo = isJapanese ? `\n🎯 競技方式: ${room.gameModeTitle || modeInfo.title}` : `\n🎯 경기 방식: ${room.gameModeTitle || modeInfo.title}`;
     if (room.gameRuleNotes) {
-      rulesInfo += `\n📌 대회 룰: ${room.gameRuleNotes}`;
+      rulesInfo += isJapanese ? `\n📌 大会ルール: ${room.gameRuleNotes}` : `\n📌 대회 룰: ${room.gameRuleNotes}`;
     }
 
-    return `⛳ [파크온 (ParkOn) 클럽 모임 초대]\n\n🏆 ${room.title}\n📍 구장: ${room.courseName}\n👥 참가 인원: ${totalCurrentPlayers}명 / ${room.targetTotalPlayers}명 (${room.groups.length}개 조 편성)${feeInfo}${rulesInfo}\n\n아래 링크를 누르면 본인 조 확인 및 실시간 스코어보드로 입장합니다:\n${link}`;
+    if (isJapanese) {
+      return `⛳ [パークゴルフ オールインワン クラブ招集招待]\n\n🏆 ${room.title}\n📍 コース: ${room.courseName}\n👥 参加人数: ${totalCurrentPlayers}名 / ${room.targetTotalPlayers}名 (${room.groups.length}組 編成)${feeInfo}${rulesInfo}\n\n以下のリンクから自分の組を確認し、リアルタイム電光掲示板へご参加ください:\n${link}`;
+    }
+
+    return `⛳ [파크골프 올인원 클럽 모임 초대]\n\n🏆 ${room.title}\n📍 구장: ${room.courseName}\n👥 참가 인원: ${totalCurrentPlayers}명 / ${room.targetTotalPlayers}명 (${room.groups.length}개 조 편성)${feeInfo}${rulesInfo}\n\n아래 링크를 누르면 본인 조 확인 및 실시간 스코어보드로 입장합니다:\n${link}`;
   },
 
   // 12. 대회 최종 결과 텍스트 리포트 생성 (총무 복사용)
-  generateTournamentResultReport(room: ClubEventRoom): string {
+  generateTournamentResultReport(room: ClubEventRoom, isJapanese?: boolean): string {
     const teams = this.getTeamLeaderboard(room);
     const individuals = this.getIndividualLeaderboard(room);
     const modeInfo = this.getGameModeInfo(room.gameMode);
+
+    if (isJapanese) {
+      let report = `🏆 [${room.title} 大会最終結果]\n`;
+      report += `📍 コース: ${room.courseName} (${room.totalHoles}ホール)\n`;
+      const gameModeLabelJa =
+        room.gameModeTitle ||
+        (room.gameMode === 'NEW_PERIO'
+          ? '新ペリオ (ハンディ戦)'
+          : room.gameMode === 'SCRAMBLE'
+          ? 'スクランブル'
+          : room.gameMode === 'STABLEFORD'
+          ? 'ステーブルフォード'
+          : 'カジュアル親善');
+      report += `🎯 競技方式: ${gameModeLabelJa}\n\n`;
+
+      report += `🥇 [チーム対抗戦 団体順位]\n`;
+      const displayTeams = teams.slice(0, 5);
+      displayTeams.forEach((t) => {
+        const medal = t.rank === 1 ? '🥇' : t.rank === 2 ? '🥈' : t.rank === 3 ? '🥉' : '▪️';
+        report += `${medal} ${t.rank}位 ${t.groupName} (組長: ${t.leaderName}) : 平均 ${t.avgStrokes}打\n`;
+      });
+      if (teams.length > 5) {
+        report += `  (※ 他 ${teams.length - 5}組の全順位はParkOn電光掲示板リンクで確認)\n`;
+      }
+
+      const getPlayerTagJa = (playerId: string, defaultName: string, groupNum?: number): string => {
+        let matchedPhone: string | undefined;
+        for (const g of room.groups) {
+          const found = g.players.find((p) => p.name === defaultName || p.id === playerId);
+          if (found?.phone) {
+            matchedPhone = found.phone;
+            break;
+          }
+        }
+        if (!matchedPhone && room.clubId) {
+          const club = this.getClubById(room.clubId);
+          const member = club?.members.find((m) => m.name === defaultName || m.id === playerId);
+          if (member?.phone) {
+            matchedPhone = member.phone;
+          }
+        }
+        const clubPart = room.clubName ? `${room.clubName}` : '';
+        const phoneDigits = matchedPhone ? matchedPhone.replace(/[^0-9]/g, '') : '';
+        const phonePart = phoneDigits.length >= 4 ? `末尾 ${phoneDigits.slice(-4)}` : '';
+        const parts = [clubPart, phonePart || (groupNum ? `${groupNum}組` : '')].filter(Boolean);
+        return parts.length > 0 ? ` (${parts.join(' / ')})` : (groupNum ? ` (${groupNum}組)` : '');
+      };
+
+      if (room.gameMode === 'NEW_PERIO') {
+        report += `\n🎯 [新ペリオ個人戦 最終順位 (ハンディキャップ適用)]\n`;
+        individuals.slice(0, 5).forEach((p) => {
+          const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '▪️';
+          report += `${medal} ${p.rank}位 ${p.playerName}${getPlayerTagJa(p.playerId, p.playerName, p.groupNumber)} : ネット ${p.netScore}打 (実打数 ${p.totalStrokes}打, HDCP ${p.handicap})\n`;
+        });
+
+        const sortedByGross = [...individuals].sort((a, b) => a.totalStrokes - b.totalStrokes);
+        const medalist = sortedByGross[0];
+        if (medalist) {
+          report += `\n🏅 [メダリスト (グロス最少打)] : ${medalist.playerName}${getPlayerTagJa(medalist.playerId, medalist.playerName, medalist.groupNumber)} - 計 ${medalist.totalStrokes}打\n`;
+        }
+      } else {
+        report += `\n🎖️ [個人戦 TOP 5]\n`;
+        individuals.slice(0, 5).forEach((p) => {
+          const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '▪️';
+          const diffStr = p.parDiff <= 0 ? `${p.parDiff}` : `+${p.parDiff}`;
+          report += `${medal} ${p.rank}位 ${p.playerName}${getPlayerTagJa(p.playerId, p.playerName, p.groupNumber)} : ${p.totalStrokes}打 (${diffStr})\n`;
+        });
+      }
+
+      const specialAwards = this.calculateSpecialAwards(room);
+      if (specialAwards.length > 0) {
+        report += `\n🎖️ [特別賞 受賞者]\n`;
+        specialAwards.forEach((sa) => {
+          report += `${sa.badge} ${sa.title}: ${sa.winnerName} (${sa.groupNumber ? `${sa.groupNumber}組, ` : ''}${sa.valueInfo || ''})\n`;
+        });
+      }
+
+      if (room.awardConfig?.luckyDrawWinners && room.awardConfig.luckyDrawWinners.length > 0) {
+        report += `\n🎰 [ラッキードロー 当選者]\n`;
+        room.awardConfig.luckyDrawWinners.forEach((lw, idx) => {
+          report += `🎁 当選 ${idx + 1}号: ${lw.name} (${lw.groupNumber ? `${lw.groupNumber}組, ` : ''}${lw.prizeName})\n`;
+        });
+      }
+
+      report += `\n══════════════════════════════\n`;
+      report += `📋 [🏆 表彰式および賞金・賞品受領案内]\n`;
+      report += `• 賞金およびトロフィー・賞品は本人確認のうえ現地受領または指定口座へ送金されます。\n`;
+      report += `• お問い合わせ: 幹事 (${room.hostName || 'クラブ事務局'})\n`;
+      report += `══════════════════════════════\n`;
+      report += `⛳ パークゴルフ オールインワン 公式大会管制センター リアルタイム集計\n`;
+      return report;
+    }
 
     let report = `🏆 [${room.title} 대회 최종 결과]\n`;
     report += `📍 구장: ${room.courseName} (${room.totalHoles}홀)\n`;
@@ -1253,7 +1365,7 @@ ${link}`;
       report += `${medal} ${t.rank}위 ${t.groupName} (조장: ${t.leaderName}) : 평균 ${t.avgStrokes}타\n`;
     });
     if (teams.length > 5) {
-      report += `  (※ 외 ${teams.length - 5}개 조 전체 순위는 파크온 전광판 링크에서 확인)\n`;
+      report += `  (※ 외 ${teams.length - 5}개 조 전체 순위는 파크골프 올인원 전광판 링크에서 확인)\n`;
     }
 
     // [대표님 지시] 5만명 전국망 대비 동명이인 방지 3중 식별 태그 (이름 + 소속클럽 + 전화뒷자리/조)
@@ -1338,7 +1450,7 @@ ${link}`;
     report += `• 수령 확인: 수상자 전원 서명 또는 확인 완료 시 클럽 공식 연대기에 영구 등재됩니다.\n`;
     report += `• 문의 및 수령 확인: 총무 (${room.hostName || '클럽 집행부'})\n`;
     report += `══════════════════════════════\n`;
-    report += `⛳ 파크온(ParkOn) 공식 대회 관제 센터 실시간 집계\n`;
+    report += `⛳ 파크골프 올인원 (ParkGolf All-in-One) 공식 대회 관제 센터 실시간 집계\n`;
 
     return report;
   },
@@ -1619,11 +1731,41 @@ ${link}`;
     };
   },
 
-  // 12-4. 참가비 수납 현황 카카오톡 리포트 생성 (총무 단톡방 공유용)
-  generatePaymentStatusKakaoReport(room: ClubEventRoom): string {
+  // 12-4. 참가비 수납 현황 카카오톡/LINE 리포트 생성 (총무 단톡방 공유용)
+  generatePaymentStatusKakaoReport(room: ClubEventRoom, isJapanese?: boolean): string {
     const s = this.getPaymentSummary(room);
-    const feeStr = s.fee > 0 ? `${s.fee.toLocaleString()}원` : '무료';
-    const bankStr = s.bankAccount || '총무에게 문의';
+    const feeStr = isJapanese
+      ? (s.fee > 0 ? `${s.fee.toLocaleString()}円` : '無料')
+      : (s.fee > 0 ? `${s.fee.toLocaleString()}원` : '무료');
+    const bankStr = s.bankAccount || (isJapanese ? '幹事へお問い合わせ' : '총무에게 문의');
+
+    if (isJapanese) {
+      let report = `💰 [${room.title}] 参加費・会計 現況案内\n\n`;
+      report += `📍 コース: ${room.courseName}\n`;
+      report += `💵 1人参加費: ${feeStr}\n`;
+      report += `🏦 振込口座: ${bankStr}\n\n`;
+      report += `📊 [リアルタイム集計]\n`;
+      report += `• 総参加人数: ${s.totalCount}名\n`;
+      report += `• 入金完了: ${s.paidCount}名 (${s.totalCollectedAmount.toLocaleString()}円 / ${s.paidRate}%)\n`;
+      report += `• 入金待ち: ${s.unpaidCount}名 (${s.uncollectedAmount.toLocaleString()}円)\n\n`;
+
+      report += `✅ [入金完了 (${s.paidCount}名)]\n`;
+      if (s.paidPlayers.length > 0) {
+        report += s.paidPlayers.map((p) => `${p.name}${p.paidAt ? `(${p.paidAt})` : ''}`).join(', ') + '\n';
+      } else {
+        report += 'まだ入金完了者はいません。\n';
+      }
+
+      report += `\n⏳ [入金確認待ち (${s.unpaidCount}名)]\n`;
+      if (s.unpaidPlayers.length > 0) {
+        report += s.unpaidPlayers.map((p) => p.name).join(', ') + '\n';
+        report += `\n📢 上記名簿の方は案内された口座にお振込の上、幹事へお知らせください。円滑な大会準備のためご協力をお願いいたします。🙏`;
+      } else {
+        report += 'すべての参加者様のお支払いが完了しました！ありがとうございます 👏';
+      }
+
+      return report;
+    }
 
     let report = `💰 [${room.title}] 참가비 입금 현황 안내\n\n`;
     report += `📍 구장: ${room.courseName}\n`;
@@ -1652,11 +1794,27 @@ ${link}`;
     return report;
   },
 
-  // 12-5. 미납자 타겟 카카오톡 독촉 안내문 생성 (총무 복사용)
-  generateUnpaidKakaoReminderText(room: ClubEventRoom): string {
+  // 12-5. 미납자 타겟 카카오톡/LINE 독촉 안내문 생성 (총무 복사용)
+  generateUnpaidKakaoReminderText(room: ClubEventRoom, isJapanese?: boolean): string {
     const s = this.getPaymentSummary(room);
-    const feeStr = s.fee > 0 ? `${s.fee.toLocaleString()}원` : '무료';
-    const bankStr = s.bankAccount || '총무에게 문의';
+    const feeStr = isJapanese
+      ? (s.fee > 0 ? `${s.fee.toLocaleString()}円` : '無料')
+      : (s.fee > 0 ? `${s.fee.toLocaleString()}원` : '무료');
+    const bankStr = s.bankAccount || (isJapanese ? '幹事へお問い合わせ' : '총무에게 문의');
+
+    if (isJapanese) {
+      if (s.unpaidCount === 0) {
+        return `🎉 [${room.title}] 参加者全員(${s.totalCount}名)のお支払いが完了しました！幹事として皆様の迅速なご協力に心より感謝申し上げます。🙏`;
+      }
+      let text = `📢 [${room.title}] 参加費お振込みのお願い (幹事告知)\n\n`;
+      text += `会員の皆様こんにちは！大会の円滑な運営および保険・賞品準備のため、まだ入金確認が取れていない会員様におかれましてはお振込みをお願い申し上げます。\n\n`;
+      text += `💵 1人参加費: ${feeStr}\n`;
+      text += `🏦 振込口座: ${bankStr}\n\n`;
+      text += `⏳ [入金確認待ち会員 (${s.unpaidCount}名)]\n`;
+      text += s.unpaidPlayers.map((p, idx) => `${idx + 1}. ${p.name}`).join('\n');
+      text += `\n\n💡 お振込みの際はお振込人名義をご本人のお名前にしていただけますと迅速に確認できます。よろしくお願い申し上げます！⛳`;
+      return text;
+    }
 
     if (s.unpaidCount === 0) {
       return `🎉 [${room.title}] 참가자 전원(${s.totalCount}명) 입금 완료되었습니다! 총무로서 회원님들의 신속한 협조에 진심으로 감사드립니다. 🙏`;
@@ -2752,18 +2910,35 @@ ${shareUrl}`;
     return this.cancelFlashGathering(gatheringId, participantName);
   },
 
-  // 카카오톡 번개 모집 초대장 문구 생성 (카톡 단체방 공유용)
-  generateFlashKakaoShareText(flash: FlashGathering): string {
+  // 카카오톡 / LINE 번개 모집 초대장 문구 생성
+  generateFlashKakaoShareText(flash: FlashGathering, isJapanese?: boolean): string {
     const shareUrl =
       typeof window !== 'undefined'
         ? `${window.location.origin}/club?hub=FLASH&flashId=${flash.id}`
         : `https://parkongolf.com/club?hub=FLASH&flashId=${flash.id}`;
 
-    const clubBadge = flash.clubName ? `[${flash.clubName}]` : '[파크온 번개]';
+    const clubBadge = flash.clubName
+      ? `[${flash.clubName}]`
+      : isJapanese
+      ? '[ParkOn 招集マッチ]'
+      : '[파크온 번개]';
     const isMultiOpen = flash.lightningScope === 'MULTI_OPEN' || flash.targetCount >= 999;
     const capacityText = isMultiOpen
-      ? `4인 이상 인원 무제한 (현재 ${flash.currentParticipants.length}명 참여 중!)`
-      : `4인 번개 (현재 ${flash.currentParticipants.length}/4명, 2인 이상 출발 가능)`;
+      ? (isJapanese ? `4人以上 人数無制限 (現在 ${flash.currentParticipants.length}名参加中!)` : `4인 이상 인원 무제한 (현재 ${flash.currentParticipants.length}명 참여 중!)`)
+      : (isJapanese ? `4人募集 (現在 ${flash.currentParticipants.length}/4名、2名以上で即時出発)` : `4인 번개 (현재 ${flash.currentParticipants.length}/4명, 2인 이상 출발 가능)`);
+
+    if (isJapanese) {
+      return `${clubBadge} ⚡ 招集マッチ参加者募集！
+"${flash.title}"
+
+⛳ コース: ${flash.courseName}
+📅 日時: ${flash.playDate} ${flash.playTime}
+👥 募集: ${capacityText}
+👤 参加者: ${flash.currentParticipants.map((p) => p.name).join(', ')}
+${flash.notes ? `💬 メッセージ: "${flash.notes}"\n` : ''}
+👇 下のParkOnリンクをタップしてワンタップで参加！
+${shareUrl}`;
+    }
 
     return `${clubBadge} ⚡ 번개 라운드 긴급 모집!
 "${flash.title}"
@@ -2777,8 +2952,8 @@ ${flash.notes ? `💬 안내: "${flash.notes}"\n` : ''}
 ${shareUrl}`;
   },
 
-  // 전체 조 편성 카카오톡 단톡방 공지 문구 생성
-  generateGroupFormationKakaoShareText(room: ClubEventRoom): string {
+  // 전체 조 편성 카카오톡 / LINE 단톡방 공지 문구 생성
+  generateGroupFormationKakaoShareText(room: ClubEventRoom, isJapanese?: boolean): string {
     const origin =
       typeof window !== 'undefined'
         ? window.location.origin
@@ -2786,20 +2961,31 @@ ${shareUrl}`;
     const link = `${origin}/club/${room.id}`;
     const totalPlayers = room.groups.reduce((sum, g) => sum + g.players.length, 0);
 
-    let text = `📢 [파크온] ${room.courseName} 라운드 조 편성 결과\n`;
+    let text = isJapanese
+      ? `📢 [パークゴルフ オールインワン] ${room.courseName} 組編成結果\n`
+      : `📢 [파크골프 올인원] ${room.courseName} 라운드 조 편성 결과\n`;
     text += `🏆 ${room.title}\n`;
-    text += `👥 총 ${room.groups.length}개 조 (${totalPlayers}명 배정 완료)\n`;
+    text += isJapanese
+      ? `👥 計 ${room.groups.length}組 (${totalPlayers}名 割当完了)\n`
+      : `👥 총 ${room.groups.length}개 조 (${totalPlayers}명 배정 완료)\n`;
     text += `---------------------------------\n`;
 
     room.groups.forEach((g, gIdx) => {
-      const leaderStr = g.leaderName ? ` (조장: ${g.leaderName})` : '';
-      const startHoleStr = `[🚩 ${this.getGroupStartHole(gIdx, room.selectedCourseLetters, g.startCourseLetter)} 티샷]`;
+      const leaderStr = g.leaderName
+        ? (isJapanese ? ` (代表: ${g.leaderName})` : ` (조장: ${g.leaderName})`)
+        : '';
+      const startHoleRaw = this.getGroupStartHole(gIdx, room.selectedCourseLetters, g.startCourseLetter);
+      const startHoleStr = isJapanese
+        ? `[🚩 ${startHoleRaw.replace('홀', '番H')} 出発]`
+        : `[🚩 ${startHoleRaw} 티샷]`;
       const members = g.players.map((p) => (p.isLeader ? `👑${p.name}` : p.name)).join(', ');
-      text += `⛳ ${g.name} ${startHoleStr}${leaderStr}: ${members || '배정 대기 중'}\n`;
+      text += `⛳ ${g.name} ${startHoleStr}${leaderStr}: ${members || (isJapanese ? '割当待機中' : '배정 대기 중')}\n`;
     });
 
     text += `---------------------------------\n`;
-    text += `📡 실시간 디지털 전광판 & 스코어보드 바로가기:\n${link}`;
+    text += isJapanese
+      ? `📡 リアルタイム電光掲示板 ＆ スコアボード:\n${link}`
+      : `📡 실시간 디지털 전광판 & 스코어보드 바로가기:\n${link}`;
     return text;
   },
 

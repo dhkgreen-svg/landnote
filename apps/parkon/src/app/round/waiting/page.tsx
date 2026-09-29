@@ -8,10 +8,12 @@ import { ParkOnStorage } from '@/lib/storage';
 import { RoundSession, RoundPlayer } from '@/types/parkon';
 import { CheckCircle2, Users, MapPin, Flag, Home, Sparkles, Loader2 } from 'lucide-react';
 import { ParkOnRoom } from '@/app/api/round/room/route';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 function WaitingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isJapanese } = useTranslation();
 
   const roomId = searchParams.get('roomId') || '';
   const guestParam = searchParams.get('guest') || '';
@@ -27,12 +29,16 @@ function WaitingContent() {
     } else {
       try {
         const defaultName = ParkOnStorage.getUserDisplayName();
-        setGuestName(defaultName && defaultName !== '파크골퍼' ? defaultName : '동반자');
+        setGuestName(
+          defaultName && defaultName !== '파크골퍼' && defaultName !== 'パークゴルファー'
+            ? defaultName
+            : isJapanese ? '同伴者' : '동반자'
+        );
       } catch {
-        setGuestName('동반자');
+        setGuestName(isJapanese ? '同伴者' : '동반자');
       }
     }
-  }, [guestParam]);
+  }, [guestParam, isJapanese]);
 
   // 2. 룸 상태 1초 폴링 및 동기화
   useEffect(() => {
@@ -89,14 +95,18 @@ function WaitingContent() {
   const handleRoundStart = (activeRoom: ParkOnRoom) => {
     if (startingToast) return; // 이미 이동 중
 
-    setStartingToast('⛳ 조장님이 티샷을 시작했습니다! 스코어카드로 입장합니다...');
+    setStartingToast(
+      isJapanese
+        ? '⛳ リーダーがティーショットを開始しました！ スコアカードへ入場します...'
+        : '⛳ 조장님이 티샷을 시작했습니다! 스코어카드로 입장합니다...'
+    );
 
     try {
       let session: RoundSession | null = activeRoom.roundSession;
 
       if (session) {
         // 동반자 본인(isSelf: true) 및 조장(isLeader: true) 명확 분리
-        const myName = guestName.trim() || '동반자';
+        const myName = guestName.trim() || (isJapanese ? '同伴者' : '동반자');
         const updatedPlayers: RoundPlayer[] = session.players.map((p, idx) => {
           const isLeader = p.isLeader || idx === 0;
           const isMe = !isLeader && (p.name === myName || idx === 1);
@@ -138,12 +148,12 @@ function WaitingContent() {
     }
   };
 
-  const leaderName = room?.leaderName || '조장';
+  const leaderName = room?.leaderName || (isJapanese ? 'リーダー' : '조장');
   const playersList = room?.players || [
     { id: '1', name: leaderName, isLeader: true },
     { id: '2', name: guestName, isLeader: false },
-    { id: '3', name: '동반자2 (대기 중)', isLeader: false },
-    { id: '4', name: '동반자3 (대기 중)', isLeader: false },
+    { id: '3', name: isJapanese ? '同伴者2 (待機中)' : '동반자2 (대기 중)', isLeader: false },
+    { id: '4', name: isJapanese ? '同伴者3 (待機中)' : '동반자3 (대기 중)', isLeader: false },
   ];
 
   return (
@@ -167,7 +177,7 @@ function WaitingContent() {
           <div className="relative w-36 h-36 rounded-2xl overflow-hidden shadow-md border-2 border-emerald-400/40 bg-emerald-800 mb-3.5">
             <Image
               src="/mascot/사진저장고_사진_20260913_28.jpg"
-              alt="파크온 마스코트 환영 파키"
+              alt={isJapanese ? 'パークオン マスコット歓迎パキ' : '파크온 마스코트 환영 파키'}
               fill
               className="object-cover"
               priority
@@ -175,13 +185,15 @@ function WaitingContent() {
           </div>
 
           <span className="inline-flex items-center gap-1 text-xs font-black bg-amber-400 text-amber-950 px-3 py-1 rounded-full uppercase tracking-wider mb-2 shadow-sm">
-            👑 조장 초대 라운드 대기실
+            {isJapanese ? '👑 リーダー招待 ラウンド待合室' : '👑 조장 초대 라운드 대기실'}
           </span>
           <h1 className="text-xl font-black tracking-tight text-white mb-1">
-            {leaderName} 님의 방에 입장했습니다!
+            {isJapanese ? `${leaderName} 様のルームに入場しました！` : `${leaderName} 님의 방에 입장했습니다!`}
           </h1>
           <p className="text-xs text-emerald-200 font-medium">
-            조장님이 구장과 홀 설정을 마친 후 [티샷 시작]을 누르면 함께 시작합니다.
+            {isJapanese
+              ? 'リーダーがコースとホールの設定を終えて[ティーショット開始]を押すと同時にスタートします。'
+              : '조장님이 구장과 홀 설정을 마친 후 [티샷 시작]을 누르면 함께 시작합니다.'}
           </p>
         </div>
 
@@ -191,12 +203,16 @@ function WaitingContent() {
           <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-4 space-y-2">
             <div className="flex items-center gap-2 text-emerald-900 font-black text-sm">
               <MapPin className="w-4 h-4 text-emerald-700" />
-              <span>{room?.courseName || '구미 동락 파크골프장'}</span>
+              <span>{room?.courseName || (isJapanese ? 'パークゴルフ場' : '구미 동락 파크골프장')}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-emerald-800 font-bold bg-white/80 p-2.5 rounded-xl border border-emerald-100">
               <Flag className="w-3.5 h-3.5 text-emerald-600" />
               <span>
-                출발 예정 코스: <strong className="text-emerald-950 font-black">{room?.courseLetter || 'A'}코스 {room?.startHoleIndex || 1}번 홀</strong>
+                {isJapanese ? '出発予定コース: ' : '출발 예정 코스: '}
+                <strong className="text-emerald-950 font-black">
+                  {room?.courseLetter || 'A'}{isJapanese ? 'コース ' : '코스 '}
+                  {room?.startHoleIndex || 1}{isJapanese ? '番ホール' : '번 홀'}
+                </strong>
               </span>
             </div>
           </div>
@@ -206,10 +222,10 @@ function WaitingContent() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-stone-800 font-black text-sm">
                 <Users className="w-4 h-4 text-emerald-700" />
-                <span>함께하는 동반자 명단</span>
+                <span>{isJapanese ? '同伴者リスト' : '함께하는 동반자 명단'}</span>
               </div>
               <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                실시간 룸 대기 중
+                {isJapanese ? 'リアルタイム待機中' : '실시간 룸 대기 중'}
               </span>
             </div>
 
@@ -242,19 +258,19 @@ function WaitingContent() {
                         {idx + 1}
                       </span>
                       <span className="text-sm font-black">
-                        {p.name || `동반자 ${idx + 1}`}
+                        {p.name || (isJapanese ? `同伴者 ${idx + 1}` : `동반자 ${idx + 1}`)}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-1">
                       {isLeader && (
                         <span className="text-xs bg-amber-200 text-amber-900 font-black px-2 py-0.5 rounded-md flex items-center gap-1">
-                          👑 조장 (설정 권한)
+                          {isJapanese ? '👑 リーダー (設定権限)' : '👑 조장 (설정 권한)'}
                         </span>
                       )}
                       {isMe && !isLeader && (
                         <span className="text-xs bg-emerald-700 text-white font-black px-2 py-0.5 rounded-md">
-                          본인 (나)
+                          {isJapanese ? '本人 (自分)' : '본인 (나)'}
                         </span>
                       )}
                     </div>
@@ -268,11 +284,20 @@ function WaitingContent() {
           <div className="bg-amber-50/90 border-2 border-amber-300/80 rounded-2xl p-4 text-center space-y-2">
             <div className="flex items-center justify-center gap-2 text-amber-950 font-black text-sm">
               <Loader2 className="w-4 h-4 text-amber-700 animate-spin" />
-              <span>조장님이 라운드를 설정 중입니다</span>
+              <span>{isJapanese ? 'リーダーがラウンドを設定中です' : '조장님이 라운드를 설정 중입니다'}</span>
             </div>
             <p className="text-xs text-amber-900 leading-relaxed font-medium">
-              코스 선택과 티샷 시작은 <strong>초대한 조장({leaderName} 님)</strong>이 총괄 진행합니다.<br />
-              조장님이 <strong>[티샷 시작]</strong>을 누르면 이 화면이 자동으로 경기 스코어카드로 전환되니 잠시만 대기해 주세요.
+              {isJapanese ? (
+                <>
+                  コース選択とティーショット開始は<strong>招待リーダー({leaderName} 様)</strong>が統括進行します。<br />
+                  リーダーが<strong>[ティーショット開始]</strong>を押すと、この画面が自動でスコアカードに切り替わりますので少々お待ちください。
+                </>
+              ) : (
+                <>
+                  코스 선택과 티샷 시작은 <strong>초대한 조장({leaderName} 님)</strong>이 총괄 진행합니다.<br />
+                  조장님이 <strong>[티샷 시작]</strong>을 누르면 이 화면이 자동으로 경기 스코어카드로 전환되니 잠시만 대기해 주세요.
+                </>
+              )}
             </p>
           </div>
 
@@ -283,7 +308,7 @@ function WaitingContent() {
               className="w-full py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-98"
             >
               <Home className="w-4 h-4" />
-              <span>대기 취소하고 홈으로 돌아가기</span>
+              <span>{isJapanese ? '待機をキャンセルしてホームへ戻る' : '대기 취소하고 홈으로 돌아가기'}</span>
             </Link>
           </div>
         </div>
@@ -294,7 +319,7 @@ function WaitingContent() {
 
 export default function WaitingPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center font-bold text-stone-600">대기실 불러오는 중...</div>}>
+    <Suspense fallback={<div className="p-8 text-center font-bold text-stone-600">Loading...</div>}>
       <WaitingContent />
     </Suspense>
   );

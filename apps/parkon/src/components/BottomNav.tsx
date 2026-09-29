@@ -5,8 +5,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Users, Newspaper, Trophy, HelpCircle } from 'lucide-react';
 
+import { useTranslation } from '@/lib/i18n/LanguageContext';
+
 export function BottomNav() {
   const pathname = usePathname();
+  const { isJapanese, isEnglish } = useTranslation();
 
   // 활성 라운드 스코어 입력 중일 때는 터치 오작동 방지를 위해 하단 내비게이션 숨김
   const isPlayingRound = Boolean(
@@ -20,32 +23,32 @@ export function BottomNav() {
   const navItems = [
     {
       href: '/',
-      label: '홈',
+      label: isJapanese ? 'ホーム' : isEnglish ? 'Home' : '홈',
       icon: Home,
       isActive: pathname === '/',
     },
     {
       href: '/club',
-      label: '클럽·대회',
+      label: isJapanese ? 'クラブ・大会' : isEnglish ? 'Club' : '클럽·대회',
       icon: Users,
       isActive: pathname?.startsWith('/club'),
     },
     {
       href: '/board',
-      label: '게시판·뉴스',
+      label: isJapanese ? '掲示板・情報' : isEnglish ? 'Board' : '게시판·뉴스',
       icon: Newspaper,
       isActive: pathname?.startsWith('/board'),
-      badge: '대회',
+      badge: isJapanese ? '大会' : isEnglish ? 'Tour' : '대회',
     },
     {
       href: '/chronicle',
-      label: '나의 연대기',
+      label: isJapanese ? 'マイ年代記' : isEnglish ? 'Chronicle' : '나의 연대기',
       icon: Trophy,
       isActive: pathname?.startsWith('/chronicle'),
     },
     {
       href: '/rules',
-      label: '룰 솔로몬',
+      label: isJapanese ? 'ルール' : isEnglish ? 'Rules' : '룰 솔로몬',
       icon: HelpCircle,
       isActive: pathname?.startsWith('/rules'),
     },

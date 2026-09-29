@@ -111,13 +111,13 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
 
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-      ctx.fillText('⛳ 파크온 공식 인증 라운드', 74, 86);
+      ctx.fillText('⛳ 파크골프 올인원 공식 인증', 74, 86);
 
       // Right Logo
       ctx.fillStyle = '#FDE047'; // bright yellow
-      ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+      ctx.font = '900 28px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillText('ParkOn', 1030, 86);
+      ctx.fillText('ParkGolf All-in-One', 1030, 86);
       ctx.textAlign = 'left';
 
       // 4. Center Highlight if no user image
@@ -257,7 +257,7 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
   const handleDownload = () => {
     if (!cardDataUrl) return;
     const link = document.createElement('a');
-    link.download = `파크온_${courseName}_${dateStr.replace(/[^0-9]/g, '')}_포토카드.jpg`;
+    link.download = `파크골프_올인원_${courseName}_${dateStr.replace(/[^0-9]/g, '')}_포토카드.jpg`;
     link.href = cardDataUrl;
     link.click();
 
@@ -271,11 +271,11 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
     try {
       if (navigator.share) {
         const blob = await (await fetch(cardDataUrl)).blob();
-        const file = new File([blob], `파크온_${courseName}_포토카드.jpg`, { type: 'image/jpeg' });
+        const file = new File([blob], `파크골프_올인원_${courseName}_포토카드.jpg`, { type: 'image/jpeg' });
 
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
-            title: `[파크온] ${courseName} 완주 기념 포토카드`,
+            title: `[파크골프 올인원] ${courseName} 완주 기념 포토카드`,
             text: `${myName} 님의 ${courseName} ${totalHoles}홀 완주(${myStrokes}타) 기념 카드입니다.`,
             files: [file],
           });
@@ -299,7 +299,7 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
             </div>
             <div>
               <h3 className="font-black text-lg tracking-tight">워터마크 기념 포토카드</h3>
-              <p className="text-xs text-stone-400 font-medium">동반 사진 위에 파크온 공식 인증 합성</p>
+              <p className="text-xs text-stone-400 font-medium">동반 사진 위에 파크골프 올인원 공식 인증 합성</p>
             </div>
           </div>
           <button

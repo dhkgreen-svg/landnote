@@ -461,7 +461,7 @@ export class BoardStorage {
     const list = this.getUserVoices();
     const newItem: UserVoiceItem = {
       id: `voice-${Date.now()}`,
-      authorName: item.authorName || '파크온 동호인',
+      authorName: item.authorName || '파크골프 올인원 동호인',
       category: item.category,
       title: item.title.trim(),
       content: item.content.trim(),

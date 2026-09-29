@@ -475,7 +475,7 @@ export default function CommunityBoardPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const shareText = `📢 [파크온 시합 공고]\n${item.title}\n- 일시: ${item.eventDateStr}\n- 장소: ${item.courseName}\n- 접수: ${item.periodStr}\n\n👉 공식 공고 바로가기: ${item.linkUrl}${item.pdfUrl ? `\n👉 대회요강 PDF: ${item.pdfUrl}` : ''}`;
+                        const shareText = `📢 [파크골프 올인원 시합 공고]\n${item.title}\n- 일시: ${item.eventDateStr}\n- 장소: ${item.courseName}\n- 접수: ${item.periodStr}\n\n👉 공식 공고 바로가기: ${item.linkUrl}${item.pdfUrl ? `\n👉 대회요강 PDF: ${item.pdfUrl}` : ''}`;
                         navigator.clipboard?.writeText(shareText);
                         showToast('📋 대회 공고 및 직통 주소가 복사되었습니다! 단톡방이나 밴드에 공유하세요.');
                       }}
@@ -611,7 +611,7 @@ export default function CommunityBoardPage() {
                 </span>
               </div>
               <p className="text-xs text-stone-200 leading-relaxed font-medium">
-                파크온을 이용하시며 <strong>불편했던 점, 잘못된 구장 정보, 바라는 새 기능</strong>이 있다면
+                파크골프 올인원을 이용하시며 <strong>불편했던 점, 잘못된 구장 정보, 바라는 새 기능</strong>이 있다면
                 언제든 남겨주세요! 대표와 개발팀이 모든 글을 직접 정독하고 개선 업데이트로 보답하겠습니다.
               </p>
               <button

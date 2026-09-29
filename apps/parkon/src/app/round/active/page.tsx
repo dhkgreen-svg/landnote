@@ -4,8 +4,11 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ParkOnStorage } from '@/lib/storage';
 
+import { useTranslation } from '@/lib/i18n/LanguageContext';
+
 export default function ActiveRoundRedirect() {
   const router = useRouter();
+  const { isJapanese } = useTranslation();
 
   useEffect(() => {
     const active = ParkOnStorage.getCurrentRound();
@@ -18,7 +21,7 @@ export default function ActiveRoundRedirect() {
 
   return (
     <div className="p-8 text-center text-stone-500 font-bold">
-      라운드 확인 중...
+      {isJapanese ? 'ラウンド確認中...' : '라운드 확인 중...'}
     </div>
   );
 }

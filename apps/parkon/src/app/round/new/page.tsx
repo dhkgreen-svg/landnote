@@ -10,6 +10,8 @@ import { generateStandardHoles } from '@/lib/defaultCourses';
 import { getDefaultSelfName, sortPlayersByLeaderAndAlphabetical } from '@/lib/playerUtils';
 import { generateQrCodeDataUrl } from '@/lib/qrUtils';
 import { PlayStartNoticeModal } from '@/components/PlayStartNoticeModal';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { getCourseDualName } from '@/lib/courseLocalization';
 
 const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
@@ -23,6 +25,7 @@ interface SetupPlayer {
 function NewRoundForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t, isJapanese, isEnglish } = useTranslation();
   const initialCourseId = searchParams.get('courseId') || searchParams.get('course');
   const playersParam = searchParams.get('players');
   const joinedPlayer = searchParams.get('joined');
@@ -36,11 +39,11 @@ function NewRoundForm() {
   const [selectedCourseLetter, setSelectedCourseLetter] = useState<string>('A');
   const [startHoleIndex, setStartHoleIndex] = useState<number>(1);
   const [playerCount, setPlayerCount] = useState<number>(4);
-  const [playersList, setPlayersList] = useState<SetupPlayer[]>([
-    { id: 'p_self', name: '조장(본인)', isLeader: true, isSelf: true },
-    { id: 'p_2', name: '동반자1', isLeader: false, isSelf: false },
-    { id: 'p_3', name: '동반자2', isLeader: false, isSelf: false },
-    { id: 'p_4', name: '동반자3', isLeader: false, isSelf: false },
+  const [playersList, setPlayersList] = useState<SetupPlayer[]>(() => [
+    { id: 'p_self', name: isJapanese ? 'リーダー(本人)' : '조장(본인)', isLeader: true, isSelf: true },
+    { id: 'p_2', name: isJapanese ? '同伴者1' : '동반자1', isLeader: false, isSelf: false },
+    { id: 'p_3', name: isJapanese ? '同伴者2' : '동반자2', isLeader: false, isSelf: false },
+    { id: 'p_4', name: isJapanese ? '同伴者3' : '동반자3', isLeader: false, isSelf: false },
   ]);
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
   const [roomId] = useState<string>(() => 'room_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
@@ -291,7 +294,7 @@ function NewRoundForm() {
   const leaderName = currentLeader?.name || '조장';
   const inviteUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`
-    : `https://parkon.kr/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`;
+    : `https://www.parkongolf.com/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`;
 
   useEffect(() => {
     if (showQrModal && inviteUrl) {
@@ -402,9 +405,11 @@ function NewRoundForm() {
 
   // 강력한 카카오톡/문자/링크 공유 함수 (모바일 네이티브 공유 -> 클립보드 -> 임시 텍스트에어리어 -> 프롬프트 폴백)
   const handleShareInvite = async () => {
-    const courseName = currentCourse?.name || '파크골프장';
-    const shareTitle = `[파크온] ${courseName} 라운딩 초대`;
-    const shareText = `[파크온 동반자 초대]\n⛳ ${courseName} 함께 라운딩해요!\n조장: ${leaderName}\n아래 링크를 누르면 동반자로 자동 등록됩니다:\n${inviteUrl}`;
+    const courseName = currentCourse?.name || (isJapanese ? 'パークゴルフ場' : '파크골프장');
+    const shareTitle = isJapanese ? `[パークゴルフ オールインワン] ${courseName} ラウンド招待` : `[파크골프 올인원] ${courseName} 라운딩 초대`;
+    const shareText = isJapanese
+      ? `[パークゴルフ オールインワン 同伴者招待]\n⛳ ${courseName} で一緒にラウンドしましょう！\nリーダー: ${leaderName}\n以下のリンクを開くと同伴者として自動登録されます:\n${inviteUrl}`
+      : `[파크골프 올인원 동반자 초대]\n⛳ ${courseName} 함께 라운딩해요!\n조장: ${leaderName}\n아래 링크를 누르면 동반자로 자동 등록됩니다:\n${inviteUrl}`;
 
     // 1. 모바일 환경에서 시스템 공유 시트 (카카오톡, 문자 등 직접 선택 가능)
     if (typeof navigator !== 'undefined' && navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent || '')) {
@@ -419,6 +424,15 @@ function NewRoundForm() {
         return;
       } catch (err) {
         // 사용자가 취소했거나 권한 제한 시 클립보드 복사로 전환
+      }
+    }
+
+    // 1-1. 일본어 모드 시 LINE 메신저 직접 실행 지원
+    if (isJapanese && typeof window !== 'undefined') {
+      try {
+        window.open(`https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`, '_blank');
+      } catch {
+        // popup blocker fallback
       }
     }
 
@@ -454,7 +468,12 @@ function NewRoundForm() {
 
     // 4. 최후의 수단: 브라우저 기본 안내창
     if (!copied && typeof window !== 'undefined') {
-      window.prompt('초대 링크를 복사하여 카카오톡이나 문자에 붙여넣으세요:', inviteUrl);
+      window.prompt(
+        isJapanese
+          ? '招待リンクをコピーしてLINEやメッセージに貼り付けてください:'
+          : '초대 링크를 복사하여 카카오톡이나 문자에 붙여넣으세요:',
+        inviteUrl
+      );
       copied = true;
     }
 
@@ -576,22 +595,26 @@ function NewRoundForm() {
           </button>
           <div>
             <h2 className="text-lg font-black text-stone-900 leading-tight flex items-center gap-1.5">
-              <span>{isTrialMode ? '🎯 프로그램 체험 연습 (팀 만들기)' : '새 라운드 시작 설정'}</span>
+              <span>
+                {isTrialMode
+                  ? (isJapanese ? '🎯 バーチャル体験・チーム作成' : '🎯 프로그램 체험 연습 (팀 만들기)')
+                  : (isJapanese ? 'ラウンド開始設定' : '새 라운드 시작 설정')}
+              </span>
               {isTrialMode && (
                 <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
-                  체험 모드
+                  {isJapanese ? '体験モード' : '체험 모드'}
                 </span>
               )}
             </h2>
             <p className="text-[11px] text-stone-600 font-semibold">
               {isTrialMode
-                ? '동반자 초대 및 팀 구성을 실전과 똑같이 체험해 보세요 (기록 미저장)'
-                : '플레이할 구장과 코스를 자유롭게 선택하세요'}
+                ? (isJapanese ? '実戦と同じように同伴者招待やチーム編成をお試しいただけます' : '동반자 초대 및 팀 구성을 실전과 똑같이 체험해 보세요 (기록 미저장)')
+                : (isJapanese ? 'プレーするコースを自由に選択してください' : '플레이할 구장과 코스를 자유롭게 선택하세요')}
             </p>
           </div>
         </div>
 
-        {/* 대표님 요청: 상단 우측 닫기 (X) 버튼 누르면 항상 직전 화면으로 복귀 */}
+        {/* 닫기 (X) 버튼 */}
         <button
           type="button"
           onClick={() => {
@@ -602,7 +625,7 @@ function NewRoundForm() {
             }
           }}
           className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition cursor-pointer flex items-center justify-center"
-          title="닫기 (이전 화면으로)"
+          title={isJapanese ? '閉じる (前の画面へ)' : '닫기 (이전 화면으로)'}
         >
           <X className="w-5 h-5" />
         </button>
@@ -614,63 +637,80 @@ function NewRoundForm() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 font-black text-xs text-stone-950">
               <span className="text-sm">🎯</span>
-              <span>체험 연습 모드 안내 (실전과 100% 동일 진행)</span>
+              <span>{isJapanese ? '体験練習モード案内 (実戦と100%同一)' : '체험 연습 모드 안내 (실전과 100% 동일 진행)'}</span>
             </div>
             <span className="text-[10px] bg-stone-950 text-amber-300 font-black px-2 py-0.5 rounded-full">
-              무흔적 안심 연습
+              {isJapanese ? '安心練習' : '무흔적 안심 연습'}
             </span>
           </div>
           <p className="text-[11.5px] text-stone-950 font-bold leading-snug">
-            아래에서 <strong>동반자 인원수(1~4인) 선택</strong>, <strong>동반자 초대(QR·문자)</strong>, <strong>조장 지정</strong>, <strong>시작 코스</strong>를 실전처럼 설정한 뒤 [티샷 시작]을 누르시면 가상 스코어카드로 이동합니다!
+            {isJapanese
+              ? '人数(1~4人)の選択、同伴者招待、代表者指定、スタートコースを設定し、[ティーショット開始] を押すとスコアカードへ移動します！'
+              : '아래에서 동반자 인원수(1~4인) 선택, 동반자 초대(QR·문자), 조장 지정, 시작 코스를 실전처럼 설정한 뒤 [티샷 시작]을 누르시면 가상 스코어카드로 이동합니다!'}
           </p>
         </div>
       ) : null}
 
-      {/* 1. Current Play Course Display Card (초슬림 1줄: 구장명 + 구장변경 + 코스·홀수 정정) */}
+      {/* 1. Current Play Course Display Card */}
       {currentCourse && (
         <div className="bg-white rounded-2xl p-2.5 sm:p-3 border border-stone-200 shadow-sm">
-          <div className="bg-emerald-50/90 border border-emerald-300 rounded-xl px-3 py-2 flex items-center justify-between gap-2 shadow-2xs">
-            <span className="text-sm sm:text-base font-black text-emerald-950 flex items-center gap-1.5 truncate">
-              <span className="shrink-0">⛳</span>
-              <span className="truncate">{currentCourse.name}</span>
-            </span>
+          {(() => {
+            const dual = getCourseDualName(currentCourse, isJapanese);
+            return (
+              <div className="bg-emerald-50/90 border border-emerald-300 rounded-xl px-3 py-2 flex items-center justify-between gap-2 shadow-2xs">
+                <div className="min-w-0 flex-1 pr-2">
+                  <div className="text-sm sm:text-base font-black text-emerald-950 flex items-center gap-1.5 truncate">
+                    <span className="shrink-0">⛳</span>
+                    {dual.flag && <span className="shrink-0">{dual.flag}</span>}
+                    <span className="truncate">{dual.primary}</span>
+                  </div>
+                  {dual.showSecondary && dual.secondary && (
+                    <div className="text-xs text-emerald-700 font-bold truncate pl-5">
+                      {dual.secondary}
+                    </div>
+                  )}
+                </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
-              <Link
-                href="/courses"
-                className="bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 font-bold py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px]"
-              >
-                <span>구장 변경</span>
-              </Link>
-              <button
-                type="button"
-                onClick={openEditModal}
-                className="bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-black py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px] cursor-pointer"
-              >
-                <Settings className="w-3 h-3 text-emerald-700 shrink-0" />
-                <span>코스·홀수 정정</span>
-              </button>
-            </div>
-          </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Link
+                    href="/courses"
+                    className="bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 font-bold py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px]"
+                  >
+                    <span>{isJapanese ? 'コース変更' : '구장 변경'}</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={openEditModal}
+                    className="bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-black py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px] cursor-pointer"
+                  >
+                    <Settings className="w-3 h-3 text-emerald-700 shrink-0" />
+                    <span>{isJapanese ? 'ホール数修正' : '코스·홀수 정정'}</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
-      {/* 2. Players Input with Dynamic Player Count & Leader Selection (동반자 명단) */}
+      {/* 2. Players Input */}
       <div className="bg-white rounded-2xl p-3.5 border border-stone-200 shadow-sm space-y-3">
-        {/* Header: 동반자 명단 + 플레이어 수 원터치 탭 */}
+        {/* Header */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-xs font-black text-stone-900 flex items-center gap-1.5">
               <Users className="w-4 h-4 text-emerald-700" />
-              <span>동반자 명단</span>
+              <span>{isJapanese ? '同伴者名簿' : '동반자 명단'}</span>
             </label>
             <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              👑 조장 1번 · 나머지 가나다순 정렬
+              {playerCount === 1
+                ? (isJapanese ? '👤 個人・ソロプレー' : '👤 1인 혼자 플레이')
+                : (isJapanese ? '👑 代表1番・整列' : '👑 조장 1번 · 나머지 가나다순 정렬')}
             </span>
           </div>
 
           <div className="flex items-center justify-between bg-stone-50 p-2 rounded-xl border border-stone-200/80">
-            <span className="text-xs font-bold text-stone-700">플레이어 수:</span>
+            <span className="text-xs font-bold text-stone-700">{isJapanese ? 'プレー人数:' : '플레이어 수:'}</span>
             <div className="flex items-center gap-1">
               {[1, 2, 3, 4, 5, 6].map((num) => (
                 <button
@@ -683,14 +723,14 @@ function NewRoundForm() {
                       : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100 hover:text-stone-900'
                   }`}
                 >
-                  {num}명
+                  {num}{isJapanese ? '人' : '명'}
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Dynamic Player Rows (1 to playerCount) */}
+        {/* Dynamic Player Rows */}
         <div className="space-y-2 pt-0.5">
           {playersList.slice(0, playerCount).map((player, idx) => (
             <div
@@ -701,7 +741,6 @@ function NewRoundForm() {
                   : 'bg-stone-50 border-stone-200 hover:bg-stone-100/50'
               }`}
             >
-              {/* Number circle */}
               <span
                 className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0 ${
                   player.isLeader
@@ -712,23 +751,25 @@ function NewRoundForm() {
                 {idx + 1}
               </span>
 
-              {/* Name input */}
               <div className="flex-1 relative flex items-center">
                 <input
                   type="text"
                   value={player.name}
                   onChange={(e) => handlePlayerNameChange(idx, e.target.value)}
-                  placeholder={player.isSelf ? '본인 이름 (홍길동/손오공)' : `동반자 ${idx + 1} 이름 입력`}
+                  placeholder={
+                    player.isSelf
+                      ? (isJapanese ? '本人の名前 (山田/佐藤)' : '본인 이름 (홍길동/손오공)')
+                      : (isJapanese ? `同伴者 ${idx + 1} 名前入力` : `동반자 ${idx + 1} 이름 입력`)
+                  }
                   className="w-full bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-sm font-bold text-stone-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none"
                 />
                 {player.isSelf && (
                   <span className="absolute right-2 text-[10px] font-black text-blue-700 bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded">
-                    본인
+                    {isJapanese ? '本人' : '본인'}
                   </span>
                 )}
               </div>
 
-              {/* Rightmost Leader Toggle Button (우측 끝 조장 버튼) */}
               <button
                 type="button"
                 onClick={() => handleSetLeader(idx)}
@@ -737,16 +778,20 @@ function NewRoundForm() {
                     ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-300'
                     : 'bg-white text-stone-600 border border-stone-300 hover:bg-stone-100 hover:text-stone-900'
                 }`}
-                title={player.isLeader ? '현재 조장으로 지정됨 (1번 배치)' : '이 선수를 조장으로 지정'}
+                title={player.isLeader ? (isJapanese ? '代表に指定中' : '현재 조장으로 지정됨') : (isJapanese ? '代表に指定' : '이 선수를 조장으로 지정')}
               >
                 <span>👑</span>
-                <span>{player.isLeader ? '조장' : '조장 선택'}</span>
+                <span>
+                  {player.isLeader
+                    ? (isJapanese ? '代表' : '조장')
+                    : (isJapanese ? '代表選択' : '조장 선택')}
+                </span>
               </button>
             </div>
           ))}
         </div>
 
-        {/* 동반자 초대 배너 (QR / 카카오톡 / 문자 초대) - 선수 명단 하단 배치 */}
+        {/* 동반자 초대 배너 */}
         <button
           type="button"
           onClick={() => setShowQrModal(true)}
@@ -754,15 +799,14 @@ function NewRoundForm() {
         >
           <div className="flex items-center gap-2">
             <span className="text-xl">📱</span>
-            <span className="text-sm font-black text-emerald-950">동반자 초대</span>
+            <span className="text-sm font-black text-emerald-950">{isJapanese ? '同伴者を招待' : '동반자 초대'}</span>
           </div>
           <div className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs flex items-center gap-1.5 shrink-0">
             <QrCode className="w-3.5 h-3.5" />
-            <span>QR / 카카오톡 / 문자 초대</span>
+            <span>{isJapanese ? 'QR / LINE / メッセージ招待' : 'QR / 카카오톡 / 문자 초대'}</span>
           </div>
         </button>
 
-        {/* Toast Notification when QR simulation adds a player */}
         {joinSimulationToast && (
           <div className="bg-emerald-100 border border-emerald-300 text-emerald-900 px-3 py-2 rounded-xl text-xs font-bold animate-in fade-in flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -771,14 +815,13 @@ function NewRoundForm() {
         )}
       </div>
 
-      {/* 3. Starting Course & Hole Selection (어느 코스부터 시작하겠습니까?) */}
+      {/* 3. Starting Course & Hole Selection */}
       <div className="bg-white rounded-2xl p-3.5 border border-stone-200 shadow-sm space-y-2.5">
         <label className="text-sm font-black text-stone-900 flex items-center gap-1.5">
           <Flag className="w-4 h-4 text-emerald-700" />
-          <span>어느 코스부터 시작하겠습니까?</span>
+          <span>{isJapanese ? 'どのコースからスタートしますか？' : '어느 코스부터 시작하겠습니까?'}</span>
         </label>
 
-        {/* Clean Course Chips Grid: 단일 선택 (A코스 한 줄 표시) */}
         <div className="grid grid-cols-4 gap-1.5 pt-0.5">
           {availableLetters.map((letter) => {
             const isSelected = selectedCourseLetter === letter;
@@ -798,7 +841,7 @@ function NewRoundForm() {
                 }`}
               >
                 <span className="font-black text-sm whitespace-nowrap">
-                  {letter}코스
+                  {letter}{isJapanese ? 'コース' : '코스'}
                 </span>
                 {isSelected && (
                   <span className="text-xs font-black">✓</span>
@@ -808,12 +851,14 @@ function NewRoundForm() {
           })}
         </div>
 
-        {/* ⛳ 홀 번호 선택 (1~9번 홀 3×3 컴팩트 레이아웃) */}
+        {/* ⛳ 홀 번호 선택 */}
         <div className="pt-1.5 border-t border-stone-100 space-y-1.5">
           <div className="flex items-center justify-between text-xs font-black text-stone-800">
-            <span>몇 번 홀에서 티샷을 시작하겠습니까?</span>
+            <span>{isJapanese ? '何番ホールからスタートしますか？' : '몇 번 홀에서 티샷을 시작하겠습니까?'}</span>
             <span className="text-emerald-800 font-extrabold bg-emerald-100 px-2 py-0.5 rounded-full text-[11px]">
-              {startHoleIndex === 1 ? '1번 정규 출발' : `${startHoleIndex}번 샷건 출발`}
+              {startHoleIndex === 1
+                ? (isJapanese ? '1番 正規スタート' : '1번 정규 출발')
+                : (isJapanese ? `${startHoleIndex}番 ショットガン` : `${startHoleIndex}번 샷건 출발`)}
             </span>
           </div>
 
@@ -831,7 +876,7 @@ function NewRoundForm() {
                       : 'bg-stone-50 text-stone-800 border-stone-200 hover:bg-stone-100 hover:border-stone-300'
                   }`}
                 >
-                  <span>{hNum}번 홀</span>
+                  <span>{hNum}{isJapanese ? '番ホール' : '번 홀'}</span>
                   {isSelected && <span className="text-xs text-yellow-300 font-black">✓</span>}
                 </button>
               );
@@ -842,16 +887,17 @@ function NewRoundForm() {
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-1.5 text-[10px] text-amber-900 font-bold flex items-center gap-1">
               <span>🎯</span>
               <span>
-                샷건 순환: {selectedCourseLetter}코스 {orderedHoleNumbers.map((h) => ((h - 1) % 9) + 1).join(' ➔ ')}번 홀 (총 9홀)
+                {isJapanese
+                  ? `ショットガン巡回: ${selectedCourseLetter}コース ${orderedHoleNumbers.map((h) => ((h - 1) % 9) + 1).join(' ➔ ')}番ホール (全9ホール)`
+                  : `샷건 순환: ${selectedCourseLetter}코스 ${orderedHoleNumbers.map((h) => ((h - 1) % 9) + 1).join(' ➔ ')}번 홀 (총 9홀)`}
               </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* 4. 라운드 진행 방식 (유연한 라운드) 원터치 1줄 컴팩트 탭 */}
+      {/* 4. 라운드 진행 방식 */}
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden transition-all">
-        {/* 한 줄 탭 버튼: 클릭 시 옵션 펼침 / 접힘 */}
         <button
           type="button"
           onClick={() => setShowRoundModeSelector(!showRoundModeSelector)}
@@ -861,17 +907,17 @@ function NewRoundForm() {
             <span className="text-base shrink-0">🔄</span>
             <div className="flex items-center gap-1.5">
               <span className="text-sm font-black text-stone-900">
-                라운드 진행 방식
+                {isJapanese ? 'ラウンド方式' : '라운드 진행 방식'}
               </span>
               <span className="text-xs font-bold text-stone-500">
-                (선택하세요)
+                {isJapanese ? '(選択してください)' : '(선택하세요)'}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {!isUnlimitedRound && (
               <span className="text-xs font-black px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-900 border-amber-300">
-                🎯 {targetHolesCount}홀
+                🎯 {targetHolesCount}{isJapanese ? 'ホール' : '홀'}
               </span>
             )}
             {showRoundModeSelector ? (
@@ -882,7 +928,6 @@ function NewRoundForm() {
           </div>
         </button>
 
-        {/* 클릭했을 때 아래로 깔끔하게 펼쳐지는 선택 화면 */}
         {showRoundModeSelector && (
           <div className="p-3.5 pt-2 border-t border-stone-100 bg-stone-50/60 space-y-3 animate-fadeIn">
             <div className="grid grid-cols-2 gap-2">
@@ -900,14 +945,16 @@ function NewRoundForm() {
                 <div className="flex items-center justify-between">
                   <span className="font-black text-xs text-stone-900 flex items-center gap-1">
                     <span>♾️</span>
-                    <span>무제한 자유 라운드</span>
+                    <span>{isJapanese ? '無制限 フリーラウンド' : '무제한 자유 라운드'}</span>
                   </span>
                   <span className="text-[9px] bg-emerald-600 text-white font-black px-1.5 py-0.5 rounded-full">
-                    추천
+                    {isJapanese ? 'おすすめ' : '추천'}
                   </span>
                 </div>
                 <p className="text-[10.5px] text-stone-600 mt-1 leading-tight font-medium">
-                  홀 수 강제 없이 원하는 만큼 순환 후 언제든 직접 종료
+                  {isJapanese
+                    ? 'ホール数の制限なく、好きなだけラウンドしていつでも直接終了'
+                    : '홀 수 강제 없이 원하는 만큼 순환 후 언제든 직접 종료'}
                 </p>
               </button>
 
@@ -925,19 +972,21 @@ function NewRoundForm() {
                 <div className="flex items-center justify-between">
                   <span className="font-black text-xs text-stone-900 flex items-center gap-1">
                     <span>🎯</span>
-                    <span>목표 홀 설정 라운드</span>
+                    <span>{isJapanese ? '目標ホール設定' : '목표 홀 설정 라운드'}</span>
                   </span>
                   {!isUnlimitedRound && <span className="text-xs text-amber-600 font-black">✓</span>}
                 </div>
                 <p className="text-[10.5px] text-stone-600 mt-1 leading-tight font-medium">
-                  목표 홀 도달 시 [더 치기] vs [종료하기] 심플 선택
+                  {isJapanese
+                    ? '目標ホール到達時に [続ける] vs [終了する] をシンプル選択'
+                    : '목표 홀 도달 시 [더 치기] vs [종료하기] 심플 선택'}
                 </p>
               </button>
             </div>
 
             {!isUnlimitedRound && (
               <div className="pt-2 border-t border-stone-200 flex items-center justify-between">
-                <span className="text-xs font-bold text-stone-700">목표 홀 수:</span>
+                <span className="text-xs font-bold text-stone-700">{isJapanese ? '目標ホール数:' : '목표 홀 수:'}</span>
                 <div className="flex items-center gap-1.5">
                   {[9, 18, 27, 36].map((hCount) => (
                     <button
@@ -950,7 +999,7 @@ function NewRoundForm() {
                           : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
                       }`}
                     >
-                      {hCount}홀
+                      {hCount}{isJapanese ? 'ホール' : '홀'}
                     </button>
                   ))}
                 </div>
@@ -963,7 +1012,7 @@ function NewRoundForm() {
                 onClick={() => setShowRoundModeSelector(false)}
                 className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-black px-4 py-1.5 rounded-xl transition active:scale-95 cursor-pointer shadow-xs"
               >
-                선택 완료 ✓
+                {isJapanese ? '選択完了 ✓' : '선택 완료 ✓'}
               </button>
             </div>
           </div>
@@ -983,7 +1032,11 @@ function NewRoundForm() {
         <Play className="w-4 h-4 fill-current" />
         <span>
           {isTrialMode ? '🎯 ' : ''}
-          {selectedCourseLetter}코스 {startHoleIndex}번 홀 {isTrialMode ? '체험 티샷 시작' : '티샷 시작 ⛳'}
+          {selectedCourseLetter}{isJapanese ? 'コース ' : '코스 '}
+          {startHoleIndex}{isJapanese ? '番ホール ' : '번 홀 '}
+          {isTrialMode
+            ? (isJapanese ? '体験ティーショット開始' : '체험 티샷 시작')
+            : (isJapanese ? 'ティーショット開始 ⛳' : '티샷 시작 ⛳')}
         </span>
       </button>
 
@@ -994,10 +1047,10 @@ function NewRoundForm() {
             <div className="flex items-center justify-between border-b border-stone-100 pb-2">
               <div>
                 <h3 className="text-base font-black text-stone-900 flex items-center gap-1">
-                  <span>⛳ {currentCourse.name} 코스/홀수 정정</span>
+                  <span>⛳ {currentCourse.name} {isJapanese ? 'コース/ホール数の訂正' : '코스/홀수 정정'}</span>
                 </h3>
                 <p className="text-[11px] text-stone-500 font-medium">
-                  새로 등록할 필요 없이 코스 확장을 바로 반영합니다
+                  {isJapanese ? '新規登録の手間なくコース拡張を即時反映します' : '새로 등록할 필요 없이 코스 확장을 바로 반영합니다'}
                 </p>
               </div>
               <button
@@ -1012,40 +1065,44 @@ function NewRoundForm() {
             <div className="space-y-2.5">
               <div>
                 <label className="block text-xs font-bold text-stone-800 mb-1">
-                  현재 구장의 실제 총 코스 및 홀수 선택
+                  {isJapanese ? '現在の球場の実際コース数およびホール数を選択' : '현재 구장의 실제 총 코스 및 홀수 선택'}
                 </label>
                 <select
                   value={editHoles}
                   onChange={(e) => setEditHoles(Number(e.target.value))}
                   className="w-full bg-stone-50 border-2 border-emerald-500 rounded-xl px-3 py-2.5 text-sm font-black text-stone-900 outline-none"
                 >
-                  <option value={9}>총 1코스 9홀 (A코스)</option>
-                  <option value={18}>총 2코스 18홀 (A, B코스)</option>
-                  <option value={27}>총 3코스 27홀 (A, B, C코스)</option>
-                  <option value={36}>총 4코스 36홀 (A, B, C, D코스)</option>
-                  <option value={45}>총 5코스 45홀 (A~E코스)</option>
-                  <option value={54}>총 6코스 54홀 (A~F코스)</option>
-                  <option value={63}>총 7코스 63홀 (A~G코스)</option>
-                  <option value={72}>총 8코스 72홀 (A~H코스)</option>
-                  <option value={108}>총 12코스 108홀 (A~L코스)</option>
+                  <option value={9}>{isJapanese ? '計 1コース 9ホール (Aコース)' : '총 1코스 9홀 (A코스)'}</option>
+                  <option value={18}>{isJapanese ? '計 2コース 18ホール (A, Bコース)' : '총 2코스 18홀 (A, B코스)'}</option>
+                  <option value={27}>{isJapanese ? '計 3コース 27ホール (A, B, Cコース)' : '총 3코스 27홀 (A, B, C코스)'}</option>
+                  <option value={36}>{isJapanese ? '計 4コース 36ホール (A, B, C, Dコース)' : '총 4코스 36홀 (A, B, C, D코스)'}</option>
+                  <option value={45}>{isJapanese ? '計 5コース 45ホール (A~Eコース)' : '총 5코스 45홀 (A~E코스)'}</option>
+                  <option value={54}>{isJapanese ? '計 6コース 54ホール (A~Fコース)' : '총 6코스 54홀 (A~F코스)'}</option>
+                  <option value={63}>{isJapanese ? '計 7コース 63ホール (A~Gコース)' : '총 7코스 63홀 (A~G코스)'}</option>
+                  <option value={72}>{isJapanese ? '計 8コース 72ホール (A~Hコース)' : '총 8코스 72홀 (A~H코스)'}</option>
+                  <option value={108}>{isJapanese ? '計 12コース 108ホール (A~Lコース)' : '총 12코스 108홀 (A~L코스)'}</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-stone-800 mb-1">
-                  정정자 닉네임 (명예의 전당 등록)
+                  {isJapanese ? '訂正者ニックネーム (名誉の殿堂登録)' : '정정자 닉네임 (명예의 전당 등록)'}
                 </label>
                 <input
                   type="text"
                   value={editContributor}
                   onChange={(e) => setEditContributor(e.target.value)}
-                  placeholder="예: 옥성클럽회장 (선택)"
+                  placeholder={isJapanese ? '例: パーク会長 (任意)' : '예: 옥성클럽회장 (선택)'}
                   className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-sm font-bold text-stone-900 outline-none focus:border-emerald-600"
                 />
               </div>
 
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-[11px] text-emerald-950 font-medium leading-relaxed">
-                💡 <b>신규 등록을 중복으로 하실 필요가 없습니다!</b> 여기서 변경하시면 구장의 총 코스 수가 확장되어 A코스, B코스 선택이 즉시 가능해집니다.
+                {isJapanese ? (
+                  <>💡 <b>新規登録を重複して行う必要はありません！</b> ここで変更すると球場の総コース数が拡張され、Aコース、Bコース等の選択が即座に可能になります。</>
+                ) : (
+                  <>💡 <b>신규 등록을 중복으로 하실 필요가 없습니다!</b> 여기서 변경하시면 구장의 총 코스 수가 확장되어 A코스, B코스 선택이 즉시 가능해집니다.</>
+                )}
               </div>
             </div>
 
@@ -1055,14 +1112,14 @@ function NewRoundForm() {
                 onClick={handleSaveCourseCorrection}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 rounded-xl text-sm shadow active:scale-95 transition"
               >
-                즉시 정정 및 반영하기 ✓
+                {isJapanese ? '即時訂正して反映する ✓' : '즉시 정정 및 반영하기 ✓'}
               </button>
               <button
                 type="button"
                 onClick={() => setShowEditModal(false)}
                 className="px-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs"
               >
-                취소
+                {isJapanese ? 'キャンセル' : '취소'}
               </button>
             </div>
           </div>
@@ -1077,8 +1134,8 @@ function NewRoundForm() {
               <div className="flex items-center gap-2">
                 <span className="text-xl">📱</span>
                 <div>
-                  <h3 className="font-black text-stone-900 text-base leading-tight">동반자 초대</h3>
-                  <p className="text-xs text-stone-500">QR 스캔 또는 카카오톡·문자 전송</p>
+                  <h3 className="font-black text-stone-900 text-base leading-tight">{isJapanese ? '同伴者招待' : '동반자 초대'}</h3>
+                  <p className="text-xs text-stone-500">{isJapanese ? 'QRスキャン または LINE・メッセージ送信' : 'QR 스캔 또는 카카오톡·문자 전송'}</p>
                 </div>
               </div>
               <button
@@ -1099,7 +1156,7 @@ function NewRoundForm() {
                     <div className="relative flex items-center justify-center">
                       <img
                         src={qrDataUrl}
-                        alt="동반자 초대 QR 코드"
+                        alt={isJapanese ? '同伴者招待QRコード' : '동반자 초대 QR 코드'}
                         className="w-44 h-44 rounded-xl object-contain shadow-inner"
                       />
                       {/* Center Emblem Badge */}
@@ -1111,12 +1168,12 @@ function NewRoundForm() {
                     </div>
                   ) : (
                     <div className="w-44 h-44 flex items-center justify-center text-stone-400 font-bold text-sm">
-                      QR 코드 생성 중...
+                      {isJapanese ? 'QRコード生成中...' : 'QR 코드 생성 중...'}
                     </div>
                   )}
                 </div>
                 <p className="text-[11px] text-stone-600 font-bold mt-1.5">
-                  📷 동반자가 스마트폰 카메라로 비추면 바로 참가 화면이 열립니다.
+                  {isJapanese ? '📷 同伴者がスマホのカメラをかざすと、すぐに参加画面が開きます。' : '📷 동반자가 스마트폰 카메라로 비추면 바로 참가 화면이 열립니다.'}
                 </p>
               </div>
 
@@ -1125,14 +1182,22 @@ function NewRoundForm() {
                 <button
                   type="button"
                   onClick={handleShareInvite}
-                  className="w-full py-3.5 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] font-black rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm border border-[#E6CF00] transition active:scale-98 cursor-pointer"
+                  className={`w-full py-3.5 px-4 font-black rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm transition active:scale-98 cursor-pointer ${
+                    isJapanese
+                      ? 'bg-[#06C755] hover:bg-[#05b34c] text-white border border-[#05b34c]'
+                      : 'bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] border border-[#E6CF00]'
+                  }`}
                 >
-                  <span className="text-base leading-none">💬</span>
-                  <span>{copiedLink ? '초대 링크 복사 완료!' : '카카오톡 / 문자 초대장 보내기'}</span>
+                  <span className="text-base leading-none">{isJapanese ? '🟢' : '💬'}</span>
+                  <span>
+                    {copiedLink
+                      ? (isJapanese ? '招待リンクのコピー完了！' : '초대 링크 복사 완료!')
+                      : (isJapanese ? 'LINE / メッセージ招待状を送る' : '카카오톡 / 문자 초대장 보내기')}
+                  </span>
                   {copiedLink ? (
-                    <Check className="w-4 h-4 ml-auto text-emerald-800 font-black" />
+                    <Check className={`w-4 h-4 ml-auto font-black ${isJapanese ? 'text-white' : 'text-emerald-800'}`} />
                   ) : (
-                    <Share2 className="w-4 h-4 ml-auto text-stone-700" />
+                    <Share2 className={`w-4 h-4 ml-auto ${isJapanese ? 'text-white' : 'text-stone-700'}`} />
                   )}
                 </button>
 
@@ -1141,16 +1206,20 @@ function NewRoundForm() {
                   <div className="bg-emerald-700 text-white rounded-xl p-2.5 text-xs font-black text-center shadow-md animate-in fade-in slide-in-from-top-1 duration-150 flex flex-col items-center justify-center gap-0.5">
                     <div className="flex items-center gap-1.5 text-emerald-100">
                       <span className="text-sm">📋</span>
-                      <span className="text-xs font-black text-white">초대 링크가 복사되었습니다!</span>
+                      <span className="text-xs font-black text-white">{isJapanese ? '招待リンクがコピーされました！' : '초대 링크가 복사되었습니다!'}</span>
                     </div>
                     <p className="text-[11px] text-emerald-100 font-medium leading-tight">
-                      카카오톡이나 문자 대화창에 <span className="underline font-bold text-white">[붙여넣기]</span> 하시면 됩니다.
+                      {isJapanese ? (
+                        <>LINEやメッセージのトークルームに <span className="underline font-bold text-white">[貼り付け]</span> してください。</>
+                      ) : (
+                        <>카카오톡이나 문자 대화창에 <span className="underline font-bold text-white">[붙여넣기]</span> 하시면 됩니다.</>
+                      )}
                     </p>
                   </div>
                 ) : (
                   <div className="bg-amber-50/80 border border-amber-200/80 rounded-lg py-1 px-2.5 text-[11px] text-amber-900 text-center flex items-center justify-center gap-1">
                     <span>👉</span>
-                    <span>클릭 시 복사되며, 카카오톡·문자 대화창에 [붙여넣기] 하시면 됩니다.</span>
+                    <span>{isJapanese ? 'クリックでコピーされ、LINEやメッセージのトークに[貼り付け]できます。' : '클릭 시 복사되며, 카카오톡·문자 대화창에 [붙여넣기] 하시면 됩니다.'}</span>
                   </div>
                 )}
               </div>
@@ -1160,11 +1229,11 @@ function NewRoundForm() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-black text-emerald-950">
                     <Users className="w-4 h-4 text-emerald-700" />
-                    <span>실시간 동반자 참여 현황</span>
+                    <span>{isJapanese ? 'リアルタイム同伴者参加現況' : '실시간 동반자 참여 현황'}</span>
                   </div>
                   <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-                    실시간 자동 감지 중
+                    {isJapanese ? 'リアルタイム自動検知中' : '실시간 자동 감지 중'}
                   </span>
                 </div>
 
@@ -1200,15 +1269,15 @@ function NewRoundForm() {
                         <div className="shrink-0">
                           {p.isLeader ? (
                             <span className="text-[10px] bg-amber-200 text-amber-900 font-black px-1.5 py-0.5 rounded">
-                              👑 조장
+                              👑 {isJapanese ? 'リーダー' : '조장'}
                             </span>
                           ) : isJoined ? (
                             <span className="text-[10px] bg-emerald-600 text-white font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                              ✓ 입장 완료
+                              ✓ {isJapanese ? '参加完了' : '입장 완료'}
                             </span>
                           ) : (
                             <span className="text-[10px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
-                              스캔 대기 중...
+                              {isJapanese ? 'スキャン待機中...' : '스캔 대기 중...'}
                             </span>
                           )}
                         </div>
@@ -1222,16 +1291,26 @@ function NewRoundForm() {
               <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-xs text-stone-600 space-y-1.5">
                 <div className="flex items-center justify-between gap-1.5 flex-wrap">
                   <span className="text-xs font-black text-emerald-900 bg-emerald-100/80 px-2 py-0.5 rounded-md">
-                    ⛳ 초대 구장: {currentCourse?.name || '동락파크골프장'}
+                    ⛳ {isJapanese ? '招待球場' : '초대 구장'}: {currentCourse?.name || (isJapanese ? 'パークゴルフ場' : '동락파크골프장')}
                   </span>
                   <span className="text-[10px] font-bold text-stone-500 bg-stone-200/70 px-1.5 py-0.5 rounded">
-                    대기실 코드: #{roomId ? roomId.slice(-6).toUpperCase() : 'PARK'}
+                    {isJapanese ? '待合室コード' : '대기실 코드'}: #{roomId ? roomId.slice(-6).toUpperCase() : 'PARK'}
                   </span>
                 </div>
                 <p className="text-[11px] text-stone-600 font-medium leading-relaxed">
-                  • 동반자가 참여하면 위 참여 현황 명단에 이름이 자동으로 쏙 채워집니다.<br />
-                  • 회원은 본인 실명/별명으로 자동 입장되며, 비회원은 게스트로 3초 만에 합류합니다.<br />
-                  • 라운드 시작 후에는 동반자 스마트폰에서도 실시간 스코어가 함께 공유됩니다.
+                  {isJapanese ? (
+                    <>
+                      • 同伴者が参加すると、上の参加現況名簿に名前が自動的に反映されます。<br />
+                      • 会員は本名/ニックネームで自動入場し、非会員はゲストとして3秒で合流できます。<br />
+                      • ラウンド開始後は同伴者のスマートフォンでもリアルタイムスコアが共有されます。
+                    </>
+                  ) : (
+                    <>
+                      • 동반자가 참여하면 위 참여 현황 명단에 이름이 자동으로 쏙 채워집니다.<br />
+                      • 회원은 본인 실명/별명으로 자동 입장되며, 비회원은 게스트로 3초 만에 합류합니다.<br />
+                      • 라운드 시작 후에는 동반자 스마트폰에서도 실시간 스코어가 함께 공유됩니다.
+                    </>
+                  )}
                 </p>
               </div>
             </div>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Smartphone, Laptop, CheckCircle, ExternalLink } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 interface InstallGuideModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface InstallGuideModalProps {
 }
 
 export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialPrompt }: InstallGuideModalProps) {
+  const { isJapanese, isEnglish } = useTranslation();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(initialPrompt || null);
   const [mobileSubTab, setMobileSubTab] = useState<'KAKAO' | 'CHROME' | 'IOS'>('KAKAO');
   const [showPcOption, setShowPcOption] = useState<boolean>(false);
@@ -17,8 +19,12 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // 카카오톡 링크 유입이 절대 다수이므로 KAKAO 탭을 기본값으로 고정
-    setMobileSubTab('KAKAO');
+    // 일본어 환경에서는 크롬/안드로이드가 기본, 한국어에서는 카카오톡이 기본
+    if (isJapanese) {
+      setMobileSubTab('CHROME');
+    } else {
+      setMobileSubTab('KAKAO');
+    }
 
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
@@ -27,7 +33,7 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-  }, []);
+  }, [isJapanese]);
 
   if (!isOpen) return null;
 
@@ -56,7 +62,9 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
         <div className="bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <Smartphone className="w-5 h-5 text-yellow-300" />
-            <h3 className="font-extrabold text-base">스마트폰 바탕화면 앱 추가</h3>
+            <h3 className="font-extrabold text-base">
+              {isJapanese ? 'スマホ画面にアプリ追加' : isEnglish ? 'Add App to Home Screen' : '스마트폰 바탕화면 앱 추가'}
+            </h3>
           </div>
           <button
             type="button"
@@ -79,13 +87,17 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
             />
             <div className="min-w-0">
               <div className="text-xs font-black text-emerald-950 flex items-center gap-1">
-                <span>스마트폰 바탕화면 파키 아이콘</span>
+                <span>{isJapanese ? 'スマホ画面 パッキーアイコン' : isEnglish ? 'Home Screen Icon' : '스마트폰 바탕화면 파키 아이콘'}</span>
                 <span className="bg-amber-400 text-emerald-950 px-1 py-0.2 rounded text-[9px] font-black">
-                  공식
+                  {isJapanese ? '公式' : isEnglish ? 'Official' : '공식'}
                 </span>
               </div>
               <div className="text-[11px] text-emerald-800 font-medium mt-0.5">
-                설치 후 누르면 주소창 없는 전체화면 앱으로 바로 실행됩니다.
+                {isJapanese
+                  ? 'インストール後にタップするとアドレスバーなしの全画面アプリですぐ起動します。'
+                  : isEnglish
+                  ? 'Launches as a fullscreen app without an address bar.'
+                  : '설치 후 누르면 주소창 없는 전체화면 앱으로 바로 실행됩니다.'}
               </div>
             </div>
           </div>
@@ -98,50 +110,57 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
               className="w-full py-3 px-4 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 hover:brightness-105 active:scale-98 text-emerald-950 font-black text-xs rounded-xl shadow-md border border-amber-300 flex items-center justify-center gap-2 cursor-pointer transition animate-bounce"
             >
               <Smartphone className="w-4 h-4 text-emerald-950" />
-              <span>스마트폰에 바로가기 1초 자동 추가</span>
+              <span>{isJapanese ? '📲 スマホ画面に1秒自動追加' : isEnglish ? '📲 1-Sec Auto Install' : '스마트폰에 바로가기 1초 자동 추가'}</span>
             </button>
           )}
-            /* 스마트폰 (모바일) 설치 안내 - 시니어 맞춤 3단 분기 */
-            <div className="space-y-3">
-              {/* 모바일 브라우저 유형 선택 탭 */}
-              <div className="p-1 bg-stone-100 rounded-xl border border-stone-200 grid grid-cols-3 gap-1 text-xs font-black">
-                <button
-                  type="button"
-                  onClick={() => setMobileSubTab('KAKAO')}
-                  className={`py-2 px-1.5 rounded-lg transition cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center ${
-                    mobileSubTab === 'KAKAO'
-                      ? 'bg-amber-400 text-emerald-950 shadow-sm'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  <span className="text-sm">💬</span>
-                  <span className="text-[11px] leading-tight font-black">카톡 링크 (필독)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMobileSubTab('CHROME')}
-                  className={`py-2 px-1.5 rounded-lg transition cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center ${
-                    mobileSubTab === 'CHROME'
-                      ? 'bg-emerald-700 text-white shadow-sm'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  <span className="text-sm">🌐</span>
-                  <span className="text-[11px] leading-tight font-black">크롬 · 삼성인터넷</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMobileSubTab('IOS')}
-                  className={`py-2 px-1.5 rounded-lg transition cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center ${
-                    mobileSubTab === 'IOS'
-                      ? 'bg-emerald-700 text-white shadow-sm'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  <span className="text-sm">🍎</span>
-                  <span className="text-[11px] leading-tight font-black">아이폰 (사파리)</span>
-                </button>
-              </div>
+
+          {/* 스마트폰 (모바일) 설치 안내 - 시니어 맞춤 3단 분기 */}
+          <div className="space-y-3">
+            {/* 모바일 브라우저 유형 선택 탭 */}
+            <div className="p-1 bg-stone-100 rounded-xl border border-stone-200 grid grid-cols-3 gap-1 text-xs font-black">
+              <button
+                type="button"
+                onClick={() => setMobileSubTab('KAKAO')}
+                className={`py-2 px-1.5 rounded-lg transition cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center ${
+                  mobileSubTab === 'KAKAO'
+                    ? 'bg-amber-400 text-emerald-950 shadow-sm'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span className="text-sm">💬</span>
+                <span className="text-[11px] leading-tight font-black">
+                  {isJapanese ? 'LINE / リンク' : isEnglish ? 'Link' : '카톡 링크 (필독)'}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileSubTab('CHROME')}
+                className={`py-2 px-1.5 rounded-lg transition cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center ${
+                  mobileSubTab === 'CHROME'
+                    ? 'bg-emerald-700 text-white shadow-sm'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span className="text-sm">🌐</span>
+                <span className="text-[11px] leading-tight font-black">
+                  {isJapanese ? 'Chrome / Android' : isEnglish ? 'Chrome' : '크롬 · 삼성인터넷'}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileSubTab('IOS')}
+                className={`py-2 px-1.5 rounded-lg transition cursor-pointer flex flex-col items-center justify-center gap-0.5 text-center ${
+                  mobileSubTab === 'IOS'
+                    ? 'bg-emerald-700 text-white shadow-sm'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span className="text-sm">🍎</span>
+                <span className="text-[11px] leading-tight font-black">
+                  {isJapanese ? 'iPhone (Safari)' : isEnglish ? 'iPhone' : '아이폰 (사파리)'}
+                </span>
+              </button>
+            </div>
 
               {/* 1) 카카오톡 링크로 접속한 경우 (가장 많은 시니어 사례) */}
               {mobileSubTab === 'KAKAO' && (

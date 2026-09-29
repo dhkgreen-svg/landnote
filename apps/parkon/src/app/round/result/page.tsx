@@ -19,11 +19,45 @@ import { DigitalBadgeModal } from '@/components/DigitalBadgeModal';
 import { CourseHallOfFameModal } from '@/components/CourseHallOfFameModal';
 import { NationalTourMapModal } from '@/components/NationalTourMapModal';
 import { BadgeStorage, CourseBadgeRecord, ProvinceInfo } from '@/lib/badgeStorage';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { getCourseDualName } from '@/lib/courseLocalization';
+
+const JA_PRESCRIPTIONS = [
+  {
+    id: 'rx-par3-short',
+    title: 'Par 3 ショートホール打数セーブ緊急処方',
+    summary: 'ショートパットの距離感＆ヘッドアップ防止',
+    content: 'Par 3で打数が増えた主な原因は、ティーショット後の3〜5mパッティングのオーバーまたはショートです。インパクト後1秒間視線を芝に固定し、バックスイングとフォローの比率を1:1で維持しましょう。',
+  },
+  {
+    id: 'rx-ob-control',
+    title: 'OB多発ホール 方向性改善緊急処方',
+    summary: 'ヘッドリリースとアドレスエイミングの再調整',
+    content: 'OBが発生したホールでは、飛距離を意識して体が先に開く傾向があります。グリッププレッシャーを30%落とし、目標より3m手前の芝を仮想エイミングポイントにして柔らかくスイングしましょう。',
+  },
+  {
+    id: 'rx-long-hole',
+    title: 'Par 5 ロングホール セカンドショット安定化処方',
+    summary: '無理な2オンを避け、30mアプローチ分割攻略',
+    content: 'ロングホールでは2オンの欲を抑え、徹底した3オン戦略をとることで安定したParセーブが可能です。70m + 40m + 10mの分割打撃を実践してみてください。',
+  },
+];
 
 function ResultContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const roundId = searchParams.get('id');
+  const { t, isJapanese, isEnglish } = useTranslation();
+  const [copiedResult, setCopiedResult] = useState<boolean>(false);
+
+  const handleCopyResultUrl = async () => {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://www.parkgolfallinone.com';
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedResult(true);
+      setTimeout(() => setCopiedResult(false), 2500);
+    }
+  };
 
   const [session, setSession] = useState<RoundSession | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
@@ -180,7 +214,7 @@ function ResultContent() {
     };
   });
 
-  const coursesPlayedStr = involvedCourses.map((l) => `${l}코스`).join(' + ');
+  const coursesPlayedStr = involvedCourses.map((l) => (isJapanese ? `${l}コース` : `${l}코스`)).join(' + ');
   const totalHolesCount = effectivePlayedHoles.length;
 
   // Calculate each player's actual total strokes across only played holes
@@ -195,17 +229,23 @@ function ResultContent() {
   // Sort players by realTotalStrokes ascending (rankings)
   const rankedPlayers = [...playersWithRealTotals].sort((a, b) => a.realTotalStrokes - b.realTotalStrokes);
 
-  // KakaoTalk Text Generation with per-course breakdown
+  // KakaoTalk & LINE Text Generation with per-course breakdown
   const generateKakaoText = () => {
     const dateStr = session.completedAt
-      ? new Date(session.completedAt).toLocaleDateString('ko-KR')
-      : new Date().toLocaleDateString('ko-KR');
+      ? new Date(session.completedAt).toLocaleDateString(isJapanese ? 'ja-JP' : 'ko-KR')
+      : new Date().toLocaleDateString(isJapanese ? 'ja-JP' : 'ko-KR');
 
-    const lines = [
-      `⛳ [파크온] ${session.courseName} (${coursesPlayedStr}) 라운드 최종 성적표`,
-      `📅 일시: ${dateStr} (총 ${totalHolesCount}홀 진행 / 기준 Par ${totalCoursePar})`,
-      `━━━━━━━━━━━━━━━━`,
-    ];
+    const lines = isJapanese
+      ? [
+          `⛳ [パークゴルフ オールインワン] ${session.courseName} (${coursesPlayedStr}) ラウンド最終成績表`,
+          `📅 日時: ${dateStr} (計 ${totalHolesCount}ホール進行 / 基準 Par ${totalCoursePar})`,
+          `━━━━━━━━━━━━━━━━`,
+        ]
+      : [
+          `⛳ [파크골프 올인원] ${session.courseName} (${coursesPlayedStr}) 라운드 최종 성적표`,
+          `📅 일시: ${dateStr} (총 ${totalHolesCount}홀 진행 / 기준 Par ${totalCoursePar})`,
+          `━━━━━━━━━━━━━━━━`,
+        ];
 
     rankedPlayers.forEach((p, idx) => {
       const diff = p.realTotalStrokes - totalCoursePar;
@@ -216,21 +256,43 @@ function ResultContent() {
         .filter((c) => c.playedInCourse.length > 0)
         .map((c) => {
           const cScore = c.playedInCourse.reduce((sum, h) => sum + (p.scores?.[h] || 0), 0);
-          return `${c.letter}코스(${c.playedInCourse.length}홀): ${cScore}타`;
+          return isJapanese
+            ? `${c.letter}コース(${c.playedInCourse.length}ホール): ${cScore}打`
+            : `${c.letter}코스(${c.playedInCourse.length}홀): ${cScore}타`;
         })
         .join(' / ');
 
-      lines.push(`${medal} ${idx + 1}위: ${p.name} - ${p.realTotalStrokes}타 (${diffStr})`);
+      const rankTitle = isJapanese ? `${idx + 1}位` : `${idx + 1}위`;
+      const scoreUnit = isJapanese ? '打' : '타';
+      lines.push(`${medal} ${rankTitle}: ${p.name} - ${p.realTotalStrokes}${scoreUnit} (${diffStr})`);
       if (courseBreakdown) {
         lines.push(`   └ ${courseBreakdown}`);
       }
     });
 
     lines.push(`━━━━━━━━━━━━━━━━`);
-    lines.push(`📱 동반자 본인 폰에 성적 담기:`);
-    lines.push(`https://parkon.kr/round/result?id=${session.id}`);
+    lines.push(isJapanese ? `📱 同伴者自身のスマホにスコアを保存:` : `📱 동반자 본인 폰에 성적 담기:`);
+    const originUrl = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkongolf.com';
+    lines.push(`${originUrl}/round/result?id=${session.id}`);
 
     return lines.join('\n');
+  };
+
+  const handleShareToLine = () => {
+    const text = generateKakaoText();
+    const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+    if (typeof window !== 'undefined') {
+      window.open(lineUrl, '_blank');
+    }
+  };
+
+  const handleShareToBand = () => {
+    const text = generateKakaoText();
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://www.parkongolf.com';
+    const bandUrl = `https://band.us/plugin/share?body=${encodeURIComponent(text)}&route=${encodeURIComponent(shareUrl)}`;
+    if (typeof window !== 'undefined') {
+      window.open(bandUrl, '_blank');
+    }
   };
 
   const handleCopyKakao = async () => {
@@ -247,7 +309,7 @@ function ResultContent() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `[파크온] ${session.courseName} 라운드 성적표`,
+          title: isJapanese ? `[パークゴルフ オールインワン] ${session.courseName} ラウンド成績表` : `[파크골프 올인원] ${session.courseName} 라운드 성적표`,
           text: text,
         });
       } catch (err) {
@@ -292,20 +354,22 @@ function ResultContent() {
             <span className="text-xl">🎯</span>
             <div>
               <span className="text-[10px] bg-stone-950 text-amber-300 font-black px-2 py-0.5 rounded-full">
-                체험 모드 성적표
+                {isJapanese ? '体験モード成績表' : '체험 모드 성적표'}
               </span>
-              <h3 className="text-sm font-black text-stone-950 mt-0.5">가상 라운딩 연습 성적표 (미저장)</h3>
+              <h3 className="text-sm font-black text-stone-950 mt-0.5">{isJapanese ? '体験練習 スコアカード (未保存)' : '가상 라운딩 연습 성적표 (미저장)'}</h3>
             </div>
           </div>
           <p className="text-xs text-stone-900 font-bold leading-relaxed">
-            이 성적표는 사용법 연습용으로 <span className="underline font-black">실제 전적이나 랭킹에 저장되지 않습니다.</span>
+            {isJapanese
+              ? <>この成績表は機能体験用で、<span className="underline font-black">実際の戦績やランキングには保存されません。</span></>
+              : <>이 성적표는 사용법 연습용으로 <span className="underline font-black">실제 전적이나 랭킹에 저장되지 않습니다.</span></>}
           </p>
           <div className="pt-1">
             <Link
               href={`/round/new?courseId=${session.courseId}`}
               className="inline-flex items-center justify-center gap-1.5 w-full bg-stone-950 hover:bg-stone-900 text-amber-300 font-black py-2.5 rounded-xl text-xs shadow-md transition active:scale-98"
             >
-              <span>⛳ 실제 필드에서 [정식 라운딩] 시작하기 ▶</span>
+              <span>{isJapanese ? '⛳ 実際のフィールドで [正式ラウンド] を開始 ▶' : '⛳ 실제 필드에서 [정식 라운딩] 시작하기 ▶'}</span>
             </Link>
           </div>
         </div>
@@ -362,31 +426,42 @@ function ResultContent() {
           </div>
         </div>
 
-        <h2 className="text-2xl font-black tracking-tight">라운드 최종 성적표</h2>
-        <p className="text-emerald-200 text-xs font-semibold mt-1">
-          {session.courseName} · {coursesPlayedStr} ({totalHolesCount}홀 진행 · 기준 Par {totalCoursePar})
-        </p>
+        <h2 className="text-2xl font-black tracking-tight">{isJapanese ? 'ラウンド最終成績表' : '라운드 최종 성적표'}</h2>
+        {(() => {
+          const dual = getCourseDualName(course || session.courseName, isJapanese);
+          return (
+            <div className="mt-1 flex flex-col items-center">
+              <span className="text-base font-black text-white flex items-center gap-1.5">
+                {dual.flag && <span>{dual.flag}</span>}
+                <span>{dual.primary}</span>
+              </span>
+              <span className="text-xs text-emerald-200 font-bold mt-0.5">
+                {dual.showSecondary && dual.secondary ? `${dual.secondary} · ` : ''}{coursesPlayedStr} ({totalHolesCount}{isJapanese ? 'ホール進行 · 基準 Par ' : '홀 진행 · 기준 Par '}{totalCoursePar})
+              </span>
+            </div>
+          );
+        })()}
 
         {/* Official vs Practice Status Badge & Switcher */}
         <div className="mt-2.5 flex items-center justify-center gap-2">
           {session.isOfficial === false ? (
             <span className="inline-flex items-center gap-1 bg-amber-400 text-stone-950 font-black px-2.5 py-1 rounded-full text-xs shadow-xs">
               <span>🧪</span>
-              <span>연습·테스트 라운드 (공식 전적 미반영)</span>
+              <span>{isJapanese ? '練習・テストラウンド (公式戦績未反映)' : '연습·테스트 라운드 (공식 전적 미반영)'}</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 bg-emerald-400 text-emerald-950 font-black px-2.5 py-1 rounded-full text-xs shadow-xs">
               <span>🏆</span>
-              <span>공식 정규 라운드 (전적 반영됨)</span>
+              <span>{isJapanese ? '公式正規ラウンド (戦績反映済み)' : '공식 정규 라운드 (전적 반영됨)'}</span>
             </span>
           )}
           <button
             type="button"
             onClick={handleToggleOfficial}
             className="text-[11px] underline text-emerald-200 hover:text-white font-bold cursor-pointer"
-            title="상태 전환"
+            title={isJapanese ? '状態切り替え' : '상태 전환'}
           >
-            {session.isOfficial === false ? '공식 전적으로 변경' : '연습/테스트로 변경'}
+            {session.isOfficial === false ? (isJapanese ? '公式戦績に変更' : '공식 전적으로 변경') : (isJapanese ? '練習/テストに変更' : '연습/테스트로 변경')}
           </button>
         </div>
 
@@ -402,8 +477,8 @@ function ResultContent() {
             <Award className="w-4 h-4 fill-current text-stone-950" />
             <span className="truncate">
               {isFull18Completed
-                ? `🎖️ 완주 뱃지 (${badgeRecord?.visitCount || 1}회)`
-                : `📋 실타수 증서 (${totalHolesCount}홀)`}
+                ? (isJapanese ? `🎖️ 完走バッジ (${badgeRecord?.visitCount || 1}回)` : `🎖️ 완주 뱃지 (${badgeRecord?.visitCount || 1}회)`)
+                : (isJapanese ? `📋 公式打数証書 (${totalHolesCount}ホール)` : `📋 실타수 증서 (${totalHolesCount}홀)`)}
             </span>
           </button>
 
@@ -413,12 +488,12 @@ function ResultContent() {
             className="p-2.5 rounded-2xl bg-emerald-900/90 hover:bg-emerald-800/90 border border-emerald-400/50 text-emerald-100 hover:text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
           >
             <Trophy className="w-4 h-4 text-amber-300" />
-            <span className="truncate">🏆 구장 명예의 전당</span>
+            <span className="truncate">{isJapanese ? '🏆 コース名誉の殿堂' : '🏆 구장 명예의 전당'}</span>
           </button>
         </div>
 
         <div className="mt-3.5 inline-flex items-center gap-2 bg-emerald-700/60 border border-emerald-500/40 px-4 py-2 rounded-2xl">
-          <span className="text-xs text-yellow-300 font-bold">🥇 1위 우승:</span>
+          <span className="text-xs text-yellow-300 font-bold">{isJapanese ? '🥇 1位 優勝:' : '🥇 1위 우승:'}</span>
           <span className="text-lg font-black text-white">{winner.name}</span>
           <span className="text-xs bg-emerald-500 text-emerald-950 font-black px-2 py-0.5 rounded-full">
             {winner.realTotalStrokes}타 (
@@ -443,7 +518,7 @@ function ResultContent() {
             <Camera className="w-4.5 h-4.5" />
           </div>
           <span className="text-sm sm:text-base font-black text-amber-300 tracking-tight">
-            오늘의 동반 사진 남기기 &amp; 공유
+            {isJapanese ? '本日の同伴写真を残す ＆ 共有' : '오늘의 동반 사진 남기기 & 공유'}
           </span>
         </button>
       </div>
@@ -451,8 +526,8 @@ function ResultContent() {
       {/* 2. Leaderboard Table */}
       <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm space-y-3">
         <h3 className="font-extrabold text-base text-stone-900 flex items-center justify-between">
-          <span>동반자 종합 순위표</span>
-          <span className="text-xs text-stone-600 font-medium">총 {session.players.length}명 ({totalHolesCount}홀 기준)</span>
+          <span>{isJapanese ? '同伴者 総合順位表' : '동반자 종합 순위표'}</span>
+          <span className="text-xs text-stone-600 font-medium">{isJapanese ? `計 ${session.players.length}名 (${totalHolesCount}ホール基準)` : `총 ${session.players.length}명 (${totalHolesCount}홀 기준)`}</span>
         </h3>
 
         <div className="space-y-2">
@@ -466,7 +541,7 @@ function ResultContent() {
               .filter((c) => c.playedInCourse.length > 0)
               .map((c) => {
                 const subScore = c.playedInCourse.reduce((sum, h) => sum + (player.scores?.[h] || 0), 0);
-                return `${c.letter}코스 ${subScore}타`;
+                return `${c.letter}${isJapanese ? 'コース ' : '코스 '}${subScore}${isJapanese ? '打' : '타'}`;
               })
               .join(' · ');
 
@@ -493,20 +568,20 @@ function ResultContent() {
                   </span>
                   <div>
                     <div className="font-extrabold text-base text-stone-900 flex items-center gap-1.5 flex-wrap">
-                      {player.isLeader && (
+                      {player.isLeader && session.players.length > 1 && (
                         <span className="text-[10px] px-1.5 py-0.2 rounded font-black bg-amber-500 text-white">
-                          👑 조장
+                          {isJapanese ? '👑 代表' : '👑 조장'}
                         </span>
                       )}
                       <span>{player.name}</span>
                       {player.isSelf && (
                         <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-blue-100 text-blue-700">
-                          본인
+                          {isJapanese ? '本人' : '본인'}
                         </span>
                       )}
                     </div>
                     <div className="text-[11px] text-stone-500 font-medium flex items-center gap-2 flex-wrap">
-                      <span>OB {Object.values(player.obCount || {}).reduce((a, b) => a + b, 0)}회</span>
+                      <span>OB {Object.values(player.obCount || {}).reduce((a, b) => a + b, 0)}{isJapanese ? '回' : '회'}</span>
                       {courseSubScores && (
                         <>
                           <span className="text-stone-300">|</span>
@@ -521,7 +596,7 @@ function ResultContent() {
                   <div className="text-right">
                     <div className="text-xl font-black text-stone-900">
                       {player.realTotalStrokes}
-                      <span className="text-xs text-stone-600 font-bold ml-0.5">타</span>
+                      <span className="text-xs text-stone-600 font-bold ml-0.5">{isJapanese ? '打' : '타'}</span>
                     </div>
                     <div
                       className={`text-xs font-black ${
@@ -544,16 +619,16 @@ function ResultContent() {
                         ? 'bg-emerald-600 text-white'
                         : 'bg-white border border-stone-300 text-stone-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-500'
                     }`}
-                    title="내 폰에 소장하기"
+                    title={isJapanese ? 'マイスマホに保存' : '내 폰에 소장하기'}
                   >
                     {isSaved ? (
                       <>
                         <BookmarkCheck className="w-3.5 h-3.5" />
-                        <span>소장됨</span>
+                        <span>{isJapanese ? '保存済み' : '소장됨'}</span>
                       </>
                     ) : (
                       <>
-                        <span>내 기록 저장 📌</span>
+                        <span>{isJapanese ? 'マイスコア保存 📌' : '내 기록 저장 📌'}</span>
                       </>
                     )}
                   </button>
@@ -568,10 +643,10 @@ function ResultContent() {
       <div className="space-y-4">
         <div className="flex items-center justify-between px-1">
           <h3 className="font-extrabold text-base text-stone-900 flex items-center gap-2">
-            <span>📊 코스별 상세 스코어카드</span>
+            <span>{isJapanese ? '📊 コース別詳細スコアカード' : '📊 코스별 상세 스코어카드'}</span>
           </h3>
           <span className="text-[11px] text-stone-500 font-medium">
-            미진행 홀: <span className="text-stone-400 font-bold">- (미진행)</span>
+            {isJapanese ? '未プレー: ' : '미진행 홀: '}<span className="text-stone-400 font-bold">{isJapanese ? '- (未プレー)' : '- (미진행)'}</span>
           </span>
         </div>
 
@@ -590,13 +665,13 @@ function ResultContent() {
                 </span>
                 <div>
                   <h4 className="font-extrabold text-stone-900 text-base">
-                    {c.letter}코스 스코어
+                    {c.letter}{isJapanese ? 'コース スコア' : '코스 스코어'}
                   </h4>
                   <p className="text-[11px] text-stone-500 font-medium">
                     {c.playedInCourse.length === 9
-                      ? '전체 9홀 완주'
-                      : `${c.playedInCourse.length}홀 진행 (${9 - c.playedInCourse.length}홀 미진행)`}
-                    {c.playedInCourse.length > 0 && ` · 진행 기준 Par ${c.coursePlayedPar}`}
+                      ? (isJapanese ? '全9ホール完走' : '전체 9홀 완주')
+                      : (isJapanese ? `${c.playedInCourse.length}ホール進行 (${9 - c.playedInCourse.length}ホール未プレー)` : `${c.playedInCourse.length}홀 진행 (${9 - c.playedInCourse.length}홀 미진행)`)}
+                    {c.playedInCourse.length > 0 && (isJapanese ? ` · 基準 Par ${c.coursePlayedPar}` : ` · 진행 기준 Par ${c.coursePlayedPar}`)}
                   </p>
                 </div>
               </div>
@@ -609,7 +684,7 @@ function ResultContent() {
                     : 'bg-stone-100 text-stone-500'
                 }`}
               >
-                {c.playedInCourse.length} / 9홀
+                {c.playedInCourse.length} / 9{isJapanese ? 'ホール' : '홀'}
               </span>
             </div>
 
@@ -619,7 +694,7 @@ function ResultContent() {
                 <thead>
                   <tr className="bg-stone-50 text-stone-600 font-bold border-y border-stone-200">
                     <th className="py-2.5 px-2 text-left pl-3 sticky left-0 bg-stone-50 z-10 w-24 whitespace-nowrap">
-                      선수명
+                      {isJapanese ? '選手名' : '선수명'}
                     </th>
                     {c.full9Holes.map((hNum, i) => {
                       const hMeta = course.holesMetadata?.find((m) => Number(m.hole) === Number(hNum));
@@ -640,7 +715,7 @@ function ResultContent() {
                       );
                     })}
                     <th className="py-2 px-2.5 font-extrabold text-stone-900 bg-stone-100/90 whitespace-nowrap">
-                      코스합계
+                      {isJapanese ? 'コース合計' : '코스합계'}
                     </th>
                   </tr>
                 </thead>
@@ -690,7 +765,7 @@ function ResultContent() {
                         <td className="py-2.5 px-2.5 font-black text-stone-900 bg-stone-50/80 whitespace-nowrap">
                           {c.playedInCourse.length > 0 ? (
                             <span>
-                              {courseSubtotal}타
+                              {courseSubtotal}{isJapanese ? '打' : '타'}
                               <span className="text-[10px] text-stone-500 font-semibold ml-1">
                                 ({courseDiffStr})
                               </span>
@@ -709,55 +784,101 @@ function ResultContent() {
         ))}
       </div>
 
-      {/* 3. KakaoTalk Share & Sync Section */}
+      {/* 3. KakaoTalk / Band / LINE Share & Sync Section */}
       <div className="bg-amber-50 rounded-2xl p-4 border border-amber-300 shadow-sm space-y-3">
         <div>
           <div className="text-xs font-bold text-amber-800 flex items-center gap-1">
             <Share2 className="w-4 h-4 text-amber-700" />
-            <span>카카오톡 단체방 결과 공유 & 2단계 소장</span>
+            <span>{isJapanese ? 'LINEグループ共有 ＆ スコア保存' : '카카오톡 · 네이버 밴드 단체방 결과 공유 & 소장'}</span>
           </div>
           <p className="text-xs text-amber-900 mt-1 leading-snug">
-            조장이 카톡 단톡방에 결과를 공유하면, 동반자가 터치 한 번으로 본인 스마트폰에 성적표를 영구 저장할 수 있습니다.
+            {isJapanese
+              ? '代表がLINEグループに結果を共有すると、同伴者がワンタップで自分のスマホにスコアを永久保存できます。'
+              : '조장이 카톡이나 밴드에 결과를 공유하면, 동반자가 터치 한 번으로 본인 스마트폰에 성적표를 영구 저장할 수 있습니다.'}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={handleShare}
-            className="w-full bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black py-3 px-3 rounded-xl text-sm flex items-center justify-center gap-1.5 shadow active:scale-95 transition"
-          >
-            <span>💬 카카오톡 공유</span>
-          </button>
+        {isJapanese ? (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={handleShareToLine}
+              className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white font-black py-3 px-3 rounded-xl text-sm flex items-center justify-center gap-1.5 shadow active:scale-95 transition"
+            >
+              <span>🟢 LINEで結果を共有</span>
+            </button>
 
-          <button
-            onClick={handleCopyKakao}
-            className="w-full bg-white border border-amber-400 hover:bg-amber-100 text-amber-950 font-black py-3 px-3 rounded-xl text-sm flex items-center justify-center gap-1.5 active:scale-95 transition"
-          >
-            {copied ? (
-              <>
-                <Check className="w-4 h-4 text-emerald-600" />
-                <span className="text-emerald-700">복사 완료!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-4 h-4 text-amber-700" />
-                <span>성적 텍스트 복사</span>
-              </>
-            )}
-          </button>
-        </div>
+            <button
+              onClick={handleCopyKakao}
+              className="w-full bg-white border border-amber-400 hover:bg-amber-100 text-amber-950 font-black py-3 px-3 rounded-xl text-sm flex items-center justify-center gap-1.5 active:scale-95 transition"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4 text-emerald-600" />
+                  <span className="text-emerald-700">コピー完了！</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4 text-amber-700" />
+                  <span>スコアテキストをコピー</span>
+                </>
+              )}
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={handleShare}
+                className="w-full bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer"
+              >
+                <span>💬 카카오톡 공유</span>
+              </button>
 
-        {/* [NEW] 동반자 4인 디지털 명함 교환 버튼 */}
-        <div className="pt-1">
-          <button
-            type="button"
-            onClick={handleExchangeCards}
-            className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-95 transition cursor-pointer border border-emerald-400/40"
-          >
-            <CreditCard className="w-4 h-4 text-amber-300" />
-            <span>🤝 동반자 4인과 디지털 명함 교환하기</span>
-          </button>
-        </div>
+              <button
+                onClick={handleShareToBand}
+                className="w-full bg-[#00C73C] hover:bg-[#00B336] text-white font-black py-3 px-2 sm:px-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer"
+              >
+                <span className="font-extrabold text-sm">band</span>
+                <span>밴드(Band) 공유</span>
+              </button>
+            </div>
+
+            <button
+              onClick={handleCopyKakao}
+              className="w-full bg-white border border-amber-400 hover:bg-amber-100 text-amber-950 font-black py-2.5 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4 text-emerald-600" />
+                  <span className="text-emerald-700 font-black">성적표 텍스트 복사 완료!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4 text-amber-700" />
+                  <span>📋 성적 텍스트 복사 (문자·카페 붙여넣기용)</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* 동반자 디지털 명함 교환 버튼 (동반자가 1명 이상 있을 때만 표출) */}
+        {session && session.players.length > 1 && (
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={handleExchangeCards}
+              className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-95 transition cursor-pointer border border-emerald-400/40"
+            >
+              <CreditCard className="w-4 h-4 text-amber-300" />
+              <span>
+                {isJapanese
+                  ? `🤝 同伴者(${session.players.length - 1}名)とデジタル名刺を交換`
+                  : `🤝 동반자(${session.players.length - 1}명)와 디지털 명함 교환하기`}
+              </span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 4. Weak Point Diagnostic & Prescription */}
@@ -765,37 +886,40 @@ function ResultContent() {
         <div className="flex items-center gap-1.5">
           <Sparkles className="w-5 h-5 text-emerald-600" />
           <h3 className="font-extrabold text-base text-stone-900">
-            오늘의 스코어 분석 & 1초 맞춤 처방
+            {isJapanese ? '本日のスコア分析 ＆ アドバイス' : '오늘의 스코어 분석 & 1초 맞춤 처방'}
           </h3>
         </div>
 
-        {totalObs > 0 ? (
-          <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5">
-            <div className="text-xs font-bold text-rose-800 flex items-center gap-1">
-              <ShieldAlert className="w-4 h-4" />
-              <span>{PRESCRIPTIONS[1].title}</span>
+        {(() => {
+          const currentPrescriptions = isJapanese ? JA_PRESCRIPTIONS : PRESCRIPTIONS;
+          return totalObs > 0 ? (
+            <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5">
+              <div className="text-xs font-bold text-rose-800 flex items-center gap-1">
+                <ShieldAlert className="w-4 h-4" />
+                <span>{currentPrescriptions[1].title}</span>
+              </div>
+              <p className="text-xs text-rose-950 font-bold mt-1">
+                {currentPrescriptions[1].summary}
+              </p>
+              <p className="text-xs text-rose-900 mt-1 leading-relaxed break-keep">
+                {currentPrescriptions[1].content}
+              </p>
             </div>
-            <p className="text-xs text-rose-950 font-bold mt-1">
-              {PRESCRIPTIONS[1].summary}
-            </p>
-            <p className="text-xs text-rose-900 mt-1 leading-relaxed break-keep">
-              {PRESCRIPTIONS[1].content}
-            </p>
-          </div>
-        ) : (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5">
-            <div className="text-xs font-bold text-emerald-800 flex items-center gap-1">
-              <Sparkles className="w-4 h-4" />
-              <span>{PRESCRIPTIONS[0].title}</span>
+          ) : (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5">
+              <div className="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                <Sparkles className="w-4 h-4" />
+                <span>{currentPrescriptions[0].title}</span>
+              </div>
+              <p className="text-xs text-emerald-950 font-bold mt-1">
+                {currentPrescriptions[0].summary}
+              </p>
+              <p className="text-xs text-emerald-900 mt-1 leading-relaxed break-keep">
+                {currentPrescriptions[0].content}
+              </p>
             </div>
-            <p className="text-xs text-emerald-950 font-bold mt-1">
-              {PRESCRIPTIONS[0].summary}
-            </p>
-            <p className="text-xs text-emerald-900 mt-1 leading-relaxed break-keep">
-              {PRESCRIPTIONS[0].content}
-            </p>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Google AdSense Slot */}
@@ -806,15 +930,22 @@ function ResultContent() {
         <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 text-stone-950 p-4 sm:p-5 rounded-2xl shadow-xl border-2 border-amber-300 space-y-3 text-center">
           <div className="inline-flex items-center gap-1.5 bg-stone-950 text-amber-300 px-3 py-1 rounded-full text-xs font-black shadow-xs">
             <Sparkles className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
-            <span>👑 파크온 공식 전적 등록</span>
+            <span>{isJapanese ? '👑 ParkOn 公式戦績登録' : '👑 파크온 공식 전적 등록'}</span>
           </div>
           <div>
             <h3 className="text-lg sm:text-xl font-black text-stone-950 leading-tight">
-              오늘 달성하신 멋진 스코어를<br />내 휴대폰에 평생 저장할까요? ⛳
+              {isJapanese ? (
+                <>本日達成されたスコアを<br />スマホに永久保存しますか？ ⛳</>
+              ) : (
+                <>오늘 달성하신 멋진 스코어를<br />내 휴대폰에 평생 저장할까요? ⛳</>
+              )}
             </h3>
             <p className="text-xs font-bold text-stone-900 mt-1.5 leading-snug">
-              지금 카카오 1초 로그인하시면 방금 친 18홀 기록이<br />
-              내 휴대폰 <span className="underline font-black decoration-stone-950">[나의 연대기]</span>에 공식 전적으로 영구 보존됩니다!
+              {isJapanese ? (
+                <>ログインすると、今回のラウンド記録が<br />スマホの <span className="underline font-black decoration-stone-950">[マイ戦績]</span> に公式記録として永久保存されます！</>
+              ) : (
+                <>지금 카카오 1초 로그인하시면 방금 친 18홀 기록이<br />내 휴대폰 <span className="underline font-black decoration-stone-950">[나의 연대기]</span>에 공식 전적으로 영구 보존됩니다!</>
+              )}
             </p>
           </div>
           <button
@@ -822,7 +953,7 @@ function ResultContent() {
             onClick={() => setShowKakaoModal(true)}
             className="w-full py-3.5 px-4 bg-stone-950 hover:bg-stone-900 text-amber-300 font-black text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer border border-amber-400"
           >
-            <span>⚡ 카카오 1초 로그인하고 내 기록 평생 저장하기</span>
+            <span>{isJapanese ? '⚡ ログインしてマイ記録を永久保存する' : '⚡ 카카오 1초 로그인하고 내 기록 평생 저장하기'}</span>
             <ArrowRight className="w-4 h-4 text-amber-300" />
           </button>
         </div>
@@ -834,6 +965,41 @@ function ResultContent() {
         </div>
       )}
 
+      {/* 4.5. 라운드 결과 SNS 공유 (LINE 원터치 공유 & URL 복사) */}
+      <div className="bg-white rounded-2xl p-4 border-2 border-emerald-600 shadow-md space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 font-black text-sm text-stone-900">
+            <span className="text-base">⛳</span>
+            <span>{isJapanese ? '同伴者にラウンド結果を共有' : isEnglish ? 'Share Results with Friends' : '동반자에게 라운드 결과 공유하기'}</span>
+          </div>
+          <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            {isJapanese ? 'ワンタッチ共有' : '원터치 전송'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+          {/* 🟢 LINE 결과 공유 버튼 (초록색 #06C755 고유 브랜드 컬러) */}
+          <button
+            type="button"
+            onClick={handleShareToLine}
+            className="w-full py-3.5 px-4 bg-[#06C755] hover:bg-[#05b34c] active:scale-[0.98] text-white font-black text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span className="text-lg leading-none">🟢</span>
+            <span>{isJapanese ? 'LINEで結果を共有' : 'LINE으로 결과 공유'}</span>
+          </button>
+
+          {/* 📋 URL 복사 버튼 */}
+          <button
+            type="button"
+            onClick={handleCopyResultUrl}
+            className="w-full py-3.5 px-4 bg-stone-900 hover:bg-stone-800 active:scale-[0.98] text-white font-black text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer border border-stone-700"
+          >
+            <Copy className="w-4 h-4 text-amber-300" />
+            <span>{copiedResult ? (isJapanese ? 'コピー完了！' : '복사 완료!') : (isJapanese ? '結果URLをコピー' : '결과 URL 복사')}</span>
+          </button>
+        </div>
+      </div>
+
       {/* 5. Navigation Buttons */}
       <div className="pt-2 space-y-2">
         {session.clubRoomId && (
@@ -842,7 +1008,7 @@ function ResultContent() {
             className="w-full bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-base shadow-md active:scale-98 transition"
           >
             <Trophy className="w-5 h-5 text-amber-300" />
-            <span>🏆 대회 / 월례회 전체 리더보드로 이동</span>
+            <span>{isJapanese ? '🏆 大会・月例会リーダーボードへ' : '🏆 대회 / 월례회 전체 리더보드로 이동'}</span>
           </Link>
         )}
         <Link
@@ -850,14 +1016,14 @@ function ResultContent() {
           className="w-full bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-base shadow-md active:scale-98 transition"
         >
           <Trophy className="w-5 h-5 text-amber-300" />
-          <span>📖 나의 파크골프 연대기 &amp; 1촌 명부로 이동</span>
+          <span>{isJapanese ? '📖 マイ年代記へ移動' : '📖 나의 파크골프 연대기 & 1촌 명부로 이동'}</span>
         </Link>
         <Link
           href="/"
           className="w-full bg-stone-800 hover:bg-stone-700 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-base shadow active:scale-98 transition"
         >
           <Home className="w-5 h-5" />
-          <span>홈 화면으로 이동</span>
+          <span>{isJapanese ? 'ホーム画面へ移動' : '홈 화면으로 이동'}</span>
         </Link>
       </div>
 

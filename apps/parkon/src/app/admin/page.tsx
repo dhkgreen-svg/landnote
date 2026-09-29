@@ -313,7 +313,7 @@ export default function AdminDashboardPage() {
     if (p === '/') return '메인 홈 (스코어카드/구장)';
     if (p.startsWith('/rules')) return '경기 규정집 & 웹툰';
     if (p.startsWith('/courses')) return '전국 구장 검색';
-    if (p.startsWith('/club')) return '파크온 클럽 커뮤니티';
+    if (p.startsWith('/club')) return '파크골프 올인원 클럽 커뮤니티';
     if (p.startsWith('/round')) return '멀티플레이 실시간 라운드';
     if (p.startsWith('/admin')) return '관리자 대시보드';
     return p;
@@ -1922,7 +1922,7 @@ export default function AdminDashboardPage() {
               {/* 5단계 엄격 검증 안내 박스 */}
               <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/80 dark:border-zinc-700/80 rounded-xl p-3 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
                 <strong className="text-zinc-800 dark:text-zinc-200 font-bold block mb-1">
-                  🛡️ 파크온 5단계 '진짜 필드 라운딩' 팩트 검증 원칙
+                  🛡️ 파크골프 올인원 5단계 '진짜 필드 라운딩' 팩트 검증 원칙
                 </strong>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px]">
                   <span>• ① GPS 구장 반경 내 현장 실시간 인증</span>
@@ -2503,7 +2503,7 @@ export default function AdminDashboardPage() {
       {/* 관리자 빠른 링크 */}
       <div className="bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6">
         <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-3 flex items-center gap-2">
-          <span>⚙️</span> 파크온 마스터 관리 센터 빠른 링크
+          <span>⚙️</span> 파크골프 올인원 마스터 관리 센터 빠른 링크
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <a

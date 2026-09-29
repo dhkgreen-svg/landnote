@@ -38,10 +38,12 @@ import { CompanionQRModal } from '@/components/CompanionQRModal';
 import { CompanionFeedWidget } from '@/components/CompanionFeedWidget';
 import { CompanionLightningModal } from '@/components/CompanionLightningModal';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 function ChronicleContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t, isJapanese, isEnglish } = useTranslation();
   const addFriendParam = searchParams.get('addFriend');
 
   const [userName, setUserName] = useState<string>('김대희');
@@ -192,14 +194,14 @@ function ChronicleContent() {
       : null;
 
   // 실제 타수에 기반한 스타 등급 (기록 없으면 '기록 준비중')
-  let skillStarTitle = '기록 준비중';
+  let skillStarTitle = isJapanese ? '記録準備中' : '기록 준비중';
   if (avgStrokes !== null) {
-    if (avgStrokes <= 54) skillStarTitle = '★★★★★ 5스타 (마스터)';
-    else if (avgStrokes <= 58.5) skillStarTitle = '★★★★ 4스타 (상급)';
-    else if (avgStrokes <= 62.5) skillStarTitle = '★★★ 3스타 (중급)';
-    else if (avgStrokes <= 66.5) skillStarTitle = '★★ 2스타 (중초급)';
-    else if (avgStrokes <= 72.5) skillStarTitle = '★ 1스타 (초급)';
-    else skillStarTitle = '0.5스타 (입문)';
+    if (avgStrokes <= 54) skillStarTitle = isJapanese ? '★★★★★ 5スター (マスター)' : '★★★★★ 5스타 (마스터)';
+    else if (avgStrokes <= 58.5) skillStarTitle = isJapanese ? '★★★★ 4スター (上級)' : '★★★★ 4스타 (상급)';
+    else if (avgStrokes <= 62.5) skillStarTitle = isJapanese ? '★★★ 3スター (中級)' : '★★★ 3스타 (중급)';
+    else if (avgStrokes <= 66.5) skillStarTitle = isJapanese ? '★★ 2スター (初中級)' : '★★ 2스타 (중초급)';
+    else if (avgStrokes <= 72.5) skillStarTitle = isJapanese ? '★ 1スター (初級)' : '★ 1스타 (초급)';
+    else skillStarTitle = isJapanese ? '0.5スター (入門)' : '0.5스타 (입문)';
   }
 
   // 사용자 실제 프로필 (클럽 및 첫 라운드 일자)
@@ -207,16 +209,22 @@ function ChronicleContent() {
   const clubNameDisplay =
     userProfile.clubName && userProfile.clubName !== '동락 파크골프 클럽'
       ? userProfile.clubName
-      : '소속 클럽 미등록';
+      : (isJapanese ? '所属クラブ未登録' : '소속 클럽 미등록');
 
   const careerStartDateText =
     completedRounds.length > 0
-      ? `첫 공식 라운드: ${new Date(
-          completedRounds[completedRounds.length - 1].startedAt ||
-            completedRounds[completedRounds.length - 1].completedAt ||
-            ''
-        ).toLocaleDateString('ko-KR')}`
-      : '공식 라운드 기록 준비중';
+      ? (isJapanese
+          ? `初公式ラウンド: ${new Date(
+              completedRounds[completedRounds.length - 1].startedAt ||
+                completedRounds[completedRounds.length - 1].completedAt ||
+                ''
+            ).toLocaleDateString('ja-JP')}`
+          : `첫 공식 라운드: ${new Date(
+              completedRounds[completedRounds.length - 1].startedAt ||
+                completedRounds[completedRounds.length - 1].completedAt ||
+                ''
+            ).toLocaleDateString('ko-KR')}`)
+      : (isJapanese ? '公式ラウンド記録準備中' : '공식 라운드 기록 준비중');
 
   const topCompanion = companions.length > 0 ? companions[0] : null;
 
@@ -262,7 +270,9 @@ function ChronicleContent() {
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h1 className="text-xl font-black text-white tracking-tight">{userName} 님</h1>
+                <h1 className="text-xl font-black text-white tracking-tight">
+                  {userName} {isJapanese ? '様' : '님'}
+                </h1>
                 <span className="text-[10px] bg-amber-400 text-emerald-950 font-black px-2 py-0.5 rounded-full">
                   {skillStarTitle}
                 </span>
@@ -280,7 +290,7 @@ function ChronicleContent() {
               className="py-2 px-3 bg-white/15 hover:bg-white/25 border border-white/30 rounded-xl text-xs font-black text-amber-200 flex items-center gap-1.5 backdrop-blur-sm transition active:scale-95 cursor-pointer"
             >
               <QrCode className="w-4 h-4 text-amber-300" />
-              <span>내 1촌 QR</span>
+              <span>{isJapanese ? 'マイ友QR' : '내 1촌 QR'}</span>
             </button>
             {/* 대표님 요청: 상단 우측 닫기 (X) 버튼 누르면 항상 직전 화면으로 복귀 */}
             <button
@@ -293,7 +303,7 @@ function ChronicleContent() {
                 }
               }}
               className="p-2 bg-white/15 hover:bg-white/25 border border-white/30 rounded-xl text-white backdrop-blur-sm transition active:scale-95 cursor-pointer flex items-center justify-center"
-              title="닫기 (이전 화면으로)"
+              title={isJapanese ? "閉じる (前画面へ)" : "닫기 (이전 화면으로)"}
             >
               <X className="w-4 h-4" />
             </button>
@@ -303,23 +313,35 @@ function ChronicleContent() {
         {/* 4대 커리어 핵심 지표 */}
         <div className="grid grid-cols-4 gap-2 pt-2 border-t border-emerald-700/60 text-center">
           <div className="bg-emerald-950/40 rounded-xl p-2 border border-emerald-600/30">
-            <div className="text-[10px] text-emerald-200 font-medium">통산 라운드</div>
-            <div className="text-lg font-black text-white mt-0.5">{totalRoundsCount}회</div>
-          </div>
-          <div className="bg-emerald-950/40 rounded-xl p-2 border border-emerald-600/30">
-            <div className="text-[10px] text-emerald-200 font-medium">누적 홀수</div>
-            <div className="text-lg font-black text-white mt-0.5">{totalHolesCount}홀</div>
-          </div>
-          <div className="bg-emerald-950/40 rounded-xl p-2 border border-emerald-600/30">
-            <div className="text-[10px] text-amber-300 font-bold">인생 최저타</div>
-            <div className="text-lg font-black text-amber-300 mt-0.5">
-              {bestScore !== null ? `${bestScore}타` : '-타'}
+            <div className="text-[10px] text-emerald-200 font-medium">
+              {isJapanese ? '通算ラウンド' : '통산 라운드'}
+            </div>
+            <div className="text-lg font-black text-white mt-0.5">
+              {totalRoundsCount}{isJapanese ? '回' : '회'}
             </div>
           </div>
           <div className="bg-emerald-950/40 rounded-xl p-2 border border-emerald-600/30">
-            <div className="text-[10px] text-emerald-200 font-medium">평균 타수</div>
+            <div className="text-[10px] text-emerald-200 font-medium">
+              {isJapanese ? '累計ホール数' : '누적 홀수'}
+            </div>
             <div className="text-lg font-black text-white mt-0.5">
-              {avgStrokes !== null ? `${avgStrokes}타` : '-타'}
+              {totalHolesCount}{isJapanese ? 'ホール' : '홀'}
+            </div>
+          </div>
+          <div className="bg-emerald-950/40 rounded-xl p-2 border border-emerald-600/30">
+            <div className="text-[10px] text-amber-300 font-bold">
+              {isJapanese ? 'ベストスコア' : '인생 최저타'}
+            </div>
+            <div className="text-lg font-black text-amber-300 mt-0.5">
+              {bestScore !== null ? `${bestScore}${isJapanese ? '打' : '타'}` : (isJapanese ? '-打' : '-타')}
+            </div>
+          </div>
+          <div className="bg-emerald-950/40 rounded-xl p-2 border border-emerald-600/30">
+            <div className="text-[10px] text-emerald-200 font-medium">
+              {isJapanese ? '平均打数' : '평균 타수'}
+            </div>
+            <div className="text-lg font-black text-white mt-0.5">
+              {avgStrokes !== null ? `${avgStrokes}${isJapanese ? '打' : '타'}` : (isJapanese ? '-打' : '-타')}
             </div>
           </div>
         </div>
@@ -337,7 +359,7 @@ function ChronicleContent() {
           }`}
         >
           <Trophy className="w-4 h-4 text-emerald-600" />
-          <span>커리어</span>
+          <span>{isJapanese ? 'キャリア' : '커리어'}</span>
         </button>
 
         <button
@@ -350,7 +372,7 @@ function ChronicleContent() {
           }`}
         >
           <Swords className="w-4 h-4 text-purple-600" />
-          <span>대항전 실록</span>
+          <span>{isJapanese ? 'クラブ対抗戦' : '대항전 실록'}</span>
         </button>
 
         <button
@@ -363,7 +385,7 @@ function ChronicleContent() {
           }`}
         >
           <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
-          <span>1촌 명부</span>
+          <span>{isJapanese ? 'ゴルフ仲間' : '1촌 명부'}</span>
         </button>
 
         <button
@@ -376,7 +398,7 @@ function ChronicleContent() {
           }`}
         >
           <Compass className="w-4 h-4 text-blue-600" />
-          <span>도장깨기</span>
+          <span>{isJapanese ? '全国制覇' : '도장깨기'}</span>
         </button>
       </div>
 
@@ -389,10 +411,12 @@ function ChronicleContent() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <Award className="w-5 h-5 text-amber-600" />
-                  <span className="text-xs font-black text-amber-900">평생의 라운드 단짝 1촌</span>
+                  <span className="text-xs font-black text-amber-900">
+                    {isJapanese ? '生涯のラウンドパートナー' : '평생의 라운드 단짝 1촌'}
+                  </span>
                 </div>
                 <span className="text-xs font-black text-amber-700 bg-amber-200/80 px-2 py-0.5 rounded-full">
-                  통산 {topCompanion.roundCount}회 동반
+                  {isJapanese ? `通算 ${topCompanion.roundCount}回 同伴` : `통산 ${topCompanion.roundCount}회 동반`}
                 </span>
               </div>
 
@@ -402,13 +426,21 @@ function ChronicleContent() {
                     {topCompanion.companionName.slice(0, 1)}
                   </div>
                   <div>
-                    <h4 className="text-base font-black text-stone-900">{topCompanion.companionName} 님</h4>
-                    <p className="text-xs text-stone-500 font-medium">{topCompanion.memo || '최고의 굿샷 파트너'}</p>
+                    <h4 className="text-base font-black text-stone-900">
+                      {topCompanion.companionName} {isJapanese ? '様' : '님'}
+                    </h4>
+                    <p className="text-xs text-stone-500 font-medium">
+                      {topCompanion.memo || (isJapanese ? '最高のナイスショットパートナー' : '최고의 굿샷 파트너')}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-black text-emerald-700">최근 동반 구장</span>
-                  <p className="text-[11px] text-stone-600 font-bold">{topCompanion.lastCourseName || '필드 라운드'}</p>
+                  <span className="text-xs font-black text-emerald-700">
+                    {isJapanese ? '最近同伴コース' : '최근 동반 구장'}
+                  </span>
+                  <p className="text-[11px] text-stone-600 font-bold">
+                    {topCompanion.lastCourseName || (isJapanese ? 'フィールドラウンド' : '필드 라운드')}
+                  </p>
                 </div>
               </div>
             </div>
@@ -419,8 +451,14 @@ function ChronicleContent() {
                   👥
                 </div>
                 <div>
-                  <h4 className="text-xs font-black text-stone-900">등록된 1촌 동반자가 없습니다</h4>
-                  <p className="text-[11px] text-stone-500">필드에서 함께 친 동반자와 QR 코드로 1촌을 맺어보세요.</p>
+                  <h4 className="text-xs font-black text-stone-900">
+                    {isJapanese ? '登録されたゴルフ仲間がいません' : '등록된 1촌 동반자가 없습니다'}
+                  </h4>
+                  <p className="text-[11px] text-stone-500">
+                    {isJapanese
+                      ? 'フィールドで一緒にプレーした仲間とQRコードで仲間になりましょう。'
+                      : '필드에서 함께 친 동반자와 QR 코드로 1촌을 맺어보세요.'}
+                  </p>
                 </div>
               </div>
               <button
@@ -428,7 +466,7 @@ function ChronicleContent() {
                 onClick={() => setShowQrModal(true)}
                 className="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shrink-0 shadow-xs cursor-pointer transition active:scale-95"
               >
-                1촌 맺기 +
+                {isJapanese ? '仲間登録 +' : '1촌 맺기 +'}
               </button>
             </div>
           )}
@@ -438,10 +476,12 @@ function ChronicleContent() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <Sparkles className="w-5 h-5 text-emerald-600" />
-                <h3 className="text-sm font-black text-stone-900">명예의 전당 특별 훈장</h3>
+                <h3 className="text-sm font-black text-stone-900">
+                  {isJapanese ? '殿堂入り特別メダル' : '명예의 전당 특별 훈장'}
+                </h3>
               </div>
               <span className="text-[10px] text-stone-400 font-bold bg-stone-100 px-2 py-0.5 rounded-full">
-                훈장 터치 시 상세 실록 🔍
+                {isJapanese ? 'タップで詳細記録 🔍' : '훈장 터치 시 상세 실록 🔍'}
               </span>
             </div>
 
@@ -455,10 +495,12 @@ function ChronicleContent() {
                 <div className="space-y-0.5">
                   <span className="text-2xl group-hover:scale-110 transition inline-block">⛳</span>
                   <div className="text-xs font-black text-amber-950 flex items-center justify-center gap-0.5">
-                    <span>홀인원</span>
+                    <span>{isJapanese ? 'ホールインワン' : '홀인원'}</span>
                     <span className="text-[10px] text-amber-600">🔍</span>
                   </div>
-                  <div className="text-base font-black text-amber-800">{totalHoleInOnes}회 달성</div>
+                  <div className="text-base font-black text-amber-800">
+                    {totalHoleInOnes}{isJapanese ? '回 達成' : '회 달성'}
+                  </div>
                 </div>
 
                 <div className="w-full space-y-0.5 pt-0.5">
@@ -466,7 +508,9 @@ function ChronicleContent() {
                     P3:{hioListPar3.length} · P4:{hioListPar4.length} · P5:{hioListPar5.length}
                   </div>
                   <div className="text-[10px] text-stone-400 font-semibold">
-                    {totalHoleInOnes > 0 ? '상세 실록 보기' : '기록 대기'}
+                    {totalHoleInOnes > 0
+                      ? (isJapanese ? '詳細記録を見る' : '상세 실록 보기')
+                      : (isJapanese ? '記録待ち' : '기록 대기')}
                   </div>
                 </div>
               </button>
@@ -480,23 +524,27 @@ function ChronicleContent() {
                 <div className="space-y-0.5">
                   <span className="text-2xl group-hover:scale-110 transition inline-block">🦅</span>
                   <div className="text-xs font-black text-emerald-950 flex items-center justify-center gap-0.5">
-                    <span>이글 훈장</span>
+                    <span>{isJapanese ? 'イーグル' : '이글 훈장'}</span>
                     <span className="text-[10px] text-emerald-600">🔍</span>
                   </div>
-                  <div className="text-base font-black text-emerald-800">{totalEagles}회 달성</div>
+                  <div className="text-base font-black text-emerald-800">
+                    {totalEagles}{isJapanese ? '回 達成' : '회 달성'}
+                  </div>
                 </div>
 
                 <div className="w-full space-y-0.5 pt-0.5">
                   <div className="text-[9px] font-black text-emerald-800 bg-emerald-100/80 px-1 py-0.5 rounded-md truncate w-full">
-                    P4:{eagleListPar4.length}회 · P5:{eagleListPar5.length}회
+                    P4:{eagleListPar4.length}{isJapanese ? '回' : '회'} · P5:{eagleListPar5.length}{isJapanese ? '回' : '회'}
                   </div>
                   <div className="text-[10px] text-stone-400 font-semibold">
-                    {totalEagles > 0 ? '상세 실록 보기' : '기록 대기'}
+                    {totalEagles > 0
+                      ? (isJapanese ? '詳細記録を見る' : '상세 실록 보기')
+                      : (isJapanese ? '記録待ち' : '기록 대기')}
                   </div>
                 </div>
               </button>
 
-              {/* 3. 알바트로스 훈장 카드 (버디 훈장에서 교체) */}
+              {/* 3. 알바트로스 훈장 카드 */}
               <button
                 type="button"
                 onClick={() => setSelectedMedalModal('ALBATROSS')}
@@ -505,18 +553,22 @@ function ChronicleContent() {
                 <div className="space-y-0.5">
                   <span className="text-2xl group-hover:scale-110 transition inline-block">🦢</span>
                   <div className="text-xs font-black text-indigo-950 flex items-center justify-center gap-0.5">
-                    <span>알바트로스</span>
+                    <span>{isJapanese ? 'アルバトロス' : '알바트로스'}</span>
                     <span className="text-[10px] text-indigo-600">🔍</span>
                   </div>
-                  <div className="text-base font-black text-indigo-800">{totalAlbatross}회 달성</div>
+                  <div className="text-base font-black text-indigo-800">
+                    {totalAlbatross}{isJapanese ? '回 達成' : '회 달성'}
+                  </div>
                 </div>
 
                 <div className="w-full space-y-0.5 pt-0.5">
                   <div className="text-[9px] font-black text-indigo-800 bg-indigo-100/80 px-1 py-0.5 rounded-md truncate w-full">
-                    파5 롱홀 2타 완주
+                    {isJapanese ? 'Par5 ロングホール 2打完走' : '파5 롱홀 2타 완주'}
                   </div>
                   <div className="text-[10px] text-stone-400 font-semibold">
-                    {totalAlbatross > 0 ? '상세 실록 보기' : '기록 대기'}
+                    {totalAlbatross > 0
+                      ? (isJapanese ? '詳細記録を見る' : '상세 실록 보기')
+                      : (isJapanese ? '記録待ち' : '기록 대기')}
                   </div>
                 </div>
               </button>
@@ -528,16 +580,26 @@ function ChronicleContent() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-emerald-600" />
-                <h3 className="text-sm font-black text-stone-900">최근 라운드 타임라인</h3>
+                <h3 className="text-sm font-black text-stone-900">
+                  {isJapanese ? '最近のラウンドタイムライン' : '최근 라운드 타임라인'}
+                </h3>
               </div>
-              <span className="text-xs text-stone-400 font-medium">영구 기록 보존</span>
+              <span className="text-xs text-stone-400 font-medium">
+                {isJapanese ? '永久記録保存' : '영구 기록 보존'}
+              </span>
             </div>
 
             {completedRounds.length === 0 ? (
               <div className="text-center py-6 bg-stone-50 rounded-2xl border border-dashed border-stone-300 space-y-1.5">
                 <span className="text-3xl">⛳</span>
-                <p className="font-black text-xs text-stone-700">아직 완료된 공식 라운드 기록이 없습니다.</p>
-                <p className="text-[11px] text-stone-400">필드에서 스코어카드를 완주하고 저장하면 실제 경기 기록이 타임라인에 자동으로 등록됩니다.</p>
+                <p className="font-black text-xs text-stone-700">
+                  {isJapanese ? 'まだ完了した公式ラウンド記録がありません。' : '아직 완료된 공식 라운드 기록이 없습니다.'}
+                </p>
+                <p className="text-[11px] text-stone-400">
+                  {isJapanese
+                    ? 'フィールドでスコアカードを完走して保存すると、実際の試合記録がタイムラインに自動登録されます。'
+                    : '필드에서 스코어카드를 완주하고 저장하면 실제 경기 기록이 타임라인에 자동으로 등록됩니다.'}
+                </p>
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -551,21 +613,25 @@ function ChronicleContent() {
                     r.players
                       .filter((p) => !p.isSelf && p.name !== userName)
                       .map((p) => p.name)
-                      .join(', ') || '단독 플레이';
+                      .join(', ') || (isJapanese ? '単独プレー' : '단독 플레이');
 
                   return (
                     <div key={r.id} className="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-black text-stone-900">
-                          {r.courseName} ({r.confirmedHoles?.length || r.totalHoles}홀)
+                          {r.courseName} ({r.confirmedHoles?.length || r.totalHoles}{isJapanese ? 'ホール' : '홀'})
                         </span>
                         <span className="text-xs font-black text-emerald-700">
-                          {strokes}타 ({parStr})
+                          {strokes}{isJapanese ? '打' : '타'} ({parStr})
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-[11px] text-stone-500">
-                        <span>{new Date(r.completedAt || r.startedAt).toLocaleDateString('ko-KR')}</span>
-                        <span className="truncate max-w-[180px]">동반: {companionsText}</span>
+                        <span>
+                          {new Date(r.completedAt || r.startedAt).toLocaleDateString(isJapanese ? 'ja-JP' : 'ko-KR')}
+                        </span>
+                        <span className="truncate max-w-[180px]">
+                          {isJapanese ? '同伴: ' : '동반: '}{companionsText}
+                        </span>
                       </div>
                     </div>
                   );
@@ -598,17 +664,28 @@ function ChronicleContent() {
                   <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-2xl">
                     🛡️
                   </div>
-                  <h3 className="font-black text-base text-stone-900">소속 클럽 연결 대기 (영구 이력 보존 중)</h3>
+                  <h3 className="font-black text-base text-stone-900">
+                    {isJapanese ? '所属クラブ接続待機 (記録保存中)' : '소속 클럽 연결 대기 (영구 이력 보존 중)'}
+                  </h3>
                   <p className="text-xs text-stone-500 font-medium leading-relaxed max-w-sm mx-auto">
-                    현재 소속 클럽이 미등록(또는 탈퇴) 상태입니다.<br />
-                    회원님의 과거 클럽 대회 출전 스코어와 수상 훈장은 <strong>&lsquo;비밀 보관소&rsquo;</strong>에 안전 보존되어 있으며, 클럽에 복귀(재가입)하시면 모든 과거 실록이 100% 원상 복구되어 이곳에 다시 연결됩니다.
+                    {isJapanese ? (
+                      <>
+                        現在所属クラブが未登録(または退会)状態です。<br />
+                        会員様の過去のクラブ大会出場スコアと受賞メダルは<strong>‘秘密保管所’</strong>に安全に保存されており、クラブに復帰(再加入)すると過去の実録が100%復旧してここに再接続されます。
+                      </>
+                    ) : (
+                      <>
+                        현재 소속 클럽이 미등록(또는 탈퇴) 상태입니다.<br />
+                        회원님의 과거 클럽 대회 출전 스코어와 수상 훈장은 <strong>&lsquo;비밀 보관소&rsquo;</strong>에 안전 보존되어 있으며, 클럽에 복귀(재가입)하시면 모든 과거 실록이 100% 원상 복구되어 이곳에 다시 연결됩니다.
+                      </>
+                    )}
                   </p>
                   <div className="pt-2">
                     <Link
                       href="/club"
                       className="inline-block px-5 py-2.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black text-xs rounded-xl shadow-sm transition active:scale-95"
                     >
-                      소속 클럽 가입 및 복귀하러 가기 ▶
+                      {isJapanese ? '所属クラブ加入および復帰へ ▶' : '소속 클럽 가입 및 복귀하러 가기 ▶'}
                     </Link>
                   </div>
                 </div>
@@ -623,32 +700,50 @@ function ChronicleContent() {
                     <div className="flex items-center gap-2">
                       <Swords className="w-5 h-5 text-amber-300" />
                       <div>
-                        <h3 className="text-base font-black tracking-tight text-white">&lsquo;{myClub.name}&rsquo; 공식 실록</h3>
-                        <p className="text-[10px] text-purple-300">내 대회 출전 이력 100% 실시간 연동</p>
+                        <h3 className="text-base font-black tracking-tight text-white">
+                          &lsquo;{myClub.name}&rsquo; {isJapanese ? '公式実録' : '공식 실록'}
+                        </h3>
+                        <p className="text-[10px] text-purple-300">
+                          {isJapanese ? '大会出場履歴 100% リアルタイム連動' : '내 대회 출전 이력 100% 실시간 연동'}
+                        </p>
                       </div>
                     </div>
                     <span className="text-[10px] bg-amber-400 text-purple-950 font-black px-2.5 py-0.5 rounded-full">
-                      공식 인증 실록
+                      {isJapanese ? '公式認定実録' : '공식 인증 실록'}
                     </span>
                   </div>
 
                   {/* 전적 지표 그리드 */}
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
-                      <div className="text-[10px] text-purple-200 font-bold">통산 출전</div>
-                      <div className="text-lg font-black text-amber-300 mt-0.5">{totalMatches}회</div>
+                      <div className="text-[10px] text-purple-200 font-bold">
+                        {isJapanese ? '通算出戦' : '통산 출전'}
+                      </div>
+                      <div className="text-lg font-black text-amber-300 mt-0.5">
+                        {totalMatches}{isJapanese ? '回' : '회'}
+                      </div>
                     </div>
                     <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
-                      <div className="text-[10px] text-purple-200 font-bold">우승 횟수</div>
-                      <div className="text-lg font-black text-white mt-0.5">{wins}회</div>
+                      <div className="text-[10px] text-purple-200 font-bold">
+                        {isJapanese ? '優勝回数' : '우승 횟수'}
+                      </div>
+                      <div className="text-lg font-black text-white mt-0.5">
+                        {wins}{isJapanese ? '回' : '회'}
+                      </div>
                     </div>
                     <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
-                      <div className="text-[10px] text-purple-200 font-bold">승률</div>
+                      <div className="text-[10px] text-purple-200 font-bold">
+                        {isJapanese ? '勝率' : '승률'}
+                      </div>
                       <div className="text-lg font-black text-white mt-0.5">{winRate}%</div>
                     </div>
                     <div className="bg-white/10 rounded-2xl p-2.5 border border-white/10">
-                      <div className="text-[10px] text-purple-200 font-bold">평균 타수</div>
-                      <div className="text-lg font-black text-emerald-300 mt-0.5">{avgStrokes}타</div>
+                      <div className="text-[10px] text-purple-200 font-bold">
+                        {isJapanese ? '平均打数' : '평균 타수'}
+                      </div>
+                      <div className="text-lg font-black text-emerald-300 mt-0.5">
+                        {avgStrokes}{isJapanese ? '打' : '타'}
+                      </div>
                     </div>
                   </div>
 
@@ -656,10 +751,12 @@ function ChronicleContent() {
                   <div className="bg-purple-900/60 rounded-2xl p-3 border border-purple-500/30 flex items-center justify-between text-xs">
                     <span className="text-purple-200 font-bold flex items-center gap-1.5">
                       <span>🎖️</span>
-                      <span>대표 선수 영예</span>
+                      <span>{isJapanese ? '代表選手栄誉' : '대표 선수 영예'}</span>
                     </span>
                     <span className="text-stone-300 font-bold">
-                      {totalMatches > 0 ? `'${userName}' 공식 대회 출전 확인` : '공식 클럽 대회 출전 시 수여'}
+                      {totalMatches > 0
+                        ? (isJapanese ? `'${userName}' 公式大会出場確認` : `'${userName}' 공식 대회 출전 확인`)
+                        : (isJapanese ? '公式クラブ大会出場時に授与' : '공식 클럽 대회 출전 시 수여')}
                     </span>
                   </div>
                 </div>
@@ -668,29 +765,49 @@ function ChronicleContent() {
                 <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
                   <div className="flex items-center gap-1.5">
                     <Sparkles className="w-5 h-5 text-purple-700" />
-                    <h3 className="text-sm font-black text-stone-900">클럽 대회 명예 훈장</h3>
+                    <h3 className="text-sm font-black text-stone-900">
+                      {isJapanese ? 'クラブ大会栄誉メダル' : '클럽 대회 명예 훈장'}
+                    </h3>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1">
                       <span className="text-2xl">👑</span>
-                      <div className="text-xs font-black text-stone-900">대회 챔피언</div>
-                      <div className="text-base font-black text-purple-900">{wins}회 우승</div>
-                      <div className="text-[10px] text-stone-400">{wins > 0 ? '공식 우승 인증' : '기록 대기중'}</div>
+                      <div className="text-xs font-black text-stone-900">
+                        {isJapanese ? '大会チャンピオン' : '대회 챔피언'}
+                      </div>
+                      <div className="text-base font-black text-purple-900">
+                        {wins}{isJapanese ? '回 優勝' : '회 우승'}
+                      </div>
+                      <div className="text-[10px] text-stone-400">
+                        {wins > 0 ? (isJapanese ? '公式優勝認定' : '공식 우승 인증') : (isJapanese ? '記録待機中' : '기록 대기중')}
+                      </div>
                     </div>
 
                     <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1">
                       <span className="text-2xl">⭐</span>
-                      <div className="text-xs font-black text-stone-900">메달리스트</div>
-                      <div className="text-base font-black text-purple-900">{medalists}회 수상</div>
-                      <div className="text-[10px] text-stone-400">{medalists > 0 ? '최저타 인증' : '기록 대기중'}</div>
+                      <div className="text-xs font-black text-stone-900">
+                        {isJapanese ? 'メダリスト' : '메달리스트'}
+                      </div>
+                      <div className="text-base font-black text-purple-900">
+                        {medalists}{isJapanese ? '回 受賞' : '회 수상'}
+                      </div>
+                      <div className="text-[10px] text-stone-400">
+                        {medalists > 0 ? (isJapanese ? '最少打認定' : '최저타 인증') : (isJapanese ? '記録待機中' : '기록 대기중')}
+                      </div>
                     </div>
 
                     <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl space-y-1">
                       <span className="text-2xl">⚔️</span>
-                      <div className="text-xs font-black text-stone-900">대항전 출전</div>
-                      <div className="text-base font-black text-purple-900">{totalMatches}전 {wins}승</div>
-                      <div className="text-[10px] text-stone-400">{totalMatches > 0 ? '전적 공인' : '기록 대기중'}</div>
+                      <div className="text-xs font-black text-stone-900">
+                        {isJapanese ? '対抗戦出場' : '대항전 출전'}
+                      </div>
+                      <div className="text-base font-black text-purple-900">
+                        {totalMatches}{isJapanese ? '戦 ' : '전 '}{wins}{isJapanese ? '勝' : '승'}
+                      </div>
+                      <div className="text-[10px] text-stone-400">
+                        {totalMatches > 0 ? (isJapanese ? '公認戦績' : '전적 공인') : (isJapanese ? '記録待機中' : '기록 대기중')}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -700,22 +817,34 @@ function ChronicleContent() {
                   <div className="flex items-center justify-between border-b border-stone-100 pb-2">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="w-4 h-4 text-purple-700" />
-                      <h3 className="text-sm font-black text-stone-900">내 클럽 대회 출전 실록 ({totalMatches}건)</h3>
+                      <h3 className="text-sm font-black text-stone-900">
+                        {isJapanese
+                          ? `マイクラス大会出場実録 (${totalMatches}件)`
+                          : `내 클럽 대회 출전 실록 (${totalMatches}건)`}
+                      </h3>
                     </div>
-                    <span className="text-xs text-stone-400 font-medium">영구 기록 보존</span>
+                    <span className="text-xs text-stone-400 font-medium">
+                      {isJapanese ? '永久記録保存' : '영구 기록 보존'}
+                    </span>
                   </div>
 
                   {totalMatches === 0 ? (
                     <div className="text-center py-8 bg-stone-50 rounded-2xl border border-dashed border-stone-300 space-y-2">
                       <span className="text-3xl">⚔️</span>
-                      <p className="font-black text-xs text-stone-700">아직 출전한 클럽 대회 기록이 없습니다.</p>
-                      <p className="text-[11px] text-stone-400">소속 클럽의 정기전이나 대항전 라운드를 완주하면 공인 매치 결과가 이곳에 영구 기록됩니다.</p>
+                      <p className="font-black text-xs text-stone-700">
+                        {isJapanese ? 'まだ出場したクラブ大会の記録がありません。' : '아직 출전한 클럽 대회 기록이 없습니다.'}
+                      </p>
+                      <p className="text-[11px] text-stone-400">
+                        {isJapanese
+                          ? '所属クラブの定期戦や対抗戦ラウンドを完走すると、公認マッチ結果がここに永久記録されます。'
+                          : '소속 클럽의 정기전이나 대항전 라운드를 완주하면 공인 매치 결과가 이곳에 영구 기록됩니다.'}
+                      </p>
                       <div className="pt-1">
                         <Link
                           href="/club"
                           className="inline-block px-3.5 py-2 bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-95"
                         >
-                          클럽 대회 확인하기 ▶
+                          {isJapanese ? 'クラブ大会を確認する ▶' : '클럽 대회 확인하기 ▶'}
                         </Link>
                       </div>
                     </div>
@@ -731,16 +860,16 @@ function ChronicleContent() {
                               {h.tournament.title}
                             </span>
                             <span className="text-xs font-black text-purple-800">
-                              {h.myRecord.rank}위 ({h.myRecord.totalStrokes}타)
+                              {h.myRecord.rank}{isJapanese ? '位' : '위'} ({h.myRecord.totalStrokes}{isJapanese ? '打' : '타'})
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-[11px] text-stone-500">
                             <span>📅 {h.tournament.heldAt} · 📍 {h.tournament.courseName}</span>
-                            <span>{h.myRecord.groupNumber}조 출전</span>
+                            <span>{h.myRecord.groupNumber}{isJapanese ? '組 出場' : '조 출전'}</span>
                           </div>
                           {h.myRecord.awards && h.myRecord.awards.length > 0 && (
                             <div className="text-[10px] text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-lg font-black inline-block">
-                              🏅 수상: {h.myRecord.awards.join(', ')}
+                              {isJapanese ? '🏅 受賞: ' : '🏅 수상: '}{h.myRecord.awards.join(', ')}
                             </div>
                           )}
                         </div>
@@ -764,7 +893,7 @@ function ChronicleContent() {
               className="w-full min-h-[52px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 font-black rounded-2xl text-base flex items-center justify-center gap-2 shadow-md active:scale-98 transition cursor-pointer border border-amber-400/50"
             >
               <Zap className="w-5 h-5 fill-stone-950 text-stone-950" />
-              <span>⚡ 나의 1촌에게 번개 라운드 띄우기</span>
+              <span>{isJapanese ? '⚡ ゴルフ仲間に招集マッチを提案' : '⚡ 나의 1촌에게 번개 라운드 띄우기'}</span>
             </button>
 
             <button
@@ -773,7 +902,7 @@ function ChronicleContent() {
               className="w-full min-h-[52px] bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl text-base flex items-center justify-center gap-2 shadow-md active:scale-98 transition cursor-pointer"
             >
               <QrCode className="w-5 h-5 text-amber-300" />
-              <span>+ 현장에서 동반자와 1촌 QR 맺기</span>
+              <span>{isJapanese ? '+ 現場で同伴者とQR仲間登録' : '+ 현장에서 동반자와 1촌 QR 맺기'}</span>
             </button>
           </div>
 
@@ -786,8 +915,12 @@ function ChronicleContent() {
                     ⚡
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-amber-950">모집 중인 1촌 친목 번개</h3>
-                    <p className="text-[10px] text-amber-700 font-bold">1촌 동반자 전용 4인 조 편성</p>
+                    <h3 className="text-sm font-black text-amber-950">
+                      {isJapanese ? '募集中の仲間ラウンド' : '모집 중인 1촌 친목 번개'}
+                    </h3>
+                    <p className="text-[10px] text-amber-700 font-bold">
+                      {isJapanese ? 'ゴルフ仲間専用 4人組編成' : '1촌 동반자 전용 4인 조 편성'}
+                    </p>
                   </div>
                 </div>
                 <button
@@ -795,7 +928,7 @@ function ChronicleContent() {
                   onClick={() => setShowLightningModal(true)}
                   className="text-xs font-black text-amber-800 hover:text-amber-950 flex items-center gap-0.5 cursor-pointer"
                 >
-                  <span>전체보기</span>
+                  <span>{isJapanese ? 'すべて見る' : '전체보기'}</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -817,12 +950,14 @@ function ChronicleContent() {
                             {ltn.dateStr} {ltn.timeStr}
                           </span>
                           <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">
-                            {ltn.currentPlayers.length}/{ltn.targetPlayersCount}명
+                            {ltn.currentPlayers.length}/{ltn.targetPlayersCount}{isJapanese ? '人' : '명'}
                           </span>
                         </div>
                         <p className="text-[11px] text-stone-500 font-medium line-clamp-1">{ltn.notes}</p>
                         <div className="flex items-center gap-1 text-[11px] text-stone-600">
-                          <span className="font-bold text-stone-400">참여자:</span>
+                          <span className="font-bold text-stone-400">
+                            {isJapanese ? '参加者:' : '참여자:'}
+                          </span>
                           {ltn.currentPlayers.map((p) => (
                             <span key={p.id} className="bg-stone-100 px-1.5 py-0.2 rounded font-bold text-[10px]">
                               {p.name}
@@ -843,11 +978,11 @@ function ChronicleContent() {
                             className="w-full sm:w-auto px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl flex items-center justify-center gap-1 shadow-xs cursor-pointer"
                           >
                             <Play className="w-3.5 h-3.5 fill-white" />
-                            <span>스코어카드 시작</span>
+                            <span>{isJapanese ? 'スコアカード開始' : '스코어카드 시작'}</span>
                           </button>
                         ) : isUserJoined ? (
                           <span className="text-xs font-black text-amber-800 bg-amber-100 px-3 py-1.5 rounded-xl">
-                            참여 완료 (대기중)
+                            {isJapanese ? '参加完了 (待機中)' : '참여 완료 (대기중)'}
                           </span>
                         ) : (
                           <button
@@ -855,12 +990,12 @@ function ChronicleContent() {
                             onClick={() => {
                               CompanionStorage.joinLightningRound(ltn.id, userName);
                               setLightningRounds(CompanionStorage.getLightningRounds());
-                              setToastMsg(`⚡ '${ltn.courseName}' 1촌 번개 조에 참여했습니다!`);
+                              setToastMsg(isJapanese ? `⚡ '${ltn.courseName}' ラウンドに参加しました！` : `⚡ '${ltn.courseName}' 1촌 번개 조에 참여했습니다!`);
                               setTimeout(() => setToastMsg(''), 3000);
                             }}
                             className="w-full sm:w-auto px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-black rounded-xl flex items-center justify-center gap-1 shadow-xs cursor-pointer"
                           >
-                            <span>참여하기 ✋</span>
+                            <span>{isJapanese ? '参加する ✋' : '참여하기 ✋'}</span>
                           </button>
                         )}
                       </div>
@@ -879,23 +1014,33 @@ function ChronicleContent() {
             <div className="flex items-center justify-between border-b border-stone-100 pb-2">
               <div className="flex items-center gap-1.5">
                 <Users className="w-4 h-4 text-emerald-600" />
-                <h3 className="text-sm font-black text-stone-900">나의 1촌 동반자 명부</h3>
+                <h3 className="text-sm font-black text-stone-900">
+                  {isJapanese ? '私のゴルフ仲間名簿' : '나의 1촌 동반자 명부'}
+                </h3>
               </div>
-              <span className="text-xs font-bold text-stone-500">총 {companions.length}명</span>
+              <span className="text-xs font-bold text-stone-500">
+                {isJapanese ? `計 ${companions.length}人` : `총 ${companions.length}명`}
+              </span>
             </div>
 
             {companions.length === 0 ? (
               <div className="text-center py-8 bg-stone-50 rounded-2xl border border-dashed border-stone-300 space-y-2">
                 <span className="text-3xl">👥</span>
-                <p className="font-black text-xs text-stone-700">등록된 1촌 동반자가 아직 없습니다.</p>
-                <p className="text-[11px] text-stone-400">현장에서 동반자의 QR 코드를 스캔하거나 내 QR을 보여주면 평생 1촌으로 연결됩니다.</p>
+                <p className="font-black text-xs text-stone-700">
+                  {isJapanese ? '登録されたゴルフ仲間がまだいません。' : '등록된 1촌 동반자가 아직 없습니다.'}
+                </p>
+                <p className="text-[11px] text-stone-400">
+                  {isJapanese
+                    ? '現場で同伴者のQRコードをスキャンするか、自分のQRを見せると仲間としてつながります。'
+                    : '현장에서 동반자의 QR 코드를 스캔하거나 내 QR을 보여주면 평생 1촌으로 연결됩니다.'}
+                </p>
                 <div className="pt-1">
                   <button
                     type="button"
                     onClick={() => setShowQrModal(true)}
                     className="inline-block px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-xs cursor-pointer transition active:scale-95"
                   >
-                    + 내 1촌 QR 열기
+                    {isJapanese ? '+ 私の友QRを開く' : '+ 내 1촌 QR 열기'}
                   </button>
                 </div>
               </div>
@@ -915,7 +1060,7 @@ function ChronicleContent() {
                             <span className="text-sm font-black text-stone-900">{c.companionName}</span>
                             {idx === 0 && (
                               <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 rounded">
-                                최다 동반
+                                {isJapanese ? '最多同伴' : '최다 동반'}
                               </span>
                             )}
                             {card && (
@@ -925,19 +1070,19 @@ function ChronicleContent() {
                                 className="inline-flex items-center gap-1 text-[10px] font-black text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-2 py-0.5 rounded-lg cursor-pointer transition active:scale-95 shadow-2xs"
                               >
                                 <span>📇</span>
-                                <span className="truncate max-w-[110px]">{card.company || '디지털 명함'}</span>
+                                <span className="truncate max-w-[110px]">{card.company || (isJapanese ? 'デジタル名刺' : '디지털 명함')}</span>
                               </button>
                             )}
                           </div>
                           <p className="text-[11px] text-stone-400 font-medium">
-                            {c.lastCourseName ? `최근: ${c.lastCourseName}` : '최근 라운드'}
+                            {c.lastCourseName ? `${isJapanese ? '最近: ' : '최근: '}${c.lastCourseName}` : (isJapanese ? '最近のラウンド' : '최근 라운드')}
                           </p>
                         </div>
                       </div>
 
                       <div className="text-right">
-                        <span className="text-sm font-black text-emerald-700">{c.roundCount}회</span>
-                        <span className="text-xs text-stone-500 font-medium"> 동반</span>
+                        <span className="text-sm font-black text-emerald-700">{c.roundCount}{isJapanese ? '回' : '회'}</span>
+                        <span className="text-xs text-stone-500 font-medium">{isJapanese ? ' 同伴' : ' 동반'}</span>
                       </div>
                     </div>
                   );
@@ -953,22 +1098,32 @@ function ChronicleContent() {
           <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-3xl p-5 shadow-sm space-y-2">
             <div className="flex items-center gap-2">
               <Compass className="w-5 h-5 text-amber-300" />
-              <h3 className="text-base font-black">전국 구장 도장깨기 스탬프</h3>
+              <h3 className="text-base font-black">
+                {isJapanese ? '全国コース制覇スタンプ' : '전국 구장 도장깨기 스탬프'}
+              </h3>
             </div>
             <p className="text-xs text-blue-200 font-medium">
-              전국 500여 개 파크골프장을 누비며 완주한 구장에 황금 트로피 핀을 획득하세요!
+              {isJapanese
+                ? '全国のパークゴルフ場を回り、完走したコースで黄金のトロフィーピンを獲得しましょう！'
+                : '전국 500여 개 파크골프장을 누비며 완주한 구장에 황금 트로피 핀을 획득하세요!'}
             </p>
           </div>
 
           {/* 시도별 정복 현황 */}
           <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
-            <h4 className="text-xs font-black text-stone-700">시·도별 구장 정복률</h4>
+            <h4 className="text-xs font-black text-stone-700">
+              {isJapanese ? '地域別コース制覇率' : '시·도별 구장 정복률'}
+            </h4>
             <div className="space-y-2.5">
               {regionalStats.map((reg) => (
                 <div key={reg.name} className="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-1.5">
                   <div className="flex items-center justify-between text-xs font-black">
-                    <span className="text-stone-900">{reg.name} ({reg.conquered}/{reg.total}개 구장)</span>
-                    <span className="text-emerald-700">{reg.pct}% 정복</span>
+                    <span className="text-stone-900">
+                      {reg.name} ({reg.conquered}/{reg.total}{isJapanese ? 'コース' : '개 구장'})
+                    </span>
+                    <span className="text-emerald-700">
+                      {reg.pct}% {isJapanese ? '制覇' : '정복'}
+                    </span>
                   </div>
                   <div className="w-full bg-stone-200 rounded-full h-2.5 overflow-hidden">
                     <div className="bg-emerald-600 h-full rounded-full transition-all" style={{ width: `${Math.max(reg.pct, 0)}%` }} />
@@ -983,21 +1138,29 @@ function ChronicleContent() {
             <div className="flex items-center gap-1.5">
               <Trophy className="w-4 h-4 text-amber-500" />
               <h4 className="text-xs font-black text-stone-900">
-                정복 완료한 황금빛 구장 ({conqueredCoursesList.length}개소)
+                {isJapanese
+                  ? `制覇完了した黄金コース (${conqueredCoursesList.length}箇所)`
+                  : `정복 완료한 황금빛 구장 (${conqueredCoursesList.length}개소)`}
               </h4>
             </div>
 
             {conqueredCoursesList.length === 0 ? (
               <div className="text-center py-8 bg-stone-50 rounded-2xl border border-dashed border-stone-300 space-y-2">
                 <span className="text-3xl">🏆</span>
-                <p className="font-black text-xs text-stone-700">아직 정복 완료한 구장이 없습니다.</p>
-                <p className="text-[11px] text-stone-400">전국 파크골프장에서 공식 스코어카드를 완주하고 저장하면 황금빛 트로피 도장이 찍힙니다.</p>
+                <p className="font-black text-xs text-stone-700">
+                  {isJapanese ? 'まだ制覇完了したコースがありません。' : '아직 정복 완료한 구장이 없습니다.'}
+                </p>
+                <p className="text-[11px] text-stone-400">
+                  {isJapanese
+                    ? '全国パークゴルフ場で公式スコアカードを完走して保存すると、黄金のトロフィースタンプが押されます。'
+                    : '전국 파크골프장에서 공식 스코어카드를 완주하고 저장하면 황금빛 트로피 도장이 찍힙니다.'}
+                </p>
                 <div className="pt-1">
                   <Link
                     href="/"
                     className="inline-block px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-95"
                   >
-                    전국 구장 찾아보기 ▶
+                    {isJapanese ? '全国のコースを探す ▶' : '전국 구장 찾아보기 ▶'}
                   </Link>
                 </div>
               </div>
@@ -1011,11 +1174,13 @@ function ChronicleContent() {
                       </div>
                       <div>
                         <div className="text-xs font-black text-stone-900">{c.name}</div>
-                        <div className="text-[10px] text-stone-500">{c.region} · {c.totalHoles}홀 완주 인증</div>
+                        <div className="text-[10px] text-stone-500">
+                          {c.region} · {c.totalHoles}{isJapanese ? 'ホール完走認定' : '홀 완주 인증'}
+                        </div>
                       </div>
                     </div>
                     <span className="text-xs font-bold text-amber-800 bg-amber-200 px-2 py-0.5 rounded-full">
-                      정복 완료
+                      {isJapanese ? '制覇完了' : '정복 완료'}
                     </span>
                   </div>
                 ))}
@@ -1032,7 +1197,7 @@ function ChronicleContent() {
           className="w-full min-h-[52px] bg-stone-800 hover:bg-stone-700 text-white font-black rounded-2xl flex items-center justify-center gap-2 text-base shadow active:scale-98 transition"
         >
           <Home className="w-5 h-5" />
-          <span>파크온 홈 화면으로 돌아가기</span>
+          <span>{isJapanese ? 'ParkOn ホーム画面へ戻る' : '파크온 홈 화면으로 돌아가기'}</span>
         </Link>
       </div>
 
@@ -1065,7 +1230,9 @@ function ChronicleContent() {
               </button>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xl">📇</span>
-                <span className="text-xs font-bold text-amber-200 tracking-wider">1촌 동호인 디지털 명함</span>
+                <span className="text-xs font-bold text-amber-200 tracking-wider">
+                  {isJapanese ? '仲間ゴルファー デジタル名刺' : '1촌 동호인 디지털 명함'}
+                </span>
               </div>
               <h3 className="text-xl font-black text-white">{selectedCompanionCard.name}</h3>
               <p className="text-xs text-amber-100 font-medium">
@@ -1085,11 +1252,11 @@ function ChronicleContent() {
                 </div>
                 <div className="flex items-center gap-2 text-stone-600">
                   <Briefcase className="w-4 h-4 text-stone-400 shrink-0" />
-                  <span>직함: {selectedCompanionCard.title}</span>
+                  <span>{isJapanese ? '役職:' : '직함:'} {selectedCompanionCard.title}</span>
                 </div>
                 <div className="flex items-center gap-2 text-stone-600">
                   <MapPin className="w-4 h-4 text-stone-400 shrink-0" />
-                  <span>활동 지역: {selectedCompanionCard.region}</span>
+                  <span>{isJapanese ? '活動地域:' : '활동 지역:'} {selectedCompanionCard.region}</span>
                 </div>
               </div>
 
@@ -1107,7 +1274,7 @@ function ChronicleContent() {
                     className="flex-1 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-black rounded-xl text-center flex items-center justify-center gap-1.5 shadow-xs transition active:scale-98"
                   >
                     <Phone className="w-4 h-4" />
-                    <span>전화 연결</span>
+                    <span>{isJapanese ? '電話発信' : '전화 연결'}</span>
                   </a>
                 )}
                 {selectedCompanionCard.email && (
@@ -1116,7 +1283,7 @@ function ChronicleContent() {
                     className="flex-1 py-3 bg-stone-800 hover:bg-stone-900 text-white font-black rounded-xl text-center flex items-center justify-center gap-1.5 shadow-xs transition active:scale-98"
                   >
                     <Mail className="w-4 h-4" />
-                    <span>이메일</span>
+                    <span>{isJapanese ? 'メール' : '이메일'}</span>
                   </a>
                 )}
               </div>
@@ -1129,7 +1296,7 @@ function ChronicleContent() {
                 onClick={() => setSelectedCompanionCard(null)}
                 className="w-full py-2.5 bg-white border border-stone-300 hover:bg-stone-50 text-stone-700 font-black rounded-xl text-xs transition cursor-pointer"
               >
-                닫기
+                {isJapanese ? '閉じる' : '닫기'}
               </button>
             </div>
           </div>
@@ -1149,17 +1316,23 @@ function ChronicleContent() {
                 <div>
                   <h3 className="font-black text-sm text-stone-900">
                     {selectedMedalModal === 'HIO'
-                      ? '홀인원 명예의 전당'
+                      ? (isJapanese ? 'ホールインワンの殿堂' : '홀인원 명예의 전당')
                       : selectedMedalModal === 'EAGLE'
-                      ? '이글 훈장 명예의 전당'
-                      : '알바트로스 훈장 명예의 전당'}
+                      ? (isJapanese ? 'イーグルメダルの殿堂' : '이글 훈장 명예의 전당')
+                      : (isJapanese ? 'アルバトロスメダルの殿堂' : '알바트로스 훈장 명예의 전당')}
                   </h3>
                   <p className="text-[11px] text-stone-500 font-bold">
                     {selectedMedalModal === 'HIO'
-                      ? `총 ${totalHoleInOnes}회 달성 (파3 · 파4 · 파5별 실록)`
+                      ? (isJapanese
+                          ? `計 ${totalHoleInOnes}回 達成 (Par3 · Par4 · Par5別)`
+                          : `총 ${totalHoleInOnes}회 달성 (파3 · 파4 · 파5별 실록)`)
                       : selectedMedalModal === 'EAGLE'
-                      ? `총 ${totalEagles}회 달성 (파4 · 파5별 실록)`
-                      : `총 ${totalAlbatross}회 달성 (파5 2타 완주 실록)`}
+                      ? (isJapanese
+                          ? `計 ${totalEagles}回 達成 (Par4 · Par5別)`
+                          : `총 ${totalEagles}회 달성 (파4 · 파5별 실록)`)
+                      : (isJapanese
+                          ? `計 ${totalAlbatross}回 達成 (Par5 2打完走実録)`
+                          : `총 ${totalAlbatross}회 달성 (파5 2타 완주 실록)`)}
                   </p>
                 </div>
               </div>
@@ -1177,33 +1350,51 @@ function ChronicleContent() {
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="bg-amber-50 p-2.5 rounded-2xl border border-amber-200 space-y-0.5">
-                    <div className="text-[10px] text-amber-800 font-black">파3 홀인원</div>
-                    <div className="text-lg font-black text-amber-700">{hioListPar3.length}회</div>
-                    <div className="text-[9px] text-stone-400 font-medium">숏홀 원샷</div>
+                    <div className="text-[10px] text-amber-800 font-black">
+                      {isJapanese ? 'Par3 ホールインワン' : '파3 홀인원'}
+                    </div>
+                    <div className="text-lg font-black text-amber-700">{hioListPar3.length}{isJapanese ? '回' : '회'}</div>
+                    <div className="text-[9px] text-stone-400 font-medium">
+                      {isJapanese ? 'ショート 1打' : '숏홀 원샷'}
+                    </div>
                   </div>
                   <div className="bg-amber-50 p-2.5 rounded-2xl border border-amber-200 space-y-0.5">
-                    <div className="text-[10px] text-amber-800 font-black">파4 홀인원</div>
-                    <div className="text-lg font-black text-amber-700">{hioListPar4.length}회</div>
-                    <div className="text-[9px] text-stone-400 font-medium">미들홀 기적</div>
+                    <div className="text-[10px] text-amber-800 font-black">
+                      {isJapanese ? 'Par4 ホールインワン' : '파4 홀인원'}
+                    </div>
+                    <div className="text-lg font-black text-amber-700">{hioListPar4.length}{isJapanese ? '回' : '회'}</div>
+                    <div className="text-[9px] text-stone-400 font-medium">
+                      {isJapanese ? 'ミドル 奇跡' : '미들홀 기적'}
+                    </div>
                   </div>
                   <div className="bg-amber-50 p-2.5 rounded-2xl border border-amber-200 space-y-0.5">
-                    <div className="text-[10px] text-amber-800 font-black">파5 홀인원</div>
-                    <div className="text-lg font-black text-amber-700">{hioListPar5.length}회</div>
-                    <div className="text-[9px] text-stone-400 font-medium">롱홀 콘도르</div>
+                    <div className="text-[10px] text-amber-800 font-black">
+                      {isJapanese ? 'Par5 ホールインワン' : '파5 홀인원'}
+                    </div>
+                    <div className="text-lg font-black text-amber-700">{hioListPar5.length}{isJapanese ? '回' : '회'}</div>
+                    <div className="text-[9px] text-stone-400 font-medium">
+                      {isJapanese ? 'ロング コンドル' : '롱홀 콘도르'}
+                    </div>
                   </div>
                 </div>
 
                 {/* 상세 실록 리스트 */}
                 <div className="space-y-2">
                   <div className="text-xs font-black text-stone-800 flex items-center gap-1">
-                    <span>📜 공식 홀인원 달성 내역</span>
-                    <span className="text-[10px] text-stone-400">({totalHoleInOnes}건)</span>
+                    <span>{isJapanese ? '📜 公式ホールインワン達成内訳' : '📜 공식 홀인원 달성 내역'}</span>
+                    <span className="text-[10px] text-stone-400">({totalHoleInOnes}{isJapanese ? '件' : '건'})</span>
                   </div>
 
                   {totalHoleInOnes === 0 ? (
                     <div className="p-4 bg-stone-50 rounded-2xl border border-dashed border-stone-300 text-center space-y-1">
-                      <p className="text-xs font-black text-stone-600">아직 달성된 홀인원 기록이 없습니다.</p>
-                      <p className="text-[10px] text-stone-400">필드에서 1타에 홀인하면 파3/파4/파5별로 영구 실록에 자동 등록됩니다!</p>
+                      <p className="text-xs font-black text-stone-600">
+                        {isJapanese ? 'まだ達成されたホールインワンの記録がありません。' : '아직 달성된 홀인원 기록이 없습니다.'}
+                      </p>
+                      <p className="text-[10px] text-stone-400">
+                        {isJapanese
+                          ? 'フィールドで1打でホールインするとPar3/Par4/Par5別に永久実録に自動登録されます！'
+                          : '필드에서 1타에 홀인하면 파3/파4/파5별로 영구 실록에 자동 등록됩니다!'}
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-1.5 max-h-48 overflow-y-auto">
@@ -1217,10 +1408,12 @@ function ChronicleContent() {
                               <span>{item.courseName}</span>
                               <span className="text-amber-800 font-bold">{item.holeLabel}</span>
                             </div>
-                            <div className="text-[10px] text-stone-400 mt-0.5">{item.date} 달성</div>
+                            <div className="text-[10px] text-stone-400 mt-0.5">
+                              {item.date} {isJapanese ? '達成' : '달성'}
+                            </div>
                           </div>
                           <span className="font-black text-amber-700 bg-white px-2 py-1 rounded-lg border border-amber-200">
-                            1타 (홀인원)
+                            {isJapanese ? '1打 (ホールインワン)' : '1타 (홀인원)'}
                           </span>
                         </div>
                       ))}
@@ -1235,28 +1428,42 @@ function ChronicleContent() {
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-center">
                   <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 space-y-0.5">
-                    <div className="text-[10px] text-emerald-800 font-black">파4 이글</div>
-                    <div className="text-lg font-black text-emerald-700">{eagleListPar4.length}회</div>
-                    <div className="text-[9px] text-stone-400 font-medium">2타 완주 (-2타)</div>
+                    <div className="text-[10px] text-emerald-800 font-black">
+                      {isJapanese ? 'Par4 イーグル' : '파4 이글'}
+                    </div>
+                    <div className="text-lg font-black text-emerald-700">{eagleListPar4.length}{isJapanese ? '回' : '회'}</div>
+                    <div className="text-[9px] text-stone-400 font-medium">
+                      {isJapanese ? '2打完走 (-2打)' : '2타 완주 (-2타)'}
+                    </div>
                   </div>
                   <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 space-y-0.5">
-                    <div className="text-[10px] text-emerald-800 font-black">파5 이글</div>
-                    <div className="text-lg font-black text-emerald-700">{eagleListPar5.length}회</div>
-                    <div className="text-[9px] text-stone-400 font-medium">3타 완주 (-2타)</div>
+                    <div className="text-[10px] text-emerald-800 font-black">
+                      {isJapanese ? 'Par5 イーグル' : '파5 이글'}
+                    </div>
+                    <div className="text-lg font-black text-emerald-700">{eagleListPar5.length}{isJapanese ? '回' : '회'}</div>
+                    <div className="text-[9px] text-stone-400 font-medium">
+                      {isJapanese ? '3打完走 (-2打)' : '3타 완주 (-2타)'}
+                    </div>
                   </div>
                 </div>
 
                 {/* 상세 실록 리스트 */}
                 <div className="space-y-2">
                   <div className="text-xs font-black text-stone-800 flex items-center gap-1">
-                    <span>📜 공식 이글 달성 내역</span>
-                    <span className="text-[10px] text-stone-400">({totalEagles}건)</span>
+                    <span>{isJapanese ? '📜 公式イーグル達成内訳' : '📜 공식 이글 달성 내역'}</span>
+                    <span className="text-[10px] text-stone-400">({totalEagles}{isJapanese ? '件' : '건'})</span>
                   </div>
 
                   {totalEagles === 0 ? (
                     <div className="p-4 bg-stone-50 rounded-2xl border border-dashed border-stone-300 text-center space-y-1">
-                      <p className="text-xs font-black text-stone-600">아직 달성된 이글 기록이 없습니다.</p>
-                      <p className="text-[10px] text-stone-400">파4에서 2타, 파5에서 3타로 홀아웃하면 이글 훈장 실록에 자동 등록됩니다!</p>
+                      <p className="text-xs font-black text-stone-600">
+                        {isJapanese ? 'まだ達成されたイーグルの記録がありません。' : '아직 달성된 이글 기록이 없습니다.'}
+                      </p>
+                      <p className="text-[10px] text-stone-400">
+                        {isJapanese
+                          ? 'Par4で2打、Par5で3打でホールアウトするとイーグルメダル実録に自動登録されます！'
+                          : '파4에서 2타, 파5에서 3타로 홀아웃하면 이글 훈장 실록에 자동 등록됩니다!'}
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-1.5 max-h-48 overflow-y-auto">
@@ -1270,10 +1477,12 @@ function ChronicleContent() {
                               <span>{item.courseName}</span>
                               <span className="text-emerald-800 font-bold">{item.holeLabel}</span>
                             </div>
-                            <div className="text-[10px] text-stone-400 mt-0.5">{item.date} 달성</div>
+                            <div className="text-[10px] text-stone-400 mt-0.5">
+                              {item.date} {isJapanese ? '達成' : '달성'}
+                            </div>
                           </div>
                           <span className="font-black text-emerald-700 bg-white px-2 py-1 rounded-lg border border-emerald-200">
-                            {item.strokes}타 (-2타)
+                            {item.strokes}{isJapanese ? '打 (-2打)' : '타 (-2타)'}
                           </span>
                         </div>
                       ))}
@@ -1287,22 +1496,34 @@ function ChronicleContent() {
             {selectedMedalModal === 'ALBATROSS' && (
               <div className="space-y-3">
                 <div className="bg-indigo-50 p-3.5 rounded-2xl border border-indigo-200 text-center space-y-1">
-                  <div className="text-[11px] text-indigo-900 font-black">파5 롱홀 알바트로스</div>
-                  <div className="text-2xl font-black text-indigo-800">{totalAlbatross}회 달성</div>
-                  <div className="text-[10px] text-indigo-600 font-bold">100~150m 롱홀에서 2타 만에 홀아웃 (-3타 전설)</div>
+                  <div className="text-[11px] text-indigo-900 font-black">
+                    {isJapanese ? 'Par5 ロングホール アルバトロス' : '파5 롱홀 알바트로스'}
+                  </div>
+                  <div className="text-2xl font-black text-indigo-800">
+                    {totalAlbatross}{isJapanese ? '回 達成' : '회 달성'}
+                  </div>
+                  <div className="text-[10px] text-indigo-600 font-bold">
+                    {isJapanese ? '100〜150m ロングホールで2打完走 (-3打の伝説)' : '100~150m 롱홀에서 2타 만에 홀아웃 (-3타 전설)'}
+                  </div>
                 </div>
 
                 {/* 상세 실록 리스트 */}
                 <div className="space-y-2">
                   <div className="text-xs font-black text-stone-800 flex items-center gap-1">
-                    <span>📜 공식 알바트로스 달성 내역</span>
-                    <span className="text-[10px] text-stone-400">({totalAlbatross}건)</span>
+                    <span>{isJapanese ? '📜 公式アルバトロス達成内訳' : '📜 공식 알바트로스 달성 내역'}</span>
+                    <span className="text-[10px] text-stone-400">({totalAlbatross}{isJapanese ? '件' : '건'})</span>
                   </div>
 
                   {totalAlbatross === 0 ? (
                     <div className="p-4 bg-stone-50 rounded-2xl border border-dashed border-stone-300 text-center space-y-1">
-                      <p className="text-xs font-black text-stone-600">아직 달성된 알바트로스 기록이 없습니다.</p>
-                      <p className="text-[10px] text-stone-400">파5 롱홀에서 2타 만에 홀아웃하면 전설의 알바트로스 훈장이 수여됩니다!</p>
+                      <p className="text-xs font-black text-stone-600">
+                        {isJapanese ? 'まだ達成されたアルバトロスの記録がありません。' : '아직 달성된 알바트로스 기록이 없습니다.'}
+                      </p>
+                      <p className="text-[10px] text-stone-400">
+                        {isJapanese
+                          ? 'Par5 ロングホールで2打でホールアウトすると伝説のアルバトロスメダルが授与されます！'
+                          : '파5 롱홀에서 2타 만에 홀아웃하면 전설의 알바트로스 훈장이 수여됩니다!'}
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-1.5 max-h-48 overflow-y-auto">
@@ -1316,10 +1537,12 @@ function ChronicleContent() {
                               <span>{item.courseName}</span>
                               <span className="text-indigo-800 font-bold">{item.holeLabel}</span>
                             </div>
-                            <div className="text-[10px] text-stone-400 mt-0.5">{item.date} 달성</div>
+                            <div className="text-[10px] text-stone-400 mt-0.5">
+                              {item.date} {isJapanese ? '達成' : '달성'}
+                            </div>
                           </div>
                           <span className="font-black text-indigo-700 bg-white px-2 py-1 rounded-lg border border-indigo-200">
-                            2타 (-3타)
+                            2{isJapanese ? '打 (-3打)' : '타 (-3타)'}
                           </span>
                         </div>
                       ))}
@@ -1334,7 +1557,7 @@ function ChronicleContent() {
               onClick={() => setSelectedMedalModal(null)}
               className="w-full py-2.5 bg-stone-800 hover:bg-stone-900 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
             >
-              닫기
+              {isJapanese ? '閉じる' : '닫기'}
             </button>
           </div>
         </div>
@@ -1345,7 +1568,7 @@ function ChronicleContent() {
 
 export default function ChroniclePage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center font-bold text-stone-600">연대기 불러오는 중...</div>}>
+    <Suspense fallback={<div className="p-8 text-center font-bold text-stone-600">Loading...</div>}>
       <ChronicleContent />
     </Suspense>
   );

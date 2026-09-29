@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, CheckCircle2, AlertTriangle, Coffee, ArrowRight, Sparkles, Smartphone, Users, ChevronRight, RotateCcw, ShieldCheck } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 interface QuickGuideModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface QuickGuideModalProps {
 
 export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideModalProps) {
   const router = useRouter();
+  const { isJapanese, isEnglish } = useTranslation();
   const [activeStep, setActiveStep] = useState<number>(1);
 
   if (!isOpen) return null;
@@ -32,13 +34,15 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
             </span>
             <div>
               <div className="flex items-center gap-1.5">
-                <h3 className="font-black text-base text-white tracking-tight">파크온 1초 초간단 설명서</h3>
+                <h3 className="font-black text-base text-white tracking-tight">
+                  {isJapanese ? 'パークオン 1秒超簡単ガイド' : '파크온 1초 초간단 설명서'}
+                </h3>
                 <span className="bg-amber-400/90 text-stone-950 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
-                  필독 가이드
+                  {isJapanese ? '必読ガイド' : '필독 가이드'}
                 </span>
               </div>
               <p className="text-[11px] text-emerald-100 font-medium">
-                종이 카드 없이 스마트폰으로 1초 타수 & 실시간 동기화
+                {isJapanese ? '紙カード不要！スマホで1秒スコアリング＆リアルタイム共有' : '종이 카드 없이 스마트폰으로 1초 타수 & 실시간 동기화'}
               </p>
             </div>
           </div>
@@ -46,7 +50,7 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
             type="button"
             onClick={onClose}
             className="text-emerald-100 hover:text-white p-1 rounded-xl cursor-pointer hover:bg-emerald-600/50 transition active:scale-95"
-            aria-label="닫기"
+            aria-label={isJapanese ? '閉じる' : '닫기'}
           >
             <X className="w-5 h-5" />
           </button>
@@ -55,10 +59,10 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
         {/* 4단계 스텝 탭 버튼 */}
         <div className="grid grid-cols-4 bg-stone-950 p-1.5 gap-1 shrink-0 border-b border-stone-800 text-[11px] font-black">
           {[
-            { id: 1, icon: '🏌️', label: '1. 제원 확인' },
-            { id: 2, icon: '⛳', label: '2. 게임 진행' },
-            { id: 3, icon: '📱', label: '3. 실시간 공유' },
-            { id: 4, icon: '⭐', label: '4. 꿀팁/체험' },
+            { id: 1, icon: '🏌️', label: isJapanese ? '1. 諸元確認' : '1. 제원 확인' },
+            { id: 2, icon: '⛳', label: isJapanese ? '2. ゲーム進行' : '2. 게임 진행' },
+            { id: 3, icon: '📱', label: isJapanese ? '3. リアルタイム共有' : '3. 실시간 공유' },
+            { id: 4, icon: '⭐', label: isJapanese ? '4. コツ・体験' : '4. 꿀팁/체험' },
           ].map((tab) => {
             const isActive = activeStep === tab.id;
             return (
@@ -88,10 +92,12 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
                 <span className="text-xl">🏌️‍♂️</span>
                 <div>
                   <h4 className="font-extrabold text-sm text-emerald-300">
-                    1단계: 티박스 스타트 전 홀과 제원을 확인하세요
+                    {isJapanese ? '1段階: ティーショット前にホールと諸元を確認' : '1단계: 티박스 스타트 전 홀과 제원을 확인하세요'}
                   </h4>
                   <p className="text-xs text-stone-300 mt-1 leading-relaxed">
-                    홀과 제원을 확인하신 후 라운드를 시작(확인)하시면, 점수를 매기는 <strong className="text-amber-300">스코어보드판(타수 입력창)으로 바로 이동</strong>합니다.
+                    {isJapanese
+                      ? 'ホールと諸元を確認してラウンドを開始すると、スコア入力画面へ直接移動します。'
+                      : '홀과 제원을 확인하신 후 라운드를 시작(확인)하시면, 점수를 매기는 스코어보드판(타수 입력창)으로 바로 이동합니다.'}
                   </p>
                 </div>
               </div>
@@ -99,13 +105,13 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
               {/* 전광판 목업 (예시 박스) */}
               <div className="bg-stone-950 rounded-2xl p-4 border border-stone-800 shadow-inner space-y-2">
                 <div className="flex items-center justify-between text-[11px] text-stone-400 font-bold px-1">
-                  <span>💡 [화면 예시] 코스 전광판</span>
-                  <span className="text-amber-400 font-bold">티박스 팻말과 일치 확인</span>
+                  <span>{isJapanese ? '💡 [画面例] コース案内板' : '💡 [화면 예시] 코스 전광판'}</span>
+                  <span className="text-amber-400 font-bold">{isJapanese ? '案内看板との一致を確認' : '티박스 팻말과 일치 확인'}</span>
                 </div>
 
                 <div className="flex items-center justify-between bg-stone-900 rounded-xl p-3.5 border border-stone-800">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-black text-emerald-400">A-3 홀</span>
+                    <span className="text-2xl font-black text-emerald-400">A-3 {isJapanese ? 'ホール' : '홀'}</span>
                     <span className="text-xs font-bold text-stone-300 bg-stone-800 px-2 py-0.5 rounded border border-stone-700">
                       Par 4
                     </span>
@@ -121,11 +127,17 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
               <div className="space-y-2 bg-stone-950/70 p-3 rounded-2xl border border-stone-800/80 text-xs">
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span><strong>팻말 거리 확인:</strong> 티박스 공식 팻말의 거리(m)와 Par를 확인합니다.</span>
+                  <span>
+                    <strong>{isJapanese ? '案内板の距離確認:' : '팻말 거리 확인:'}</strong>{' '}
+                    {isJapanese ? 'ティーグラウンド公式看板の距離(m)とParを確認します。' : '티박스 공식 팻말의 거리(m)와 Par를 확인합니다.'}
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <span><strong>현장 제원 수정:</strong> 팻말과 거리가 다르면 <strong>[✏️ 제원 수정]</strong>을 눌러 즉시 고칠 수 있습니다.</span>
+                  <span>
+                    <strong>{isJapanese ? '現地の諸元修正:' : '현장 제원 수정:'}</strong>{' '}
+                    {isJapanese ? '看板と距離が異なる場合は [✏️ 諸元修正] を押して即座に修正できます。' : '팻말과 거리가 다르면 [✏️ 제원 수정]을 눌러 즉시 고칠 수 있습니다.'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -138,10 +150,12 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
                 <span className="text-xl">⛳</span>
                 <div>
                   <h4 className="font-extrabold text-sm text-emerald-300">
-                    2단계: 게임 중 타수 입력 (OB 등)
+                    {isJapanese ? '2段階: プレー中のスコア入力 (OBなど)' : '2단계: 게임 중 타수 입력 (OB 등)'}
                   </h4>
                   <p className="text-xs text-stone-300 mt-1 leading-relaxed">
-                    선수별 타수와 OB를 확인하고, 스마트폰으로 간편하게 <strong className="text-amber-300">타수를 톡톡 터치</strong>하세요.
+                    {isJapanese
+                      ? '選手別の打数やOBを確認し、スマートフォンでワンタップで簡単入力。'
+                      : '선수별 타수와 OB를 확인하고, 스마트폰으로 간편하게 타수를 톡톡 터치하세요.'}
                   </p>
                 </div>
               </div>
@@ -149,14 +163,14 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
               {/* 스코어 입력창 목업 (예시 박스) */}
               <div className="bg-stone-950 rounded-2xl p-3.5 border border-stone-800 shadow-inner space-y-2">
                 <div className="flex items-center justify-between text-[11px] text-stone-400 font-bold px-1">
-                  <span>💡 [화면 예시] 스코어 입력창</span>
-                  <span className="text-amber-400 font-bold">1초 원터치 기입</span>
+                  <span>{isJapanese ? '💡 [画面例] スコア入力画面' : '💡 [화면 예시] 스코어 입력창'}</span>
+                  <span className="text-amber-400 font-bold">{isJapanese ? '1秒ワンタッチ入力' : '1초 원터치 기입'}</span>
                 </div>
 
                 <div className="flex items-center justify-between bg-stone-900 p-2.5 rounded-xl border border-stone-800">
                   <div className="flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-emerald-500 text-stone-950 font-black text-xs flex items-center justify-center">1</span>
-                    <span className="font-black text-sm text-white">김대표 (나)</span>
+                    <span className="font-black text-sm text-white">{isJapanese ? '山田 (自分)' : '김대표 (나)'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button type="button" className="w-8 h-8 rounded-lg bg-stone-800 text-white font-black text-base">-</button>
@@ -171,11 +185,11 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
                 <div className="flex items-center justify-between bg-stone-900/60 p-2.5 rounded-xl border border-stone-800">
                   <div className="flex items-center gap-2">
                     <span className="w-6 h-6 rounded-full bg-stone-700 text-stone-300 font-bold text-xs flex items-center justify-center">2</span>
-                    <span className="font-bold text-sm text-stone-300">이동반</span>
+                    <span className="font-bold text-sm text-stone-300">{isJapanese ? '佐藤 (同伴者)' : '이동반'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-amber-400 bg-amber-500/20 px-2 py-1 rounded-lg border border-amber-500/30 flex items-center gap-1">
-                      <Coffee className="w-3 h-3" /> 잠시 빠짐 (휴식)
+                      <Coffee className="w-3 h-3" /> {isJapanese ? '一時離脱 (休憩中)' : '잠시 빠짐 (휴식)'}
                     </span>
                   </div>
                 </div>
@@ -185,15 +199,24 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
               <div className="space-y-2 bg-stone-950/70 p-3 rounded-2xl border border-stone-800/80 text-xs">
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span><strong>원터치 타수 기입:</strong> `+`와 `-` 버튼으로 선수별 최종 타수를 맞춥니다.</span>
+                  <span>
+                    <strong>{isJapanese ? 'ワンタッチ打数入力:' : '원터치 타수 기입:'}</strong>{' '}
+                    {isJapanese ? '「+」と「-」ボタンで選手ごとの最終打数を合わせます。' : '`+`와 `-` 버튼으로 선수별 최종 타수를 맞춥니다.'}
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                  <span><strong>[OB +2] 독립 버튼:</strong> 백색선을 벗어나 OB가 난 선수는 빨간 버튼만 누르면 2벌타 자동 합산!</span>
+                  <span>
+                    <strong>{isJapanese ? '[OB +2] 独立ボタン:' : '[OB +2] 독립 버튼:'}</strong>{' '}
+                    {isJapanese ? '白線を外れてOBになった選手は赤いボタンを押すだけで2打罰を自動加算！' : '백색선을 벗어나 OB가 난 선수는 빨간 버튼만 누르면 2벌타 자동 합산!'}
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <span><strong>[☕ 잠시 빠짐]:</strong> 화장실 가거나 1홀 쉴 땐 버튼 터치! 나머지 동반자만 정상 진행됩니다.</span>
+                  <span>
+                    <strong>{isJapanese ? '[☕ 一時離脱]:' : '[☕ 잠시 빠짐]:'}</strong>{' '}
+                    {isJapanese ? 'お手洗いや1ホール休む時はボタンをタップ！残りの同伴者だけでそのまま進行できます。' : '화장실 가거나 1홀 쉴 땐 버튼 터치! 나머지 동반자만 정상 진행됩니다.'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -205,9 +228,13 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
               <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-3 flex items-start gap-2.5">
                 <span className="text-xl">📱</span>
                 <div>
-                  <h4 className="font-extrabold text-sm text-emerald-300">3단계: 조장 1명 입력 ➔ 전원 실시간 동기화</h4>
+                  <h4 className="font-extrabold text-sm text-emerald-300">
+                    {isJapanese ? '3段階: 代表1人が入力 ➔ 全員にリアルタイム同期' : '3단계: 조장 1명 입력 ➔ 전원 실시간 동기화'}
+                  </h4>
                   <p className="text-xs text-stone-300 mt-0.5">
-                    동반자 4명이 번거롭게 다 적을 필요 없이, <strong className="text-amber-300">조장 한 명만 입력</strong>하면 끝납니다!
+                    {isJapanese
+                      ? '4人が各自書く手間なく、代表1人が入力するだけで全員の画面に自動反映！'
+                      : '동반자 4명이 번거롭게 다 적을 필요 없이, 조장 한 명만 입력하면 끝납니다!'}
                   </p>
                 </div>
               </div>
@@ -217,24 +244,24 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
                 <div className="flex items-center justify-around text-center py-2">
                   <div className="flex flex-col items-center">
                     <Smartphone className="w-8 h-8 text-emerald-400 animate-pulse" />
-                    <span className="text-[11px] font-black text-emerald-300 mt-1">조장 스마트폰</span>
-                    <span className="text-[10px] text-stone-400">타수 입력</span>
+                    <span className="text-[11px] font-black text-emerald-300 mt-1">{isJapanese ? '代表者のスマホ' : '조장 스마트폰'}</span>
+                    <span className="text-[10px] text-stone-400">{isJapanese ? 'スコア入力' : '타수 입력'}</span>
                   </div>
                   <div className="flex flex-col items-center text-amber-400">
-                    <span className="text-xs font-black">실시간 자동 반영</span>
+                    <span className="text-xs font-black">{isJapanese ? 'リアルタイム自動反映' : '실시간 자동 반영'}</span>
                     <span className="text-lg">➔ ⚡ ➔</span>
                   </div>
                   <div className="flex flex-col items-center">
                     <Users className="w-8 h-8 text-sky-400" />
-                    <span className="text-[11px] font-black text-sky-300 mt-1">동반자 3명 폰</span>
-                    <span className="text-[10px] text-stone-400">전광판 동기화</span>
+                    <span className="text-[11px] font-black text-sky-300 mt-1">{isJapanese ? '同伴者3人のスマホ' : '동반자 3명 폰'}</span>
+                    <span className="text-[10px] text-stone-400">{isJapanese ? '電光板同期' : '전광판 동기화'}</span>
                   </div>
                 </div>
 
                 <div className="bg-stone-900 rounded-xl p-3 border border-stone-800 text-center">
-                  <div className="text-xs text-stone-400 font-bold">화면 하단 버튼 상시 배치</div>
+                  <div className="text-xs text-stone-400 font-bold">{isJapanese ? '画面下部に常時配置' : '화면 하단 버튼 상시 배치'}</div>
                   <div className="mt-1 text-sm font-black text-emerald-300 bg-stone-800/80 py-1.5 px-3 rounded-lg border border-emerald-500/30">
-                    📋 [ 현재 스코어보드판 보기 ]
+                    {isJapanese ? '📋 [ 現在のスコアボードを見る ]' : '📋 [ 현재 스코어보드판 보기 ]'}
                   </div>
                 </div>
               </div>
@@ -243,15 +270,24 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
               <div className="space-y-2 bg-stone-950/70 p-3 rounded-2xl border border-stone-800/80 text-xs">
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span><strong>조장 입력 자동 전송:</strong> 조장이 홀아웃 점수를 확정하면 동반자들 폰에 0.1초 만에 뜹니다.</span>
+                  <span>
+                    <strong>{isJapanese ? '代表入力の自動送信:' : '조장 입력 자동 전송:'}</strong>{' '}
+                    {isJapanese ? '代表がホールアウト打数を確定すると、同伴者の画面に0.1秒で即時反映されます。' : '조장이 홀아웃 점수를 확정하면 동반자들 폰에 0.1초 만에 뜹니다.'}
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span><strong>실시간 스코어보드:</strong> 경기 도중 언제든 [현재 스코어보드판 보기]를 눌러 전체 타수를 확인하세요.</span>
+                  <span>
+                    <strong>{isJapanese ? 'リアルタイムスコアボード:' : '실시간 스코어보드:'}</strong>{' '}
+                    {isJapanese ? 'プレー中いつでも [現在のスコアボードを見る] を押して全体のスコアを確認できます。' : '경기 도중 언제든 [현재 스코어보드판 보기]를 눌러 전체 타수를 확인하세요.'}
+                  </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                  <span><strong>평생 연대기 보관:</strong> 경기가 끝나면 전국 450개 구장 내 모든 기록이 평생 연대기로 자동 누적됩니다.</span>
+                  <span>
+                    <strong>{isJapanese ? '生涯戦績の自動保存:' : '평생 연대기 보관:'}</strong>{' '}
+                    {isJapanese ? 'ラウンドが終了すると、すべての記録が生涯年代記として自動保存されます。' : '경기가 끝나면 전국 450개 구장 내 모든 기록이 평생 연대기로 자동 누적됩니다.'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -263,9 +299,11 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
               <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-3 flex items-start gap-2.5">
                 <span className="text-xl">⭐</span>
                 <div>
-                  <h4 className="font-extrabold text-sm text-emerald-300">알아두면 100배 편한 파크온 꿀팁</h4>
+                  <h4 className="font-extrabold text-sm text-emerald-300">
+                    {isJapanese ? '知っておくと100倍便利なパークオン活用術' : '알아두면 100배 편한 파크온 꿀팁'}
+                  </h4>
                   <p className="text-xs text-stone-300 mt-0.5">
-                    필드 현장에서 돌발 상황이 생겨도 당황하지 마세요!
+                    {isJapanese ? 'コース上で突発的な状況が起きてもご安心ください！' : '필드 현장에서 돌발 상황이 생겨도 당황하지 마세요!'}
                   </p>
                 </div>
               </div>
@@ -275,9 +313,13 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
                 <div className="bg-stone-950 p-3 rounded-2xl border border-stone-800 flex items-start gap-2.5">
                   <span className="text-base shrink-0">🔄</span>
                   <div>
-                    <strong className="text-amber-300 text-xs">앞 조가 밀려 있을 때 (홀 점프):</strong>
+                    <strong className="text-amber-300 text-xs">
+                      {isJapanese ? '前の組が詰まっている時 (ホールスキップ):' : '앞 조가 밀려 있을 때 (홀 점프):'}
+                    </strong>
                     <p className="text-stone-300 mt-0.5">
-                      하단 <strong>[다른 홀로 이동]</strong>을 누르면 기다릴 필요 없이 비어있는 B-1, C-1 홀로 바로 건너뛰어 플레이할 수 있습니다.
+                      {isJapanese
+                        ? '下部の [他のホールへ移動] を押せば、空いているB-1、C-1ホールへ即座に移動してプレーできます。'
+                        : '하단 [다른 홀로 이동]을 누르면 기다릴 필요 없이 비어있는 B-1, C-1 홀로 바로 건너뛰어 플레이할 수 있습니다.'}
                     </p>
                   </div>
                 </div>
@@ -285,9 +327,13 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
                 <div className="bg-stone-950 p-3 rounded-2xl border border-stone-800 flex items-start gap-2.5">
                   <span className="text-base shrink-0">☕</span>
                   <div>
-                    <strong className="text-amber-300 text-xs">비가 오거나 중간 휴식할 때:</strong>
+                    <strong className="text-amber-300 text-xs">
+                      {isJapanese ? '雨天や途中で休憩する時:' : '비가 오거나 중간 휴식할 때:'}
+                    </strong>
                     <p className="text-stone-300 mt-0.5">
-                      <strong>[잠시 빠지기(저장)]</strong>를 누르면 홈으로 빠져나가며, 나중에 <strong>[⛳ 이어서 경기하기]</strong>로 원터치 복귀됩니다.
+                      {isJapanese
+                        ? '[一時退出(保存)] を押せば安全に保存され、後で [⛳ 続きからプレー] でワンタッチ復帰できます。'
+                        : '[잠시 빠지기(저장)]를 누르면 홈으로 빠져나가며, 나중에 [⛳ 이어서 경기하기]로 원터치 복귀됩니다.'}
                     </p>
                   </div>
                 </div>
@@ -295,16 +341,26 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
                 <div className="bg-stone-950 p-3 rounded-2xl border border-stone-800 flex items-start gap-2.5">
                   <span className="text-base shrink-0">⚖️</span>
                   <div className="space-y-1 text-xs">
-                    <strong className="text-emerald-300 font-extrabold">0베이스 vs Par기준 (선택 가능):</strong>
+                    <strong className="text-emerald-300 font-extrabold">
+                      {isJapanese ? '0打基準 vs Par基準 (選択可能):' : '0베이스 vs Par기준 (선택 가능):'}
+                    </strong>
                     <p className="text-stone-300 text-[11px] leading-relaxed">
-                      타수를 치는 대로 체크하며 셀지, Par 기준으로 (+/-) 맞출지 화면에서 1초 만에 언제든 전환할 수 있습니다.
+                      {isJapanese
+                        ? '打った数そのまま数えるか、Par基準で(+/-)合わせるか、いつでもワンタッチ切替可能です。'
+                        : '타수를 치는 대로 체크하며 셀지, Par 기준으로 (+/-) 맞출지 화면에서 1초 만에 언제든 전환할 수 있습니다.'}
                     </p>
                     <div className="pt-1.5 space-y-1 text-[11px] text-stone-200 bg-stone-900/90 p-2.5 rounded-xl border border-stone-800">
                       <div>
-                        <span className="text-amber-300 font-black">✓ Par 기준 (기본 추천):</span> 해당 홀의 Par(3·4·5타)가 미리 박혀 있어, 홀아웃 후 오버/언더파(+/-)만 톡톡 맞춰 1초 만에 끝내는 가장 빠른 방식
+                        <span className="text-amber-300 font-black">{isJapanese ? '✓ Par基準 (おすすめ):' : '✓ Par 기준 (기본 추천):'}</span>{' '}
+                        {isJapanese
+                          ? '各ホールのPar(3・4・5打)がセットされており、ホールアウト後にオーバー/アンダー(+/-)を合わせる最も速い方式'
+                          : '해당 홀의 Par(3·4·5타)가 미리 박혀 있어, 홀아웃 후 오버/언더파(+/-)만 톡톡 맞춰 1초 만에 끝내는 가장 빠른 방식'}
                       </div>
                       <div className="pt-0.5">
-                        <span className="text-emerald-300 font-black">✓ 0베이스:</span> 0부터 시작하여 공을 한 타 칠 때마다 직접 터치해서 차례대로 올려 세는 직관적인 방식
+                        <span className="text-emerald-300 font-black">{isJapanese ? '✓ 0打基準:' : '✓ 0베이스:'}</span>{' '}
+                        {isJapanese
+                          ? '0打からスタートし、打つたびにタップして打数を1つずつ加算していく直感的な方式'
+                          : '0부터 시작하여 공을 한 타 칠 때마다 직접 터치해서 차례대로 올려 세는 직관적인 방식'}
                       </div>
                     </div>
                   </div>
@@ -314,17 +370,19 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
               {/* 가상 체험 연습 모드 브릿지 */}
               <div className="bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/40 rounded-2xl p-3.5 space-y-2 text-center">
                 <div className="text-xs font-black text-amber-300">
-                  🎯 실제 화면을 직접 만져보고 싶으신가요?
+                  {isJapanese ? '🎯 実際の画面を体験してみませんか？' : '🎯 실제 화면을 직접 만져보고 싶으신가요?'}
                 </div>
                 <p className="text-[11px] text-stone-300 leading-tight">
-                  기록에 남지 않는 가상 연습 모드에서 화면을 자유롭게 눌러보실 수 있습니다.
+                  {isJapanese
+                    ? '記録に残らない仮想練習モードで、画面を自由に操作してお試しいただけます。'
+                    : '기록에 남지 않는 가상 연습 모드에서 화면을 자유롭게 눌러보실 수 있습니다.'}
                 </p>
                 <button
                   type="button"
                   onClick={handleStartTrialRound}
                   className="w-full py-2.5 bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 text-stone-950 font-black rounded-xl text-xs shadow-md transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <span>🎯 프로그램 가상 체험 연습해 보기</span>
+                  <span>{isJapanese ? '🎯 バーチャル体験・練習してみる' : '🎯 프로그램 가상 체험 연습해 보기'}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -334,14 +392,14 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
 
         {/* 하단 고정 액션 버튼 */}
         <div className="p-3.5 bg-stone-950 border-t border-stone-800/80 flex items-center gap-2.5 shrink-0">
-          {/* 나가기 버튼 (홈 초기화면으로 원터치 복귀) */}
+          {/* 나가기 버튼 */}
           <button
             type="button"
             onClick={onClose}
             className="flex-1 py-3 px-3 bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white font-black rounded-2xl text-xs sm:text-sm transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 border border-stone-700 shadow-xs"
           >
             <X className="w-4 h-4 text-stone-400" />
-            <span>나가기</span>
+            <span>{isJapanese ? '閉じる' : '나가기'}</span>
           </button>
 
           {/* 다음 설명 보기 버튼 */}
@@ -351,7 +409,7 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
               onClick={() => setActiveStep(activeStep + 1)}
               className="flex-2 py-3 px-4 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 font-black rounded-2xl text-xs sm:text-sm shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <span>다음 설명 보기 ({activeStep + 1}/4)</span>
+              <span>{isJapanese ? `次へ (${activeStep + 1}/4)` : `다음 설명 보기 (${activeStep + 1}/4)`}</span>
               <ChevronRight className="w-4 h-4 text-stone-950" />
             </button>
           ) : (
@@ -361,7 +419,7 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
               className="flex-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl text-xs sm:text-sm shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
             >
               <RotateCcw className="w-4 h-4" />
-              <span>처음부터 다시 보기 (1/4)</span>
+              <span>{isJapanese ? '最初からもう一度 (1/4)' : '처음부터 다시 보기 (1/4)'}</span>
             </button>
           )}
         </div>

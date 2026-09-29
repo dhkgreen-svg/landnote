@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { HelpCircle, MapPin, AlertTriangle, Trophy, Newspaper } from 'lucide-react';
+import { HelpCircle, MapPin, AlertTriangle, Trophy, Newspaper, Globe } from 'lucide-react';
 import { ParkOnStorage, KakaoAuthUser } from '@/lib/storage';
 import { KakaoLoginModal } from './KakaoLoginModal';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 interface NavGuardInfo {
   url: string;
@@ -19,6 +20,7 @@ interface NavGuardInfo {
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
+  const { language, setLanguage, t, isJapanese } = useTranslation();
 
   const [showKakaoModal, setShowKakaoModal] = useState(false);
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
@@ -123,58 +125,43 @@ export function Header() {
             </div>
             <div className="flex flex-col leading-none">
               <span className="font-black text-base sm:text-lg tracking-tight text-white whitespace-nowrap flex items-center gap-1">
-                파크골프 <span className="text-amber-300">올인원</span>
+                {isJapanese ? (
+                  <>
+                    パークゴルフ <span className="text-amber-300">オールインワン</span>
+                  </>
+                ) : language === 'en' ? (
+                  <>
+                    PARKGOLF <span className="text-amber-300">ALL-IN-ONE</span>
+                  </>
+                ) : (
+                  <>
+                    파크골프 <span className="text-amber-300">올인원</span>
+                  </>
+                )}
               </span>
               <span className="text-[8.5px] font-bold text-emerald-200 tracking-wider mt-0.5">
-                PARKGOLF ALL-IN-ONE
+                {isJapanese ? 'PARKGOLF ALL-IN-ONE' : 'PARKGOLF ALL-IN-ONE'}
               </span>
             </div>
           </Link>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* 카카오 로그인 / 프로필 활동명 버튼 */}
-            {kakaoUser ? (
-              <button
-                type="button"
-                onClick={() => setShowKakaoModal(true)}
-                className="bg-emerald-800 hover:bg-emerald-900 text-yellow-300 px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1 border border-emerald-600/80 cursor-pointer shadow-xs transition active:scale-95 whitespace-nowrap"
-                title="내 프로필 및 활동명 관리"
-              >
-                <span className="text-xs leading-none">💬</span>
-                <span className="max-w-[75px] truncate font-extrabold" suppressHydrationWarning>
-                  {ParkOnStorage.getUserDisplayName()}
-                </span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowKakaoModal(true)}
-                className="bg-emerald-800 hover:bg-emerald-900 text-yellow-300 px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1 border border-emerald-600/80 cursor-pointer shadow-xs transition active:scale-95 whitespace-nowrap"
-                title="카카오 로그인 및 내 활동명 설정"
-              >
-                <span className="text-xs leading-none">💬</span>
-                <span className="max-w-[75px] truncate font-extrabold">
-                  {ParkOnStorage.getUserDisplayName()}
-                </span>
-              </button>
-            )}
-
             {/* 0. 나의 파크골프 연대기 & 1촌 */}
             <Link
               href="/chronicle"
-              className="w-9 h-9 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
+              className="w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
               title="나의 파크골프 연대기 & 1촌 명부"
             >
-              <Trophy className="w-5 h-5 text-amber-600 stroke-[2.5]" />
+              <Trophy className="w-4 h-4 text-amber-600 stroke-[2.5]" />
             </Link>
 
             {/* 0.5. 게시판 & 파크골프 뉴스 */}
             <Link
               href="/board"
-              className="relative w-9 h-9 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
+              className="relative w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
               title="게시판 & 파크골프 뉴스 (전국 시합 공고·열린 신문고)"
             >
-              <Newspaper className="w-5 h-5 text-purple-700 stroke-[2.5]" />
+              <Newspaper className="w-4 h-4 text-purple-700 stroke-[2.5]" />
               <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-black px-1 rounded-full animate-pulse shadow-xs">
                 N
               </span>
@@ -184,20 +171,20 @@ export function Header() {
             <Link
               href="/rules"
               onClick={(e) => handleNavClick(e, '/rules', 'RULES')}
-              className="w-9 h-9 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
+              className="w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
               title="파크골프 규정 & AI 룰 솔로몬"
             >
-              <HelpCircle className="w-5 h-5 stroke-[2.5]" />
+              <HelpCircle className="w-4 h-4 stroke-[2.5]" />
             </Link>
 
             {/* 2. 전국 구장 (장소 찾기) 버튼 */}
             <Link
               href="/courses"
               onClick={(e) => handleNavClick(e, '/courses', 'COURSES')}
-              className="w-9 h-9 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
+              className="w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
               title="전국 파크골프장 찾기"
             >
-              <MapPin className="w-5 h-5 stroke-[2.5]" />
+              <MapPin className="w-4 h-4 stroke-[2.5]" />
             </Link>
           </div>
         </div>

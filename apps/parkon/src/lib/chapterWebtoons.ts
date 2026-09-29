@@ -1,4 +1,4 @@
-﻿export interface ChapterWebtoonCut {
+export interface ChapterWebtoonCut {
   cutNumber: number;
   title: string;
   image: string;
@@ -38,7 +38,7 @@ export const CHAPTER_WEBTOONS: Record<string, ChapterWebtoon> = {
         badge: '공인 규격',
         badgeType: 'info',
         situation: '파크골프는 일반 골프와 홀수 및 기준 타수가 어떻게 다를까요?',
-        parkyDialogue: '안녕하세요! 파크온 마스코트 파키예요! 파크골프 공인 규격은 9홀 기준 총 33타(Par 33)가 표준이랍니다! Par 3 4개, Par 4 4개, Par 5 1개로 알차게 구성되어 있어요!',
+        parkyDialogue: '안녕하세요! 파크골프 올인원 마스코트 파키예요! 파크골프 공인 규격은 9홀 기준 총 33타(Par 33)가 표준이랍니다! Par 3 4개, Par 4 4개, Par 5 1개로 알차게 구성되어 있어요!',
         verdict: '9홀 기준 기준타수 33타 (18홀 66타)',
         keyPoint: '전체 거리는 9홀 약 660m 내외로 남녀노소 누구나 걷기 좋은 도심 속 친환경 코스입니다.',
         article: '제1장 제2조 (코스의 구성 및 구역)',

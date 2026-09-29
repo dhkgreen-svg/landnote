@@ -4,6 +4,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { VisitorTracker } from '@/components/VisitorTracker';
 import { MainWrapper } from '@/components/MainWrapper';
+import { LanguageProvider } from '@/lib/i18n/LanguageContext';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://parkongolf.com'),
@@ -66,9 +67,9 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="파크온" />
-        <meta name="application-name" content="파크온" />
-        <meta property="og:title" content="파크온 (ParkOn) - 모바일 스코어보드" />
+        <meta name="apple-mobile-web-app-title" content="파크골프 올인원" />
+        <meta name="application-name" content="파크골프 올인원" />
+        <meta property="og:title" content="파크골프 올인원 (ParkGolf All-in-One) - 모바일 스코어보드" />
         <meta property="og:description" content="1초 스코어링 · 전국 5스타 랭킹 · 룰 솔로몬 AI" />
         <meta property="og:image" content="/og-image.jpg" />
         <meta property="og:image:width" content="1200" />
@@ -82,12 +83,14 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen flex flex-col antialiased bg-stone-100 text-stone-900">
-        <VisitorTracker />
-        <Header />
-        <MainWrapper>
-          {children}
-        </MainWrapper>
-        <Footer />
+        <LanguageProvider>
+          <VisitorTracker />
+          <Header />
+          <MainWrapper>
+            {children}
+          </MainWrapper>
+          <Footer />
+        </LanguageProvider>
       </body>
     </html>
   );

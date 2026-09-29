@@ -11,6 +11,9 @@ import {
   CourseSpecialReport,
 } from '@/types/parkon';
 import { DEFAULT_COURSES, generateStandardHoles } from './defaultCourses';
+import { JAPAN_DEFAULT_COURSES } from './courseLocalization';
+
+export const ALL_BASE_COURSES: Course[] = [...DEFAULT_COURSES, ...JAPAN_DEFAULT_COURSES];
 
 export interface CourseConditionEvaluation {
   state: CourseConditionState;
@@ -467,7 +470,7 @@ export const ParkOnStorage = {
 
   // 4. Courses (Defaults + Custom Created / Modified + Crowdsourced Specs)
   getAllCourses(): Course[] {
-    if (typeof window === 'undefined') return DEFAULT_COURSES;
+    if (typeof window === 'undefined') return ALL_BASE_COURSES;
     try {
       const customData = localStorage.getItem(STORAGE_KEYS.CUSTOM_COURSES);
       const customCourses: Course[] = customData ? JSON.parse(customData) : [];
@@ -498,7 +501,7 @@ export const ParkOnStorage = {
       const customNameMap = new Map(customCourses.map((c) => [c.name.replace(/\s+/g, ''), c]));
 
       // Apply customized overrides onto default courses
-      const defaults = DEFAULT_COURSES.map((d) => {
+      const defaults = ALL_BASE_COURSES.map((d) => {
         const cleanName = d.name.replace(/\s+/g, '');
         const custom = customMap.get(d.id) || customNameMap.get(cleanName);
         if (custom) {
@@ -525,14 +528,14 @@ export const ParkOnStorage = {
       // Pure custom courses that are not matched to any default course
       const pureCustom = customCourses.filter((c) => {
         const cleanName = c.name.replace(/\s+/g, '');
-        return !DEFAULT_COURSES.some(
+        return !ALL_BASE_COURSES.some(
           (d) => d.id === c.id || d.name.replace(/\s+/g, '') === cleanName
         );
       }).map(applyCrowdSpecs);
 
       return [...pureCustom, ...defaults];
     } catch {
-      return DEFAULT_COURSES;
+      return ALL_BASE_COURSES;
     }
   },
 
@@ -680,7 +683,7 @@ export const ParkOnStorage = {
         );
 
         if (!target) {
-          const def = DEFAULT_COURSES.find(
+          const def = ALL_BASE_COURSES.find(
             (d) => d.id === courseId || d.name.replace(/\s+/g, '') === cleanName
           );
           if (def) {

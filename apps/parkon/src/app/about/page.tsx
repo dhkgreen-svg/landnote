@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { ArrowLeft, Sparkles, MapPin, Brain, Trophy, Smartphone, Mail, CheckCircle2 } from 'lucide-react';
 
 export const metadata = {
-  title: '서비스 소개 & 문의 | 파크온 (ParkOn)',
-  description: '대한민국 파크골프 동호인을 위한 올인원 포털 파크온 소개 및 제휴 문의 안내입니다.',
+  title: '서비스 소개 & 문의 | 파크골프 올인원 (ParkGolf All-in-One)',
+  description: '대한민국 파크골프 동호인을 위한 올인원 포털 파크골프 올인원 소개 및 제휴 문의 안내입니다.',
 };
 
 export default function AboutUsPage() {
@@ -20,7 +20,7 @@ export default function AboutUsPage() {
             <ArrowLeft className="w-4 h-4" />
             홈으로 돌아가기
           </Link>
-          <span className="text-[11px] font-bold text-stone-500">About ParkOn</span>
+          <span className="text-[11px] font-bold text-stone-500">About ParkGolf All-in-One</span>
         </div>
 
         {/* 헤더 히어로 */}
@@ -30,7 +30,7 @@ export default function AboutUsPage() {
             대한민국 No.1 파크골프 포털
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-            파크온 (ParkOn)
+            파크골프 올인원 (ParkGolf All-in-One)
           </h1>
           <p className="text-xs sm:text-sm text-emerald-100/90 max-w-md mx-auto leading-relaxed font-medium">
             전국 380개 구장 정보부터 1초 스코어링, AI 룰 솔로몬, 그리고 클럽 월례회 대회 운영까지 — 동호인의 라운드가 매일 즐거워집니다.
@@ -87,7 +87,7 @@ export default function AboutUsPage() {
             <h2 className="font-black text-base text-stone-900">제휴 · 광고 · 고객 문의</h2>
           </div>
           <p className="text-stone-600 leading-relaxed">
-            파크온은 전국 파크골프 협회, 클럽 총무님, 구장 관리 주체 및 파크골프 용품 브랜드와의 협업을 환영합니다.
+            파크골프 올인원은 전국 파크골프 협회, 클럽 총무님, 구장 관리 주체 및 파크골프 용품 브랜드와의 협업을 환영합니다.
           </p>
 
           <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-2">

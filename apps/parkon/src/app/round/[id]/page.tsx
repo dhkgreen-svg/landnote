@@ -14,11 +14,14 @@ import { cleanPlayerName, sortPlayersByLeaderAndAlphabetical, getDefaultSelfName
 import { HoleScoreBadge, ScoreBadgeLegend } from '@/components/HoleScoreBadge';
 import { FloatingCameraFAB } from '@/components/FloatingCameraFAB';
 import { BadgeStorage } from '@/lib/badgeStorage';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { getCourseDualName } from '@/lib/courseLocalization';
 
 export default function RoundPlayPage() {
   const params = useParams();
   const router = useRouter();
   const roundId = params?.id as string;
+  const { t, isJapanese, isEnglish } = useTranslation();
 
   const [session, setSession] = useState<RoundSession | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
@@ -85,17 +88,17 @@ export default function RoundPlayPage() {
   // 조장 및 동반자 관리 모달 열기 (본인 이름 및 동반자 이름 유실 방지 자동 보정)
   const openPlayerEditModal = () => {
     if (!session || !session.players) return;
-    const selfName = getDefaultSelfName();
+    const selfName = isJapanese ? '本人' : getDefaultSelfName();
     const syncedDraft = session.players.map((p, idx) => {
       const isSelf = p.isSelf ?? (idx === 0);
       let name = (p.name || '').trim();
       if (isSelf) {
-        if (!name || name === '본인' || name.startsWith('본인(')) {
+        if (!name || name === '본인' || name === '本人' || name.startsWith('본인(')) {
           name = selfName;
         }
       } else {
         if (!name) {
-          name = `동반자 ${idx + 1}`;
+          name = isJapanese ? `同伴者${idx + 1}` : `동반자 ${idx + 1}`;
         }
       }
       return {
@@ -255,14 +258,14 @@ export default function RoundPlayPage() {
       setIsOnline(navigator.onLine);
       const handleOnline = () => {
         setIsOnline(true);
-        setOfflineToast('📶 네트워크가 복구되었습니다. 스코어가 정상 동기화되었습니다.');
+        setOfflineToast(isJapanese ? '📶 ネットワークが復旧しました。スコアが正常に同期されました。' : '📶 네트워크가 복구되었습니다. 스코어가 정상 동기화되었습니다.');
         setTimeout(() => setOfflineToast(null), 3500);
         const cur = ParkOnStorage.getCurrentRound();
         if (cur) ParkOnStorage.saveCurrentRound(cur);
       };
       const handleOffline = () => {
         setIsOnline(false);
-        setOfflineToast('📶 [오프라인 모드] 음영 지역입니다. 스마트폰에 100% 안전하게 저장 중입니다.');
+        setOfflineToast(isJapanese ? '📶 [オフラインモード] 電波の届きにくいエリアです。スマホ内に100%安全に保存中です。' : '📶 [오프라인 모드] 음영 지역입니다. 스마트폰에 100% 안전하게 저장 중입니다.');
         setTimeout(() => setOfflineToast(null), 4000);
       };
       window.addEventListener('online', handleOnline);
@@ -351,7 +354,7 @@ export default function RoundPlayPage() {
   if (!session || !course) {
     return (
       <div className="p-8 text-center font-bold text-stone-500">
-        스코어보드 불러오는 중...
+        {isJapanese ? 'スコアボード読み込み中...' : '스코어보드 불러오는 중...'}
       </div>
     );
   }
@@ -975,14 +978,14 @@ export default function RoundPlayPage() {
 
   const handleConfirmCrossCheck = () => {
     setShowPlayerCrossCheckModal(false);
-    setCrossCheckToast('✓ 동반 선수가 심판 기록을 승인하였습니다. 다음 홀로 이동합니다.');
+    setCrossCheckToast(isJapanese ? '✓ 同伴プレーヤーが審判記録を承認しました。次のホールへ進みます。' : '✓ 동반 선수가 심판 기록을 승인하였습니다. 다음 홀로 이동합니다.');
     setTimeout(() => setCrossCheckToast(null), 3000);
     handleProceedNextHoleDirectly();
   };
 
   const handleRejectCrossCheck = () => {
     setShowPlayerCrossCheckModal(false);
-    setCrossCheckToast('⚠️ 선수가 재확인을 요청했습니다. 타수를 다시 확인해 주십시오.');
+    setCrossCheckToast(isJapanese ? '⚠️ 選手が再確認を要請しました。打数を再確認してください。' : '⚠️ 선수가 재확인을 요청했습니다. 타수를 다시 확인해 주십시오.');
     setTimeout(() => setCrossCheckToast(null), 3500);
   };
 
@@ -1270,13 +1273,15 @@ export default function RoundPlayPage() {
             <span className="text-base">⚖️</span>
             <div>
               <div className="text-xs font-black flex items-center gap-1.5">
-                <span>공식 시합: 홀 전담 심판 모드</span>
+                <span>{isJapanese ? '公式競技: ホール専任審判モード' : '공식 시합: 홀 전담 심판 모드'}</span>
                 <span className="bg-amber-400 text-stone-950 text-[10px] font-black px-1.5 py-0.2 rounded">
-                  {courseLetter}-{holeInCourse}번 홀 담당
+                  {courseLetter}-{holeInCourse}{isJapanese ? '番ホール担当' : '번 홀 담당'}
                 </span>
               </div>
               <p className="text-[10.5px] text-purple-200 font-semibold">
-                기록 확정 시 선수 스마트폰에 4인 타수 교차 확인 팝업이 전송됩니다.
+                {isJapanese
+                  ? '記録確定時、選手のスマホに4名の打数クロス確認ポップアップが送信されます。'
+                  : '기록 확정 시 선수 스마트폰에 4인 타수 교차 확인 팝업이 전송됩니다.'}
               </p>
             </div>
           </div>
@@ -1286,15 +1291,15 @@ export default function RoundPlayPage() {
               onClick={() => setShowRefereeAssignModal(true)}
               className="bg-white/20 hover:bg-white/30 text-white text-[11px] font-black px-2.5 py-1.5 rounded-xl transition active:scale-95 border border-purple-300 cursor-pointer"
             >
-              🔄 홀 위치 변경
+              {isJapanese ? '🔄 ホール位置変更' : '🔄 홀 위치 변경'}
             </button>
             <button
               type="button"
               onClick={() => setIsRefereeMode(false)}
               className="bg-rose-600/80 hover:bg-rose-600 text-white text-[11px] font-black px-2 py-1.5 rounded-xl transition active:scale-95 border border-rose-400 cursor-pointer"
-              title="심판 모드 종료하고 플레이어 화면으로 전환"
+              title={isJapanese ? '審判モードを終了してプレーヤー画面に切替' : '심판 모드 종료하고 플레이어 화면으로 전환'}
             >
-              ✕ 심판 종료
+              {isJapanese ? '✕ 審判終了' : '✕ 심판 종료'}
             </button>
           </div>
         </div>
@@ -1450,25 +1455,39 @@ export default function RoundPlayPage() {
               ? 'bg-black text-white border-yellow-400'
               : 'bg-gradient-to-b from-emerald-950 via-emerald-900 to-teal-950 text-white border-emerald-500/60'
           }`}>
-            <div className="flex items-center justify-between text-xs font-black pb-2.5 border-b border-white/20">
-              <span className={sunlightMode ? 'text-yellow-300' : 'text-emerald-300'}>
-                {course.name} ({currentHole}/{session.isUnlimitedRound ? '자유' : `${session.totalHoles}홀`})
-              </span>
-              <span className="bg-yellow-400 text-stone-950 px-2.5 py-0.5 rounded-full text-[11px] font-black shadow-xs">
-                ⛳ 1단계: 티샷 전 안내판
-              </span>
-            </div>
+            {(() => {
+              const dual = getCourseDualName(course || session.courseName, isJapanese);
+              return (
+                <div className="flex items-center justify-between text-xs font-black pb-2.5 border-b border-white/20">
+                  <div className="flex flex-col text-left min-w-0 pr-2">
+                    <span className={`text-sm font-black truncate flex items-center gap-1.5 ${sunlightMode ? 'text-yellow-300' : 'text-emerald-300'}`}>
+                      {dual.flag && <span>{dual.flag}</span>}
+                      <span>{dual.primary}</span>
+                      <span className="text-xs text-white/80">({currentHole}/{session.isUnlimitedRound ? '자유' : `${session.totalHoles}홀`})</span>
+                    </span>
+                    {dual.showSecondary && dual.secondary && (
+                      <span className="text-[11px] font-bold text-emerald-200/80 truncate">
+                        {dual.secondary}
+                      </span>
+                    )}
+                  </div>
+                  <span className="bg-yellow-400 text-stone-950 px-2.5 py-0.5 rounded-full text-[11px] font-black shadow-xs shrink-0 self-start">
+                    {isJapanese ? '⛳ ステップ1: ティーショット前 案内' : isEnglish ? '⛳ Step 1: Pre-Tee Billboard' : '⛳ 1단계: 티샷 전 안내판'}
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* 초대형 홀 번호 표출 */}
             <div className="py-4">
               <div className="text-xs font-extrabold tracking-wider text-emerald-200/90 mb-1">
-                {currentRoundNumber > 1 ? `[${currentRoundNumber}회차 순환 플레이]` : '현재 공략 홀'}
+                {currentRoundNumber > 1 ? (isJapanese ? `[${currentRoundNumber}周目 巡回プレー]` : `[${currentRoundNumber}회차 순환 플레이]`) : (isJapanese ? '現在攻略ホール' : '현재 공략 홀')}
               </div>
               <div className={`text-6xl font-black tracking-tight ${
                 sunlightMode ? 'text-yellow-300' : 'text-yellow-300 drop-shadow-md'
               }`}>
                 {courseLetter}-{holeInCourse}
-                <span className="text-2xl font-bold ml-1.5 text-white">번 홀</span>
+                <span className="text-2xl font-bold ml-1.5 text-white">{isJapanese ? '番ホール' : '번 홀'}</span>
               </div>
             </div>
 
@@ -1477,7 +1496,7 @@ export default function RoundPlayPage() {
               <div className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center ${
                 sunlightMode ? 'bg-zinc-900 border-yellow-400' : 'bg-black/35 border-emerald-400/40 shadow-inner'
               }`}>
-                <span className="text-[11px] font-bold text-stone-300 mb-0.5">기준 타수</span>
+                <span className="text-[11px] font-bold text-stone-300 mb-0.5">{isJapanese ? '基準打数' : isEnglish ? 'Standard Par' : '기준 타수'}</span>
                 <span className={`text-4xl font-black ${
                   sunlightMode ? 'text-yellow-300' : 'text-yellow-400'
                 }`}>
@@ -1488,7 +1507,7 @@ export default function RoundPlayPage() {
               <div className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center ${
                 sunlightMode ? 'bg-zinc-900 border-yellow-400' : 'bg-black/35 border-emerald-400/40 shadow-inner'
               }`}>
-                <span className="text-[11px] font-bold text-stone-300 mb-0.5">공식 거리</span>
+                <span className="text-[11px] font-bold text-stone-300 mb-0.5">{isJapanese ? '公式距離' : isEnglish ? 'Distance' : '공식 거리'}</span>
                 <span className="text-4xl font-black text-white">
                   {holeMetadata.distanceMeter}<span className="text-2xl font-bold ml-0.5">m</span>
                 </span>
@@ -1501,15 +1520,15 @@ export default function RoundPlayPage() {
                 type="button"
                 onClick={openHoleSpecModal}
                 className="bg-emerald-800 hover:bg-emerald-700 text-emerald-100 hover:text-white px-3 py-1.5 rounded-xl border border-emerald-500 font-black text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
-                title="현장 팻말과 다를 경우 수정"
+                title={isJapanese ? '現地の案内看板と異なる場合は修正' : '현장 팻말과 다를 경우 수정'}
               >
                 <Pencil className="w-3.5 h-3.5 text-yellow-300" />
-                <span>✏️ 현장 제원 수정</span>
+                <span>{isJapanese ? '✏️ 現地諸元を修正' : isEnglish ? '✏️ Edit Spec' : '✏️ 현장 제원 수정'}</span>
               </button>
 
               {/* 카운트 방식 2분할 토글 (localStorage 영구 연동) */}
               <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/20">
-                <span className="text-[10px] text-stone-300 font-bold px-1">방식:</span>
+                <span className="text-[10px] text-stone-300 font-bold px-1">{isJapanese ? '方式:' : '방식:'}</span>
                 <button
                   type="button"
                   onClick={() => selectCountingMode('PAR_BASE')}
@@ -1519,7 +1538,7 @@ export default function RoundPlayPage() {
                       : 'text-stone-300 hover:text-white'
                   }`}
                 >
-                  Par기준
+                  {t.round.score_mode_par}
                 </button>
                 <button
                   type="button"
@@ -1530,7 +1549,7 @@ export default function RoundPlayPage() {
                       : 'text-stone-300 hover:text-white'
                   }`}
                 >
-                  0베이스
+                  {t.round.score_mode_zero}
                 </button>
               </div>
             </div>
@@ -1557,7 +1576,7 @@ export default function RoundPlayPage() {
               }`}
             >
               <span className="text-2xl">🏌️</span>
-              <span>확인 완료 (티샷 시작)</span>
+              <span>{t.round.tee_shot_start}</span>
               <ChevronRight className="w-6 h-6 ml-1" />
             </button>
 
@@ -1565,7 +1584,11 @@ export default function RoundPlayPage() {
             <p className={`text-center text-[11px] font-bold ${
               sunlightMode ? 'text-yellow-300' : 'text-emerald-800 bg-emerald-50/90 py-1.5 px-3 rounded-xl border border-emerald-200'
             }`}>
-              💡 티샷을 마치신 후 위 버튼을 터치하시면 4인 스코어(타수) 기입창으로 전환됩니다.
+              {isJapanese
+                ? '💡 ティーショット終了後、上のボタンをタップすると4名スコア入力画面に切り替わります。'
+                : isEnglish
+                ? '💡 Tap the button above after your tee shot to enter scores for 4 players.'
+                : '💡 티샷을 마치신 후 위 버튼을 터치하시면 4인 스코어(타수) 기입창으로 전환됩니다.'}
             </p>
 
             {/* 4. 하단 보조 버튼: [ 🔄 다른 홀로 이동 ] [ ☕ 잠시 빠지기 (저장) ] */}
@@ -1580,7 +1603,7 @@ export default function RoundPlayPage() {
                 }`}
               >
                 <span>🔄</span>
-                <span>다른 홀로 이동 (밀림 시)</span>
+                <span>{isJapanese ? '他のホールへ移動' : isEnglish ? 'Move Hole' : '다른 홀로 이동 (밀림 시)'}</span>
               </button>
 
               <button
@@ -1593,7 +1616,7 @@ export default function RoundPlayPage() {
                 }`}
               >
                 <span>☕</span>
-                <span>잠시 빠지기 (안전 저장)</span>
+                <span>{isJapanese ? '一時退出 (保存)' : isEnglish ? 'Take a Break' : '잠시 빠지기 (안전 저장)'}</span>
               </button>
             </div>
 
@@ -1608,7 +1631,7 @@ export default function RoundPlayPage() {
               }`}
             >
               <BarChart2 className="w-4 h-4 text-emerald-600" />
-              <span>현재 스코어보드판 보기 ({confirmedHoles.length}홀 누적 현황)</span>
+              <span>{isJapanese ? `現在のスコアボードを見る (${confirmedHoles.length}ホール累積)` : isEnglish ? `View Scoreboard (${confirmedHoles.length} holes)` : `현재 스코어보드판 보기 (${confirmedHoles.length}홀 누적 현황)`}</span>
             </button>
 
             {/* [대표님 요청]: 하단 2분할 버튼 [ 🌱 잔디 상태 1초 제보 ] + [ ☀️ 햇빛모드 ] */}
@@ -1617,7 +1640,7 @@ export default function RoundPlayPage() {
                 type="button"
                 onClick={() => {
                   if (session?.isVirtual) {
-                    alert('가상 상태에서는 작동이 안 됩니다.');
+                    alert(isJapanese ? '体験モードでは利用できません。' : '가상 상태에서는 작동이 안 됩니다.');
                     return;
                   }
                   setShowConditionModal(true);
@@ -1631,7 +1654,7 @@ export default function RoundPlayPage() {
                 }`}
               >
                 <span className="text-sm">🌱</span>
-                <span className="tracking-tight truncate">잔디 상태 제보</span>
+                <span className="tracking-tight truncate">{isJapanese ? '芝の状況を報告' : isEnglish ? 'Turf Report' : '잔디 상태 제보'}</span>
               </button>
 
               <button
@@ -1642,10 +1665,10 @@ export default function RoundPlayPage() {
                     ? 'bg-yellow-400 text-stone-950 border-white ring-2 ring-yellow-400 shadow-yellow-500/50'
                     : 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300'
                 }`}
-                title="대낮 직사광선 아래 선글라스를 껴도 선명한 야외 고대비 화면"
+                title={isJapanese ? '炎天下でも画面が見やすい高コントラスト表示' : '대낮 직사광선 아래 선글라스를 껴도 선명한 야외 고대비 화면'}
               >
                 <span className="text-sm">☀️</span>
-                <span className="tracking-tight truncate">{sunlightMode ? '햇빛모드 ON' : '햇빛모드'}</span>
+                <span className="tracking-tight truncate">{sunlightMode ? (isJapanese ? '直射日光モード ON' : '햇빛모드 ON') : (isJapanese ? '直射日光モード' : '햇빛모드')}</span>
               </button>
             </div>
           </div>
@@ -1669,12 +1692,12 @@ export default function RoundPlayPage() {
               className="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-3 py-1.5 rounded-xl transition active:scale-95 flex items-center gap-1 shrink-0 cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span>코스 제원</span>
+              <span>{isJapanese ? 'コース諸元' : isEnglish ? 'Course Spec' : '코스 제원'}</span>
             </button>
 
             <div className="text-center flex items-center gap-2">
               <span className="font-black text-base sm:text-lg text-yellow-300 drop-shadow-xs">
-                {courseLetter}-{holeInCourse}번 홀
+                {courseLetter}-{holeInCourse}{isJapanese ? '番ホール' : '번 홀'}
               </span>
               <span className="text-xs sm:text-sm font-black text-white bg-black/30 px-2 py-0.5 rounded-lg border border-white/20">
                 Par {holeMetadata.par} · {holeMetadata.distanceMeter}m
@@ -1692,7 +1715,7 @@ export default function RoundPlayPage() {
                     : 'text-stone-300 hover:text-white'
                 }`}
               >
-                Par기준
+                {t.round.score_mode_par}
               </button>
               <button
                 type="button"
@@ -1703,7 +1726,7 @@ export default function RoundPlayPage() {
                     : 'text-stone-300 hover:text-white'
                 }`}
               >
-                0베이스
+                {t.round.score_mode_zero}
               </button>
             </div>
           </div>
@@ -1714,13 +1737,13 @@ export default function RoundPlayPage() {
             <div className="flex items-center justify-between px-1 py-0.5 text-xs">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className={`font-black ${sunlightMode ? 'text-yellow-300' : 'text-stone-800'}`}>
-                  플레이어 ({session.players.filter((p) => !p.isOut).length}명 참여
+                  {isJapanese ? 'プレーヤー' : '플레이어'} ({session.players.filter((p) => !p.isOut).length}{isJapanese ? '名参加' : '명 참여'}
                   {restingPlayerIds.length > 0 && (
-                    <span className="text-amber-600 font-bold"> · {restingPlayerIds.length}명 휴식</span>
+                    <span className="text-amber-600 font-bold">{isJapanese ? ` · ${restingPlayerIds.length}名休憩` : ` · ${restingPlayerIds.length}명 휴식`}</span>
                   )})
                 </span>
                 <span className={`text-[11px] ${sunlightMode ? 'text-stone-400' : 'text-stone-500'} font-medium`}>
-                  · 1번 👑조장 / 2~{session.players.filter((p) => !p.isOut).length}번 가나다순
+                  {isJapanese ? `· 1番 👑代表 / 2~${session.players.filter((p) => !p.isOut).length}番 順` : `· 1번 👑조장 / 2~${session.players.filter((p) => !p.isOut).length}번 가나다순`}
                 </span>
               </div>
               <button
@@ -1733,7 +1756,7 @@ export default function RoundPlayPage() {
                 }`}
               >
                 <span>👑</span>
-                <span>조장·동반자 관리</span>
+                <span>{isJapanese ? '代表・同伴者管理' : isEnglish ? 'Manage Players' : '조장·동반자 관리'}</span>
               </button>
             </div>
 
@@ -1767,31 +1790,31 @@ export default function RoundPlayPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-[10px] px-2 py-0.5 rounded-md bg-stone-200 text-stone-700 font-black">
-                          🚪 중도퇴장
+                          {isJapanese ? '🚪 途中退出' : '🚪 중도퇴장'}
                         </span>
                         <span className="font-extrabold text-stone-800 line-through text-sm">
                           {displayName}
                         </span>
                         {player.isSelf && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded font-black bg-blue-100 text-blue-700">
-                            본인
+                            {isJapanese ? '本人' : '본인'}
                           </span>
                         )}
                         <span className="text-[11px] text-stone-600 font-medium">
-                          ({player.departedHole || pConfirmedHoles.length}홀까지 참여)
+                          ({player.departedHole || pConfirmedHoles.length}{isJapanese ? 'ホールまで参加' : '홀까지 참여'})
                         </span>
                       </div>
 
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-black text-stone-700 bg-stone-200/80 px-2 py-1 rounded-lg">
-                          기록 보존: {pConfirmedHoles.length}홀 {pTotalStrokes}타
+                          {isJapanese ? `記録保存: ${pConfirmedHoles.length}ホール ${pTotalStrokes}打` : `기록 보존: ${pConfirmedHoles.length}홀 ${pTotalStrokes}타`}
                         </span>
                         <button
                           type="button"
                           onClick={openPlayerEditModal}
                           className="text-xs text-stone-500 hover:text-emerald-700 underline font-bold px-1 py-0.5 cursor-pointer"
                         >
-                          변경
+                          {isJapanese ? '変更' : '변경'}
                         </button>
                       </div>
                     </div>
@@ -1813,12 +1836,12 @@ export default function RoundPlayPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs px-2 py-0.5 rounded-lg bg-amber-400 text-stone-950 font-black">
-                          ☕ 잠시 빠짐 (휴식 중)
+                          {isJapanese ? '☕ 一時離脱 (休憩中)' : '☕ 잠시 빠짐 (휴식 중)'}
                         </span>
                         <span className="font-black text-base">{player.name}</span>
                         {player.isSelf && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-blue-100 text-blue-800">
-                            본인
+                            {isJapanese ? '本人' : '본인'}
                           </span>
                         )}
                       </div>
@@ -1827,11 +1850,11 @@ export default function RoundPlayPage() {
                         onClick={() => togglePlayerRest(player.id)}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-xs transition active:scale-95 cursor-pointer"
                       >
-                        🏌️ 다시 참여하기
+                        {isJapanese ? '🏌️ 再参加する' : '🏌️ 다시 참여하기'}
                       </button>
                     </div>
                     <p className="text-[11px] text-amber-800 font-bold mt-1.5">
-                      * 이번 홀은 잠시 휴식(결번) 처리되며, 기존 홀 타수는 스코어카드에 안전 보존됩니다.
+                      {isJapanese ? '* 今回のホールは一時休憩扱いとなり、これまでの打数はスコアカードに安全に保存されます。' : '* 이번 홀은 잠시 휴식(결번) 처리되며, 기존 홀 타수는 스코어카드에 안전 보존됩니다.'}
                     </p>
                   </div>
                 );
@@ -1859,7 +1882,7 @@ export default function RoundPlayPage() {
                         {idx + 1}
                       </span>
 
-                      {player.isLeader && (
+                      {player.isLeader && session.players.length > 1 && (
                         <span
                           className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] font-black shadow-2xs ${
                             sunlightMode
@@ -1868,7 +1891,7 @@ export default function RoundPlayPage() {
                           }`}
                         >
                           <span>👑</span>
-                          <span>조장</span>
+                          <span>{isJapanese ? '代表' : isEnglish ? 'Leader' : '조장'}</span>
                         </span>
                       )}
 
@@ -1888,7 +1911,7 @@ export default function RoundPlayPage() {
                               : 'bg-blue-50 text-blue-700 border border-blue-200'
                           }`}
                         >
-                          본인
+                          {isJapanese ? '本人' : isEnglish ? 'Self' : '본인'}
                         </span>
                       )}
                     </div>
@@ -1903,9 +1926,9 @@ export default function RoundPlayPage() {
                             ? 'bg-zinc-900 text-stone-300 border-zinc-700 hover:text-white'
                             : 'bg-stone-100 text-stone-600 border-stone-300 hover:bg-stone-200'
                         }`}
-                        title="이번 홀 잠시 빠지기 (휴식 결번 처리)"
+                        title={isJapanese ? 'このホールは一時休憩' : '이번 홀 잠시 빠지기 (휴식 결번 처리)'}
                       >
-                        ☕ 휴식
+                        {isJapanese ? '☕ 休憩' : isEnglish ? 'Rest' : '☕ 휴식'}
                       </button>
 
                       {/* 단독 누적 타수 배지 버튼 */}
@@ -1921,12 +1944,12 @@ export default function RoundPlayPage() {
                       >
                         {pConfirmedHoles.length === 0 ? (
                           <span className={sunlightMode ? 'text-xs font-black text-black' : 'text-xs font-black text-emerald-100'}>
-                            총 0타
+                            {isJapanese ? '計 0打' : isEnglish ? '0 Strokes' : '총 0타'}
                           </span>
                         ) : (
                           <>
                             <span className={sunlightMode ? 'text-base font-black text-black' : 'text-sm font-black'}>
-                              {pTotalStrokes}타
+                              {pTotalStrokes}{isJapanese ? '打' : '타'}
                             </span>
                             <span
                               className={
@@ -1989,7 +2012,7 @@ export default function RoundPlayPage() {
                               ? 'text-stone-500'
                               : 'text-emerald-700'
                           }`}>
-                            {strokes === 0 ? '0타' : `${strokes}타`}
+                            {strokes === 0 ? (isJapanese ? '0打' : '0타') : `${strokes}${isJapanese ? '打' : '타'}`}
                           </span>
                         </>
                       ) : (
@@ -2010,10 +2033,10 @@ export default function RoundPlayPage() {
                               : 'text-blue-600'
                           }`}>
                             {strokes === currentPar
-                              ? '파(Par)'
+                              ? (isJapanese ? 'パー(Par)' : '파(Par)')
                               : strokes > currentPar
-                              ? `+${strokes - currentPar} (${strokes}타)`
-                              : `${strokes - currentPar} (${strokes}타)`}
+                              ? `+${strokes - currentPar} (${strokes}${isJapanese ? '打' : '타'})`
+                              : `${strokes - currentPar} (${strokes}${isJapanese ? '打' : '타'})`}
                           </span>
                         </>
                       )}
@@ -2047,7 +2070,7 @@ export default function RoundPlayPage() {
                     >
                       <span className="text-xs font-black leading-tight">OB</span>
                       <span className="text-xs font-black leading-tight">
-                        +2타{obCount > 0 && <span className={`text-[10px] ml-0.5 font-black ${sunlightMode ? 'text-yellow-300' : 'text-rose-600'}`}>({obCount})</span>}
+                        {isJapanese ? '2打罰' : '+2타'}{obCount > 0 && <span className={`text-[10px] ml-0.5 font-black ${sunlightMode ? 'text-yellow-300' : 'text-rose-600'}`}>({obCount})</span>}
                       </span>
                     </button>
                   </div>
@@ -2061,7 +2084,7 @@ export default function RoundPlayPage() {
             <span className={`text-[11px] font-bold ${
               sunlightMode ? 'text-zinc-300' : 'text-stone-600 bg-stone-100 py-1 px-3 rounded-lg border border-stone-200 inline-block'
             }`}>
-              💡 점수를 잘못 누르셨더라도 [확인] 전에는 언제든 [-] [+] 버튼으로 자유롭게 수정하실 수 있습니다.
+              {isJapanese ? '💡 スコアを押し間違えても、[確認] 前ならいつでも [-] [+] ボタンで自由に修正できます。' : isEnglish ? '💡 Even if you entered the wrong score, you can adjust with [-] [+] before confirming.' : '💡 점수를 잘못 누르셨더라도 [확인] 전에는 언제든 [-] [+] 버튼으로 자유롭게 수정하실 수 있습니다.'}
             </span>
           </div>
 
@@ -2080,7 +2103,7 @@ export default function RoundPlayPage() {
               }`}
             >
               <CheckCircle2 className={`w-6 h-6 ${confirmedFeedback ? 'text-black' : 'text-yellow-300'}`} />
-              <span>{confirmedFeedback ? '확인 완료!' : '확인 (저장)'}</span>
+              <span>{confirmedFeedback ? (isJapanese ? '確認完了！' : '확인 완료!') : (isJapanese ? '確認 (保存)' : '확인 (저장)')}</span>
             </button>
 
             {/* 우측: [다음 홀 이동 ➔] 버튼 (다음 홀 전환 ➔ 1단계 전광판 안내창) */}
@@ -2095,7 +2118,7 @@ export default function RoundPlayPage() {
                 }`}
               >
                 <span>✍️</span>
-                <span>선수 확인요청</span>
+                <span>{isJapanese ? '選手確認要請' : '선수 확인요청'}</span>
                 <ChevronRight className="w-5 h-5" />
               </button>
             ) : (
@@ -2108,7 +2131,7 @@ export default function RoundPlayPage() {
                     : 'bg-gradient-to-r from-teal-600 via-emerald-600 to-emerald-700 text-white border-teal-300 ring-2 ring-teal-400/30 shadow-teal-900/30'
                 }`}
               >
-                <span>다음 홀 이동</span>
+                <span>{isJapanese ? '次のホールへ' : isEnglish ? 'Next Hole' : '다음 홀 이동'}</span>
                 <ChevronRight className="w-6 h-6 ml-0.5" />
               </button>
             )}
@@ -2126,7 +2149,7 @@ export default function RoundPlayPage() {
               }`}
             >
               <BarChart2 className="w-3.5 h-3.5 text-amber-400" />
-              <span>📋 현재 실시간 스코어판 보기 ({confirmedHoles.length}홀 누적)</span>
+              <span>📋 {isJapanese ? `現在のスコアボードを見る (${confirmedHoles.length}ホール累積)` : `현재 실시간 스코어판 보기 (${confirmedHoles.length}홀 누적)`}</span>
             </button>
           </div>
 
@@ -2145,7 +2168,7 @@ export default function RoundPlayPage() {
               }`}
             >
               <ChevronLeft className="w-3.5 h-3.5" />
-              <span>이전 홀 보기</span>
+              <span>{isJapanese ? '前のホール' : isEnglish ? 'Prev Hole' : '이전 홀 보기'}</span>
             </button>
 
             <button
@@ -2155,7 +2178,7 @@ export default function RoundPlayPage() {
                 sunlightMode ? 'text-yellow-400 hover:underline' : 'text-emerald-800 hover:underline'
               }`}
             >
-              <span>🔄 다른 코스/홀 이동</span>
+              <span>🔄 {isJapanese ? '他のコース/ホールへ' : '다른 코스/홀 이동'}</span>
             </button>
 
             <button
@@ -2165,7 +2188,7 @@ export default function RoundPlayPage() {
                 sunlightMode ? 'text-zinc-300 hover:text-white' : 'text-amber-900 hover:text-amber-950'
               }`}
             >
-              ☕ 잠시 빠지기
+              ☕ {isJapanese ? '一時退出' : '잠시 빠지기'}
             </button>
 
             <button
@@ -2175,7 +2198,7 @@ export default function RoundPlayPage() {
                 sunlightMode ? 'text-zinc-300 hover:text-white' : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              경기 종료
+              {isJapanese ? 'ラウンド終了' : '경기 종료'}
             </button>
           </div>
 
@@ -2185,7 +2208,7 @@ export default function RoundPlayPage() {
               type="button"
               onClick={() => {
                 if (session?.isVirtual) {
-                  alert('가상 상태에서는 작동이 안 됩니다.');
+                  alert(isJapanese ? 'バーチャル体験モードでは利用できません。' : '가상 상태에서는 작동이 안 됩니다.');
                   return;
                 }
                 setShowConditionModal(true);
@@ -2199,7 +2222,7 @@ export default function RoundPlayPage() {
               }`}
             >
               <span className="text-base">🌱</span>
-              <span className="tracking-tight truncate">잔디 상태 1초 제보</span>
+              <span className="tracking-tight truncate">{isJapanese ? '芝の状況を1秒報告' : '잔디 상태 1초 제보'}</span>
             </button>
 
             <button
@@ -2226,10 +2249,10 @@ export default function RoundPlayPage() {
             <div className="flex items-center justify-between border-b border-stone-100 pb-2.5 shrink-0">
               <div>
                 <h3 className="text-lg font-black text-stone-900">
-                  어느 코스를 선택하시겠습니까?
+                  {isJapanese ? 'どのコースを選択しますか？' : '어느 코스를 선택하시겠습니까?'}
                 </h3>
                 <p className="text-[11px] text-stone-600 font-semibold mt-0.5">
-                  이동할 코스와 홀 번호를 선택하세요
+                  {isJapanese ? '移動するコースとホール番号を選択してください' : '이동할 코스와 홀 번호를 선택하세요'}
                 </p>
               </div>
               <button
@@ -2245,9 +2268,9 @@ export default function RoundPlayPage() {
               {/* Step 1: 코스 선택 (A, B, C, D, E, F, G...) */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs font-black text-stone-800">
-                  <span>1. 이동할 코스 선택</span>
+                  <span>{isJapanese ? '1. 移動するコースを選択' : '1. 이동할 코스 선택'}</span>
                   <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full text-[10px] font-extrabold">
-                    {pickerCourseLetter}코스 선택됨
+                    {pickerCourseLetter}{isJapanese ? 'コース選択中' : '코스 선택됨'}
                   </span>
                 </div>
                 <div className="grid grid-cols-4 gap-1.5">
@@ -2268,7 +2291,7 @@ export default function RoundPlayPage() {
                             : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
                         }`}
                       >
-                        <span className="whitespace-nowrap">{letter}코스</span>
+                        <span className="whitespace-nowrap">{letter}{isJapanese ? 'コース' : '코스'}</span>
                         {isSelected && <span className="text-xs">✓</span>}
                       </button>
                     );
@@ -2292,8 +2315,8 @@ export default function RoundPlayPage() {
                 return (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 space-y-1.5">
                     <div className="flex items-center justify-between text-xs font-black text-amber-900">
-                      <span>🔄 {pickerCourseLetter}코스 진행 회차 선택</span>
-                      <span className="text-[10px] text-amber-700 font-bold">이전 기록 보존 지원</span>
+                      <span>🔄 {pickerCourseLetter}{isJapanese ? 'コース 周回選択' : '코스 진행 회차 선택'}</span>
+                      <span className="text-[10px] text-amber-700 font-bold">{isJapanese ? '過去の記録を安全保存' : '이전 기록 보존 지원'}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-1.5">
                       <button
@@ -2305,7 +2328,7 @@ export default function RoundPlayPage() {
                             : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
                         }`}
                       >
-                        1회차 (기존 기록)
+                        {isJapanese ? '1周目 (これまでの記録)' : '1회차 (기존 기록)'}
                       </button>
                       <button
                         type="button"
@@ -2316,7 +2339,7 @@ export default function RoundPlayPage() {
                             : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50'
                         }`}
                       >
-                        {nextRoundForPicker}회차 (새로 시작 ✨)
+                        {nextRoundForPicker}{isJapanese ? '周目 (新しくスタート ✨)' : '회차 (새로 시작 ✨)'}
                       </button>
                     </div>
                   </div>
@@ -2326,9 +2349,9 @@ export default function RoundPlayPage() {
               {/* Step 2: 홀 번호 선택 (1~9번 홀 3x3 칩) */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs font-black text-stone-800">
-                  <span>2. 몇 번 홀로 이동하시겠습니까?</span>
+                  <span>{isJapanese ? '2. 何番ホールへ移動しますか？' : '2. 몇 번 홀로 이동하시겠습니까?'}</span>
                   <span className="text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full text-[10px] font-extrabold">
-                    {pickerHoleNumber}번 홀 선택됨
+                    {pickerHoleNumber}{isJapanese ? '番ホール選択中' : '번 홀 선택됨'}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-1.5">
@@ -2345,7 +2368,7 @@ export default function RoundPlayPage() {
                             : 'bg-stone-50 text-stone-800 border-stone-200 hover:bg-stone-100'
                         }`}
                       >
-                        <span>{hNum}번 홀</span>
+                        <span>{hNum}{isJapanese ? '番ホール' : '번 홀'}</span>
                         {isSelected && <span className="text-xs ml-0.5">✓</span>}
                       </button>
                     );
@@ -2364,7 +2387,7 @@ export default function RoundPlayPage() {
               >
                 <Play className="w-4 h-4 fill-current" />
                 <span>
-                  ⛳ {pickerCourseLetter}코스 {pickerHoleNumber}번 홀 {pickerRoundNumber > 1 ? `(${pickerRoundNumber}회차) ` : ''}이동하기
+                  ⛳ {pickerCourseLetter}{isJapanese ? 'コース ' : '코스 '}{pickerHoleNumber}{isJapanese ? '番ホール ' : '번 홀 '}{pickerRoundNumber > 1 ? (isJapanese ? `(${pickerRoundNumber}周目) ` : `(${pickerRoundNumber}회차) `) : ''}{isJapanese ? 'へ移動' : '이동하기'}
                 </span>
               </button>
 
@@ -2374,7 +2397,7 @@ export default function RoundPlayPage() {
                 className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-black py-2.5 rounded-xl text-xs shadow flex items-center justify-center gap-1.5 transition"
               >
                 <Award className="w-4 h-4" />
-                <span>🏆 여기서 라운드 완전 종료 (성적표 보기)</span>
+                <span>{isJapanese ? '🏆 ここでラウンド完全終了 (成績表を見る)' : '🏆 여기서 라운드 완전 종료 (성적표 보기)'}</span>
               </button>
 
               <button
@@ -2382,7 +2405,7 @@ export default function RoundPlayPage() {
                 onClick={() => setShowCoursePicker(false)}
                 className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs"
               >
-                취소하고 현재 홀 계속 치기
+                {isJapanese ? 'キャンセルして現在のホールを継続' : '취소하고 현재 홀 계속 치기'}
               </button>
             </div>
           </div>
@@ -2403,13 +2426,13 @@ export default function RoundPlayPage() {
                     </div>
                     <div>
                       <h3 className="font-black text-stone-900 text-base flex items-center gap-1.5">
-                        <span>{courseLetter}-{holeInCourse}번 홀 현장 제원 수정</span>
+                        <span>{courseLetter}-{holeInCourse}{isJapanese ? '番ホール 現地諸元修正' : '번 홀 현장 제원 수정'}</span>
                         <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.5 rounded">
-                          2-Strike 검증
+                          {isJapanese ? '2-Strike 検証' : '2-Strike 검증'}
                         </span>
                       </h3>
                       <p className="text-[11px] text-stone-500 font-medium">
-                        {course.name} ({actualHoleNumber}번째 홀)
+                        {course.name} ({actualHoleNumber}{isJapanese ? '番目ホール' : '번째 홀'})
                       </p>
                     </div>
                   </div>
@@ -2426,18 +2449,18 @@ export default function RoundPlayPage() {
                 <div className="bg-rose-600 text-white p-3 rounded-2xl font-black text-xs space-y-1 shadow-md border-2 border-yellow-300">
                   <div className="flex items-center gap-1.5 text-sm text-yellow-300">
                     <span>⚠️</span>
-                    <span>[필수 원칙] 현장 팻말 일치 확인</span>
+                    <span>{isJapanese ? '[必須原則] 現地案内看板との一致確認' : '[필수 원칙] 현장 팻말 일치 확인'}</span>
                   </div>
                   <p className="text-white text-[11px] leading-snug">
-                    반드시 티박스 공식 안내판(팻말)에 적힌 숫자와 완벽히 일치하게 입력해 주십시오. (미검증 허위 수정은 48시간 후 자동 폐기됩니다)
+                    {isJapanese ? '必ずティーグラウンドの公式案内看板に書かれた数値と完全に一致させて入力してください。(未検証の誤入力は48時間後に自動破棄されます)' : '반드시 티박스 공식 안내판(팻말)에 적힌 숫자와 완벽히 일치하게 입력해 주십시오. (미검증 허위 수정은 48시간 후 자동 폐기됩니다)'}
                   </p>
                 </div>
 
                 {/* Par Selection */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-black text-stone-700 flex items-center justify-between">
-                    <span>1. 기준 타수 (Par) 선택</span>
-                    <span className="text-emerald-700 font-bold text-[11px]">현재 선택: Par {editingPar}</span>
+                    <span>{isJapanese ? '1. 基準打数 (Par) 選択' : '1. 기준 타수 (Par) 선택'}</span>
+                    <span className="text-emerald-700 font-bold text-[11px]">{isJapanese ? `現在選択: Par ${editingPar}` : `현재 선택: Par ${editingPar}`}</span>
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     {[3, 4, 5].map((p) => {
@@ -2464,8 +2487,8 @@ export default function RoundPlayPage() {
                 {/* Distance Adjustment */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-black text-stone-700 flex items-center justify-between">
-                    <span>2. 홀 거리 (m) 설정</span>
-                    <span className="text-emerald-700 font-bold text-[11px]">현재 설정: {editingDistance}m</span>
+                    <span>{isJapanese ? '2. ホール距離 (m) 設定' : '2. 홀 거리 (m) 설정'}</span>
+                    <span className="text-emerald-700 font-bold text-[11px]">{isJapanese ? `現在設定: ${editingDistance}m` : `현재 설정: ${editingDistance}m`}</span>
                   </label>
 
                   <div className="flex items-center gap-2">
@@ -2505,7 +2528,7 @@ export default function RoundPlayPage() {
                     className="w-5 h-5 accent-emerald-600 rounded cursor-pointer shrink-0"
                   />
                   <span className="text-xs font-black text-stone-900">
-                    ☑️ 현장 안내판(팻말)을 확인했습니다 (필수)
+                    {isJapanese ? '☑️ 現地の案内看板を確認しました (必須)' : '☑️ 현장 안내판(팻말)을 확인했습니다 (필수)'}
                   </span>
                 </label>
 
@@ -2515,7 +2538,7 @@ export default function RoundPlayPage() {
                     type="button"
                     onClick={() => {
                       if (!signboardChecked) {
-                        alert('현장 안내판(팻말) 확인 체크박스에 체크해 주셔야 저장 단계로 진행하실 수 있습니다.');
+                        alert(isJapanese ? '現地の案内看板確認チェックボックスにチェックを入れてください。' : '현장 안내판(팻말) 확인 체크박스에 체크해 주셔야 저장 단계로 진행하실 수 있습니다.');
                         return;
                       }
                       setShowSpecConfirmStep(true);
@@ -2528,14 +2551,14 @@ export default function RoundPlayPage() {
                     }`}
                   >
                     <CheckCircle2 className="w-5 h-5" />
-                    <span>입력 내용 확인 단계로 이동 (Par {editingPar}, {editingDistance}m)</span>
+                    <span>{isJapanese ? `入力内容確認へ進む (Par ${editingPar}, ${editingDistance}m)` : `입력 내용 확인 단계로 이동 (Par ${editingPar}, ${editingDistance}m)`}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowHoleSpecModal(false)}
                     className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold rounded-xl text-xs"
                   >
-                    취소
+                    {isJapanese ? 'キャンセル' : '취소'}
                   </button>
                 </div>
               </>
@@ -2547,22 +2570,22 @@ export default function RoundPlayPage() {
                     ⚠️
                   </div>
                   <h3 className="text-lg font-black text-stone-900">
-                    다시 한번 확인하십시오
+                    {isJapanese ? 'もう一度ご確認ください' : '다시 한번 확인하십시오'}
                   </h3>
                   <p className="text-xs text-stone-600 font-medium">
-                    혹시 잘못 입력하거나 장난에 의한 수정을 방지하기 위해 최종 확인합니다.
+                    {isJapanese ? '誤入力やいたずら防止のため、最終確認を行います。' : '혹시 잘못 입력하거나 장난에 의한 수정을 방지하기 위해 최종 확인합니다.'}
                   </p>
                 </div>
 
                 {/* 비교 확인 박스 */}
                 <div className="bg-stone-50 rounded-2xl p-3 border border-stone-200 space-y-2 text-xs">
                   <div className="flex items-center justify-between border-b border-stone-200 pb-1.5">
-                    <span className="font-bold text-stone-600">대상 구장 및 홀</span>
-                    <span className="font-black text-stone-900">{course.name} {courseLetter}-{holeInCourse}번 홀</span>
+                    <span className="font-bold text-stone-600">{isJapanese ? '対象コース＆ホール' : '대상 구장 및 홀'}</span>
+                    <span className="font-black text-stone-900">{course.name} {courseLetter}-{holeInCourse}{isJapanese ? '番ホール' : '번 홀'}</span>
                   </div>
 
                   <div className="flex items-center justify-between border-b border-stone-200 pb-1.5">
-                    <span className="font-bold text-stone-600">기준 타수 (Par)</span>
+                    <span className="font-bold text-stone-600">{isJapanese ? '基準打数 (Par)' : '기준 타수 (Par)'}</span>
                     <div className="flex items-center gap-2 font-black">
                       <span className="text-stone-400 line-through">Par {holeMetadata.par}</span>
                       <span className="text-emerald-700 text-sm">➔ Par {editingPar}</span>
@@ -2570,7 +2593,7 @@ export default function RoundPlayPage() {
                   </div>
 
                   <div className="flex items-center justify-between border-b border-stone-200 pb-1.5">
-                    <span className="font-bold text-stone-600">홀 거리 (m)</span>
+                    <span className="font-bold text-stone-600">{isJapanese ? 'ホール距離 (m)' : '홀 거리 (m)'}</span>
                     <div className="flex items-center gap-2 font-black">
                       <span className="text-stone-400 line-through">{holeMetadata.distanceMeter}m</span>
                       <span className="text-emerald-700 text-sm">➔ {editingDistance}m</span>
@@ -2579,11 +2602,12 @@ export default function RoundPlayPage() {
 
                   <div className="bg-emerald-50 rounded-xl p-2.5 text-[11px] text-emerald-900 leading-snug border border-emerald-200">
                     <p className="font-extrabold text-emerald-950">
-                      💡 2-Strike 집단지성 승격 안내
+                      {isJapanese ? '💡 2-Strike 集団検証システム' : '💡 2-Strike 집단지성 승격 안내'}
                     </p>
                     <p className="text-emerald-800 mt-0.5">
-                      • <strong>본인 팀</strong>: 수정 즉시 바뀐 제원으로 적용됩니다.<br />
-                      • <strong>2개 팀 이상 동일 수정</strong> 시 전국 공식 구장 제원으로 자동 영구 승격됩니다. (미검증 수정은 48시간 후 자동 폐기)
+                      {isJapanese
+                        ? <>• <strong>自分の組</strong>: 修正後すぐに変更諸元が適用されます。<br />• <strong>2組以上が同一修正</strong>した場合、全国公式諸元へ自動昇格。(未検証は48時間後自動廃棄)</>
+                        : <>• <strong>본인 팀</strong>: 수정 즉시 바뀐 제원으로 적용됩니다.<br />• <strong>2개 팀 이상 동일 수정</strong> 시 전국 공식 구장 제원으로 자동 영구 승격됩니다. (미검증 수정은 48시간 후 자동 폐기)</>}
                     </p>
                   </div>
                 </div>
@@ -2596,7 +2620,7 @@ export default function RoundPlayPage() {
                     className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border border-emerald-400 cursor-pointer"
                   >
                     <CheckCircle2 className="w-5 h-5" />
-                    <span>맞습니다! 본인 팀 제원 즉시 적용</span>
+                    <span>{isJapanese ? '正解です！自分の組の諸元に即時適用' : '맞습니다! 본인 팀 제원 즉시 적용'}</span>
                   </button>
 
                   {/* 2-Strike 공식 승격 버튼 */}
@@ -2604,9 +2628,9 @@ export default function RoundPlayPage() {
                     type="button"
                     onClick={() => handleSaveHoleSpec(editingPar, editingDistance, true)}
                     className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-xs cursor-pointer"
-                    title="2개 팀 일치 확인으로 전국 공식 DB에 즉시 영구 승격"
+                    title={isJapanese ? '2組一致確認で全国公式DBへ即時永久昇格' : '2개 팀 일치 확인으로 전국 공식 DB에 즉시 영구 승격'}
                   >
-                    <span>👍 앞 팀 수정 내용 맞음 (2-Strike 즉시 공식 승격)</span>
+                    <span>{isJapanese ? '👍 前の組の修正内容と一致 (2-Strike 即時公式昇格)' : '👍 앞 팀 수정 내용 맞음 (2-Strike 즉시 공식 승격)'}</span>
                   </button>
 
                   <button
@@ -2614,7 +2638,7 @@ export default function RoundPlayPage() {
                     onClick={() => setShowSpecConfirmStep(false)}
                     className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold rounded-xl text-xs"
                   >
-                    ← 내용 다시 수정하기
+                    {isJapanese ? '← 内容を再修正する' : '← 내용 다시 수정하기'}
                   </button>
                 </div>
               </div>
@@ -2633,14 +2657,15 @@ export default function RoundPlayPage() {
 
             <div className="text-center space-y-1">
               <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2.5 py-0.5 rounded-full">
-                목표 홀 도달
+                {isJapanese ? '目標ホール到達' : '목표 홀 도달'}
               </span>
               <h3 className="text-xl font-black text-stone-900">
-                목표 {session.targetHolesCount || session.totalHoles}홀 완주!
+                {isJapanese ? `目標 ${session.targetHolesCount || session.totalHoles}ホール完走！` : `목표 ${session.targetHolesCount || session.totalHoles}홀 완주!`}
               </h3>
               <p className="text-xs text-stone-600 font-semibold leading-relaxed pt-1">
-                축하합니다! 설정하신 목표 홀을 모두 마쳤습니다.<br />
-                계속해서 더 치시겠습니까, 아니면 오늘 경기를 종료하시겠습니까?
+                {isJapanese
+                  ? <>おめでとうございます！設定した目標ホールをすべて終えました。<br />続けてさらにプレーしますか、それとも本日のラウンドを終了しますか？</>
+                  : <>축하합니다! 설정하신 목표 홀을 모두 마쳤습니다.<br />계속해서 더 치시겠습니까, 아니면 오늘 경기를 종료하시겠습니까?</>}
               </p>
             </div>
 
@@ -2651,7 +2676,7 @@ export default function RoundPlayPage() {
                 onClick={handleExtendNext9Holes}
                 className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-4 px-4 rounded-2xl text-base flex items-center justify-center gap-2 shadow-lg transition active:scale-[0.98] border border-emerald-400 cursor-pointer"
               >
-                <span>⛳ 계속 이어서 더 치기 (+9홀 순환 연장)</span>
+                <span>{isJapanese ? '⛳ 続けてプレーする (+9ホール巡回延長)' : '⛳ 계속 이어서 더 치기 (+9홀 순환 연장)'}</span>
               </button>
 
               <button
@@ -2662,7 +2687,7 @@ export default function RoundPlayPage() {
                 }}
                 className="w-full bg-stone-100 hover:bg-stone-200 text-stone-800 font-black py-3.5 px-4 rounded-2xl text-sm flex items-center justify-center gap-1.5 transition active:scale-[0.98] border border-stone-300 cursor-pointer"
               >
-                <span>🏁 여기서 경기 종료하기</span>
+                <span>{isJapanese ? '🏁 ここでラウンドを終了する' : '🏁 여기서 경기 종료하기'}</span>
               </button>
             </div>
           </div>
@@ -2679,24 +2704,25 @@ export default function RoundPlayPage() {
 
             <div className="text-center space-y-1">
               <span className="text-[10px] bg-purple-100 text-purple-800 font-extrabold px-2.5 py-0.5 rounded-full">
-                공식 시합 기록 교차 검증
+                {isJapanese ? '公式競技記録 クロス検証' : '공식 시합 기록 교차 검증'}
               </span>
               <h3 className="text-lg font-black text-stone-900">
-                {courseLetter}-{holeInCourse}번 홀 심판 타수 확인
+                {courseLetter}-{holeInCourse}{isJapanese ? '番ホール 審判スコア確認' : '번 홀 심판 타수 확인'}
               </h3>
               <p className="text-xs text-stone-600 font-medium pt-0.5">
-                홀 전담 심판이 기록한 조원 타수가 맞는지 확인해 주십시오.<br />
-                선수 1명 이상 승인 시 양쪽 모두 다음 홀로 이동합니다.
+                {isJapanese
+                  ? <>ホール専任審判が記録したスコアが合っているか確認してください。<br />プレーヤー1名以上の承認で両者とも次のホールへ進みます。</>
+                  : <>홀 전담 심판이 기록한 조원 타수가 맞는지 확인해 주십시오.<br />선수 1명 이상 승인 시 양쪽 모두 다음 홀로 이동합니다.</>}
               </p>
             </div>
 
             {/* 선수별 타수 확인 표 */}
             <div className="bg-stone-50 rounded-2xl p-3 border border-stone-200 space-y-2 text-xs">
               <div className="grid grid-cols-4 font-black text-stone-500 text-[11px] pb-1 border-b border-stone-200 text-center">
-                <span className="text-left pl-1">선수</span>
-                <span>타수</span>
+                <span className="text-left pl-1">{isJapanese ? '選手' : '선수'}</span>
+                <span>{isJapanese ? '打数' : '타수'}</span>
                 <span>OB</span>
-                <span>판정</span>
+                <span>{isJapanese ? '判定' : '판정'}</span>
               </div>
               {session.players.filter((p) => !p.isOut).map((p) => {
                 const defaultVal = countingMode === 'ZERO_BASE' ? 0 : currentPar;
@@ -2706,9 +2732,9 @@ export default function RoundPlayPage() {
                 return (
                   <div key={p.id} className="grid grid-cols-4 items-center text-center py-1 border-b border-stone-100 text-stone-900 font-extrabold">
                     <span className="text-left pl-1 truncate">{p.name}</span>
-                    <span className="text-emerald-700 font-black text-sm">{isRest ? '휴식' : `${s}타`}</span>
-                    <span className="text-rose-600 font-bold">{isRest ? '-' : `${ob}회`}</span>
-                    <span className="text-xs font-black text-emerald-800">정상</span>
+                    <span className="text-emerald-700 font-black text-sm">{isRest ? (isJapanese ? '休憩' : '휴식') : `${s}${isJapanese ? '打' : '타'}`}</span>
+                    <span className="text-rose-600 font-bold">{isRest ? '-' : `${ob}${isJapanese ? '回' : '회'}`}</span>
+                    <span className="text-xs font-black text-emerald-800">{isJapanese ? '正常' : '정상'}</span>
                   </div>
                 );
               })}
@@ -2721,7 +2747,7 @@ export default function RoundPlayPage() {
                 onClick={handleConfirmCrossCheck}
                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-2xl text-base shadow-md flex items-center justify-center gap-2 transition active:scale-[0.98] border border-emerald-400 cursor-pointer"
               >
-                <span>👍 타수 일치 (다음 홀 이동)</span>
+                <span>{isJapanese ? '👍 スコア一致 (次のホールへ)' : '👍 타수 일치 (다음 홀 이동)'}</span>
               </button>
 
               <button
@@ -2729,7 +2755,7 @@ export default function RoundPlayPage() {
                 onClick={handleRejectCrossCheck}
                 className="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
               >
-                <span>✋ 타수 불일치 (심판에게 재확인 요청)</span>
+                <span>{isJapanese ? '✋ スコア不一致 (審判へ再確認要請)' : '✋ 타수 불일치 (심판에게 재확인 요청)'}</span>
               </button>
             </div>
           </div>
@@ -2743,7 +2769,7 @@ export default function RoundPlayPage() {
             <div className="flex items-center justify-between border-b pb-2">
               <div className="flex items-center gap-1.5 font-black text-stone-900 text-base">
                 <span>⚖️</span>
-                <span>심판 담당 홀 위치 변경</span>
+                <span>{isJapanese ? '審判担当ホール位置変更' : '심판 담당 홀 위치 변경'}</span>
               </div>
               <button
                 type="button"
@@ -2754,11 +2780,11 @@ export default function RoundPlayPage() {
               </button>
             </div>
             <p className="text-xs text-stone-600 font-medium">
-              심판 폰에서 1초 만에 배정 위치를 변경하여 해당 홀을 전담할 수 있습니다.
+              {isJapanese ? '審判スマホから即座に担当ホールを変更できます。' : '심판 폰에서 1초 만에 배정 위치를 변경하여 해당 홀을 전담할 수 있습니다.'}
             </p>
 
             <div className="space-y-2">
-              <span className="text-xs font-black text-stone-800">이동할 홀 선택 ({courseLetter}코스):</span>
+              <span className="text-xs font-black text-stone-800">{isJapanese ? `移動するホール選択 (${courseLetter}コース):` : `이동할 홀 선택 (${courseLetter}코스):`}</span>
               <div className="grid grid-cols-3 gap-1.5">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((hNum) => (
                   <button
@@ -2767,7 +2793,11 @@ export default function RoundPlayPage() {
                     onClick={() => {
                       handleSwitchCourse(courseLetter, hNum, currentRoundNumber);
                       setShowRefereeAssignModal(false);
-                      setCrossCheckToast(`⚖️ 심판 담당 홀이 ${courseLetter}-${hNum}번 홀로 변경되었습니다.`);
+                      setCrossCheckToast(
+                        isJapanese
+                          ? `⚖️ 審判担当ホールが ${courseLetter}-${hNum}番ホールに変更されました。`
+                          : `⚖️ 심판 담당 홀이 ${courseLetter}-${hNum}번 홀로 변경되었습니다.`
+                      );
                       setTimeout(() => setCrossCheckToast(null), 3000);
                     }}
                     className={`py-2.5 rounded-xl font-black text-xs transition border cursor-pointer ${
@@ -2776,7 +2806,7 @@ export default function RoundPlayPage() {
                         : 'bg-stone-50 text-stone-800 border-stone-200 hover:bg-stone-100'
                     }`}
                   >
-                    {courseLetter}-{hNum}번 홀
+                    {courseLetter}-{hNum}{isJapanese ? '番ホール' : '번 홀'}
                   </button>
                 ))}
               </div>
@@ -2795,17 +2825,18 @@ export default function RoundPlayPage() {
 
             <div className="space-y-1.5">
               <h3 className="text-lg font-black text-stone-900">
-                공식 시합: 홀 전담 심판 임명
+                {isJapanese ? '公式競技: ホール専任審判 任命' : '공식 시합: 홀 전담 심판 임명'}
               </h3>
               <p className="text-xs text-stone-600 font-medium leading-relaxed">
-                대회 주최자로부터 본 라운드의 <strong className="text-purple-700 font-black">[홀 전담 심판]</strong>으로 공식 지정되었습니다.<br />
-                심판 모드로 입장하시겠습니까?
+                {isJapanese
+                  ? <>大会主催者より本ラウンドの <strong className="text-purple-700 font-black">[ホール専任審判]</strong> に公式任命されました。<br />審判モードで入場しますか？</>
+                  : <>대회 주최자로부터 본 라운드의 <strong className="text-purple-700 font-black">[홀 전담 심판]</strong>으로 공식 지정되었습니다.<br />심판 모드로 입장하시겠습니까?</>}
               </p>
             </div>
 
             <div className="bg-purple-50 rounded-2xl p-3 border border-purple-200 text-left space-y-1 text-xs text-purple-900 font-bold">
-              <div>📍 <strong>담당 코스:</strong> {course.name} ({courseLetter}-{holeInCourse}번 홀)</div>
-              <div>✍️ <strong>역할:</strong> 조별 4인 타수 공식 기입 및 실시간 교차 검증</div>
+              <div>📍 <strong>{isJapanese ? '担当コース:' : '담당 코스:'}</strong> {course.name} ({courseLetter}-{holeInCourse}{isJapanese ? '番ホール' : '번 홀'})</div>
+              <div>✍️ <strong>{isJapanese ? '役割:' : '역할:'}</strong> {isJapanese ? '組別4名の公式打数入力およびリアルタイム相互検証' : '조별 4인 타수 공식 기입 및 실시간 교차 검증'}</div>
             </div>
 
             <div className="space-y-2 pt-1">
@@ -2814,12 +2845,12 @@ export default function RoundPlayPage() {
                 onClick={() => {
                   setIsRefereeMode(true);
                   setShowRefereeInviteModal(false);
-                  setCrossCheckToast(`⚖️ 심판 모드로 수락되었습니다. (${courseLetter}-${holeInCourse}번 홀 전담)`);
+                  setCrossCheckToast(isJapanese ? `⚖️ 審判モードを受諾しました。(${courseLetter}-${holeInCourse}番ホール専任)` : `⚖️ 심판 모드로 수락되었습니다. (${courseLetter}-${holeInCourse}번 홀 전담)`);
                   setTimeout(() => setCrossCheckToast(null), 3500);
                 }}
                 className="w-full bg-purple-700 hover:bg-purple-600 text-white font-black py-3.5 rounded-2xl text-sm shadow-md transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <span>✍️ 수락하고 심판 모드로 입장</span>
+                <span>{isJapanese ? '✍️ 受諾して審判モードで入場' : '✍️ 수락하고 심판 모드로 입장'}</span>
               </button>
 
               <button
@@ -2830,7 +2861,7 @@ export default function RoundPlayPage() {
                 }}
                 className="w-full bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold py-2.5 rounded-xl text-xs transition active:scale-95 cursor-pointer"
               >
-                일반 플레이어로 참여하기
+                {isJapanese ? '一般プレーヤーとして参加' : '일반 플레이어로 참여하기'}
               </button>
             </div>
           </div>
@@ -2849,10 +2880,10 @@ export default function RoundPlayPage() {
                 </div>
                 <div>
                   <h3 className="font-black text-stone-900 text-base flex items-center gap-1.5">
-                    <span>코스별 스코어 검색 & 누적 현황</span>
+                    <span>{isJapanese ? 'コース別スコア検索＆累積状況' : '코스별 스코어 검색 & 누적 현황'}</span>
                   </h3>
                   <p className="text-[11px] text-stone-500 font-medium">
-                    {course.name} · {confirmedHoles.length > 0 ? `총 ${confirmedHoles.length}홀 진행 확인` : '1번 홀 시작 대기 (0타 / 0홀)'}
+                    {course.name} · {confirmedHoles.length > 0 ? (isJapanese ? `計 ${confirmedHoles.length}ホール進行確認` : `총 ${confirmedHoles.length}홀 진행 확인`) : (isJapanese ? '1番ホール開始待機 (0打 / 0ホール)' : '1번 홀 시작 대기 (0타 / 0홀)')}
                   </p>
                 </div>
               </div>
@@ -2876,9 +2907,9 @@ export default function RoundPlayPage() {
                     : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
                 }`}
               >
-                <span>📋 코스별 카드</span>
+                <span>{isJapanese ? '📋 コース別カード' : '📋 코스별 카드'}</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20">
-                  {courseSegments.length}장
+                  {courseSegments.length}{isJapanese ? '枚' : '장'}
                 </span>
               </button>
 
@@ -2891,9 +2922,9 @@ export default function RoundPlayPage() {
                     : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
                 }`}
               >
-                <span>📊 통합 (평균)</span>
+                <span>{isJapanese ? '📊 統合 (平均)' : '📊 통합 (평균)'}</span>
                 <span className="text-[10px] px-1 py-0.2 rounded bg-amber-400 text-amber-950 font-black">
-                  평균
+                  {isJapanese ? '平均' : '평균'}
                 </span>
               </button>
 
@@ -2906,7 +2937,7 @@ export default function RoundPlayPage() {
                     : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
                 }`}
               >
-                <span>📋 홀별 상세표</span>
+                <span>{isJapanese ? '📋 ホール別詳細表' : '📋 홀별 상세표'}</span>
               </button>
             </div>
 
@@ -2917,7 +2948,7 @@ export default function RoundPlayPage() {
                 <div className="space-y-3">
                   {/* Quick Course Filter Chips */}
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
-                    <span className="font-extrabold text-stone-600 text-[11px] shrink-0">검색 필터:</span>
+                    <span className="font-extrabold text-stone-600 text-[11px] shrink-0">{isJapanese ? '検索フィルター:' : '검색 필터:'}</span>
                     <button
                       type="button"
                       onClick={() => setCourseFilterLetter('ALL')}
@@ -2927,7 +2958,7 @@ export default function RoundPlayPage() {
                           : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                       }`}
                     >
-                      전체 ({courseSegments.length}장 모두 보기)
+                      {isJapanese ? `すべて (${courseSegments.length}枚すべて表示)` : `전체 (${courseSegments.length}장 모두 보기)`}
                     </button>
                     {uniqueLettersInSegments.map((l) => (
                       <button
@@ -2940,7 +2971,7 @@ export default function RoundPlayPage() {
                             : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                         }`}
                       >
-                        {l}코스
+                        {l}{isJapanese ? 'コース' : '코스'}
                       </button>
                     ))}
                   </div>
@@ -2950,8 +2981,8 @@ export default function RoundPlayPage() {
 
                   {courseSegments.length === 0 ? (
                     <div className="bg-stone-50 rounded-2xl p-6 text-center border border-stone-200 space-y-1">
-                      <p className="text-sm font-black text-stone-700">아직 진행된 코스가 없습니다.</p>
-                      <p className="text-xs text-stone-400">홀 플레이 후 [확인]을 누르면 코스별 카드가 자동 생성됩니다.</p>
+                      <p className="text-sm font-black text-stone-700">{isJapanese ? 'まだプレーしたコースがありません。' : '아직 진행된 코스가 없습니다.'}</p>
+                      <p className="text-xs text-stone-400">{isJapanese ? 'ホールプレー後に[確認]をタップするとコース別カードが自動作成されます。' : '홀 플레이 후 [확인]을 누르면 코스별 카드가 자동 생성됩니다.'}</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -2973,11 +3004,11 @@ export default function RoundPlayPage() {
                                     ? 'bg-amber-100 text-amber-900 border border-amber-300'
                                     : 'bg-stone-100 text-stone-700'
                                 }`}>
-                                  {seg.isCompleted ? '9홀 완주 🏆' : `${seg.playedCount}홀 진행 확인`}
+                                  {seg.isCompleted ? (isJapanese ? '9ホール完走 🏆' : '9홀 완주 🏆') : (isJapanese ? `${seg.playedCount}ホール進行確認` : `${seg.playedCount}홀 진행 확인`)}
                                 </span>
                               </div>
                               <span className="text-xs font-extrabold text-stone-600">
-                                기준 Par <strong className="text-emerald-900">{seg.segmentPar}</strong>타
+                                {isJapanese ? '基準 Par ' : '기준 Par '}<strong className="text-emerald-900">{seg.segmentPar}</strong>{isJapanese ? '打' : '타'}
                               </span>
                             </div>
 
@@ -2998,7 +3029,7 @@ export default function RoundPlayPage() {
                                         {ps.player.name}
                                       </span>
                                       <span className="text-[10px] text-stone-500 font-bold">
-                                        (평균 {ps.avgHole}타/홀)
+                                        ({isJapanese ? '平均 ' : '평균 '}{ps.avgHole}{isJapanese ? '打/ホール' : '타/홀'})
                                       </span>
                                     </div>
 
@@ -3010,10 +3041,10 @@ export default function RoundPlayPage() {
                                           ? 'bg-blue-100 text-blue-700'
                                           : 'bg-stone-200 text-stone-700'
                                       }`}>
-                                        {ps.playedCount === 0 ? '대기' : ps.diff === 0 ? 'Even' : ps.diff > 0 ? `+${ps.diff}` : `${ps.diff}`}
+                                        {ps.playedCount === 0 ? (isJapanese ? '待機' : '대기') : ps.diff === 0 ? 'Even' : ps.diff > 0 ? `+${ps.diff}` : `${ps.diff}`}
                                       </span>
                                       <span className="font-black text-sm text-emerald-950">
-                                        총 {ps.strokes}타
+                                        {isJapanese ? '計 ' : '총 '}{ps.strokes}{isJapanese ? '打' : '타'}
                                       </span>
                                     </div>
                                   </div>
@@ -3028,7 +3059,7 @@ export default function RoundPlayPage() {
                                       >
                                         <div className="flex flex-col items-center justify-center leading-tight mb-1 select-none">
                                           <span className="text-[10px] text-stone-700 font-extrabold leading-none">
-                                            {hd.baseHole ?? hd.hNum}번
+                                            {hd.baseHole ?? hd.hNum}{isJapanese ? '番' : '번'}
                                           </span>
                                           <span className="text-[9px] font-black text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-1 py-0.5 rounded mt-0.5 leading-none">
                                             P{hd.par}
@@ -3062,16 +3093,16 @@ export default function RoundPlayPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs font-black text-stone-800">
                       <span className="flex items-center gap-1 text-amber-900">
-                        <span>📊 코스별 통합 합산 & 평균 타수</span>
+                        <span>{isJapanese ? '📊 コース別統合合算＆平均打数' : '📊 코스별 통합 합산 & 평균 타수'}</span>
                       </span>
                       <span className="text-[10px] text-stone-500 font-normal">
-                        다회차(1차·2차) 진행 시 자동 통합 산출
+                        {isJapanese ? '複数周回(1周・2周)プレー時に自動統合算出' : '다회차(1차·2차) 진행 시 자동 통합 산출'}
                       </span>
                     </div>
 
                     {integratedCourseGroups.length === 0 ? (
                       <div className="bg-stone-50 rounded-2xl p-4 text-center border border-stone-200">
-                        <p className="text-xs font-bold text-stone-600">입력된 확인 스코어가 없습니다.</p>
+                        <p className="text-xs font-bold text-stone-600">{isJapanese ? '入力された確定スコアがありません。' : '입력된 확인 스코어가 없습니다.'}</p>
                       </div>
                     ) : (
                       <div className="space-y-2.5">
@@ -3084,14 +3115,14 @@ export default function RoundPlayPage() {
                             <div className="flex items-center justify-between border-b border-amber-100 pb-2">
                               <div className="flex items-center gap-2">
                                 <span className="bg-amber-600 text-white font-black text-xs px-2.5 py-1 rounded-xl shadow-xs">
-                                  {group.courseLetter}코스 통합 분석
+                                  {group.courseLetter}{isJapanese ? 'コース統合分析' : '코스 통합 분석'}
                                 </span>
                                 <span className="text-xs font-black text-amber-950">
-                                  총 {group.totalRounds}회 진행 ({group.totalPlayedHoles}홀)
+                                  {isJapanese ? `計 ${group.totalRounds}回進行 (${group.totalPlayedHoles}ホール)` : `총 ${group.totalRounds}회 진행 (${group.totalPlayedHoles}홀)`}
                                 </span>
                               </div>
                               <span className="text-[11px] font-bold text-stone-500">
-                                총 기준 Par {group.totalPar}타
+                                {isJapanese ? `総基準 Par ${group.totalPar}打` : `총 기준 Par ${group.totalPar}타`}
                               </span>
                             </div>
 
@@ -3099,14 +3130,14 @@ export default function RoundPlayPage() {
                             {group.totalRounds > 1 && (
                               <div className="bg-amber-50/70 p-2 rounded-xl border border-amber-100 space-y-1 text-xs">
                                 <div className="text-[11px] font-black text-amber-900 flex items-center gap-1">
-                                  <span>🔄 회차별 세부 비교:</span>
+                                  <span>{isJapanese ? '🔄 周回別詳細比較:' : '🔄 회차별 세부 비교:'}</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-1.5">
                                   {group.segments.map((seg) => (
                                     <div key={seg.segmentKey} className="bg-white p-2 rounded-lg border border-amber-200 text-center">
                                       <div className="font-extrabold text-stone-800 text-[11px]">{seg.title}</div>
                                       <div className="text-xs font-black text-emerald-950 mt-0.5">
-                                        {seg.playedCount}홀 확인 ({seg.segmentPar}타 기준)
+                                        {isJapanese ? `${seg.playedCount}ホール確認 (${seg.segmentPar}打基準)` : `${seg.playedCount}홀 확인 (${seg.segmentPar}타 기준)`}
                                       </div>
                                     </div>
                                   ))}
@@ -3136,7 +3167,7 @@ export default function RoundPlayPage() {
                                         {pStat.diff === 0 ? 'Even' : pStat.diff > 0 ? `+${pStat.diff}` : `${pStat.diff}`}
                                       </span>
                                       <span className="font-black text-sm text-stone-900">
-                                        총 {pStat.totalStrokes}타
+                                        {isJapanese ? '計 ' : '총 '}{pStat.totalStrokes}{isJapanese ? '打' : '타'}
                                       </span>
                                     </div>
                                   </div>
@@ -3144,12 +3175,12 @@ export default function RoundPlayPage() {
                                   {/* 2 Key Metrics: 1홀당 평균 & 9홀 환산 */}
                                   <div className="grid grid-cols-2 gap-1.5 pt-0.5">
                                     <div className="bg-white p-2 rounded-lg border border-stone-200 text-center">
-                                      <span className="text-[10px] text-stone-500 font-bold block">1홀당 평균 타수</span>
-                                      <span className="text-sm font-black text-emerald-950">{pStat.avgPerHole}타</span>
+                                      <span className="text-[10px] text-stone-500 font-bold block">{isJapanese ? '1ホール当たり平均打数' : '1홀당 평균 타수'}</span>
+                                      <span className="text-sm font-black text-emerald-950">{pStat.avgPerHole}{isJapanese ? '打' : '타'}</span>
                                     </div>
                                     <div className="bg-white p-2 rounded-lg border border-stone-200 text-center">
-                                      <span className="text-[10px] text-stone-500 font-bold block">9홀 환산 평균</span>
-                                      <span className="text-sm font-black text-amber-800">{pStat.converted9Hole}타</span>
+                                      <span className="text-[10px] text-stone-500 font-bold block">{isJapanese ? '9ホール換算平均' : '9홀 환산 평균'}</span>
+                                      <span className="text-sm font-black text-amber-800">{pStat.converted9Hole}{isJapanese ? '打' : '타'}</span>
                                     </div>
                                   </div>
                                 </div>
@@ -3165,10 +3196,10 @@ export default function RoundPlayPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs font-black text-stone-800">
                       <span className="flex items-center gap-1 text-emerald-900">
-                        <span>🏆 전 코스 통합 종합 순위 및 평균 지표</span>
+                        <span>{isJapanese ? '🏆 全コース統合 総合順位＆平均指標' : '🏆 전 코스 통합 종합 순위 및 평균 지표'}</span>
                       </span>
                       <span className="text-[10px] text-stone-500 font-normal">
-                        총 {confirmedHoles.length}홀 기준
+                        {isJapanese ? `計 ${confirmedHoles.length}ホール基準` : `총 ${confirmedHoles.length}홀 기준`}
                       </span>
                     </div>
 
@@ -3197,10 +3228,10 @@ export default function RoundPlayPage() {
                                   ? 'bg-blue-100 text-blue-700'
                                   : 'bg-stone-100 text-stone-700'
                               }`}>
-                                {item.scoredCount === 0 ? '대기' : item.diff === 0 ? 'Even' : item.diff > 0 ? `+${item.diff}` : `${item.diff}`}
+                                {item.scoredCount === 0 ? (isJapanese ? '待機' : '대기') : item.diff === 0 ? 'Even' : item.diff > 0 ? `+${item.diff}` : `${item.diff}`}
                               </span>
                               <span className="font-black text-base text-emerald-950">
-                                총 {item.strokes}타 <span className="text-xs text-stone-400 font-bold">({item.scoredCount}홀)</span>
+                                {isJapanese ? '計 ' : '총 '}{item.strokes}{isJapanese ? '打' : '타'} <span className="text-xs text-stone-400 font-bold">({item.scoredCount}{isJapanese ? 'ホール' : '홀'})</span>
                               </span>
                             </div>
                           </div>
@@ -3208,16 +3239,16 @@ export default function RoundPlayPage() {
                           {/* Averages */}
                           <div className="grid grid-cols-3 gap-1 pt-1 text-center">
                             <div className="bg-stone-50 py-1.5 px-1 rounded-lg">
-                              <div className="text-[9px] text-stone-500 font-bold">1홀당 평균</div>
-                              <div className="text-xs font-black text-stone-900">{item.avgPerHole}타</div>
+                              <div className="text-[9px] text-stone-500 font-bold">{isJapanese ? '1ホール平均' : '1홀당 평균'}</div>
+                              <div className="text-xs font-black text-stone-900">{item.avgPerHole}{isJapanese ? '打' : '타'}</div>
                             </div>
                             <div className="bg-stone-50 py-1.5 px-1 rounded-lg">
-                              <div className="text-[9px] text-stone-500 font-bold">9홀 환산</div>
-                              <div className="text-xs font-black text-amber-800">{item.converted9Hole}타</div>
+                              <div className="text-[9px] text-stone-500 font-bold">{isJapanese ? '9ホール換算' : '9홀 환산'}</div>
+                              <div className="text-xs font-black text-amber-800">{item.converted9Hole}{isJapanese ? '打' : '타'}</div>
                             </div>
                             <div className="bg-stone-50 py-1.5 px-1 rounded-lg">
-                              <div className="text-[9px] text-stone-500 font-bold">18홀 환산</div>
-                              <div className="text-xs font-black text-emerald-800">{item.converted18Hole}타</div>
+                              <div className="text-[9px] text-stone-500 font-bold">{isJapanese ? '18ホール換算' : '18홀 환산'}</div>
+                              <div className="text-xs font-black text-emerald-800">{item.converted18Hole}{isJapanese ? '打' : '타'}</div>
                             </div>
                           </div>
                         </div>
@@ -3232,21 +3263,21 @@ export default function RoundPlayPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-black text-stone-800">
-                      📋 전 홀 스코어 상세 기록
+                      {isJapanese ? '📋 全ホールスコア詳細記録' : '📋 전 홀 스코어 상세 기록'}
                     </h4>
                   </div>
                   <ScoreBadgeLegend />
                   {confirmedHoles.length === 0 ? (
                     <div className="bg-stone-50 rounded-xl p-4 text-center border border-stone-200">
-                      <p className="text-xs font-bold text-stone-600">아직 입력된 홀 스코어가 없습니다.</p>
-                      <p className="text-[11px] text-stone-400 mt-0.5">홀별 타수를 입력하시면 실시간 누적 현황이 이곳에 표시됩니다.</p>
+                      <p className="text-xs font-bold text-stone-600">{isJapanese ? 'まだ入力されたホールスコアがありません。' : '아직 입력된 홀 스코어가 없습니다.'}</p>
+                      <p className="text-[11px] text-stone-400 mt-0.5">{isJapanese ? 'ホール別打数を入力するとリアルタイム累積状況がここに表示されます。' : '홀별 타수를 입력하시면 실시간 누적 현황이 이곳에 표시됩니다.'}</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto rounded-xl border border-stone-200">
                       <table className="w-full text-center text-xs">
                         <thead>
                           <tr className="bg-stone-100 text-stone-600 font-bold border-b border-stone-200 text-[11px]">
-                            <th className="py-1.5 px-2 text-left">선수</th>
+                            <th className="py-1.5 px-2 text-left">{isJapanese ? '選手' : '선수'}</th>
                             {confirmedHoles.map((hNum) => {
                               const hInfo = getHoleInfo(hNum);
                               const meta = course.holesMetadata?.find((m) => Number(m.hole) === hInfo.base);
@@ -3258,7 +3289,7 @@ export default function RoundPlayPage() {
                               );
                             })}
                             <th className="py-1.5 px-2 bg-emerald-100 text-emerald-950 font-black min-w-[42px]">
-                              합계
+                              {isJapanese ? '合計' : '합계'}
                             </th>
                           </tr>
                         </thead>
@@ -3312,7 +3343,7 @@ export default function RoundPlayPage() {
                 onClick={() => setShowTotalScoreModal(false)}
                 className="w-full bg-emerald-800 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm transition active:scale-[0.98] shadow-md"
               >
-                확인 (현재 홀 계속 플레이)
+                {isJapanese ? '確認 (現在のホールを継続プレー)' : '확인 (현재 홀 계속 플레이)'}
               </button>
             </div>
           </div>
@@ -3331,10 +3362,10 @@ export default function RoundPlayPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-black text-stone-900 leading-tight">
-                    오늘 스코어를 반영할까요?
+                    {isJapanese ? '本日のスコアを反映しますか？' : '오늘 스코어를 반영할까요?'}
                   </h3>
                   <p className="text-[11px] text-amber-800 font-bold">
-                    공식 정규 라운드 vs 연습/테스트 선택
+                    {isJapanese ? '公式正規ラウンド vs 練習/テストの選択' : '공식 정규 라운드 vs 연습/테스트 선택'}
                   </p>
                 </div>
               </div>
@@ -3354,7 +3385,7 @@ export default function RoundPlayPage() {
                   {course.name}
                 </span>
                 <span className="text-[11px] font-black bg-emerald-700 text-white px-2 py-0.5 rounded-full">
-                  {(session.confirmedHoles?.length || 0) + (session.confirmedHoles?.includes(actualHoleNumber) ? 0 : 1)}개 홀 완료
+                  {(session.confirmedHoles?.length || 0) + (session.confirmedHoles?.includes(actualHoleNumber) ? 0 : 1)}{isJapanese ? 'ホール完了' : '개 홀 완료'}
                 </span>
               </div>
               <div className="pt-1 grid grid-cols-2 gap-1.5 text-[11px]">
@@ -3364,7 +3395,7 @@ export default function RoundPlayPage() {
                   return (
                     <div key={p.id} className="bg-white px-2 py-1.5 rounded-xl border border-stone-200/60 flex items-center justify-between font-bold shadow-2xs">
                       <span className="text-stone-700 truncate max-w-[70px]">{p.name}</span>
-                      <span className="text-emerald-800 font-black">{strokes}타</span>
+                      <span className="text-emerald-800 font-black">{strokes}{isJapanese ? '打' : '타'}</span>
                     </div>
                   );
                 })}
@@ -3375,10 +3406,12 @@ export default function RoundPlayPage() {
             <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3 text-xs text-stone-700 space-y-1.5 leading-relaxed">
               <div className="font-black text-emerald-950 flex items-center gap-1">
                 <span>💡</span>
-                <span>공식 전적 관리 안심 안내</span>
+                <span>{isJapanese ? '公式戦績管理の安心案内' : '공식 전적 관리 안심 안내'}</span>
               </div>
               <p className="text-[11px]">
-                테스트나 단순 연습용으로 입력하신 기록은 <strong>[연습/테스트로 저장]</strong>을 누르시면 내 공식 평균 타수와 스타 등급에 <strong>100% 반영되지 않습니다.</strong>
+                {isJapanese
+                  ? <>テストや練習用の記録は <strong>[練習/テストとして保存]</strong> を選ぶと公式平均打数やランクに <strong>100%反映されません。</strong></>
+                  : <>테스트나 단순 연습용으로 입력하신 기록은 <strong>[연습/테스트로 저장]</strong>을 누르시면 내 공식 평균 타수와 스타 등급에 <strong>100% 반영되지 않습니다.</strong></>}
               </p>
             </div>
 
@@ -3390,21 +3423,21 @@ export default function RoundPlayPage() {
                 className="w-full bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-black py-3.5 px-4 rounded-xl text-sm shadow-md flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
               >
                 <Award className="w-4 h-4 text-amber-300" />
-                <span>🏆 공식 전적에 반영 (정규 라운드)</span>
+                <span>{isJapanese ? '🏆 公式戦績に反映 (正規ラウンド)' : '🏆 공식 전적에 반영 (정규 라운드)'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => executeFinishRound(false)}
                 className="w-full bg-stone-100 hover:bg-stone-200 text-stone-800 font-black py-3 px-4 rounded-xl text-xs border border-stone-300 shadow-xs flex items-center justify-center gap-1.5 transition active:scale-[0.98] cursor-pointer"
               >
-                <span>🧪 연습·테스트로 저장 (전적 미반영)</span>
+                <span>{isJapanese ? '🧪 練習・テストとして保存 (戦績未反映)' : '🧪 연습·테스트로 저장 (전적 미반영)'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowFinishOfficialModal(false)}
                 className="w-full py-2 text-stone-500 font-bold text-xs hover:text-stone-800 cursor-pointer"
               >
-                계속 라운딩하기 (취소)
+                {isJapanese ? 'ラウンドを継続 (キャンセル)' : '계속 라운딩하기 (취소)'}
               </button>
             </div>
           </div>
@@ -3423,10 +3456,10 @@ export default function RoundPlayPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-black text-stone-900 leading-tight">
-                    홈으로 나가시겠습니까?
+                    {isJapanese ? 'ホームに戻りますか？' : '홈으로 나가시겠습니까?'}
                   </h3>
                   <p className="text-[11px] text-emerald-800 font-bold">
-                    지금까지 내용 저장 및 언제든 이어하기
+                    {isJapanese ? 'ここまでの内容を保存し、いつでも再開可能' : '지금까지 내용 저장 및 언제든 이어하기'}
                   </p>
                 </div>
               </div>
@@ -3446,14 +3479,14 @@ export default function RoundPlayPage() {
                   {course.name}
                 </span>
                 <span className="text-[11px] font-black bg-emerald-700 text-white px-2 py-0.5 rounded-full">
-                  {courseLetter}코스 {holeInCourse}번 홀
+                  {courseLetter}{isJapanese ? 'コース ' : '코스 '}{holeInCourse}{isJapanese ? '番ホール' : '번 홀'}
                 </span>
               </div>
 
               <div className="text-xs text-stone-600 flex items-center justify-between pt-1.5 border-t border-stone-200/60 font-semibold">
-                <span>기록 완료 현황</span>
+                <span>{isJapanese ? '記録完了状況' : '기록 완료 현황'}</span>
                 <span className="font-black text-stone-900">
-                  총 {confirmedHoles.length}개 홀 스코어 저장됨
+                  {isJapanese ? `計 ${confirmedHoles.length}ホールのスコア保存済み` : `총 ${confirmedHoles.length}개 홀 스코어 저장됨`}
                 </span>
               </div>
 
@@ -3465,7 +3498,7 @@ export default function RoundPlayPage() {
                   return (
                     <div key={p.id} className="bg-white px-2 py-1.5 rounded-xl border border-stone-200/60 flex items-center justify-between font-bold shadow-2xs">
                       <span className="text-stone-700 truncate max-w-[70px]">{p.name}</span>
-                      <span className="text-emerald-800 font-black">{pStrokes}타</span>
+                      <span className="text-emerald-800 font-black">{pStrokes}{isJapanese ? '打' : '타'}</span>
                     </div>
                   );
                 })}
@@ -3476,10 +3509,12 @@ export default function RoundPlayPage() {
             <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-3.5 text-xs text-amber-950 space-y-1.5">
               <div className="flex items-center gap-1.5 font-extrabold text-amber-900">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>안심하세요! 기록은 절대 사라지지 않습니다.</span>
+                <span>{isJapanese ? 'ご安心ください！記録は消えません。' : '안심하세요! 기록은 절대 사라지지 않습니다.'}</span>
               </div>
               <p className="text-[11px] leading-relaxed text-stone-700 pl-5">
-                홈 화면 상단의 <span className="font-black text-amber-900">[진행 중인 라운드 이어하기 ▶]</span> 배너를 터치하면 언제든 지금 이 자리({courseLetter}코스 {holeInCourse}번 홀)로 그대로 돌아와 플레이를 이어가실 수 있습니다.
+                {isJapanese
+                  ? <>ホーム画面上部の <span className="font-black text-amber-900">[進行中のラウンドを再開 ▶]</span> をタップすれば、いつでも現在の場所({courseLetter}コース {holeInCourse}番ホール)からプレーを再開できます。</>
+                  : <>홈 화면 상단의 <span className="font-black text-amber-900">[진행 중인 라운드 이어하기 ▶]</span> 배너를 터치하면 언제든 지금 이 자리({courseLetter}코스 {holeInCourse}번 홀)로 그대로 돌아와 플레이를 이어가실 수 있습니다.</>}
               </p>
             </div>
 
@@ -3490,14 +3525,14 @@ export default function RoundPlayPage() {
                 onClick={handleConfirmExitHome}
                 className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-black py-3.5 px-4 rounded-xl text-sm shadow-md flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
               >
-                <span>💾 지금까지 내용 저장하고 홈으로 나가기</span>
+                <span>{isJapanese ? '💾 ここまでの内容を保存してホームへ' : '💾 지금까지 내용 저장하고 홈으로 나가기'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowExitConfirm(false)}
                 className="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-black py-2.5 px-4 rounded-xl text-xs transition active:scale-[0.98] cursor-pointer"
               >
-                계속 라운딩하기 (취소)
+                {isJapanese ? 'ラウンドを継続 (キャンセル)' : '계속 라운딩하기 (취소)'}
               </button>
             </div>
           </div>
@@ -3524,8 +3559,8 @@ export default function RoundPlayPage() {
               <div className="flex items-center gap-2">
                 <span className="text-xl">👑</span>
                 <div>
-                  <h3 className="font-extrabold text-stone-900 text-base">조장 및 동반자 관리</h3>
-                  <p className="text-xs text-stone-500">조장 위임 · 중도 퇴장/대타 · 새 조장 폰 넘겨주기</p>
+                  <h3 className="font-extrabold text-stone-900 text-base">{isJapanese ? '代表・同伴者管理' : '조장 및 동반자 관리'}</h3>
+                  <p className="text-xs text-stone-500">{isJapanese ? '代表交代 · 途中退出/交代 · 新代表への引継ぎ' : '조장 위임 · 중도 퇴장/대타 · 새 조장 폰 넘겨주기'}</p>
                 </div>
               </div>
               <button
@@ -3542,12 +3577,12 @@ export default function RoundPlayPage() {
               {/* 친절한 안내 박스 */}
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 space-y-1.5">
                 <div className="font-extrabold flex items-center gap-1">
-                  <span>💡 편리한 실전 라운딩 기능</span>
+                  <span>{isJapanese ? '💡 便利なラウンド機能' : '💡 편리한 실전 라운딩 기능'}</span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-amber-800">
-                  • <strong>조장 변경</strong>: 원하는 분의 👑 버튼을 누르면 1번 조장으로 즉시 위임됩니다.<br />
-                  • <strong>중도 퇴장</strong>: 도중에 먼저 가시는 분은 <strong>[🚪 중도퇴장]</strong>을 누르면 이전 타수는 보존되고 다음 홀부터 제외됩니다.<br />
-                  • <strong>폰 넘겨주기</strong>: 조장이 바뀌거나 배터리가 부족할 때 아래 <strong>[카톡 전송]</strong>으로 새 조장 폰에 경기를 넘겨줄 수 있습니다.
+                  {isJapanese
+                    ? <>• <strong>代表変更</strong>: 希望する方の 👑 ボタンを押すと即座に代表に任命されます。<br />• <strong>途中退出</strong>: 先に帰られる方は <strong>[🚪 途中退出]</strong> を押すと過去の打数は保存され、次のホールから除外されます。<br />• <strong>スマホ引継ぎ</strong>: 代表交代や充電不足時、下の <strong>[LINE送信]</strong> で新代表のスマホに試合を引き継げます。</>
+                    : <>• <strong>조장 변경</strong>: 원하는 분의 👑 버튼을 누르면 1번 조장으로 즉시 위임됩니다.<br />• <strong>중도 퇴장</strong>: 도중에 먼저 가시는 분은 <strong>[🚪 중도퇴장]</strong>을 누르면 이전 타수는 보존되고 다음 홀부터 제외됩니다.<br />• <strong>폰 넘겨주기</strong>: 조장이 바뀌거나 배터리가 부족할 때 아래 <strong>[카톡 전송]</strong>으로 새 조장 폰에 경기를 넘겨줄 수 있습니다.</>}
                 </p>
               </div>
 
@@ -3555,9 +3590,9 @@ export default function RoundPlayPage() {
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between px-0.5">
                   <div className="text-xs font-bold text-stone-700">
-                    참여 인원 ({editPlayersDraft.filter((p) => !p.isOut).length}명 참여중
+                    {isJapanese ? `参加人数 (${editPlayersDraft.filter((p) => !p.isOut).length}名参加中` : `참여 인원 (${editPlayersDraft.filter((p) => !p.isOut).length}명 참여중`}
                     {editPlayersDraft.some((p) => p.isOut) && (
-                      <span className="text-stone-500 font-normal"> · {editPlayersDraft.filter((p) => p.isOut).length}명 퇴장</span>
+                      <span className="text-stone-500 font-normal">{isJapanese ? ` · ${editPlayersDraft.filter((p) => p.isOut).length}名退出` : ` · ${editPlayersDraft.filter((p) => p.isOut).length}명 퇴장`}</span>
                     )})
                   </div>
                 </div>
@@ -3576,7 +3611,7 @@ export default function RoundPlayPage() {
                       >
                         <div className="px-2 py-1.5 rounded-lg text-xs font-black bg-stone-200 text-stone-700 flex items-center gap-1 shrink-0">
                           <span>🚪</span>
-                          <span>중도퇴장</span>
+                          <span>{isJapanese ? '途中退出' : '중도퇴장'}</span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 mb-0.5">
@@ -3585,15 +3620,17 @@ export default function RoundPlayPage() {
                             </span>
                             {draftP.isSelf && (
                               <span className="text-[10px] px-1.5 py-0.2 rounded font-black bg-blue-100 text-blue-700">
-                                본인
+                                {isJapanese ? '本人' : '본인'}
                               </span>
                             )}
                             <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-stone-200 text-stone-600">
-                              {draftP.departedHole || actualHoleNumber}홀까지 보존
+                              {draftP.departedHole || actualHoleNumber}{isJapanese ? 'ホールまで保存' : '홀까지 보존'}
                             </span>
                           </div>
                           <div className="text-[11px] text-stone-600">
-                            {draftP.isSelf ? '본인 기권 처리됨 (이전 타수 정상 유지)' : '기권 처리됨 (이전 타수 정상 유지)'}
+                            {draftP.isSelf
+                              ? (isJapanese ? '本人 棄権扱い (これまでの打数は維持)' : '본인 기권 처리됨 (이전 타수 정상 유지)')
+                              : (isJapanese ? '棄権扱い (これまでの打数は維持)' : '기권 처리됨 (이전 타수 정상 유지)')}
                           </div>
                         </div>
                         <button
@@ -3605,7 +3642,7 @@ export default function RoundPlayPage() {
                           }}
                           className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-white border border-stone-300 text-stone-700 hover:bg-stone-50 shrink-0 cursor-pointer transition active:scale-95 shadow-2xs"
                         >
-                          ↩ 다시 참여
+                          {isJapanese ? '↩ 再参加' : '↩ 다시 참여'}
                         </button>
                       </div>
                     );
@@ -3637,19 +3674,19 @@ export default function RoundPlayPage() {
                             ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-300'
                             : 'bg-white border border-stone-300 text-stone-600 hover:bg-stone-100'
                         }`}
-                        title="이 플레이어를 조장(1번)으로 지정"
+                        title={isJapanese ? 'このプレーヤーを代表(1番)に指定' : '이 플레이어를 조장(1번)으로 지정'}
                       >
                         <span>👑</span>
-                        <span>{isSelectedLeader ? '조장 (1번)' : '조장 위임'}</span>
+                        <span>{isSelectedLeader ? (isJapanese ? '代表 (1番)' : '조장 (1번)') : (isJapanese ? '代表委任' : '조장 위임')}</span>
                       </button>
 
                       {/* 이름 입력 필드 */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-[11px] font-bold text-stone-600">이름</span>
+                          <span className="text-[11px] font-bold text-stone-600">{isJapanese ? '氏名' : '이름'}</span>
                           {draftP.isSelf && (
                             <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-blue-100 text-blue-700">
-                              본인
+                              {isJapanese ? '本人' : '본인'}
                             </span>
                           )}
                         </div>
@@ -3662,7 +3699,7 @@ export default function RoundPlayPage() {
                               prev.map((p) => (p.id === draftP.id ? { ...p, name: val } : p))
                             );
                           }}
-                          placeholder={draftP.isSelf ? selfName : "이름 입력"}
+                          placeholder={draftP.isSelf ? (isJapanese ? '本人' : selfName) : (isJapanese ? '氏名入力' : '이름 입력')}
                           className="w-full px-2.5 py-1 text-sm bg-white text-stone-900 border border-stone-300 rounded-lg focus:outline-hidden focus:border-emerald-500 font-bold placeholder:text-stone-400"
                         />
                       </div>
@@ -3672,8 +3709,12 @@ export default function RoundPlayPage() {
                         type="button"
                         onClick={() => {
                           const confirmMsg = draftP.isSelf
-                            ? `${currentDisplayName}(본인) 님이 지금 중도 퇴장(기권)하시나요?\n\n* 지금까지 기록한 타수는 안전하게 보존되며, 다른 동반자에게 조장을 넘겨주고 이후 홀 점수 입력에서 제외됩니다.`
-                            : `${currentDisplayName} 님이 지금 중도 퇴장(기권)하시나요?\n\n* 지금까지 기록한 타수는 안전하게 보존되며, 다음 홀부터 점수 입력에서 제외됩니다.`;
+                            ? (isJapanese
+                              ? `${currentDisplayName}(本人)様、途中退出(棄権)しますか？\n\n* これまでに記録した打数は安全に保存され、他の同伴者に代表を引き継ぎ、今後の入力から除外されます。`
+                              : `${currentDisplayName}(본인) 님이 지금 중도 퇴장(기권)하시나요?\n\n* 지금까지 기록한 타수는 안전하게 보존되며, 다른 동반자에게 조장을 넘겨주고 이후 홀 점수 입력에서 제외됩니다.`)
+                            : (isJapanese
+                              ? `${currentDisplayName}様、途中退出(棄権)しますか？\n\n* これまでに記録した打数は安全に保存され、次のホールからスコア入力から除外されます。`
+                              : `${currentDisplayName} 님이 지금 중도 퇴장(기권)하시나요?\n\n* 지금까지 기록한 타수는 안전하게 보존되며, 다음 홀부터 점수 입력에서 제외됩니다.`);
 
                           if (confirm(confirmMsg)) {
                             setEditPlayersDraft((prev) => {
@@ -3693,10 +3734,10 @@ export default function RoundPlayPage() {
                           }
                         }}
                         className="px-2 py-1.5 rounded-lg text-xs font-bold border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 shrink-0 cursor-pointer transition active:scale-95 flex items-center gap-0.5"
-                        title="사정상 먼저 귀가/기권 시 터치"
+                        title={isJapanese ? '都合により先に帰宅/棄権する場合にタップ' : '사정상 먼저 귀가/기권 시 터치'}
                       >
                         <span>🚪</span>
-                        <span>중도퇴장</span>
+                        <span>{isJapanese ? '途中退出' : '중도퇴장'}</span>
                       </button>
                     </div>
                   );
@@ -3709,13 +3750,13 @@ export default function RoundPlayPage() {
                     onClick={() => {
                       const activeCount = editPlayersDraft.filter((p) => !p.isOut).length;
                       if (activeCount >= 4) {
-                        alert('한 조의 최대 동반자는 4명입니다.');
+                        alert(isJapanese ? '1組の最大同伴者は4名です。' : '한 조의 최대 동반자는 4명입니다.');
                         return;
                       }
                       const newNum = editPlayersDraft.length + 1;
                       const newPlayer: RoundPlayer = {
                         id: `player_add_${Date.now()}`,
-                        name: `동반자 ${newNum}`,
+                        name: isJapanese ? `同伴者${newNum}` : `동반자 ${newNum}`,
                         scores: {},
                         obCount: {},
                         totalStrokes: 0,
@@ -3726,7 +3767,7 @@ export default function RoundPlayPage() {
                     className="w-full py-2.5 px-3 rounded-xl border border-dashed border-emerald-400 bg-emerald-50/60 hover:bg-emerald-50 text-emerald-800 text-xs font-black flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
                   >
                     <span>➕</span>
-                    <span>동반자 추가 (중간 합류 / 대타 선수)</span>
+                    <span>{isJapanese ? '同伴者追加 (途中合流 / 交代選手)' : '동반자 추가 (중간 합류 / 대타 선수)'}</span>
                   </button>
                 )}
               </div>
@@ -3735,7 +3776,7 @@ export default function RoundPlayPage() {
               <div className="pt-3 border-t border-stone-200/80 space-y-2">
                 <div className="text-xs font-black text-stone-800 flex items-center gap-1.5">
                   <span className="text-base">📱</span>
-                  <span>스마트폰 경기 넘겨주기 (조장 교체 / 배터리 방전 시)</span>
+                  <span>{isJapanese ? 'スマホ試合引継ぎ (代表交代 / バッテリー不足時)' : '스마트폰 경기 넘겨주기 (조장 교체 / 배터리 방전 시)'}</span>
                 </div>
                 <button
                   type="button"
@@ -3744,31 +3785,40 @@ export default function RoundPlayPage() {
                       const handoffUrl = `${window.location.origin}/round/${roundId}?handoff=${encodeURIComponent(JSON.stringify(session))}`;
                       if (typeof navigator !== 'undefined' && navigator.share) {
                         await navigator.share({
-                          title: `[파크온] ${course.name} 파크골프 경기 이어받기`,
-                          text: `[파크온] ${course.name} 경기 스코어카드 이어받기 링크입니다. 터치하시면 현재 ${actualHoleNumber}번 홀부터 그대로 이어서 기록하실 수 있습니다.`,
+                          title: isJapanese ? `[パークゴルフ オールインワン] ${course.name} パークゴルフ試合引継ぎ` : `[파크골프 올인원] ${course.name} 파크골프 경기 이어받기`,
+                          text: isJapanese ? `[パークゴルフ オールインワン] ${course.name} 試合スコアカード引継ぎリンクです。タップすると現在の${actualHoleNumber}番ホールからそのまま記録を継続できます。` : `[파크골프 올인원] ${course.name} 경기 스코어카드 이어받기 링크입니다. 터치하시면 현재 ${actualHoleNumber}번 홀부터 그대로 이어서 기록하실 수 있습니다.`,
                           url: handoffUrl,
                         });
-                        setShareFeedbackToast('✓ 새 조장에게 경기 넘겨주기 링크가 전송되었습니다!');
+                        setShareFeedbackToast(isJapanese ? '✓ 新代表へ試合引継ぎリンクを送信しました！' : '✓ 새 조장에게 경기 넘겨주기 링크가 전송되었습니다!');
                         setTimeout(() => setShareFeedbackToast(null), 4000);
                       } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
                         await navigator.clipboard.writeText(handoffUrl);
+                        if (isJapanese && typeof window !== 'undefined') {
+                          window.open(`https://line.me/R/msg/text/?${encodeURIComponent(handoffUrl)}`, '_blank');
+                        }
                         alert(
-                          `✓ 새 조장용 경기 이어받기 링크가 복사되었습니다!\n\n카카오톡 대화방에 붙여넣어(Ctrl+V) 전송하시면, 새 조장님이 터치 한 번으로 현재 ${actualHoleNumber}번 홀부터 그대로 이어서 기록할 수 있습니다.`
+                          isJapanese
+                            ? `✓ 新代表用の試合引継ぎリンクがコピーされました！\n\nLINEまたはメッセージに貼り付けて(Ctrl+V)送信すれば、新代表がワンタップで現在の${actualHoleNumber}番ホールからそのまま記録できます。`
+                            : `✓ 새 조장용 경기 이어받기 링크가 복사되었습니다!\n\n카카오톡 대화방에 붙여넣어(Ctrl+V) 전송하시면, 새 조장님이 터치 한 번으로 현재 ${actualHoleNumber}번 홀부터 그대로 이어서 기록할 수 있습니다.`
                         );
                       } else {
-                        prompt('아래 링크를 복사하여 새 조장에게 카카오톡으로 보내주세요:', handoffUrl);
+                        prompt(isJapanese ? '以下のリンクをコピーして新代表に送信してください:' : '아래 링크를 복사하여 새 조장에게 카카오톡으로 보내주세요:', handoffUrl);
                       }
                     } catch (err) {
                       console.error(err);
                     }
                   }}
-                  className="w-full py-3 px-3 rounded-xl bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition active:scale-95 cursor-pointer border border-[#E6CF00]"
+                  className={`w-full py-3 px-3 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition active:scale-95 cursor-pointer border ${
+                    isJapanese
+                      ? 'bg-[#06C755] hover:bg-[#05b34c] text-white border-[#05b34c]'
+                      : 'bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] border-[#E6CF00]'
+                  }`}
                 >
-                  <span className="text-base">💬</span>
-                  <span>새 조장 스마트폰으로 경기 넘겨주기 (카톡 / 링크)</span>
+                  <span className="text-base">{isJapanese ? '🟢' : '💬'}</span>
+                  <span>{isJapanese ? '新代表のスマートフォンへ試合引継ぎ (LINE / リンク)' : '새 조장 스마트폰으로 경기 넘겨주기 (카톡 / 링크)'}</span>
                 </button>
                 <p className="text-[11px] text-stone-500 leading-tight">
-                  * 새 조장이 카톡에서 링크를 누르면 현재 홀과 타수 그대로 즉시 이어받아 입력할 수 있습니다.
+                  {isJapanese ? '* 新代表がLINEまたはリンクを開くと、現在のホールと打数そのまま引き継いで入力できます。' : '* 새 조장이 카톡에서 링크를 누르면 현재 홀과 타수 그대로 즉시 이어받아 입력할 수 있습니다.'}
                 </p>
               </div>
             </div>
@@ -3780,7 +3830,7 @@ export default function RoundPlayPage() {
                 onClick={() => setShowPlayerEditModal(false)}
                 className="flex-1 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-sm transition active:scale-95 cursor-pointer"
               >
-                취소
+                {isJapanese ? 'キャンセル' : '취소'}
               </button>
               <button
                 type="button"
@@ -3827,7 +3877,7 @@ export default function RoundPlayPage() {
                 className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-sm shadow-md transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>✓</span>
-                <span>정렬 적용 및 저장</span>
+                <span>{isJapanese ? '適用して保存' : '정렬 적용 및 저장'}</span>
               </button>
             </div>
           </div>
@@ -3843,22 +3893,24 @@ export default function RoundPlayPage() {
             </div>
             <div className="text-center space-y-1">
               <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
-                체험 모드 완료
+                {isJapanese ? '体験モード完了' : '체험 모드 완료'}
               </span>
-              <h3 className="text-lg font-black text-white">체험 연습이 종료되었습니다!</h3>
+              <h3 className="text-lg font-black text-white">{isJapanese ? '体験練習が終了しました！' : '체험 연습이 종료되었습니다!'}</h3>
               <p className="text-xs text-stone-300 leading-relaxed pt-1">
-                이 기록은 전적과 랭킹에 <span className="text-amber-300 font-black underline">아무것도 남지 않는</span> 1회성 연습용입니다.
+                {isJapanese
+                  ? <>この記録は戦績やランキングに <span className="text-amber-300 font-black underline">一切残りません</span> (1回限りの練習用)。</>
+                  : <>이 기록은 전적과 랭킹에 <span className="text-amber-300 font-black underline">아무것도 남지 않는</span> 1회성 연습용입니다.</>}
               </p>
             </div>
 
             <div className="bg-stone-950 rounded-xl p-3 border border-stone-800 text-[11px] text-stone-400 space-y-1">
               <div className="flex justify-between">
-                <span>체험 구장:</span>
+                <span>{isJapanese ? '体験コース:' : '체험 구장:'}</span>
                 <span className="font-bold text-white">{course.name}</span>
               </div>
               <div className="flex justify-between">
-                <span>연습 상태:</span>
-                <span className="font-bold text-emerald-400">정상 종료 (기록 미저장)</span>
+                <span>{isJapanese ? '練習ステータス:' : '연습 상태:'}</span>
+                <span className="font-bold text-emerald-400">{isJapanese ? '正常終了 (記録未保存)' : '정상 종료 (기록 미저장)'}</span>
               </div>
             </div>
 
@@ -3871,7 +3923,7 @@ export default function RoundPlayPage() {
                 }}
                 className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-stone-950 font-black py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg transition active:scale-98 cursor-pointer"
               >
-                <span>⛳ 실제 필드에서 [정식 라운딩] 시작하기</span>
+                <span>{isJapanese ? '⛳ 実際のフィールドで [正式ラウンド] を開始' : '⛳ 실제 필드에서 [정식 라운딩] 시작하기'}</span>
               </button>
 
               <button
@@ -3882,7 +3934,7 @@ export default function RoundPlayPage() {
                 }}
                 className="w-full bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-1 transition active:scale-98 cursor-pointer"
               >
-                <span>🏠 홈으로 돌아가기</span>
+                <span>{isJapanese ? '🏠 ホームへ戻る' : '🏠 홈으로 돌아가기'}</span>
               </button>
             </div>
           </div>

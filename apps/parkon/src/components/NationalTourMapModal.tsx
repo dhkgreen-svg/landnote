@@ -62,12 +62,12 @@ export function NationalTourMapModal({ isOpen, onClose }: NationalTourMapModalPr
       .map((p) => p.shortName)
       .join(', ');
 
-    const shareText = `[파크온 대한민국 전국 17개 시·도 투어 제패기 🗺️]\n🏆 나의 정복 현황: ${summary.unlockedCount} / 17개 시·도 (${summary.progressPercent}%)\n• 현재 칭호: ${summary.currentTitle}\n• 정복한 지역: ${unlockedNames || '정복 도전 중!'}\n• 전국 누적 완주: ${summary.totalNationalRounds}회\n\n👉 지금 파크온에서 전국 파크골프장 도장 깨기 함께해요!\nhttps://www.parkongolf.com`;
+    const shareText = `[파크골프 올인원 대한민국 전국 17개 시·도 투어 제패기 🗺️]\n🏆 나의 정복 현황: ${summary.unlockedCount} / 17개 시·도 (${summary.progressPercent}%)\n• 현재 칭호: ${summary.currentTitle}\n• 정복한 지역: ${unlockedNames || '정복 도전 중!'}\n• 전국 누적 완주: ${summary.totalNationalRounds}회\n\n👉 지금 파크골프 올인원에서 전국 파크골프장 도장 깨기 함께해요!\nhttps://www.parkongolf.com`;
 
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: `[파크온] 전국 17개 시·도 투어 제패 현황 (${summary.unlockedCount}/17)`,
+          title: `[파크골프 올인원] 전국 17개 시·도 투어 제패 현황 (${summary.unlockedCount}/17)`,
           text: shareText,
           url: 'https://www.parkongolf.com',
         });

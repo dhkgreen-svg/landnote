@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Heart, Trophy, ThumbsUp, PartyPopper, Flame, Radio } from 'lucide-react';
 import { CompanionStorage, CheerFeedItem, CheerReactionType } from '@/lib/companionStorage';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 export function CompanionFeedWidget() {
+  const { isJapanese, isEnglish } = useTranslation();
   const [feed, setFeed] = useState<CheerFeedItem[]>([]);
   const [activeCheerMsg, setActiveCheerMsg] = useState<string>('');
 
@@ -23,8 +25,16 @@ export function CompanionFeedWidget() {
 
   const handleSendCheer = (feedId: string, type: CheerReactionType, companionName: string) => {
     CompanionStorage.sendCheer(feedId, type);
-    const label = type === 'NICE_SHOT' ? '나이스샷 굿샷!' : type === 'CONGRATS' ? '축하 메시지' : '힘찬 파이팅';
-    setActiveCheerMsg(`${companionName} 님께 '${label}' 응원을 전달했습니다! 🎉`);
+    const label = type === 'NICE_SHOT'
+      ? (isJapanese ? 'ナイスショット！' : '나이스샷 굿샷!')
+      : type === 'CONGRATS'
+      ? (isJapanese ? 'お祝いメッセージ' : '축하 메시지')
+      : (isJapanese ? 'ファイト！' : '힘찬 파이팅');
+    setActiveCheerMsg(
+      isJapanese
+        ? `${companionName} 様に「${label}」応援を送りました！ 🎉`
+        : `${companionName} 님께 '${label}' 응원을 전달했습니다! 🎉`
+    );
     setTimeout(() => setActiveCheerMsg(''), 2500);
   };
 
@@ -40,14 +50,16 @@ export function CompanionFeedWidget() {
           </div>
           <div>
             <h3 className="text-sm font-black text-stone-900 tracking-tight flex items-center gap-1.5">
-              <span>1촌 동반자 소식 & 원터치 응원</span>
+              <span>{isJapanese ? '仲間・フレンド速報＆応援' : '1촌 동반자 소식 & 원터치 응원'}</span>
             </h3>
-            <p className="text-[11px] text-stone-400 font-medium">동반자의 라운드 완주에 나이스샷을 보내보세요</p>
+            <p className="text-[11px] text-stone-400 font-medium">
+              {isJapanese ? '仲間のラウンド完走にナイスショットを届けましょう' : '동반자의 라운드 완주에 나이스샷을 보내보세요'}
+            </p>
           </div>
         </div>
         <span className="text-[10px] font-black px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full flex items-center gap-1">
           <Radio className="w-2.5 h-2.5 animate-pulse text-emerald-600" />
-          실시간
+          {isJapanese ? 'リアルタイム' : '실시간'}
         </span>
       </div>
 
@@ -111,7 +123,7 @@ export function CompanionFeedWidget() {
                   }`}
                 >
                   <ThumbsUp className="w-3.5 h-3.5" />
-                  <span>나이스샷</span>
+                  <span>{isJapanese ? 'ナイスショット' : '나이스샷'}</span>
                   <span className="text-[10px] opacity-80">({item.cheers.NICE_SHOT || 0})</span>
                 </button>
 
@@ -125,7 +137,7 @@ export function CompanionFeedWidget() {
                   }`}
                 >
                   <PartyPopper className="w-3.5 h-3.5" />
-                  <span>축하해요</span>
+                  <span>{isJapanese ? 'お祝い' : '축하해요'}</span>
                   <span className="text-[10px] opacity-80">({item.cheers.CONGRATS || 0})</span>
                 </button>
 
@@ -139,7 +151,7 @@ export function CompanionFeedWidget() {
                   }`}
                 >
                   <Flame className="w-3.5 h-3.5" />
-                  <span>파이팅</span>
+                  <span>{isJapanese ? 'ファイト' : '파이팅'}</span>
                   <span className="text-[10px] opacity-80">({item.cheers.FIGHTING || 0})</span>
                 </button>
               </div>

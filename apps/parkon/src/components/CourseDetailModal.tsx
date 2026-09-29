@@ -7,6 +7,7 @@ import { Course, HoleMetadata, CourseContribution } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
 import { generateStandardHoles } from '@/lib/defaultCourses';
 import { CourseHallOfFameModal } from '@/components/CourseHallOfFameModal';
+import { getCourseDualName } from '@/lib/courseLocalization';
 
 interface CourseDetailModalProps {
   course: Course;
@@ -124,27 +125,38 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
       <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col border border-stone-200 animate-in fade-in zoom-in-95 duration-200">
         {/* 1. Header */}
         <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-teal-950 p-4 text-white flex items-center justify-between shrink-0 shadow-sm">
-          <div className="min-w-0 flex-1 pr-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-black text-base sm:text-lg text-white tracking-tight truncate">
-                {course.name} 실측 정보
-              </h3>
-              <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
-                공식 제원
-              </span>
-            </div>
-            <p className="text-[11px] text-emerald-200 mt-0.5 truncate">
-              {course.region} · 총 {availableCourses.length}코스 {course.totalHoles || 36}홀 실측 제원표
-            </p>
-            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-              <span className="text-[10px] bg-emerald-700/80 text-emerald-100 font-bold px-2 py-0.5 rounded-md border border-emerald-500/40">
-                🌿 잔디 상태: 우수
-              </span>
-              <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-md shadow-xs">
-                📅 운영: 매주 월요일 휴장 (공휴일 정상 운영)
-              </span>
-            </div>
-          </div>
+          {(() => {
+            const dual = getCourseDualName(course, false);
+            return (
+              <div className="min-w-0 flex-1 pr-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-black text-base sm:text-lg text-white tracking-tight truncate flex items-center gap-1.5">
+                    {dual.flag && <span>{dual.flag}</span>}
+                    <span>{dual.primary} 실측 정보</span>
+                  </span>
+                  <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
+                    공식 제원
+                  </span>
+                </div>
+                {dual.showSecondary && dual.secondary && (
+                  <div className="text-xs text-emerald-200 font-bold truncate mt-0.5">
+                    {dual.secondary}
+                  </div>
+                )}
+                <p className="text-[11px] text-emerald-300/80 mt-0.5 truncate">
+                  {course.region} · 총 {availableCourses.length}코스 {course.totalHoles || 36}홀 실측 제원표
+                </p>
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <span className="text-[10px] bg-emerald-700/80 text-emerald-100 font-bold px-2 py-0.5 rounded-md border border-emerald-500/40">
+                    🌿 잔디 상태: 우수
+                  </span>
+                  <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-md shadow-xs">
+                    📅 운영: 매주 월요일 휴장 (공휴일 정상 운영)
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="flex items-center gap-1.5 shrink-0">
             <button

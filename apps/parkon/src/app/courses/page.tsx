@@ -24,6 +24,8 @@ import { ParkOnStorage } from '@/lib/storage';
 import { DEFAULT_COURSES, generateStandardHoles } from '@/lib/defaultCourses';
 import { ContributeModal } from '@/components/ContributeModal';
 import { CourseDetailModal } from '@/components/CourseDetailModal';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { getCourseDualName, stripParkGolfSuffix, CourseDualBadge } from '@/lib/courseLocalization';
 
 // --- Types for 3 Auxiliary Services ---
 export interface ParkGolfRestaurant {
@@ -219,9 +221,26 @@ const DEFAULT_PAID_RESTAURANTS: ParkGolfRestaurant[] = [];
 
 export default function CoursesPage() {
   const router = useRouter();
-  const [courses, setCourses] = useState<Course[]>(DEFAULT_COURSES);
+  const { t, isJapanese, isEnglish } = useTranslation();
+
+  const getLocalizedCourseName = (c?: Course | null) => {
+    if (!c) return '';
+    const dual = getCourseDualName(c, isJapanese);
+    return dual.primary;
+  };
+
+  const getLocalizedCourseRegion = (c?: Course | null) => {
+    if (!c) return '';
+    if (isJapanese) {
+      return c.regionJa || c.region;
+    }
+    return c.regionKo || c.region;
+  };
+
+  const [courses, setCourses] = useState<Course[]>(() => ParkOnStorage.getAllCourses());
   const [homeCourseId, setHomeCourseId] = useState<string>('');
   const [favoriteHomeCourseIds, setFavoriteHomeCourseIds] = useState<string[]>([]);
+  const [countryFilter, setCountryFilter] = useState<'ALL' | 'KR' | 'JP'>('ALL');
   
   // Search input and applied search term
   const [inputQuery, setInputQuery] = useState<string>('');
@@ -740,25 +759,45 @@ export default function CoursesPage() {
     }
   };
 
-  // Filter Courses based on search query (ONLY when query is executed!)
+  // Filter Courses based on search query or country filter
   const activeSearchTerm = appliedQuery.trim().toLowerCase();
-  const isSearchActive = activeSearchTerm.length > 0;
+  const isSearchActive = activeSearchTerm.length > 0 || countryFilter !== 'ALL';
 
   const filteredCourses = isSearchActive
     ? courses.filter((c) => {
-        if (activeSearchTerm === '전체' || activeSearchTerm === '전국') return true;
+        // Country filter check
+        if (countryFilter === 'KR' && c.country === 'JP') return false;
+        if (countryFilter === 'JP' && c.country !== 'JP') return false;
+
+        // If asking for all
+        if (!activeSearchTerm || activeSearchTerm === '전체' || activeSearchTerm === '전국' || activeSearchTerm === '全国') {
+          return true;
+        }
+
+        // Special country keywords
+        if (activeSearchTerm === '일본' || activeSearchTerm === '日本' || activeSearchTerm === 'japan') {
+          if (c.country === 'JP') return true;
+        }
+        if (activeSearchTerm === '한국' || activeSearchTerm === '韓国' || activeSearchTerm === 'korea') {
+          if (c.country !== 'JP') return true;
+        }
+
         const matchName = c.name.toLowerCase().includes(activeSearchTerm);
         const matchRegion = c.region.toLowerCase().includes(activeSearchTerm);
+        const matchJaName = c.nameJa?.toLowerCase().includes(activeSearchTerm) || false;
+        const matchJaRegion = c.regionJa?.toLowerCase().includes(activeSearchTerm) || false;
+        const matchKoName = c.nameKo?.toLowerCase().includes(activeSearchTerm) || false;
         const matchAddress = c.address?.toLowerCase().includes(activeSearchTerm) || false;
         const matchDesc = c.description?.toLowerCase().includes(activeSearchTerm) || false;
 
-        // Space-tolerant matching: e.g. "경북청송" matches "경북 청송", "구미양호" matches "구미 양호"
+        // Space-tolerant matching: e.g. "경북청송" matches "경북 청송", "구미양호" matches "구미 양호", "まくべつ"
         const noSpaceQuery = activeSearchTerm.replace(/\s+/g, '');
         const noSpaceName = c.name.toLowerCase().replace(/\s+/g, '');
         const noSpaceRegion = c.region.toLowerCase().replace(/\s+/g, '');
-        const matchNoSpace = noSpaceName.includes(noSpaceQuery) || noSpaceRegion.includes(noSpaceQuery);
+        const noSpaceJaName = (c.nameJa || '').toLowerCase().replace(/\s+/g, '');
+        const matchNoSpace = noSpaceName.includes(noSpaceQuery) || noSpaceRegion.includes(noSpaceQuery) || noSpaceJaName.includes(noSpaceQuery);
 
-        return matchName || matchRegion || matchAddress || matchDesc || matchNoSpace;
+        return matchName || matchRegion || matchJaName || matchJaRegion || matchKoName || matchAddress || matchDesc || matchNoSpace;
       })
     : [];
 
@@ -884,16 +923,16 @@ export default function CoursesPage() {
               }
             }}
             className="p-2 -ml-2 text-stone-700 hover:text-stone-950 cursor-pointer"
-            title="이전으로"
+            title={isJapanese ? "戻る" : "이전으로"}
           >
             <ArrowLeft className="w-6 h-6" />
           </button>
           <div>
             <h2 className="text-xl font-black text-stone-900 leading-tight">
-              전국 파크골프장 검색
+              {isJapanese ? '全国パークゴルフ場 検索' : '전국 파크골프장 검색'}
             </h2>
             <p className="text-xs text-stone-700 font-semibold">
-              전국 시·군 공인 구장 검색 및 등록
+              {isJapanese ? '全国公認コース検索＆登録' : '전국 시·군 공인 구장 검색 및 등록'}
             </p>
           </div>
         </div>
@@ -905,7 +944,7 @@ export default function CoursesPage() {
             className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black px-3 py-2 rounded-xl flex items-center gap-1 shadow active:scale-95 transition cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>신규 등록</span>
+            <span>{isJapanese ? '新規登録' : '신규 등록'}</span>
           </button>
           {/* 대표님 요청: 상단 우측 닫기 (X) 버튼 누르면 항상 직전 화면으로 복귀 */}
           <button
@@ -918,7 +957,7 @@ export default function CoursesPage() {
               }
             }}
             className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition cursor-pointer"
-            title="닫기 (이전 화면으로)"
+            title={isJapanese ? "閉じる (前画面へ)" : "닫기 (이전 화면으로)"}
           >
             <X className="w-5 h-5" />
           </button>
@@ -938,7 +977,7 @@ export default function CoursesPage() {
               }
             }}
             onKeyDown={handleKeyDown}
-            placeholder="도시명 또는 구장명 검색 (예: 밀양, 청송, 지산)"
+            placeholder={isJapanese ? "都市名またはコース名で検索 (例: 幕別、忠類、札幌)" : "도시명 또는 구장명 검색 (예: 밀양, 청송, 지산)"}
             className="flex-1 pl-4 pr-2 py-3.5 text-base font-bold text-stone-900 outline-none placeholder:text-stone-400"
           />
 
@@ -948,7 +987,7 @@ export default function CoursesPage() {
               type="button"
               onClick={handleClearSearch}
               className="p-2 text-stone-400 hover:text-stone-700 cursor-pointer"
-              title="검색어 지우기"
+              title={isJapanese ? "検索クリア" : "검색어 지우기"}
             >
               <X className="w-5 h-5" />
             </button>
@@ -959,48 +998,114 @@ export default function CoursesPage() {
             type="button"
             onClick={() => handleExecuteSearch()}
             className="h-full px-5 py-3.5 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white flex items-center justify-center transition shrink-0 cursor-pointer gap-1 font-black"
-            title="검색하기"
+            title={isJapanese ? "検索" : "검색하기"}
           >
             <Search className="w-5 h-5" />
-            <span className="text-xs">검색</span>
+            <span className="text-xs">{isJapanese ? '検索' : '검색'}</span>
           </button>
         </div>
 
-        {/* ⛳ 전국 17개 시·도 원터치 빠른 탐색 바 */}
+        {/* 🇰🇷 🇯🇵 국가별 필터 탭 (전체 / 대한민국 / 일본 본토) */}
+        <div className="flex items-center gap-1.5 p-1 bg-stone-100/90 rounded-2xl border border-stone-200 text-xs font-black">
+          <button
+            type="button"
+            onClick={() => {
+              setCountryFilter('ALL');
+              if (!inputQuery) setAppliedQuery('전체');
+            }}
+            className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              countryFilter === 'ALL'
+                ? 'bg-emerald-700 text-white shadow'
+                : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/60'
+            }`}
+          >
+            <span>🌐</span>
+            <span>{isJapanese ? '全体' : '전국·전체'}</span>
+            <span className="text-[10px] opacity-80">({courses.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setCountryFilter('KR');
+              if (!inputQuery) setAppliedQuery('전체');
+            }}
+            className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              countryFilter === 'KR'
+                ? 'bg-emerald-700 text-white shadow'
+                : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/60'
+            }`}
+          >
+            <span>🇰🇷</span>
+            <span>{isJapanese ? '韓国' : '대한민국'}</span>
+            <span className="text-[10px] opacity-80">({courses.filter((c) => c.country !== 'JP').length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setCountryFilter('JP');
+              if (!inputQuery) setAppliedQuery('전체');
+            }}
+            className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              countryFilter === 'JP'
+                ? 'bg-emerald-700 text-white shadow'
+                : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/60'
+            }`}
+          >
+            <span>🇯🇵</span>
+            <span>{isJapanese ? '日本公認' : '일본 공인'}</span>
+            <span className="text-[10px] opacity-80">({courses.filter((c) => c.country === 'JP').length})</span>
+          </button>
+        </div>
+
+        {/* ⛳ 전국 17개 시·도 / 일본 지역 원터치 빠른 탐색 바 */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
           <button
             type="button"
             onClick={() => {
-              setInputQuery('전체');
-              setAppliedQuery('전체');
+              const allQuery = isJapanese ? '全国' : '전체';
+              setInputQuery(allQuery);
+              setAppliedQuery(allQuery);
             }}
             className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition cursor-pointer ${
-              appliedQuery === '전체'
+              appliedQuery === '전체' || appliedQuery === '全国'
                 ? 'bg-emerald-700 text-white shadow-xs'
                 : 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200'
             }`}
           >
-            전국 전체 ({courses.length})
+            {isJapanese ? `全国すべて (${courses.length})` : `전국 전체 (${courses.length})`}
           </button>
-          {[
-            { name: '서울', count: 28 },
-            { name: '경기', count: 58 },
-            { name: '인천', count: 8 },
-            { name: '부산', count: 18 },
-            { name: '대구', count: 39 },
-            { name: '광주', count: 9 },
-            { name: '대전', count: 5 },
-            { name: '울산', count: 7 },
-            { name: '세종', count: 9 },
-            { name: '강원', count: 46 },
-            { name: '충북', count: 26 },
-            { name: '충남', count: 35 },
-            { name: '전북', count: 33 },
-            { name: '전남', count: 43 },
-            { name: '경북', count: 71 },
-            { name: '경남', count: 89 },
-            { name: '제주', count: 11 },
-          ].map((reg) => (
+          {(isJapanese
+            ? [
+                { name: '北海道', count: 180 },
+                { name: '東北', count: 45 },
+                { name: '関東', count: 68 },
+                { name: '中部', count: 52 },
+                { name: '近畿', count: 39 },
+                { name: '中国・四国', count: 34 },
+                { name: '九州・沖縄', count: 48 },
+              ]
+            : [
+                { name: '서울', count: 28 },
+                { name: '경기', count: 58 },
+                { name: '인천', count: 8 },
+                { name: '부산', count: 18 },
+                { name: '대구', count: 39 },
+                { name: '광주', count: 9 },
+                { name: '대전', count: 5 },
+                { name: '울산', count: 7 },
+                { name: '세종', count: 9 },
+                { name: '강원', count: 46 },
+                { name: '충북', count: 26 },
+                { name: '충남', count: 35 },
+                { name: '전북', count: 33 },
+                { name: '전남', count: 43 },
+                { name: '경북', count: 71 },
+                { name: '경남', count: 89 },
+                { name: '제주', count: 11 },
+              ]
+          ).map((reg) => (
             <button
               key={reg.name}
               type="button"
@@ -1127,7 +1232,7 @@ export default function CoursesPage() {
             <div className="flex items-center gap-1.5 text-emerald-950 font-black">
               <Search className="w-4 h-4 text-emerald-700" />
               <span>
-                &apos;{appliedQuery}&apos; 검색 결과: <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>개 구장
+                &apos;{appliedQuery}&apos; {isJapanese ? '検索結果:' : '검색 결과:'} <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>{isJapanese ? '件' : '개 구장'}
               </span>
             </div>
             <button
@@ -1135,7 +1240,7 @@ export default function CoursesPage() {
               onClick={handleClearSearch}
               className="bg-white hover:bg-stone-100 text-stone-700 font-extrabold px-3 py-1.5 rounded-xl border border-stone-300 text-[11px] shadow-2xs transition active:scale-95 cursor-pointer"
             >
-              ✕ 검색 닫기 (주변 식당·연습장·중고)
+              {isJapanese ? '✕ 検索を閉じる' : '✕ 검색 닫기 (주변 식당·연습장·중고)'}
             </button>
           </div>
 
@@ -1145,10 +1250,12 @@ export default function CoursesPage() {
               <div className="bg-white rounded-3xl p-8 text-center border border-stone-200 space-y-3 shadow-xs">
                 <div className="text-4xl">⛳</div>
                 <h3 className="text-base font-black text-stone-800">
-                  &quot;{appliedQuery}&quot; 관련 구장을 찾지 못했습니다.
+                  &quot;{appliedQuery}&quot; {isJapanese ? '関連のコースが見つかりませんでした。' : '관련 구장을 찾지 못했습니다.'}
                 </h3>
                 <p className="text-xs text-stone-700 leading-relaxed max-w-xs mx-auto">
-                  아직 등록되지 않은 구장이라면 [신규 등록] 버튼을 눌러 3초 만에 표준 코스로 즉시 생성할 수 있습니다.
+                  {isJapanese
+                    ? 'まだ登録されていないコースの場合は[新規登録]ボタンを押して標準コースを即座に作成できます。'
+                    : '아직 등록되지 않은 구장이라면 [신규 등록] 버튼을 눌러 3초 만에 표준 코스로 즉시 생성할 수 있습니다.'}
                 </p>
                 <button
                   type="button"
@@ -1158,13 +1265,15 @@ export default function CoursesPage() {
                   }}
                   className="bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow cursor-pointer"
                 >
-                  + &quot;{appliedQuery}&quot; 구장 3초 자동 생성하기
+                  + &quot;{appliedQuery}&quot; {isJapanese ? 'コース自動作成' : '구장 3초 자동 생성하기'}
                 </button>
               </div>
             ) : (
               filteredCourses.map((c) => {
                 const isHome = homeCourseId === c.id;
                 const isFavorite = favoriteHomeCourseIds.includes(c.id);
+                const dual = getCourseDualName(c, isJapanese);
+                const displayRegion = getLocalizedCourseRegion(c);
 
                 return (
                   <div
@@ -1179,35 +1288,43 @@ export default function CoursesPage() {
                   >
                     {/* Top: Name & Badges */}
                     <div className="flex items-start justify-between gap-2">
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <button
                             type="button"
                             onClick={() => handleSelectCourseAndGoHome(c.id)}
-                            className="text-left font-black text-lg text-stone-900 leading-tight hover:text-emerald-700 transition active:scale-[0.98] cursor-pointer"
-                            title="터치 시 이 구장을 선택하고 첫 화면으로 이동합니다"
+                            className="text-left flex flex-col group transition active:scale-[0.98] cursor-pointer"
+                            title={isJapanese ? "タップしてこのコースを選択しホーム画面へ移動します" : "터치 시 이 구장을 선택하고 첫 화면으로 이동합니다"}
                           >
-                            {c.name}
+                            <span className="font-black text-lg text-stone-900 leading-tight group-hover:text-emerald-700 flex items-center gap-1.5 flex-wrap">
+                              {dual.flag && <span>{dual.flag}</span>}
+                              <span>{dual.primary}</span>
+                            </span>
+                            {dual.showSecondary && dual.secondary && (
+                              <span className="text-xs font-bold text-stone-500 leading-tight mt-0.5 group-hover:text-emerald-800">
+                                {dual.secondary}
+                              </span>
+                            )}
                           </button>
                           {c.isVerified && (
-                            <span className="text-[10px] bg-blue-100 text-blue-800 font-black px-1.5 py-0.5 rounded">
-                              공인 검증
+                            <span className="text-[10px] bg-blue-100 text-blue-800 font-black px-1.5 py-0.5 rounded self-start mt-1">
+                              {isJapanese ? '公認検証' : '공인 검증'}
                             </span>
                           )}
                           {isHome ? (
                             <span className="text-[10px] bg-emerald-700 text-white font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                              ★ 현재 선택됨
+                              {isJapanese ? '★ 現在選択中' : '★ 현재 선택됨'}
                             </span>
                           ) : isFavorite ? (
                             <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                              ★ 내 홈구장
+                              {isJapanese ? '★ マイコース' : '★ 내 홈구장'}
                             </span>
                           ) : null}
                         </div>
                         <p className="text-xs text-stone-700 mt-1 font-semibold flex items-center gap-1">
                           <MapPin className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
                           <span>
-                            {c.region} · {formatCourseHolesText(c)}
+                            {displayRegion} · {formatCourseHolesText(c).replace('홀', isJapanese ? 'ホール' : '홀')}
                           </span>
                         </p>
                       </div>
@@ -1215,7 +1332,7 @@ export default function CoursesPage() {
                       {/* Hole Badge */}
                       <div className="text-right shrink-0">
                         <span className="text-xs font-black bg-stone-100 text-stone-800 px-2.5 py-1 rounded-xl border border-stone-200">
-                          {formatCourseHolesText(c)}
+                          {formatCourseHolesText(c).replace('홀', isJapanese ? 'ホール' : '홀')}
                         </span>
                       </div>
                     </div>
@@ -1252,7 +1369,7 @@ export default function CoursesPage() {
                         </div>
                         {c.parking && (
                           <div className="text-[11px] text-stone-600 flex items-center gap-1 font-medium">
-                            <span>🅿️ 주차:</span>
+                            <span>🅿️ {isJapanese ? '駐車場:' : '주차:'}</span>
                             <span>{c.parking}</span>
                           </div>
                         )}
@@ -1268,7 +1385,7 @@ export default function CoursesPage() {
                             <span className="text-emerald-800 underline decoration-emerald-600">
                               {c.contributorName}
                             </span>{' '}
-                            님이 등록·기여한 구장 정보
+                            {isJapanese ? '様が登録・貢献したコース情報' : '님이 등록·기여한 구장 정보'}
                           </span>
                         </div>
                         <button
@@ -1276,19 +1393,21 @@ export default function CoursesPage() {
                           onClick={() => setDetailCourse(c)}
                           className="text-[11px] text-amber-900 hover:text-emerald-800 font-bold underline shrink-0 ml-2 cursor-pointer"
                         >
-                          상세·보완
+                          {isJapanese ? '詳細・補足' : '상세·보완'}
                         </button>
                       </div>
                     ) : (
                       <div className="flex items-center justify-between text-xs px-1 text-stone-700">
-                        <span className="text-[11px]">로컬룰 및 최신 정보가 비어있나요?</span>
+                        <span className="text-[11px]">
+                          {isJapanese ? 'ローカルルールや最新情報は未入力ですか？' : '로컬룰 및 최신 정보가 비어있나요?'}
+                        </span>
                         <button
                           type="button"
                           onClick={() => setDetailCourse(c)}
                           className="text-[11px] text-emerald-800 font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
                         >
                           <Edit3 className="w-3 h-3" />
-                          <span>제원 확인·명예 등록</span>
+                          <span>{isJapanese ? '諸元確認・登録' : '제원 확인·명예 등록'}</span>
                         </button>
                       </div>
                     )}
@@ -1301,10 +1420,14 @@ export default function CoursesPage() {
                     >
                       <span className="flex items-center gap-1.5">
                         <span className="text-sm">📋</span>
-                        <span>코스별 1~9홀 상세 제원표 · 타수/거리 실측 · 명예의 전당</span>
+                        <span>
+                          {isJapanese
+                            ? 'コース別 1〜9ホール詳細諸元 · 打数/距離実測 · 殿堂'
+                            : '코스별 1~9홀 상세 제원표 · 타수/거리 실측 · 명예의 전당'}
+                        </span>
                       </span>
                       <span className="text-[11px] text-emerald-800 font-extrabold bg-white px-2 py-0.5 rounded border border-stone-200">
-                        확인/정정 ❯
+                        {isJapanese ? '確認/修正 ❯' : '확인/정정 ❯'}
                       </span>
                     </button>
 
@@ -1315,7 +1438,7 @@ export default function CoursesPage() {
                         onClick={() => handleSelectCourseAndGoHome(c.id)}
                         className="flex-1 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-black text-sm py-3 px-3 rounded-xl shadow text-center transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
                       >
-                        <span>⛳ 이 구장 선택 (잔디 확인 & 0초 시작)</span>
+                        <span>{isJapanese ? '⛳ このコースを選択 (即時スタート)' : '⛳ 이 구장 선택 (잔디 확인 & 0초 시작)'}</span>
                         <ChevronRight className="w-4 h-4" />
                       </button>
 
@@ -1329,23 +1452,30 @@ export default function CoursesPage() {
                             ? 'bg-amber-100 text-amber-950 border-amber-400'
                             : 'bg-white text-stone-800 border-stone-300 hover:bg-stone-50'
                         }`}
-                        title="내 지정 홈 구장으로 설정/해제"
+                        title={isJapanese ? "マイコースに設定/解除" : "내 지정 홈 구장으로 설정/해제"}
                       >
                         <Star className={`w-3.5 h-3.5 ${isHome || isFavorite ? 'fill-current text-yellow-500' : ''}`} />
-                        <span>{isHome ? '현재 선택됨' : isFavorite ? '내 구장' : '홈 지정'}</span>
+                        <span>
+                          {isHome
+                            ? (isJapanese ? '選択中' : '현재 선택됨')
+                            : isFavorite
+                            ? (isJapanese ? 'マイコース' : '내 구장')
+                            : (isJapanese ? 'ホーム登録' : '홈 지정')}
+                        </span>
                       </button>
 
                       {c.id.startsWith('custom-course-') && (
                         <button
                           type="button"
                           onClick={() => {
-                            if (confirm(`'${c.name}' 구장을 삭제하시겠습니까?`)) {
+                            const confirmMsg = isJapanese ? `'${c.name}' コースを削除しますか？` : `'${c.name}' 구장을 삭제하시겠습니까?`;
+                            if (confirm(confirmMsg)) {
                               ParkOnStorage.deleteCustomCourse(c.id);
                               refreshCourses();
                             }
                           }}
                           className="p-2.5 text-stone-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition border border-transparent hover:border-rose-200 cursor-pointer"
-                          title="구장 삭제"
+                          title={isJapanese ? "コース削除" : "구장 삭제"}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1366,11 +1496,23 @@ export default function CoursesPage() {
           <div className="bg-stone-100/90 border border-stone-300/80 rounded-2xl p-3 text-xs text-stone-700 flex items-start gap-2">
             <span className="text-base shrink-0">💡</span>
             <div className="leading-relaxed">
-              <strong className="text-stone-900 font-bold">골프장 찾기 안내:</strong> 상단 검색창에{' '}
-              <span className="text-emerald-800 font-extrabold">&apos;구미&apos;</span>,{' '}
-              <span className="text-emerald-800 font-extrabold">&apos;밀양&apos;</span>,{' '}
-              <span className="text-emerald-800 font-extrabold">&apos;청송&apos;</span> 등 도시명을 넣고{' '}
-              <strong className="text-emerald-900 font-black">[검색]</strong>을 누르시면 해당 구장이 바로 나열됩니다.
+              {isJapanese ? (
+                <>
+                  <strong className="text-stone-900 font-bold">コース検索の案内:</strong> 上の検索バーに{' '}
+                  <span className="text-emerald-800 font-extrabold">&apos;幕別&apos;</span>,{' '}
+                  <span className="text-emerald-800 font-extrabold">&apos;十勝&apos;</span>,{' '}
+                  <span className="text-emerald-800 font-extrabold">&apos;札幌&apos;</span> などの都市名を入力して{' '}
+                  <strong className="text-emerald-900 font-black">[検索]</strong> を押すと該当コースがすぐに表示されます。
+                </>
+              ) : (
+                <>
+                  <strong className="text-stone-900 font-bold">골프장 찾기 안내:</strong> 상단 검색창에{' '}
+                  <span className="text-emerald-800 font-extrabold">&apos;구미&apos;</span>,{' '}
+                  <span className="text-emerald-800 font-extrabold">&apos;밀양&apos;</span>,{' '}
+                  <span className="text-emerald-800 font-extrabold">&apos;청송&apos;</span> 등 도시명을 넣고{' '}
+                  <strong className="text-emerald-900 font-black">[검색]</strong>을 누르시면 해당 구장이 바로 나열됩니다.
+                </>
+              )}
             </div>
           </div>
 
@@ -1388,11 +1530,11 @@ export default function CoursesPage() {
             >
               <span className="text-xl sm:text-2xl">🍽️</span>
               <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
-                주변 맛집
+                {isJapanese ? '周辺グルメ' : '주변 맛집'}
               </span>
               {activeServiceTab === 'RESTAURANT' && (
                 <span className="text-[9px] sm:text-[10px] bg-amber-400 text-stone-950 px-1 sm:px-1.5 py-0.2 rounded font-extrabold whitespace-nowrap">
-                  선택됨 ✓
+                  {isJapanese ? '選択中 ✓' : '선택됨 ✓'}
                 </span>
               )}
             </button>
@@ -1409,11 +1551,11 @@ export default function CoursesPage() {
             >
               <span className="text-xl sm:text-2xl">👨‍🏫</span>
               <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
-                레슨 코치
+                {isJapanese ? 'レッスンプロ' : '레슨 코치'}
               </span>
               {activeServiceTab === 'COACH' && (
                 <span className="text-[9px] sm:text-[10px] bg-amber-400 text-stone-950 px-1 sm:px-1.5 py-0.2 rounded font-extrabold whitespace-nowrap">
-                  선택됨 ✓
+                  {isJapanese ? '選択中 ✓' : '선택됨 ✓'}
                 </span>
               )}
             </button>
@@ -1430,11 +1572,11 @@ export default function CoursesPage() {
             >
               <span className="text-xl sm:text-2xl">⛳</span>
               <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
-                연습장
+                {isJapanese ? '練習場' : '연습장'}
               </span>
               {activeServiceTab === 'RANGE' && (
                 <span className="text-[9px] sm:text-[10px] bg-amber-400 text-stone-950 px-1 sm:px-1.5 py-0.2 rounded font-extrabold whitespace-nowrap">
-                  선택됨 ✓
+                  {isJapanese ? '選択中 ✓' : '선택됨 ✓'}
                 </span>
               )}
             </button>
@@ -1451,11 +1593,11 @@ export default function CoursesPage() {
             >
               <span className="text-xl sm:text-2xl">🛍️</span>
               <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
-                골프 매장
+                {isJapanese ? 'ショップ' : '골프 매장'}
               </span>
               {activeServiceTab === 'SHOP' && (
                 <span className="text-[9px] sm:text-[10px] bg-amber-400 text-stone-950 px-1 sm:px-1.5 py-0.2 rounded font-extrabold whitespace-nowrap">
-                  선택됨 ✓
+                  {isJapanese ? '選択中 ✓' : '선택됨 ✓'}
                 </span>
               )}
             </button>
@@ -1472,11 +1614,11 @@ export default function CoursesPage() {
             >
               <span className="text-xl sm:text-2xl">🤝</span>
               <span className="text-[9.5px] sm:text-xs font-black whitespace-nowrap tracking-tighter">
-                중고 매매 교환
+                {isJapanese ? 'フリマ・中古' : '중고 매매 교환'}
               </span>
               {activeServiceTab === 'MARKET' && (
                 <span className="text-[9px] sm:text-[10px] bg-amber-400 text-stone-950 px-1 sm:px-1.5 py-0.2 rounded font-extrabold whitespace-nowrap">
-                  선택됨 ✓
+                  {isJapanese ? '選択中 ✓' : '선택됨 ✓'}
                 </span>
               )}
             </button>

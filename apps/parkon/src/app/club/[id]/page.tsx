@@ -51,11 +51,13 @@ import { ClubStorage } from '@/lib/clubStorage';
 import { ParkOnStorage } from '@/lib/storage';
 import { RoundPlayer, RoundSession } from '@/types/parkon';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 export default function ClubRoomDetailPage() {
   const params = useParams();
   const router = useRouter();
   const roomId = params?.id as string;
+  const { isJapanese } = useTranslation();
 
   const [room, setRoom] = useState<ClubEventRoom | null>(null);
   const [activeTab, setActiveTab] = useState<'roster' | 'team' | 'individual'>('roster');
@@ -299,14 +301,17 @@ export default function ClubRoomDetailPage() {
     }
   };
 
-  // 참가비 수납 현황 카카오톡 리포트 복사
+  // 참가비 수납 현황 카카오톡/LINE 리포트 복사
   const handleCopyPaymentReport = async () => {
     if (!room) return;
-    const text = ClubStorage.generatePaymentStatusKakaoReport(room);
+    const text = ClubStorage.generatePaymentStatusKakaoReport(room, isJapanese);
+    if (isJapanese && typeof window !== 'undefined') {
+      window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank');
+    }
     if (navigator.clipboard) {
       try {
         await navigator.clipboard.writeText(text);
-        showToast('💰 참가비 수납 현황 리포트가 복사되었습니다! 카톡에 공유하세요.');
+        showToast(isJapanese ? '💰 参加費現況レポートがコピーされました！LINEに共有してください。' : '💰 참가비 수납 현황 리포트가 복사되었습니다! 카톡에 공유하세요.');
         return;
       } catch (e) {
         console.warn(e);
@@ -318,7 +323,7 @@ export default function ClubRoomDetailPage() {
     ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
-    showToast('💰 참가비 수납 현황 리포트가 복사되었습니다! 카톡에 공유하세요.');
+    showToast(isJapanese ? '💰 参加費現況レポートがコピーされました！LINEに共有してください。' : '💰 참가비 수납 현황 리포트가 복사되었습니다! 카톡에 공유하세요.');
   };
 
   // 참가비/계좌 설정 저장
@@ -336,53 +341,65 @@ export default function ClubRoomDetailPage() {
     setShowPaymentConfigModal(false);
   };
 
-  // 카카오톡 초대장 복사
+  // 카카오톡/LINE 초대장 복사
   const handleCopyKakaoInvite = () => {
-    const text = ClubStorage.generateKakaoShareText(room);
+    const text = ClubStorage.generateKakaoShareText(room, isJapanese);
+    if (isJapanese && typeof window !== 'undefined') {
+      window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank');
+    }
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text);
-      showToast('카카오톡 초대 문구가 복사되었습니다! 단톡방에 붙여넣기 하세요 ⛳');
+      showToast(isJapanese ? 'LINE招待文がコピーされました！トークルームに貼り付けしてください ⛳' : '카카오톡 초대 문구가 복사되었습니다! 단톡방에 붙여넣기 하세요 ⛳');
     }
   };
 
-  // 전체 조 편성표 카카오톡 공지 복사
+  // 전체 조 편성표 카카오톡/LINE 공지 복사
   const handleCopyGroupFormationKakao = () => {
-    const text = ClubStorage.generateGroupFormationKakaoShareText(room);
+    const text = ClubStorage.generateGroupFormationKakaoShareText(room, isJapanese);
+    if (isJapanese && typeof window !== 'undefined') {
+      window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank');
+    }
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text);
-      showToast('📢 전체 조 편성 결과가 복사되었습니다! 단톡방에 공유하세요.');
+      showToast(isJapanese ? '📢 全組編成結果がコピーされました！LINEに共有してください。' : '📢 전체 조 편성 결과가 복사되었습니다! 단톡방에 공유하세요.');
     }
   };
 
   // [대표님 지시] 1초 시상식 및 수령 확인 리포트 복사
   const handleCopyTournamentReport = () => {
-    const text = ClubStorage.generateTournamentResultReport(room);
+    const text = ClubStorage.generateTournamentResultReport(room, isJapanese);
+    if (isJapanese && typeof window !== 'undefined') {
+      window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank');
+    }
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text);
-      showToast('🏆 [시상식 및 수령 확인] 결과 요약 공지가 복사되었습니다! 카톡 단체방에 공유하세요.');
+      showToast(isJapanese ? '🏆 [表彰式および受領確認] 結果要約がコピーされました！LINEグループに共有してください。' : '🏆 [시상식 및 수령 확인] 결과 요약 공지가 복사되었습니다! 카톡 단체방에 공유하세요.');
     }
   };
 
   // 📋 계좌번호 1초 원터치 복사
   const handleCopyAccount = () => {
     if (!room?.bankAccount) {
-      showToast('등록된 입금 계좌가 없습니다. 총무에게 문의해 주세요.');
+      showToast(isJapanese ? '登録された振込口座がありません。幹事にお問い合わせください。' : '등록된 입금 계좌가 없습니다. 총무에게 문의해 주세요.');
       return;
     }
     if (navigator.clipboard) {
       navigator.clipboard.writeText(room.bankAccount);
     }
-    showToast(`🏦 '${room.bankAccount}' 계좌가 복사되었습니다! 은행 앱에 붙여넣기 하세요.`);
+    showToast(isJapanese ? `🏦 '${room.bankAccount}' 口座番号がコピーされました！` : `🏦 '${room.bankAccount}' 계좌가 복사되었습니다! 은행 앱에 붙여넣기 하세요.`);
   };
 
-  // 📢 미납자 타겟 카카오톡 독촉 안내문 복사
+  // 📢 미납자 타겟 카카오톡/LINE 독촉 안내문 복사
   const handleCopyUnpaidReminder = () => {
     if (!room) return;
-    const text = ClubStorage.generateUnpaidKakaoReminderText(room);
+    const text = ClubStorage.generateUnpaidKakaoReminderText(room, isJapanese);
+    if (isJapanese && typeof window !== 'undefined') {
+      window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank');
+    }
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text);
     }
-    showToast('📢 미납자 대상 맞춤 카톡 독촉 안내문이 복사되었습니다!');
+    showToast(isJapanese ? '📢 未納者向けLINE催促案内文がコピーされました！' : '📢 미납자 대상 맞춤 카톡 독촉 안내문이 복사되었습니다!');
   };
 
   // ⚡ [현장 긴급 대응] 결원(노쇼) 발생 시 대기 1순위 1초 즉시 투입
@@ -698,15 +715,17 @@ export default function ClubRoomDetailPage() {
           className="flex items-center gap-1 text-xs font-black text-stone-700 hover:text-stone-900 transition active:scale-95 cursor-pointer"
         >
           <ChevronLeft className="w-4 h-4" />
-          <span>목록으로</span>
+          <span>{isJapanese ? '一覧へ' : '목록으로'}</span>
         </button>
         <div className="text-center">
           <h1 className="font-black text-sm text-stone-900 flex items-center justify-center gap-1.5">
             <Trophy className="w-4 h-4 text-purple-700" />
-            <span>대회 / 모임 현황</span>
+            <span>{isJapanese ? '大会・ラウンド現況' : '대회 / 모임 현황'}</span>
           </h1>
           <p className="text-[10px] text-stone-500 font-bold">
-            총 {totalAllPlayers}명 참가 ({room.groups.length}개 조)
+            {isJapanese
+              ? `計 ${totalAllPlayers}人参加 (${room.groups.length}組)`
+              : `총 ${totalAllPlayers}명 참가 (${room.groups.length}개 조)`}
           </p>
         </div>
         <div className="flex items-center gap-1">
@@ -714,7 +733,7 @@ export default function ClubRoomDetailPage() {
             type="button"
             onClick={loadRoom}
             className="p-1.5 rounded-xl text-stone-500 hover:text-stone-800 bg-stone-50 border border-stone-200 active:scale-95 transition cursor-pointer"
-            title="새로고침"
+            title={isJapanese ? '更新' : '새로고침'}
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -729,7 +748,7 @@ export default function ClubRoomDetailPage() {
               }
             }}
             className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition cursor-pointer flex items-center justify-center"
-            title="닫기 (이전 화면으로)"
+            title={isJapanese ? '閉じる (前の画面へ)' : '닫기 (이전 화면으로)'}
           >
             <X className="w-5 h-5" />
           </button>
@@ -758,11 +777,13 @@ export default function ClubRoomDetailPage() {
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="bg-purple-500/30 text-purple-200 border border-purple-400/40 text-[10px] font-black px-2 py-0.5 rounded-full">
-                {room.groups.length}개 조 편성
+                {isJapanese ? `${room.groups.length}組編成` : `${room.groups.length}개 조 편성`}
               </span>
               <span className="bg-emerald-500/30 text-emerald-200 border border-emerald-400/40 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                {totalAllPlayers}명 참가 완료 (조당 3~4인)
+                {isJapanese
+                  ? `${totalAllPlayers}人参加完了 (1組3〜4人)`
+                  : `${totalAllPlayers}명 참가 완료 (조당 3~4인)`}
               </span>
               <button
                 type="button"
@@ -770,7 +791,7 @@ export default function ClubRoomDetailPage() {
                 className="bg-amber-400 text-amber-950 font-black text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1 transition active:scale-95 cursor-pointer shadow-xs hover:bg-amber-300"
               >
                 <span>{ClubStorage.getGameModeInfo(room.gameMode).badge}</span>
-                <span className="underline font-bold text-[9px]">대회 요강 & 룰 공시 📋</span>
+                <span className="underline font-bold text-[9px]">{isJapanese ? '大会要項＆ルール公示 📋' : '대회 요강 & 룰 공시 📋'}</span>
               </button>
             </div>
             <h2 className="text-base font-black text-white mt-1.5 leading-snug">{room.title}</h2>
@@ -782,12 +803,12 @@ export default function ClubRoomDetailPage() {
           <div className="flex items-center gap-1.5">
             <MapPin className="w-3.5 h-3.5 text-purple-300 shrink-0" />
             <span className="truncate">
-              {room.courseName} ({(room.selectedCourseLetters || ['A', 'B']).join('-')}코스 · {room.totalHoles}홀)
+              {room.courseName} ({(room.selectedCourseLetters || ['A', 'B']).join('-')}{isJapanese ? 'コース · ' : '코스 · '}{room.totalHoles}{isJapanese ? 'ホール' : '홀'})
             </span>
           </div>
           <div className="flex items-center gap-1.5 justify-end">
             <Calendar className="w-3.5 h-3.5 text-purple-300" />
-            <span>주최/총무: {room.hostName}</span>
+            <span>{isJapanese ? '主催/幹事: ' : '주최/총무: '}{room.hostName}</span>
           </div>
         </div>
 
@@ -799,7 +820,7 @@ export default function ClubRoomDetailPage() {
             className="w-full bg-amber-400 hover:bg-amber-500 text-amber-950 font-black text-xs py-2.5 rounded-xl shadow-sm transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Share2 className="w-4 h-4" />
-            <span>카톡 초대장 복사 📢</span>
+            <span>{isJapanese ? 'LINE招待状コピー 📢' : '카톡 초대장 복사 📢'}</span>
           </button>
           <button
             type="button"
@@ -807,7 +828,7 @@ export default function ClubRoomDetailPage() {
             className="w-full bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs py-2.5 rounded-xl border border-amber-300 shadow-sm transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
           >
             <Trophy className="w-4 h-4 text-stone-950 shrink-0" />
-            <span>📋 1초 시상식 및 수령 확인</span>
+            <span>{isJapanese ? '📋 1秒表彰式＆受領確認' : '📋 1초 시상식 및 수령 확인'}</span>
           </button>
         </div>
       </div>
@@ -817,7 +838,7 @@ export default function ClubRoomDetailPage() {
         <div className="flex items-center justify-between flex-wrap gap-1.5">
           <div className="flex items-center gap-1.5 font-black text-xs text-stone-900">
             <span className="text-base">🎯</span>
-            <span>공식 경기 방식:</span>
+            <span>{isJapanese ? '公式競技方式:' : '공식 경기 방식:'}</span>
             <span className="text-indigo-700 font-extrabold">{room.gameModeTitle || ClubStorage.getGameModeInfo(room.gameMode).title}</span>
           </div>
           <div className="flex items-center gap-1">
@@ -827,14 +848,14 @@ export default function ClubRoomDetailPage() {
               className="text-[11px] font-black text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-1 rounded-xl transition active:scale-95 cursor-pointer flex items-center gap-1 shadow-2xs"
             >
               <Settings className="w-3 h-3 text-purple-600" />
-              <span>경기&시상 설정 ⚙️</span>
+              <span>{isJapanese ? '競技＆表彰設定 ⚙️' : '경기&시상 설정 ⚙️'}</span>
             </button>
             <button
               type="button"
               onClick={() => setShowRulesModal(true)}
               className="text-[11px] font-extrabold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-1 rounded-xl transition active:scale-95 cursor-pointer flex items-center gap-0.5 shadow-2xs"
             >
-              <span>요강 📋</span>
+              <span>{isJapanese ? '要項 📋' : '요강 📋'}</span>
             </button>
           </div>
         </div>
@@ -844,7 +865,14 @@ export default function ClubRoomDetailPage() {
           {room.awardConfig?.winnerGraceMonths && room.awardConfig.winnerGraceMonths > 0 ? (
             <span className="text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200 px-2 py-0.5 rounded-lg flex items-center gap-1">
               <ShieldCheck className="w-3 h-3 text-purple-600" />
-              <span>우승자 독식 방지 ({room.awardConfig.winnerGraceMonths === 1 ? '직전 1회 제외' : room.awardConfig.winnerGraceMonths === 2 ? '최근 2회 제외' : `최근 ${room.awardConfig.winnerGraceMonths}개월 제외`})</span>
+              <span>
+                {isJapanese ? '優勝者独占防止' : '우승자 독식 방지'} (
+                {room.awardConfig.winnerGraceMonths === 1
+                  ? (isJapanese ? '直前1回除外' : '직전 1회 제외')
+                  : room.awardConfig.winnerGraceMonths === 2
+                  ? (isJapanese ? '直近2回除外' : '최근 2회 제외')
+                  : (isJapanese ? `直近${room.awardConfig.winnerGraceMonths}ヶ月除外` : `최근 ${room.awardConfig.winnerGraceMonths}개월 제외`)})
+              </span>
             </span>
           ) : null}
 
@@ -855,21 +883,27 @@ export default function ClubRoomDetailPage() {
               className="text-[10px] font-black bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300/80 px-2 py-0.5 rounded-lg flex items-center gap-1 transition active:scale-95 cursor-pointer"
             >
               <Gift className="w-3 h-3 text-amber-700" />
-              <span>🎰 행운상 추첨기 {room.awardConfig?.luckyDrawWinners && room.awardConfig.luckyDrawWinners.length > 0 ? `(${room.awardConfig.luckyDrawWinners.length}명 당첨)` : '가동'} ▶</span>
+              <span>
+                {isJapanese ? '🎰 ラッキー賞抽選機' : '🎰 행운상 추첨기'}{' '}
+                {room.awardConfig?.luckyDrawWinners && room.awardConfig.luckyDrawWinners.length > 0
+                  ? (isJapanese ? `(${room.awardConfig.luckyDrawWinners.length}人当選)` : `(${room.awardConfig.luckyDrawWinners.length}명 당첨)`)
+                  : (isJapanese ? '稼働' : '가동')}{' '}
+                ▶
+              </span>
             </button>
           )}
 
           {specialAwards.length > 0 && (
             <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-lg flex items-center gap-1">
               <Award className="w-3 h-3 text-emerald-600" />
-              <span>이색 특별상 {specialAwards.length}개 산출됨</span>
+              <span>{isJapanese ? `ユニーク特別賞 ${specialAwards.length}件算出済` : `이색 특별상 ${specialAwards.length}개 산출됨`}</span>
             </span>
           )}
         </div>
 
         {room.gameRuleNotes && (
           <div className="bg-stone-50 p-2 rounded-xl border border-stone-200/80 text-[11px] text-stone-600 font-medium flex items-start gap-1.5">
-            <span className="text-indigo-600 font-bold shrink-0">📌 로컬 룰:</span>
+            <span className="text-indigo-600 font-bold shrink-0">{isJapanese ? '📌 ローカルルール:' : '📌 로컬 룰:'}</span>
             <span className="leading-snug">{room.gameRuleNotes}</span>
           </div>
         )}
@@ -880,9 +914,9 @@ export default function ClubRoomDetailPage() {
         <div className="flex items-center justify-between flex-wrap gap-1.5">
           <div className="flex items-center gap-1.5 font-black text-xs text-amber-950">
             <Coins className="w-4 h-4 text-amber-700 shrink-0" />
-            <span>참가비 수납 현황</span>
+            <span>{isJapanese ? '参加費収納現況' : '참가비 수납 현황'}</span>
             <span className="bg-amber-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-              1인 {paymentSummary.fee > 0 ? `${paymentSummary.fee.toLocaleString()}원` : '무료'}
+              {isJapanese ? '1人 ' : '1인 '}{paymentSummary.fee > 0 ? `${paymentSummary.fee.toLocaleString()}${isJapanese ? '円' : '원'}` : (isJapanese ? '無料' : '무료')}
             </span>
           </div>
 
@@ -892,19 +926,19 @@ export default function ClubRoomDetailPage() {
                 type="button"
                 onClick={handleCopyUnpaidReminder}
                 className="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-[11px] font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1 transition cursor-pointer"
-                title="미납자 대상 카톡 독촉 안내문 복사"
+                title={isJapanese ? '未納者向けLINE催促文コピー' : '미납자 대상 카톡 독촉 안내문 복사'}
               >
-                <span>독촉 카톡 복사 📢</span>
+                <span>{isJapanese ? '催促LINEコピー 📢' : '독촉 카톡 복사 📢'}</span>
               </button>
             )}
             <button
               type="button"
               onClick={handleCopyPaymentReport}
               className="bg-amber-500 hover:bg-amber-600 active:scale-95 text-amber-950 text-[11px] font-black px-2.5 py-1 rounded-xl shadow-xs flex items-center gap-1 transition cursor-pointer"
-              title="입금 현황 카톡 복사"
+              title={isJapanese ? '入金現況LINEコピー' : '입금 현황 카톡 복사'}
             >
               <Share2 className="w-3.5 h-3.5" />
-              <span>수납 카톡 공유 📢</span>
+              <span>{isJapanese ? '収納LINE共有 📢' : '수납 카톡 공유 📢'}</span>
             </button>
             <button
               type="button"
@@ -914,9 +948,9 @@ export default function ClubRoomDetailPage() {
                 setShowPaymentConfigModal(true);
               }}
               className="bg-white/80 hover:bg-white text-stone-700 text-[11px] font-bold px-2 py-1 rounded-xl border border-amber-300/80 shadow-2xs transition active:scale-95 cursor-pointer"
-              title="참가비/계좌 설정"
+              title={isJapanese ? '参加費/口座設定' : '참가비/계좌 설정'}
             >
-              <span>설정 ⚙️</span>
+              <span>{isJapanese ? '設定 ⚙️' : '설정 ⚙️'}</span>
             </button>
           </div>
         </div>
@@ -926,22 +960,22 @@ export default function ClubRoomDetailPage() {
           <div className="flex items-center justify-between text-xs font-bold text-stone-800 flex-wrap gap-1">
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="text-[11px] text-stone-700 font-bold truncate">
-                🏦 {room.bankAccount || '입금 계좌: 총무에게 문의'}
+                🏦 {room.bankAccount || (isJapanese ? '振込口座: 幹事にお問い合わせ' : '입금 계좌: 총무에게 문의')}
               </span>
               {room.bankAccount && (
                 <button
                   type="button"
                   onClick={handleCopyAccount}
                   className="bg-purple-700 hover:bg-purple-800 text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-2xs transition active:scale-95 cursor-pointer shrink-0 flex items-center gap-0.5"
-                  title="계좌번호 1초 복사"
+                  title={isJapanese ? '口座番号1秒コピー' : '계좌번호 1초 복사'}
                 >
                   <CheckCircle2 className="w-3 h-3" />
-                  <span>1초 복사</span>
+                  <span>{isJapanese ? '1秒コピー' : '1초 복사'}</span>
                 </button>
               )}
             </div>
             <span className="shrink-0 text-amber-800 font-black text-xs ml-auto">
-              수납률 {paymentSummary.paidRate}%
+              {isJapanese ? '収納率 ' : '수납률 '}{paymentSummary.paidRate}%
             </span>
           </div>
 
@@ -956,19 +990,19 @@ export default function ClubRoomDetailPage() {
           {/* 3열 요약 그리드 */}
           <div className="grid grid-cols-3 gap-1.5 pt-0.5 text-center">
             <div className="bg-stone-50 p-1.5 rounded-lg border border-stone-200">
-              <div className="text-[10px] text-stone-500 font-bold">전체 인원</div>
-              <div className="text-xs font-black text-stone-800">{paymentSummary.totalCount}명</div>
-              <div className="text-[9px] text-stone-400 font-semibold">{paymentSummary.totalExpectedAmount.toLocaleString()}원</div>
+              <div className="text-[10px] text-stone-500 font-bold">{isJapanese ? '総人数' : '전체 인원'}</div>
+              <div className="text-xs font-black text-stone-800">{paymentSummary.totalCount}{isJapanese ? '人' : '명'}</div>
+              <div className="text-[9px] text-stone-400 font-semibold">{paymentSummary.totalExpectedAmount.toLocaleString()}{isJapanese ? '円' : '원'}</div>
             </div>
             <div className="bg-emerald-50 p-1.5 rounded-lg border border-emerald-200">
-              <div className="text-[10px] text-emerald-700 font-bold">입금 완료 ✅</div>
-              <div className="text-xs font-black text-emerald-800">{paymentSummary.paidCount}명</div>
-              <div className="text-[9px] text-emerald-600 font-bold">{paymentSummary.totalCollectedAmount.toLocaleString()}원</div>
+              <div className="text-[10px] text-emerald-700 font-bold">{isJapanese ? '入金完了 ✅' : '입금 완료 ✅'}</div>
+              <div className="text-xs font-black text-emerald-800">{paymentSummary.paidCount}{isJapanese ? '人' : '명'}</div>
+              <div className="text-[9px] text-emerald-600 font-bold">{paymentSummary.totalCollectedAmount.toLocaleString()}{isJapanese ? '円' : '원'}</div>
             </div>
             <div className="bg-amber-50 p-1.5 rounded-lg border border-amber-200">
-              <div className="text-[10px] text-amber-700 font-bold">입금 대기 ⏳</div>
-              <div className="text-xs font-black text-amber-900">{paymentSummary.unpaidCount}명</div>
-              <div className="text-[9px] text-amber-700 font-bold">{paymentSummary.uncollectedAmount.toLocaleString()}원</div>
+              <div className="text-[10px] text-amber-700 font-bold">{isJapanese ? '入金待ち ⏳' : '입금 대기 ⏳'}</div>
+              <div className="text-xs font-black text-amber-900">{paymentSummary.unpaidCount}{isJapanese ? '人' : '명'}</div>
+              <div className="text-[9px] text-amber-700 font-bold">{paymentSummary.uncollectedAmount.toLocaleString()}{isJapanese ? '円' : '원'}</div>
             </div>
           </div>
         </div>
@@ -979,7 +1013,7 @@ export default function ClubRoomDetailPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-xs font-black text-stone-900">
             <span className="text-base">🔍</span>
-            <span>내 조 바로 찾기 & 출발 위치 안내</span>
+            <span>{isJapanese ? 'マイ組の検索＆スタート位置案内' : '내 조 바로 찾기 & 출발 위치 안내'}</span>
           </div>
           {searchMyName && (
             <button
@@ -987,7 +1021,7 @@ export default function ClubRoomDetailPage() {
               onClick={() => setSearchMyName('')}
               className="text-[10px] font-bold text-stone-400 hover:text-stone-700"
             >
-              초기화 ✕
+              {isJapanese ? 'リセット ✕' : '초기화 ✕'}
             </button>
           )}
         </div>
@@ -997,7 +1031,7 @@ export default function ClubRoomDetailPage() {
             type="text"
             value={searchMyName}
             onChange={(e) => setSearchMyName(e.target.value)}
-            placeholder="회원님 성함을 입력하세요 (예: 홍길동)"
+            placeholder={isJapanese ? 'お名前を入力してください (例: 山田太郎)' : '회원님 성함을 입력하세요 (예: 홍길동)'}
             className="w-full px-3 py-2.5 text-xs font-black bg-stone-50 border border-stone-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-purple-600 text-stone-900 placeholder:text-stone-400"
           />
         </div>
@@ -1020,26 +1054,26 @@ export default function ClubRoomDetailPage() {
               <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 text-white p-3.5 rounded-2xl shadow-md space-y-2 border-2 border-yellow-300 animate-fadeIn">
                 <div className="flex items-center justify-between flex-wrap gap-1">
                   <span className="text-[10px] font-black bg-black/20 px-2 py-0.5 rounded-full text-yellow-100">
-                    🎯 내 조 찾기 성공
+                    {isJapanese ? '🎯 マイ組の検索成功' : '🎯 내 조 찾기 성공'}
                   </span>
                   <span className="text-xs font-black bg-red-600 px-2.5 py-0.5 rounded-lg text-white shadow-2xs">
-                    🚩 {ClubStorage.getGroupStartHole(matchedGroup.groupNumber - 1, room.selectedCourseLetters, matchedGroup.startCourseLetter)} 동시 티샷 출발(샷건)
+                    🚩 {ClubStorage.getGroupStartHole(matchedGroup.groupNumber - 1, room.selectedCourseLetters, matchedGroup.startCourseLetter)} {isJapanese ? '同時ティーショット出発(ショットガン)' : '동시 티샷 출발(샷건)'}
                   </span>
                 </div>
                 <div className="text-sm font-black text-white">
-                  👑 <span className="underline decoration-yellow-200 decoration-2">{matchedPlayer.name}</span> 회원님은{' '}
-                  <span className="text-base font-black text-yellow-200">[{matchedGroup.name}]</span> 입니다!
+                  👑 <span className="underline decoration-yellow-200 decoration-2">{matchedPlayer.name}</span> {isJapanese ? '様は' : '회원님은'}{' '}
+                  <span className="text-base font-black text-yellow-200">[{matchedGroup.name}]</span> {isJapanese ? 'です！' : '입니다!'}
                 </div>
                 <div className="text-xs bg-black/20 p-2 rounded-xl text-yellow-50 font-bold flex items-center justify-between flex-wrap gap-2">
                   <div className="truncate">
-                    동반 조원: {matchedGroup.players.map((p) => `${p.name}${p.isLeader ? '(조장👑)' : ''}`).join(', ')}
+                    {isJapanese ? '同伴メンバー: ' : '동반 조원: '}{matchedGroup.players.map((p) => `${p.name}${p.isLeader ? (isJapanese ? '(リーダー👑)' : '(조장👑)') : ''}`).join(', ')}
                   </div>
                   <button
                     type="button"
                     onClick={() => handleStartGroupRound(matchedGroup)}
                     className="bg-white hover:bg-yellow-50 text-amber-950 font-black text-xs px-3 py-1.5 rounded-xl shadow-xs transition active:scale-95 cursor-pointer ml-auto"
                   >
-                    우리 조 스코어보드 열기 📱
+                    {isJapanese ? '自組スコアボードを開く 📱' : '우리 조 스코어보드 열기 📱'}
                   </button>
                 </div>
               </div>
@@ -1050,12 +1084,14 @@ export default function ClubRoomDetailPage() {
             return (
               <div className="bg-stone-800 text-white p-3 rounded-2xl shadow-xs space-y-1 animate-fadeIn">
                 <div className="text-xs font-black text-amber-300">
-                  ⏳ '{matchedWaiting.name}' 회원님은 현재 조 편성 대기 중입니다.
+                  {isJapanese ? `⏳ '${matchedWaiting.name}' 様は現在組編成の待機中です。` : `⏳ '${matchedWaiting.name}' 회원님은 현재 조 편성 대기 중입니다.`}
                 </div>
                 <div className="text-[11px] text-stone-300 font-medium">
                   {matchedWaiting.waitNumber
-                    ? `대기 순번: ${matchedWaiting.waitNumber}순위 (결원 발생 시 즉시 자동 투입)`
-                    : '조 편성 실행 시 조에 자동 배정됩니다.'}
+                    ? (isJapanese
+                        ? `待機順位: ${matchedWaiting.waitNumber}位 (欠員発生時即座に自動投入)`
+                        : `대기 순번: ${matchedWaiting.waitNumber}순위 (결원 발생 시 즉시 자동 투입)`)
+                    : (isJapanese ? '組編成実行時に自動配属されます。' : '조 편성 실행 시 조에 자동 배정됩니다.')}
                 </div>
               </div>
             );
@@ -1063,7 +1099,7 @@ export default function ClubRoomDetailPage() {
 
           return (
             <div className="text-center py-2 text-xs font-bold text-stone-400 bg-stone-50 rounded-xl">
-              참가자 명단에서 '{searchMyName.trim()}' 님을 찾을 수 없습니다.
+              {isJapanese ? `参加者名簿に '${searchMyName.trim()}' 様が見つかりません。` : `참가자 명단에서 '${searchMyName.trim()}' 님을 찾을 수 없습니다.`}
             </div>
           );
         })()}
@@ -1076,9 +1112,9 @@ export default function ClubRoomDetailPage() {
             <span className="text-base">🚩</span>
             <div>
               <div className="text-xs font-black flex items-center gap-1.5">
-                <span>전 조 경기 진행 모니터링</span>
+                <span>{isJapanese ? '全組競技進行モニタリング' : '전 조 경기 진행 모니터링'}</span>
                 <span className="bg-purple-500/40 text-purple-200 border border-purple-400/40 text-[10px] font-black px-2 py-0.2 rounded-full">
-                  {room.groups.filter((g) => (g.players[0]?.holesCompleted || 0) >= (room.totalHoles || 18)).length}/{room.groups.length}개 조 완주
+                  {room.groups.filter((g) => (g.players[0]?.holesCompleted || 0) >= (room.totalHoles || 18)).length}/{room.groups.length}{isJapanese ? '組完走' : '개 조 완주'}
                 </span>
               </div>
             </div>
@@ -1090,7 +1126,7 @@ export default function ClubRoomDetailPage() {
             className="bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 active:scale-95 text-amber-950 font-black text-xs px-3 py-1.5 rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1"
           >
             <Trophy className="w-3.5 h-3.5" />
-            <span>대회 공식 마감 & 실록 박제 🏆</span>
+            <span>{isJapanese ? '大会公式終了＆実録アーカイブ 🏆' : '대회 공식 마감 & 실록 박제 🏆'}</span>
           </button>
         </div>
 
@@ -1115,7 +1151,7 @@ export default function ClubRoomDetailPage() {
               >
                 <span>{g.name}:</span>
                 <span className="font-black">
-                  {isDone ? '완주 ✅' : inProgress ? `${completed}/${total}홀 🏌️` : '대기 ⏳'}
+                  {isDone ? (isJapanese ? '完走 ✅' : '완주 ✅') : inProgress ? `${completed}/${total}${isJapanese ? 'ホール 🏌️' : '홀 🏌️'}` : (isJapanese ? '待機 ⏳' : '대기 ⏳')}
                 </span>
               </div>
             );
@@ -1135,7 +1171,7 @@ export default function ClubRoomDetailPage() {
           }`}
         >
           <Users className="w-3.5 h-3.5" />
-          <span>조 편성표 ({room.groups.length}조)</span>
+          <span>{isJapanese ? `組編成表 (${room.groups.length}組)` : `조 편성표 (${room.groups.length}조)`}</span>
         </button>
         <button
           type="button"
@@ -1147,7 +1183,7 @@ export default function ClubRoomDetailPage() {
           }`}
         >
           <Trophy className="w-3.5 h-3.5 text-amber-500" />
-          <span>단체 순위</span>
+          <span>{isJapanese ? '団体順位' : '단체 순위'}</span>
         </button>
         <button
           type="button"
@@ -1159,7 +1195,7 @@ export default function ClubRoomDetailPage() {
           }`}
         >
           <Crown className="w-3.5 h-3.5 text-indigo-500" />
-          <span>개인 순위</span>
+          <span>{isJapanese ? '個人順位' : '개인 순위'}</span>
         </button>
       </div>
 
@@ -1171,17 +1207,17 @@ export default function ClubRoomDetailPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 font-black text-xs text-purple-950">
                 <Sparkles className="w-4 h-4 text-purple-700 shrink-0" />
-                <span>스마트 조 편성 (총 {totalAllPlayers}명 참여)</span>
+                <span>{isJapanese ? `スマート組編成 (計 ${totalAllPlayers}人参加)` : `스마트 조 편성 (총 ${totalAllPlayers}명 참여)`}</span>
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   type="button"
                   onClick={handleCopyGroupFormationKakao}
                   className="bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] border border-[#E6CF00] text-[11px] font-black px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
-                  title="전체 조 편성 카톡 단톡방 공유"
+                  title={isJapanese ? '全組編成LINE共有' : '전체 조 편성 카톡 단톡방 공유'}
                 >
                   <Share2 className="w-3.5 h-3.5" />
-                  <span>📋 조 편성 카톡 복사</span>
+                  <span>{isJapanese ? '📋 組編成 LINEコピー' : '📋 조 편성 카톡 복사'}</span>
                 </button>
                 <button
                   type="button"
@@ -1193,20 +1229,20 @@ export default function ClubRoomDetailPage() {
                   className="bg-white hover:bg-purple-100 text-purple-800 border border-purple-300 text-[11px] font-black px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
-                  <span>+ 참가자 등록</span>
+                  <span>{isJapanese ? '+ 参加者登録' : '+ 참가자 등록'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setJoiningGroup(null);
-                    setNewPlayerName('게스트');
+                    setNewPlayerName(isJapanese ? 'ゲスト' : '게스트');
                     setShowJoinModal(true);
                   }}
                   className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-[11px] font-black px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
-                  title="외부 게스트 또는 현장 참가자 대기 명단 추가"
+                  title={isJapanese ? '外部ゲストまたは当日参加者を待機名簿に追加' : '외부 게스트 또는 현장 참가자 대기 명단 추가'}
                 >
                   <UserPlus className="w-3.5 h-3.5 text-amber-700" />
-                  <span>➕ 게스트/현장 추가</span>
+                  <span>{isJapanese ? '➕ ゲスト/当日追加' : '➕ 게스트/현장 추가'}</span>
                 </button>
               </div>
             </div>
@@ -1217,14 +1253,14 @@ export default function ClubRoomDetailPage() {
                 <div className="flex items-center justify-between text-[11px] font-black text-stone-700">
                   <span className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span>조 배정 대기 중인 회원 ({waitingPoolCount}명)</span>
+                    <span>{isJapanese ? `組配属待機中の会員 (${waitingPoolCount}人)` : `조 배정 대기 중인 회원 (${waitingPoolCount}명)`}</span>
                     {room.waitingPool?.some((p) => p.waitNumber) && (
                       <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] px-1.5 py-0.2 rounded-md font-black">
-                        정원 초과 대기 {room.waitingPool.filter((p) => p.waitNumber).length}명
+                        {isJapanese ? `定員超過待機 ${room.waitingPool.filter((p) => p.waitNumber).length}人` : `정원 초과 대기 ${room.waitingPool.filter((p) => p.waitNumber).length}명`}
                       </span>
                     )}
                   </span>
-                  <span className="text-purple-700">아래 자동 편성으로 즉시 배정</span>
+                  <span className="text-purple-700">{isJapanese ? '下の自動編成で即時配属' : '아래 자동 편성으로 즉시 배정'}</span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {room.waitingPool?.map((wp) => (
@@ -1238,13 +1274,13 @@ export default function ClubRoomDetailPage() {
                     >
                       {wp.waitNumber && (
                         <span className="bg-amber-600 text-white rounded px-1 text-[9px] font-black">
-                          대기 {wp.waitNumber}번
+                          {isJapanese ? `待機 ${wp.waitNumber}番` : `대기 ${wp.waitNumber}번`}
                         </span>
                       )}
                       <span>{wp.name}</span>
                       <span className={wp.waitNumber ? 'text-[10px] text-amber-700' : 'text-[10px] text-purple-600'}>
-                        ({wp.gender === 'F' ? '여' : '남'}·
-                        {wp.handicapTier === 'ADVANCED' ? '상' : wp.handicapTier === 'BEGINNER' ? '초' : '중'})
+                        ({wp.gender === 'F' ? (isJapanese ? '女' : '여') : (isJapanese ? '男' : '남')}·
+                        {wp.handicapTier === 'ADVANCED' ? (isJapanese ? '上' : '상') : wp.handicapTier === 'BEGINNER' ? (isJapanese ? '初' : '초') : (isJapanese ? '中' : '중')})
                       </span>
                       <button
                         type="button"
@@ -1254,9 +1290,9 @@ export default function ClubRoomDetailPage() {
                             ? 'bg-emerald-600 text-white shadow-2xs'
                             : 'bg-stone-200 text-stone-600 hover:bg-amber-100 hover:text-amber-900'
                         }`}
-                        title="클릭 시 입금 상태 변경"
+                        title={isJapanese ? 'クリックで入金状態を変更' : '클릭 시 입금 상태 변경'}
                       >
-                        {wp.paymentStatus === 'PAID' ? '✓입금' : '미납'}
+                        {wp.paymentStatus === 'PAID' ? (isJapanese ? '✓入金' : '✓입금') : (isJapanese ? '未納' : '미납')}
                       </button>
                       <button
                         type="button"
@@ -1279,7 +1315,7 @@ export default function ClubRoomDetailPage() {
                 className="w-full py-2.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl font-black text-xs shadow-xs transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Dices className="w-4 h-4 text-purple-200" />
-                <span>🎲 스마트 조 편성 룰 설정 & 자동 분배 실행</span>
+                <span>{isJapanese ? '🎲 スマート組編成ルール設定＆自動振り分け実行' : '🎲 스마트 조 편성 룰 설정 & 자동 분배 실행'}</span>
               </button>
             </div>
           </div>
@@ -1297,21 +1333,25 @@ export default function ClubRoomDetailPage() {
                 </span>
                 <div>
                   <div className="text-xs font-black text-stone-900 flex items-center gap-1.5">
-                    <span>조 편성 결과 보기</span>
+                    <span>{isJapanese ? '組編成結果を見る' : '조 편성 결과 보기'}</span>
                     <span className="bg-purple-100 text-purple-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-purple-200">
-                      총 {room.groups.length}개 조 ({groupPlayersCount}명 편성됨)
+                      {isJapanese
+                        ? `計 ${room.groups.length}組 (${groupPlayersCount}人編成済)`
+                        : `총 ${room.groups.length}개 조 (${groupPlayersCount}명 편성됨)`}
                     </span>
                   </div>
                   <p className="text-[11px] text-stone-500 font-medium mt-0.5">
                     {showGroupResults
-                      ? '터치하여 조 편성 상세 목록 접기 ▲'
-                      : `터치하여 1조 ~ ${room.groups.length}조 편성 상세 결과 및 출발 코스 확인 ▼`}
+                      ? (isJapanese ? 'タップして組編成詳細一覧を閉じる ▲' : '터치하여 조 편성 상세 목록 접기 ▲')
+                      : (isJapanese
+                          ? `タップして1組〜${room.groups.length}組の編成詳細結果とスタートコースを確認 ▼`
+                          : `터치하여 1조 ~ ${room.groups.length}조 편성 상세 결과 및 출발 코스 확인 ▼`)}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
                 <span className={`text-xs font-black px-2.5 py-1 rounded-lg border transition ${showGroupResults ? 'bg-purple-700 text-white border-purple-700' : 'bg-white text-purple-700 border-purple-200'}`}>
-                  {showGroupResults ? '목록 접기 ▲' : '결과 보기 ▼'}
+                  {showGroupResults ? (isJapanese ? '一覧を閉じる ▲' : '목록 접기 ▲') : (isJapanese ? '結果を見る ▼' : '결과 보기 ▼')}
                 </span>
               </div>
             </button>
@@ -1321,7 +1361,9 @@ export default function ClubRoomDetailPage() {
               <div className="p-3 border-t border-stone-200 bg-stone-50/40 space-y-3 animate-fadeIn">
                 {room.groups.length === 0 ? (
                   <div className="text-center py-6 text-stone-400 text-xs font-bold">
-                    아직 편성된 조가 없습니다. 위의 [🎲 스마트 조 편성 룰 설정 & 자동 분배 실행] 버튼을 눌러 조를 배정해 주세요.
+                    {isJapanese
+                      ? 'まだ編成された組がありません。上の[🎲 スマート組編成ルール設定＆自動振り分け実行]ボタンを押して組を配属してください。'
+                      : '아직 편성된 조가 없습니다. 위의 [🎲 스마트 조 편성 룰 설정 & 자동 분배 실행] 버튼을 눌러 조를 배정해 주세요.'}
                   </div>
                 ) : (
                   room.groups.map((group) => {
@@ -1340,10 +1382,13 @@ export default function ClubRoomDetailPage() {
                             </span>
                             <span className="text-[10px] font-black text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 flex items-center gap-1 shadow-2xs">
                               <span>🚩</span>
-                              <span>{ClubStorage.getGroupStartHole(group.groupNumber - 1, room.selectedCourseLetters, group.startCourseLetter)} 티샷 출발</span>
+                              <span>
+                                {ClubStorage.getGroupStartHole(group.groupNumber - 1, room.selectedCourseLetters, group.startCourseLetter)}{' '}
+                                {isJapanese ? 'ティーショット出発' : '티샷 출발'}
+                              </span>
                             </span>
                             <span className="text-[11px] font-bold text-stone-500">
-                              ({group.players.length}명 편성)
+                              ({isJapanese ? `${group.players.length}人編成` : `${group.players.length}명 편성`})
                             </span>
                           </div>
 
@@ -1359,7 +1404,7 @@ export default function ClubRoomDetailPage() {
                               className="bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-300 text-[11px] font-black px-2 py-1 rounded-xl flex items-center gap-1 transition active:scale-95 cursor-pointer"
                             >
                               <UserPlus className="w-3 h-3" />
-                              <span>이 조 참가</span>
+                              <span>{isJapanese ? 'この組に参加' : '이 조 참가'}</span>
                             </button>
 
                             {group.players.length === 0 && room.groups.length > 1 && (
@@ -1367,9 +1412,9 @@ export default function ClubRoomDetailPage() {
                                 type="button"
                                 onClick={() => handleDeleteEmptyGroup(group.groupNumber)}
                                 className="text-stone-400 hover:text-red-600 text-[10px] font-bold px-1.5 py-1 rounded-lg border border-stone-200 cursor-pointer"
-                                title="빈 조 삭제"
+                                title={isJapanese ? '空き組削除' : '빈 조 삭제'}
                               >
-                                조 삭제
+                                {isJapanese ? '組削除' : '조 삭제'}
                               </button>
                             )}
                           </div>
@@ -1388,7 +1433,7 @@ export default function ClubRoomDetailPage() {
                             >
                               <div className="flex items-center gap-1.5 min-w-0">
                                 {player.isLeader ? (
-                                  <span title="조장 (스코어 입력 권한)">
+                                  <span title={isJapanese ? 'リーダー (スコア入力権限)' : '조장 (스코어 입력 권한)'}>
                                     <Crown className="w-4 h-4 text-amber-500 shrink-0" />
                                   </span>
                                 ) : (
@@ -1400,12 +1445,12 @@ export default function ClubRoomDetailPage() {
                                   <div className="truncate font-black">{player.name}</div>
                                   <div className="text-[9px] text-stone-500 font-bold flex items-center gap-1 flex-wrap mt-0.5">
                                     <span>
-                                      {player.gender === 'F' ? '여' : '남'} ·{' '}
+                                      {player.gender === 'F' ? (isJapanese ? '女' : '여') : (isJapanese ? '男' : '남')} ·{' '}
                                       {player.handicapTier === 'ADVANCED'
-                                        ? '상급'
+                                        ? (isJapanese ? '上級' : '상급')
                                         : player.handicapTier === 'BEGINNER'
-                                        ? '초급'
-                                        : '중급'}
+                                        ? (isJapanese ? '初級' : '초급')
+                                        : (isJapanese ? '中級' : '중급')}
                                     </span>
                                     <button
                                       type="button"
@@ -1418,9 +1463,9 @@ export default function ClubRoomDetailPage() {
                                           ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
                                           : 'bg-stone-200 hover:bg-amber-100 text-stone-600 hover:text-amber-900 border border-stone-300/60'
                                       }`}
-                                      title="클릭 시 입금 완료 ↔ 미납 토글"
+                                      title={isJapanese ? 'クリックで入金状態を変更' : '클릭 시 입금 완료 ↔ 미납 토글'}
                                     >
-                                      {player.paymentStatus === 'PAID' ? '✓입금' : '미납'}
+                                      {player.paymentStatus === 'PAID' ? (isJapanese ? '✓入金' : '✓입금') : (isJapanese ? '未納' : '미납')}
                                     </button>
                                   </div>
                                 </div>
@@ -1437,10 +1482,10 @@ export default function ClubRoomDetailPage() {
                                       player.name
                                     )
                                   }
-                                  title="결원(노쇼) 발생 시 대기 1순위 즉시 대체 투입"
+                                  title={isJapanese ? '欠員(ノーショー)発生時に待機1位を即時自動投入' : '결원(노쇼) 발생 시 대기 1순위 즉시 대체 투입'}
                                   className="text-[10px] text-amber-900 hover:text-white bg-amber-200 hover:bg-amber-600 border border-amber-300 px-1.5 py-0.5 rounded font-bold cursor-pointer transition active:scale-95 flex items-center gap-0.5 shadow-2xs"
                                 >
-                                  <span>⚡노쇼</span>
+                                  <span>{isJapanese ? '⚡ノーショー' : '⚡노쇼'}</span>
                                 </button>
 
                                 {/* 다른 조로 이동 버튼 */}
@@ -1453,11 +1498,11 @@ export default function ClubRoomDetailPage() {
                                       playerName: player.name,
                                     })
                                   }
-                                  title="다른 조로 이동"
+                                  title={isJapanese ? '別の組へ移動' : '다른 조로 이동'}
                                   className="text-[10px] text-indigo-700 hover:text-indigo-900 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded font-bold cursor-pointer flex items-center gap-0.5"
                                 >
                                   <ArrowRightLeft className="w-2.5 h-2.5" />
-                                  <span>이동</span>
+                                  <span>{isJapanese ? '移動' : '이동'}</span>
                                 </button>
 
                                 {/* 조장 위임 버튼 */}
@@ -1467,10 +1512,10 @@ export default function ClubRoomDetailPage() {
                                     onClick={() =>
                                       handleMakeLeader(group.groupNumber, player.id, player.name)
                                     }
-                                    title="조장 위임"
+                                    title={isJapanese ? 'リーダー委任' : '조장 위임'}
                                     className="text-[10px] text-amber-700 hover:text-amber-900 bg-amber-100/80 px-1.5 py-0.5 rounded font-bold cursor-pointer"
                                   >
-                                    조장
+                                    {isJapanese ? 'リーダー' : '조장'}
                                   </button>
                                 )}
 
@@ -1480,7 +1525,7 @@ export default function ClubRoomDetailPage() {
                                   onClick={() =>
                                     handleLeaveGroup(group.groupNumber, player.id, player.name)
                                   }
-                                  title="조에서 제외"
+                                  title={isJapanese ? '組から除外' : '조에서 제외'}
                                   className="text-stone-400 hover:text-red-600 p-0.5 rounded cursor-pointer"
                                 >
                                   <LogOut className="w-3.5 h-3.5" />
@@ -1502,7 +1547,7 @@ export default function ClubRoomDetailPage() {
                               className="p-2.5 rounded-xl border border-dashed border-stone-300 hover:border-purple-400 bg-stone-50/50 hover:bg-purple-50/50 flex items-center justify-center gap-1 text-stone-400 hover:text-purple-700 text-xs font-black transition cursor-pointer"
                             >
                               <UserPlus className="w-3.5 h-3.5" />
-                              <span>+ 빈자리 참가</span>
+                              <span>{isJapanese ? '+ 空き枠に参加' : '+ 빈자리 참가'}</span>
                             </button>
                           )}
                         </div>
@@ -1510,9 +1555,9 @@ export default function ClubRoomDetailPage() {
                         {/* 조 현재 성적 요약 프리뷰 */}
                         {hasScores && (
                           <div className="bg-stone-50 p-2 rounded-xl flex items-center justify-between text-xs font-black text-stone-700 border border-stone-200/60">
-                            <span>조 평균 타수</span>
+                            <span>{isJapanese ? '組平均打数' : '조 평균 타수'}</span>
                             <span className="text-purple-800">
-                              {group.avgScore}타 (합계 {group.totalScore}타)
+                              {group.avgScore}{isJapanese ? '打' : '타'} ({isJapanese ? '合計 ' : '합계 '}{group.totalScore}{isJapanese ? '打' : '타'})
                             </span>
                           </div>
                         )}
@@ -1527,8 +1572,8 @@ export default function ClubRoomDetailPage() {
                             <Play className="w-3.5 h-3.5 fill-white" />
                             <span>
                               {hasScores
-                                ? `⛳ [${group.name}] 스코어보드 계속 기록하기 ▶`
-                                : `⛳ [${group.name}] 18홀 라운드 시작 (스코어 기록)`}
+                                ? (isJapanese ? `⛳ [${group.name}] スコアボード記録を続ける ▶` : `⛳ [${group.name}] 스코어보드 계속 기록하기 ▶`)
+                                : (isJapanese ? `⛳ [${group.name}] 18ホールラウンド開始 (スコア記録)` : `⛳ [${group.name}] 18홀 라운드 시작 (스코어 기록)`)}
                             </span>
                           </button>
                         </div>
@@ -1544,7 +1589,7 @@ export default function ClubRoomDetailPage() {
                   className="w-full py-2.5 bg-stone-50 hover:bg-stone-100 border border-dashed border-stone-300 rounded-2xl text-xs font-black text-stone-600 flex items-center justify-center gap-1.5 transition active:scale-98 cursor-pointer"
                 >
                   <Plus className="w-4 h-4 text-stone-400" />
-                  <span>새로운 조 추가하기 (+ {room.groups.length + 1}조)</span>
+                  <span>{isJapanese ? `新しい組を追加 (+ ${room.groups.length + 1}組)` : `새로운 조 추가하기 (+ ${room.groups.length + 1}조)`}</span>
                 </button>
               </div>
             )}
@@ -1558,16 +1603,16 @@ export default function ClubRoomDetailPage() {
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-950 font-bold flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Trophy className="w-4 h-4 text-amber-600" />
-              <span>실시간 단체전 랭킹 (조별 평균 타수 기준)</span>
+              <span>{isJapanese ? 'リアルタイム団体戦ランキング (組平均打数基準)' : '실시간 단체전 랭킹 (조별 평균 타수 기준)'}</span>
             </div>
-            <span className="text-[11px] text-amber-800 font-extrabold">낮은 타수 순</span>
+            <span className="text-[11px] text-amber-800 font-extrabold">{isJapanese ? '少打数順' : '낮은 타수 순'}</span>
           </div>
 
           <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
             <div className="divide-y divide-stone-100">
               {teams.map((t) => {
                 const medal =
-                  t.rank === 1 ? '🥇' : t.rank === 2 ? '🥈' : t.rank === 3 ? '🥉' : `${t.rank}위`;
+                  t.rank === 1 ? '🥇' : t.rank === 2 ? '🥈' : t.rank === 3 ? '🥉' : `${t.rank}${isJapanese ? '位' : '위'}`;
                 const isLeaderGroup = t.rank === 1;
 
                 return (
@@ -1583,23 +1628,23 @@ export default function ClubRoomDetailPage() {
                         <div className="flex items-center gap-1.5">
                           <span className="font-black text-sm text-stone-900">{t.groupName}</span>
                           <span className="text-[11px] text-stone-500 font-bold">
-                            (조장: {t.leaderName})
+                            ({isJapanese ? 'リーダー' : '조장'}: {t.leaderName})
                           </span>
                         </div>
                         <div className="text-[11px] text-stone-500 font-bold flex items-center gap-2 mt-0.5">
-                          <span>참가 {t.playersCount}명</span>
+                          <span>{isJapanese ? '参加' : '참가'} {t.playersCount}{isJapanese ? '人' : '명'}</span>
                           <span>•</span>
-                          <span>{t.holesCompleted > 0 ? `${t.holesCompleted}홀 완료` : '경기 전'}</span>
+                          <span>{t.holesCompleted > 0 ? (isJapanese ? `${t.holesCompleted}ホール完了` : `${t.holesCompleted}홀 완료`) : (isJapanese ? 'プレー前' : '경기 전')}</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="text-right">
                       <div className="text-base font-black text-emerald-800">
-                        {t.avgStrokes > 0 ? `평균 ${t.avgStrokes}타` : '-'}
+                        {t.avgStrokes > 0 ? `${isJapanese ? '平均' : '평균'} ${t.avgStrokes}${isJapanese ? '打' : '타'}` : '-'}
                       </div>
                       <div className="text-[10px] text-stone-500 font-extrabold">
-                        총 {t.totalStrokes}타 ({t.parDiff <= 0 ? t.parDiff : `+${t.parDiff}`})
+                        {isJapanese ? '計' : '총'} {t.totalStrokes}{isJapanese ? '打' : '타'} ({t.parDiff <= 0 ? t.parDiff : `+${t.parDiff}`})
                       </div>
                     </div>
                   </div>
@@ -1617,7 +1662,7 @@ export default function ClubRoomDetailPage() {
           <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-3 text-xs text-indigo-950 font-bold flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Crown className="w-4 h-4 text-indigo-600" />
-              <span>전체 참가자 개인 랭킹 (총 {individuals.length}명)</span>
+              <span>{isJapanese ? `全参加者個人ランキング (計 ${individuals.length}人)` : `전체 참가자 개인 랭킹 (총 ${individuals.length}명)`}</span>
             </div>
             <button
               type="button"
@@ -1625,7 +1670,7 @@ export default function ClubRoomDetailPage() {
               className="text-[11px] text-indigo-800 font-extrabold flex items-center gap-0.5 hover:underline cursor-pointer"
             >
               <span>{ClubStorage.getGameModeInfo(room.gameMode).badge}</span>
-              <span className="text-[10px] text-stone-500 font-semibold">(룰 안내)</span>
+              <span className="text-[10px] text-stone-500 font-semibold">{isJapanese ? '(ルール案内)' : '(룰 안내)'}</span>
             </button>
           </div>
 
@@ -1635,18 +1680,18 @@ export default function ClubRoomDetailPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 font-black text-xs text-purple-200">
                   <ShieldCheck className="w-4 h-4 text-purple-300" />
-                  <span>우승자 독식 방지 규정 적용 중</span>
+                  <span>{isJapanese ? '優勝者独占防止規定適用中' : '우승자 독식 방지 규정 적용 중'}</span>
                 </div>
                 <span className="text-[10px] bg-purple-800 text-purple-200 px-2 py-0.5 rounded-full font-black border border-purple-400/30">
-                  {graceInfo.gracePeriod} 우승자
+                  {graceInfo.gracePeriod} {isJapanese ? '優勝者' : '우승자'}
                 </span>
               </div>
               <p className="text-[11px] leading-relaxed font-medium text-purple-200">
                 {graceInfo.reason}
               </p>
               <div className="flex items-center justify-between text-[11px] font-black pt-1.5 border-t border-purple-700/60 bg-purple-900/50 p-2 rounded-xl">
-                <span className="text-purple-200">🏅 명예 메달리스트: <strong className="text-white">{graceInfo.originalWinner.playerName}</strong></span>
-                <span className="text-amber-300">🎁 1위 시상품 수령: <strong className="text-amber-200 underline">{graceInfo.transferredWinner.playerName}</strong></span>
+                <span className="text-purple-200">{isJapanese ? '🏅 名誉メダリスト:' : '🏅 명예 메달리스트:'} <strong className="text-white">{graceInfo.originalWinner.playerName}</strong></span>
+                <span className="text-amber-300">{isJapanese ? '🎁 1位賞品受領:' : '🎁 1위 시상품 수령:'} <strong className="text-amber-200 underline">{graceInfo.transferredWinner.playerName}</strong></span>
               </div>
             </div>
           )}
@@ -1662,24 +1707,24 @@ export default function ClubRoomDetailPage() {
                 {/* 1위 우승 (네트 1위) */}
                 <div className="bg-gradient-to-br from-amber-500 to-amber-600 text-white p-3 rounded-2xl shadow-xs space-y-1">
                   <div className="flex items-center justify-between text-[10px] font-black text-amber-100">
-                    <span>🥇 신페리오 우승</span>
-                    <span className="bg-white/20 px-1.5 py-0.2 rounded-full">네트 1위</span>
+                    <span>{isJapanese ? '🥇 新ペリア優勝' : '🥇 신페리오 우승'}</span>
+                    <span className="bg-white/20 px-1.5 py-0.2 rounded-full">{isJapanese ? 'ネット1位' : '네트 1위'}</span>
                   </div>
-                  <div className="font-black text-sm truncate">{champion.playerName} ({champion.groupNumber}조)</div>
+                  <div className="font-black text-sm truncate">{champion.playerName} ({champion.groupNumber}{isJapanese ? '組' : '조'})</div>
                   <div className="text-[11px] font-extrabold text-amber-100">
-                    네트 {champion.netScore}타 <span className="text-[9px] text-amber-200">(실타수 {champion.totalStrokes} / 핸디 {champion.handicap})</span>
+                    {isJapanese ? 'ネット' : '네트'} {champion.netScore}{isJapanese ? '打' : '타'} <span className="text-[9px] text-amber-200">({isJapanese ? 'グロス' : '실타수'} {champion.totalStrokes} / {isJapanese ? 'ハンディ' : '핸디'} {champion.handicap})</span>
                   </div>
                 </div>
 
                 {/* 메달리스트 (실타수 1위) */}
                 <div className="bg-gradient-to-br from-purple-700 to-indigo-800 text-white p-3 rounded-2xl shadow-xs space-y-1">
                   <div className="flex items-center justify-between text-[10px] font-black text-purple-200">
-                    <span>🏅 메달리스트</span>
-                    <span className="bg-white/20 px-1.5 py-0.2 rounded-full">최저 실타수</span>
+                    <span>{isJapanese ? '🏅 メダリスト' : '🏅 메달리스트'}</span>
+                    <span className="bg-white/20 px-1.5 py-0.2 rounded-full">{isJapanese ? '最少グロス' : '최저 실타수'}</span>
                   </div>
-                  <div className="font-black text-sm truncate">{medalist.playerName} ({medalist.groupNumber}조)</div>
+                  <div className="font-black text-sm truncate">{medalist.playerName} ({medalist.groupNumber}{isJapanese ? '組' : '조'})</div>
                   <div className="text-[11px] font-extrabold text-purple-200">
-                    총 {medalist.totalStrokes}타 <span className="text-[9px] text-purple-300">({medalist.parDiff <= 0 ? medalist.parDiff : `+${medalist.parDiff}`})</span>
+                    {isJapanese ? '計' : '총'} {medalist.totalStrokes}{isJapanese ? '打' : '타'} <span className="text-[9px] text-purple-300">({medalist.parDiff <= 0 ? medalist.parDiff : `+${medalist.parDiff}`})</span>
                   </div>
                 </div>
               </div>
@@ -1704,7 +1749,7 @@ export default function ClubRoomDetailPage() {
               if (leaderboardSearch.trim()) {
                 const q = leaderboardSearch.toLowerCase().trim();
                 const matchName = p.playerName.toLowerCase().includes(q);
-                const matchGroup = `${p.groupNumber}조`.includes(q) || `${p.groupNumber}` === q;
+                const matchGroup = `${p.groupNumber}조`.includes(q) || `${p.groupNumber}組`.includes(q) || `${p.groupNumber}` === q;
                 return matchName || matchGroup;
               }
               return true;
@@ -1717,7 +1762,7 @@ export default function ClubRoomDetailPage() {
                     <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      placeholder="선수 이름 또는 조 검색 (예: 김철수, 3조)..."
+                      placeholder={isJapanese ? '選手名または組を検索 (例: 山田, 3組)...' : '선수 이름 또는 조 검색 (예: 김철수, 3조)...'}
                       value={leaderboardSearch}
                       onChange={(e) => setLeaderboardSearch(e.target.value)}
                       className="w-full bg-white border border-stone-200 rounded-xl pl-9 pr-8 py-2 text-xs font-bold text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-purple-400 shadow-2xs"
@@ -1745,9 +1790,9 @@ export default function ClubRoomDetailPage() {
                         }, 100);
                       }}
                       className="px-3 py-2 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 flex items-center gap-1 shrink-0 cursor-pointer border border-purple-500 whitespace-nowrap"
-                      title="내 순위로 화면 즉시 이동"
+                      title={isJapanese ? 'マイ順位へ画面を即時移動' : '내 순위로 화면 즉시 이동'}
                     >
-                      <span>🎯 내 순위: {myIndividual.rank}위</span>
+                      <span>🎯 {isJapanese ? 'マイ順位' : '내 순위'}: {myIndividual.rank}{isJapanese ? '位' : '위'}</span>
                     </button>
                   )}
                 </div>
@@ -1763,7 +1808,7 @@ export default function ClubRoomDetailPage() {
                         : 'text-stone-500 hover:text-stone-800'
                     }`}
                   >
-                    전체 ({individuals.length}명)
+                    {isJapanese ? `全体 (${individuals.length}人)` : `전체 (${individuals.length}명)`}
                   </button>
                   <button
                     type="button"
@@ -1785,29 +1830,29 @@ export default function ClubRoomDetailPage() {
                         : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    👥 내 조 보기
+                    👥 {isJapanese ? '自組のみ' : '내 조 보기'}
                   </button>
                 </div>
 
                 {/* 순위 테이블 헤더 */}
                 <div className="bg-white rounded-2xl border border-stone-200 shadow-xs overflow-hidden">
                   <div className="bg-stone-100/80 px-3 py-2 text-[11px] font-black text-stone-600 flex items-center justify-between border-b border-stone-200">
-                    <span className="w-8 text-center">순위</span>
-                    <span className="flex-1 pl-2">선수명 / 소속조</span>
+                    <span className="w-8 text-center">{isJapanese ? '順位' : '순위'}</span>
+                    <span className="flex-1 pl-2">{isJapanese ? '選手名 / 所属組' : '선수명 / 소속조'}</span>
                     <span className="text-right">
-                      {room.gameMode === 'NEW_PERIO' ? '네트점수 / 핸디' : '총 타수 / 기준타 대비'}
+                      {room.gameMode === 'NEW_PERIO' ? (isJapanese ? 'ネット打数 / ハンディ' : '네트점수 / 핸디') : (isJapanese ? '総打数 / 基準打比' : '총 타수 / 기준타 대비')}
                     </span>
                   </div>
 
                   <div className="divide-y divide-stone-100">
                     {filteredIndividuals.length === 0 ? (
                       <div className="p-8 text-center text-xs text-stone-500 font-bold">
-                        검색 조건에 일치하는 선수가 없습니다.
+                        {isJapanese ? '検索条件に一致する選手がいません。' : '검색 조건에 일치하는 선수가 없습니다.'}
                       </div>
                     ) : (
                       filteredIndividuals.map((p) => {
                         const medal =
-                          p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : `${p.rank}위`;
+                          p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : `${p.rank}${isJapanese ? '位' : '위'}`;
                         const diffStr =
                           p.parDiff < 0 ? `${p.parDiff}` : p.parDiff > 0 ? `+${p.parDiff}` : 'E';
                         const isHighlighted = highlightedPlayerId === p.playerId;
@@ -1831,15 +1876,15 @@ export default function ClubRoomDetailPage() {
                                   <span className="font-black text-xs text-stone-900">{p.playerName}</span>
                                   {p.isLeader && (
                                     <span className="text-[9px] bg-amber-100 text-amber-800 px-1 rounded font-black">
-                                      조장
+                                      {isJapanese ? 'リーダー' : '조장'}
                                     </span>
                                   )}
                                   <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.2 rounded-md font-extrabold">
-                                    {p.groupNumber}조
+                                    {p.groupNumber}{isJapanese ? '組' : '조'}
                                   </span>
                                 </div>
                                 <div className="text-[10px] text-stone-400 font-bold mt-0.5 flex items-center gap-1.5 flex-wrap">
-                                  <span>{p.holesCompleted > 0 ? `${p.holesCompleted}홀 진행` : '시작 전'}</span>
+                                  <span>{p.holesCompleted > 0 ? (isJapanese ? `${p.holesCompleted}ホール進行` : `${p.holesCompleted}홀 진행`) : (isJapanese ? 'スタート前' : '시작 전')}</span>
                                   {p.tieBreakerReason && (
                                     <span className="bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded font-black text-[9px] shadow-2xs">
                                       🎯 {p.tieBreakerReason}
@@ -1853,16 +1898,16 @@ export default function ClubRoomDetailPage() {
                               {room.gameMode === 'NEW_PERIO' && typeof p.netScore === 'number' ? (
                                 <>
                                   <div className="text-sm font-black text-indigo-900">
-                                    네트 {p.netScore}타
+                                    {isJapanese ? 'ネット' : '네트'} {p.netScore}{isJapanese ? '打' : '타'}
                                   </div>
                                   <div className="text-[10px] font-bold text-stone-500">
-                                    실타수 {p.totalStrokes}타 (핸디 -{p.handicap})
+                                    {isJapanese ? 'グロス' : '실타수'} {p.totalStrokes}{isJapanese ? '打' : '타'} ({isJapanese ? 'ハンディ' : '핸디'} -{p.handicap})
                                   </div>
                                 </>
                               ) : (
                                 <>
                                   <div className="text-sm font-black text-stone-900">
-                                    {p.totalStrokes > 0 ? `${p.totalStrokes}타` : '-'}
+                                    {p.totalStrokes > 0 ? `${p.totalStrokes}${isJapanese ? '打' : '타'}` : '-'}
                                   </div>
                                   <div
                                     className={`text-[10px] font-black ${
@@ -1894,9 +1939,9 @@ export default function ClubRoomDetailPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 font-black text-xs text-stone-900">
                   <Award className="w-4 h-4 text-emerald-600" />
-                  <span>이색 특별상 수상 현황</span>
+                  <span>{isJapanese ? 'ユニーク特別賞 受賞現況' : '이색 특별상 수상 현황'}</span>
                 </div>
-                <span className="text-[10px] text-stone-500 font-bold">18홀 전산 자동 집계</span>
+                <span className="text-[10px] text-stone-500 font-bold">{isJapanese ? '18ホール電算自動集計' : '18홀 전산 자동 집계'}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -1912,7 +1957,7 @@ export default function ClubRoomDetailPage() {
                       </span>
                     </div>
                     <div className="text-xs font-black text-emerald-800 flex items-center justify-between">
-                      <span className="truncate">{sa.winnerName} {sa.groupNumber ? `(${sa.groupNumber}조)` : ''}</span>
+                      <span className="truncate">{sa.winnerName} {sa.groupNumber ? `(${sa.groupNumber}${isJapanese ? '組' : '조'})` : ''}</span>
                     </div>
                     <div className="text-[10px] text-stone-500 font-medium leading-tight">
                       {sa.valueInfo || sa.description}
@@ -1928,9 +1973,9 @@ export default function ClubRoomDetailPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 font-black text-xs text-amber-950">
                 <Gift className="w-4 h-4 text-amber-600" />
-                <span>🎰 현장 실시간 행운상 추첨</span>
+                <span>{isJapanese ? '🎰 現場リアルタイムラッキー賞抽選' : '🎰 현장 실시간 행운상 추첨'}</span>
                 <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded-full font-extrabold">
-                  {(room.awardConfig?.luckyDrawWinners || []).length}명 당첨
+                  {isJapanese ? `${(room.awardConfig?.luckyDrawWinners || []).length}人当選` : `${(room.awardConfig?.luckyDrawWinners || []).length}명 당첨`}
                 </span>
               </div>
               <button
@@ -1939,7 +1984,7 @@ export default function ClubRoomDetailPage() {
                 className="bg-amber-500 hover:bg-amber-600 active:scale-95 text-amber-950 text-xs font-black px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1 transition cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>+ 룰렛 추첨하기 🎲</span>
+                <span>{isJapanese ? '+ ルーレット抽選する 🎲' : '+ 룰렛 추첨하기 🎲'}</span>
               </button>
             </div>
 
@@ -1958,7 +2003,7 @@ export default function ClubRoomDetailPage() {
                         <span className="font-black text-stone-900">{lw.name}</span>
                         {lw.groupNumber && (
                           <span className="text-[10px] text-stone-500 font-bold ml-1">
-                            ({lw.groupNumber}조)
+                            ({lw.groupNumber}{isJapanese ? '組' : '조'})
                           </span>
                         )}
                         <span className="text-[11px] text-amber-800 font-medium ml-2">
@@ -1973,7 +2018,7 @@ export default function ClubRoomDetailPage() {
                         type="button"
                         onClick={() => handleRemoveLuckyWinner(lw.id, lw.name)}
                         className="text-stone-300 hover:text-red-500 p-1 cursor-pointer transition"
-                        title="당첨 취소"
+                        title={isJapanese ? '当選取消' : '당첨 취소'}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -1983,9 +2028,13 @@ export default function ClubRoomDetailPage() {
               </div>
             ) : (
               <div className="bg-white/60 p-3 rounded-xl border border-amber-100 text-center space-y-1">
-                <p className="text-xs font-black text-stone-600">아직 추첨된 행운상이 없습니다.</p>
+                <p className="text-xs font-black text-stone-600">{isJapanese ? 'まだ抽選されたラッキー賞はありません。' : '아직 추첨된 행운상이 없습니다.'}</p>
                 <p className="text-[10px] text-stone-500">
-                  시상식에서 <strong>[+ 룰렛 추첨하기]</strong>를 누르면 룰렛이 돌며 깜짝 당첨자가 선정됩니다!
+                  {isJapanese ? (
+                    <>表彰式で<strong>[+ ルーレット抽選する]</strong>を押すとルーレットが回転しサプライズ当選者が選ばれます！</>
+                  ) : (
+                    <>시상식에서 <strong>[+ 룰렛 추첨하기]</strong>를 누르면 룰렛이 돌며 깜짝 당첨자가 선정됩니다!</>
+                  )}
                 </p>
               </div>
             )}
@@ -2000,7 +2049,7 @@ export default function ClubRoomDetailPage() {
             <div className="bg-gradient-to-r from-purple-800 to-indigo-900 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Dices className="w-5 h-5 text-purple-300" />
-                <h3 className="font-black text-base">스마트 조 편성 룰 설정</h3>
+                <h3 className="font-black text-base">{isJapanese ? 'スマート組編成ルール設定' : '스마트 조 편성 룰 설정'}</h3>
               </div>
               <button
                 type="button"
@@ -2015,22 +2064,22 @@ export default function ClubRoomDetailPage() {
               {/* 참가자 인원 정보 및 최적 조 계산 */}
               <div className="bg-purple-50 p-3 rounded-2xl border border-purple-200 space-y-1.5">
                 <div className="flex items-center justify-between text-xs font-extrabold text-stone-800">
-                  <span>총 참가자 수:</span>
-                  <span className="text-purple-800 font-black">{totalAllPlayers}명</span>
+                  <span>{isJapanese ? '総参加者数:' : '총 참가자 수:'}</span>
+                  <span className="text-purple-800 font-black">{totalAllPlayers}{isJapanese ? '人' : '명'}</span>
                 </div>
                 {(() => {
                   const opt = ClubStorage.calculateOptimalGroups(totalAllPlayers);
-                  const distStr = opt.distribution.join('명 + ') + '명';
+                  const distStr = opt.distribution.join(isJapanese ? '人 + ' : '명 + ') + (isJapanese ? '人' : '명');
                   return (
                     <div className="text-[11px] text-purple-900 font-bold bg-white p-2 rounded-xl border border-purple-200/70">
-                      🎯 <strong>3~4인 기준 추천:</strong> 총 {opt.groupCount}개 조 ({distStr})
+                      🎯 <strong>{isJapanese ? '3~4人基準おすすめ:' : '3~4인 기준 추천:'}</strong> {isJapanese ? `計 ${opt.groupCount}組 (${distStr})` : `총 ${opt.groupCount}개 조 (${distStr})`}
                     </div>
                   );
                 })()}
 
                 {/* 조 수 조정 */}
                 <div className="flex items-center justify-between text-xs font-extrabold text-stone-700 pt-1">
-                  <span>편성할 조 수:</span>
+                  <span>{isJapanese ? '編成する組数:' : '편성할 조 수:'}</span>
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
@@ -2039,7 +2088,7 @@ export default function ClubRoomDetailPage() {
                     >
                       -
                     </button>
-                    <span className="font-black text-purple-900 px-1">{customGroupCount}개 조</span>
+                    <span className="font-black text-purple-900 px-1">{customGroupCount}{isJapanese ? '組' : '개 조'}</span>
                     <button
                       type="button"
                       onClick={() => setCustomGroupCount(customGroupCount + 1)}
@@ -2054,8 +2103,8 @@ export default function ClubRoomDetailPage() {
               {/* 5대 조 편성 옵션 선택 (대표님 요청 표준) */}
               <div className="space-y-2">
                 <label className="text-xs font-black text-stone-800 flex items-center justify-between">
-                  <span>조 편성 옵션 선택</span>
-                  <span className="text-[10px] text-purple-700 font-bold">총무 맞춤 자동 분배</span>
+                  <span>{isJapanese ? '組編成オプション選択' : '조 편성 옵션 선택'}</span>
+                  <span className="text-[10px] text-purple-700 font-bold">{isJapanese ? '幹事向け自動配分' : '총무 맞춤 자동 분배'}</span>
                 </label>
 
                 {/* 옵션 1: 무조건 100% 완전 랜덤 */}
@@ -2070,9 +2119,9 @@ export default function ClubRoomDetailPage() {
                 >
                   <Dices className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
                   <div>
-                    <div className="text-xs font-black text-stone-900">🎲 1. 무조건 100% 완전 랜덤 편성</div>
+                    <div className="text-xs font-black text-stone-900">{isJapanese ? '🎲 1. 完全100%ランダム編成' : '🎲 1. 무조건 100% 완전 랜덤 편성'}</div>
                     <div className="text-[11px] text-stone-500 font-bold mt-0.5">
-                      전체 참가자를 순수 무작위로 추첨하여 각 조에 골고루 배치합니다. (조건 없이 랜덤)
+                      {isJapanese ? '全参加者を純粋無作為に抽選し各組へ均等に配属します。(条件なしランダム)' : '전체 참가자를 순수 무작위로 추첨하여 각 조에 골고루 배치합니다. (조건 없이 랜덤)'}
                     </div>
                   </div>
                 </button>
@@ -2090,13 +2139,13 @@ export default function ClubRoomDetailPage() {
                   <Crown className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                   <div>
                     <div className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-                      <span>👑 2. 각 조 조장 {customGroupCount}명 지정 후 돌리기</span>
+                      <span>{isJapanese ? `👑 2. 各組のリーダー${customGroupCount}人指定後に配分` : `👑 2. 각 조 조장 ${customGroupCount}명 지정 후 돌리기`}</span>
                       <span className="bg-amber-200/80 text-amber-900 text-[10px] px-1.5 py-0.2 rounded font-black">
-                        총무 추천
+                        {isJapanese ? '幹事おすすめ' : '총무 추천'}
                       </span>
                     </div>
                     <div className="text-[11px] text-amber-800/80 font-bold mt-0.5">
-                      스마트폰 입력이나 리딩을 맡을 조장 {customGroupCount}명을 미리 체크하면, 1조부터 {customGroupCount}조에 1명씩 고정하고 나머지를 랜덤 분배합니다.
+                      {isJapanese ? `スマホ入力やリーダー役${customGroupCount}人を事前指定すると、1組〜${customGroupCount}組に1人ずつ固定し残りをランダム配分します。` : `스마트폰 입력이나 리딩을 맡을 조장 ${customGroupCount}명을 미리 체크하면, 1조부터 ${customGroupCount}조에 1명씩 고정하고 나머지를 랜덤 분배합니다.`}
                     </div>
                   </div>
                 </button>
@@ -2107,7 +2156,7 @@ export default function ClubRoomDetailPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
                         <Crown className="w-4 h-4 text-amber-600" />
-                        <span>조장 체크 ({selectedLeaderIds.length} / {customGroupCount}명 지정됨)</span>
+                        <span>{isJapanese ? `リーダー選択 (${selectedLeaderIds.length} / ${customGroupCount}人指定済)` : `조장 체크 (${selectedLeaderIds.length} / ${customGroupCount}명 지정됨)`}</span>
                       </span>
                       <button
                         type="button"
@@ -2122,12 +2171,16 @@ export default function ClubRoomDetailPage() {
                         }}
                         className="text-[10px] font-black bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md cursor-pointer transition shadow-2xs"
                       >
-                        💡 상급자 우선 자동 추천
+                        {isJapanese ? '💡 上級者優先の自動おすすめ' : '💡 상급자 우선 자동 추천'}
                       </button>
                     </div>
 
                     <p className="text-[11px] text-amber-900 font-medium">
-                      아래 명단에서 각 조를 이끌 조장 <strong>{customGroupCount}명</strong>을 체크해 주세요. 체크된 순서대로 1조, 2조, 3조... 의 조장으로 배정됩니다.
+                      {isJapanese ? (
+                        <>名簿から各組を率いるリーダー<strong>{customGroupCount}人</strong>を選択してください。選択順に1組、2組、3組…のリーダーに配属されます。</>
+                      ) : (
+                        <>아래 명단에서 각 조를 이끌 조장 <strong>{customGroupCount}명</strong>을 체크해 주세요. 체크된 순서대로 1조, 2조, 3조... 의 조장으로 배정됩니다.</>
+                      )}
                     </p>
 
                     <div className="max-h-52 overflow-y-auto space-y-1 bg-white p-2 rounded-xl border border-amber-200">
@@ -2143,7 +2196,7 @@ export default function ClubRoomDetailPage() {
                                 setSelectedLeaderIds(selectedLeaderIds.filter((id) => id !== p.id));
                               } else {
                                 if (selectedLeaderIds.length >= customGroupCount) {
-                                  alert(`이미 조장 정원(${customGroupCount}명)이 모두 찼습니다. 다른 회원을 해제하고 선택하세요.`);
+                                  alert(isJapanese ? `すでにリーダー定員(${customGroupCount}人)に達しました。他の会員を解除してから選択してください。` : `이미 조장 정원(${customGroupCount}명)이 모두 찼습니다. 다른 회원을 해제하고 선택하세요.`);
                                   return;
                                 }
                                 setSelectedLeaderIds([...selectedLeaderIds, p.id]);
@@ -2165,13 +2218,13 @@ export default function ClubRoomDetailPage() {
                               </span>
                               <span className="font-black">{p.name}</span>
                               <span className="text-[10px] text-stone-500">
-                                ({p.gender === 'F' ? '여' : '남'}·
-                                {p.handicapTier === 'ADVANCED' ? '상급' : p.handicapTier === 'BEGINNER' ? '초급' : '중급'})
+                                ({p.gender === 'F' ? (isJapanese ? '女' : '여') : (isJapanese ? '男' : '남')}·
+                                {p.handicapTier === 'ADVANCED' ? (isJapanese ? '上級' : '상급') : p.handicapTier === 'BEGINNER' ? (isJapanese ? '初級' : '초급') : (isJapanese ? '中級' : '중급')})
                               </span>
                             </div>
                             {isLeader && (
                               <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.5 rounded shadow-2xs">
-                                👑 {leaderIndex + 1}조 조장
+                                👑 {leaderIndex + 1}{isJapanese ? '組リーダー' : '조 조장'}
                               </span>
                             )}
                           </button>
@@ -2193,9 +2246,9 @@ export default function ClubRoomDetailPage() {
                 >
                   <Users className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                   <div>
-                    <div className="text-xs font-black text-stone-900">📌 3. 일부 인원 조 고정 후 나머지 돌리기</div>
+                    <div className="text-xs font-black text-stone-900">{isJapanese ? '📌 3. 一部組固定＋残り配分' : '📌 3. 일부 인원 조 고정 후 나머지 돌리기'}</div>
                     <div className="text-[11px] text-stone-500 font-bold mt-0.5">
-                      부부, 친구, 초보자 동반 등 특정 인원을 원하는 조에 미리 고정 배치하고, 나머지 인원만 빈자리로 자동 분배합니다.
+                      {isJapanese ? 'ご夫婦、友人、初心者同伴など特定メンバーを希望組へ固定配置し、残りのみ空き枠へ自動配分します。' : '부부, 친구, 초보자 동반 등 특정 인원을 원하는 조에 미리 고정 배치하고, 나머지 인원만 빈자리로 자동 분배합니다.'}
                     </div>
                   </div>
                 </button>
@@ -2206,7 +2259,7 @@ export default function ClubRoomDetailPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-black text-blue-950 flex items-center gap-1.5">
                         <Users className="w-4 h-4 text-blue-600" />
-                        <span>특정 조 사전 고정 ({Object.keys(preAssignedGroupMap).length}명 고정됨)</span>
+                        <span>{isJapanese ? `特定組の事前固定 (${Object.keys(preAssignedGroupMap).length}人固定済)` : `특정 조 사전 고정 (${Object.keys(preAssignedGroupMap).length}명 고정됨)`}</span>
                       </span>
                       {Object.keys(preAssignedGroupMap).length > 0 && (
                         <button
@@ -2214,13 +2267,13 @@ export default function ClubRoomDetailPage() {
                           onClick={() => setPreAssignedGroupMap({})}
                           className="text-[10px] font-bold text-stone-500 hover:underline cursor-pointer"
                         >
-                          전체 초기화
+                          {isJapanese ? '全リセット' : '전체 초기화'}
                         </button>
                       )}
                     </div>
 
                     <p className="text-[11px] text-blue-900 font-medium">
-                      고정하고 싶은 회원의 조 번호를 선택하세요. '자동 분배'로 둔 회원은 남은 빈자리에 무작위로 분배됩니다.
+                      {isJapanese ? '固定したい組番号を選択してください。「自動配分」の会員は残りの空き枠へランダム配分されます。' : '고정하고 싶은 회원의 조 번호를 선택하세요. \'자동 분배\'로 둔 회원은 남은 빈자리에 무작위로 분배됩니다.'}
                     </p>
 
                     <div className="max-h-52 overflow-y-auto space-y-1.5 bg-white p-2 rounded-xl border border-blue-200">
@@ -2238,8 +2291,8 @@ export default function ClubRoomDetailPage() {
                             <div className="flex items-center gap-1.5">
                               <span className="font-black">{p.name}</span>
                               <span className="text-[10px] text-stone-500">
-                                ({p.gender === 'F' ? '여' : '남'}·
-                                {p.handicapTier === 'ADVANCED' ? '상' : p.handicapTier === 'BEGINNER' ? '초' : '중'})
+                                ({p.gender === 'F' ? (isJapanese ? '女' : '여') : (isJapanese ? '男' : '남')}·
+                                {p.handicapTier === 'ADVANCED' ? (isJapanese ? '上' : '상') : p.handicapTier === 'BEGINNER' ? (isJapanese ? '初' : '초') : (isJapanese ? '中' : '중')})
                               </span>
                             </div>
 
@@ -2263,10 +2316,10 @@ export default function ClubRoomDetailPage() {
                                   : 'bg-white text-stone-700 border-stone-300'
                               }`}
                             >
-                              <option value={0}>🎲 자동 분배</option>
+                              <option value={0}>🎲 {isJapanese ? '自動配分' : '자동 분배'}</option>
                               {Array.from({ length: customGroupCount }, (_, idx) => idx + 1).map((gNum) => (
                                 <option key={gNum} value={gNum}>
-                                  📌 {gNum}조 고정
+                                  📌 {gNum}{isJapanese ? '組固定' : '조 고정'}
                                 </option>
                               ))}
                             </select>
@@ -2289,9 +2342,9 @@ export default function ClubRoomDetailPage() {
                 >
                   <Scale className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
                   <div>
-                    <div className="text-xs font-black text-stone-900">⚖️ 4. 남녀 성비 균등 분배</div>
+                    <div className="text-xs font-black text-stone-900">{isJapanese ? '⚖️ 4. 男女比均等配分' : '⚖️ 4. 남녀 성비 균등 분배'}</div>
                     <div className="text-[11px] text-stone-500 font-bold mt-0.5">
-                      각 조에 남성과 여성이 치우치지 않고 골고루 섞이도록 자동 배분합니다.
+                      {isJapanese ? '各組に男性と女性が偏らず均等に混ざるよう自動配分します。' : '각 조에 남성과 여성이 치우치지 않고 골고루 섞이도록 자동 배분합니다.'}
                     </div>
                   </div>
                 </button>
@@ -2308,9 +2361,9 @@ export default function ClubRoomDetailPage() {
                 >
                   <Award className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <div className="text-xs font-black text-stone-900">🏅 5. 실력 균형 분배 (스네이크)</div>
+                    <div className="text-xs font-black text-stone-900">{isJapanese ? '🏅 5. 実力バランス配分 (スネーク)' : '🏅 5. 실력 균형 분배 (스네이크)'}</div>
                     <div className="text-[11px] text-stone-500 font-bold mt-0.5">
-                      상급자, 중급자, 초급자가 한 조에 쏠리지 않도록 밸런스를 맞춥니다.
+                      {isJapanese ? '上級者・中級者・初心者が一組に偏らないようバランスを調整します。' : '상급자, 중급자, 초급자가 한 조에 쏠리지 않도록 밸런스를 맞춥니다.'}
                     </div>
                   </div>
                 </button>
@@ -2323,7 +2376,7 @@ export default function ClubRoomDetailPage() {
                   onClick={() => setShowAutoGroupModal(false)}
                   className="w-1/3 py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl font-black text-xs transition cursor-pointer"
                 >
-                  취소
+                  {isJapanese ? 'キャンセル' : '취소'}
                 </button>
                 <button
                   type="button"
@@ -2331,7 +2384,7 @@ export default function ClubRoomDetailPage() {
                   className="w-2/3 py-3 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white rounded-xl font-black text-xs sm:text-sm shadow-md transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer border border-purple-500"
                 >
                   <Sparkles className="w-4 h-4 text-yellow-300" />
-                  <span>🚀 조건 적용하여 조 편성 실행 (RUN)</span>
+                  <span>{isJapanese ? '🚀 条件を適用して組編成を実行 (RUN)' : '🚀 조건 적용하여 조 편성 실행 (RUN)'}</span>
                 </button>
               </div>
             </div>
@@ -2345,7 +2398,7 @@ export default function ClubRoomDetailPage() {
           <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl border border-stone-200 overflow-hidden">
             <div className="bg-gradient-to-r from-indigo-800 to-purple-900 text-white p-4 flex items-center justify-between">
               <h3 className="font-black text-sm">
-                '{movingPlayer.playerName}' 님 조 이동
+                {isJapanese ? `「${movingPlayer.playerName}」様の組移動` : `'${movingPlayer.playerName}' 님 조 이동`}
               </h3>
               <button
                 type="button"
@@ -2358,7 +2411,7 @@ export default function ClubRoomDetailPage() {
 
             <div className="p-4 space-y-3">
               <p className="text-xs text-stone-600 font-bold">
-                이동할 대상 조를 선택해 주세요:
+                {isJapanese ? '移動先の対象組を選択してください:' : '이동할 대상 조를 선택해 주세요:'}
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {room.groups.map((g) => {
@@ -2375,8 +2428,8 @@ export default function ClubRoomDetailPage() {
                           : 'bg-purple-50 hover:bg-purple-100 text-purple-900 border-purple-200 cursor-pointer'
                       }`}
                     >
-                      <span>{g.name} ({g.players.length}명)</span>
-                      {isCurrent && <span className="block text-[10px] text-stone-400">(현재 조)</span>}
+                      <span>{g.name} ({g.players.length}{isJapanese ? '人' : '명'})</span>
+                      {isCurrent && <span className="block text-[10px] text-stone-400">({isJapanese ? '現在の組' : '현재 조'})</span>}
                     </button>
                   );
                 })}
@@ -2392,7 +2445,9 @@ export default function ClubRoomDetailPage() {
           <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl border border-stone-200 overflow-hidden">
             <div className="bg-gradient-to-r from-purple-800 to-indigo-900 text-white p-4 flex items-center justify-between">
               <h3 className="font-black text-base">
-                {joiningGroup !== null ? `[${joiningGroup}조] 참가 신청` : '참가 신청 (대기 명단 등록)'}
+                {joiningGroup !== null
+                  ? (isJapanese ? `[${joiningGroup}組] 参加申込` : `[${joiningGroup}조] 참가 신청`)
+                  : (isJapanese ? '参加申込 (待機名簿登録)' : '참가 신청 (대기 명단 등록)')}
               </h3>
               <button
                 type="button"
@@ -2407,8 +2462,8 @@ export default function ClubRoomDetailPage() {
               {/* 성명 */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-extrabold text-stone-800">참가자 성명 / 활동명 *</label>
-                  <span className="text-[10px] text-stone-500 font-bold">실명 또는 가명</span>
+                  <label className="text-xs font-extrabold text-stone-800">{isJapanese ? '参加者氏名 / ニックネーム *' : '참가자 성명 / 활동명 *'}</label>
+                  <span className="text-[10px] text-stone-500 font-bold">{isJapanese ? '本名または仮名' : '실명 또는 가명'}</span>
                 </div>
 
                 {/* 실명 vs 가명 vs 게스트 빠른 선택 */}
@@ -2417,42 +2472,42 @@ export default function ClubRoomDetailPage() {
                     type="button"
                     onClick={() => {
                       const user = ParkOnStorage.getKakaoUser();
-                      setNewPlayerName(user?.realName || '홍길동');
+                      setNewPlayerName(user?.realName || (isJapanese ? '山田太郎' : '홍길동'));
                     }}
                     className={`flex-1 py-1.5 px-2 rounded-lg border text-[11px] font-black transition cursor-pointer text-center ${
-                      newPlayerName === (ParkOnStorage.getKakaoUser()?.realName || '홍길동')
+                      newPlayerName === (ParkOnStorage.getKakaoUser()?.realName || (isJapanese ? '山田太郎' : '홍길동'))
                         ? 'bg-emerald-100 border-emerald-600 text-emerald-950 ring-2 ring-emerald-200'
                         : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800'
                     }`}
                   >
-                    🔘 실명 ({ParkOnStorage.getKakaoUser()?.realName || '홍길동'})
+                    🔘 {isJapanese ? '本名' : '실명'} ({ParkOnStorage.getKakaoUser()?.realName || (isJapanese ? '山田太郎' : '홍길동')})
                   </button>
                   <button
                     type="button"
                     onClick={() => {
                       const user = ParkOnStorage.getKakaoUser();
-                      setNewPlayerName(user?.aliasName || '손오공');
+                      setNewPlayerName(user?.aliasName || (isJapanese ? 'パークの達人' : '손오공'));
                     }}
                     className={`flex-1 py-1.5 px-2 rounded-lg border text-[11px] font-black transition cursor-pointer text-center ${
-                      newPlayerName === (ParkOnStorage.getKakaoUser()?.aliasName || '손오공')
+                      newPlayerName === (ParkOnStorage.getKakaoUser()?.aliasName || (isJapanese ? 'パークの達人' : '손오공'))
                         ? 'bg-purple-100 border-purple-600 text-purple-950 ring-2 ring-purple-200'
                         : 'bg-purple-50 hover:bg-purple-100 border-purple-300 text-purple-800'
                     }`}
                   >
-                    🔘 가명 ({ParkOnStorage.getKakaoUser()?.aliasName || '손오공'})
+                    🔘 {isJapanese ? '仮名' : '가명'} ({ParkOnStorage.getKakaoUser()?.aliasName || (isJapanese ? 'パークの達人' : '손오공')})
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      setNewPlayerName('게스트');
+                      setNewPlayerName(isJapanese ? 'ゲスト' : '게스트');
                     }}
                     className={`flex-1 py-1.5 px-2 rounded-lg border text-[11px] font-black transition cursor-pointer text-center ${
-                      newPlayerName.startsWith('게스트')
+                      newPlayerName.startsWith(isJapanese ? 'ゲスト' : '게스트')
                         ? 'bg-amber-100 border-amber-600 text-amber-950 ring-2 ring-amber-200'
                         : 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-800'
                     }`}
                   >
-                    🔘 게스트 (초청)
+                    🔘 {isJapanese ? 'ゲスト (招待)' : '게스트 (초청)'}
                   </button>
                 </div>
 
@@ -2460,19 +2515,21 @@ export default function ClubRoomDetailPage() {
                   type="text"
                   value={newPlayerName}
                   onChange={(e) => setNewPlayerName(e.target.value)}
-                  placeholder="예: 홍길동 또는 게스트1"
+                  placeholder={isJapanese ? '例: 山田太郎 または ゲスト1' : '예: 홍길동 또는 게스트1'}
                   autoFocus
                   required
                   className="w-full px-3 py-2 border border-stone-300 rounded-xl text-xs font-black focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
                 <p className="text-[10px] text-stone-400 font-medium">
-                  💡 공식 대회는 실명 참가를 추천하며, 외부 초청인원/당일 현장 방문객은 게스트로 등록해 즉시 조에 편성할 수 있습니다.
+                  {isJapanese
+                    ? '💡 公式大会は本名参加を推奨し、外部招待者や当日来場者はゲスト登録して即座に組編成できます。'
+                    : '💡 공식 대회는 실명 참가를 추천하며, 외부 초청인원/당일 현장 방문객은 게스트로 등록해 즉시 조에 편성할 수 있습니다.'}
                 </p>
               </div>
 
               {/* 성별 선택 */}
               <div className="space-y-1">
-                <label className="text-xs font-extrabold text-stone-800">성별 (성비 균형 분배용)</label>
+                <label className="text-xs font-extrabold text-stone-800">{isJapanese ? '性別 (男女比バランス配分用)' : '성별 (성비 균형 분배용)'}</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -2483,7 +2540,7 @@ export default function ClubRoomDetailPage() {
                         : 'bg-stone-50 text-stone-700 border-stone-200'
                     }`}
                   >
-                    남성 (남)
+                    {isJapanese ? '男性 (男)' : '남성 (남)'}
                   </button>
                   <button
                     type="button"
@@ -2494,14 +2551,14 @@ export default function ClubRoomDetailPage() {
                         : 'bg-stone-50 text-stone-700 border-stone-200'
                     }`}
                   >
-                    여성 (여)
+                    {isJapanese ? '女性 (女)' : '여성 (여)'}
                   </button>
                 </div>
               </div>
 
               {/* 실력 등급 선택 */}
               <div className="space-y-1">
-                <label className="text-xs font-extrabold text-stone-800">실력 등급 (실력 균형 분배용)</label>
+                <label className="text-xs font-extrabold text-stone-800">{isJapanese ? '実力ランク (実力バランス配分用)' : '실력 등급 (실력 균형 분배용)'}</label>
                 <div className="grid grid-cols-3 gap-1.5">
                   <button
                     type="button"
@@ -2512,7 +2569,7 @@ export default function ClubRoomDetailPage() {
                         : 'bg-stone-50 text-stone-700 border-stone-200'
                     }`}
                   >
-                    상급 (1~2급)
+                    {isJapanese ? '上級 (1~2級)' : '상급 (1~2급)'}
                   </button>
                   <button
                     type="button"
@@ -2523,7 +2580,7 @@ export default function ClubRoomDetailPage() {
                         : 'bg-stone-50 text-stone-700 border-stone-200'
                     }`}
                   >
-                    중급 (3급/일반)
+                    {isJapanese ? '中級 (3級/一般)' : '중급 (3급/일반)'}
                   </button>
                   <button
                     type="button"
@@ -2534,7 +2591,7 @@ export default function ClubRoomDetailPage() {
                         : 'bg-stone-50 text-stone-700 border-stone-200'
                     }`}
                   >
-                    초급 (루키)
+                    {isJapanese ? '初級 (ルーキー)' : '초급 (루키)'}
                   </button>
                 </div>
               </div>
@@ -2550,7 +2607,7 @@ export default function ClubRoomDetailPage() {
                     className="w-4 h-4 text-purple-600 rounded border-stone-300 focus:ring-purple-500"
                   />
                   <label htmlFor="asLeader" className="text-xs font-black text-stone-700 cursor-pointer">
-                    👑 이 조의 조장으로 참가 (스코어 입력 담당)
+                    {isJapanese ? '👑 この組のリーダーとして参加 (スコア入力担当)' : '👑 이 조의 조장으로 참가 (스코어 입력 담당)'}
                   </label>
                 </div>
               )}
@@ -2561,13 +2618,13 @@ export default function ClubRoomDetailPage() {
                   onClick={() => setShowJoinModal(false)}
                   className="w-1/2 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl font-black text-xs transition cursor-pointer"
                 >
-                  취소
+                  {isJapanese ? 'キャンセル' : '취소'}
                 </button>
                 <button
                   type="submit"
                   className="w-1/2 py-2.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl font-black text-xs shadow-md transition active:scale-95 cursor-pointer"
                 >
-                  참가 완료
+                  {isJapanese ? '参加完了' : '참가 완료'}
                 </button>
               </div>
             </form>
@@ -2582,7 +2639,7 @@ export default function ClubRoomDetailPage() {
             <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Coins className="w-5 h-5 text-amber-200" />
-                <h3 className="font-black text-base">참가비 및 입금 계좌 설정</h3>
+                <h3 className="font-black text-base">{isJapanese ? '参加費および振込口座の設定' : '참가비 및 입금 계좌 설정'}</h3>
               </div>
               <button
                 type="button"
@@ -2597,8 +2654,8 @@ export default function ClubRoomDetailPage() {
               {/* 1인 참가비 */}
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-stone-800 flex items-center justify-between">
-                  <span>1인 참가비 (원)</span>
-                  <span className="text-amber-700 font-bold">0원이면 무료</span>
+                  <span>{isJapanese ? '1人参加費 (ウォン/円)' : '1인 참가비 (원)'}</span>
+                  <span className="text-amber-700 font-bold">{isJapanese ? '0なら無料' : '0원이면 무료'}</span>
                 </label>
                 <div className="grid grid-cols-4 gap-1">
                   {[0, 5000, 10000, 20000].map((fee) => (
@@ -2612,7 +2669,7 @@ export default function ClubRoomDetailPage() {
                           : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
                       }`}
                     >
-                      {fee === 0 ? '무료' : `${(fee / 10000 >= 1 ? `${fee / 10000}만` : `${fee / 1000}천`)}원`}
+                      {fee === 0 ? (isJapanese ? '無料' : '무료') : `${(fee / 10000 >= 1 ? `${fee / 10000}万` : `${fee / 1000}千`)}${isJapanese ? 'ウォン' : '원'}`}
                     </button>
                   ))}
                 </div>
@@ -2626,12 +2683,12 @@ export default function ClubRoomDetailPage() {
 
               {/* 입금 계좌 안내 */}
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold text-stone-800">입금 계좌 안내 (은행·계좌번호·예금주)</label>
+                <label className="text-xs font-extrabold text-stone-800">{isJapanese ? '振込口座の案内 (銀行・口座番号・名義)' : '입금 계좌 안내 (은행·계좌번호·예금주)'}</label>
                 <input
                   type="text"
                   value={configBankAccount}
                   onChange={(e) => setConfigBankAccount(e.target.value)}
-                  placeholder="예: 농협 352-1234-5678 김대희(총무)"
+                  placeholder={isJapanese ? '例: 三井住友銀行 123-456789 田中(幹事)' : '예: 농협 352-1234-5678 김대희(총무)'}
                   className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-600"
                 />
               </div>
@@ -2642,13 +2699,13 @@ export default function ClubRoomDetailPage() {
                   onClick={() => setShowPaymentConfigModal(false)}
                   className="w-1/2 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl font-black text-xs transition cursor-pointer"
                 >
-                  취소
+                  {isJapanese ? 'キャンセル' : '취소'}
                 </button>
                 <button
                   type="submit"
                   className="w-1/2 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-black text-xs shadow-md transition active:scale-95 cursor-pointer"
                 >
-                  설정 저장
+                  {isJapanese ? '設定を保存' : '설정 저장'}
                 </button>
               </div>
             </form>
@@ -2667,7 +2724,7 @@ export default function ClubRoomDetailPage() {
                   <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-950/70 px-2 py-0.5 rounded-full">
                     OFFICIAL RULES
                   </span>
-                  <h3 className="font-black text-base leading-tight">대회 요강 & 경기 방식 안내</h3>
+                  <h3 className="font-black text-base leading-tight">{isJapanese ? '大会要項＆競技方式の案内' : '대회 요강 & 경기 방식 안내'}</h3>
                 </div>
               </div>
               <button
@@ -2685,7 +2742,7 @@ export default function ClubRoomDetailPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-xl">{gameModeInfo.badge}</span>
                   <div>
-                    <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">공식 경기 모드</span>
+                    <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">{isJapanese ? '公式競技モード' : '공식 경기 모드'}</span>
                     <h4 className="text-sm font-black text-emerald-950">{room.gameModeTitle || gameModeInfo.title}</h4>
                   </div>
                 </div>
@@ -2693,7 +2750,7 @@ export default function ClubRoomDetailPage() {
                   {gameModeInfo.shortDesc}
                 </p>
                 <div className="bg-white/90 rounded-xl p-2.5 border border-emerald-100 text-[11px] text-stone-600 leading-relaxed">
-                  <strong className="text-emerald-900 block mb-1">📌 규정 세부사항:</strong>
+                  <strong className="text-emerald-900 block mb-1">{isJapanese ? '📌 規定詳細:' : '📌 규정 세부사항:'}</strong>
                   {gameModeInfo.ruleDetail}
                 </div>
               </div>
@@ -2703,7 +2760,7 @@ export default function ClubRoomDetailPage() {
                 <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-3.5 space-y-1.5">
                   <div className="flex items-center gap-1.5 text-amber-900 font-black text-xs">
                     <HelpCircle className="w-4 h-4 text-amber-600" />
-                    <span>주최측 로컬 룰 & 특이 규정</span>
+                    <span>{isJapanese ? '主催者ローカルルール＆特記事項' : '주최측 로컬 룰 & 특이 규정'}</span>
                   </div>
                   <div className="bg-white/90 rounded-xl p-2.5 border border-amber-100 text-xs font-bold text-stone-700 whitespace-pre-wrap leading-relaxed">
                     {room.gameRuleNotes}
@@ -2713,27 +2770,27 @@ export default function ClubRoomDetailPage() {
 
               {/* 순위 산출 및 동타 처리 기준 */}
               <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-2">
-                <h5 className="text-xs font-black text-stone-800">⚖️ 순위 판정 및 동타(Tie) 처리 기준</h5>
+                <h5 className="text-xs font-black text-stone-800">{isJapanese ? '⚖️ 順位判定およびタイ(Tie)処理基準' : '⚖️ 순위 판정 및 동타(Tie) 처리 기준'}</h5>
                 <ul className="text-[11px] text-stone-600 space-y-1 list-disc list-inside leading-relaxed font-medium">
                   {room.gameMode === 'NEW_PERIO' ? (
                     <>
-                      <li><strong>신페리오 순위</strong>: 12개 숨은 홀을 통해 산출된 <strong>네트 스코어(Net Score)</strong> 최저타 순으로 우승자를 결정합니다.</li>
-                      <li><strong>동타 처리</strong>: 네트 스코어가 같을 경우 실타수(Gross)가 적은 선수가 우선하며, 실타수도 같으면 백카운트(후반 9홀 합산타수) 방식으로 순위를 매깁니다.</li>
-                      <li><strong>메달리스트</strong>: 핸디캡과 무관하게 실제 18홀 가장 적은 타수를 기록한 최저타수 선수(Gross 1위)를 별도 시상합니다.</li>
+                      <li>{isJapanese ? <><strong>新ペリア順位</strong>: 12の隠しホールを通じて算出された<strong>ネットスコア(Net Score)</strong>少打数順に優勝者を決定します。</> : <><strong>신페리오 순위</strong>: 12개 숨은 홀을 통해 산출된 <strong>네트 스코어(Net Score)</strong> 최저타 순으로 우승자를 결정합니다.</>}</li>
+                      <li>{isJapanese ? <><strong>タイ処理</strong>: ネットスコアが同打の場合、グロス(Gross)の少ない選手が優先され、グロスも同打の場合はバックカウント(後半9ホールの合計打数)方式で順位を決定します。</> : <><strong>동타 처리</strong>: 네트 스코어가 같을 경우 실타수(Gross)가 적은 선수가 우선하며, 실타수도 같으면 백카운트(후반 9홀 합산타수) 방식으로 순위를 매깁니다.</>}</li>
+                      <li>{isJapanese ? <><strong>メダリスト</strong>: ハンディキャップに関係なく実際の18ホール最少打数を記録した選手(グロス1位)を別途表彰します。</> : <><strong>메달리스트</strong>: 핸디캡과 무관하게 실제 18홀 가장 적은 타수를 기록한 최저타수 선수(Gross 1위)를 별도 시상합니다.</>}</li>
                     </>
                   ) : room.gameMode === 'STROKE' ? (
                     <>
-                      <li><strong>스크래치 순위</strong>: 규정 18홀 총 실타수가 가장 적은 선수가 1위를 차지합니다.</li>
-                      <li><strong>동타 처리</strong>: 동타 발생 시 백카운트(Back Count: 후반 B코스 9홀 최저타, 동타 시 마지막 홀부터 역순 비교)로 결정합니다.</li>
+                      <li>{isJapanese ? <><strong>スクラッチ順位</strong>: 規定18ホールの総グロス打数が最も少ない選手が1位となります。</> : <><strong>스크래치 순위</strong>: 규정 18홀 총 실타수가 가장 적은 선수가 1위를 차지합니다.</>}</li>
+                      <li>{isJapanese ? <><strong>タイ処理</strong>: タイ発生時はバックカウント(Back Count: 後半9ホール最少打、同打時は最終ホールから逆順比較)で決定します。</> : <><strong>동타 처리</strong>: 동타 발생 시 백카운트(Back Count: 후반 B코스 9홀 최저타, 동타 시 마지막 홀부터 역순 비교)로 결정합니다.</>}</li>
                     </>
                   ) : room.gameMode === 'SCRAMBLE' ? (
                     <>
-                      <li><strong>팀 경기</strong>: 조원 4명이 티샷 후 가장 좋은 공 위치에서 4명이 모두 다음 샷을 진행하는 방식입니다.</li>
-                      <li>팀 협동과 친목을 극대화하며 초보자도 팀에 기여할 수 있는 팀전입니다.</li>
+                      <li>{isJapanese ? <><strong>チーム戦</strong>: 組員4名がティーショット後、最も良いボール位置から全員が次のショットを打つ方式です。</> : <><strong>팀 경기</strong>: 조원 4명이 티샷 후 가장 좋은 공 위치에서 4명이 모두 다음 샷을 진행하는 방식입니다.</>}</li>
+                      <li>{isJapanese ? 'チームワークと親睦を深め、初心者もチームに貢献できる競技です。' : '팀 협동과 친목을 극대화하며 초보자도 팀에 기여할 수 있는 팀전입니다.'}</li>
                     </>
                   ) : (
                     <>
-                      <li><strong>명랑 친선</strong>: 순위 경쟁의 부담을 줄이고 회원 간의 친목과 즐거운 라운드를 도모하는 경기입니다.</li>
+                      <li>{isJapanese ? <><strong>親善エンジョイ</strong>: 順位競争のプレッシャーをなくし、会員間の親睦と楽しいラウンドを目指す競技です。</> : <><strong>명랑 친선</strong>: 순위 경쟁의 부담을 줄이고 회원 간의 친목과 즐거운 라운드를 도모하는 경기입니다.</>}</li>
                     </>
                   )}
                 </ul>
@@ -2741,9 +2798,9 @@ export default function ClubRoomDetailPage() {
 
               {/* 참가비 및 총무 계좌 */}
               <div className="bg-stone-100 rounded-xl p-3 flex items-center justify-between text-xs">
-                <span className="font-bold text-stone-600">대회 참가비</span>
+                <span className="font-bold text-stone-600">{isJapanese ? '大会参加費' : '대회 참가비'}</span>
                 <span className="font-black text-stone-900">
-                  {room.entryFee && room.entryFee > 0 ? `${room.entryFee.toLocaleString()}원` : '무료 (참가비 없음)'}
+                  {room.entryFee && room.entryFee > 0 ? (isJapanese ? `${room.entryFee.toLocaleString()}ウォン` : `${room.entryFee.toLocaleString()}원`) : (isJapanese ? '無料 (参加費なし)' : '무료 (참가비 없음)')}
                 </span>
               </div>
             </div>
@@ -2754,7 +2811,7 @@ export default function ClubRoomDetailPage() {
                 onClick={() => setShowRulesModal(false)}
                 className="w-full py-2.5 bg-stone-800 hover:bg-stone-900 text-white rounded-xl font-black text-xs shadow transition active:scale-95 cursor-pointer"
               >
-                확인 및 닫기
+                {isJapanese ? '確認して閉じる' : '확인 및 닫기'}
               </button>
             </div>
           </div>
@@ -2772,7 +2829,7 @@ export default function ClubRoomDetailPage() {
                   <span className="text-[10px] font-black uppercase tracking-wider text-purple-300 bg-purple-950/70 px-2 py-0.5 rounded-full">
                     RULE & AWARDS WIZARD
                   </span>
-                  <h3 className="font-black text-base leading-tight">대회 방식 & 시상 룰 설정</h3>
+                  <h3 className="font-black text-base leading-tight">{isJapanese ? '大会方式＆表彰ルール設定' : '대회 방식 & 시상 룰 설정'}</h3>
                 </div>
               </div>
               <button
@@ -2788,15 +2845,15 @@ export default function ClubRoomDetailPage() {
               {/* [STEP 1] 기본 경기 방식 선택 */}
               <div className="space-y-2">
                 <label className="text-xs font-extrabold text-stone-800 flex items-center justify-between">
-                  <span>1. 공식 경기 방식 선택</span>
-                  <span className="text-[10px] text-purple-700 font-bold">5대 표준 모드 지원</span>
+                  <span>{isJapanese ? '1. 公式競技方式の選択' : '1. 공식 경기 방식 선택'}</span>
+                  <span className="text-[10px] text-purple-700 font-bold">{isJapanese ? '5大標準モード対応' : '5대 표준 모드 지원'}</span>
                 </label>
                 <div className="grid grid-cols-2 gap-1.5">
                   {[
-                    { mode: 'NEW_PERIO', title: '🎯 신페리오 방식', desc: '12홀 핸디캡 (추천)' },
-                    { mode: 'STROKE', title: '🏆 정통 스트로크', desc: '18홀 스크래치 순위' },
-                    { mode: 'SCRAMBLE', title: '🤝 팀 스크램블', desc: '4인 1조 베스트볼' },
-                    { mode: 'CASUAL', title: '⛳ 친선 명랑 라운드', desc: '순위 부담 제로' },
+                    { mode: 'NEW_PERIO', title: isJapanese ? '🎯 新ペリア方式' : '🎯 신페리오 방식', desc: isJapanese ? '12ホールHDCP (おすすめ)' : '12홀 핸디캡 (추천)' },
+                    { mode: 'STROKE', title: isJapanese ? '🏆 正統ストローク' : '🏆 정통 스트로크', desc: isJapanese ? '18ホールスクラッチ順位' : '18홀 스크래치 순위' },
+                    { mode: 'SCRAMBLE', title: isJapanese ? '🤝 チームスクランブル' : '🤝 팀 스크램블', desc: isJapanese ? '4人1組ベストボール' : '4인 1조 베스트볼' },
+                    { mode: 'CASUAL', title: isJapanese ? '⛳ 親善エンジョイ' : '⛳ 친선 명랑 라운드', desc: isJapanese ? '順位プレッシャーなし' : '순위 부담 제로' },
                   ].map((m) => (
                     <button
                       key={m.mode}
@@ -2819,19 +2876,23 @@ export default function ClubRoomDetailPage() {
               <div className="bg-purple-50/70 p-3 rounded-2xl border border-purple-200/80 space-y-2.5">
                 <div className="flex items-center gap-1.5 text-xs font-black text-purple-950">
                   <ShieldCheck className="w-4 h-4 text-purple-700" />
-                  <span>2. 우승자 독식 방지 (시상 유예) 로컬 룰</span>
+                  <span>{isJapanese ? '2. 優勝者独占防止 (表彰猶予) ローカルルール' : '2. 우승자 독식 방지 (시상 유예) 로컬 룰'}</span>
                 </div>
                 <p className="text-[11px] text-stone-600 leading-relaxed">
-                  상급자가 상품을 매번 독식하는 것을 방지합니다. 1등을 하더라도 <strong>명예 메달리스트는 유지</strong>하되, <strong>실제 1위 시상품은 차순위(2위) 회원에게 승계</strong>됩니다.
+                  {isJapanese ? (
+                    <>上級者が毎回賞品を独占するのを防止します。1位になっても<strong>名誉メダリストは維持</strong>され、<strong>実際の1位賞品は次点(2位)会員へ継承</strong>されます。</>
+                  ) : (
+                    <>상급자가 상품을 매번 독식하는 것을 방지합니다. 1등을 하더라도 <strong>명예 메달리스트는 유지</strong>하되, <strong>실제 1위 시상품은 차순위(2위) 회원에게 승계</strong>됩니다.</>
+                  )}
                 </p>
 
                 {/* 유예 기간 라디오 */}
                 <div className="grid grid-cols-4 gap-1">
                   {[
-                    { val: 0, label: '미적용' },
-                    { val: 1, label: '직전 1회' },
-                    { val: 2, label: '최근 2회' },
-                    { val: 3, label: '최근 3개월' },
+                    { val: 0, label: isJapanese ? '未適用' : '미적용' },
+                    { val: 1, label: isJapanese ? '直前1回' : '직전 1회' },
+                    { val: 2, label: isJapanese ? '直近2回' : '최근 2회' },
+                    { val: 3, label: isJapanese ? '直近3ヶ月' : '최근 3개월' },
                   ].map((opt) => (
                     <button
                       key={opt.val}
@@ -2852,17 +2913,19 @@ export default function ClubRoomDetailPage() {
                 {cfgWinnerGraceMonths > 0 && (
                   <div className="space-y-1 pt-1">
                     <label className="text-[11px] font-extrabold text-stone-700">
-                      직전 우승자 이름 (쉼표로 구분)
+                      {isJapanese ? '直前優勝者名 (カンマ区切り)' : '직전 우승자 이름 (쉼표로 구분)'}
                     </label>
                     <input
                       type="text"
                       value={cfgLastWinnerNames}
                       onChange={(e) => setCfgLastWinnerNames(e.target.value)}
-                      placeholder="예: 박찬호, 홍길동"
+                      placeholder={isJapanese ? '例: 山田太郎, 佐藤健' : '예: 박찬호, 홍길동'}
                       className="w-full px-3 py-2 bg-white border border-purple-300 rounded-xl text-xs font-bold focus:outline-none focus:border-purple-600"
                     />
                     <p className="text-[10px] text-purple-800 font-medium">
-                      💡 여기에 적힌 회원이 이번 대회에서 1위를 차지하면 상품이 2위에게 자동 승계됩니다.
+                      {isJapanese
+                        ? '💡 ここに記載された会員が今大会で1位となった場合、賞品が2位へ自動継承されます。'
+                        : '💡 여기에 적힌 회원이 이번 대회에서 1위를 차지하면 상품이 2위에게 자동 승계됩니다.'}
                     </p>
                   </div>
                 )}
@@ -2870,7 +2933,7 @@ export default function ClubRoomDetailPage() {
 
               {/* [STEP 3] 이색 특별상 & 행운상 옵션 토글 */}
               <div className="bg-stone-50 p-3 rounded-2xl border border-stone-200 space-y-2.5">
-                <div className="text-xs font-black text-stone-800">3. 특별상 및 현장 추첨 옵션</div>
+                <div className="text-xs font-black text-stone-800">{isJapanese ? '3. 特別賞および現場抽選オプション' : '3. 특별상 및 현장 추첨 옵션'}</div>
 
                 <label className="flex items-center gap-2 text-xs font-bold text-stone-700 cursor-pointer">
                   <input
@@ -2879,7 +2942,7 @@ export default function ClubRoomDetailPage() {
                     onChange={(e) => setCfgEnableSpecialAwards(e.target.checked)}
                     className="w-4 h-4 text-purple-700 rounded border-stone-300"
                   />
-                  <span>🎖️ 이색 특별상 자동 집계 (다파상, 오리상, 행운의 7위상, 아차상, 꼴찌 격려상)</span>
+                  <span>{isJapanese ? '🎖️ ユニーク特別賞の自動集計 (最多パー賞, カモ賞, ラッキー7位賞, ニアピン惜敗賞, 努力賞)' : '🎖️ 이색 특별상 자동 집계 (다파상, 오리상, 행운의 7위상, 아차상, 꼴찌 격려상)'}</span>
                 </label>
 
                 <label className="flex items-center gap-2 text-xs font-bold text-stone-700 cursor-pointer">
@@ -2889,18 +2952,18 @@ export default function ClubRoomDetailPage() {
                     onChange={(e) => setCfgEnableLuckyDraw(e.target.checked)}
                     className="w-4 h-4 text-purple-700 rounded border-stone-300"
                   />
-                  <span>🎰 현장 실시간 행운상 추첨기 가동 (시상식 즉석 룰렛)</span>
+                  <span>{isJapanese ? '🎰 現場リアルタイムラッキー賞抽選機の稼働 (表彰式即席ルーレット)' : '🎰 현장 실시간 행운상 추첨기 가동 (시상식 즉석 룰렛)'}</span>
                 </label>
               </div>
 
               {/* [STEP 4] 로컬 룰 및 특이 규정 */}
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold text-stone-800">4. 주최측 로컬 룰 & 공지사항</label>
+                <label className="text-xs font-extrabold text-stone-800">{isJapanese ? '4. 主催者ローカルルール＆お知らせ' : '4. 주최측 로컬 룰 & 공지사항'}</label>
                 <div className="flex gap-1 flex-wrap">
                   {[
-                    'OB 시 2벌타 및 특설티(드롭존) 플레이',
-                    '컨시드는 1클럽(30cm) 이내 인정',
-                    '벙커 러프 발자국 정리 후 무벌타 드롭',
+                    isJapanese ? 'OB時は2罰打および特設ティー(ドロップゾーン)プレー' : 'OB 시 2벌타 및 특설티(드롭존) 플레이',
+                    isJapanese ? 'コンシードは1クラブ(30cm)以内認定' : '컨시드는 1클럽(30cm) 이내 인정',
+                    isJapanese ? 'バンカーラフ足跡整地後無罰ドロップ' : '벙커 러프 발자국 정리 후 무벌타 드롭',
                   ].map((rule) => (
                     <button
                       key={rule}
@@ -2920,7 +2983,7 @@ export default function ClubRoomDetailPage() {
                   rows={3}
                   value={cfgRuleNotes}
                   onChange={(e) => setCfgRuleNotes(e.target.value)}
-                  placeholder="추가 안내사항이나 로컬 룰을 입력하세요..."
+                  placeholder={isJapanese ? '追加の案内事項やローカルルールを入力してください...' : '추가 안내사항이나 로컬 룰을 입력하세요...'}
                   className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-medium focus:outline-none focus:border-purple-600"
                 />
               </div>
@@ -2931,13 +2994,13 @@ export default function ClubRoomDetailPage() {
                   onClick={() => setShowAwardConfigModal(false)}
                   className="w-1/2 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl font-black text-xs transition cursor-pointer"
                 >
-                  취소
+                  {isJapanese ? 'キャンセル' : '취소'}
                 </button>
                 <button
                   type="submit"
                   className="w-1/2 py-2.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl font-black text-xs shadow-md transition active:scale-95 cursor-pointer"
                 >
-                  설정 저장 및 반영
+                  {isJapanese ? '設定を保存して反映' : '설정 저장 및 반영'}
                 </button>
               </div>
             </form>
@@ -2956,7 +3019,7 @@ export default function ClubRoomDetailPage() {
                   <span className="text-[10px] font-black uppercase tracking-wider text-amber-200 bg-amber-950/60 px-2 py-0.5 rounded-full">
                     LIVE LUCKY DRAW
                   </span>
-                  <h3 className="font-black text-base leading-tight">현장 실시간 행운상 추첨기</h3>
+                  <h3 className="font-black text-base leading-tight">{isJapanese ? '現場リアルタイムラッキー賞抽選機' : '현장 실시간 행운상 추첨기'}</h3>
                 </div>
               </div>
               <button
@@ -2972,15 +3035,21 @@ export default function ClubRoomDetailPage() {
               {/* 상품명 입력 */}
               <div className="space-y-1.5">
                 <label className="text-xs font-extrabold text-stone-800 flex items-center justify-between">
-                  <span>추첨할 상품 명칭</span>
-                  <span className="text-amber-700 font-bold text-[10px]">빠른 선택 가능</span>
+                  <span>{isJapanese ? '抽選する賞品名称' : '추첨할 상품 명칭'}</span>
+                  <span className="text-amber-700 font-bold text-[10px]">{isJapanese ? 'クイック選択可能' : '빠른 선택 가능'}</span>
                 </label>
                 <div className="flex gap-1 flex-wrap">
-                  {['양말 세트', '파크골프 공', '고급 모자', '골프 장갑', '1만원 상품권'].map((item) => (
+                  {[
+                    isJapanese ? '靴下セット' : '양말 세트',
+                    isJapanese ? 'パークゴルフボール' : '파크골프 공',
+                    isJapanese ? '高級キャップ' : '고급 모자',
+                    isJapanese ? 'ゴルフグローブ' : '골프 장갑',
+                    isJapanese ? '商品券' : '1만원 상품권',
+                  ].map((item) => (
                     <button
                       key={item}
                       type="button"
-                      onClick={() => setDrawPrizeName(`행운상 (${item})`)}
+                      onClick={() => setDrawPrizeName(isJapanese ? `ラッキー賞 (${item})` : `행운상 (${item})`)}
                       className="text-[10px] bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-md font-bold transition"
                     >
                       {item}
@@ -2991,14 +3060,14 @@ export default function ClubRoomDetailPage() {
                   type="text"
                   value={drawPrizeName}
                   onChange={(e) => setDrawPrizeName(e.target.value)}
-                  placeholder="예: 행운상 1호 (파크골프 공 1더즌)"
+                  placeholder={isJapanese ? '例: ラッキー賞1号 (ボール1ダース)' : '예: 행운상 1호 (파크골프 공 1더즌)'}
                   className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-600"
                 />
               </div>
 
               {/* 추첨 대상 필터 */}
               <div className="space-y-1.5">
-                <label className="text-xs font-extrabold text-stone-800">추첨 대상 범위</label>
+                <label className="text-xs font-extrabold text-stone-800">{isJapanese ? '抽選対象の範囲' : '추첨 대상 범위'}</label>
                 <div className="grid grid-cols-2 gap-1.5">
                   <button
                     type="button"
@@ -3009,9 +3078,9 @@ export default function ClubRoomDetailPage() {
                         : 'bg-stone-50 border-stone-200 text-stone-600 font-bold'
                     }`}
                   >
-                    <div className="text-xs">🎁 미수상자 배려 (추천)</div>
+                    <div className="text-xs">{isJapanese ? '🎁 未受賞者を配慮 (おすすめ)' : '🎁 미수상자 배려 (추천)'}</div>
                     <div className="text-[10px] text-stone-500 font-normal mt-0.5">
-                      상 못 받은 회원만 대상 (골고루 시상)
+                      {isJapanese ? '賞のない会員のみ対象 (均等表彰)' : '상 못 받은 회원만 대상 (골고루 시상)'}
                     </div>
                   </button>
 
@@ -3024,9 +3093,9 @@ export default function ClubRoomDetailPage() {
                         : 'bg-stone-50 border-stone-200 text-stone-600 font-bold'
                     }`}
                   >
-                    <div className="text-xs">👥 전체 참가자 대상</div>
+                    <div className="text-xs">{isJapanese ? '👥 全参加者が対象' : '👥 전체 참가자 대상'}</div>
                     <div className="text-[10px] text-stone-500 font-normal mt-0.5">
-                      1~3위 포함 전원 100% 무작위
+                      {isJapanese ? '1~3位含む全員100%ランダム' : '1~3위 포함 전원 100% 무작위'}
                     </div>
                   </button>
                 </div>
@@ -3038,24 +3107,24 @@ export default function ClubRoomDetailPage() {
                   <div className="bg-gradient-to-br from-amber-100 via-orange-100 to-amber-200 border-2 border-dashed border-amber-500 rounded-3xl p-6 text-center shadow-inner space-y-2">
                     <div className="inline-block animate-spin text-2xl">🎲</div>
                     <div className="text-xs font-black text-amber-800 tracking-wider">
-                      행운의 주인공을 찾는 중...
+                      {isJapanese ? '幸運の主人公を探索中...' : '행운의 주인공을 찾는 중...'}
                     </div>
                     <div className="text-2xl font-black text-stone-900 tracking-tight transition-all">
-                      {currentCandidateName || '두구두구...'}
+                      {currentCandidateName || (isJapanese ? 'ドキドキ...' : '두구두구...')}
                     </div>
                   </div>
                 ) : drawnWinner ? (
                   <div className="bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 text-white rounded-3xl p-5 text-center shadow-lg space-y-2 animate-fadeIn border border-amber-300">
                     <Sparkles className="w-8 h-8 text-amber-200 mx-auto" />
                     <span className="text-[11px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full">
-                      🎉 축하합니다! 당첨되었습니다 🎉
+                      {isJapanese ? '🎉 おめでとうございます！当選しました 🎉' : '🎉 축하합니다! 당첨되었습니다 🎉'}
                     </span>
                     <h4 className="text-2xl font-black text-white pt-1">
-                      {drawnWinner.groupNumber ? `[${drawnWinner.groupNumber}조] ` : ''}
-                      {drawnWinner.name} 회원님!
+                      {drawnWinner.groupNumber ? (isJapanese ? `[${drawnWinner.groupNumber}組] ` : `[${drawnWinner.groupNumber}조] `) : ''}
+                      {isJapanese ? `${drawnWinner.name} 会員様！` : `${drawnWinner.name} 회원님!`}
                     </h4>
                     <p className="text-xs text-amber-100 font-extrabold">
-                      🎁 선물: {drawPrizeName}
+                      🎁 {isJapanese ? '賞品' : '선물'}: {drawPrizeName}
                     </p>
 
                     <div className="pt-3 flex gap-2">
@@ -3064,14 +3133,14 @@ export default function ClubRoomDetailPage() {
                         onClick={handleStartLuckyDraw}
                         className="w-1/2 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-black transition cursor-pointer"
                       >
-                        다시 뽑기 🔄
+                        {isJapanese ? 'もう一度引く 🔄' : '다시 뽑기 🔄'}
                       </button>
                       <button
                         type="button"
                         onClick={handleConfirmLuckyWinner}
                         className="w-1/2 py-2.5 bg-white text-amber-950 hover:bg-amber-50 rounded-xl text-xs font-black shadow-md transition active:scale-95 cursor-pointer"
                       >
-                        당첨 확정 [✅]
+                        {isJapanese ? '当選確定 [✅]' : '당첨 확정 [✅]'}
                       </button>
                     </div>
                   </div>
@@ -3079,10 +3148,14 @@ export default function ClubRoomDetailPage() {
                   <div className="bg-stone-50 border border-stone-200 rounded-3xl p-6 text-center space-y-2">
                     <div className="text-3xl">🎰</div>
                     <h4 className="text-sm font-black text-stone-800">
-                      현장 즉석 룰렛 행운 추첨
+                      {isJapanese ? '現場即席ルーレットラッキー抽選' : '현장 즉석 룰렛 행운 추첨'}
                     </h4>
                     <p className="text-xs text-stone-500 font-medium">
-                      아래 <strong>[추첨 시작]</strong> 버튼을 누르면 참가자 명단이 룰렛처럼 회전하며 당첨자를 선정합니다!
+                      {isJapanese ? (
+                        <>下の<strong>[抽選開始]</strong>ボタンを押すと参加者名簿がルーレットのように回転し当選者を選定します！</>
+                      ) : (
+                        <>아래 <strong>[추첨 시작]</strong> 버튼을 누르면 참가자 명단이 룰렛처럼 회전하며 당첨자를 선정합니다!</>
+                      )}
                     </p>
                     <div className="pt-2">
                       <button
@@ -3091,7 +3164,7 @@ export default function ClubRoomDetailPage() {
                         className="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl text-xs font-black shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
                       >
                         <Sparkles className="w-4 h-4 text-amber-200" />
-                        <span>추첨 시작! (룰렛 회전 🎲)</span>
+                        <span>{isJapanese ? '抽選開始！(ルーレット回転 🎲)' : '추첨 시작! (룰렛 회전 🎲)'}</span>
                       </button>
                     </div>
                   </div>
@@ -3102,7 +3175,7 @@ export default function ClubRoomDetailPage() {
               {room.awardConfig?.luckyDrawWinners && room.awardConfig.luckyDrawWinners.length > 0 && (
                 <div className="space-y-1.5 pt-2">
                   <div className="text-xs font-extrabold text-stone-800 flex items-center justify-between">
-                    <span>현재까지 당첨된 행운상 ({room.awardConfig.luckyDrawWinners.length}명)</span>
+                    <span>{isJapanese ? `現在までの当選ラッキー賞 (${room.awardConfig.luckyDrawWinners.length}人)` : `현재까지 당첨된 행운상 (${room.awardConfig.luckyDrawWinners.length}명)`}</span>
                   </div>
                   <div className="divide-y divide-stone-100 bg-stone-50 rounded-2xl border border-stone-200 max-h-36 overflow-y-auto">
                     {room.awardConfig.luckyDrawWinners.map((lw, idx) => (
@@ -3111,7 +3184,7 @@ export default function ClubRoomDetailPage() {
                         className="p-2 flex items-center justify-between text-xs font-bold text-stone-700"
                       >
                         <span>
-                          {idx + 1}. <strong>{lw.name}</strong> {lw.groupNumber ? `(${lw.groupNumber}조)` : ''} - 🎁 {lw.prizeName}
+                          {idx + 1}. <strong>{lw.name}</strong> {lw.groupNumber ? `(${lw.groupNumber}${isJapanese ? '組' : '조'})` : ''} - 🎁 {lw.prizeName}
                         </span>
                         <button
                           type="button"
@@ -3133,7 +3206,7 @@ export default function ClubRoomDetailPage() {
                 onClick={() => setShowLuckyDrawModal(false)}
                 className="w-full py-2.5 bg-stone-800 hover:bg-stone-900 text-white rounded-xl font-black text-xs shadow transition active:scale-95 cursor-pointer"
               >
-                닫기
+                {isJapanese ? '閉じる' : '닫기'}
               </button>
             </div>
           </div>

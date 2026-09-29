@@ -36,14 +36,14 @@ export function DigitalBadgeModal({
   if (!isOpen) return null;
 
   const handleShare = async () => {
-    const shareText = `[파크온 공식 인증 🎖️]\n⛳ '${badge.courseName}' 18홀 완주 달성!\n• 나의 누적 완주: ${badge.visitCount}회 (${tierInfo.title})\n${
+    const shareText = `[파크골프 올인원 공식 인증 🎖️]\n⛳ '${badge.courseName}' 18홀 완주 달성!\n• 나의 누적 완주: ${badge.visitCount}회 (${tierInfo.title})\n${
       badge.todayRoundCount > 1 ? `• 🔥 오늘 ${badge.todayRoundCount}차전 연속 라운드 달성!\n` : ''
-    }• 완주 일자: ${badge.lastCompletedAt}\n\n👉 지금 파크온에서 함께 도장 깨기 도전하세요!\nhttps://www.parkongolf.com`;
+    }• 완주 일자: ${badge.lastCompletedAt}\n\n👉 지금 파크골프 올인원에서 함께 도장 깨기 도전하세요!\nhttps://www.parkongolf.com`;
 
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: `[파크온] ${badge.courseName} 완주 뱃지 획득!`,
+          title: `[파크골프 올인원] ${badge.courseName} 완주 뱃지 획득!`,
           text: shareText,
           url: 'https://www.parkongolf.com',
         });

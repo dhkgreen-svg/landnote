@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 interface LocalRuleBannerProps {
   hole: number;
@@ -15,6 +16,7 @@ const DUMMY_LOCAL_RULES = [
 ];
 
 export function LocalRuleBanner({ hole, localRule }: LocalRuleBannerProps) {
+  const { isJapanese } = useTranslation();
   if (!localRule || typeof localRule !== 'string' || !localRule.trim()) return null;
 
   const clean = localRule.trim();
@@ -29,7 +31,7 @@ export function LocalRuleBanner({ hole, localRule }: LocalRuleBannerProps) {
       <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
       <div>
         <div className="text-[10px] font-bold text-amber-800 flex items-center gap-1">
-          <span>⚠️ {hole}번 홀 로컬룰</span>
+          <span>⚠️ {isJapanese ? `${hole}番ホール ローカルルール` : `${hole}번 홀 로컬룰`}</span>
         </div>
         <p className="text-xs font-semibold text-amber-950 mt-0.5 leading-snug break-keep">
           {clean}
