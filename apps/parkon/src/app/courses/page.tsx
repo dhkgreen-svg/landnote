@@ -14,6 +14,7 @@ import {
   Sparkles,
   Edit3,
   ChevronRight,
+  ChevronDown,
   Trash2,
   Phone,
   ExternalLink,
@@ -245,6 +246,7 @@ export default function CoursesPage() {
   // Search input and applied search term
   const [inputQuery, setInputQuery] = useState<string>('');
   const [appliedQuery, setAppliedQuery] = useState<string>('');
+  const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
 
   // 5 Service Mode State: RESTAURANT | COACH | RANGE | SHOP | MARKET (null by default so nothing is opened until clicked)
   const [activeServiceTab, setActiveServiceTab] = useState<'RESTAURANT' | 'COACH' | 'RANGE' | 'SHOP' | 'MARKET' | null>(null);
@@ -1280,213 +1282,178 @@ export default function CoursesPage() {
                 const isFavorite = favoriteHomeCourseIds.includes(c.id);
                 const dual = getCourseDualName(c, isJapanese);
                 const displayRegion = getLocalizedCourseRegion(c);
+                const isExpanded = expandedCourseId === c.id;
 
                 return (
                   <div
                     key={c.id}
-                    className={`p-4 rounded-3xl border-2 transition shadow-sm space-y-3 ${
+                    className={`rounded-2xl border transition overflow-hidden shadow-2xs ${
                       isHome
-                        ? 'bg-emerald-50/70 border-emerald-500 ring-2 ring-emerald-500/20'
+                        ? 'bg-emerald-50/70 border-emerald-500 ring-1 ring-emerald-500/20'
                         : isFavorite
-                        ? 'bg-amber-50/50 border-amber-400/80 ring-2 ring-amber-400/20'
-                        : 'bg-white border-stone-200 hover:border-emerald-300'
+                        ? 'bg-amber-50/50 border-amber-400 ring-1 ring-amber-400/20'
+                        : isExpanded
+                        ? 'bg-white border-emerald-500 shadow-md ring-1 ring-emerald-500/20'
+                        : 'bg-white border-stone-200 hover:border-emerald-400'
                     }`}
                   >
-                    {/* Top: Name & Badges */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* 1줄 컴팩트 요약 행 (터치 시 상세 펼치기 / 접기) */}
+                    <div
+                      onClick={() => setExpandedCourseId(isExpanded ? null : c.id)}
+                      className="p-3 sm:p-3.5 flex items-center justify-between gap-2 cursor-pointer select-none active:bg-stone-50 transition"
+                    >
+                      {/* 1. 구장명 & 배지 */}
+                      <div className="min-w-0 flex-1 flex items-center gap-1.5">
+                        <span className="font-black text-sm sm:text-base text-stone-900 truncate">
+                          {dual.primary}
+                        </span>
+                        {c.isVerified && (
+                          <span className="text-[9px] bg-blue-100 text-blue-800 font-extrabold px-1.5 py-0.2 rounded shrink-0">
+                            {isJapanese ? '公認' : '공인'}
+                          </span>
+                        )}
+                        {isHome ? (
+                          <span className="text-[9px] bg-emerald-700 text-white font-black px-1.5 py-0.2 rounded shrink-0">
+                            {isJapanese ? '選択中' : '선택중'}
+                          </span>
+                        ) : isFavorite ? (
+                          <span className="text-[9px] bg-amber-400 text-amber-950 font-black px-1.5 py-0.2 rounded shrink-0">
+                            ★{isJapanese ? 'マイ' : '홈'}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {/* 2. 지역 (경북 구미시 등) */}
+                      <div className="text-xs text-stone-600 font-bold shrink-0 max-w-[100px] sm:max-w-[130px] text-center truncate">
+                        {displayRegion}
+                      </div>
+
+                      {/* 3. 코스 / 홀수 & 펼침 아이콘 */}
+                      <div className="flex items-center justify-end gap-1 shrink-0">
+                        <span className="text-xs font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                          {formatCourseHolesText(c).replace('홀', isJapanese ? 'H' : '홀')}
+                        </span>
+                        <ChevronDown
+                          className={`w-4 h-4 text-stone-400 transition-transform duration-200 ${
+                            isExpanded ? 'rotate-180 text-emerald-700' : ''
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 펼쳐졌을 때의 상세 내용 */}
+                    {isExpanded && (
+                      <div className="p-3.5 pt-1 border-t border-stone-100 space-y-3 animate-fadeIn bg-stone-50/40">
+                        {/* 설명 */}
+                        {c.description && (
+                          <p className="text-xs text-stone-700 bg-white p-2.5 rounded-xl border border-stone-200 leading-snug break-keep font-medium">
+                            {c.description}
+                          </p>
+                        )}
+
+                        {/* 상세 시설 정보: 주소, 전화, 요금, 운영시간, 주차 */}
+                        {(c.address || c.phone || c.openHours || c.fee || c.closedDay || c.parking) && (
+                          <div className="text-xs space-y-1.5 bg-white p-3 rounded-2xl border border-stone-200">
+                            {c.address && (
+                              <div className="flex items-start gap-1.5 text-stone-800">
+                                <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" />
+                                <span className="font-bold text-stone-900">{c.address}</span>
+                              </div>
+                            )}
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-stone-600 font-semibold text-[11px]">
+                              {c.phone && (
+                                <a
+                                  href={`tel:${c.phone}`}
+                                  className="flex items-center gap-1 text-emerald-800 hover:underline font-extrabold bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200"
+                                >
+                                  <Phone className="w-3 h-3 text-emerald-700" />
+                                  <span>{c.phone}</span>
+                                </a>
+                              )}
+                              {c.fee && <span className="bg-stone-50 px-2 py-0.5 rounded-lg border border-stone-200">💰 {c.fee}</span>}
+                              {c.openHours && <span className="bg-stone-50 px-2 py-0.5 rounded-lg border border-stone-200">⏰ {c.openHours}</span>}
+                              {c.closedDay && <span className="bg-rose-50 text-rose-800 px-2 py-0.5 rounded-lg border border-rose-200 font-bold">⛔ {c.closedDay}</span>}
+                            </div>
+                            {c.parking && (
+                              <div className="text-[11px] text-stone-600 flex items-center gap-1 font-medium">
+                                <span>🅿️ {isJapanese ? '駐車場:' : '주차:'}</span>
+                                <span>{c.parking}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 📋 홀별 제원표 & 명예의 전당 버튼 */}
+                        <button
+                          type="button"
+                          onClick={() => setDetailCourse(c)}
+                          className="w-full bg-stone-100 hover:bg-stone-200 text-stone-900 font-black text-xs py-2.5 px-3 rounded-xl flex items-center justify-between border border-stone-300 shadow-2xs transition active:scale-[0.99] cursor-pointer"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <span className="text-sm">📋</span>
+                            <span>
+                              {isJapanese
+                                ? 'コース別 1〜9ホール詳細諸元 · 打数/距離実測 · 殿堂'
+                                : '코스별 1~9홀 상세 제원표 · 타수/거리 실측 · 명예의 전당'}
+                            </span>
+                          </span>
+                          <span className="text-[11px] text-emerald-800 font-extrabold bg-white px-2 py-0.5 rounded border border-stone-200">
+                            {isJapanese ? '確認/修正 ❯' : '확인/정정 ❯'}
+                          </span>
+                        </button>
+
+                        {/* Action Buttons: 구장 선택 & 홈 지정 */}
+                        <div className="pt-0.5 flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => handleSelectCourseAndGoHome(c.id)}
-                            className="text-left flex flex-col group transition active:scale-[0.98] cursor-pointer"
-                            title={isJapanese ? "タップしてこのコースを選択しホーム画面へ移動します" : "터치 시 이 구장을 선택하고 첫 화면으로 이동합니다"}
+                            className="flex-1 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-black text-sm py-3 px-3 rounded-xl shadow text-center transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
                           >
-                            <span className="font-black text-lg text-stone-900 leading-tight group-hover:text-emerald-700 flex items-center gap-1.5 flex-wrap">
-                              {dual.flag && <span>{dual.flag}</span>}
-                              <span>{dual.primary}</span>
-                            </span>
-                            {dual.showSecondary && dual.secondary && (
-                              <span className="text-xs font-bold text-stone-500 leading-tight mt-0.5 group-hover:text-emerald-800">
-                                {dual.secondary}
-                              </span>
-                            )}
+                            <span>{isJapanese ? '⛳ このコースを選択 (即時スタート)' : '⛳ 이 구장 선택 (잔디 확인 & 0초 시작)'}</span>
+                            <ChevronRight className="w-4 h-4" />
                           </button>
-                          {c.isVerified && (
-                            <span className="text-[10px] bg-blue-100 text-blue-800 font-black px-1.5 py-0.5 rounded self-start mt-1">
-                              {isJapanese ? '公認検証' : '공인 검증'}
-                            </span>
-                          )}
-                          {isHome ? (
-                            <span className="text-[10px] bg-emerald-700 text-white font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                              {isJapanese ? '★ 現在選択中' : '★ 현재 선택됨'}
-                            </span>
-                          ) : isFavorite ? (
-                            <span className="text-[10px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                              {isJapanese ? '★ マイコース' : '★ 내 홈구장'}
-                            </span>
-                          ) : null}
-                        </div>
-                        <p className="text-xs text-stone-700 mt-1 font-semibold flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
-                          <span>
-                            {displayRegion} · {formatCourseHolesText(c).replace('홀', isJapanese ? 'ホール' : '홀')}
-                          </span>
-                        </p>
-                      </div>
 
-                      {/* Hole Badge */}
-                      <div className="text-right shrink-0">
-                        <span className="text-xs font-black bg-stone-100 text-stone-800 px-2.5 py-1 rounded-xl border border-stone-200">
-                          {formatCourseHolesText(c).replace('홀', isJapanese ? 'ホール' : '홀')}
-                        </span>
-                      </div>
-                    </div>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFavoriteHomeCourse(c.id)}
+                            className={`px-3 py-3 rounded-xl border text-xs font-black flex items-center gap-1 transition cursor-pointer ${
+                              isHome
+                                ? 'bg-emerald-100 text-emerald-950 border-emerald-400 ring-2 ring-emerald-500/20'
+                                : isFavorite
+                                ? 'bg-amber-100 text-amber-950 border-amber-400'
+                                : 'bg-white text-stone-800 border-stone-300 hover:bg-stone-50'
+                            }`}
+                            title={isJapanese ? "マイコースに設定/解除" : "내 지정 홈 구장으로 설정/해제"}
+                          >
+                            <Star className={`w-3.5 h-3.5 ${isHome || isFavorite ? 'fill-current text-yellow-500' : ''}`} />
+                            <span>
+                              {isHome
+                                ? (isJapanese ? '選択中' : '현재 선택됨')
+                                : isFavorite
+                                ? (isJapanese ? 'マイコース' : '내 구장')
+                                : (isJapanese ? 'ホーム登録' : '홈 지정')}
+                            </span>
+                          </button>
 
-                    {/* Description if any */}
-                    {c.description && (
-                      <p className="text-xs text-stone-700 bg-stone-50 p-2.5 rounded-xl border border-stone-200 leading-snug break-keep font-medium">
-                        {c.description}
-                      </p>
-                    )}
-
-                    {/* Facility Details: Address, Phone, Fee, Hours, Parking */}
-                    {(c.address || c.phone || c.openHours || c.fee || c.closedDay || c.parking) && (
-                      <div className="text-xs space-y-1.5 bg-stone-50/90 p-3 rounded-2xl border border-stone-200">
-                        {c.address && (
-                          <div className="flex items-start gap-1.5 text-stone-800">
-                            <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" />
-                            <span className="font-bold text-stone-900">{c.address}</span>
-                          </div>
-                        )}
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-stone-600 font-semibold text-[11px]">
-                          {c.phone && (
-                            <a
-                              href={`tel:${c.phone}`}
-                              className="flex items-center gap-1 text-emerald-800 hover:underline font-extrabold bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200"
+                          {c.id.startsWith('custom-course-') && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const confirmMsg = isJapanese ? `'${c.name}' コースを削除しますか？` : `'${c.name}' 구장을 삭제하시겠습니까?`;
+                                if (confirm(confirmMsg)) {
+                                  ParkOnStorage.deleteCustomCourse(c.id);
+                                  refreshCourses();
+                                }
+                              }}
+                              className="p-2.5 text-stone-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition border border-transparent hover:border-rose-200 cursor-pointer"
+                              title={isJapanese ? "コース削除" : "구장 삭제"}
                             >
-                              <Phone className="w-3 h-3 text-emerald-700" />
-                              <span>{c.phone}</span>
-                            </a>
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           )}
-                          {c.fee && <span className="bg-white px-2 py-0.5 rounded-lg border border-stone-200">💰 {c.fee}</span>}
-                          {c.openHours && <span className="bg-white px-2 py-0.5 rounded-lg border border-stone-200">⏰ {c.openHours}</span>}
-                          {c.closedDay && <span className="bg-rose-50 text-rose-800 px-2 py-0.5 rounded-lg border border-rose-200 font-bold">⛔ {c.closedDay}</span>}
                         </div>
-                        {c.parking && (
-                          <div className="text-[11px] text-stone-600 flex items-center gap-1 font-medium">
-                            <span>🅿️ {isJapanese ? '駐車場:' : '주차:'}</span>
-                            <span>{c.parking}</span>
-                          </div>
-                        )}
                       </div>
                     )}
-
-                    {/* 👑 HONOR BADGE (명예 표시) */}
-                    {c.contributorName ? (
-                      <div className="bg-amber-50/80 border border-amber-300 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-1.5 text-amber-950 font-black">
-                          <span className="text-sm">👑</span>
-                          <span>
-                            <span className="text-emerald-800 underline decoration-emerald-600">
-                              {c.contributorName}
-                            </span>{' '}
-                            {isJapanese ? '様が登録・貢献したコース情報' : '님이 등록·기여한 구장 정보'}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setDetailCourse(c)}
-                          className="text-[11px] text-amber-900 hover:text-emerald-800 font-bold underline shrink-0 ml-2 cursor-pointer"
-                        >
-                          {isJapanese ? '詳細・補足' : '상세·보완'}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between text-xs px-1 text-stone-700">
-                        <span className="text-[11px]">
-                          {isJapanese ? 'ローカルルールや最新情報は未入力ですか？' : '로컬룰 및 최신 정보가 비어있나요?'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setDetailCourse(c)}
-                          className="text-[11px] text-emerald-800 font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
-                        >
-                          <Edit3 className="w-3 h-3" />
-                          <span>{isJapanese ? '諸元確認・登録' : '제원 확인·명예 등록'}</span>
-                        </button>
-                      </div>
-                    )}
-
-                    {/* 📋 홀별 제원표 & 명예의 전당 바로가기 버튼 */}
-                    <button
-                      type="button"
-                      onClick={() => setDetailCourse(c)}
-                      className="w-full bg-stone-100 hover:bg-stone-200 text-stone-900 font-black text-xs py-2.5 px-3 rounded-xl flex items-center justify-between border border-stone-300 shadow-sm transition active:scale-[0.99] cursor-pointer"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <span className="text-sm">📋</span>
-                        <span>
-                          {isJapanese
-                            ? 'コース別 1〜9ホール詳細諸元 · 打数/距離実測 · 殿堂'
-                            : '코스별 1~9홀 상세 제원표 · 타수/거리 실측 · 명예의 전당'}
-                        </span>
-                      </span>
-                      <span className="text-[11px] text-emerald-800 font-extrabold bg-white px-2 py-0.5 rounded border border-stone-200">
-                        {isJapanese ? '確認/修正 ❯' : '확인/정정 ❯'}
-                      </span>
-                    </button>
-
-                    {/* Action Buttons: Select Course & Set as Home */}
-                    <div className="pt-1 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleSelectCourseAndGoHome(c.id)}
-                        className="flex-1 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-black text-sm py-3 px-3 rounded-xl shadow text-center transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
-                      >
-                        <span>{isJapanese ? '⛳ このコースを選択 (即時スタート)' : '⛳ 이 구장 선택 (잔디 확인 & 0초 시작)'}</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleToggleFavoriteHomeCourse(c.id)}
-                        className={`px-3 py-3 rounded-xl border text-xs font-black flex items-center gap-1 transition cursor-pointer ${
-                          isHome
-                            ? 'bg-emerald-100 text-emerald-950 border-emerald-400 ring-2 ring-emerald-500/20'
-                            : isFavorite
-                            ? 'bg-amber-100 text-amber-950 border-amber-400'
-                            : 'bg-white text-stone-800 border-stone-300 hover:bg-stone-50'
-                        }`}
-                        title={isJapanese ? "マイコースに設定/解除" : "내 지정 홈 구장으로 설정/해제"}
-                      >
-                        <Star className={`w-3.5 h-3.5 ${isHome || isFavorite ? 'fill-current text-yellow-500' : ''}`} />
-                        <span>
-                          {isHome
-                            ? (isJapanese ? '選択中' : '현재 선택됨')
-                            : isFavorite
-                            ? (isJapanese ? 'マイコース' : '내 구장')
-                            : (isJapanese ? 'ホーム登録' : '홈 지정')}
-                        </span>
-                      </button>
-
-                      {c.id.startsWith('custom-course-') && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const confirmMsg = isJapanese ? `'${c.name}' コースを削除しますか？` : `'${c.name}' 구장을 삭제하시겠습니까?`;
-                            if (confirm(confirmMsg)) {
-                              ParkOnStorage.deleteCustomCourse(c.id);
-                              refreshCourses();
-                            }
-                          }}
-                          className="p-2.5 text-stone-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition border border-transparent hover:border-rose-200 cursor-pointer"
-                          title={isJapanese ? "コース削除" : "구장 삭제"}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
                   </div>
                 );
               })
