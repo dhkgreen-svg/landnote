@@ -1,0 +1,3 @@
+# Google AdSense ads.txt for ParkOn (파크온)
+# 애드센스 승인 후 발급받은 본인의 게시자 ID(pub-XXXXXXXXXXXXXXXX)로 교체하여 적용합니다.
+google.com, pub-8564518885257853, DIRECT, f08c47fec0942fa0
