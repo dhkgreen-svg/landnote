@@ -19,16 +19,36 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    const urlParams = new URLSearchParams(window.location.search);
+    const forceWelcome = urlParams.get('welcome') === 'true' || urlParams.get('first') === 'true';
+    const shouldReset = urlParams.get('reset') === 'true';
+
+    if (shouldReset) {
+      localStorage.removeItem('parkon_welcomed');
+      localStorage.removeItem('parkon_welcome_dismissed');
+      localStorage.removeItem('parkon_kakao_user');
+      localStorage.removeItem('parkon_user_profile');
+      localStorage.removeItem('parkon_current_round');
+    }
+
     const isDismissed = localStorage.getItem('parkon_welcome_dismissed') === 'true';
     const isWelcomed = localStorage.getItem('parkon_welcomed') === 'true';
     const hasKakao = Boolean(ParkOnStorage.getKakaoUser());
 
-    if (!isDismissed && !isWelcomed && !hasKakao) {
-      const timer = setTimeout(() => {
+    let timer: NodeJS.Timeout | null = null;
+    if (forceWelcome || shouldReset || (!isDismissed && !isWelcomed && !hasKakao)) {
+      timer = setTimeout(() => {
         setIsOpen(true);
       }, 300);
-      return () => clearTimeout(timer);
     }
+
+    const handleOpenEvent = () => setIsOpen(true);
+    window.addEventListener('parkon_open_welcome_modal', handleOpenEvent);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener('parkon_open_welcome_modal', handleOpenEvent);
+    };
   }, []);
 
   const saveEffectiveName = (): { realName: string; aliasName: string } => {
@@ -117,18 +137,18 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
 
         {/* 스크롤 가능한 본문 */}
         <div className="p-4 overflow-y-auto space-y-3.5 flex-1 overscroll-contain text-center">
-          {/* 핑키 마스코트 사진 */}
+          {/* 파키 마스코트 사진 */}
           <div className="relative rounded-2xl overflow-hidden shadow-md border-2 border-emerald-400/80 bg-stone-100 aspect-square max-w-[155px] mx-auto">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/mascot/사진저장고_사진_20260913_28.jpg"
-              alt="파크골프 올인원 공식 마스코트 핑키 환영인사"
+              alt="파크골프 올인원 공식 마스코트 파키 환영인사"
               className="w-full h-full object-cover"
             />
             <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-emerald-950/85 via-emerald-950/40 to-transparent p-1.5 text-white">
               <span className="text-[10px] font-black bg-amber-400 text-emerald-950 px-2 py-0.5 rounded-full shadow-xs inline-flex items-center gap-1">
                 <Sparkles className="w-2.5 h-2.5 fill-emerald-950" />
-                <span>공식 마스코트 핑키(Pinky)</span>
+                <span>공식 마스코트 파키(Paki)</span>
               </span>
             </div>
           </div>
