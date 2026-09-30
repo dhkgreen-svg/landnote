@@ -1331,7 +1331,9 @@ export default function CoursesPage() {
                       {/* 3. 코스 / 홀수 & 펼침 아이콘 */}
                       <div className="flex items-center justify-end gap-1 shrink-0">
                         <span className="text-xs font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
-                          {formatCourseHolesText(c).replace('홀', isJapanese ? 'H' : '홀')}
+                          {isJapanese
+                            ? `全${c.totalCourses || Math.max(1, Math.round(c.totalHoles / 9))}コース ${c.totalHoles}H`
+                            : formatCourseHolesText(c)}
                         </span>
                         <ChevronDown
                           className={`w-4 h-4 text-stone-400 transition-transform duration-200 ${

@@ -5,6 +5,7 @@ import { X, CheckCircle, ShieldCheck, Sparkles, LogOut, User, UserCheck, Edit3 }
 import { KakaoAuthUser, ParkOnStorage } from '@/lib/storage';
 import { loginWithKakao, logoutKakao } from '@/lib/kakaoAuth';
 import { syncSelfPlayerNameToActiveRound } from '@/lib/playerUtils';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 interface KakaoLoginModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export function KakaoLoginModal({
   title = '회원 로그인 및 활동명 설정',
   subtitle = '실명과 별명을 설정하고 파크골프 커뮤니티에 참여하세요.',
 }: KakaoLoginModalProps) {
+  const { isJapanese } = useTranslation();
   const [currentUser, setCurrentUser] = useState<KakaoAuthUser | null>(null);
   const [realName, setRealName] = useState('');
   const [aliasName, setAliasName] = useState('');
@@ -210,35 +212,41 @@ export function KakaoLoginModal({
               <div className="space-y-3 bg-stone-50 p-3.5 rounded-2xl border border-stone-200">
                 <div className="space-y-1">
                   <label className="font-black text-stone-800 flex items-center justify-between">
-                    <span>성함 (실제 이름) *</span>
-                    <span className="text-[10px] text-emerald-700 font-bold">공식 기록·대회용</span>
+                    <span>{isJapanese ? 'お名前 (本名) *' : '성함 (실제 이름) *'}</span>
+                    <span className="text-[10px] text-emerald-700 font-bold">
+                      {isJapanese ? '公式記録・大会用' : '공식 기록·대회용'}
+                    </span>
                   </label>
                   <input
                     type="text"
                     value={realName}
                     onChange={(e) => setRealName(e.target.value)}
-                    placeholder="성함을 입력하세요 (예: 김대희)"
+                    placeholder={isJapanese ? 'お名前を入力してください (例: 田中太郎)' : '성함을 입력하세요 (예: 김대희)'}
                     className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs focus:border-emerald-600 outline-none"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <label className="font-black text-stone-800 flex items-center justify-between">
-                    <span>가명 / 닉네임 (별명)</span>
-                    <span className="text-[10px] text-purple-700 font-bold">친선·오픈 번개용</span>
+                    <span>{isJapanese ? 'ニックネーム (別名)' : '가명 / 닉네임 (별명)'}</span>
+                    <span className="text-[10px] text-purple-700 font-bold">
+                      {isJapanese ? '親善ラウンド用' : '친선·오픈 번개용'}
+                    </span>
                   </label>
                   <input
                     type="text"
                     value={aliasName}
                     onChange={(e) => setAliasName(e.target.value)}
-                    placeholder="예: 손오공"
+                    placeholder={isJapanese ? '例: ナイスショット、ホールインワン' : '예: 나이스샷, 홀인원'}
                     className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs"
                   />
                 </div>
 
                 {/* 기본 활동명 라디오 선택 */}
                 <div className="space-y-1.5 pt-1">
-                  <span className="font-black text-stone-800 text-[11px]">기본 활동명 선택</span>
+                  <span className="font-black text-stone-800 text-[11px]">
+                    {isJapanese ? '基本表示名の選択' : '기본 활동명 선택'}
+                  </span>
                   <div className="grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
@@ -250,7 +258,7 @@ export function KakaoLoginModal({
                       }`}
                     >
                       <UserCheck className="w-3.5 h-3.5" />
-                      <span>실명 ({realName || '실명'})</span>
+                      <span>{isJapanese ? `本名 (${realName || '本名'})` : `실명 (${realName || '실명'})`}</span>
                     </button>
                     <button
                       type="button"
@@ -262,7 +270,7 @@ export function KakaoLoginModal({
                       }`}
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>가명 ({aliasName || '가명'})</span>
+                      <span>{isJapanese ? `ニックネーム (${aliasName || '別名'})` : `가명 (${aliasName || '가명'})`}</span>
                     </button>
                   </div>
                 </div>
@@ -270,7 +278,9 @@ export function KakaoLoginModal({
 
               {isSavedNotice && (
                 <div className="p-2.5 bg-emerald-100 text-emerald-800 font-black rounded-xl text-center text-xs animate-fadeIn">
-                  ✓ 프로필 활동명이 성공적으로 저장되었습니다!
+                  {isJapanese
+                    ? '✓ プロフィールの活動名が正常に保存されました！'
+                    : '✓ 프로필 활동명이 성공적으로 저장되었습니다!'}
                 </div>
               )}
 
@@ -280,7 +290,7 @@ export function KakaoLoginModal({
                   onClick={handleSaveProfile}
                   className="flex-1 py-3 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-black text-xs rounded-xl shadow transition cursor-pointer"
                 >
-                  프로필 저장 완료
+                  {isJapanese ? '設定を保存する' : '프로필 저장 완료'}
                 </button>
                 <button
                   type="button"
@@ -288,7 +298,7 @@ export function KakaoLoginModal({
                   className="py-3 px-3.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer border border-stone-200"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span>로그아웃</span>
+                  <span>{isJapanese ? 'ログアウト' : '로그아웃'}</span>
                 </button>
               </div>
             </div>
@@ -298,48 +308,60 @@ export function KakaoLoginModal({
               <div className="text-center space-y-1">
                 <div className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-100 text-amber-900 rounded-full text-[10px] font-extrabold">
                   <Sparkles className="w-3 h-3 text-amber-600" />
-                  <span>비밀번호 없이 카카오톡 [확인]만 누르면 끝!</span>
+                  <span>
+                    {isJapanese
+                      ? 'パスワード不要！ワンクリックで完了'
+                      : '비밀번호 없이 카카오톡 [확인]만 누르면 끝!'}
+                  </span>
                 </div>
                 <h4 className="font-black text-stone-900 text-sm">
-                  카카오톡 창이 뜨면 [확인]만 누르시면 1초 만에 자동 가입 완료!
+                  {isJapanese
+                    ? 'お名前を入力して、かんたん1秒連携スタート！'
+                    : '카카오톡 창이 뜨면 [확인]만 누르시면 1초 만에 자동 가입 완료!'}
                 </h4>
                 <p className="text-[11px] text-emerald-800 font-bold bg-emerald-50 py-1 px-2 rounded-xl border border-emerald-200">
-                  ✓ 복잡한 비밀번호 입력이 전혀 없습니다.
+                  {isJapanese ? '✓ 複雑なパスワード登録は一切不要です。' : '✓ 복잡한 비밀번호 입력이 전혀 없습니다.'}
                 </p>
               </div>
 
               <div className="space-y-2.5 bg-stone-50 p-3.5 rounded-2xl border border-stone-200">
                 <div className="space-y-1">
                   <label className="font-black text-stone-800 flex items-center justify-between">
-                    <span>실명 (실제 성함) *</span>
-                    <span className="text-[10px] text-emerald-700 font-bold">공식 대회 출전용</span>
+                    <span>{isJapanese ? 'お名前 (本名) *' : '성함 (실제 이름) *'}</span>
+                    <span className="text-[10px] text-emerald-700 font-bold">
+                      {isJapanese ? '公式記録・大会用' : '공식 대회 출전용'}
+                    </span>
                   </label>
                   <input
                     type="text"
                     value={realName}
                     onChange={(e) => setRealName(e.target.value)}
-                    placeholder="예: 홍길동"
+                    placeholder={isJapanese ? 'お名前を入力してください (例: 田中太郎)' : '성함을 입력하세요 (예: 김대희)'}
                     className="w-full px-3 py-2.5 bg-white border border-stone-300 rounded-xl font-bold text-xs"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <label className="font-black text-stone-800 flex items-center justify-between">
-                    <span>가명 / 닉네임 (별명)</span>
-                    <span className="text-[10px] text-purple-700 font-bold">친선 번개용</span>
+                    <span>{isJapanese ? 'ニックネーム (別名)' : '가명 / 닉네임 (별명)'}</span>
+                    <span className="text-[10px] text-purple-700 font-bold">
+                      {isJapanese ? '親善ラウンド用' : '친선 번개용'}
+                    </span>
                   </label>
                   <input
                     type="text"
                     value={aliasName}
                     onChange={(e) => setAliasName(e.target.value)}
-                    placeholder="예: 손오공"
+                    placeholder={isJapanese ? '例: ナイスショット、ホールインワン' : '예: 나이스샷, 홀인원'}
                     className="w-full px-3 py-2.5 bg-white border border-stone-300 rounded-xl font-bold text-xs"
                   />
                 </div>
 
                 {/* 활동명 모드 선택 */}
                 <div className="space-y-1 pt-1">
-                  <span className="font-black text-stone-800 text-[11px]">기본 활동명 방식</span>
+                  <span className="font-black text-stone-800 text-[11px]">
+                    {isJapanese ? '基本表示名の選択' : '기본 활동명 방식'}
+                  </span>
                   <div className="grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
@@ -351,7 +373,7 @@ export function KakaoLoginModal({
                       }`}
                     >
                       <UserCheck className="w-3.5 h-3.5" />
-                      <span>실명 ({realName || '실명'})</span>
+                      <span>{isJapanese ? `本名 (${realName || '本名'})` : `실명 (${realName || '실명'})`}</span>
                     </button>
                     <button
                       type="button"

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Play, Sparkles, CheckCircle2, ArrowRight, ShieldCheck, Lock, Edit3, ChevronDown, ChevronUp } from 'lucide-react';
 import { ParkOnStorage, KakaoAuthUser } from '@/lib/storage';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 interface WelcomeModalProps {
   onOpenKakaoLogin?: () => void;
@@ -10,6 +11,7 @@ interface WelcomeModalProps {
 }
 
 export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeModalProps) {
+  const { isJapanese } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [realNameInput, setRealNameInput] = useState('');
   const [aliasNameInput, setAliasNameInput] = useState('');
@@ -151,7 +153,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
             <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-emerald-950/85 via-emerald-950/40 to-transparent p-1.5 text-white">
               <span className="text-[10px] font-black bg-amber-400 text-emerald-950 px-2 py-0.5 rounded-full shadow-xs inline-flex items-center gap-1">
                 <Sparkles className="w-2.5 h-2.5 fill-emerald-950" />
-                <span>공식 마스코트 파키(Paki)</span>
+                <span>{isJapanese ? '公式マスコット パキ (Paki)' : '공식 마스코트 파키(Paki)'}</span>
               </span>
             </div>
           </div>
@@ -159,10 +161,20 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
           {/* 환영 인사 문구 */}
           <div className="space-y-1">
             <h2 className="text-base sm:text-lg font-black text-stone-900 leading-tight">
-              반갑습니다! <span className="text-emerald-700">파크골프 올인원</span>에 오신 것을 환영합니다!
+              {isJapanese ? (
+                <>
+                  ようこそ！ <span className="text-emerald-700">パークゴルフ オールインワン</span>へ！
+                </>
+              ) : (
+                <>
+                  반갑습니다! <span className="text-emerald-700">파크골프 올인원</span>에 오신 것을 환영합니다!
+                </>
+              )}
             </h2>
             <p className="text-xs text-stone-600 font-bold">
-              전국 400개 구장 날씨·길안내부터 1초 스코어보드까지 올인원
+              {isJapanese
+                ? '日本全国のコース情報・天気から1秒スコアボードまでオールインワン'
+                : '전국 400개 구장 날씨·길안내부터 1초 스코어보드까지 올인원'}
             </p>
           </div>
 
@@ -170,25 +182,33 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
           <div className="grid grid-cols-3 gap-1.5 py-1">
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2 flex flex-col items-center justify-center gap-1">
               <ShieldCheck className="w-4 h-4 text-emerald-700" />
-              <span className="text-[10px] font-black text-emerald-950 leading-tight">100% 평생무료</span>
+              <span className="text-[10px] font-black text-emerald-950 leading-tight">
+                {isJapanese ? '100% 永久無料' : '100% 평생무료'}
+              </span>
             </div>
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2 flex flex-col items-center justify-center gap-1">
               <Lock className="w-4 h-4 text-emerald-700" />
-              <span className="text-[10px] font-black text-emerald-950 leading-tight">가입·비번 없음</span>
+              <span className="text-[10px] font-black text-emerald-950 leading-tight">
+                {isJapanese ? '登録・パス不要' : '가입·비번 없음'}
+              </span>
             </div>
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2 flex flex-col items-center justify-center gap-1">
               <Sparkles className="w-4 h-4 text-emerald-700" />
-              <span className="text-[10px] font-black text-emerald-950 leading-tight">1초 즉시 실행</span>
+              <span className="text-[10px] font-black text-emerald-950 leading-tight">
+                {isJapanese ? '1秒 即時スタート' : '1초 즉시 실행'}
+              </span>
             </div>
           </div>
 
-          {/* 가상 활동명 안내 카드 (본명: 홍길동, 별명: 손오공 기본 세팅) */}
+          {/* 가상 활동명 안내 카드 */}
           <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3 text-left space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black text-stone-800">👤 기본 활동명</span>
+                <span className="text-xs font-black text-stone-800">
+                  {isJapanese ? '👤 基本活動名' : '👤 기본 활동명'}
+                </span>
                 <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-                  자동 준비 완료
+                  {isJapanese ? '自動準備完了' : '자동 준비 완료'}
                 </span>
               </div>
               <button
@@ -197,43 +217,56 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
                 className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-0.5 cursor-pointer underline"
               >
                 <Edit3 className="w-3 h-3" />
-                <span>{showCustomNameInput ? '접기' : '내 이름 직접 적기'}</span>
+                <span>
+                  {showCustomNameInput
+                    ? (isJapanese ? '閉じる' : '접기')
+                    : (isJapanese ? 'お名前を直接入力' : '내 이름 직접 적기')}
+                </span>
                 {showCustomNameInput ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               </button>
             </div>
 
             {/* 기본 활동명 뱃지 표시 */}
-            {/* 기본 활동명 뱃지 표시 */}
             {!showCustomNameInput ? (
               <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs">
-                <span className="text-stone-500 font-bold">성명:</span>
-                <span className="font-black text-stone-900">{realNameInput.trim() || '성명 미입력'}</span>
+                <span className="text-stone-500 font-bold">{isJapanese ? 'お名前:' : '성명:'}</span>
+                <span className="font-black text-stone-900">
+                  {realNameInput.trim() || (isJapanese ? '未入力' : '성명 미입력')}
+                </span>
                 <span className="text-stone-300">|</span>
-                <span className="text-stone-500 font-bold">별명:</span>
-                <span className="font-black text-stone-900">{aliasNameInput.trim() || '파크골퍼'}</span>
-                <span className="ml-auto text-[10px] text-emerald-700 font-bold">(터치하여 직접 입력)</span>
+                <span className="text-stone-500 font-bold">{isJapanese ? 'ニックネーム:' : '별명:'}</span>
+                <span className="font-black text-stone-900">
+                  {aliasNameInput.trim() || (isJapanese ? 'ゴルファー' : '파크골퍼')}
+                </span>
+                <span className="ml-auto text-[10px] text-emerald-700 font-bold">
+                  {isJapanese ? '(タップして直接入力)' : '(터치하여 직접 입력)'}
+                </span>
               </div>
             ) : (
-              /* 이름 직접 변경 폼 (키보드는 유저가 클릭했을 때만 펼쳐짐) */
+              /* 이름 직접 변경 폼 */
               <div className="space-y-2 pt-1 animate-fadeIn">
                 <div>
-                  <label className="text-[10px] font-bold text-stone-600 block mb-0.5">실제 성함 (실명)</label>
+                  <label className="text-[10px] font-bold text-stone-600 block mb-0.5">
+                    {isJapanese ? '実際のお名前 (本名)' : '실제 성함 (실명)'}
+                  </label>
                   <input
                     type="text"
                     value={realNameInput}
                     onChange={(e) => setRealNameInput(e.target.value)}
-                    placeholder="성함을 입력하세요 (예: 김대희)"
+                    placeholder={isJapanese ? 'お名前を入力してください (例: 田中太郎)' : '성함을 입력하세요 (예: 김대희)'}
                     maxLength={10}
                     className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-bold text-stone-900 focus:border-emerald-600 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-stone-600 block mb-0.5">별명 (닉네임)</label>
+                  <label className="text-[10px] font-bold text-stone-600 block mb-0.5">
+                    {isJapanese ? 'ニックネーム (別名)' : '별명 (닉네임)'}
+                  </label>
                   <input
                     type="text"
                     value={aliasNameInput}
                     onChange={(e) => setAliasNameInput(e.target.value)}
-                    placeholder="예: 나이스샷, 홀인원"
+                    placeholder={isJapanese ? '例: ナイスショット、ホールインワン' : '예: 나이스샷, 홀인원'}
                     maxLength={10}
                     className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-bold text-stone-900 focus:border-emerald-600 outline-none"
                   />
@@ -241,11 +274,13 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
               </div>
             )}
             <p className="text-[10px] text-stone-500 leading-tight">
-              💡 상단 [성명 입력] 버튼을 통해 언제든 내 이름과 별명을 자유롭게 변경하실 수 있습니다.
+              {isJapanese
+                ? '💡 上部の[お名前入力]ボタンから、いつでもお名前やニックネームを変更できます。'
+                : '💡 상단 [성명 입력] 버튼을 통해 언제든 내 이름과 별명을 자유롭게 변경하실 수 있습니다.'}
             </p>
           </div>
 
-          {/* 초대형 원터치 메인 CTA 버튼 (초보자 허들 제로: 1번 홀 직행) */}
+          {/* 초대형 원터치 메인 CTA 버튼 */}
           <div className="space-y-2 pt-1">
             <button
               type="button"
@@ -253,7 +288,11 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
               className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 active:scale-95 text-white font-black text-sm sm:text-base rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer border border-emerald-800"
             >
               <Play className="w-5 h-5 text-yellow-300 fill-yellow-300 animate-pulse" />
-              <span>🏌️ 1초 만에 바로 시작하기 (1번 홀 직행) ▶</span>
+              <span>
+                {isJapanese
+                  ? '🏌️ 1秒でスタート (1番ホール直行) ▶'
+                  : '🏌️ 1초 만에 바로 시작하기 (1번 홀 직행) ▶'}
+              </span>
             </button>
 
             {/* 보조 버튼: 오늘 실전 구장 둘러보기 */}
@@ -262,7 +301,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
               onClick={handleStartReal}
               className="w-full py-2.5 px-3 bg-white hover:bg-stone-50 active:scale-95 text-stone-800 font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer border-2 border-stone-300"
             >
-              <span>⛳ 전국 구장 목록 둘러보기</span>
+              <span>{isJapanese ? '⛳ コース一覧を見る' : '⛳ 전국 구장 목록 둘러보기'}</span>
               <ArrowRight className="w-3.5 h-3.5 text-stone-500" />
             </button>
           </div>
@@ -276,14 +315,14 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
                 onChange={(e) => setDontShowAgain(e.target.checked)}
                 className="w-3.5 h-3.5 rounded-sm accent-emerald-700 cursor-pointer"
               />
-              <span>이 안내를 다시 보지 않기</span>
+              <span>{isJapanese ? '次回から表示しない' : '이 안내를 다시 보지 않기'}</span>
             </label>
             <button
               type="button"
               onClick={handleClose}
-              className="text-stone-500 hover:text-stone-800 font-black text-[11px] underline cursor-pointer p-1"
+              className="font-bold text-[11px] text-stone-500 hover:text-stone-800 px-2 py-0.5 rounded cursor-pointer"
             >
-              닫기
+              {isJapanese ? '閉じる' : '닫기'}
             </button>
           </div>
         </div>

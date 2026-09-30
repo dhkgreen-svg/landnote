@@ -184,7 +184,11 @@ export function Header() {
                   ? 'bg-emerald-800/90 hover:bg-emerald-900 text-amber-300 border-amber-300/60'
                   : 'bg-amber-400 hover:bg-amber-300 text-stone-950 border-amber-500 shadow-sm animate-pulse'
               }`}
-              title={hasRegisteredName ? '내 성명/별명 수정 및 카카오 연동' : '내 성명 입력 및 카카오톡 간편 연동'}
+              title={
+                hasRegisteredName
+                  ? (isJapanese ? 'お名前・ニックネーム変更・連携' : '내 성명/별명 수정 및 카카오 연동')
+                  : (isJapanese ? 'お名前入力＆簡単連携' : '내 성명 입력 및 카카오톡 간편 연동')
+              }
             >
               <span className="text-[11px] leading-none">{hasRegisteredName ? '👤' : '✍️'}</span>
               <span className="truncate max-w-[75px] sm:max-w-[100px] leading-none">
