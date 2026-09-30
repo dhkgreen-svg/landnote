@@ -1428,11 +1428,7 @@ export default function CoursesPage() {
                             >
                               <Star className={`w-3.5 h-3.5 shrink-0 ${isHome || isFavorite ? 'fill-current text-yellow-500' : 'text-stone-400'}`} />
                               <span className="truncate">
-                                {isHome
-                                  ? (isJapanese ? '★ 選択中のホーム' : '★ 현재 홈구장')
-                                  : isFavorite
-                                  ? (isJapanese ? '★ マイコース登録済' : '★ 홈구장 등록됨')
-                                  : (isJapanese ? '⭐ ホーム指定' : '⭐ 홈구장으로 지정하기')}
+                                {isJapanese ? 'ホームコース登録' : '홈구장으로 등록'}
                               </span>
                             </button>
                           </div>
