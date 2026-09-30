@@ -1420,7 +1420,6 @@ export default function RoundPlayPage() {
                     <span className={`text-sm font-black truncate flex items-center gap-1.5 ${sunlightMode ? 'text-yellow-300' : 'text-emerald-300'}`}>
                       {dual.flag && <span>{dual.flag}</span>}
                       <span>{dual.primary}</span>
-                      <span className="text-xs text-white/80">({currentHole}/{session.isUnlimitedRound ? '자유' : `${session.totalHoles}홀`})</span>
                     </span>
                     {dual.showSecondary && dual.secondary && (
                       <span className="text-[11px] font-bold text-emerald-200/80 truncate">
