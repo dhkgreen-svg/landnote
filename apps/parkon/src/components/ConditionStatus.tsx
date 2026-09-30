@@ -5,6 +5,7 @@ import { Clock } from 'lucide-react';
 import { RollSpeed, MoistureLevel, GrassLength } from '@/types/parkon';
 import { ParkOnStorage, CourseConditionEvaluation } from '@/lib/storage';
 import { ConditionVoteModal } from '@/components/ConditionVoteModal';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 interface ConditionStatusProps {
   courseId: string;
@@ -12,8 +13,13 @@ interface ConditionStatusProps {
 }
 
 export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) {
+  const { isJapanese } = useTranslation();
   const [evaluation, setEvaluation] = useState<CourseConditionEvaluation | null>(null);
   const [showVoteModal, setShowVoteModal] = useState<boolean>(false);
+
+  const displayCourseName = isJapanese
+    ? courseName.replace(/파크골프장$/, 'パークゴルフ場').replace(/구장$/, '球場')
+    : courseName;
 
   const refreshState = () => {
     setEvaluation(ParkOnStorage.getConditionEvaluation(courseId));
@@ -48,41 +54,41 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
   }[] = [
     {
       key: 'VERY_FAST',
-      label: '아주 잘 구름',
+      label: isJapanese ? '超高速' : '아주 잘 구름',
       icon: '🚀',
-      sub: '매우 빠른 그린',
+      sub: isJapanese ? '非常に速い' : '매우 빠른 그린',
       votes: state.speedVotes.very_fast || 0,
       cardColor: 'text-emerald-900 bg-emerald-100 border-emerald-400',
     },
     {
       key: 'FAST',
-      label: '잘 구름',
+      label: isJapanese ? 'やや速い' : '잘 구름',
       icon: '✨',
-      sub: '빠른 편',
+      sub: isJapanese ? '速い方' : '빠른 편',
       votes: state.speedVotes.fast || 0,
       cardColor: 'text-emerald-800 bg-emerald-50 border-emerald-300',
     },
     {
       key: 'NORMAL',
-      label: '보통 구름',
+      label: isJapanese ? '普通' : '보통 구름',
       icon: '⛳',
-      sub: '적정 속도',
+      sub: isJapanese ? '適正速度' : '적정 속도',
       votes: state.speedVotes.normal || 0,
       cardColor: 'text-teal-800 bg-teal-50 border-teal-300',
     },
     {
       key: 'SLOW',
-      label: '잘 안 구름',
+      label: isJapanese ? 'やや重い' : '잘 안 구름',
       icon: '🐢',
-      sub: '다소 무거움',
+      sub: isJapanese ? 'やや重い' : '다소 무거움',
       votes: state.speedVotes.slow || 0,
       cardColor: 'text-amber-800 bg-amber-50 border-amber-300',
     },
     {
       key: 'VERY_SLOW',
-      label: '거의 안 구름',
+      label: isJapanese ? '超重い' : '거의 안 구름',
       icon: '🛑',
-      sub: '매우 무거움',
+      sub: isJapanese ? '非常に重い' : '매우 무거움',
       votes: state.speedVotes.very_slow || 0,
       cardColor: 'text-rose-800 bg-rose-50 border-rose-300',
     },
@@ -99,41 +105,41 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
   }[] = [
     {
       key: 'VERY_DRY',
-      label: '바짝 마름',
+      label: isJapanese ? '乾燥' : '바짝 마름',
       icon: '☀️',
-      sub: '단단한 건조',
+      sub: isJapanese ? '非常に乾燥' : '단단한 건조',
       votes: state.moistureVotes.very_dry || 0,
       cardColor: 'text-amber-900 bg-amber-100 border-amber-400',
     },
     {
       key: 'DRY',
-      label: '약간 마름',
+      label: isJapanese ? 'やや乾燥' : '약간 마름',
       icon: '🌤️',
-      sub: '적당히 건조',
+      sub: isJapanese ? '適度に乾燥' : '적당히 건조',
       votes: state.moistureVotes.dry || 0,
       cardColor: 'text-amber-800 bg-amber-50 border-amber-300',
     },
     {
       key: 'NORMAL',
-      label: '보통 습도',
+      label: isJapanese ? '普通' : '보통 습도',
       icon: '🌱',
-      sub: '표준 수분',
+      sub: isJapanese ? '標準水分' : '표준 수분',
       votes: state.moistureVotes.normal || 0,
       cardColor: 'text-teal-800 bg-teal-50 border-teal-300',
     },
     {
       key: 'WET',
-      label: '축축함',
+      label: isJapanese ? 'しっとり' : '축축함',
       icon: '💧',
-      sub: '물기 촉촉',
+      sub: isJapanese ? '湿気あり' : '물기 촉촉',
       votes: state.moistureVotes.wet || 0,
       cardColor: 'text-sky-800 bg-sky-50 border-sky-300',
     },
     {
       key: 'VERY_WET',
-      label: '아주 질척임',
+      label: isJapanese ? 'ぬかるみ' : '아주 질척임',
       icon: '🌊',
-      sub: '물고임·진흙',
+      sub: isJapanese ? '泥・水たまり' : '물고임·진흙',
       votes: state.moistureVotes.very_wet || 0,
       cardColor: 'text-blue-900 bg-blue-100 border-blue-400',
     },
@@ -150,41 +156,41 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
   }[] = [
     {
       key: 'VERY_SHORT',
-      label: '잔디 거의 없음',
+      label: isJapanese ? 'ほぼ芝なし' : '잔디 거의 없음',
       icon: '🌱',
-      sub: '맨땅 수준',
+      sub: isJapanese ? '地面露出' : '맨땅 수준',
       votes: state.lengthVotes.very_short || 0,
       cardColor: 'text-stone-800 bg-stone-100 border-stone-300',
     },
     {
       key: 'SHORT',
-      label: '조금 있음',
+      label: isJapanese ? '短め' : '조금 있음',
       icon: '✂️',
-      sub: '짧게 깎임',
+      sub: isJapanese ? '短く刈り込み' : '짧게 깎임',
       votes: state.lengthVotes.short || 0,
       cardColor: 'text-emerald-800 bg-emerald-50 border-emerald-300',
     },
     {
       key: 'MEDIUM',
-      label: '중간',
+      label: isJapanese ? '普通' : '중간',
       icon: '⛳',
-      sub: '적정 길이',
+      sub: isJapanese ? '適正長' : '적정 길이',
       votes: state.lengthVotes.medium || 0,
       cardColor: 'text-teal-800 bg-teal-50 border-teal-300',
     },
     {
       key: 'LONG',
-      label: '조금 김',
+      label: isJapanese ? 'やや長め' : '조금 김',
       icon: '🌿',
-      sub: '저항 다소 있음',
+      sub: isJapanese ? 'やや抵抗あり' : '저항 다소 있음',
       votes: state.lengthVotes.long || 0,
       cardColor: 'text-amber-800 bg-amber-50 border-amber-300',
     },
     {
       key: 'VERY_LONG',
-      label: '아주 김',
+      label: isJapanese ? 'かなり長め' : '아주 김',
       icon: '🌾',
-      sub: '풀 저항 매우 큼',
+      sub: isJapanese ? '強い芝抵抗' : '풀 저항 매우 큼',
       votes: state.lengthVotes.very_long || 0,
       cardColor: 'text-rose-800 bg-rose-50 border-rose-300',
     },
@@ -192,26 +198,41 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
 
   const speedInfo = speedOptions.find((o) => o.key === state.speed) || {
     icon: '✨',
-    label: '잘 구름',
+    label: isJapanese ? 'やや速い' : '잘 구름',
     votes: 0,
     cardColor: 'text-emerald-800 bg-emerald-50 border-emerald-300',
   };
 
   const moistureInfo = moistureOptions.find((o) => o.key === state.moisture) || {
     icon: '🌤️',
-    label: '약간 마름',
+    label: isJapanese ? 'やや乾燥' : '약간 마름',
     votes: 0,
     cardColor: 'text-amber-800 bg-amber-50 border-amber-300',
   };
 
   const lengthInfo = lengthOptions.find((o) => o.key === state.length) || {
     icon: '✂️',
-    label: '조금 있음',
+    label: isJapanese ? '短め' : '조금 있음',
     votes: 0,
     cardColor: 'text-emerald-800 bg-emerald-50 border-emerald-300',
   };
 
   const getStrategyTip = () => {
+    if (isJapanese) {
+      if ((state.speed === 'VERY_FAST' || state.speed === 'FAST') && (state.moisture === 'VERY_DRY' || state.moisture === 'DRY')) {
+        return '地面が乾いて芝が短いためボールがよく転がります。アプローチやパッティングは1〜2m手前を狙いましょう。';
+      }
+      if (state.moisture === 'VERY_WET' || state.speed === 'VERY_SLOW' || state.length === 'VERY_LONG') {
+        return '地面がぬかるんでいるか草が茂って抵抗が大きいです。普段より2〜3m以上強気に打ちましょう！';
+      }
+      if (state.moisture === 'WET' || state.length === 'LONG' || state.speed === 'SLOW') {
+        return '芝がやや長めか湿気があり抵抗があります。1〜2m自信を持ってしっかり振り抜きましょう！';
+      }
+      if (state.length === 'VERY_SHORT') {
+        return '芝がほとんどない地面露出状態です。ヘッドを優しくコンタクトさせ、方向性に集中しましょう！';
+      }
+      return '適度な転がりと標準的な芝生状態です。いつものルーティン通り自信を持って攻めましょう！';
+    }
     if ((state.speed === 'VERY_FAST' || state.speed === 'FAST') && (state.moisture === 'VERY_DRY' || state.moisture === 'DRY')) {
       return '지면이 마르고 잔디가 짧아 공이 잘 구릅니다. 어프로치와 퍼팅 시 1~2m 짧게 겨냥하세요.';
     }
@@ -239,12 +260,14 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
               <span className="text-emerald-700 text-sm">🌱</span>
             )}
             <h3 className="font-black text-xs sm:text-sm text-stone-900 leading-snug">
-              오늘 {courseName} 잔디 실전 리포트
+              {isJapanese ? `本日 ${displayCourseName} 芝生実戦レポート` : `오늘 ${courseName} 잔디 실전 리포트`}
             </h3>
           </div>
 
           <span className="text-[10px] text-stone-500 font-bold shrink-0">
-            {formattedCurrentDate} {formattedCurrentTime}
+            {isJapanese
+              ? `${formattedCurrentDate.replace('월', '月').replace('일', '日')} ${formattedCurrentTime}`
+              : `${formattedCurrentDate} ${formattedCurrentTime}`}
           </span>
         </div>
 
@@ -256,7 +279,13 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
                 : 'bg-white text-stone-700 border-stone-300'
             }`}
           >
-            <span>{hasActiveReport ? statusBadgeText : '⏱️ 최근 3시간 내 잔디 리포트 없음'}</span>
+            <span>
+              {hasActiveReport
+                ? (isJapanese
+                    ? `🟢 ${minutesAgo !== undefined && minutesAgo < 1 ? 'たった今' : `${minutesAgo || 0}分前`}レポート (${active1HourVotesCount || 0}件)`
+                    : statusBadgeText)
+                : (isJapanese ? '⏱️ 直近3時間以内の芝生レポートなし' : '⏱️ 최근 3시간 내 잔디 리포트 없음')}
+            </span>
           </span>
 
           {/* 잔디 상태 제보 태그 버튼 */}
@@ -266,7 +295,11 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
             className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 active:scale-95 text-white font-black text-[11px] rounded-full shadow-xs transition cursor-pointer"
           >
             <span>🌱</span>
-            <span>{hasActiveReport ? '잔디 상태 추가 제보' : '잔디 상태 제보하기'}</span>
+            <span>
+              {hasActiveReport
+                ? (isJapanese ? '芝生状態を追加報告' : '잔디 상태 추가 제보')
+                : (isJapanese ? '芝生状態を報告する' : '잔디 상태 제보하기')}
+            </span>
             <span className="text-[10px] opacity-90">✍️</span>
           </button>
         </div>
@@ -282,15 +315,19 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
               ? `${speedInfo.cardColor} shadow-2xs`
               : 'bg-white/95 border-emerald-200/90 text-stone-700 shadow-2xs'
           }`}
-          title="클릭하여 공 구름성 제보/수정"
+          title={isJapanese ? 'タップしてボールの転がりを報告・修正' : '클릭하여 공 구름성 제보/수정'}
         >
-          <span className="text-[10px] font-bold text-stone-600">공 구름성</span>
+          <span className="text-[10px] font-bold text-stone-600">
+            {isJapanese ? 'ボールの転がり' : '공 구름성'}
+          </span>
           <span className="font-black text-xs sm:text-sm mt-0.5 flex items-center gap-1 whitespace-nowrap text-stone-900">
             <span>{hasActiveReport ? speedInfo.icon : '⛳'}</span>
-            <span>{hasActiveReport ? speedInfo.label : '미등록'}</span>
+            <span>{hasActiveReport ? speedInfo.label : (isJapanese ? '未登録' : '미등록')}</span>
           </span>
           <span className="text-[9px] font-bold mt-0.5 text-emerald-700">
-            {hasActiveReport ? `${speedInfo.votes}표 우세` : '터치하여 제보'}
+            {hasActiveReport
+              ? (isJapanese ? `${speedInfo.votes}票 優勢` : `${speedInfo.votes}표 우세`)
+              : (isJapanese ? 'タップして報告' : '터치하여 제보')}
           </span>
         </div>
 
@@ -302,15 +339,19 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
               ? `${moistureInfo.cardColor} shadow-2xs`
               : 'bg-white/95 border-emerald-200/90 text-stone-700 shadow-2xs'
           }`}
-          title="클릭하여 지면 습도 제보/수정"
+          title={isJapanese ? 'タップして地面の湿度を報告・修正' : '클릭하여 지면 습도 제보/수정'}
         >
-          <span className="text-[10px] font-bold text-stone-600">지면 습도</span>
+          <span className="text-[10px] font-bold text-stone-600">
+            {isJapanese ? '地面の湿度' : '지면 습도'}
+          </span>
           <span className="font-black text-xs sm:text-sm mt-0.5 flex items-center gap-1 whitespace-nowrap text-stone-900">
             <span>{hasActiveReport ? moistureInfo.icon : '💧'}</span>
-            <span>{hasActiveReport ? moistureInfo.label : '미등록'}</span>
+            <span>{hasActiveReport ? moistureInfo.label : (isJapanese ? '未登録' : '미등록')}</span>
           </span>
           <span className="text-[9px] font-bold mt-0.5 text-emerald-700">
-            {hasActiveReport ? `${moistureInfo.votes}표 우세` : '터치하여 제보'}
+            {hasActiveReport
+              ? (isJapanese ? `${moistureInfo.votes}票 優勢` : `${moistureInfo.votes}표 우세`)
+              : (isJapanese ? 'タップして報告' : '터치하여 제보')}
           </span>
         </div>
 
@@ -322,15 +363,19 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
               ? `${lengthInfo.cardColor} shadow-2xs`
               : 'bg-white/95 border-emerald-200/90 text-stone-700 shadow-2xs'
           }`}
-          title="클릭하여 잔디 길이 제보/수정"
+          title={isJapanese ? 'タップして芝生の長さを報告・修正' : '클릭하여 잔디 길이 제보/수정'}
         >
-          <span className="text-[10px] font-bold text-stone-600">잔디 길이</span>
+          <span className="text-[10px] font-bold text-stone-600">
+            {isJapanese ? '芝生の長さ' : '잔디 길이'}
+          </span>
           <span className="font-black text-xs sm:text-sm mt-0.5 flex items-center gap-1 whitespace-nowrap text-stone-900">
             <span>{hasActiveReport ? lengthInfo.icon : '🌱'}</span>
-            <span>{hasActiveReport ? lengthInfo.label : '미등록'}</span>
+            <span>{hasActiveReport ? lengthInfo.label : (isJapanese ? '未登録' : '미등록')}</span>
           </span>
           <span className="text-[9px] font-bold mt-0.5 text-emerald-700">
-            {hasActiveReport ? `${lengthInfo.votes}표 우세` : '터치하여 제보'}
+            {hasActiveReport
+              ? (isJapanese ? `${lengthInfo.votes}票 優勢` : `${lengthInfo.votes}표 우세`)
+              : (isJapanese ? 'タップして報告' : '터치하여 제보')}
           </span>
         </div>
       </div>
@@ -340,7 +385,9 @@ export function ConditionStatus({ courseId, courseName }: ConditionStatusProps) 
         <div className="bg-emerald-50/80 rounded-xl p-2 border border-emerald-200/80 flex items-start gap-1.5 shadow-xs text-xs">
           <span className="text-sm shrink-0">💡</span>
           <p className="text-[11px] text-emerald-950 font-medium leading-snug">
-            <strong className="text-emerald-900 font-black mr-1">[오늘의 공략 팁]</strong>
+            <strong className="text-emerald-900 font-black mr-1">
+              {isJapanese ? '[本日の攻略のヒント]' : '[오늘의 공략 팁]'}
+            </strong>
             {getStrategyTip()}
           </p>
         </div>
