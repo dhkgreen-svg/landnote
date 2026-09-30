@@ -5,6 +5,8 @@ import { Camera, Sparkles } from 'lucide-react';
 import { WatermarkPhotoCardModal } from '@/components/WatermarkPhotoCardModal';
 import { RoundSession } from '@/types/parkon';
 
+import { useTranslation } from '@/lib/i18n/LanguageContext';
+
 interface FloatingCameraFABProps {
   session?: RoundSession | null;
   currentHoleNumber?: number;
@@ -12,6 +14,7 @@ interface FloatingCameraFABProps {
 }
 
 export function FloatingCameraFAB({ session, currentHoleNumber, currentCourseName }: FloatingCameraFABProps) {
+  const { isJapanese, isEnglish } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState<boolean>(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -44,12 +47,12 @@ export function FloatingCameraFAB({ session, currentHoleNumber, currentCourseNam
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          aria-label="현장 인증샷 촬영"
+          aria-label={isJapanese ? '記念写真の撮影' : isEnglish ? 'Take photo' : '현장 인증샷 촬영'}
           className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 text-stone-950 shadow-2xl flex flex-col items-center justify-center border-2 border-white/90 active:scale-90 transition-transform cursor-pointer group hover:shadow-amber-500/50"
         >
           <Camera className="w-6 h-6 sm:w-7 sm:h-7 text-stone-950 fill-stone-950/20 group-hover:scale-110 transition-transform" />
           <span className="text-[10px] sm:text-[11px] font-black tracking-tighter leading-none mt-0.5">
-            인증샷
+            {isJapanese ? '記念写真' : isEnglish ? 'Photo' : '인증샷'}
           </span>
         </button>
       </div>

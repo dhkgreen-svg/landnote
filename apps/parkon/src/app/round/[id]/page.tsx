@@ -1624,7 +1624,7 @@ export default function RoundPlayPage() {
                 title={isJapanese ? '炎天下でも画面が見やすい高コントラスト表示' : '대낮 직사광선 아래 선글라스를 껴도 선명한 야외 고대비 화면'}
               >
                 <span className="text-sm">☀️</span>
-                <span className="tracking-tight truncate">{sunlightMode ? (isJapanese ? '直射日光モード ON' : '햇빛모드 ON') : (isJapanese ? '直射日光モード' : '햇빛모드')}</span>
+                <span className="tracking-tight truncate">{sunlightMode ? (isJapanese ? '日差しモード ON' : '햇빛모드 ON') : (isJapanese ? '日差しモード' : '햇빛모드')}</span>
               </button>
             </div>
           </div>
@@ -2189,10 +2189,10 @@ export default function RoundPlayPage() {
                   ? 'bg-yellow-400 text-stone-950 border-white ring-2 ring-yellow-400 shadow-yellow-500/50'
                   : 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300'
               }`}
-              title="대낮 직사광선 아래 선글라스를 껴도 선명한 야외 고대비 화면"
+              title={isJapanese ? '炎天下でも画面が見やすい高コントラスト表示' : '대낮 직사광선 아래 선글라스를 껴도 선명한 야외 고대비 화면'}
             >
               <span className="text-base">☀️</span>
-              <span className="tracking-tight truncate">{sunlightMode ? '햇빛모드 ON' : '햇빛모드'}</span>
+              <span className="tracking-tight truncate">{sunlightMode ? (isJapanese ? '日差しモード ON' : '햇빛모드 ON') : (isJapanese ? '日差しモード' : '햇빛모드')}</span>
             </button>
           </div>
         </div>

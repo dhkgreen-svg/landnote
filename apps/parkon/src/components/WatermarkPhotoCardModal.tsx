@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Camera, Download, Share2, Check, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { RoundSession } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 interface WatermarkPhotoCardModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface WatermarkPhotoCardModalProps {
 }
 
 export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage }: WatermarkPhotoCardModalProps) {
+  const { isJapanese, isEnglish } = useTranslation();
   const [selectedImage, setSelectedImage] = useState<string | null>(initialImage || null);
   const [clubTag, setClubTag] = useState<string>('');
 
@@ -29,11 +31,11 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
 
   const myName = ParkOnStorage.getUserDisplayName();
 
-  const courseName = session?.courseName || '구미 동락 파크골프장';
+  const courseName = session?.courseName || (isJapanese ? '同楽パークゴルフ場' : '구미 동락 파크골프장');
   const totalHoles = session?.totalHoles || 18;
   const dateStr = session?.completedAt
-    ? new Date(session.completedAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
-    : new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+    ? new Date(session.completedAt).toLocaleDateString(isJapanese ? 'ja-JP' : 'ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
+    : new Date().toLocaleDateString(isJapanese ? 'ja-JP' : 'ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 
   // Calculate my score
   const myPlayer = session?.players?.find((p) => p.isSelf || p.name === myName) || session?.players?.[0];
@@ -125,10 +127,10 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
         ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('📸 오늘의 라운드 기념 사진을 올려보세요!', 540, 580);
+        ctx.fillText(isJapanese ? '📸 今日のラウンド記念写真を載せてみましょう！' : '📸 오늘의 라운드 기념 사진을 올려보세요!', 540, 580);
         ctx.font = 'normal 26px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        ctx.fillText('동반자와 함께 찍은 사진이 워터마크 포토 카드로 완성됩니다', 540, 630);
+        ctx.fillText(isJapanese ? '同伴者と一緒に撮った写真が公式記念フォトカードになります' : '동반자와 함께 찍은 사진이 워터마크 포토 카드로 완성됩니다', 540, 630);
         ctx.textAlign = 'left';
       }
 
@@ -165,7 +167,7 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
       ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
       const dateText = clubTag.trim()
         ? `📅 ${dateStr} · 👥 ${clubTag.trim()}`
-        : `📅 ${dateStr} · ${totalHoles}홀 완주`;
+        : `📅 ${dateStr} · ${totalHoles}${isJapanese ? 'ホール完走' : '홀 완주'}`;
       ctx.fillText(dateText, 90, cardY + 60);
 
       ctx.fillStyle = '#FFFFFF';
@@ -183,11 +185,11 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
       // Score Highlight
       ctx.fillStyle = '#34D399'; // Emerald-400
       ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-      ctx.fillText('🏆 라운드 최종 성적', 90, cardY + 195);
+      ctx.fillText(isJapanese ? '🏆 ラウンド最終成績' : '🏆 라운드 최종 성적', 90, cardY + 195);
 
       ctx.fillStyle = '#FFFFFF';
       ctx.font = '900 60px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-      ctx.fillText(`${myStrokes}타`, 90, cardY + 265);
+      ctx.fillText(`${myStrokes}${isJapanese ? '打' : '타'}`, 90, cardY + 265);
 
       ctx.fillStyle = '#FDE047';
       ctx.font = 'bold 30px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
@@ -196,12 +198,12 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
       // Companions list
       ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
       ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-      ctx.fillText(`🤝 동반 1촌: ${companionNames}`, 90, cardY + 325);
+      ctx.fillText(`${isJapanese ? '🤝 同伴者: ' : '🤝 동반 1촌: '}${companionNames}`, 90, cardY + 325);
 
       // Footer Watermark
       ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
       ctx.font = 'normal 18px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-      ctx.fillText('대한민국 1등 파크골프 스마트 스코어보드 · parkongolf.com', 90, cardY + 360);
+      ctx.fillText(isJapanese ? 'No.1 パークゴルフ スマートスコアボード · parkongolf.com' : '대한민국 1등 파크골프 스마트 스코어보드 · parkongolf.com', 90, cardY + 360);
 
       const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
       setCardDataUrl(dataUrl);
@@ -298,8 +300,12 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
               <Camera className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-black text-lg tracking-tight">워터마크 기념 포토카드</h3>
-              <p className="text-xs text-stone-400 font-medium">동반 사진 위에 파크골프 올인원 공식 인증 합성</p>
+              <h3 className="font-black text-lg tracking-tight">
+                {isJapanese ? '記念フォトカード' : isEnglish ? 'Commemorative Photo Card' : '워터마크 기념 포토카드'}
+              </h3>
+              <p className="text-xs text-stone-400 font-medium">
+                {isJapanese ? '写真の上にパークゴルフ オールインワン公式認証合成' : '동반 사진 위에 파크골프 올인원 공식 인증 합성'}
+              </p>
             </div>
           </div>
           <button
@@ -324,7 +330,7 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
           {isGenerating ? (
             <div className="flex flex-col items-center gap-2 text-stone-400 text-xs font-bold">
               <Sparkles className="w-6 h-6 text-amber-400 animate-spin" />
-              <span>포토카드 합성 중...</span>
+              <span>{isJapanese ? 'フォトカード合成中...' : '포토카드 합성 중...'}</span>
             </div>
           ) : cardDataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -334,7 +340,9 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
               className="w-full h-full object-contain"
             />
           ) : (
-            <div className="text-stone-500 text-xs font-medium">카드를 생성하고 있습니다...</div>
+            <div className="text-stone-500 text-xs font-medium">
+              {isJapanese ? 'カードを生成しています...' : '카드를 생성하고 있습니다...'}
+            </div>
           )}
 
           {/* Quick Photo Upload Trigger Button Overlay */}
@@ -344,18 +352,18 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
             className="absolute top-3 right-3 py-2 px-3 bg-black/65 hover:bg-black/85 text-white text-xs font-bold rounded-xl border border-white/30 backdrop-blur-sm flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
           >
             <ImageIcon className="w-4 h-4 text-amber-300" />
-            <span>{selectedImage ? '사진 변경' : '내 사진 올리기'}</span>
+            <span>{selectedImage ? (isJapanese ? '写真変更' : '사진 변경') : (isJapanese ? '写真をアップロード' : '내 사진 올리기')}</span>
           </button>
         </div>
 
         {/* 모임 / 클럽 명칭 (선택 기입 - 워터마크에 자동 반영) */}
         <div className="bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 flex items-center gap-2 text-xs">
-          <span className="text-amber-400 font-bold shrink-0">👥 모임/클럽:</span>
+          <span className="text-amber-400 font-bold shrink-0">{isJapanese ? '👥 クラブ/サークル:' : '👥 모임/클럽:'}</span>
           <input
             type="text"
             value={clubTag}
             onChange={(e) => setClubTag(e.target.value)}
-            placeholder="예: 구미 에이스 클럽 정기전 (선택 입력)"
+            placeholder={isJapanese ? '例: パークゴルフ同好会 定期戦 (任意入力)' : '예: 구미 에이스 클럽 정기전 (선택 입력)'}
             maxLength={20}
             className="w-full bg-transparent text-white font-bold placeholder:text-stone-500 outline-none text-xs"
           />
@@ -363,7 +371,7 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
 
         {savedSuccess && (
           <div className="p-3 bg-emerald-950 border border-emerald-500 rounded-xl text-center text-xs font-black text-emerald-300 animate-in fade-in">
-            ✓ 스마트폰 앨범에 고화질 포토카드가 저장되었습니다!
+            {isJapanese ? '✓ スマホのアルバムに高画質フォトカードが保存されました！' : '✓ 스마트폰 앨범에 고화질 포토카드가 저장되었습니다!'}
           </div>
         )}
 
@@ -376,7 +384,7 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
             className="w-full min-h-[54px] bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black rounded-2xl text-base flex items-center justify-center gap-2 shadow-lg active:scale-98 transition cursor-pointer"
           >
             <Share2 className="w-5 h-5 text-[#191919]" />
-            <span>💬 카카오톡 / 밴드 동반자에게 1초 공유</span>
+            <span>{isJapanese ? '💬 LINE / SNSで同伴者に1秒共有' : '💬 카카오톡 / 밴드 동반자에게 1초 공유'}</span>
           </button>
 
           {/* 2. 사진첩 다운로드 저장 버튼 */}
@@ -386,7 +394,7 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
             className="w-full min-h-[52px] bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl text-base flex items-center justify-center gap-2 shadow-md active:scale-98 transition cursor-pointer"
           >
             <Download className="w-5 h-5 text-white" />
-            <span>💾 스마트폰 사진첩 앨범에 저장하기</span>
+            <span>{isJapanese ? '💾 スマホの写真アルバムに保存' : '💾 스마트폰 사진첩 앨범에 저장하기'}</span>
           </button>
         </div>
       </div>
