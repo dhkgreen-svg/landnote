@@ -60,3 +60,4 @@ python_apps/
 **/public/swe-worker-*.js
 
 .vercel
+apps/parkon_backup*
