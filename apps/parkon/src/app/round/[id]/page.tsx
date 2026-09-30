@@ -1321,49 +1321,6 @@ export default function RoundPlayPage() {
         </div>
       )}
 
-      {/* [NEW] 가상 라운딩(체험/연습 모드) 전용 배너 - 시간 무제한 · 종료 시 기록 제로 */}
-      {session.isVirtual && (
-        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-stone-950 p-3 rounded-2xl border-2 border-amber-300 shadow-md animate-fadeIn">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-xl bg-stone-950 text-amber-300 flex items-center justify-center font-black text-xs shadow-xs">
-                🎯
-              </span>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-xs">프로그램 체험 연습 (가상 기록)</span>
-                  <span className="text-[9px] bg-stone-950 text-amber-300 font-black px-1.5 py-0.2 rounded-full">
-                    시간 무제한
-                  </span>
-                </div>
-                <p className="text-[10px] text-stone-900 font-bold">
-                  종료 시 기록이 전혀 남지 않는 연습용입니다. 마음껏 눌러보세요!
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleFinishRound}
-              className="bg-stone-950 hover:bg-stone-900 text-amber-300 font-black text-[11px] px-2.5 py-1.5 rounded-xl transition active:scale-95 shrink-0 shadow-xs cursor-pointer"
-            >
-              연습 종료 ✕
-            </button>
-          </div>
-
-          {/* Senior Tutorial Guide */}
-          <div className="mt-2 pt-2 border-t border-amber-600/30 grid grid-cols-3 gap-1.5 text-[9.5px] font-bold text-stone-950">
-            <div className="bg-white/80 rounded-lg p-1.5 text-center shadow-2xs">
-              1. <span className="font-black text-emerald-900">[+/-] 타수</span> 조절
-            </div>
-            <div className="bg-white/80 rounded-lg p-1.5 text-center shadow-2xs">
-              2. <span className="font-black text-rose-900">[+1 OB] 2벌타</span> 확인
-            </div>
-            <div className="bg-white/80 rounded-lg p-1.5 text-center shadow-2xs">
-              3. <span className="font-black text-purple-900">[다음 홀▶]</span> 이동
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 클럽 모임/대회 연동 알림 배너 */}
       {session.clubRoomId && (
