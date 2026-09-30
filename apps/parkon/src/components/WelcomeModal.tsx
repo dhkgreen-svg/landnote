@@ -52,22 +52,25 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
   }, []);
 
   const saveEffectiveName = (): { realName: string; aliasName: string } => {
-    const effectiveReal = realNameInput.trim() || '홍길동';
-    const effectiveAlias = aliasNameInput.trim() || '손오공';
+    const rawReal = realNameInput.trim();
+    const effectiveReal = rawReal && rawReal !== '홍길동' ? rawReal : '';
+    const effectiveAlias = aliasNameInput.trim() || '파크골퍼';
     const profile = ParkOnStorage.getUserProfile();
     ParkOnStorage.saveUserProfile({
       ...profile,
-      userName: effectiveReal,
+      userName: effectiveReal || '플레이어',
     });
-    const guestUser: KakaoAuthUser = {
-      id: 'guest_' + Date.now(),
-      nickname: effectiveAlias,
-      realName: effectiveReal,
-      aliasName: effectiveAlias,
-      preferredDisplay: 'REAL',
-      connectedAt: new Date().toISOString(),
-    };
-    ParkOnStorage.setKakaoUser(guestUser);
+    if (effectiveReal) {
+      const guestUser: KakaoAuthUser = {
+        id: 'guest_' + Date.now(),
+        nickname: effectiveAlias,
+        realName: effectiveReal,
+        aliasName: effectiveAlias,
+        preferredDisplay: 'REAL',
+        connectedAt: new Date().toISOString(),
+      };
+      ParkOnStorage.setKakaoUser(guestUser);
+    }
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('parkon_welcomed', 'true');
@@ -76,8 +79,8 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
       }
     }
     window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: effectiveReal } }));
-    return { realName: effectiveReal, aliasName: effectiveAlias };
+    window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: effectiveReal || '플레이어' } }));
+    return { realName: effectiveReal || '플레이어', aliasName: effectiveAlias };
   };
 
   // 1. 1초 만에 바로 시작하기 (가상 세션 생성 후 1번 홀 티박스 직행)
@@ -200,25 +203,26 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
             </div>
 
             {/* 기본 활동명 뱃지 표시 */}
+            {/* 기본 활동명 뱃지 표시 */}
             {!showCustomNameInput ? (
               <div className="flex items-center gap-2 bg-white border border-stone-200 rounded-xl px-3 py-2 text-xs">
-                <span className="text-stone-500 font-bold">본명:</span>
-                <span className="font-black text-stone-900">{realNameInput.trim() || '홍길동'}</span>
+                <span className="text-stone-500 font-bold">성명:</span>
+                <span className="font-black text-stone-900">{realNameInput.trim() || '성명 미입력'}</span>
                 <span className="text-stone-300">|</span>
                 <span className="text-stone-500 font-bold">별명:</span>
-                <span className="font-black text-stone-900">{aliasNameInput.trim() || '손오공'}</span>
-                <span className="ml-auto text-[10px] text-stone-400 font-medium">(추후 변경 가능)</span>
+                <span className="font-black text-stone-900">{aliasNameInput.trim() || '파크골퍼'}</span>
+                <span className="ml-auto text-[10px] text-emerald-700 font-bold">(터치하여 직접 입력)</span>
               </div>
             ) : (
               /* 이름 직접 변경 폼 (키보드는 유저가 클릭했을 때만 펼쳐짐) */
               <div className="space-y-2 pt-1 animate-fadeIn">
                 <div>
-                  <label className="text-[10px] font-bold text-stone-600 block mb-0.5">본명 (실명)</label>
+                  <label className="text-[10px] font-bold text-stone-600 block mb-0.5">실제 성함 (실명)</label>
                   <input
                     type="text"
                     value={realNameInput}
                     onChange={(e) => setRealNameInput(e.target.value)}
-                    placeholder="예: 홍길동"
+                    placeholder="성함을 입력하세요 (예: 김대희)"
                     maxLength={10}
                     className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-bold text-stone-900 focus:border-emerald-600 outline-none"
                   />
@@ -229,7 +233,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
                     type="text"
                     value={aliasNameInput}
                     onChange={(e) => setAliasNameInput(e.target.value)}
-                    placeholder="예: 손오공"
+                    placeholder="예: 나이스샷, 홀인원"
                     maxLength={10}
                     className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs font-bold text-stone-900 focus:border-emerald-600 outline-none"
                   />
@@ -237,7 +241,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
               </div>
             )}
             <p className="text-[10px] text-stone-500 leading-tight">
-              💡 별도 입력 없이 바로 아래 버튼을 누르셔도 [홍길동]으로 즉시 라운드가 시작됩니다.
+              💡 상단 [성명 입력] 버튼을 통해 언제든 내 이름과 별명을 자유롭게 변경하실 수 있습니다.
             </p>
           </div>
 

@@ -35,13 +35,34 @@ export function Header() {
     pathname !== '/round/result'
   );
 
-  // 등록된 사용자 이름 산출
-  const userProfile = typeof window !== 'undefined' ? ParkOnStorage.getUserProfile() : null;
-  const currentDisplayName = kakaoUser
-    ? (kakaoUser.preferredDisplay === 'ALIAS' ? kakaoUser.aliasName || kakaoUser.realName : kakaoUser.realName || kakaoUser.nickname)
-    : (userProfile?.userName && userProfile.userName !== '플레이어' && userProfile.userName !== '조장(본인)' ? userProfile.userName : '');
+  // 등록된 사용자 이름 산출 (홍길동/플레이어/조장 등 예시값 제외하고 본인 직접 입력 여부 판별)
+  const isSampleOrPlaceholder = (name?: string | null) => {
+    if (!name) return true;
+    const clean = name.trim();
+    return (
+      !clean ||
+      clean === '홍길동' ||
+      clean === '홍길동(본인)' ||
+      clean === '플레이어' ||
+      clean === '조장(본인)' ||
+      clean === '본인' ||
+      clean === '회원' ||
+      clean === '파크골퍼' ||
+      clean === '山田太郎' ||
+      clean === 'ゲスト'
+    );
+  };
 
-  const hasRegisteredName = Boolean(currentDisplayName && currentDisplayName.trim());
+  const userProfile = typeof window !== 'undefined' ? ParkOnStorage.getUserProfile() : null;
+  const rawDisplayName =
+    (kakaoUser
+      ? (kakaoUser.preferredDisplay === 'ALIAS'
+          ? kakaoUser.aliasName || kakaoUser.realName
+          : kakaoUser.realName || kakaoUser.nickname)
+      : (userProfile?.userName || '')) || '';
+
+  const hasRegisteredName = Boolean(rawDisplayName && !isSampleOrPlaceholder(rawDisplayName));
+  const currentDisplayName = hasRegisteredName ? rawDisplayName.trim() : '';
 
   useEffect(() => {
     const checkUser = () => {
@@ -154,7 +175,7 @@ export function Header() {
           </Link>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* ✍️ 이름 입력 / 회원 프로필 버튼 */}
+            {/* ✍️ 성명 입력 / 회원 프로필 버튼 */}
             <button
               type="button"
               onClick={() => setShowKakaoModal(true)}
@@ -163,13 +184,13 @@ export function Header() {
                   ? 'bg-emerald-800/90 hover:bg-emerald-900 text-amber-300 border-amber-300/60'
                   : 'bg-amber-400 hover:bg-amber-300 text-stone-950 border-amber-500 shadow-sm animate-pulse'
               }`}
-              title={hasRegisteredName ? '내 이름/별명 수정 및 카카오 연동' : '내 이름 입력 및 카카오톡 간편 연동'}
+              title={hasRegisteredName ? '내 성명/별명 수정 및 카카오 연동' : '내 성명 입력 및 카카오톡 간편 연동'}
             >
               <span className="text-[11px] leading-none">{hasRegisteredName ? '👤' : '✍️'}</span>
-              <span className="truncate max-w-[65px] sm:max-w-[90px] leading-none">
+              <span className="truncate max-w-[75px] sm:max-w-[100px] leading-none">
                 {hasRegisteredName
-                  ? (isJapanese ? `${currentDisplayName} 様` : `${currentDisplayName} 님`)
-                  : (isJapanese ? 'お名前入力' : '이름 입력')}
+                  ? currentDisplayName
+                  : (isJapanese ? 'お名前入力' : '성명 입력')}
               </span>
               {hasRegisteredName && <span className="text-[9px] opacity-75 leading-none">✏️</span>}
             </button>

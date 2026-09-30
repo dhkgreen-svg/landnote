@@ -32,16 +32,20 @@ export function KakaoLoginModal({
     if (isOpen) {
       const u = ParkOnStorage.getKakaoUser();
       setCurrentUser(u);
+      const isPlaceholder = (val?: string | null) => {
+        if (!val) return true;
+        const c = val.trim();
+        return c === '홍길동' || c === '홍길동(본인)' || c === '플레이어' || c === '조장(본인)' || c === '본인' || c === '회원';
+      };
+
       if (u) {
-        setRealName(u.realName || u.nickname || '');
+        const uReal = !isPlaceholder(u.realName) ? u.realName! : (!isPlaceholder(u.nickname) ? u.nickname : '');
+        setRealName(uReal);
         setAliasName(u.aliasName || '');
         setPreferredDisplay(u.preferredDisplay || 'REAL');
       } else {
         const prof = ParkOnStorage.getUserProfile();
-        const existingName =
-          prof?.userName && prof.userName !== '플레이어' && prof.userName !== '조장(본인)'
-            ? prof.userName
-            : '';
+        const existingName = prof?.userName && !isPlaceholder(prof.userName) ? prof.userName : '';
         setRealName(existingName);
         setAliasName('');
         setPreferredDisplay('REAL');
@@ -206,15 +210,15 @@ export function KakaoLoginModal({
               <div className="space-y-3 bg-stone-50 p-3.5 rounded-2xl border border-stone-200">
                 <div className="space-y-1">
                   <label className="font-black text-stone-800 flex items-center justify-between">
-                    <span>실명 (실제 성함) *</span>
-                    <span className="text-[10px] text-emerald-700 font-bold">공식 대회·월례회용</span>
+                    <span>성함 (실제 이름) *</span>
+                    <span className="text-[10px] text-emerald-700 font-bold">공식 기록·대회용</span>
                   </label>
                   <input
                     type="text"
                     value={realName}
                     onChange={(e) => setRealName(e.target.value)}
-                    placeholder="예: 홍길동"
-                    className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs"
+                    placeholder="성함을 입력하세요 (예: 김대희)"
+                    className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs focus:border-emerald-600 outline-none"
                   />
                 </div>
 
