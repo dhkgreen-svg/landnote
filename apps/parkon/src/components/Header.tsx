@@ -97,27 +97,33 @@ export function Header() {
           url: '/',
           type: 'HOME',
           icon: '🏠',
-          title: '홈(바탕화면)으로 돌아가시겠습니까?',
-          desc: '현재 게임 진행 중입니다. 주머니 터치나 실수로 잘못 누르신 경우 [계속 라운딩하기]를 누르면 경기 화면이 그대로 유지됩니다.\n\n나가시더라도 스코어는 안전하게 자동 보존되며, 홈 상단 배너를 통해 언제든 그대로 이어하실 수 있습니다.',
-          confirmText: '확인 (홈으로 나가기)',
+          title: isJapanese ? 'ホーム画面に戻りますか？' : '홈(바탕화면)으로 돌아가시겠습니까?',
+          desc: isJapanese
+            ? '現在ラウンド進行中です。ポケットの中での誤タップや誤操作の場合、[ラウンドを続ける]を押すと現在の画面がそのまま維持されます。\n\n移動してもスコアは安全に自動保存され、ホーム画面上部のバナーからいつでも続きを再開できます。'
+            : '현재 게임 진행 중입니다. 주머니 터치나 실수로 잘못 누르신 경우 [계속 라운딩하기]를 누르면 경기 화면이 그대로 유지됩니다.\n\n나가시더라도 스코어는 안전하게 자동 보존되며, 홈 상단 배너를 통해 언제든 그대로 이어하실 수 있습니다.',
+          confirmText: isJapanese ? '確認 (ホームへ移動)' : '확인 (홈으로 나가기)',
         });
       } else if (type === 'RULES') {
         setPendingGuard({
           url: '/rules',
           type: 'RULES',
           icon: '❓',
-          title: '지금 라운드 중에 룰 질문을 하시겠습니까?',
-          desc: '현재 진행 중인 경기 기록은 안전하게 자동 보존됩니다.\n\n파크골프 규정집 및 AI 룰 솔로몬에서 궁금한 점을 질문하고 확인하신 후, 언제든 라운드로 복귀하실 수 있습니다.',
-          confirmText: '확인 (룰 질문하기)',
+          title: isJapanese ? 'ラウンド中にルールを確認しますか？' : '지금 라운드 중에 룰 질문을 하시겠습니까?',
+          desc: isJapanese
+            ? '現在進行中のスコア記録は安全に自動保存されます。\n\nパークゴルフ公式ルールとAIルール案内で疑問を確認した後、いつでもラウンドに復帰できます。'
+            : '현재 진행 중인 경기 기록은 안전하게 자동 보존됩니다.\n\n파크골프 규정집 및 AI 룰 솔로몬에서 궁금한 점을 질문하고 확인하신 후, 언제든 라운드로 복귀하실 수 있습니다.',
+          confirmText: isJapanese ? '確認 (ルール確認へ)' : '확인 (룰 질문하기)',
         });
       } else if (type === 'COURSES') {
         setPendingGuard({
           url: '/courses',
           type: 'COURSES',
           icon: '📍',
-          title: '전국 구장 찾기로 이동하시겠습니까?',
-          desc: '현재 게임 진행 중입니다. 주머니에 넣거나 실수로 잘못 누르셨다면 [계속 라운딩하기]를 눌러 경기 화면을 유지하세요.\n\n구장 검색 후 언제든 상단 배너로 현재 라운드에 복귀하실 수 있습니다.',
-          confirmText: '확인 (구장 찾기)',
+          title: isJapanese ? '全国コース検索へ移動しますか？' : '전국 구장 찾기로 이동하시겠습니까?',
+          desc: isJapanese
+            ? '現在ラウンド進行中です。誤操作の場合は[ラウンドを続ける]を押して現在の画面を維持してください。\n\nコース確認後、いつでも上部バナーから現在のラウンドに復帰できます。'
+            : '현재 게임 진행 중입니다. 주머니에 넣거나 실수로 잘못 누르셨다면 [계속 라운딩하기]를 눌러 경기 화면을 유지하세요.\n\n구장 검색 후 언제든 상단 배너로 현재 라운드에 복귀하실 수 있습니다.',
+          confirmText: isJapanese ? '確認 (コース検索へ)' : '확인 (구장 찾기)',
         });
       }
     }
@@ -149,7 +155,7 @@ export function Header() {
                 className="w-9 h-9 rounded-full shadow-md border-2 border-amber-300 object-cover"
               />
               <span className="absolute -bottom-1 -right-1 bg-amber-400 text-emerald-950 rounded-full px-1 text-[8px] font-black shadow-xs">
-                파키
+                {isJapanese ? 'パキ' : '파키'}
               </span>
             </div>
             <div className="flex flex-col leading-none">
@@ -203,7 +209,7 @@ export function Header() {
             <Link
               href="/chronicle"
               className="w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
-              title="나의 파크골프 연대기 & 1촌 명부"
+              title={isJapanese ? '私のパークゴルフ年代記 ＆ 仲間名簿' : '나의 파크골프 연대기 & 1촌 명부'}
             >
               <Trophy className="w-4 h-4 text-amber-600 stroke-[2.5]" />
             </Link>
@@ -212,7 +218,7 @@ export function Header() {
             <Link
               href="/board"
               className="relative w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
-              title="게시판 & 파크골프 뉴스 (전국 시합 공고·열린 신문고)"
+              title={isJapanese ? '掲示板 ＆ パークゴルフニュース' : '게시판 & 파크골프 뉴스 (전국 시합 공고·열린 신문고)'}
             >
               <Newspaper className="w-4 h-4 text-purple-700 stroke-[2.5]" />
               <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-black px-1 rounded-full animate-pulse shadow-xs">
@@ -225,7 +231,7 @@ export function Header() {
               href="/rules"
               onClick={(e) => handleNavClick(e, '/rules', 'RULES')}
               className="w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
-              title="파크골프 규정 & AI 룰 솔로몬"
+              title={isJapanese ? '公式ルール ＆ AIルール案内' : '파크골프 규정 & AI 룰 솔로몬'}
             >
               <HelpCircle className="w-4 h-4 stroke-[2.5]" />
             </Link>
@@ -235,7 +241,7 @@ export function Header() {
               href="/courses"
               onClick={(e) => handleNavClick(e, '/courses', 'COURSES')}
               className="w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
-              title="전국 파크골프장 찾기"
+              title={isJapanese ? '全国パークゴルフ場検索' : '전국 파크골프장 찾기'}
             >
               <MapPin className="w-4 h-4 stroke-[2.5]" />
             </Link>
@@ -249,7 +255,7 @@ export function Header() {
               <div className="flex items-start justify-between gap-2 mb-1">
                 <div className="flex items-center gap-1.5 font-black text-xs text-amber-950">
                   <span className="text-sm leading-none">🐰</span>
-                  <span>핑키의 1초 꿀팁 안내</span>
+                  <span>{isJapanese ? 'ピンキーの簡単案内' : '핑키의 1초 꿀팁 안내'}</span>
                 </div>
                 <button
                   type="button"
@@ -261,13 +267,21 @@ export function Header() {
               </div>
               <div className="text-xs space-y-1 font-bold text-stone-800 leading-relaxed">
                 <p>
-                  <span className="text-emerald-700 font-black">'{tipUserName || '회원'}'</span> 님으로 등록되었습니다!
+                  <span className="text-emerald-700 font-black">'{tipUserName || (isJapanese ? '会員' : '회원')}'</span> {isJapanese ? '様として登録されました！' : '님으로 등록되었습니다!'}
                 </p>
                 <p className="text-[11px] text-stone-700">
-                  위에 내 이름을 누르시면 <strong>카카오톡 창</strong>이 뜹니다. <span className="text-amber-900 underline decoration-amber-500 font-black">[확인]만 누르시면</span> 비밀번호 없이 <strong>자동으로 가입 완료</strong>됩니다!
+                  {isJapanese ? (
+                    '上部のお名前をタップするとプロフィール確認と簡単ログインが可能です。パスワード不要で便利にご利用いただけます！'
+                  ) : (
+                    <>
+                      위에 내 이름을 누르시면 <strong>카카오톡 창</strong>이 뜹니다. <span className="text-amber-900 underline decoration-amber-500 font-black">[확인]만 누르시면</span> 비밀번호 없이 <strong>자동으로 가입 완료</strong>됩니다!
+                    </>
+                  )}
                 </p>
                 <p className="text-[10px] text-stone-500 font-medium">
-                  ※ 평생 무료 이용 & 내 경기 타수가 안전하게 자동 보관됩니다.
+                  {isJapanese
+                    ? '※ ずっと無料利用 ＆ スコア記録は安全に自動保管されます。'
+                    : '※ 평생 무료 이용 & 내 경기 타수가 안전하게 자동 보관됩니다.'}
                 </p>
               </div>
               <button
@@ -275,7 +289,7 @@ export function Header() {
                 onClick={() => setShowLoginTip(false)}
                 className="mt-2 w-full py-1.5 bg-amber-400 hover:bg-amber-500 active:scale-95 text-stone-950 font-black text-xs rounded-xl shadow-xs transition cursor-pointer"
               >
-                👍 확인 (알겠습니다)
+                {isJapanese ? '👍 確認 (わかりました)' : '👍 확인 (알겠습니다)'}
               </button>
             </div>
           </div>
@@ -297,7 +311,7 @@ export function Header() {
                     {pendingGuard.title}
                   </h3>
                   <p className="text-[11px] text-amber-700 font-bold">
-                    ⚠️ 라운드 진행 중 오터치 방지 안내
+                    {isJapanese ? '⚠️ ラウンド進行中の誤操作防止案内' : '⚠️ 라운드 진행 중 오터치 방지 안내'}
                   </p>
                 </div>
               </div>
@@ -324,7 +338,7 @@ export function Header() {
                 onClick={() => setPendingGuard(null)}
                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 px-4 rounded-xl text-sm shadow-md flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
               >
-                <span>✓ 계속 라운딩하기 (원상태 유지)</span>
+                <span>{isJapanese ? '✓ ラウンドを続ける (そのまま維持)' : '✓ 계속 라운딩하기 (원상태 유지)'}</span>
               </button>
               <button
                 type="button"
