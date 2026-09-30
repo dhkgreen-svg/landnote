@@ -461,6 +461,7 @@ export default function CoursesPage() {
   const handleClearSearch = () => {
     setInputQuery('');
     setAppliedQuery('');
+    setCountryFilter('ALL');
   };
 
   const handleCreateCourse = (e: React.FormEvent) => {
@@ -1005,124 +1006,129 @@ export default function CoursesPage() {
           </button>
         </div>
 
-        {/* 🇰🇷 🇯🇵 국가별 필터 탭 (전체 / 대한민국 / 일본 본토) */}
-        <div className="flex items-center gap-1.5 p-1 bg-stone-100/90 rounded-2xl border border-stone-200 text-xs font-black">
-          <button
-            type="button"
-            onClick={() => {
-              setCountryFilter('ALL');
-              if (!inputQuery) setAppliedQuery('전체');
-            }}
-            className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
-              countryFilter === 'ALL'
-                ? 'bg-emerald-700 text-white shadow'
-                : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/60'
-            }`}
-          >
-            <span>🌐</span>
-            <span>{isJapanese ? '全体' : '전국·전체'}</span>
-            <span className="text-[10px] opacity-80">({courses.length})</span>
-          </button>
+        {/* 🇰🇷 🇯🇵 국가별 필터 탭 & ⛳ 전국 17개 시·도 탐색 바 (대표님 지침: 검색 결과 표출 시에는 화면 단순화를 위해 숨김) */}
+        {!isSearchActive && (
+          <>
+            {/* 🇰🇷 🇯🇵 국가별 필터 탭 (전체 / 대한민국 / 일본 본토) */}
+            <div className="flex items-center gap-1.5 p-1 bg-stone-100/90 rounded-2xl border border-stone-200 text-xs font-black">
+              <button
+                type="button"
+                onClick={() => {
+                  setCountryFilter('ALL');
+                  if (!inputQuery) setAppliedQuery('전체');
+                }}
+                className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                  countryFilter === 'ALL'
+                    ? 'bg-emerald-700 text-white shadow'
+                    : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/60'
+                }`}
+              >
+                <span>🌐</span>
+                <span>{isJapanese ? '全体' : '전국·전체'}</span>
+                <span className="text-[10px] opacity-80">({courses.length})</span>
+              </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setCountryFilter('KR');
-              if (!inputQuery) setAppliedQuery('전체');
-            }}
-            className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
-              countryFilter === 'KR'
-                ? 'bg-emerald-700 text-white shadow'
-                : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/60'
-            }`}
-          >
-            <span>🇰🇷</span>
-            <span>{isJapanese ? '韓国' : '대한민국'}</span>
-            <span className="text-[10px] opacity-80">({courses.filter((c) => c.country !== 'JP').length})</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCountryFilter('KR');
+                  if (!inputQuery) setAppliedQuery('전체');
+                }}
+                className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                  (countryFilter as string) === 'KR'
+                    ? 'bg-emerald-700 text-white shadow'
+                    : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/60'
+                }`}
+              >
+                <span>🇰🇷</span>
+                <span>{isJapanese ? '韓国' : '대한민국'}</span>
+                <span className="text-[10px] opacity-80">({courses.filter((c) => c.country !== 'JP').length})</span>
+              </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setCountryFilter('JP');
-              if (!inputQuery) setAppliedQuery('전체');
-            }}
-            className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
-              countryFilter === 'JP'
-                ? 'bg-emerald-700 text-white shadow'
-                : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/60'
-            }`}
-          >
-            <span>🇯🇵</span>
-            <span>{isJapanese ? '日本公認' : '일본 공인'}</span>
-            <span className="text-[10px] opacity-80">({courses.filter((c) => c.country === 'JP').length})</span>
-          </button>
-        </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCountryFilter('JP');
+                  if (!inputQuery) setAppliedQuery('전체');
+                }}
+                className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                  (countryFilter as string) === 'JP'
+                    ? 'bg-emerald-700 text-white shadow'
+                    : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/60'
+                }`}
+              >
+                <span>🇯🇵</span>
+                <span>{isJapanese ? '日本公認' : '일본 공인'}</span>
+                <span className="text-[10px] opacity-80">({courses.filter((c) => c.country === 'JP').length})</span>
+              </button>
+            </div>
 
-        {/* ⛳ 전국 17개 시·도 / 일본 지역 원터치 빠른 탐색 바 */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
-          <button
-            type="button"
-            onClick={() => {
-              const allQuery = isJapanese ? '全国' : '전체';
-              setInputQuery(allQuery);
-              setAppliedQuery(allQuery);
-            }}
-            className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition cursor-pointer ${
-              appliedQuery === '전체' || appliedQuery === '全国'
-                ? 'bg-emerald-700 text-white shadow-xs'
-                : 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200'
-            }`}
-          >
-            {isJapanese ? `全国すべて (${courses.length})` : `전국 전체 (${courses.length})`}
-          </button>
-          {(isJapanese
-            ? [
-                { name: '北海道', count: 180 },
-                { name: '東北', count: 45 },
-                { name: '関東', count: 68 },
-                { name: '中部', count: 52 },
-                { name: '近畿', count: 39 },
-                { name: '中国・四国', count: 34 },
-                { name: '九州・沖縄', count: 48 },
-              ]
-            : [
-                { name: '서울', count: 28 },
-                { name: '경기', count: 58 },
-                { name: '인천', count: 8 },
-                { name: '부산', count: 18 },
-                { name: '대구', count: 39 },
-                { name: '광주', count: 9 },
-                { name: '대전', count: 5 },
-                { name: '울산', count: 7 },
-                { name: '세종', count: 9 },
-                { name: '강원', count: 46 },
-                { name: '충북', count: 26 },
-                { name: '충남', count: 35 },
-                { name: '전북', count: 33 },
-                { name: '전남', count: 43 },
-                { name: '경북', count: 71 },
-                { name: '경남', count: 89 },
-                { name: '제주', count: 11 },
-              ]
-          ).map((reg) => (
-            <button
-              key={reg.name}
-              type="button"
-              onClick={() => {
-                setInputQuery(reg.name);
-                setAppliedQuery(reg.name);
-              }}
-              className={`px-2.5 py-1.5 rounded-xl font-bold whitespace-nowrap transition cursor-pointer ${
-                appliedQuery === reg.name
-                  ? 'bg-emerald-700 text-white shadow-xs'
-                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200'
-              }`}
-            >
-              {reg.name} ({reg.count})
-            </button>
-          ))}
-        </div>
+            {/* ⛳ 전국 17개 시·도 / 일본 지역 원터치 빠른 탐색 바 */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  const allQuery = isJapanese ? '全国' : '전체';
+                  setInputQuery(allQuery);
+                  setAppliedQuery(allQuery);
+                }}
+                className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition cursor-pointer ${
+                  appliedQuery === '전체' || appliedQuery === '全国'
+                    ? 'bg-emerald-700 text-white shadow-xs'
+                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200'
+                }`}
+              >
+                {isJapanese ? `全国すべて (${courses.length})` : `전국 전체 (${courses.length})`}
+              </button>
+              {(isJapanese
+                ? [
+                    { name: '北海道', count: 180 },
+                    { name: '東北', count: 45 },
+                    { name: '関東', count: 68 },
+                    { name: '中部', count: 52 },
+                    { name: '近畿', count: 39 },
+                    { name: '中国・四国', count: 34 },
+                    { name: '九州・沖縄', count: 48 },
+                  ]
+                : [
+                    { name: '서울', count: 28 },
+                    { name: '경기', count: 58 },
+                    { name: '인천', count: 8 },
+                    { name: '부산', count: 18 },
+                    { name: '대구', count: 39 },
+                    { name: '광주', count: 9 },
+                    { name: '대전', count: 5 },
+                    { name: '울산', count: 7 },
+                    { name: '세종', count: 9 },
+                    { name: '강원', count: 46 },
+                    { name: '충북', count: 26 },
+                    { name: '충남', count: 35 },
+                    { name: '전북', count: 33 },
+                    { name: '전남', count: 43 },
+                    { name: '경북', count: 71 },
+                    { name: '경남', count: 89 },
+                    { name: '제주', count: 11 },
+                  ]
+              ).map((reg) => (
+                <button
+                  key={reg.name}
+                  type="button"
+                  onClick={() => {
+                    setInputQuery(reg.name);
+                    setAppliedQuery(reg.name);
+                  }}
+                  className={`px-2.5 py-1.5 rounded-xl font-bold whitespace-nowrap transition cursor-pointer ${
+                    appliedQuery === reg.name
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200'
+                  }`}
+                >
+                  {reg.name} ({reg.count})
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* 3-Second Quick Course Creator Form */}
