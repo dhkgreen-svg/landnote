@@ -1383,7 +1383,7 @@ export default function CoursesPage() {
                           </div>
                         )}
 
-                        {/* 📋 홀별 제원표 & 명예의 전당 버튼 */}
+                        {/* 📋 홀별 제원표 버튼 */}
                         <button
                           type="button"
                           onClick={() => setDetailCourse(c)}
@@ -1393,8 +1393,8 @@ export default function CoursesPage() {
                             <span className="text-sm">📋</span>
                             <span>
                               {isJapanese
-                                ? 'コース別 1〜9ホール詳細諸元 · 打数/距離実測 · 殿堂'
-                                : '코스별 1~9홀 상세 제원표 · 타수/거리 실측 · 명예의 전당'}
+                                ? 'コース別 1〜9ホール詳細諸元表'
+                                : '코스별 1~9홀 상세 제원표'}
                             </span>
                           </span>
                           <span className="text-[11px] text-emerald-800 font-extrabold bg-white px-2 py-0.5 rounded border border-stone-200">
@@ -1402,54 +1402,59 @@ export default function CoursesPage() {
                           </span>
                         </button>
 
-                        {/* Action Buttons: 구장 선택 & 홈 지정 */}
-                        <div className="pt-0.5 flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleSelectCourseAndGoHome(c.id)}
-                            className="flex-1 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-black text-sm py-3 px-3 rounded-xl shadow text-center transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
-                          >
-                            <span>{isJapanese ? '⛳ このコースを選択 (即時スタート)' : '⛳ 이 구장 선택 (잔디 확인 & 0초 시작)'}</span>
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleToggleFavoriteHomeCourse(c.id)}
-                            className={`px-3 py-3 rounded-xl border text-xs font-black flex items-center gap-1 transition cursor-pointer ${
-                              isHome
-                                ? 'bg-emerald-100 text-emerald-950 border-emerald-400 ring-2 ring-emerald-500/20'
-                                : isFavorite
-                                ? 'bg-amber-100 text-amber-950 border-amber-400'
-                                : 'bg-white text-stone-800 border-stone-300 hover:bg-stone-50'
-                            }`}
-                            title={isJapanese ? "マイコースに設定/解除" : "내 지정 홈 구장으로 설정/해제"}
-                          >
-                            <Star className={`w-3.5 h-3.5 ${isHome || isFavorite ? 'fill-current text-yellow-500' : ''}`} />
-                            <span>
-                              {isHome
-                                ? (isJapanese ? '選択中' : '현재 선택됨')
-                                : isFavorite
-                                ? (isJapanese ? 'マイコース' : '내 구장')
-                                : (isJapanese ? 'ホーム登録' : '홈 지정')}
-                            </span>
-                          </button>
-
-                          {c.id.startsWith('custom-course-') && (
+                        {/* Action Buttons: 구장 선택 & 홈구장 지정 (동일한 50:50 크기) */}
+                        <div className="pt-0.5 space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
                             <button
                               type="button"
-                              onClick={() => {
-                                const confirmMsg = isJapanese ? `'${c.name}' コースを削除しますか？` : `'${c.name}' 구장을 삭제하시겠습니까?`;
-                                if (confirm(confirmMsg)) {
-                                  ParkOnStorage.deleteCustomCourse(c.id);
-                                  refreshCourses();
-                                }
-                              }}
-                              className="p-2.5 text-stone-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition border border-transparent hover:border-rose-200 cursor-pointer"
-                              title={isJapanese ? "コース削除" : "구장 삭제"}
+                              onClick={() => handleSelectCourseAndGoHome(c.id)}
+                              className="w-full bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-black text-xs sm:text-sm py-3 px-2 rounded-xl shadow-xs text-center transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer whitespace-nowrap"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <span>{isJapanese ? '⛳ このコースを選択' : '⛳ 이 구장 선택'}</span>
+                              <ChevronRight className="w-4 h-4 shrink-0" />
                             </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleToggleFavoriteHomeCourse(c.id)}
+                              className={`w-full py-3 px-2 rounded-xl border text-xs sm:text-sm font-black flex items-center justify-center gap-1 transition cursor-pointer shadow-xs active:scale-95 whitespace-nowrap ${
+                                isHome
+                                  ? 'bg-emerald-100 text-emerald-950 border-emerald-400 ring-2 ring-emerald-500/20'
+                                  : isFavorite
+                                  ? 'bg-amber-100 text-amber-950 border-amber-400'
+                                  : 'bg-white text-stone-800 border-stone-300 hover:bg-amber-50 hover:border-amber-300'
+                              }`}
+                              title={isJapanese ? "マイコースに設定/解除" : "내 지정 홈 구장으로 설정/해제"}
+                            >
+                              <Star className={`w-3.5 h-3.5 shrink-0 ${isHome || isFavorite ? 'fill-current text-yellow-500' : 'text-stone-400'}`} />
+                              <span className="truncate">
+                                {isHome
+                                  ? (isJapanese ? '★ 選択中のホーム' : '★ 현재 홈구장')
+                                  : isFavorite
+                                  ? (isJapanese ? '★ マイコース登録済' : '★ 홈구장 등록됨')
+                                  : (isJapanese ? '⭐ ホーム指定' : '⭐ 홈구장으로 지정하기')}
+                              </span>
+                            </button>
+                          </div>
+
+                          {c.id.startsWith('custom-course-') && (
+                            <div className="flex justify-end pt-0.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const confirmMsg = isJapanese ? `'${c.name}' コースを削除しますか？` : `'${c.name}' 구장을 삭제하시겠습니까?`;
+                                  if (confirm(confirmMsg)) {
+                                    ParkOnStorage.deleteCustomCourse(c.id);
+                                    refreshCourses();
+                                  }
+                                }}
+                                className="text-xs text-rose-500 hover:text-rose-700 py-1 px-2.5 rounded-lg hover:bg-rose-50 transition border border-rose-200 cursor-pointer flex items-center gap-1"
+                                title={isJapanese ? "コース削除" : "구장 삭제"}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>{isJapanese ? 'コース削除' : '구장 삭제'}</span>
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
