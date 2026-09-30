@@ -883,7 +883,6 @@ export default function HomePage() {
                     <span className="text-base sm:text-lg font-black text-stone-950 tracking-tight truncate flex items-center gap-1.5" suppressHydrationWarning>
                       {dual.flag && <span>{dual.flag}</span>}
                       <span>{dual.primary}</span>
-                      <span className="text-xs font-semibold text-stone-500">({getLocalizedCourseRegion(homeCourse)})</span>
                     </span>
                   </div>
                   {dual.showSecondary && dual.secondary && (

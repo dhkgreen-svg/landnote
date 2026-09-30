@@ -7,7 +7,16 @@ import { Course, HoleMetadata, CourseContribution } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
 import { generateStandardHoles } from '@/lib/defaultCourses';
 import { CourseHallOfFameModal } from '@/components/CourseHallOfFameModal';
-import { getCourseDualName } from '@/lib/courseLocalization';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
+import {
+  getCourseDualName,
+  getLocalizedCourseDescription,
+  getLocalizedCourseAddress,
+  getLocalizedCourseFee,
+  getLocalizedCourseOpenHours,
+  getLocalizedCourseClosedDay,
+  getLocalizedCourseParking,
+} from '@/lib/courseLocalization';
 
 interface CourseDetailModalProps {
   course: Course;
@@ -18,6 +27,7 @@ interface CourseDetailModalProps {
 const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
 export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModalProps) {
+  const { isJapanese } = useTranslation();
   // 동락파크골프장 또는 36홀 이상인 경우 최소 4코스(A, B, C, D) 보장
   const isDongrakOr36 = course.name.includes('동락') || (course.totalHoles && course.totalHoles >= 36);
   const totalCoursesCount = Math.max(
@@ -126,16 +136,22 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
         {/* 1. Header */}
         <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-teal-950 p-4 text-white flex items-center justify-between shrink-0 shadow-sm">
           {(() => {
-            const dual = getCourseDualName(course, false);
+            const dual = getCourseDualName(course, isJapanese);
+            const displayRegion = isJapanese
+              ? course.regionJa || course.region
+              : course.regionKo || course.region;
+            const displayClosedDay =
+              getLocalizedCourseClosedDay(course, isJapanese) ||
+              (isJapanese ? '毎週月曜日休場' : '매주 월요일 휴장');
             return (
               <div className="min-w-0 flex-1 pr-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-black text-base sm:text-lg text-white tracking-tight truncate flex items-center gap-1.5">
                     {dual.flag && <span>{dual.flag}</span>}
-                    <span>{dual.primary} 실측 정보</span>
+                    <span>{dual.primary} {isJapanese ? '実測諸元' : '실측 정보'}</span>
                   </span>
                   <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
-                    공식 제원
+                    {isJapanese ? '公式スペック' : '공식 제원'}
                   </span>
                 </div>
                 {dual.showSecondary && dual.secondary && (
@@ -144,14 +160,14 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
                   </div>
                 )}
                 <p className="text-[11px] text-emerald-300/80 mt-0.5 truncate">
-                  {course.region} · 총 {availableCourses.length}코스 {course.totalHoles || 36}홀 실측 제원표
+                  {displayRegion} · {isJapanese ? `全${availableCourses.length}コース ${course.totalHoles || 36}H 実測諸元表` : `총 ${availableCourses.length}코스 ${course.totalHoles || 36}홀 실측 제원표`}
                 </p>
                 <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                   <span className="text-[10px] bg-emerald-700/80 text-emerald-100 font-bold px-2 py-0.5 rounded-md border border-emerald-500/40">
-                    🌿 잔디 상태: 우수
+                    🌿 {isJapanese ? '芝状態: 優秀' : '잔디 상태: 우수'}
                   </span>
                   <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-md shadow-xs">
-                    📅 운영: 매주 월요일 휴장 (공휴일 정상 운영)
+                    📅 {isJapanese ? '休場日: ' : '휴장: '}{displayClosedDay}
                   </span>
                 </div>
               </div>

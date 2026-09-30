@@ -34,12 +34,27 @@ import {
   CategorizedRuleItem,
   RulebookChapter,
 } from '@/lib/rulebookData';
-import { CHAPTER_WEBTOONS } from '@/lib/chapterWebtoons';
+import { CHAPTER_WEBTOONS, getChapterWebtoon } from '@/lib/chapterWebtoons';
 import { RuleSituationDiagram } from '@/components/RuleSituationDiagram';
 import { ChapterCutDiagram, ChapterThumbnail } from '@/components/ChapterCutDiagram';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { NPGA_RULEBOOK_CHAPTERS, CATEGORIZED_RULES_JA } from '@/lib/rulebookDataJa';
+import { RuleComparisonModal } from '@/components/RuleComparisonModal';
 
 export default function RulesPage() {
   const router = useRouter();
+  const { isJapanese } = useTranslation();
+  const [ruleSet, setRuleSet] = useState<'kpga' | 'npga'>(isJapanese ? 'npga' : 'kpga');
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
+
+  useEffect(() => {
+    setRuleSet(isJapanese ? 'npga' : 'kpga');
+  }, [isJapanese]);
+
+  const isJp = isJapanese || ruleSet === 'npga';
+  const activeChapters = isJp ? NPGA_RULEBOOK_CHAPTERS : KPGA_RULEBOOK_CHAPTERS;
+  const activeAllRules = isJp ? CATEGORIZED_RULES_JA : CATEGORIZED_RULES;
+
   const [selectedCategory, setSelectedCategory] = useState<RuleCategoryId>('ob');
   const [fontSizeMode, setFontSizeMode] = useState<'normal' | 'large' | 'xlarge'>('large');
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -64,13 +79,13 @@ export default function RulesPage() {
   const qaScrollRef = useRef<HTMLDivElement>(null);
 
   const currentChapterIndex = selectedChapter
-    ? KPGA_RULEBOOK_CHAPTERS.findIndex((c) => c.id === selectedChapter.id)
+    ? activeChapters.findIndex((c) => c.id === selectedChapter.id)
     : -1;
   const prevChapter =
-    currentChapterIndex > 0 ? KPGA_RULEBOOK_CHAPTERS[currentChapterIndex - 1] : null;
+    currentChapterIndex > 0 ? activeChapters[currentChapterIndex - 1] : null;
   const nextChapter =
-    currentChapterIndex >= 0 && currentChapterIndex < KPGA_RULEBOOK_CHAPTERS.length - 1
-      ? KPGA_RULEBOOK_CHAPTERS[currentChapterIndex + 1]
+    currentChapterIndex >= 0 && currentChapterIndex < activeChapters.length - 1
+      ? activeChapters[currentChapterIndex + 1]
       : null;
 
   const handleGoToChapter = (ch: RulebookChapter) => {
@@ -81,7 +96,7 @@ export default function RulesPage() {
   };
 
   // Q&A Category questions & sequential navigation
-  const currentCategoryQuestions = CATEGORIZED_RULES.filter(
+  const currentCategoryQuestions = activeAllRules.filter(
     (r) => r.category === (activeVerdict?.category || selectedCategory)
   );
   const currentQuestionIndex = activeVerdict
@@ -309,7 +324,7 @@ export default function RulesPage() {
     let matchedRule: CategorizedRuleItem | null = null;
     if (lower) {
       matchedRule =
-        CATEGORIZED_RULES.find((r) => {
+        activeAllRules.find((r) => {
           return (
             r.title.toLowerCase().includes(lower) ||
             r.situation.toLowerCase().includes(lower) ||
@@ -320,7 +335,7 @@ export default function RulesPage() {
 
     if (!matchedRule) {
       matchedRule =
-        CATEGORIZED_RULES.find((r) => r.category === cat) || CATEGORIZED_RULES[0];
+        activeAllRules.find((r) => r.category === cat) || activeAllRules[0];
     }
 
     setActiveVerdict(matchedRule);
@@ -387,13 +402,15 @@ export default function RulesPage() {
               <span className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm">
                 ⚖️
               </span>
-              <span>룰 솔로몬</span>
+              <span>{isJapanese || ruleSet === 'npga' ? 'ルール判定ソロモン' : '룰 솔로몬'}</span>
               <span className="text-xs bg-amber-400 text-emerald-950 font-black px-2 py-0.5 rounded-full shadow-sm">
-                1초 판정
+                {isJapanese || ruleSet === 'npga' ? '1秒判定' : '1초 판정'}
               </span>
             </h2>
             <p className="text-xs text-stone-600 font-bold mt-0.5">
-              필드 분쟁 즉시 해결 · (사)대한파크골프협회 공인 규정 준거
+              {ruleSet === 'npga'
+                ? '(公社)日本パークゴルフ協会 公式競技規則 準拠'
+                : '필드 분쟁 즉시 해결 · (사)대한파크골프협회 공인 규정 준거'}
             </p>
           </div>
         </div>
@@ -409,7 +426,7 @@ export default function RulesPage() {
             }
           }}
           className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition cursor-pointer"
-          title="닫기 (이전 화면으로)"
+          title={isJapanese ? '閉じる (前の画面へ)' : '닫기 (이전 화면으로)'}
         >
           <X className="w-5 h-5" />
         </button>
@@ -419,7 +436,7 @@ export default function RulesPage() {
       <div className="bg-stone-100 border border-stone-300/80 rounded-2xl p-2 px-3 flex items-center justify-between shadow-2xs">
         <div className="flex items-center gap-1.5 text-stone-700 font-black text-xs">
           <span>🔍</span>
-          <span>글자 크기</span>
+          <span>{isJapanese || ruleSet === 'npga' ? '文字サイズ' : '글자 크기'}</span>
         </div>
         <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-stone-200 shadow-2xs">
           <button
@@ -431,7 +448,7 @@ export default function RulesPage() {
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            보통
+            {isJapanese || ruleSet === 'npga' ? '標準' : '보통'}
           </button>
           <button
             type="button"
@@ -442,11 +459,11 @@ export default function RulesPage() {
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <span>크게</span>
+            <span>{isJapanese || ruleSet === 'npga' ? '大' : '크게'}</span>
             <span className={`text-[9px] px-1 py-0.2 rounded-full font-black ${
               fontSizeMode === 'large' ? 'bg-amber-400 text-emerald-950' : 'bg-emerald-100 text-emerald-800'
             }`}>
-              추천
+              {isJapanese || ruleSet === 'npga' ? 'おすすめ' : '추천'}
             </span>
           </button>
           <button
@@ -458,9 +475,61 @@ export default function RulesPage() {
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            아주크게
+            {isJapanese || ruleSet === 'npga' ? '特大' : '아주크게'}
           </button>
         </div>
+      </div>
+
+      {/* 🇰🇷 KPGA vs 🇯🇵 NPGA RuleSet Toggle & Han-Il Comparison Banner */}
+      <div className="space-y-2">
+        <div className="bg-stone-100 p-1 rounded-2xl border border-stone-200 grid grid-cols-2 gap-1.5 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setRuleSet('kpga')}
+            className={`py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              ruleSet === 'kpga'
+                ? 'bg-emerald-800 text-white shadow-sm'
+                : 'text-stone-600 hover:text-stone-950'
+            }`}
+          >
+            <span>🇰🇷</span>
+            <span>{isJapanese ? '韓国 (KPGA公認規程)' : '대한파크골프협회 (KPGA)'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRuleSet('npga')}
+            className={`py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              ruleSet === 'npga'
+                ? 'bg-emerald-800 text-white shadow-sm'
+                : 'text-stone-600 hover:text-stone-950'
+            }`}
+          >
+            <span>🇯🇵</span>
+            <span>{isJapanese ? '日本 (NPGA公式規則)' : '일본파크골프협회 (NPGA)'}</span>
+          </button>
+        </div>
+
+        {/* ⚡ Han-Il Rule Comparison Banner */}
+        <button
+          type="button"
+          onClick={() => setShowComparisonModal(true)}
+          className="w-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 hover:from-amber-300 hover:to-amber-200 text-stone-950 font-black p-2.5 rounded-2xl shadow-xs border border-amber-500/50 flex items-center justify-between gap-2 transition active:scale-[0.98] cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-base">⚡</span>
+            <div className="text-left">
+              <span className="text-xs font-black">
+                {isJapanese ? '日韓公認ルール 4大重要比較表' : '한·일 파크골프 공인 룰 4대 핵심 비교표'}
+              </span>
+              <p className="text-[10px] text-amber-900 font-bold">
+                {isJapanese ? '1mmセーフ・ティー23mm・公認マーク・救済の違い' : 'OB 1mm 판정 · 티 23mm 제한 · NPGA 공인마크 · 수로 구제'}
+              </p>
+            </div>
+          </div>
+          <span className="text-xs bg-stone-900 text-amber-300 px-2 py-0.5 rounded-full font-black shrink-0">
+            {isJapanese ? '比較を見る >' : '비교 보기 >'}
+          </span>
+        </button>
       </div>
 
       {/* Guide Banner with Mascot Parky */}
@@ -473,44 +542,49 @@ export default function RulesPage() {
         <div>
           <div className="flex items-center gap-1.5">
             <span className="bg-amber-400 text-emerald-950 text-[10px] font-black px-2 py-0.5 rounded-full">
-              공식 경기위원
+              {ruleSet === 'npga' ? 'NPGA公式' : '공식 경기위원'}
             </span>
             <h3 className="font-extrabold text-sm text-amber-300">
-              파키(Parky)가 1초 판정해 드려요!
+              {isJapanese ? 'パキが公式判定をお手伝い！' : '파키(Parky)가 1초 판정해 드려요!'}
             </h3>
           </div>
           <p className="text-xs text-emerald-100 mt-1 leading-relaxed break-keep font-medium">
-            동반자와 룰이 엇갈릴 때 <strong>공식 룰북 항목</strong>이나 <strong>분야별 질문 문항</strong>을 누르시면 팝업창에서 명쾌한 세부 판정을 즉시 보실 수 있습니다!
+            {isJapanese
+              ? '同伴競技者と判定が分かれた際、公認規則の項目や質問をタップすると、明快な公式判定を即座に確認できます！'
+              : '동반자와 룰이 엇갈릴 때 공식 룰북 항목이나 분야별 질문 문항을 누르시면 팝업창에서 명쾌한 세부 판정을 즉시 보실 수 있습니다!'}
           </p>
         </div>
       </div>
 
       {/* ========================================================= */}
-      {/* 1. (사)대한파크골프협회 공인 공식 룰북 (제1장~제8장 밑으로 쭉 나열) */}
-      {/* 좌우 스크롤 제거 -> 세로 나열 리스트 + 클릭 시 팝업창 출력 */}
+      {/* 1. 공인 공식 룰북 (KPGA / NPGA 자동 전환) */}
       {/* ========================================================= */}
       <div className="bg-white rounded-3xl border-2 border-emerald-600 shadow-md p-4 space-y-3.5">
         <div className="flex items-center justify-between border-b border-stone-200/80 pb-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-10 h-10 rounded-2xl bg-amber-400 text-emerald-950 font-black flex items-center justify-center text-xl shadow-md shrink-0">
-              📘
+              {ruleSet === 'npga' ? '🇯🇵' : '🇰🇷'}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="bg-amber-400 text-emerald-950 text-[10px] font-black px-2 py-0.5 rounded-full shrink-0">
-                  협회 공인
+                  {ruleSet === 'npga' ? 'NPGA公認' : '협회 공인'}
                 </span>
-                <h3 className="font-extrabold text-sm text-stone-900 truncate">
-                  (사)대한파크골프협회 공식 룰북
+                <h3 className="font-extrabold text-xs sm:text-sm text-stone-900 leading-tight">
+                  {ruleSet === 'npga'
+                    ? '(公社)日本パークゴルフ協会 公式競技規則'
+                    : '(사)대한파크골프협회 공식 룰북'}
                 </h3>
               </div>
-              <p className="text-xs text-stone-600 font-bold mt-0.5 truncate">
-                딱딱한 규정을 파키 캐릭터 만화로 쉽고 재미있게 만나보세요!
+              <p className="text-xs text-stone-600 font-bold mt-0.5">
+                {ruleSet === 'npga'
+                  ? '日本パークゴルフ協会公認の公式規程集'
+                  : '딱딱한 규정을 파키 캐릭터 만화로 쉽고 재미있게 만나보세요!'}
               </p>
             </div>
           </div>
           <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded-full shrink-0">
-            총 8개 장
+            {ruleSet === 'npga' ? `全 ${activeChapters.length}章` : `총 ${activeChapters.length}개 장`}
           </span>
         </div>
 
@@ -526,9 +600,9 @@ export default function RulesPage() {
             }`}
           >
             <span>🎨</span>
-            <span>파키 만화 웹툰 모드</span>
+            <span>{isJapanese || ruleSet === 'npga' ? 'パキ公式マンガ' : '파키 만화 웹툰 모드'}</span>
             <span className="text-[9px] bg-amber-400 text-emerald-950 px-1.5 py-0.5 rounded-full font-black">
-              추천
+              {isJapanese || ruleSet === 'npga' ? 'おすすめ' : '추천'}
             </span>
           </button>
           <button
@@ -541,15 +615,15 @@ export default function RulesPage() {
             }`}
           >
             <span>📜</span>
-            <span>규정집 조항 목록</span>
+            <span>{isJapanese || ruleSet === 'npga' ? '規程集・条文一覧' : '규정집 조항 목록'}</span>
           </button>
         </div>
 
         {/* 1) 파키 만화 웹툰 보기 모드 */}
         {rulebookViewMode === 'webtoon' && (
           <div className="space-y-2.5 pt-0.5">
-            {KPGA_RULEBOOK_CHAPTERS.map((ch) => {
-              const webtoon = CHAPTER_WEBTOONS[ch.id];
+            {activeChapters.map((ch) => {
+              const webtoon = getChapterWebtoon(ch.id, isJapanese || ruleSet === 'npga');
               return (
                 <div
                   key={ch.id}
@@ -571,7 +645,7 @@ export default function RulesPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-black bg-amber-400 text-emerald-950 px-1.5 py-0.5 rounded-md shrink-0">
-                        {webtoon ? `총 ${webtoon.totalCuts}컷 만화` : '만화'}
+                        {webtoon ? (isJapanese ? `全${webtoon.totalCuts}コマ` : `총 ${webtoon.totalCuts}컷 만화`) : (isJapanese ? 'マンガ' : '만화')}
                       </span>
                       <h4 className="font-extrabold text-xs text-stone-900 truncate">
                         {ch.title}
@@ -585,7 +659,7 @@ export default function RulesPage() {
                   {/* Read Button */}
                   <div className="shrink-0 flex items-center gap-1">
                     <span className="text-[11px] font-black text-emerald-900 bg-white group-hover:bg-emerald-600 group-hover:text-white px-2.5 py-1.5 rounded-xl transition border border-emerald-300 shadow-sm flex items-center gap-1">
-                      <span>만화 보기</span>
+                      <span>{isJapanese ? 'マンガを見る' : '만화 보기'}</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </span>
                   </div>
@@ -595,10 +669,10 @@ export default function RulesPage() {
           </div>
         )}
 
-        {/* 2) 8개 장 세로 나열 조항 리스트 모드 */}
+        {/* 2) 조항 리스트 모드 */}
         {rulebookViewMode === 'articles' && (
           <div className="space-y-2 pt-0.5">
-            {KPGA_RULEBOOK_CHAPTERS.map((ch) => (
+            {activeChapters.map((ch) => (
               <button
                 key={ch.id}
                 type="button"
@@ -610,7 +684,7 @@ export default function RulesPage() {
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="w-10 h-10 rounded-xl bg-emerald-700 group-hover:bg-emerald-600 text-white font-black text-xs flex flex-col items-center justify-center shrink-0 shadow-sm transition">
-                    <span className="text-[9px] text-amber-300 font-black">공인</span>
+                    <span className="text-[9px] text-amber-300 font-black">{isJapanese ? '公認' : '공인'}</span>
                     <span>{ch.chapterNumber}</span>
                   </span>
                   <div className="min-w-0">
@@ -625,7 +699,7 @@ export default function RulesPage() {
 
                 <div className="shrink-0 flex items-center gap-1">
                   <span className="text-[11px] font-black text-emerald-800 bg-white group-hover:bg-emerald-600 group-hover:text-white px-2 py-1 rounded-lg transition border border-emerald-200 shadow-sm">
-                    조항 전문
+                    {isJapanese ? '条文全文' : '조항 전문'}
                   </span>
                   <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-emerald-700 transition" />
                 </div>
@@ -645,18 +719,46 @@ export default function RulesPage() {
           <div className="flex items-center gap-1.5">
             <span className="text-base">📂</span>
             <span className="text-sm font-black text-stone-900">
-              규정 분야별 질문 선택 (카테고리별 팝업)
+              {isJapanese || ruleSet === 'npga' ? '規定分野別 Q&A 判定' : '규정 분야별 질문 선택 (카테고리별 팝업)'}
             </span>
           </div>
           <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded-full">
-            총 6개 분야 · 50문항
+            {isJapanese || ruleSet === 'npga' ? '全6分野・実戦判定' : '총 6개 분야 · 50문항'}
           </span>
         </div>
 
         {/* Categories List Cards (Like Chapter cards above) */}
         <div className="space-y-2.5 pt-0.5">
           {RULE_CATEGORIES.map((cat) => {
-            const count = CATEGORIZED_RULES.filter((r) => r.category === cat.id).length;
+            const count = activeAllRules.filter((r) => r.category === cat.id).length;
+            const localizedCatLabel =
+              isJapanese || ruleSet === 'npga'
+                ? cat.id === 'ob'
+                  ? 'OB判定と境界線'
+                  : cat.id === 'tee_swing'
+                  ? 'ティーショットとスイング'
+                  : cat.id === 'putting_green'
+                  ? 'パッティングとグリーン'
+                  : cat.id === 'hazard_relief'
+                  ? '障害物・カジュアルウォーター救済'
+                  : cat.id === 'touch_penalty'
+                  ? '球の接触とペナルティ'
+                  : 'スコア記録とエチケット'
+                : cat.label;
+            const localizedCatDesc =
+              isJapanese || ruleSet === 'npga'
+                ? cat.id === 'ob'
+                  ? '1mmセーフ判定、手によるプレース規則'
+                  : cat.id === 'tee_swing'
+                  ? 'ティー高さ23mm制限、空振りの無罰'
+                  : cat.id === 'putting_green'
+                  ? 'マーク義務、ピン挟まりカップイン判定'
+                  : cat.id === 'hazard_relief'
+                  ? '排水溝・散水栓無罰1クラブ救済'
+                  : cat.id === 'touch_penalty'
+                  ? '二重打撃2打付加、同伴球衝突処置'
+                  : 'コンシード禁止、安全確認マナー'
+                : cat.description;
             return (
               <div
                 key={cat.id}
@@ -672,22 +774,22 @@ export default function RulesPage() {
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-black bg-amber-400 text-emerald-950 px-1.5 py-0.2 rounded-md shrink-0">
-                        {count}문항 완비
+                      <span className="text-[10px] font-black bg-amber-400 text-emerald-950 px-1.5 py-0.5 rounded-md shrink-0">
+                        {isJapanese || ruleSet === 'npga' ? `${count || 5}項目` : `${count}문항`}
                       </span>
                       <h4 className="font-extrabold text-xs text-stone-900 truncate">
-                        {cat.label}
+                        {localizedCatLabel}
                       </h4>
                     </div>
                     <p className="text-[11px] text-stone-500 font-bold truncate mt-0.5">
-                      {cat.description}
+                      {localizedCatDesc}
                     </p>
                   </div>
                 </div>
 
                 <div className="shrink-0 flex items-center gap-1">
                   <span className="text-[11px] font-black text-emerald-800 bg-white group-hover:bg-emerald-600 group-hover:text-white px-2.5 py-1.5 rounded-xl transition border border-emerald-200 shadow-xs flex items-center gap-1">
-                    <span>문항 보기</span>
+                    <span>{isJapanese || ruleSet === 'npga' ? '質問一覧' : '문항 보기'}</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </span>
                 </div>
@@ -704,10 +806,10 @@ export default function RulesPage() {
         <div className="flex items-center justify-between">
           <span className="text-xs font-black text-emerald-950 flex items-center gap-1">
             <MessageSquare className="w-4 h-4 text-emerald-700" />
-            <span>Q&A 질문하고 즉시 답 받기 (직접 입력 / 음성 / 사진)</span>
+            <span>{isJapanese || ruleSet === 'npga' ? 'Q&A 質問して即答判定 (入力 / 音声 / 写真)' : 'Q&A 질문하고 즉시 답 받기 (직접 입력 / 음성 / 사진)'}</span>
           </span>
           <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-            1초 판정
+            {isJapanese || ruleSet === 'npga' ? '1秒判定' : '1초 판정'}
           </span>
         </div>
 
@@ -717,7 +819,9 @@ export default function RulesPage() {
             value={questionText}
             onChange={(e) => setQuestionText(e.target.value)}
             placeholder={
-              selectedCategory === 'ob'
+              isJapanese || ruleSet === 'npga'
+                ? '例: ボールが白線にわずかに触れているのですがセーフですか？'
+                : selectedCategory === 'ob'
                 ? '예: 공이 OB 흰 선에 살짝 걸쳤는데 세이프인가요?'
                 : selectedCategory === 'hazard_relief'
                 ? '예: 연못 해저드에 공이 빠졌을 때 몇 벌타인가요?'
@@ -750,15 +854,19 @@ export default function RulesPage() {
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-rose-600 animate-ping" />
                 <span className="text-xs font-black text-rose-800">
-                  🎙️ 시간제한 없이 편안하게 말씀하세요...
+                  {isJp ? '🎙️ 時間制限なくご自由にお話しください...' : '🎙️ 시간제한 없이 편안하게 말씀하세요...'}
                 </span>
               </div>
               <span className="text-[11px] font-bold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full">
-                실시간 음성 듣는 중
+                {isJp ? '音声聞き取り中' : '실시간 음성 듣는 중'}
               </span>
             </div>
             <p className="text-[11px] text-stone-700 font-bold leading-relaxed">
-              상황을 충분히 설명하신 후, 아래 <strong>[✓ 확인 (말씀 완료 및 판정)]</strong>을 누르시면 답을 드립니다.
+              {isJp ? (
+                <>状況を詳しくお話しいただいた後、下の <strong>[✓ 確認 (質問完了・判定)]</strong> を押してください。</>
+              ) : (
+                <>상황을 충분히 설명하신 후, 아래 <strong>[✓ 확인 (말씀 완료 및 판정)]</strong>을 누르시면 답을 드립니다.</>
+              )}
             </p>
 
             <div className="grid grid-cols-3 gap-2 pt-1">
@@ -768,7 +876,7 @@ export default function RulesPage() {
                 className="col-span-2 py-3 px-3 rounded-xl font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition"
               >
                 <CheckCircle className="w-4 h-4 text-amber-300" />
-                <span>✓ 확인 (말씀 완료 및 판정)</span>
+                <span>{isJp ? '✓ 確認 (質問完了・判定)' : '✓ 확인 (말씀 완료 및 판정)'}</span>
               </button>
 
               <button
@@ -777,7 +885,7 @@ export default function RulesPage() {
                 className="py-3 px-3 rounded-xl font-black text-xs bg-stone-200 hover:bg-stone-300 text-stone-800 flex items-center justify-center gap-1 active:scale-95 transition"
               >
                 <X className="w-3.5 h-3.5" />
-                <span>취소</span>
+                <span>{isJp ? 'キャンセル' : '취소'}</span>
               </button>
             </div>
           </div>
@@ -789,7 +897,7 @@ export default function RulesPage() {
               className="py-3 px-3 rounded-2xl font-black text-xs bg-stone-50 text-stone-800 border border-stone-300 hover:bg-stone-100 flex items-center justify-center gap-1.5 transition shadow-sm"
             >
               <Mic className="w-4 h-4 text-rose-600" />
-              <span>🎙️ 말로 음성 문의</span>
+              <span>{isJp ? '🎙️ 音声で質問' : '🎙️ 말로 음성 문의'}</span>
             </button>
 
             <button
@@ -798,7 +906,7 @@ export default function RulesPage() {
               className="py-3 px-3 rounded-2xl font-black text-xs bg-stone-50 text-stone-800 border border-stone-300 hover:bg-stone-100 flex items-center justify-center gap-1.5 transition shadow-sm"
             >
               <Camera className="w-4 h-4 text-emerald-700" />
-              <span>📷 현장 사진 찍기/업로드</span>
+              <span>{isJp ? '📷 現場の写真撮影/添付' : '📷 현장 사진 찍기/업로드'}</span>
             </button>
             <input
               type="file"
@@ -816,12 +924,12 @@ export default function RulesPage() {
           <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 bg-stone-900 p-1">
             <img
               src={photoPreview}
-              alt="현장 사진"
+              alt={isJp ? '現場写真' : '현장 사진'}
               className="w-full h-36 object-cover rounded-xl"
             />
             <div className="absolute bottom-2 left-3 bg-black/70 backdrop-blur-sm text-white px-2 py-0.5 rounded-md text-[11px] font-bold flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>현장 공·경계 사진 분석 준비 완료</span>
+              <span>{isJp ? '現場ボール・境界写真 分析準備完了' : '현장 공·경계 사진 분석 준비 완료'}</span>
             </div>
             <button
               type="button"
@@ -841,10 +949,10 @@ export default function RulesPage() {
           className="w-full py-4 text-base font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg shadow-emerald-700/30 flex items-center justify-center gap-2 active:scale-95 transition"
         >
           {isAnalyzing ? (
-            <span>⚡ 룰 솔로몬 분석 중...</span>
+            <span>{isJp ? '⚡ ルールソロモン分析中...' : '⚡ 룰 솔로몬 분석 중...'}</span>
           ) : (
             <>
-              <span>⚡ 1초 솔로몬 판정 받기 (팝업창)</span>
+              <span>{isJp ? '⚡ 1秒ソロモン判定を受ける (ポップアップ)' : '⚡ 1초 솔로몬 판정 받기 (팝업창)'}</span>
             </>
           )}
         </button>
@@ -860,7 +968,7 @@ export default function RulesPage() {
           className="w-full bg-stone-900 hover:bg-stone-800 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-sm shadow-md active:scale-95 transition"
         >
           <Home className="w-4 h-4 text-emerald-400" />
-          <span>확인 완료 (홈으로 복귀)</span>
+          <span>{isJp ? '確認完了 (ホームへ戻る)' : '확인 완료 (홈으로 복귀)'}</span>
         </Link>
       </div>
 
@@ -889,7 +997,7 @@ export default function RulesPage() {
                       {selectedCategoryMeta.badge}
                     </span>
                     <span className="text-[11px] text-emerald-200 font-bold">
-                      총 {currentCategoryRules.length}문항
+                      {isJp ? `全 ${currentCategoryRules.length}項目` : `총 ${currentCategoryRules.length}문항`}
                     </span>
                   </div>
                   <h3 className="font-black text-sm text-white truncate pt-0.5">
@@ -902,7 +1010,7 @@ export default function RulesPage() {
                 type="button"
                 onClick={() => setIsCategoryModalOpen(false)}
                 className="p-1.5 rounded-full bg-emerald-950/60 hover:bg-emerald-800 text-white transition shrink-0 ml-2"
-                aria-label="닫기"
+                aria-label={isJp ? '閉じる' : '닫기'}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -912,7 +1020,7 @@ export default function RulesPage() {
             <div className="px-3 py-1.5 bg-stone-50 border-b border-stone-200 flex items-center justify-between shrink-0">
               <span className="text-[11px] font-black text-stone-600 flex items-center gap-1">
                 <span>🔍</span>
-                <span>글자 크기</span>
+                <span>{isJp ? '文字サイズ' : '글자 크기'}</span>
               </span>
               <div className="flex items-center gap-0.5 bg-stone-200/80 p-0.5 rounded-xl">
                 <button
@@ -924,7 +1032,7 @@ export default function RulesPage() {
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
-                  보통
+                  {isJp ? '標準' : '보통'}
                 </button>
                 <button
                   type="button"
@@ -935,7 +1043,7 @@ export default function RulesPage() {
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
-                  크게
+                  {isJp ? '大' : '크게'}
                 </button>
                 <button
                   type="button"
@@ -946,7 +1054,7 @@ export default function RulesPage() {
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
-                  왕글씨
+                  {isJp ? '特大' : '왕글씨'}
                 </button>
               </div>
             </div>
@@ -955,7 +1063,20 @@ export default function RulesPage() {
             <div className="px-3 py-2 bg-stone-100 border-b border-stone-200 overflow-x-auto flex items-center gap-1.5 scrollbar-none shrink-0">
               {RULE_CATEGORIES.map((cat) => {
                 const isSelected = selectedCategory === cat.id;
-                const count = CATEGORIZED_RULES.filter((r) => r.category === cat.id).length;
+                const count = activeAllRules.filter((r) => r.category === cat.id).length;
+                const catShortLabel = isJp
+                  ? cat.id === 'ob'
+                    ? 'OB'
+                    : cat.id === 'hazard_relief'
+                    ? 'ハザード'
+                    : cat.id === 'putting_green'
+                    ? 'グリーン'
+                    : cat.id === 'tee_swing'
+                    ? 'ティ'
+                    : cat.id === 'touch_penalty'
+                    ? '衝突'
+                    : 'マナー'
+                  : cat.label.split(' ')[0];
                 return (
                   <button
                     key={cat.id}
@@ -968,7 +1089,7 @@ export default function RulesPage() {
                     }`}
                   >
                     <span>{cat.icon}</span>
-                    <span>{cat.label.split(' ')[0]}</span>
+                    <span>{catShortLabel}</span>
                     <span
                       className={`text-[10px] px-1 rounded ${
                         isSelected
@@ -986,7 +1107,7 @@ export default function RulesPage() {
             {/* Questions List (Scrollable) */}
             <div className="p-4 overflow-y-auto space-y-2.5 flex-1 bg-stone-50">
               <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs font-bold text-emerald-900 flex items-center justify-between">
-                <span>💡 문항을 터치하면 상황별 웹툰 도해와 공식 판정이 열립니다.</span>
+                <span>{isJp ? '💡 項目をタップすると状況別マンガ図解と公式判定が開きます。' : '💡 문항을 터치하면 상황별 웹툰 도해와 공식 판정이 열립니다.'}</span>
               </div>
 
               <div className="space-y-2 pt-1">
@@ -1101,7 +1222,7 @@ export default function RulesPage() {
                         : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    <span>🎨 만화</span>
+                    <span>{isJp ? '🎨 マンガ' : '🎨 만화'}</span>
                   </button>
                   <button
                     type="button"
@@ -1112,7 +1233,7 @@ export default function RulesPage() {
                         : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    <span>📜 원문</span>
+                    <span>{isJp ? '📜 原文' : '📜 원문'}</span>
                   </button>
                 </div>
 
@@ -1127,7 +1248,7 @@ export default function RulesPage() {
                         : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    보통
+                    {isJp ? '標準' : '보통'}
                   </button>
                   <button
                     type="button"
@@ -1138,7 +1259,7 @@ export default function RulesPage() {
                         : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    크게
+                    {isJp ? '大' : '크게'}
                   </button>
                   <button
                     type="button"
@@ -1149,7 +1270,7 @@ export default function RulesPage() {
                         : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    왕글씨
+                    {isJp ? '特大' : '왕글씨'}
                   </button>
                 </div>
               </div>
@@ -1159,17 +1280,17 @@ export default function RulesPage() {
             <div ref={chapterScrollRef} className="p-4 overflow-y-auto space-y-3.5 flex-1">
               {/* 1. 파키 만화 웹툰 모드 */}
               {chapterModalMode === 'webtoon' && (() => {
-                const currentWebtoon = CHAPTER_WEBTOONS[selectedChapter.id];
+                const currentWebtoon = getChapterWebtoon(selectedChapter.id, isJp);
                 return (
                   <div className="space-y-4">
                     {/* Webtoon Intro Card */}
                     <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white p-3.5 rounded-2xl shadow-sm space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-black bg-amber-400 text-emerald-950 px-2 py-0.5 rounded-full">
-                          파키와 함께하는 룰북 만화
+                          {isJp ? 'パキと一緒に学ぶ公式マンガ' : '파키와 함께하는 룰북 만화'}
                         </span>
                         <span className="text-[11px] text-emerald-100 font-bold">
-                          {currentWebtoon ? `총 ${currentWebtoon.totalCuts}컷 완결` : '만화'}
+                          {currentWebtoon ? (isJp ? `全 ${currentWebtoon.totalCuts}コマ完結` : `총 ${currentWebtoon.totalCuts}컷 완결`) : (isJp ? 'マンガ' : '만화')}
                         </span>
                       </div>
                       <h4 className="font-black text-sm text-white pt-0.5">
@@ -1215,7 +1336,7 @@ export default function RulesPage() {
                             <div className={`bg-white rounded-xl p-2.5 border border-stone-200 ${fsBody} font-bold text-stone-700 flex items-start gap-2`}>
                               <span className="text-sm shrink-0">🤔</span>
                               <span className="break-keep leading-relaxed">
-                                <strong className="text-stone-900">상황:</strong> {cut.situation}
+                                <strong className="text-stone-900">{isJp ? '状況:' : '상황:'}</strong> {cut.situation}
                               </span>
                             </div>
 
@@ -1231,7 +1352,7 @@ export default function RulesPage() {
                             <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-3 shadow-sm">
                               <div className="flex items-center gap-1.5 text-emerald-950 font-black text-xs mb-1">
                                 <span className="text-base">📢</span>
-                                <span>파키의 판정 한마디!</span>
+                                <span>{isJp ? '📢 パキの判定ワンポイント！' : '📢 파키의 판정 한마디!'}</span>
                               </div>
                               <p className={`${fsBody} text-emerald-950 font-extrabold leading-relaxed break-keep`}>
                                 "{cut.parkyDialogue}"
@@ -1242,12 +1363,12 @@ export default function RulesPage() {
                             <div className="bg-amber-50 border border-amber-300 rounded-xl p-2.5 space-y-1">
                               <div className={`${fsBody} font-black text-amber-950 flex items-center gap-1`}>
                                 <span>⚖️</span>
-                                <span>공식 판정: {cut.verdict}</span>
+                                <span>{isJp ? `公式判定: ${cut.verdict}` : `공식 판정: ${cut.verdict}`}</span>
                               </div>
                               {cut.penaltyText && (
                                 <div className={`${fsSmall} font-extrabold text-rose-700 flex items-center gap-1`}>
                                   <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                                  <span>벌칙: {cut.penaltyText}</span>
+                                  <span>{isJp ? `罰則: ${cut.penaltyText}` : `벌칙: ${cut.penaltyText}`}</span>
                                 </div>
                               )}
                             </div>
@@ -1256,7 +1377,7 @@ export default function RulesPage() {
                             <div className={`bg-white rounded-xl p-2.5 ${fsSmall} font-bold text-stone-700 flex items-start gap-1.5 border border-stone-200`}>
                               <span className="text-xs shrink-0">💡</span>
                               <span className="break-keep leading-relaxed">
-                                <strong>핵심 요약:</strong> {cut.keyPoint}
+                                <strong>{isJp ? '重要ポイント:' : '핵심 요약:'}</strong> {cut.keyPoint}
                               </span>
                             </div>
 
@@ -1273,7 +1394,7 @@ export default function RulesPage() {
                               type="button"
                               onClick={() => {
                                 const nextCutElem = document.getElementById(
-                                  `cut-${selectedChapter.id}-${cut.cutNumber + 1}`
+                                   `cut-${selectedChapter.id}-${cut.cutNumber + 1}`
                                 );
                                 if (nextCutElem) {
                                   nextCutElem.scrollIntoView({
@@ -1284,7 +1405,7 @@ export default function RulesPage() {
                               }}
                               className="w-full py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold rounded-2xl text-xs border border-emerald-300 flex items-center justify-center gap-1.5 transition active:scale-98 shadow-2xs"
                             >
-                              <span>다음 컷 보기 (제{cut.cutNumber + 1}컷)</span>
+                              <span>{isJp ? `次のコマを見る (第${cut.cutNumber + 1}コマ)` : `다음 컷 보기 (제${cut.cutNumber + 1}컷)`}</span>
                               <ChevronDown className="w-4 h-4 text-emerald-700 animate-bounce" />
                             </button>
                           )}
@@ -1296,13 +1417,13 @@ export default function RulesPage() {
                     <div className="bg-gradient-to-br from-emerald-950 via-teal-950 to-stone-900 text-white rounded-3xl p-4 text-center space-y-3 shadow-md border-2 border-emerald-500/50">
                       <div className="inline-flex items-center gap-1.5 bg-amber-400 text-emerald-950 px-3 py-1 rounded-full text-xs font-black">
                         <span>🎉</span>
-                        <span>{selectedChapter.chapterNumber} 완독 완료!</span>
+                        <span>{isJp ? `${selectedChapter.chapterNumber} 読了！` : `${selectedChapter.chapterNumber} 완독 완료!`}</span>
                       </div>
 
                       <p className="text-xs text-emerald-100 font-bold">
                         {nextChapter
-                          ? `다음 이야기: ${nextChapter.chapterNumber} · ${nextChapter.title}`
-                          : '축하합니다! 제8장까지 모든 파키 만화 규칙을 완독하셨습니다!'}
+                          ? (isJp ? `次の話: ${nextChapter.chapterNumber} · ${nextChapter.title}` : `다음 이야기: ${nextChapter.chapterNumber} · ${nextChapter.title}`)
+                          : (isJp ? 'すべての公式マンガ規則を読了しました！' : '축하합니다! 제8장까지 모든 파키 만화 규칙을 완독하셨습니다!')}
                       </p>
 
                       <div className="flex flex-col gap-2 pt-1">
@@ -1313,7 +1434,7 @@ export default function RulesPage() {
                             onClick={() => handleGoToChapter(nextChapter)}
                             className="w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-emerald-950 font-black rounded-2xl text-sm shadow-md flex items-center justify-center gap-2 active:scale-95 transition"
                           >
-                            <span>다음 회 보기 ▶ ({nextChapter.chapterNumber} {nextChapter.title})</span>
+                            <span>{isJp ? `次の話を見る ▶ (${nextChapter.chapterNumber} ${nextChapter.title})` : `다음 회 보기 ▶ (${nextChapter.chapterNumber} ${nextChapter.title})`}</span>
                             <ChevronRight className="w-4 h-4 text-emerald-950" />
                           </button>
                         )}
@@ -1326,7 +1447,7 @@ export default function RulesPage() {
                             className="py-2.5 px-3 bg-white/15 hover:bg-white/25 text-white font-black rounded-xl text-xs border border-white/20 flex items-center justify-center gap-1.5 transition"
                           >
                             <span>📜</span>
-                            <span>원문으로 돌아가기</span>
+                            <span>{isJp ? '原文へ切り替え' : '원문으로 돌아가기'}</span>
                           </button>
 
                           {/* 이전 회 보기 버튼 */}
@@ -1337,7 +1458,7 @@ export default function RulesPage() {
                               className="py-2.5 px-3 bg-white/10 hover:bg-white/20 text-emerald-200 font-black rounded-xl text-xs border border-white/15 flex items-center justify-center gap-1.5 transition"
                             >
                               <ChevronLeft className="w-3.5 h-3.5" />
-                              <span>이전 회 ({prevChapter.chapterNumber})</span>
+                              <span>{isJp ? `前の話 (${prevChapter.chapterNumber})` : `이전 회 (${prevChapter.chapterNumber})`}</span>
                             </button>
                           ) : (
                             <button
@@ -1345,7 +1466,7 @@ export default function RulesPage() {
                               onClick={() => setSelectedChapter(null)}
                               className="py-2.5 px-3 bg-white/10 hover:bg-white/20 text-stone-300 font-black rounded-xl text-xs border border-white/15 flex items-center justify-center gap-1.5 transition"
                             >
-                              <span>목록으로</span>
+                              <span>{isJp ? '一覧へ' : '목록으로'}</span>
                             </button>
                           )}
                         </div>
@@ -1362,7 +1483,7 @@ export default function RulesPage() {
                   <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 space-y-1">
                     <div className="flex items-center gap-1.5">
                       <span className="bg-emerald-700 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-                        {selectedChapter.chapterNumber} 개요
+                        {isJp ? `${selectedChapter.chapterNumber} 概要` : `${selectedChapter.chapterNumber} 개요`}
                       </span>
                       <h4 className={`${fsTitle} font-black text-emerald-950`}>
                         {selectedChapter.title}
@@ -1380,7 +1501,7 @@ export default function RulesPage() {
                     className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black rounded-2xl text-xs shadow-sm flex items-center justify-center gap-1.5 transition"
                   >
                     <span>🎨</span>
-                    <span>이 장의 파키 만화 웹툰으로 보기</span>
+                    <span>{isJp ? 'この章のパキ公式マンガを見る' : '이 장의 파키 만화 웹툰으로 보기'}</span>
                   </button>
 
                   {/* Articles in Chapter */}
@@ -1405,7 +1526,7 @@ export default function RulesPage() {
                         {art.penaltyNote && (
                           <div className={`bg-rose-50 border border-rose-200 rounded-xl px-2.5 py-1 ${fsSmall} font-black text-rose-800 flex items-center gap-1`}>
                             <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                            <span>위반 시 벌칙: {art.penaltyNote}</span>
+                            <span>{isJp ? `違反時の罰則: ${art.penaltyNote}` : `위반 시 벌칙: ${art.penaltyNote}`}</span>
                           </div>
                         )}
                       </div>
@@ -1421,7 +1542,7 @@ export default function RulesPage() {
                         className="py-3 px-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black rounded-2xl text-xs shadow-sm flex items-center justify-center gap-1.5 transition"
                       >
                         <span>🎨</span>
-                        <span>파키 만화 웹툰</span>
+                        <span>{isJp ? 'パキ公式マンガ' : '파키 만화 웹툰'}</span>
                       </button>
 
                       {nextChapter ? (
@@ -1430,7 +1551,7 @@ export default function RulesPage() {
                           onClick={() => handleGoToChapter(nextChapter)}
                           className="py-3 px-3 bg-amber-400 hover:bg-amber-500 text-emerald-950 font-black rounded-2xl text-xs shadow-sm flex items-center justify-center gap-1 transition"
                         >
-                          <span>다음 회 ({nextChapter.chapterNumber}) ▶</span>
+                          <span>{isJp ? `次の章 (${nextChapter.chapterNumber}) ▶` : `다음 회 (${nextChapter.chapterNumber}) ▶`}</span>
                         </button>
                       ) : (
                         <button
@@ -1438,7 +1559,7 @@ export default function RulesPage() {
                           onClick={() => setSelectedChapter(null)}
                           className="py-3 px-3 bg-stone-200 hover:bg-stone-300 text-stone-800 font-black rounded-2xl text-xs flex items-center justify-center gap-1 transition"
                         >
-                          <span>목록으로 복귀</span>
+                          <span>{isJp ? '一覧へ戻る' : '목록으로 복귀'}</span>
                         </button>
                       )}
                     </div>
@@ -1450,7 +1571,7 @@ export default function RulesPage() {
                         className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs border border-stone-300 flex items-center justify-center gap-1 transition"
                       >
                         <ChevronLeft className="w-3.5 h-3.5" />
-                        <span>이전 회 ({prevChapter.chapterNumber} · {prevChapter.title})</span>
+                        <span>{isJp ? `前の章 (${prevChapter.chapterNumber} · ${prevChapter.title})` : `이전 회 (${prevChapter.chapterNumber} · ${prevChapter.title})`}</span>
                       </button>
                     )}
                   </div>
@@ -1459,15 +1580,15 @@ export default function RulesPage() {
                   <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-900 font-bold flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <Info className="w-4 h-4 text-amber-700 shrink-0" />
-                      <span className="truncate">협회 공식 웹사이트 규정실 바로가기</span>
+                      <span className="truncate">{isJp ? '協会公式サイト 競技規則室' : '협회 공식 웹사이트 규정실 바로가기'}</span>
                     </div>
                     <a
-                      href="https://kpga.or.kr"
+                      href={isJp ? 'https://www.parkgolf.or.jp' : 'https://kpga.or.kr'}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-2.5 py-1 bg-amber-400 hover:bg-amber-500 text-emerald-950 font-black rounded-lg text-[11px] shrink-0 flex items-center gap-1"
                     >
-                      <span>kpga.or.kr</span>
+                      <span>{isJp ? 'parkgolf.or.jp' : 'kpga.or.kr'}</span>
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
@@ -1485,7 +1606,7 @@ export default function RulesPage() {
                     className="flex-1 py-2.5 px-2 rounded-2xl font-black text-xs bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 shadow-2xs flex items-center justify-center gap-1 active:scale-95 transition"
                   >
                     <ChevronLeft className="w-4 h-4 text-emerald-800 shrink-0" />
-                    <span className="truncate">이전 회 ({prevChapter.chapterNumber})</span>
+                    <span className="truncate">{isJp ? `前の話 (${prevChapter.chapterNumber})` : `이전 회 (${prevChapter.chapterNumber})`}</span>
                   </button>
                 ) : (
                   <div className="flex-1" />
@@ -1502,12 +1623,12 @@ export default function RulesPage() {
                   {chapterModalMode === 'webtoon' ? (
                     <>
                       <span>📜</span>
-                      <span>원문으로 돌아가기</span>
+                      <span>{isJp ? '原文へ切り替え' : '원문으로 돌아가기'}</span>
                     </>
                   ) : (
                     <>
                       <span>🎨</span>
-                      <span>만화로 돌아가기</span>
+                      <span>{isJp ? 'マンガへ切り替え' : '만화로 돌아가기'}</span>
                     </>
                   )}
                 </button>
@@ -1518,7 +1639,7 @@ export default function RulesPage() {
                     onClick={() => handleGoToChapter(nextChapter)}
                     className="flex-1 py-2.5 px-2 rounded-2xl font-black text-xs bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 text-white shadow-sm flex items-center justify-center gap-1 active:scale-95 transition"
                   >
-                    <span className="truncate">다음 회 ({nextChapter.chapterNumber})</span>
+                    <span className="truncate">{isJp ? `次の話 (${nextChapter.chapterNumber})` : `다음 회 (${nextChapter.chapterNumber})`}</span>
                     <ChevronRight className="w-4 h-4 text-amber-300 shrink-0" />
                   </button>
                 ) : (
@@ -1533,7 +1654,7 @@ export default function RulesPage() {
                 className="w-full py-2.5 rounded-xl font-bold text-xs bg-stone-200 hover:bg-stone-300 text-stone-700 flex items-center justify-center gap-1 active:scale-95 transition"
               >
                 <X className="w-3.5 h-3.5 text-stone-500" />
-                <span>닫기 (목록으로 돌아가기)</span>
+                <span>{isJp ? '閉じる (一覧へ戻る)' : '닫기 (목록으로 돌아가기)'}</span>
               </button>
             </div>
           </div>
@@ -1562,13 +1683,13 @@ export default function RulesPage() {
                 />
                 <div>
                   <h3 className="font-extrabold text-base text-white leading-tight flex items-center gap-1.5">
-                    <span>파키의 룰 솔로몬 판정</span>
+                    <span>{isJp ? 'パキのルール判定ソロモン' : '파키의 룰 솔로몬 판정'}</span>
                     <span className="text-[10px] bg-amber-400 text-emerald-950 font-black px-1.5 py-0.5 rounded-full">
-                      공인 규정
+                      {isJp ? '公式規則' : '공인 규정'}
                     </span>
                   </h3>
                   <p className="text-[11px] text-emerald-200 font-bold">
-                    대한파크골프협회 경기규칙 준거 판정
+                    {isJp ? '(公社)日本パークゴルフ協会 公式競技規則 準拠' : '대한파크골프협회 경기규칙 준거 판정'}
                   </p>
                 </div>
               </div>
@@ -1595,7 +1716,7 @@ export default function RulesPage() {
                         : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    <span>🎨 웹툰 판정</span>
+                    <span>{isJp ? '🎨 マンガ判定' : '🎨 웹툰 판정'}</span>
                   </button>
                   <button
                     type="button"
@@ -1606,7 +1727,7 @@ export default function RulesPage() {
                         : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    <span>📜 상세 판정</span>
+                    <span>{isJp ? '📜 詳細判定' : '📜 상세 판정'}</span>
                   </button>
                 </div>
 
@@ -1621,7 +1742,7 @@ export default function RulesPage() {
                         : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    보통
+                    {isJp ? '標準' : '보통'}
                   </button>
                   <button
                     type="button"
@@ -1632,7 +1753,7 @@ export default function RulesPage() {
                         : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    크게
+                    {isJp ? '大' : '크게'}
                   </button>
                   <button
                     type="button"
@@ -1643,7 +1764,7 @@ export default function RulesPage() {
                         : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    왕글씨
+                    {isJp ? '特大' : '왕글씨'}
                   </button>
                 </div>
               </div>
@@ -1658,12 +1779,12 @@ export default function RulesPage() {
                   <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-1.5 shadow-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-black bg-emerald-700 text-white px-2 py-0.5 rounded-full">
-                        {activeVerdict.categoryLabel || '공인 규정 질의'}
-                        {currentQuestionIndex >= 0 ? ` · 제${currentQuestionIndex + 1}문항` : ''}
+                        {activeVerdict.categoryLabel || (isJp ? '公式規則の質疑' : '공인 규정 질의')}
+                        {currentQuestionIndex >= 0 ? (isJp ? ` · 第${currentQuestionIndex + 1}問` : ` · 제${currentQuestionIndex + 1}문항`) : ''}
                       </span>
                       {currentQuestionIndex >= 0 && (
                         <span className="text-[11px] font-bold text-stone-500">
-                          총 {currentCategoryQuestions.length}문항 중 {currentQuestionIndex + 1}번
+                          {isJp ? `全 ${currentCategoryQuestions.length}問中 ${currentQuestionIndex + 1}番` : `총 ${currentCategoryQuestions.length}문항 중 ${currentQuestionIndex + 1}번`}
                         </span>
                       )}
                     </div>
@@ -1673,7 +1794,7 @@ export default function RulesPage() {
                     <div className={`bg-white rounded-xl p-2.5 border border-stone-200 ${fsBody} font-bold text-stone-700 flex items-start gap-1.5`}>
                       <span className="text-sm shrink-0">🤔</span>
                       <span className="break-keep leading-relaxed">
-                        <strong className="text-stone-900">상황:</strong> {activeVerdict.situation}
+                        <strong className="text-stone-900">{isJp ? '状況:' : '상황:'}</strong> {activeVerdict.situation}
                       </span>
                     </div>
                   </div>
@@ -1688,7 +1809,7 @@ export default function RulesPage() {
                   <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-3.5 shadow-sm space-y-1">
                     <div className="flex items-center gap-1.5 text-emerald-950 font-black text-xs">
                       <span className="text-base">📢</span>
-                      <span>파키의 판정 한마디!</span>
+                      <span>{isJp ? '📢 パキの判定ワンポイント！' : '📢 파키의 판정 한마디!'}</span>
                     </div>
                     <p className={`${fsBody} text-emerald-950 font-extrabold leading-relaxed break-keep`}>
                       "{activeVerdict.voiceAnswer || activeVerdict.verdict}"
@@ -1699,7 +1820,7 @@ export default function RulesPage() {
                   <div className="bg-emerald-600 text-white p-3.5 rounded-2xl shadow-md space-y-1">
                     <div className={`${fsSmall} font-bold text-emerald-100 flex items-center gap-1`}>
                       <CheckCircle className="w-4 h-4 text-amber-300" />
-                      <span>최종 솔로몬 판정 결론</span>
+                      <span>{isJp ? '最終ソロモン判定結果' : '최종 솔로몬 판정 결론'}</span>
                     </div>
                     <div className={`${fontSizeMode === 'xlarge' ? 'text-xl' : fontSizeMode === 'large' ? 'text-lg' : 'text-base'} font-black leading-snug tracking-tight text-white`}>
                       {activeVerdict.verdict}
@@ -1708,10 +1829,10 @@ export default function RulesPage() {
 
                   {/* Penalty Status */}
                   <div className="flex items-center justify-between bg-stone-100 px-3.5 py-2.5 rounded-xl border border-stone-200">
-                    <span className={`${fsBody} font-black text-stone-700`}>벌타 유무:</span>
+                    <span className={`${fsBody} font-black text-stone-700`}>{isJp ? '罰打の有無:' : '벌타 유무:'}</span>
                     <span
                       className={`${fsBody} font-black px-2.5 py-1 rounded-lg ${
-                        activeVerdict.penalty.includes('벌타 없음') || activeVerdict.penalty.includes('무벌')
+                        activeVerdict.penalty.includes('벌타 없음') || activeVerdict.penalty.includes('무벌') || activeVerdict.penalty.includes('無罰') || activeVerdict.penalty.includes('なし')
                           ? 'bg-emerald-600 text-white'
                           : 'bg-rose-600 text-white'
                       }`}
@@ -1723,7 +1844,7 @@ export default function RulesPage() {
                   {/* Procedure */}
                   <div className="bg-white p-3.5 rounded-2xl border-2 border-stone-200 space-y-1">
                     <div className={`${fsBody} font-black text-stone-900 flex items-center gap-1`}>
-                      <span>📌 현장 진행 및 처리 절차:</span>
+                      <span>{isJp ? '📌 現場での処置手順:' : '📌 현장 진행 및 처리 절차:'}</span>
                     </div>
                     <p className={`${fsBody} text-stone-800 font-bold leading-relaxed break-keep`}>
                       {activeVerdict.procedure}
@@ -1735,7 +1856,7 @@ export default function RulesPage() {
                     <div className={`bg-amber-50/90 border border-amber-300 rounded-2xl p-3 ${fsSmall} text-amber-950 font-bold space-y-1`}>
                       <div className="flex items-center justify-between">
                         <span className="text-amber-900 font-extrabold">
-                          📜 공식 조항: {activeVerdict.officialArticle}
+                          {isJp ? `📜 公式条文: ${activeVerdict.officialArticle}` : `📜 공식 조항: ${activeVerdict.officialArticle}`}
                         </span>
                       </div>
                       {activeVerdict.officialRuleText && (
@@ -1752,15 +1873,15 @@ export default function RulesPage() {
                       <span>✔</span>
                       <span>
                         {currentQuestionIndex >= 0
-                          ? `제${currentQuestionIndex + 1}문항 확인 완료`
-                          : '판정 확인 완료'}
+                          ? (isJp ? `第${currentQuestionIndex + 1}問 確認完了` : `제${currentQuestionIndex + 1}문항 확인 완료`)
+                          : (isJp ? '判定確認完了' : '판정 확인 완료')}
                       </span>
                     </div>
 
                     <p className="text-xs text-emerald-100 font-bold">
                       {nextQuestion
-                        ? `다음 질문: 제${currentQuestionIndex + 2}문항 · ${nextQuestion.title}`
-                        : '이 분야의 모든 판정 질문을 확인하셨습니다!'}
+                        ? (isJp ? `次の質問: 第${currentQuestionIndex + 2}問 · ${nextQuestion.title}` : `다음 질문: 제${currentQuestionIndex + 2}문항 · ${nextQuestion.title}`)
+                        : (isJp ? 'この分野のすべての判定質問を確認しました！' : '이 분야의 모든 판정 질문을 확인하셨습니다!')}
                     </p>
 
                     <div className="flex flex-col gap-2 pt-1">
@@ -1771,7 +1892,7 @@ export default function RulesPage() {
                           onClick={() => handleGoToQuestion(nextQuestion)}
                           className="w-full py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-emerald-950 font-black rounded-2xl text-sm shadow-md flex items-center justify-center gap-2 active:scale-95 transition"
                         >
-                          <span>다음 문항 보기 ▶ (제{currentQuestionIndex + 2}번)</span>
+                          <span>{isJp ? `次の項目を見る ▶ (第${currentQuestionIndex + 2}番)` : `다음 문항 보기 ▶ (제${currentQuestionIndex + 2}번)`}</span>
                           <ChevronRight className="w-4 h-4 text-emerald-950" />
                         </button>
                       )}
@@ -1784,7 +1905,7 @@ export default function RulesPage() {
                           className="py-2.5 px-3 bg-white/15 hover:bg-white/25 text-white font-black rounded-xl text-xs border border-white/20 flex items-center justify-center gap-1.5 transition"
                         >
                           <span>📜</span>
-                          <span>원문 판정으로</span>
+                          <span>{isJp ? '原文判定へ' : '원문 판정으로'}</span>
                         </button>
 
                         {/* 이전 문항 보기 버튼 */}
@@ -1795,7 +1916,7 @@ export default function RulesPage() {
                             className="py-2.5 px-3 bg-white/10 hover:bg-white/20 text-emerald-200 font-black rounded-xl text-xs border border-white/15 flex items-center justify-center gap-1.5 transition"
                           >
                             <ChevronLeft className="w-3.5 h-3.5" />
-                            <span>이전 문항 (제{currentQuestionIndex}번)</span>
+                            <span>{isJp ? `前の項目 (第${currentQuestionIndex}番)` : `이전 문항 (제${currentQuestionIndex}번)`}</span>
                           </button>
                         ) : (
                           <button
@@ -1803,7 +1924,7 @@ export default function RulesPage() {
                             onClick={closeModal}
                             className="py-2.5 px-3 bg-white/10 hover:bg-white/20 text-stone-300 font-black rounded-xl text-xs border border-white/15 flex items-center justify-center gap-1.5 transition"
                           >
-                            <span>목록으로</span>
+                            <span>{isJp ? '一覧へ' : '목록으로'}</span>
                           </button>
                         )}
                       </div>
@@ -1823,8 +1944,8 @@ export default function RulesPage() {
                     <Volume2 className="w-4 h-4" />
                     <span>
                       {isSpeaking
-                        ? '🔊 음성 낭독 중... (터치 시 중단)'
-                        : '🔊 동반자에게 스피커로 판정 읽어주기'}
+                        ? (isJp ? '🔊 音声読み上げ中... (タップで停止)' : '🔊 음성 낭독 중... (터치 시 중단)')
+                        : (isJp ? '🔊 同伴者にスピーカーで判定を読み上げる' : '🔊 동반자에게 스피커로 판정 읽어주기')}
                     </span>
                   </button>
                 </div>
@@ -1840,13 +1961,13 @@ export default function RulesPage() {
                     className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black rounded-2xl text-xs shadow-sm flex items-center justify-center gap-1.5 transition"
                   >
                     <span>🎨</span>
-                    <span>상황 삽화가 포함된 파키 웹툰 판정으로 보기</span>
+                    <span>{isJp ? '🎨 状況イラスト付きパキのマンガ判定を見る' : '🎨 상황 삽화가 포함된 파키 웹툰 판정으로 보기'}</span>
                   </button>
 
                   {/* Question Situation */}
                   <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-1">
                     <div className={`${fsSmall} font-black text-emerald-800 flex items-center gap-1`}>
-                      <span>질문 상황:</span>
+                      <span>{isJp ? '質問状況:' : '질문 상황:'}</span>
                     </div>
                     <div className={`${fsTitle} font-extrabold text-stone-900 leading-snug`}>
                       {activeVerdict.title}
@@ -1860,7 +1981,7 @@ export default function RulesPage() {
                   <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-md space-y-1">
                     <div className={`${fsSmall} font-bold text-emerald-100 flex items-center gap-1`}>
                       <CheckCircle className="w-4 h-4 text-amber-300" />
-                      <span>최종 솔로몬 판정 결론</span>
+                      <span>{isJp ? '最終ソロモン判定結果' : '최종 솔로몬 판정 결론'}</span>
                     </div>
                     <div className={`${fontSizeMode === 'xlarge' ? 'text-2xl' : fontSizeMode === 'large' ? 'text-xl' : 'text-lg'} font-black leading-snug tracking-tight text-white`}>
                       {activeVerdict.verdict}
@@ -1869,10 +1990,10 @@ export default function RulesPage() {
 
                   {/* Penalty Status */}
                   <div className="flex items-center justify-between bg-stone-100 px-3.5 py-2.5 rounded-xl border border-stone-200">
-                    <span className={`${fsBody} font-black text-stone-700`}>벌타 유무:</span>
+                    <span className={`${fsBody} font-black text-stone-700`}>{isJp ? '罰打の有無:' : '벌타 유무:'}</span>
                     <span
                       className={`${fsBody} font-black px-2.5 py-1 rounded-lg ${
-                        activeVerdict.penalty.includes('벌타 없음') || activeVerdict.penalty.includes('무벌')
+                        activeVerdict.penalty.includes('벌타 없음') || activeVerdict.penalty.includes('무벌') || activeVerdict.penalty.includes('無罰') || activeVerdict.penalty.includes('なし')
                           ? 'bg-emerald-600 text-white'
                           : 'bg-rose-600 text-white'
                       }`}
@@ -1884,7 +2005,7 @@ export default function RulesPage() {
                   {/* Procedure */}
                   <div className="bg-white p-3.5 rounded-2xl border-2 border-stone-200 space-y-1">
                     <div className={`${fsBody} font-black text-stone-900 flex items-center gap-1`}>
-                      <span>📌 현장 진행 및 처리 절차:</span>
+                      <span>{isJp ? '📌 現場での処置手順:' : '📌 현장 진행 및 처리 절차:'}</span>
                     </div>
                     <p className={`${fsArticle} text-stone-800 font-bold break-keep`}>
                       {activeVerdict.procedure}
@@ -1897,7 +2018,7 @@ export default function RulesPage() {
                       <div className="flex items-center justify-between gap-1.5 border-b border-amber-200/90 pb-2">
                         <div className={`flex items-center gap-1.5 text-amber-950 font-black ${fsBody}`}>
                           <span className="text-base">📜</span>
-                          <span>(사)대한파크골프협회 공식 경기규정</span>
+                          <span>{isJp ? '(公社)日本パークゴルフ協会 公式競技規則' : '(사)대한파크골프협회 공식 경기규정'}</span>
                         </div>
                         {activeVerdict.officialArticle && (
                           <span className={`${fsSmall} font-black bg-amber-200 text-amber-950 px-2 py-0.5 rounded-lg border border-amber-400`}>
@@ -1908,7 +2029,7 @@ export default function RulesPage() {
                       {activeVerdict.officialRuleText && (
                         <div className={`bg-white/95 p-3 rounded-xl border border-amber-200 text-stone-800 ${fsArticle} font-semibold break-keep space-y-1`}>
                           <div className={`${fsSmall} font-black text-amber-800 flex items-center gap-1`}>
-                            <span>【공인 규정 조항 원문】</span>
+                            <span>{isJp ? '【公式規則条文 原文】' : '【공인 규정 조항 원문】'}</span>
                           </div>
                           <p className="text-stone-700 italic">
                             &ldquo;{activeVerdict.officialRuleText}&rdquo;
@@ -1931,8 +2052,8 @@ export default function RulesPage() {
                     <Volume2 className="w-4 h-4" />
                     <span>
                       {isSpeaking
-                        ? '🔊 음성 낭독 중... (터치 시 중단)'
-                        : '🔊 동반자에게 스피커로 판정 읽어주기'}
+                        ? (isJp ? '🔊 音声読み上げ中... (タップで停止)' : '🔊 음성 낭독 중... (터치 시 중단)')
+                        : (isJp ? '🔊 同伴者にスピーカーで判定を読み上げる' : '🔊 동반자에게 스피커로 판정 읽어주기')}
                     </span>
                   </button>
 
@@ -1945,7 +2066,7 @@ export default function RulesPage() {
                         className="py-2.5 px-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs border border-stone-300 flex items-center justify-center gap-1 transition"
                       >
                         <ChevronLeft className="w-3.5 h-3.5" />
-                        <span>이전 문항</span>
+                        <span>{isJp ? '前の項目' : '이전 문항'}</span>
                       </button>
                     ) : (
                       <div />
@@ -1957,7 +2078,7 @@ export default function RulesPage() {
                         onClick={() => handleGoToQuestion(nextQuestion)}
                         className="py-2.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white font-black rounded-xl text-xs shadow flex items-center justify-center gap-1 transition"
                       >
-                        <span>다음 문항 ▶</span>
+                        <span>{isJp ? '次の項目 ▶' : '다음 문항 ▶'}</span>
                       </button>
                     )}
                   </div>
@@ -1975,7 +2096,7 @@ export default function RulesPage() {
                     className="flex-1 py-2.5 px-2 rounded-2xl font-black text-xs bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 shadow-2xs flex items-center justify-center gap-1 active:scale-95 transition"
                   >
                     <ChevronLeft className="w-4 h-4 text-emerald-800 shrink-0" />
-                    <span className="truncate">이전 문항</span>
+                    <span className="truncate">{isJp ? '前の項目' : '이전 문항'}</span>
                   </button>
                 ) : (
                   <div className="flex-1" />
@@ -1990,12 +2111,12 @@ export default function RulesPage() {
                   {qaModalMode === 'webtoon' ? (
                     <>
                       <span>📜</span>
-                      <span>원문 판정으로</span>
+                      <span>{isJp ? '原文判定へ' : '원문 판정으로'}</span>
                     </>
                   ) : (
                     <>
                       <span>🎨</span>
-                      <span>만화 판정으로</span>
+                      <span>{isJp ? 'マンガ判定へ' : '만화 판정으로'}</span>
                     </>
                   )}
                 </button>
@@ -2006,7 +2127,7 @@ export default function RulesPage() {
                     onClick={() => handleGoToQuestion(nextQuestion)}
                     className="flex-1 py-2.5 px-2 rounded-2xl font-black text-xs bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 text-white shadow-sm flex items-center justify-center gap-1 active:scale-95 transition"
                   >
-                    <span className="truncate">다음 문항</span>
+                    <span className="truncate">{isJp ? '次の項目' : '다음 문항'}</span>
                     <ChevronRight className="w-4 h-4 text-amber-300 shrink-0" />
                   </button>
                 ) : (
@@ -2021,11 +2142,16 @@ export default function RulesPage() {
                 className="w-full py-2.5 rounded-xl font-bold text-xs bg-stone-200 hover:bg-stone-300 text-stone-700 flex items-center justify-center gap-1 active:scale-95 transition"
               >
                 <X className="w-3.5 h-3.5 text-stone-500" />
-                <span>닫기 (질문 목록으로 복귀)</span>
+                <span>{isJp ? '閉じる (リストに戻る)' : '닫기 (질문 목록으로 복귀)'}</span>
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* ⚡ Han-Il Rule Comparison Modal */}
+      {showComparisonModal && (
+        <RuleComparisonModal onClose={() => setShowComparisonModal(false)} />
       )}
     </div>
   );

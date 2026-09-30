@@ -28,7 +28,17 @@ export interface Course {
   holesMetadata: HoleMetadata[];
   isVerified: boolean;
   isLocked?: boolean;    // 공식 제원 확정 잠금 여부
+  certNo?: string;       // 일본 NPGA 공인 코스 번호 (예: 公認第439号)
+  mapCode?: string;      // 일본 내비게이션 맵코드 (예: 574 819 013*44)
+  mapcode?: string;      // 일본 맵코드 별칭
+  holes?: number;        // 홀 수 별칭
+  dist?: number;         // 총 거리(m)
+  rental?: string;       // 클럽/볼 대여 정보
+  city?: string;         // 일본 시구정촌
+  pref?: string;         // 일본 도도부현/진흥국
   description?: string;
+  descriptionKo?: string;
+  descriptionJa?: string;
   contributorName?: string;
   contributedAt?: string;
   courseMaster?: string; // 👑 구장 마스터
@@ -36,11 +46,21 @@ export interface Course {
   contributionHistory?: CourseContribution[]; // 명예의 전당 히스토리
   createdAt?: string;
   address?: string;
+  addressKo?: string;
+  addressJa?: string;
   phone?: string;
   fee?: string;
+  feeKo?: string;
+  feeJa?: string;
   openHours?: string;
+  openHoursKo?: string;
+  openHoursJa?: string;
   closedDay?: string;
+  closedDayKo?: string;
+  closedDayJa?: string;
   parking?: string;
+  parkingKo?: string;
+  parkingJa?: string;
   lat?: number;
   lng?: number;
 }

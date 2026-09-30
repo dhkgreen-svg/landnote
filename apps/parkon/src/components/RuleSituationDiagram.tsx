@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { TeeSwingDiagrams } from './rule-diagrams/TeeSwingDiagrams';
 import { PuttingGreenDiagrams } from './rule-diagrams/PuttingGreenDiagrams';
 import { HazardReliefDiagrams } from './rule-diagrams/HazardReliefDiagrams';
@@ -13,6 +14,8 @@ interface RuleSituationDiagramProps {
 }
 
 export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramProps) {
+  const { isJapanese } = useTranslation();
+
   // [1] ob-1: 공이 OB 흰 선에 살짝 걸쳤을 때 (1mm 선상 접촉 시 무벌 세이프)
   if (ruleId === 'ob-1') {
     return (
@@ -20,10 +23,10 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>📐</span>
-            <span>공인 규정 제33조 1항 정밀 단면도</span>
+            <span>{isJapanese ? 'NPGA公式規則 第12条 精密断面図' : '공인 규정 제33조 1항 정밀 단면도'}</span>
           </div>
           <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-            1mm라도 선에 닿으면 세이프!
+            {isJapanese ? '1mmでも線に触れていればセーフ！' : '1mm라도 선에 닿으면 세이프!'}
           </span>
         </div>
 
@@ -54,19 +57,19 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
             {/* Left Zone: Course Fairway / Rough (In-Play) */}
             <rect x="0" y="0" width="170" height="220" fill="url(#grassGrad)" />
             <text x="85" y="24" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900" opacity="0.95">
-              코스 안쪽 (인플레이 구역)
+              {isJapanese ? 'コース内 (インプレー区域)' : '코스 안쪽 (인플레이 구역)'}
             </text>
 
             {/* Middle: OB White Boundary Line */}
             <rect x="170" y="0" width="30" height="220" fill="#ffffff" stroke="#e2e8f0" strokeWidth="1" />
             <text x="185" y="115" textAnchor="middle" fill="#0f172a" fontSize="10" fontWeight="900" transform="rotate(-90 185 115)">
-              OB 백색 실선
+              {isJapanese ? 'OB 白線' : 'OB 백색 실선'}
             </text>
 
             {/* Right Zone: Out of Bounds (OB) */}
             <rect x="200" y="0" width="200" height="220" fill="url(#obHatch)" />
             <text x="300" y="24" textAnchor="middle" fill="#f87171" fontSize="11" fontWeight="900">
-              OB 구역 (코스 밖)
+              {isJapanese ? 'OB区域 (コース外)' : 'OB 구역 (코스 밖)'}
             </text>
 
             {/* Case A: Safe Ball touching the line by 1mm */}
@@ -84,13 +87,13 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
             <path d="M 173 99 L 173 70 L 140 70" fill="none" stroke="#fbbf24" strokeWidth="2" />
             <rect x="40" y="56" width="105" height="26" rx="6" fill="#047857" stroke="#34d399" strokeWidth="1.5" />
             <text x="92" y="73" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900">
-              1mm 접촉 = 세이프!
+              {isJapanese ? '1mm接触 = セーフ！' : '1mm 접촉 = 세이프!'}
             </text>
 
             {/* Result Badge A: SAFE */}
             <rect x="70" y="170" width="120" height="34" rx="10" fill="#059669" stroke="#6ee7b7" strokeWidth="2" />
             <text x="130" y="192" textAnchor="middle" fill="#ffffff" fontSize="13" fontWeight="900">
-              ✔ 무벌 세이프 (IN)
+              {isJapanese ? '✔ 無罰セーフ (IN)' : '✔ 무벌 세이프 (IN)'}
             </text>
 
             {/* Case B: Ball completely out */}
@@ -101,18 +104,20 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
             <path d="M 235 120 L 255 120" stroke="#f87171" strokeWidth="1.5" strokeDasharray="2,2" />
             <rect x="250" y="170" width="110" height="34" rx="10" fill="#b91c1c" stroke="#fca5a5" strokeWidth="2" />
             <text x="305" y="192" textAnchor="middle" fill="#ffffff" fontSize="12" fontWeight="900">
-              ✖ OB (2벌타)
+              {isJapanese ? '✖ OB (2打付加)' : '✖ OB (2벌타)'}
             </text>
           </svg>
         </div>
 
         <div className="bg-stone-800/90 rounded-xl p-2.5 text-xs text-stone-200 font-bold space-y-1">
           <div className="text-emerald-400 font-extrabold flex items-center gap-1">
-            <span>💡 판정 요약:</span>
-            <span>공 전체가 흰 선을 완전히 넘어가야만 OB입니다!</span>
+            <span>💡 {isJapanese ? '判定要約:' : '판정 요약:'}</span>
+            <span>{isJapanese ? 'ボール全体が白線を完全に越境した時のみOBです！' : '공 전체가 흰 선을 완전히 넘어가야만 OB입니다!'}</span>
           </div>
           <p className="text-[11px] text-stone-300 leading-relaxed break-keep">
-            공의 단 1mm라도 백색 실선(또는 말뚝 내측 가상선)에 닿아 있거나 선 위에 걸쳐 있다면 무벌타 세이프(인플레이)이므로 그대로 플레이합니다.
+            {isJapanese
+              ? 'ボールのわずか1mmでも白線（または杭の内側を結ぶ線）に触れていれば無罰セーフ（インプレー）ですので、そのまま打撃できます。'
+              : '공의 단 1mm라도 백색 실선(또는 말뚝 내측 가상선)에 닿아 있거나 선 위에 걸쳐 있다면 무벌타 세이프(인플레이)이므로 그대로 플레이합니다.'}
           </p>
         </div>
       </div>

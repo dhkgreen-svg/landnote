@@ -158,24 +158,12 @@ export function Header() {
                 {isJapanese ? 'パキ' : '파키'}
               </span>
             </div>
-            <div className="flex flex-col leading-none">
-              <span className="font-black text-base sm:text-lg tracking-tight text-white whitespace-nowrap flex items-center gap-1">
-                {isJapanese ? (
-                  <>
-                    パークゴルフ <span className="text-amber-300">オールインワン</span>
-                  </>
-                ) : language === 'en' ? (
-                  <>
-                    PARKGOLF <span className="text-amber-300">ALL-IN-ONE</span>
-                  </>
-                ) : (
-                  <>
-                    파크골프 <span className="text-amber-300">올인원</span>
-                  </>
-                )}
+            <div className="flex flex-col justify-center leading-none">
+              <span className="font-black text-[12px] sm:text-[13px] tracking-wider text-white uppercase whitespace-nowrap font-sans">
+                PARKGOLF
               </span>
-              <span className="text-[8.5px] font-bold text-emerald-200 tracking-wider mt-0.5">
-                {isJapanese ? 'PARKGOLF ALL-IN-ONE' : 'PARKGOLF ALL-IN-ONE'}
+              <span className="font-black text-[9.5px] sm:text-[10.5px] tracking-widest text-amber-300 uppercase whitespace-nowrap font-sans mt-0.5">
+                ALL-IN-ONE
               </span>
             </div>
           </Link>

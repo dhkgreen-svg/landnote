@@ -336,3 +336,77 @@ export const CHAPTER_WEBTOONS: Record<string, ChapterWebtoon> = {
     ],
   },
 };
+
+/**
+ * 🌐 챕터별 웹툰 다국어 반환 함수 (한국어 / 일본어 1:1 완벽 대응)
+ */
+const CHAPTER_MAPPING_JP: Record<string, string> = {
+  'npga-ch-1': 'ch-1',
+  'npga-ch-2': 'ch-3',
+  'npga-ch-3': 'ch-4',
+  'npga-ch-4': 'ch-5',
+  'npga-ch-5': 'ch-6',
+};
+
+export function getChapterWebtoon(chapterId: string, isJapanese: boolean): ChapterWebtoon | undefined {
+  const targetId = isJapanese && CHAPTER_MAPPING_JP[chapterId] ? CHAPTER_MAPPING_JP[chapterId] : chapterId;
+  const base = CHAPTER_WEBTOONS[targetId];
+  if (!base) return undefined;
+  if (!isJapanese) return base;
+
+  return {
+    ...base,
+    title: base.title
+      .replace('코스 탐험과 기본 규정', 'コース探検と基本規程')
+      .replace('스코어 기록과 경기 매너', 'スコア記録と競技マナー')
+      .replace('티잉그라운드와 스윙', 'ティーインググラウンドとスイング')
+      .replace('아웃 오브 바운즈(OB)', 'アウトオブバウンズ (OB)')
+      .replace('퍼팅과 그린 플레이', 'パッティングとグリーンプレー'),
+    subtitle: base.subtitle
+      .replace('9홀 33타 공인 기준과 5대 코스 구역의 비밀', '9ホール33打公認基準と5大コース区域の秘密')
+      .replace('컨시드(OK) 절대 불가와 안전거리 확보', 'コンシード(OK)絶対不可と安全距離確保')
+      .replace('1mm 선상 접촉과 2벌타 구제의 원칙', '1mm線上接触と2打付加救済の原則'),
+    cuts: base.cuts.map((cut) => ({
+      ...cut,
+      badge: cut.badge
+        .replace('공인 규격', '公認規格')
+        .replace('출발 구역', '出発区域')
+        .replace('실격 주의', '失格注意')
+        .replace('안전 에티켓', '安全マナー')
+        .replace('무벌 세이프', '無罰セーフ')
+        .replace('2벌타', '2打付加')
+        .replace('1벌타', '1打付加'),
+      situation: cut.situation
+        .replace('파크골프는 일반 골프와 홀수 및 기준 타수가 어떻게 다를까요?', 'パークゴルフは一般ゴルフとホール数や基準打数がどう違うのでしょうか？')
+        .replace('홀컵 10cm 앞에 멈춰서 당연히 들어갈 줄 알고 집은 뒤 다음 홀로 갔습니다.', 'カップ10cm前に止まり、入ると思って拾い上げて次ホールへ向かいました。')
+        .replace('앞 조가 아직 페어웨이에 서 있는데 뒤에서 그대로 티샷을 날렸습니다.', '前の組がまだフェアウェイにいる状態でそのままティーショットを打ちました。'),
+      parkyDialogue: cut.parkyDialogue
+        .replace(/파크골프 올인원/g, 'パークゴルフ オールインワン')
+        .replace(/파키예요!/g, 'パキです！')
+        .replace(/파키/g, 'パキ')
+        .replace(/안녕하세요!/g, 'こんにちは！')
+        .replace(/2벌타/g, '2打付加')
+        .replace(/1벌타/g, '1打付加')
+        .replace(/실격/g, '失格')
+        .replace(/주의하세요!/g, 'ご注意ください！'),
+      verdict: cut.verdict
+        .replace(/2벌타/g, '2打付加')
+        .replace(/1벌타/g, '1打付加')
+        .replace(/실격/g, '失格')
+        .replace(/무벌/g, '無罰')
+        .replace(/세이프/g, 'セーフ'),
+      keyPoint: cut.keyPoint
+        .replace(/스트로크/g, 'ストローク')
+        .replace(/2벌타/g, '2打付加')
+        .replace(/1벌타/g, '1打付加'),
+      article: cut.article
+        .replace('제1장', '第1章')
+        .replace('제2장', '第2章')
+        .replace('제3장', '第3章')
+        .replace('제4장', '第4章')
+        .replace('제5장', '第5章')
+        .replace('제8장', '第5章')
+        .replace('조', '条'),
+    })),
+  };
+}

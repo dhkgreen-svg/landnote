@@ -26,7 +26,18 @@ import { DEFAULT_COURSES, generateStandardHoles } from '@/lib/defaultCourses';
 import { ContributeModal } from '@/components/ContributeModal';
 import { CourseDetailModal } from '@/components/CourseDetailModal';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
-import { getCourseDualName, stripParkGolfSuffix, CourseDualBadge } from '@/lib/courseLocalization';
+import {
+  getCourseDualName,
+  stripParkGolfSuffix,
+  CourseDualBadge,
+  getLocalizedCourseDescription,
+  getLocalizedCourseAddress,
+  getLocalizedCourseFee,
+  getLocalizedCourseOpenHours,
+  getLocalizedCourseClosedDay,
+  getLocalizedCourseParking,
+  translateKoreanFieldToJapanese,
+} from '@/lib/courseLocalization';
 
 // --- Types for 3 Auxiliary Services ---
 export interface ParkGolfRestaurant {
@@ -233,7 +244,9 @@ export default function CoursesPage() {
   const getLocalizedCourseRegion = (c?: Course | null) => {
     if (!c) return '';
     if (isJapanese) {
-      return c.regionJa || c.region;
+      if (c.regionJa) return c.regionJa;
+      if (c.region) return translateKoreanFieldToJapanese(c.region);
+      return '';
     }
     return c.regionKo || c.region;
   };
@@ -242,6 +255,12 @@ export default function CoursesPage() {
   const [homeCourseId, setHomeCourseId] = useState<string>('');
   const [favoriteHomeCourseIds, setFavoriteHomeCourseIds] = useState<string[]>([]);
   const [countryFilter, setCountryFilter] = useState<'ALL' | 'KR' | 'JP'>('ALL');
+
+  useEffect(() => {
+    if (isJapanese) {
+      setCountryFilter('JP');
+    }
+  }, [isJapanese]);
   
   // Search input and applied search term
   const [inputQuery, setInputQuery] = useState<string>('');
@@ -799,25 +818,25 @@ export default function CoursesPage() {
         // Special Japanese 7 Major Regions Matching
         if (c.country === 'JP') {
           if (activeSearchTerm === '北海道' || activeSearchTerm === 'hokkaido') {
-            if (c.regionJa?.includes('北海道') || c.region?.includes('北海道')) return true;
+            if (c.region === 'Hokkaido' || c.regionJa?.includes('北海道') || c.region?.includes('北海道')) return true;
           }
           if (activeSearchTerm === '東北' || activeSearchTerm === 'tohoku') {
-            if (c.regionJa?.includes('東北') || /青森|岩手|宮城|秋田|山形|福島/.test(c.regionJa || c.region || '') || c.description?.includes('東北')) return true;
+            if (c.region === 'Tohoku' || c.regionJa === '東北' || c.regionKo === '도호쿠' || /青森|岩手|宮城|秋田|山形|福島/.test(c.regionJa || c.region || c.addressJa || '')) return true;
           }
           if (activeSearchTerm === '関東' || activeSearchTerm === 'kanto') {
-            if (c.regionJa?.includes('関東') || /東京|神奈川|埼玉|千葉|茨城|栃木|群馬/.test(c.regionJa || c.region || '') || c.description?.includes('関東')) return true;
+            if (c.region === 'Kanto' || c.regionJa === '関東' || c.regionKo === '간토' || /東京|神奈川|埼玉|千葉|茨城|栃木|群馬|山梨/.test(c.regionJa || c.region || c.addressJa || '')) return true;
           }
           if (activeSearchTerm === '中部' || activeSearchTerm === 'chubu') {
-            if (c.regionJa?.includes('中部') || /新潟|富山|石川|福井|山梨|長野|岐阜|静岡|愛知/.test(c.regionJa || c.region || '') || c.description?.includes('中部')) return true;
+            if (c.region === 'Chubu' || c.regionJa === '中部' || c.regionKo === '주부' || /新潟|富山|石川|福井|長野|岐阜|静岡|愛知|三重/.test(c.regionJa || c.region || c.addressJa || '')) return true;
           }
           if (activeSearchTerm === '近畿' || activeSearchTerm === 'kinki' || activeSearchTerm === '関西' || activeSearchTerm === 'kansai') {
-            if (c.regionJa?.includes('近畿') || /大阪|京都|兵庫|奈良|滋賀|和歌山/.test(c.regionJa || c.region || '') || c.description?.includes('近畿') || c.description?.includes('関西')) return true;
+            if (c.region === 'Kinki' || c.regionJa === '近畿' || c.regionJa === '関西' || c.regionKo === '긴키' || /大阪|京都|兵庫|奈良|滋賀|和歌山/.test(c.regionJa || c.region || c.addressJa || '')) return true;
           }
           if (activeSearchTerm === '中国・四国' || activeSearchTerm === '中国' || activeSearchTerm === '四国') {
-            if (c.regionJa?.includes('中国') || c.regionJa?.includes('四国') || /鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知/.test(c.regionJa || c.region || '') || c.description?.includes('中国') || c.description?.includes('四国')) return true;
+            if (c.region === 'Chugoku-Shikoku' || c.regionJa === '中国・四国' || c.regionKo === '주고쿠·시코쿠' || /鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知/.test(c.regionJa || c.region || c.addressJa || '')) return true;
           }
           if (activeSearchTerm === '九州・沖縄' || activeSearchTerm === '九州' || activeSearchTerm === '沖縄') {
-            if (c.regionJa?.includes('九州') || c.regionJa?.includes('沖縄') || /福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄/.test(c.regionJa || c.region || '') || c.description?.includes('九州') || c.description?.includes('沖縄')) return true;
+            if (c.region === 'Kyushu-Okinawa' || c.regionJa === '九州・沖縄' || c.regionKo === '규슈·오키나와' || /福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄/.test(c.regionJa || c.region || c.addressJa || '')) return true;
           }
         }
 
@@ -826,17 +845,39 @@ export default function CoursesPage() {
         const matchJaName = c.nameJa?.toLowerCase().includes(activeSearchTerm) || false;
         const matchJaRegion = c.regionJa?.toLowerCase().includes(activeSearchTerm) || false;
         const matchKoName = c.nameKo?.toLowerCase().includes(activeSearchTerm) || false;
+        const matchKoRegion = c.regionKo?.toLowerCase().includes(activeSearchTerm) || false;
         const matchAddress = c.address?.toLowerCase().includes(activeSearchTerm) || false;
+        const matchKoAddress = c.addressKo?.toLowerCase().includes(activeSearchTerm) || false;
         const matchDesc = c.description?.toLowerCase().includes(activeSearchTerm) || false;
+        const matchKoDesc = c.descriptionKo?.toLowerCase().includes(activeSearchTerm) || false;
 
-        // Space-tolerant matching: e.g. "경북청송" matches "경북 청송", "구미양호" matches "구미 양호", "まくべつ"
+        // Space-tolerant matching: e.g. "경북청송" matches "경북 청송", "도쿄시노자키" matches "도쿄 시노자키"
         const noSpaceQuery = activeSearchTerm.replace(/\s+/g, '');
         const noSpaceName = c.name.toLowerCase().replace(/\s+/g, '');
         const noSpaceRegion = c.region.toLowerCase().replace(/\s+/g, '');
         const noSpaceJaName = (c.nameJa || '').toLowerCase().replace(/\s+/g, '');
-        const matchNoSpace = noSpaceName.includes(noSpaceQuery) || noSpaceRegion.includes(noSpaceQuery) || noSpaceJaName.includes(noSpaceQuery);
+        const noSpaceKoName = (c.nameKo || '').toLowerCase().replace(/\s+/g, '');
+        const noSpaceKoRegion = (c.regionKo || '').toLowerCase().replace(/\s+/g, '');
+        const matchNoSpace =
+          noSpaceName.includes(noSpaceQuery) ||
+          noSpaceRegion.includes(noSpaceQuery) ||
+          noSpaceJaName.includes(noSpaceQuery) ||
+          noSpaceKoName.includes(noSpaceQuery) ||
+          noSpaceKoRegion.includes(noSpaceQuery);
 
-        return matchName || matchRegion || matchJaName || matchJaRegion || matchKoName || matchAddress || matchDesc || matchNoSpace;
+        return (
+          matchName ||
+          matchRegion ||
+          matchJaName ||
+          matchJaRegion ||
+          matchKoName ||
+          matchKoRegion ||
+          matchAddress ||
+          matchKoAddress ||
+          matchDesc ||
+          matchKoDesc ||
+          matchNoSpace
+        );
       })
     : [];
 
@@ -1053,7 +1094,8 @@ export default function CoursesPage() {
                 type="button"
                 onClick={() => {
                   setCountryFilter('ALL');
-                  if (!inputQuery) setAppliedQuery('전체');
+                  setInputQuery('');
+                  setAppliedQuery('');
                 }}
                 className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
                   countryFilter === 'ALL'
@@ -1070,7 +1112,8 @@ export default function CoursesPage() {
                 type="button"
                 onClick={() => {
                   setCountryFilter('KR');
-                  if (!inputQuery) setAppliedQuery('전체');
+                  setInputQuery('');
+                  setAppliedQuery('');
                 }}
                 className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
                   (countryFilter as string) === 'KR'
@@ -1087,7 +1130,8 @@ export default function CoursesPage() {
                 type="button"
                 onClick={() => {
                   setCountryFilter('JP');
-                  if (!inputQuery) setAppliedQuery('전체');
+                  setInputQuery('');
+                  setAppliedQuery('');
                 }}
                 className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
                   (countryFilter as string) === 'JP'
@@ -1106,27 +1150,33 @@ export default function CoursesPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const allQuery = isJapanese ? '全国' : '전체';
-                  setInputQuery(allQuery);
-                  setAppliedQuery(allQuery);
+                  setInputQuery('');
+                  setAppliedQuery('');
                 }}
                 className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition cursor-pointer ${
-                  appliedQuery === '전체' || appliedQuery === '全国'
+                  !appliedQuery || appliedQuery === '전체' || appliedQuery === '全国'
                     ? 'bg-emerald-700 text-white shadow-xs'
                     : 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200'
                 }`}
               >
-                {isJapanese ? `全国すべて (${courses.length})` : `전국 전체 (${courses.length})`}
+                {isJapanese
+                  ? countryFilter === 'JP'
+                    ? `全国すべて (${courses.filter((c) => c.country === 'JP').length})`
+                    : `全体 (${courses.length})`
+                  : countryFilter === 'KR'
+                  ? `전국 전체 (${courses.filter((c) => c.country !== 'JP').length})`
+                  : `전국·전체 (${courses.length})`
+                }
               </button>
-              {(isJapanese
+              {((isJapanese || countryFilter === 'JP')
                 ? [
-                    { name: '北海道', count: courses.filter((c) => c.country === 'JP' && (c.regionJa?.includes('北海道') || c.region?.includes('北海道'))).length },
-                    { name: '東北', count: courses.filter((c) => c.country === 'JP' && (/青森|岩手|宮城|秋田|山形|福島/.test(c.regionJa || c.region || '') || c.description?.includes('東北'))).length },
-                    { name: '関東', count: courses.filter((c) => c.country === 'JP' && (/東京|神奈川|埼玉|千葉|茨城|栃木|群馬/.test(c.regionJa || c.region || '') || c.description?.includes('関東'))).length },
-                    { name: '中部', count: courses.filter((c) => c.country === 'JP' && (/新潟|富山|石川|福井|山梨|長野|岐阜|静岡|愛知/.test(c.regionJa || c.region || '') || c.description?.includes('中部'))).length },
-                    { name: '近畿', count: courses.filter((c) => c.country === 'JP' && (/大阪|京都|兵庫|奈良|滋賀|和歌山/.test(c.regionJa || c.region || '') || c.description?.includes('近畿') || c.description?.includes('関西'))).length },
-                    { name: '中国・四国', count: courses.filter((c) => c.country === 'JP' && (/鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知/.test(c.regionJa || c.region || '') || c.description?.includes('中国') || c.description?.includes('四国'))).length },
-                    { name: '九州・沖縄', count: courses.filter((c) => c.country === 'JP' && (/福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄/.test(c.regionJa || c.region || '') || c.description?.includes('九州') || c.description?.includes('沖縄'))).length },
+                    { name: '北海道', count: courses.filter((c) => c.country === 'JP' && (c.region === 'Hokkaido' || c.regionJa?.includes('北海道') || c.region?.includes('北海道'))).length },
+                    { name: '東北', count: courses.filter((c) => c.country === 'JP' && (c.region === 'Tohoku' || c.regionJa === '東北' || c.regionKo === '도호쿠' || /青森|岩手|宮城|秋田|山形|福島/.test(c.regionJa || c.region || c.addressJa || ''))).length },
+                    { name: '関東', count: courses.filter((c) => c.country === 'JP' && (c.region === 'Kanto' || c.regionJa === '関東' || c.regionKo === '간토' || /東京|神奈川|埼玉|千葉|茨城|栃木|群馬|山梨/.test(c.regionJa || c.region || c.addressJa || ''))).length },
+                    { name: '中部', count: courses.filter((c) => c.country === 'JP' && (c.region === 'Chubu' || c.regionJa === '中部' || c.regionKo === '주부' || /新潟|富山|石川|福井|長野|岐阜|静岡|愛知|三重/.test(c.regionJa || c.region || c.addressJa || ''))).length },
+                    { name: '近畿', count: courses.filter((c) => c.country === 'JP' && (c.region === 'Kinki' || c.regionJa === '近畿' || c.regionJa === '関西' || c.regionKo === '긴키' || /大阪|京都|兵庫|奈良|滋賀|和歌山/.test(c.regionJa || c.region || c.addressJa || ''))).length },
+                    { name: '中国・四国', count: courses.filter((c) => c.country === 'JP' && (c.region === 'Chugoku-Shikoku' || c.regionJa === '中国・四国' || c.regionKo === '주고쿠·시코쿠' || /鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知/.test(c.regionJa || c.region || c.addressJa || ''))).length },
+                    { name: '九州・沖縄', count: courses.filter((c) => c.country === 'JP' && (c.region === 'Kyushu-Okinawa' || c.regionJa === '九州・沖縄' || c.regionKo === '규슈·오키나와' || /福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄/.test(c.regionJa || c.region || c.addressJa || ''))).length },
                   ]
                 : [
                     { name: '서울', count: 28 },
@@ -1276,7 +1326,7 @@ export default function CoursesPage() {
             <div className="flex items-center gap-1.5 text-emerald-950 font-black">
               <Search className="w-4 h-4 text-emerald-700" />
               <span>
-                {appliedQuery ? (
+                {isTextSearchActive && appliedQuery ? (
                   <>
                     &apos;{appliedQuery}&apos; {isJapanese ? '検索結果:' : '검색 결과:'}{' '}
                     <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>
@@ -1284,7 +1334,7 @@ export default function CoursesPage() {
                   </>
                 ) : countryFilter === 'JP' ? (
                   <>
-                    🇯🇵 {isJapanese ? '日本公認コース一覧:' : '일본 공인 구장 목록:'}{' '}
+                    🇯🇵 {isJapanese ? '日本全国公認コース一覧:' : '일본 전국 공인 구장 목록:'}{' '}
                     <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>
                     {isJapanese ? '件' : '개 구장'}
                   </>
@@ -1414,20 +1464,27 @@ export default function CoursesPage() {
                     {/* 펼쳐졌을 때의 상세 내용 */}
                     {isExpanded && (
                       <div className="p-3.5 pt-1 border-t border-stone-100 space-y-3 animate-fadeIn bg-stone-50/40">
-                        {/* 설명 */}
-                        {c.description && (
+                        {/* 설명 (한국어/일본어 완벽 대응) */}
+                        {getLocalizedCourseDescription(c, isJapanese) && (
                           <p className="text-xs text-stone-700 bg-white p-2.5 rounded-xl border border-stone-200 leading-snug break-keep font-medium">
-                            {c.description}
+                            {getLocalizedCourseDescription(c, isJapanese)}
                           </p>
                         )}
 
-                        {/* 상세 시설 정보: 주소, 전화, 요금, 운영시간, 주차 */}
+                        {/* 상세 시설 정보: 주소, 전화, 요금, 운영시간, 주차 (한국어/일본어 완벽 대응) */}
                         {(c.address || c.phone || c.openHours || c.fee || c.closedDay || c.parking) && (
                           <div className="text-xs space-y-1.5 bg-white p-3 rounded-2xl border border-stone-200">
-                            {c.address && (
+                            {getLocalizedCourseAddress(c, isJapanese) && (
                               <div className="flex items-start gap-1.5 text-stone-800">
                                 <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0 mt-0.5" />
-                                <span className="font-bold text-stone-900">{c.address}</span>
+                                <span className="font-bold text-stone-900">
+                                  {getLocalizedCourseAddress(c, isJapanese)}
+                                  {!isJapanese && c.country === 'JP' && c.addressJa && c.addressJa !== getLocalizedCourseAddress(c, isJapanese) && (
+                                    <span className="text-[10px] text-stone-400 font-normal ml-1.5">
+                                      ({c.addressJa})
+                                    </span>
+                                  )}
+                                </span>
                               </div>
                             )}
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-stone-600 font-semibold text-[11px]">
@@ -1440,14 +1497,26 @@ export default function CoursesPage() {
                                   <span>{c.phone}</span>
                                 </a>
                               )}
-                              {c.fee && <span className="bg-stone-50 px-2 py-0.5 rounded-lg border border-stone-200">💰 {c.fee}</span>}
-                              {c.openHours && <span className="bg-stone-50 px-2 py-0.5 rounded-lg border border-stone-200">⏰ {c.openHours}</span>}
-                              {c.closedDay && <span className="bg-rose-50 text-rose-800 px-2 py-0.5 rounded-lg border border-rose-200 font-bold">⛔ {c.closedDay}</span>}
+                              {getLocalizedCourseFee(c, isJapanese) && (
+                                <span className="bg-stone-50 px-2 py-0.5 rounded-lg border border-stone-200">
+                                  💰 {getLocalizedCourseFee(c, isJapanese)}
+                                </span>
+                              )}
+                              {getLocalizedCourseOpenHours(c, isJapanese) && (
+                                <span className="bg-stone-50 px-2 py-0.5 rounded-lg border border-stone-200">
+                                  ⏰ {getLocalizedCourseOpenHours(c, isJapanese)}
+                                </span>
+                              )}
+                              {getLocalizedCourseClosedDay(c, isJapanese) && (
+                                <span className="bg-rose-50 text-rose-800 px-2 py-0.5 rounded-lg border border-rose-200 font-bold">
+                                  ⛔ {getLocalizedCourseClosedDay(c, isJapanese)}
+                                </span>
+                              )}
                             </div>
-                            {c.parking && (
+                            {getLocalizedCourseParking(c, isJapanese) && (
                               <div className="text-[11px] text-stone-600 flex items-center gap-1 font-medium">
                                 <span>🅿️ {isJapanese ? '駐車場:' : '주차:'}</span>
-                                <span>{c.parking}</span>
+                                <span>{getLocalizedCourseParking(c, isJapanese)}</span>
                               </div>
                             )}
                           </div>

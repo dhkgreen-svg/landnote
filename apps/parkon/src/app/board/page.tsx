@@ -24,19 +24,33 @@ import {
   Home,
   Check,
   FileText,
+  ChevronRight,
+  Globe,
 } from 'lucide-react';
 import { TournamentNotice, ParkGolfNewsItem, UserVoiceItem, FreeBoardPost } from '@/types/board';
 import { BoardStorage, calculateDistanceKm } from '@/lib/boardStorage';
 import { ParkOnStorage } from '@/lib/storage';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { TournamentDetailModal } from '@/components/TournamentDetailModal';
+import { NewsDetailModal } from '@/components/NewsDetailModal';
+import { resolveNoticeDisplay, resolveNewsDisplay, formatBilingualRegion } from '@/lib/bilingualBoardHelper';
 
 export default function CommunityBoardPage() {
   const router = useRouter();
+  const { isJapanese } = useTranslation();
   const [activeTab, setActiveTab] = useState<'NOTICES' | 'NEWS' | 'VOICE' | 'TALK'>('NOTICES');
   const [userName, setUserName] = useState<string>('김대희');
   const [toastMsg, setToastMsg] = useState<string>('');
 
-  // 1. GPS 위치 상태 (실제 브라우저 geolocation 또는 기본값)
+  // 1. 국가 필터 (전체 / 한국 / 일본)
+  const [countryFilter, setCountryFilter] = useState<'ALL' | 'KR' | 'JP'>('ALL');
+
+  // 2. 팝업 상세 모달 상태
+  const [selectedNotice, setSelectedNotice] = useState<TournamentNotice | null>(null);
+  const [selectedNews, setSelectedNews] = useState<ParkGolfNewsItem | null>(null);
+
+  // 3. GPS 위치 상태 (실제 브라우저 geolocation 또는 기본값)
   const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number; regionName: string } | null>(null);
   const [isGpsLoading, setIsGpsLoading] = useState(false);
   const [gpsRangeKm, setGpsRangeKm] = useState<number>(30); // 30km 반경 기본
@@ -192,46 +206,60 @@ export default function CommunityBoardPage() {
     return { ...n, distKm };
   });
 
-  // 필터링된 대회 공고
+  // 필터링된 대회 공고 (국가 필터 + 한일 양국어 검색 연동)
   const filteredNotices = noticesWithDistance.filter((n) => {
+    if (countryFilter !== 'ALL' && (n.country || 'KR') !== countryFilter) {
+      return false;
+    }
     if (!noticeSearchTerm.trim()) return true;
     const term = noticeSearchTerm.trim().toLowerCase();
     return (
       n.title.toLowerCase().includes(term) ||
+      (n.titleKo && n.titleKo.toLowerCase().includes(term)) ||
+      (n.titleJa && n.titleJa.toLowerCase().includes(term)) ||
       n.region.toLowerCase().includes(term) ||
-      n.courseName.toLowerCase().includes(term)
+      n.courseName.toLowerCase().includes(term) ||
+      (n.courseNameKo && n.courseNameKo.toLowerCase().includes(term)) ||
+      (n.courseNameJa && n.courseNameJa.toLowerCase().includes(term)) ||
+      (n.host && n.host.toLowerCase().includes(term))
     );
+  });
+
+  // 필터링 및 한·일 언어별 최적 정렬 (일본어 모드 시 일본 대회 우선 상단 배치)
+  const sortedNotices = [...filteredNotices].sort((a, b) => {
+    if (isJapanese) {
+      if (a.country === 'JP' && b.country !== 'JP') return -1;
+      if (a.country !== 'JP' && b.country === 'JP') return 1;
+    } else {
+      if ((a.country || 'KR') === 'KR' && b.country === 'JP') return -1;
+      if (a.country === 'JP' && (b.country || 'KR') === 'KR') return 1;
+    }
+    return 0;
   });
 
   return (
     <div className="min-h-screen bg-stone-100 text-stone-900 pb-20">
       {/* 1. 상단 타이틀 & GPS 감지 배너 */}
       <div className="bg-gradient-to-r from-purple-900 via-indigo-950 to-stone-950 text-white p-4 sm:p-5 shadow-lg space-y-3.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500 to-amber-400 text-stone-950 flex items-center justify-center font-black shadow-md">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500 to-amber-400 text-stone-950 flex items-center justify-center font-black shadow-md shrink-0">
               <Newspaper className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-1.5">
-                <span>게시판 &amp; 파크골프 뉴스</span>
-                <span className="text-[10px] bg-amber-400 text-purple-950 px-2 py-0.5 rounded-full font-black">
-                  GPS 연동
-                </span>
+              <h1 className="text-lg sm:text-xl font-black tracking-tight text-white whitespace-nowrap">
+                {isJapanese ? '掲示板 ＆ ニュース' : '게시판 & 뉴스'}
               </h1>
-              <p className="text-xs text-purple-200 mt-0.5 font-medium">
-                전국 시합 공고 · 내 위치 실시간 뉴스 · 열린 신문고 소통창
-              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             <Link
               href="/"
-              className="text-xs bg-white/15 hover:bg-white/25 text-white font-bold py-1.5 px-3 rounded-xl border border-white/20 transition active:scale-95 flex items-center gap-1"
+              className="text-xs bg-white/15 hover:bg-white/25 text-white font-bold py-1.5 px-3 rounded-xl border border-white/20 transition active:scale-95 flex items-center gap-1 shrink-0 whitespace-nowrap"
             >
-              <Home className="w-3.5 h-3.5 text-amber-300" />
-              <span>홈으로</span>
+              <Home className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+              <span className="whitespace-nowrap">{isJapanese ? 'ホーム' : '홈으로'}</span>
             </Link>
             {/* 대표님 요청: 상단 우측 닫기 (X) 버튼 누르면 항상 직전 화면으로 복귀 */}
             <button
@@ -243,10 +271,10 @@ export default function CommunityBoardPage() {
                   router.push('/');
                 }
               }}
-              className="p-1.5 text-stone-300 hover:text-white hover:bg-white/15 rounded-xl border border-white/20 transition cursor-pointer flex items-center justify-center"
-              title="닫기 (이전 화면으로)"
+              className="p-1.5 text-stone-300 hover:text-white hover:bg-white/15 rounded-xl border border-white/20 transition cursor-pointer flex items-center justify-center shrink-0"
+              title={isJapanese ? '閉じる (直前の画面へ)' : '닫기 (이전 화면으로)'}
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 shrink-0" />
             </button>
           </div>
         </div>
@@ -256,9 +284,11 @@ export default function CommunityBoardPage() {
           <div className="flex items-center gap-2 min-w-0">
             <MapPin className="w-4 h-4 text-amber-300 shrink-0" />
             <span className="text-xs text-stone-200">
-              현재 내 위치 기준:{' '}
+              {isJapanese ? '現在位置基準: ' : '현재 내 위치 기준: '}
               <strong className="text-amber-300 font-black">
-                {gpsLocation ? gpsLocation.regionName : '위치 감지 중...'}
+                {gpsLocation
+                  ? (isJapanese ? formatBilingualRegion(gpsLocation.regionName, true) : gpsLocation.regionName)
+                  : (isJapanese ? '位置検出中...' : '위치 감지 중...')}
               </strong>
             </span>
           </div>
@@ -269,7 +299,11 @@ export default function CommunityBoardPage() {
             className="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1 shrink-0"
           >
             <Compass className={`w-3.5 h-3.5 ${isGpsLoading ? 'animate-spin' : ''}`} />
-            <span>{isGpsLoading ? '위치 측정 중...' : 'GPS 실시간 갱신'}</span>
+            <span>
+              {isGpsLoading
+                ? (isJapanese ? '位置測定中...' : '위치 측정 중...')
+                : (isJapanese ? 'GPS更新' : 'GPS 실시간 갱신')}
+            </span>
           </button>
         </div>
       </div>
@@ -288,7 +322,7 @@ export default function CommunityBoardPage() {
       )}
 
       {/* 2. 4대 전문 탭 (시니어 52px+ 대형 규격) */}
-      <div className="p-3">
+      <div className="p-3 space-y-2.5">
         <div className="grid grid-cols-4 p-1.5 bg-white rounded-2xl border-2 border-stone-200 shadow-sm gap-1 text-[11px] font-black text-stone-700">
           <button
             type="button"
@@ -300,7 +334,7 @@ export default function CommunityBoardPage() {
             }`}
           >
             <Trophy className="w-4 h-4 text-amber-300" />
-            <span>시합 공고</span>
+            <span>{isJapanese ? '大会公示' : '시합 공고'}</span>
           </button>
 
           <button
@@ -313,7 +347,7 @@ export default function CommunityBoardPage() {
             }`}
           >
             <Newspaper className="w-4 h-4 text-amber-300" />
-            <span>파크 뉴스</span>
+            <span>{isJapanese ? 'ニュース' : '파크 뉴스'}</span>
           </button>
 
           <button
@@ -326,7 +360,7 @@ export default function CommunityBoardPage() {
             }`}
           >
             <Sparkles className="w-4 h-4 text-amber-300" />
-            <span>열린 신문고</span>
+            <span>{isJapanese ? 'オープン広場' : '열린 신문고'}</span>
           </button>
 
           <button
@@ -339,9 +373,51 @@ export default function CommunityBoardPage() {
             }`}
           >
             <MessageSquare className="w-4 h-4 text-amber-300" />
-            <span>사랑방 톡</span>
+            <span>{isJapanese ? 'サロントーク' : '사랑방 톡'}</span>
           </button>
         </div>
+
+        {/* 한·일 국가 교차 필터 탭 (시합 공고 및 파크 뉴스 탭에서 즉시 상호 전환) */}
+        {(activeTab === 'NOTICES' || activeTab === 'NEWS') && (
+          <div className="grid grid-cols-3 gap-1.5 p-1 bg-white rounded-2xl border-2 border-stone-200 shadow-2xs text-xs font-black">
+            <button
+              type="button"
+              onClick={() => setCountryFilter('ALL')}
+              className={`py-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                countryFilter === 'ALL'
+                  ? 'bg-purple-900 text-white shadow-xs'
+                  : 'text-stone-600 hover:bg-stone-100'
+              }`}
+            >
+              <span>🌏</span>
+              <span>{isJapanese ? '韓日全体' : '한·일 전체'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCountryFilter('KR')}
+              className={`py-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                countryFilter === 'KR'
+                  ? 'bg-blue-800 text-white shadow-xs'
+                  : 'text-stone-600 hover:bg-stone-100'
+              }`}
+            >
+              <span className={`px-1 py-0.2 rounded text-[9px] font-black ${countryFilter === 'KR' ? 'bg-blue-900 text-blue-100 border border-blue-400' : 'bg-blue-100 text-blue-900 border border-blue-300'}`}>KR</span>
+              <span>{isJapanese ? '韓国' : '대한민국'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCountryFilter('JP')}
+              className={`py-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                countryFilter === 'JP'
+                  ? 'bg-rose-700 text-white shadow-xs'
+                  : 'text-stone-600 hover:bg-stone-100'
+              }`}
+            >
+              <span className={`px-1 py-0.2 rounded text-[9px] font-black ${countryFilter === 'JP' ? 'bg-rose-900 text-rose-100 border border-rose-400' : 'bg-rose-100 text-rose-900 border border-rose-300'}`}>JP</span>
+              <span>{isJapanese ? '日本 (NPGA)' : '일본 (NPGA)'}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 3. 탭별 콘텐츠 본문 */}
@@ -358,136 +434,124 @@ export default function CommunityBoardPage() {
                 type="text"
                 value={noticeSearchTerm}
                 onChange={(e) => setNoticeSearchTerm(e.target.value)}
-                placeholder="대회명, 개최 지역, 구장명 검색 (예: 구미시장배, 수성, 삼락)"
+                placeholder={isJapanese ? '大会名、開催地域、球場名検索 (例: 幕別、札幌、久留米)' : '대회명, 개최 지역, 구장명 검색 (예: 구미시장배, 수성, 삼락)'}
                 className="w-full pl-9 pr-3 py-3 bg-white border border-stone-300 rounded-2xl text-xs font-bold focus:outline-none focus:border-purple-600 shadow-2xs"
               />
             </div>
 
             <div className="flex items-center justify-between text-xs font-bold text-stone-600 px-1">
-              <span>총 {filteredNotices.length}개의 공식 시합 공고</span>
-              <span className="text-purple-800 font-black">AI 자동 수집 &amp; 매일 업데이트</span>
+              <span>{isJapanese ? `計 ${sortedNotices.length}件の公式大会公示` : `총 ${sortedNotices.length}개의 공식 시합 공고`}</span>
+              <span className="text-purple-800 font-black">{isJapanese ? 'AI自動収集 ＆ 毎日更新' : 'AI 자동 수집 & 매일 업데이트'}</span>
             </div>
 
-            {/* 대회 목록 카드 */}
-            <div className="space-y-3">
-              {filteredNotices.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3 hover:border-purple-300 transition"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1">
+            {/* 대회 목록: 대표님 요청 콤팩트 제목/제원 리스트 (클릭 시 풀스크린 상세 팝업 오픈) */}
+            <div className="space-y-2">
+              {sortedNotices.map((item) => {
+                const display = resolveNoticeDisplay(item, isJapanese);
+                const displayTitle = display.title;
+                const displayCourse = display.courseName;
+                const displayHost = display.host;
+                const displayRegion = display.region;
+                const displayDate = display.eventDateStr;
+                const displayFee = display.entryFee;
+                const isJp = display.isJp;
+
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => setSelectedNotice(item)}
+                    className="bg-white rounded-2xl p-3 border border-stone-200/90 shadow-2xs hover:border-purple-500 hover:shadow-sm transition cursor-pointer active:scale-[0.99] flex items-center justify-between gap-3 group"
+                  >
+                    <div className="space-y-1 min-w-0 flex-1">
+                      {/* 1행: 상태 배지 + 국가/지역 + 거리 + 접수/대회일시 */}
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {item.status === 'RECRUITING' ? (
-                          <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black px-2 py-0.5 rounded-full">
-                            접수중 ⏳
+                          <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black px-1.5 py-0.2 rounded-md">
+                            {isJapanese ? '受付中 ⏳' : '접수중 ⏳'}
                           </span>
                         ) : item.status === 'UPCOMING' ? (
-                          <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full">
-                            접수예정 📅
+                          <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-1.5 py-0.2 rounded-md">
+                            {isJapanese ? '予定 📅' : '접수예정 📅'}
                           </span>
                         ) : (
-                          <span className="bg-stone-200 text-stone-700 text-[10px] font-black px-2 py-0.5 rounded-full">
-                            마감 🏁
+                          <span className="bg-stone-200 text-stone-700 text-[10px] font-black px-1.5 py-0.2 rounded-md">
+                            {isJapanese ? '締切 🏁' : '마감 🏁'}
                           </span>
                         )}
-                        <span className="text-xs font-black text-purple-900 bg-purple-50 px-2 py-0.5 rounded-md">
-                          📍 {item.region}
+                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-1 border ${
+                          isJp
+                            ? 'text-rose-900 bg-rose-50 border-rose-200'
+                            : 'text-blue-900 bg-blue-50 border-blue-200'
+                        }`}>
+                          <span className={`px-1 py-0.2 rounded text-[9px] font-black text-white ${isJp ? 'bg-rose-600' : 'bg-blue-600'}`}>
+                            {isJp ? 'JP' : 'KR'}
+                          </span>
+                          <span>{displayRegion}</span>
                         </span>
-                        {item.distKm !== null && (
-                          <span className="text-[11px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
-                            🚗 내 위치서 {item.distKm}km
+                        {item.distKm !== null && !isJapanese && (
+                          <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded-md">
+                            🚗 {item.distKm}km
                           </span>
                         )}
-                        {item.linkUrl.includes('kpga7330') ? (
-                          <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-full">
-                            ✓ 협회 공인 원본
-                          </span>
-                        ) : (
-                          <span className="bg-blue-50 text-blue-800 border border-blue-200 text-[10px] font-black px-2 py-0.5 rounded-full">
-                            ✓ 지자체 공인 원본
-                          </span>
-                        )}
-                        <span className="bg-purple-100 text-purple-900 border border-purple-300 text-[10px] font-black px-2 py-0.5 rounded-full">
-                          🎯 해당 공고 직통
+                        <span className="text-[10px] text-stone-500 font-bold ml-auto sm:ml-0">
+                          {displayDate}
                         </span>
+                      </div>
+
+                      {/* 2행: 대회 제목 (한국어/일본어 자동 반영) */}
+                      <h3 className="text-xs sm:text-sm font-black text-stone-900 leading-snug group-hover:text-purple-900 transition truncate">
+                        {displayTitle}
+                      </h3>
+
+                      {/* 3행: 제원 한줄 요약 (구장 · 주최 · 참가비) */}
+                      <div className="text-[11px] text-stone-500 font-medium truncate flex items-center gap-1.5">
+                        <span className="font-bold text-stone-700">⛳ {displayCourse}</span>
+                        <span>·</span>
+                        <span className="truncate">{displayHost}</span>
+                        {displayFee && (
+                          <>
+                            <span>·</span>
+                            <span className="text-emerald-700 font-bold">{displayFee}</span>
+                          </>
+                        )}
                         {item.pdfUrl && (
-                          <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full">
-                            📄 요강 PDF 탑재
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1 rounded">
+                            PDF
                           </span>
                         )}
                       </div>
-                      <h3 className="text-sm sm:text-base font-black text-stone-950 leading-snug">
-                        {item.title}
-                      </h3>
+                    </div>
+
+                    {/* 우측 바로가기 화살표 버튼 */}
+                    <div className="flex items-center gap-1 shrink-0 text-stone-400 group-hover:text-purple-700">
+                      <span className="hidden sm:inline text-[11px] font-black text-purple-700 bg-purple-50 px-2 py-1 rounded-lg">
+                        {isJapanese ? '詳細' : '상세보기'}
+                      </span>
+                      <div className="w-8 h-8 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600 group-hover:bg-purple-100 group-hover:text-purple-800 transition">
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
                     </div>
                   </div>
+                );
+              })}
 
-                  {/* 세부 명세 그리드 */}
-                  <div className="bg-stone-50 rounded-2xl p-3 text-xs space-y-1.5 border border-stone-200/80">
-                    <div className="flex items-center justify-between">
-                      <span className="text-stone-500 font-bold">주최/주관:</span>
-                      <span className="font-extrabold text-stone-800">{item.host}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-stone-500 font-bold">개최 구장:</span>
-                      <span className="font-black text-purple-950">{item.courseName}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-stone-500 font-bold">접수 기간:</span>
-                      <span className="font-black text-emerald-700">{item.periodStr}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-stone-500 font-bold">대회 일시:</span>
-                      <span className="font-bold text-stone-800">{item.eventDateStr}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-stone-500 font-bold">참가비 / 정원:</span>
-                      <span className="font-bold text-stone-800">{item.entryFee} · {item.targetCount}</span>
-                    </div>
-                  </div>
-
-                  {/* 하단 액션 버튼 */}
-                  <div className="flex gap-2 pt-1">
-                    <a
-                      href={item.linkUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 min-h-[44px] bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer px-2 text-center"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                      <span>공식 접수 공고 보기</span>
-                    </a>
-
-                    {item.pdfUrl && (
-                      <a
-                        href={item.pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="min-h-[44px] bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-98 flex items-center justify-center gap-1 cursor-pointer px-3 shrink-0"
-                        title="대회 요강 원본 PDF 즉시 열람"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>요강 PDF</span>
-                      </a>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const shareText = `📢 [파크골프 올인원 시합 공고]\n${item.title}\n- 일시: ${item.eventDateStr}\n- 장소: ${item.courseName}\n- 접수: ${item.periodStr}\n\n👉 공식 공고 바로가기: ${item.linkUrl}${item.pdfUrl ? `\n👉 대회요강 PDF: ${item.pdfUrl}` : ''}`;
-                        navigator.clipboard?.writeText(shareText);
-                        showToast('📋 대회 공고 및 직통 주소가 복사되었습니다! 단톡방이나 밴드에 공유하세요.');
-                      }}
-                      className="px-3 min-h-[44px] bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl border border-stone-300 transition active:scale-95 flex items-center justify-center gap-1 shrink-0 cursor-pointer"
-                      title="카톡/밴드 공유"
-                    >
-                      <Share2 className="w-3.5 h-3.5" />
-                      <span>공유</span>
-                    </button>
-                  </div>
+              {filteredNotices.length === 0 && (
+                <div className="bg-white rounded-2xl p-8 text-center border border-stone-200 text-stone-500 space-y-2">
+                  <p className="text-xs font-bold">
+                    {isJapanese ? '該当する大会公示がありません。' : '조건에 맞는 시합 공고가 없습니다.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCountryFilter('ALL');
+                      setNoticeSearchTerm('');
+                    }}
+                    className="text-xs text-purple-700 font-black underline cursor-pointer"
+                  >
+                    {isJapanese ? '全体表示' : '전체 보기로 돌아가기'}
+                  </button>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         )}
@@ -502,30 +566,55 @@ export default function CommunityBoardPage() {
               <div className="flex items-center justify-between border-b border-stone-100 pb-2">
                 <div className="flex items-center gap-1.5">
                   <span className="text-base">📢</span>
-                  <h3 className="text-xs font-black text-stone-900">전국 메이저 핵심 헤드라인</h3>
+                  <h3 className="text-xs font-black text-stone-900">
+                    {isJapanese ? '主要ヘッドラインニュース' : '전국 메이저 핵심 헤드라인'}
+                  </h3>
                 </div>
-                <span className="text-[10px] text-stone-400 font-bold">AI 실시간 요약</span>
+                <span className="text-[10px] text-stone-400 font-bold">
+                  {isJapanese ? 'AI自動要約' : 'AI 실시간 요약'}
+                </span>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {news
-                  .filter((n) => n.category === 'MAJOR')
-                  .map((item) => (
-                    <a
-                      key={item.id}
-                      href={item.linkUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block p-3 bg-purple-50/60 rounded-2xl border border-purple-100 space-y-1 hover:bg-purple-100/70 transition cursor-pointer"
-                    >
-                      <div className="flex items-center justify-between text-[11px] text-purple-900 font-black">
-                        <span className="bg-purple-200/80 px-2 py-0.2 rounded">전국 이슈</span>
-                        <span className="text-stone-400 font-normal">{item.dateStr}</span>
+                  .filter((n) => {
+                    if (countryFilter !== 'ALL' && (n.country || 'KR') !== countryFilter) return false;
+                    return n.category === 'MAJOR';
+                  })
+                  .map((item) => {
+                    const display = resolveNewsDisplay(item, isJapanese);
+                    const displayTitle = display.title;
+                    const displaySummary = display.summary;
+                    const isJp = display.isJp;
+
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => setSelectedNews(item)}
+                        className="p-3 bg-purple-50/60 rounded-2xl border border-purple-100 space-y-1 hover:bg-purple-100/70 transition cursor-pointer active:scale-[0.99] group"
+                      >
+                        <div className="flex items-center justify-between text-[11px] text-purple-900 font-black">
+                          <span className="bg-purple-200/80 px-2 py-0.2 rounded flex items-center gap-1">
+                            <span>{isJp ? '🇯🇵' : '🇰🇷'}</span>
+                            <span>{isJp ? '日本 NPGA' : (isJapanese ? '全国イシュー' : '전국 이슈')}</span>
+                          </span>
+                          <span className="text-stone-400 font-normal">{display.dateStr}</span>
+                        </div>
+                        <h4 className="text-xs font-black text-stone-900 leading-snug group-hover:text-purple-950 transition">
+                          {displayTitle}
+                        </h4>
+                        <p className="text-[11px] text-stone-600 font-medium leading-relaxed line-clamp-2">
+                          {displaySummary}
+                        </p>
+                        <div className="flex justify-end pt-1">
+                          <span className="text-[10px] font-black text-purple-700 flex items-center gap-0.5">
+                            <span>{isJapanese ? '詳細を見る' : '자세히 보기'}</span>
+                            <ChevronRight className="w-3 h-3" />
+                          </span>
+                        </div>
                       </div>
-                      <h4 className="text-xs font-black text-stone-900 leading-snug">{item.title}</h4>
-                      <p className="text-[11px] text-stone-600 font-medium leading-relaxed">{item.summary}</p>
-                    </a>
-                  ))}
+                    );
+                  })}
               </div>
             </div>
 
@@ -534,7 +623,7 @@ export default function CommunityBoardPage() {
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black text-stone-900 flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-purple-700" />
-                  <span>내 지역 &amp; 전국 시·도 밀착 소식</span>
+                  <span>{isJapanese ? '地域密着ニュース' : '내 지역 & 전국 시·도 밀착 소식'}</span>
                 </h3>
                 <button
                   type="button"
@@ -542,19 +631,24 @@ export default function CommunityBoardPage() {
                   className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>우리 지역 소식 제보하기</span>
+                  <span>{isJapanese ? '地域ニュース提供' : '우리 지역 소식 제보하기'}</span>
                 </button>
               </div>
 
-              {/* 지역 필터 칩 (대한민국 전국 표준 행정 지명 순서) */}
+              {/* 지역 필터 칩 (한국 / 일본에 맞춰 지역 필터 노출) */}
               <div className="flex flex-wrap gap-1">
-                {['전체', '서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'].map((reg) => (
+                {(countryFilter === 'JP'
+                  ? (isJapanese ? ['全体', '北海道', '東北', '関東', '関西', '九州'] : ['전체', '홋카이도', '도호쿠', '간토', '간사이', '규슈'])
+                  : (isJapanese
+                    ? ['全体', 'ソウル', '京畿', '大邱', '慶北', '釜山', '慶南', '江原', '全羅', '忠清', '済州']
+                    : ['전체', '서울', '경기', '대구', '경북', '부산', '경남', '강원', '전북', '전남', '충북', '충남', '제주'])
+                ).map((reg) => (
                   <button
                     key={reg}
                     type="button"
-                    onClick={() => setNewsRegionFilter(reg)}
+                    onClick={() => setNewsRegionFilter(reg === '全体' ? '전체' : reg)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                      newsRegionFilter === reg
+                      (newsRegionFilter === reg || (newsRegionFilter === '전체' && reg === '全体'))
                         ? 'bg-purple-800 text-white border-purple-900 shadow-xs'
                         : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-100'
                     }`}
@@ -565,30 +659,47 @@ export default function CommunityBoardPage() {
               </div>
 
               {/* 지역 뉴스 피드 목록 */}
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {news
                   .filter((n) => {
-                    if (newsRegionFilter === '전체') return true;
+                    if (countryFilter !== 'ALL' && (n.country || 'KR') !== countryFilter) return false;
+                    if (newsRegionFilter === '전체' || newsRegionFilter === '全体') return true;
                     return n.region.includes(newsRegionFilter);
                   })
-                  .map((item) => (
-                    <a
-                      key={item.id}
-                      href={item.linkUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block bg-white rounded-2xl p-3.5 border border-stone-200 shadow-2xs space-y-1.5 hover:bg-stone-50/80 transition cursor-pointer"
-                    >
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-black text-purple-900 bg-purple-50 px-2 py-0.5 rounded">
-                          {item.region} · {item.source}
-                        </span>
-                        <span className="text-stone-400 font-medium">{item.dateStr}</span>
+                  .map((item) => {
+                    const display = resolveNewsDisplay(item, isJapanese);
+                    const displayTitle = display.title;
+                    const displaySummary = display.summary;
+                    const isJp = display.isJp;
+
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => setSelectedNews(item)}
+                        className="bg-white rounded-2xl p-3 border border-stone-200 shadow-2xs space-y-1.5 hover:bg-stone-50/90 transition cursor-pointer active:scale-[0.99] group"
+                      >
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-black text-purple-900 bg-purple-50 px-2 py-0.5 rounded flex items-center gap-1">
+                            <span>{isJp ? '🇯🇵' : '🇰🇷'}</span>
+                            <span>{display.region} · {display.source}</span>
+                          </span>
+                          <span className="text-stone-400 font-medium">{display.dateStr}</span>
+                        </div>
+                        <h4 className="text-xs font-black text-stone-900 leading-snug group-hover:text-purple-900 transition">
+                          {displayTitle}
+                        </h4>
+                        <p className="text-[11px] text-stone-600 leading-relaxed font-medium line-clamp-2">
+                          {displaySummary}
+                        </p>
+                        <div className="flex justify-end pt-0.5">
+                          <span className="text-[10px] font-black text-purple-700 flex items-center gap-0.5">
+                            <span>{isJapanese ? '詳細を見る' : '자세히 보기'}</span>
+                            <ChevronRight className="w-3 h-3" />
+                          </span>
+                        </div>
                       </div>
-                      <h4 className="text-xs font-black text-stone-900 leading-snug">{item.title}</h4>
-                      <p className="text-[11px] text-stone-600 leading-relaxed font-medium">{item.summary}</p>
-                    </a>
-                  ))}
+                    );
+                  })}
               </div>
             </div>
           </div>
@@ -604,15 +715,16 @@ export default function CommunityBoardPage() {
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4" />
-                  <span>김대희 대표 &amp; 개발팀 드림</span>
+                  <span>{isJapanese ? '金大熙(キム・デヒ)代表 ＆ 開発チームより' : '김대희 대표 & 개발팀 드림'}</span>
                 </span>
                 <span className="text-[10px] bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-full font-bold">
-                  24시간 열린 소통
+                  {isJapanese ? '24時間オープン疎通' : '24시간 열린 소통'}
                 </span>
               </div>
               <p className="text-xs text-stone-200 leading-relaxed font-medium">
-                파크골프 올인원을 이용하시며 <strong>불편했던 점, 잘못된 구장 정보, 바라는 새 기능</strong>이 있다면
-                언제든 남겨주세요! 대표와 개발팀이 모든 글을 직접 정독하고 개선 업데이트로 보답하겠습니다.
+                {isJapanese
+                  ? 'パークゴルフ オールインワンをご利用いただき、不便な点、修正が必要な球場情報、ご希望の新機能がございましたら、いつでもお気軽にお寄せください。代表と開発チームが直接確認し、改善アップデートでお応えいたします。'
+                  : '파크골프 올인원을 이용하시며 불편했던 점, 잘못된 구장 정보, 바라는 새 기능이 있다면 언제든 남겨주세요! 대표와 개발팀이 모든 글을 직접 정독하고 개선 업데이트로 보답하겠습니다.'}
               </p>
               <button
                 type="button"
@@ -620,17 +732,17 @@ export default function CommunityBoardPage() {
                 className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs rounded-xl shadow-md transition active:scale-98 cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <Plus className="w-4 h-4 text-stone-950" />
-                <span>✍️ 건의사항 및 개선 의견 남기기</span>
+                <span>{isJapanese ? '✍️ ご意見・改善リクエストを残す' : '✍️ 건의사항 및 개선 의견 남기기'}</span>
               </button>
             </div>
 
             {/* 카테고리 필터 */}
             <div className="flex gap-1.5">
               {[
-                { key: 'ALL', label: '전체 보기' },
-                { key: 'FEATURE', label: '✨ 기능 제안' },
-                { key: 'COURSE_INFO', label: '⛳ 구장 정보 수정' },
-                { key: 'BUG', label: '🐞 오류/불편 제보' },
+                { key: 'ALL', label: isJapanese ? 'すべて見る' : '전체 보기' },
+                { key: 'FEATURE', label: isJapanese ? '✨ 新機能提案' : '✨ 기능 제안' },
+                { key: 'COURSE_INFO', label: isJapanese ? '⛳ 球場情報修正' : '⛳ 구장 정보 수정' },
+                { key: 'BUG', label: isJapanese ? '🐞 不具合報告' : '🐞 오류/불편 제보' },
               ].map((cat) => (
                 <button
                   key={cat.key}
@@ -663,24 +775,24 @@ export default function CommunityBoardPage() {
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-stone-100 text-stone-700">
                           {v.category === 'BUG'
-                            ? '🐞 오류 제보'
+                            ? (isJapanese ? '🐞 不具合報告' : '🐞 오류 제보')
                             : v.category === 'FEATURE'
-                            ? '✨ 새 기능'
+                            ? (isJapanese ? '✨ 新機能' : '✨ 새 기능')
                             : v.category === 'COURSE_INFO'
-                            ? '⛳ 구장 정보'
-                            : '일반 건의'}
+                            ? (isJapanese ? '⛳ 球場情報' : '⛳ 구장 정보')
+                            : (isJapanese ? '一般提案' : '일반 건의')}
                         </span>
                         {v.status === 'RESOLVED' ? (
                           <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                            반영 완료 🎉
+                            {isJapanese ? '反映完了 🎉' : '반영 완료 🎉'}
                           </span>
                         ) : v.status === 'IN_REVIEW' ? (
                           <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-                            검토 중 🔍
+                            {isJapanese ? '検討中 🔍' : '검토 중 🔍'}
                           </span>
                         ) : (
                           <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">
-                            접수 완료 ⏳
+                            {isJapanese ? '受付完了 ⏳' : '접수 완료 ⏳'}
                           </span>
                         )}
                       </div>
@@ -696,15 +808,15 @@ export default function CommunityBoardPage() {
                     {v.officialReply && (
                       <div className="bg-emerald-50 rounded-2xl p-3 border border-emerald-200 text-xs space-y-1">
                         <div className="flex items-center gap-1 font-black text-emerald-950">
-                          <span>답변:</span>
-                          <span className="text-[11px] text-emerald-700 font-bold">운영팀 공식 회신</span>
+                          <span>{isJapanese ? '回答:' : '답변:'}</span>
+                          <span className="text-[11px] text-emerald-700 font-bold">{isJapanese ? '運営チーム公式返信' : '운영팀 공식 회신'}</span>
                         </div>
                         <p className="text-emerald-900 font-medium leading-relaxed">{v.officialReply}</p>
                       </div>
                     )}
 
                     <div className="flex items-center justify-between pt-1 border-t border-stone-100 text-xs">
-                      <span className="text-[11px] text-stone-400 font-bold">작성자: {v.authorName}</span>
+                      <span className="text-[11px] text-stone-400 font-bold">{isJapanese ? '作成者:' : '작성자:'} {v.authorName}</span>
                       <button
                         type="button"
                         onClick={() => handleVoiceLike(v.id)}
@@ -715,7 +827,7 @@ export default function CommunityBoardPage() {
                         }`}
                       >
                         <ThumbsUp className="w-3.5 h-3.5" />
-                        <span>저도 공감해요 ({v.likeCount})</span>
+                        <span>{isJapanese ? `共感 (${v.likeCount})` : `저도 공감해요 (${v.likeCount})`}</span>
                       </button>
                     </div>
                   </div>
@@ -732,21 +844,21 @@ export default function CommunityBoardPage() {
             {/* 자유 한마디 입력창 */}
             <form onSubmit={handleCreatePost} className="bg-white rounded-3xl p-3.5 border border-stone-200 shadow-sm space-y-2">
               <div className="flex items-center justify-between text-xs font-black text-stone-800">
-                <span>동호인 사랑방 한마디 남기기</span>
-                <span className="text-[10px] text-stone-400 font-normal">자유롭게 이야기를 나누세요</span>
+                <span>{isJapanese ? '愛好者サロントーク 一言残す' : '동호인 사랑방 한마디 남기기'}</span>
+                <span className="text-[10px] text-stone-400 font-normal">{isJapanese ? '自由にお話しください' : '자유롭게 이야기를 나누세요'}</span>
               </div>
               <textarea
                 value={talkInput}
                 onChange={(e) => setTalkInput(e.target.value)}
                 rows={3}
-                placeholder="오늘 라운딩 날씨, 장비 후기, 파크골프 이야기 등 무엇이든 편하게 적어보세요."
+                placeholder={isJapanese ? '今日のラウンドの感想、道具レビュー、パークゴルフのお話など、ご自由にお書きください。' : '오늘 라운딩 날씨, 장비 후기, 파크골프 이야기 등 무엇이든 편하게 적어보세요.'}
                 className="w-full p-3 bg-stone-50 border border-stone-300 rounded-2xl text-xs font-bold leading-relaxed resize-none focus:outline-none focus:border-purple-600 focus:bg-white"
               />
               <button
                 type="submit"
                 className="w-full py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-98 cursor-pointer"
               >
-                사랑방에 글 올리기
+                {isJapanese ? 'サロンに投稿する' : '사랑방에 글 올리기'}
               </button>
             </form>
 
@@ -942,6 +1054,18 @@ export default function CommunityBoardPage() {
           </div>
         </div>
       )}
+
+      {/* 5. 시합 공고 상세 팝업 모달 (한일 원클릭 번역 연동) */}
+      <TournamentDetailModal
+        notice={selectedNotice}
+        onClose={() => setSelectedNotice(null)}
+      />
+
+      {/* 6. 파크 뉴스 상세 팝업 모달 (한일 원클릭 번역 연동) */}
+      <NewsDetailModal
+        news={selectedNews}
+        onClose={() => setSelectedNews(null)}
+      />
     </div>
   );
 }
