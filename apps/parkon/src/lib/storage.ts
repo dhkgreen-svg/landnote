@@ -171,35 +171,54 @@ export const ParkOnStorage = {
 
   // 사용자의 현재 유효 활동명 반환 (클럽 ID가 주어지면 해당 클럽 지정명 우선)
   getUserDisplayName(clubId?: string): string {
+    const isSample = (val?: string | null) => {
+      if (!val) return true;
+      const c = val.trim();
+      return (
+        !c ||
+        c === '홍길동' ||
+        c === '홍길동(본인)' ||
+        c === '플레이어' ||
+        c === '조장(본인)' ||
+        c === '본인' ||
+        c === '회원' ||
+        c === '파크골퍼' ||
+        c === '山田太郎' ||
+        c === 'ゲスト' ||
+        c === 'プレイヤー' ||
+        c === 'リーダー'
+      );
+    };
+
     const user = this.getKakaoUser();
     if (!user) {
       const profile = this.getUserProfile();
-      if (
-        profile &&
-        profile.userName &&
-        profile.userName !== '본인(조장)' &&
-        profile.userName !== '본인' &&
-        !profile.userName.includes('본인(')
-      ) {
+      if (profile && profile.userName && !isSample(profile.userName)) {
         return profile.userName;
       }
       return '플레이어';
     }
 
-    if (clubId && user.clubAliases && user.clubAliases[clubId]) {
+    if (clubId && user.clubAliases && user.clubAliases[clubId] && !isSample(user.clubAliases[clubId])) {
       return user.clubAliases[clubId];
     }
 
-    if (user.preferredDisplay === 'ALIAS' && user.aliasName) {
+    if (user.preferredDisplay === 'ALIAS' && user.aliasName && !isSample(user.aliasName)) {
       return user.aliasName;
     }
-    if (user.preferredDisplay === 'REAL' && user.realName) {
+    if (user.preferredDisplay === 'REAL' && user.realName && !isSample(user.realName)) {
       return user.realName;
     }
-    if (user.realName) {
+    if (user.realName && !isSample(user.realName)) {
       return user.realName;
     }
-    return user.aliasName || user.nickname || '플레이어';
+    if (user.aliasName && !isSample(user.aliasName)) {
+      return user.aliasName;
+    }
+    if (user.nickname && !isSample(user.nickname)) {
+      return user.nickname;
+    }
+    return '플레이어';
   },
 
   // 클럽별 사용자 활동명 저장

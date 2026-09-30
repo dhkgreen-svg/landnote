@@ -38,11 +38,11 @@ export async function loginWithKakao(data?: {
 }): Promise<KakaoAuthUser> {
   const isSDKReady = initKakaoSDK();
 
-  const realName = data?.realName?.trim() || '홍길동';
-  const aliasName = data?.aliasName?.trim() || '손오공';
+  const realName = data?.realName?.trim() || '';
+  const aliasName = data?.aliasName?.trim() || '';
   const preferredDisplay = data?.preferredDisplay || 'REAL';
   const effectiveNickname =
-    (preferredDisplay === 'ALIAS' ? aliasName : realName) || realName || aliasName;
+    data?.nickname?.trim() || (preferredDisplay === 'ALIAS' ? aliasName : realName) || realName || aliasName || '파크골퍼';
 
   if (isSDKReady && window.Kakao && window.Kakao.Auth) {
     return new Promise((resolve, reject) => {

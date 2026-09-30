@@ -2,26 +2,93 @@ import { RoundPlayer, RoundSession } from '@/types/parkon';
 import { ParkOnStorage, KakaoAuthUser } from './storage';
 
 /**
- * 사용자 본인 기본 이름 가져오기
- * (사용자 프로필, 카카오 실명/가명, 또는 기본값 '김대희')
+ * 샘플/예시 이름 또는 기본 플레이스홀더 여부 판별
  */
-export function getDefaultSelfName(): string {
-  if (typeof window === 'undefined') return '플레이어';
+export function isSampleOrPlaceholder(name?: string | null): boolean {
+  if (!name) return true;
+  const clean = name.trim();
+  return (
+    !clean ||
+    clean === '홍길동' ||
+    clean === '홍길동(본인)' ||
+    clean === '플레이어' ||
+    clean === '조장(본인)' ||
+    clean === '본인' ||
+    clean === '회원' ||
+    clean === '파크골퍼' ||
+    clean === '山田太郎' ||
+    clean === 'ゲスト' ||
+    clean === 'プレイヤー' ||
+    clean === 'リーダー' ||
+    clean === '선수' ||
+    clean === '選手'
+  );
+}
+
+/**
+ * 화면 표시용 플레이어 이름 포맷팅 (일본어 모드 및 기본 플레이스홀더 자동 현지화)
+ */
+export function formatPlayerDisplayName(rawName?: string | null, isSelf?: boolean, isJapanese?: boolean): string {
+  if (!rawName) {
+    if (isSelf) return isJapanese ? 'プレイヤー' : '플레이어';
+    return isJapanese ? '同伴者' : '동반자';
+  }
+
+  const clean = rawName.trim();
+
+  if (isJapanese) {
+    if (isSampleOrPlaceholder(clean)) {
+      return isSelf ? 'プレイヤー' : '同伴者';
+    }
+    const companionMatch = clean.match(/^동반자\s*(\d+)$/);
+    if (companionMatch) {
+      return `同伴者${companionMatch[1]}`;
+    }
+    const playerMatch = clean.match(/^선수\s*(\d+)$/);
+    if (playerMatch) {
+      return `選手${playerMatch[1]}`;
+    }
+    if (clean === '동반자') return '同伴者';
+    if (clean === '조장') return '代表';
+    if (clean === '리더') return 'リーダー';
+    if (clean === '본인' || clean === '조장(본인)') return 'プレイヤー';
+    if (clean === '홍길동' || clean === '홍길동(본인)') return isSelf ? 'プレイヤー' : '同伴者';
+  } else {
+    if (clean === '홍길동' || clean === '홍길동(본인)') {
+      return isSelf ? '플레이어' : '동반자';
+    }
+  }
+
+  return clean;
+}
+
+/**
+ * 사용자 본인 기본 이름 가져오기
+ * (사용자 프로필, 카카오 실명/가명, 또는 기본값)
+ */
+export function getDefaultSelfName(isJapanese?: boolean): string {
+  if (typeof window === 'undefined') return isJapanese ? 'プレイヤー' : '플레이어';
   try {
-    return ParkOnStorage.getUserDisplayName() || '플레이어';
+    const raw = ParkOnStorage.getUserDisplayName();
+    if (!raw || isSampleOrPlaceholder(raw)) {
+      return isJapanese ? 'プレイヤー' : '플레이어';
+    }
+    return raw;
   } catch (e) {
     console.error(e);
   }
-  return '플레이어';
+  return isJapanese ? 'プレイヤー' : '플레이어';
 }
 
 /**
  * 레거시 이름 '본인(조장)' 또는 '본인'을 실제 이름으로 정화
  */
-export function cleanPlayerName(rawName: string, isSelf?: boolean, fallbackIdx?: number): string {
+export function cleanPlayerName(rawName: string, isSelf?: boolean, fallbackIdx?: number, isJapanese?: boolean): string {
   const fallback = isSelf
-    ? getDefaultSelfName()
-    : (fallbackIdx !== undefined ? `동반자 ${fallbackIdx + 1}` : '동반자');
+    ? getDefaultSelfName(isJapanese)
+    : (fallbackIdx !== undefined
+        ? (isJapanese ? `同伴者${fallbackIdx + 1}` : `동반자 ${fallbackIdx + 1}`)
+        : (isJapanese ? '同伴者' : '동반자'));
 
   if (!rawName) return fallback;
   const trimmed = rawName.trim();
@@ -30,9 +97,11 @@ export function cleanPlayerName(rawName: string, isSelf?: boolean, fallbackIdx?:
   if (
     trimmed === '본인(조장)' ||
     trimmed === '본인' ||
-    trimmed.startsWith('본인(')
+    trimmed.startsWith('본인(') ||
+    trimmed === '홍길동' ||
+    trimmed === '홍길동(본인)'
   ) {
-    return getDefaultSelfName();
+    return isSelf ? getDefaultSelfName(isJapanese) : fallback;
   }
   return trimmed;
 }

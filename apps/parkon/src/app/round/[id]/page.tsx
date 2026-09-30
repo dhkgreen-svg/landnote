@@ -10,7 +10,7 @@ import { ClubStorage } from '@/lib/clubStorage';
 import { LocalRuleBanner } from '@/components/LocalRuleBanner';
 import { TipCard } from '@/components/TipCard';
 import { ConditionVoteModal } from '@/components/ConditionVoteModal';
-import { cleanPlayerName, sortPlayersByLeaderAndAlphabetical, getDefaultSelfName, syncRoundSelfNameToUserProfile } from '@/lib/playerUtils';
+import { cleanPlayerName, sortPlayersByLeaderAndAlphabetical, getDefaultSelfName, syncRoundSelfNameToUserProfile, formatPlayerDisplayName, isSampleOrPlaceholder } from '@/lib/playerUtils';
 import { HoleScoreBadge, ScoreBadgeLegend } from '@/components/HoleScoreBadge';
 import { FloatingCameraFAB } from '@/components/FloatingCameraFAB';
 import { BadgeStorage } from '@/lib/badgeStorage';
@@ -88,13 +88,13 @@ export default function RoundPlayPage() {
   // 조장 및 동반자 관리 모달 열기 (본인 이름 및 동반자 이름 유실 방지 자동 보정)
   const openPlayerEditModal = () => {
     if (!session || !session.players) return;
-    const selfName = isJapanese ? '本人' : getDefaultSelfName();
+    const selfName = getDefaultSelfName(isJapanese);
     const syncedDraft = session.players.map((p, idx) => {
       const isSelf = p.isSelf ?? (idx === 0);
       let name = (p.name || '').trim();
       if (isSelf) {
-        if (!name || name === '본인' || name === '本人' || name.startsWith('본인(')) {
-          name = selfName;
+        if (!name || isSampleOrPlaceholder(name)) {
+          name = !isSampleOrPlaceholder(selfName) ? selfName : (isJapanese ? 'プレイヤー' : '플레이어');
         }
       } else {
         if (!name) {
@@ -185,10 +185,10 @@ export default function RoundPlayPage() {
 
     // 1번 조장 우선 배치 + 동반자 가나다순 정렬 및 본인 활동명 실시간 동기화
     const basePlayers = sanitizedSession.players || active.players || [];
-    const currentSelfName = getDefaultSelfName();
+    const currentSelfName = getDefaultSelfName(isJapanese);
     const syncedSelfPlayers = basePlayers.map((p, idx) => {
       const isSelf = p.isSelf ?? (idx === 0);
-      if (isSelf && p.name !== currentSelfName) {
+      if (isSelf && !isSampleOrPlaceholder(currentSelfName) && p.name !== currentSelfName) {
         return { ...p, name: currentSelfName, isSelf: true };
       }
       return { ...p, isSelf };
@@ -1637,7 +1637,7 @@ export default function RoundPlayPage() {
       {holeStep === 'SCORING' && (
         <div className="space-y-2.5 animate-fadeIn">
           {/* 상단 미니 바: [ ◀ 코스 제원 다시보기 ] + 홀 정보 + 카운트 방식 표시 */}
-          <div className={`flex items-center justify-between p-3 rounded-2xl border transition ${
+          <div className={`flex items-center justify-between p-2.5 sm:p-3 gap-1.5 sm:gap-2 rounded-2xl border transition ${
             sunlightMode
               ? 'bg-black text-white border-yellow-400 shadow-md'
               : 'bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 text-white border-emerald-600 shadow-xs'
@@ -1645,27 +1645,27 @@ export default function RoundPlayPage() {
             <button
               type="button"
               onClick={() => setHoleStep('TEE_SHOT')}
-              className="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-3 py-1.5 rounded-xl transition active:scale-95 flex items-center gap-1 shrink-0 cursor-pointer"
+              className="bg-white/20 hover:bg-white/30 text-white text-[11px] sm:text-xs font-black px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl transition active:scale-95 flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>{isJapanese ? 'コース諸元' : isEnglish ? 'Course Spec' : '코스 제원'}</span>
             </button>
 
-            <div className="text-center flex items-center gap-2">
-              <span className="font-black text-base sm:text-lg text-yellow-300 drop-shadow-xs">
+            <div className="text-center flex items-center justify-center gap-1.5 sm:gap-2 shrink-0">
+              <span className="font-black text-sm sm:text-base text-yellow-300 drop-shadow-xs whitespace-nowrap">
                 {courseLetter}-{holeInCourse}{isJapanese ? '番ホール' : '번 홀'}
               </span>
-              <span className="text-xs sm:text-sm font-black text-white bg-black/30 px-2 py-0.5 rounded-lg border border-white/20">
+              <span className="text-[11px] sm:text-xs font-black text-white bg-black/30 px-1.5 sm:px-2 py-0.5 rounded-lg border border-white/20 whitespace-nowrap">
                 Par {holeMetadata.par} · {holeMetadata.distanceMeter}m
               </span>
             </div>
 
             {/* 카운트 방식 2분할 세그먼트 토글 */}
-            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/20 shrink-0">
+            <div className="flex items-center gap-0.5 sm:gap-1 bg-black/40 p-0.5 sm:p-1 rounded-xl border border-white/20 shrink-0">
               <button
                 type="button"
                 onClick={() => selectCountingMode('PAR_BASE')}
-                className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
+                className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-black transition cursor-pointer whitespace-nowrap ${
                   countingMode === 'PAR_BASE'
                     ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
                     : 'text-stone-300 hover:text-white'
@@ -1676,7 +1676,7 @@ export default function RoundPlayPage() {
               <button
                 type="button"
                 onClick={() => selectCountingMode('ZERO_BASE')}
-                className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
+                className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-black transition cursor-pointer whitespace-nowrap ${
                   countingMode === 'ZERO_BASE'
                     ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
                     : 'text-stone-300 hover:text-white'
@@ -1699,7 +1699,7 @@ export default function RoundPlayPage() {
                   )})
                 </span>
                 <span className={`text-[11px] ${sunlightMode ? 'text-stone-400' : 'text-stone-500'} font-medium`}>
-                  {isJapanese ? `· 1番 👑代表 / 2~${session.players.filter((p) => !p.isOut).length}番 順` : `· 1번 👑조장 / 2~${session.players.filter((p) => !p.isOut).length}번 가나다순`}
+                  {isJapanese ? `· 1番 👑代表 / 2~${session.players.filter((p) => !p.isOut).length}番 五十音順` : `· 1번 👑조장 / 2~${session.players.filter((p) => !p.isOut).length}번 가나다순`}
                 </span>
               </div>
               <button
@@ -1733,7 +1733,7 @@ export default function RoundPlayPage() {
 
               // 🚪 중도 퇴장(기권) 선수 카드
               if (player.isOut) {
-                const displayName = player.name || (player.isSelf ? getDefaultSelfName() : '선수');
+                const displayName = formatPlayerDisplayName(player.name, player.isSelf, isJapanese);
                 return (
                   <div
                     key={player.id}
@@ -1794,7 +1794,7 @@ export default function RoundPlayPage() {
                         <span className="text-xs px-2 py-0.5 rounded-lg bg-amber-400 text-stone-950 font-black">
                           {isJapanese ? '☕ 一時離脱 (休憩中)' : '☕ 잠시 빠짐 (휴식 중)'}
                         </span>
-                        <span className="font-black text-base">{player.name}</span>
+                        <span className="font-black text-base">{formatPlayerDisplayName(player.name, player.isSelf, isJapanese)}</span>
                         {player.isSelf && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-blue-100 text-blue-800">
                             {isJapanese ? '本人' : '본인'}
@@ -1856,7 +1856,7 @@ export default function RoundPlayPage() {
                           sunlightMode ? 'text-lg text-yellow-300' : 'text-base text-stone-900'
                         }`}
                       >
-                        {player.name}
+                        {formatPlayerDisplayName(player.name, player.isSelf, isJapanese)}
                       </span>
 
                       {player.isSelf && (
@@ -2982,7 +2982,7 @@ export default function RoundPlayPage() {
                                         {pIdx + 1}
                                       </span>
                                       <span className="font-extrabold text-stone-900 text-sm">
-                                        {ps.player.name}
+                                        {formatPlayerDisplayName(ps.player.name, ps.player.isSelf, isJapanese)}
                                       </span>
                                       <span className="text-[10px] text-stone-500 font-bold">
                                         ({isJapanese ? '平均 ' : '평균 '}{ps.avgHole}{isJapanese ? '打/ホール' : '타/홀'})
@@ -3110,7 +3110,7 @@ export default function RoundPlayPage() {
                                 >
                                   <div className="flex items-center justify-between">
                                     <span className="font-extrabold text-sm text-stone-900">
-                                      {pStat.player.name}
+                                      {formatPlayerDisplayName(pStat.player.name, pStat.player.isSelf, isJapanese)}
                                     </span>
                                     <div className="flex items-center gap-1.5">
                                       <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
@@ -3173,7 +3173,7 @@ export default function RoundPlayPage() {
                                 {rank + 1}
                               </span>
                               <span className="font-extrabold text-stone-900 text-sm">
-                                {item.player.name}
+                                {formatPlayerDisplayName(item.player.name, item.player.isSelf, isJapanese)}
                               </span>
                             </div>
                             <div className="flex items-center gap-1.5">
