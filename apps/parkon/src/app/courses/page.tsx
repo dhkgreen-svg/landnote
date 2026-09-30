@@ -909,7 +909,7 @@ export default function CoursesPage() {
   });
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="px-3 sm:px-4 py-4 space-y-4 max-w-md mx-auto w-full">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -966,7 +966,7 @@ export default function CoursesPage() {
 
       {/* 🔍 SEARCH BAR (도시명 / 구장명 직접 검색 & 돋보기 클릭 시에만 나열) */}
       <div className="space-y-2">
-        <div className="relative flex items-center bg-white border-2 border-emerald-600 rounded-2xl shadow-md overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500/30">
+        <div className="relative flex items-center bg-white border-2 border-emerald-600 rounded-2xl shadow-md overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500/30 w-full">
           <input
             type="text"
             value={inputQuery}
@@ -978,7 +978,7 @@ export default function CoursesPage() {
             }}
             onKeyDown={handleKeyDown}
             placeholder={isJapanese ? "都市名またはコース名で検索 (例: 幕別、忠類、札幌)" : "도시명 또는 구장명 검색 (예: 밀양, 청송, 지산)"}
-            className="flex-1 pl-4 pr-2 py-3.5 text-base font-bold text-stone-900 outline-none placeholder:text-stone-400"
+            className="min-w-0 flex-1 pl-3.5 sm:pl-4 pr-1.5 py-3 sm:py-3.5 text-sm sm:text-base font-bold text-stone-900 outline-none placeholder:text-stone-400 bg-transparent"
           />
 
           {/* Clear Button */}
@@ -986,10 +986,10 @@ export default function CoursesPage() {
             <button
               type="button"
               onClick={handleClearSearch}
-              className="p-2 text-stone-400 hover:text-stone-700 cursor-pointer"
+              className="p-1.5 sm:p-2 text-stone-400 hover:text-stone-700 cursor-pointer shrink-0"
               title={isJapanese ? "検索クリア" : "검색어 지우기"}
             >
-              <X className="w-5 h-5" />
+              <X className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
             </button>
           )}
 
@@ -997,11 +997,11 @@ export default function CoursesPage() {
           <button
             type="button"
             onClick={() => handleExecuteSearch()}
-            className="h-full px-5 py-3.5 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white flex items-center justify-center transition shrink-0 cursor-pointer gap-1 font-black"
+            className="self-stretch px-3.5 sm:px-5 py-3 sm:py-3.5 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white flex items-center justify-center transition shrink-0 cursor-pointer gap-1 font-black whitespace-nowrap"
             title={isJapanese ? "検索" : "검색하기"}
           >
-            <Search className="w-5 h-5" />
-            <span className="text-xs">{isJapanese ? '検索' : '검색'}</span>
+            <Search className="w-4.5 h-4.5 sm:w-5 sm:h-5 shrink-0" />
+            <span className="text-xs sm:text-sm font-black">{isJapanese ? '検索' : '검색'}</span>
           </button>
         </div>
 
