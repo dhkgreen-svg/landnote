@@ -793,6 +793,31 @@ export default function CoursesPage() {
           if (c.country !== 'JP') return true;
         }
 
+        // Special Japanese 7 Major Regions Matching
+        if (c.country === 'JP') {
+          if (activeSearchTerm === '北海道' || activeSearchTerm === 'hokkaido') {
+            if (c.regionJa?.includes('北海道') || c.region?.includes('北海道')) return true;
+          }
+          if (activeSearchTerm === '東北' || activeSearchTerm === 'tohoku') {
+            if (c.regionJa?.includes('東北') || /青森|岩手|宮城|秋田|山形|福島/.test(c.regionJa || c.region || '') || c.description?.includes('東北')) return true;
+          }
+          if (activeSearchTerm === '関東' || activeSearchTerm === 'kanto') {
+            if (c.regionJa?.includes('関東') || /東京|神奈川|埼玉|千葉|茨城|栃木|群馬/.test(c.regionJa || c.region || '') || c.description?.includes('関東')) return true;
+          }
+          if (activeSearchTerm === '中部' || activeSearchTerm === 'chubu') {
+            if (c.regionJa?.includes('中部') || /新潟|富山|石川|福井|山梨|長野|岐阜|静岡|愛知/.test(c.regionJa || c.region || '') || c.description?.includes('中部')) return true;
+          }
+          if (activeSearchTerm === '近畿' || activeSearchTerm === 'kinki' || activeSearchTerm === '関西' || activeSearchTerm === 'kansai') {
+            if (c.regionJa?.includes('近畿') || /大阪|京都|兵庫|奈良|滋賀|和歌山/.test(c.regionJa || c.region || '') || c.description?.includes('近畿') || c.description?.includes('関西')) return true;
+          }
+          if (activeSearchTerm === '中国・四国' || activeSearchTerm === '中国' || activeSearchTerm === '四国') {
+            if (c.regionJa?.includes('中国') || c.regionJa?.includes('四国') || /鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知/.test(c.regionJa || c.region || '') || c.description?.includes('中国') || c.description?.includes('四国')) return true;
+          }
+          if (activeSearchTerm === '九州・沖縄' || activeSearchTerm === '九州' || activeSearchTerm === '沖縄') {
+            if (c.regionJa?.includes('九州') || c.regionJa?.includes('沖縄') || /福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄/.test(c.regionJa || c.region || '') || c.description?.includes('九州') || c.description?.includes('沖縄')) return true;
+          }
+        }
+
         const matchName = c.name.toLowerCase().includes(activeSearchTerm);
         const matchRegion = c.region.toLowerCase().includes(activeSearchTerm);
         const matchJaName = c.nameJa?.toLowerCase().includes(activeSearchTerm) || false;
@@ -1092,13 +1117,13 @@ export default function CoursesPage() {
               </button>
               {(isJapanese
                 ? [
-                    { name: '北海道', count: 180 },
-                    { name: '東北', count: 45 },
-                    { name: '関東', count: 68 },
-                    { name: '中部', count: 52 },
-                    { name: '近畿', count: 39 },
-                    { name: '中国・四国', count: 34 },
-                    { name: '九州・沖縄', count: 48 },
+                    { name: '北海道', count: courses.filter((c) => c.country === 'JP' && (c.regionJa?.includes('北海道') || c.region?.includes('北海道'))).length },
+                    { name: '東北', count: courses.filter((c) => c.country === 'JP' && (/青森|岩手|宮城|秋田|山形|福島/.test(c.regionJa || c.region || '') || c.description?.includes('東北'))).length },
+                    { name: '関東', count: courses.filter((c) => c.country === 'JP' && (/東京|神奈川|埼玉|千葉|茨城|栃木|群馬/.test(c.regionJa || c.region || '') || c.description?.includes('関東'))).length },
+                    { name: '中部', count: courses.filter((c) => c.country === 'JP' && (/新潟|富山|石川|福井|山梨|長野|岐阜|静岡|愛知/.test(c.regionJa || c.region || '') || c.description?.includes('中部'))).length },
+                    { name: '近畿', count: courses.filter((c) => c.country === 'JP' && (/大阪|京都|兵庫|奈良|滋賀|和歌山/.test(c.regionJa || c.region || '') || c.description?.includes('近畿') || c.description?.includes('関西'))).length },
+                    { name: '中国・四国', count: courses.filter((c) => c.country === 'JP' && (/鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知/.test(c.regionJa || c.region || '') || c.description?.includes('中国') || c.description?.includes('四国'))).length },
+                    { name: '九州・沖縄', count: courses.filter((c) => c.country === 'JP' && (/福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄/.test(c.regionJa || c.region || '') || c.description?.includes('九州') || c.description?.includes('沖縄'))).length },
                   ]
                 : [
                     { name: '서울', count: 28 },
