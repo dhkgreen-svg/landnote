@@ -902,10 +902,10 @@ export default function HomePage() {
               >
                 <div className="flex items-center gap-1 text-sm sm:text-base font-black leading-tight">
                   <Play className="w-4 h-4 sm:w-4.5 sm:h-4.5 fill-current text-emerald-950" />
-                  <span className="truncate">{isJapanese ? 'ラウンド開始' : isEnglish ? 'Start Round' : '라운딩 바로 시작하기'}</span>
+                  <span className="truncate">{isJapanese ? 'スコア記録スタート' : isEnglish ? 'Start Score Record' : '스코어 기록 시작하기'}</span>
                 </div>
                 <span className="text-[10px] sm:text-[10.5px] font-extrabold text-emerald-950 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-                  {isJapanese ? '公式スコア保存' : isEnglish ? 'Official Score' : '공식 기록 저장'}
+                  {isJapanese ? '公式スコアボード保存' : isEnglish ? 'Official Scoreboard' : '공식 스코어보드 저장'}
                 </span>
               </Link>
             </div>
