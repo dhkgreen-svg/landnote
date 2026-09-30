@@ -21,6 +21,7 @@ import { NationalTourMapModal } from '@/components/NationalTourMapModal';
 import { BadgeStorage, CourseBadgeRecord, ProvinceInfo } from '@/lib/badgeStorage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
+import { formatPlayerDisplayName } from '@/lib/playerUtils';
 
 const JA_PRESCRIPTIONS = [
   {
@@ -264,7 +265,8 @@ function ResultContent() {
 
       const rankTitle = isJapanese ? `${idx + 1}位` : `${idx + 1}위`;
       const scoreUnit = isJapanese ? '打' : '타';
-      lines.push(`${medal} ${rankTitle}: ${p.name} - ${p.realTotalStrokes}${scoreUnit} (${diffStr})`);
+      const cleanName = formatPlayerDisplayName(p.name, p.isSelf, isJapanese);
+      lines.push(`${medal} ${rankTitle}: ${cleanName} - ${p.realTotalStrokes}${scoreUnit} (${diffStr})`);
       if (courseBreakdown) {
         lines.push(`   └ ${courseBreakdown}`);
       }
@@ -565,7 +567,7 @@ function ResultContent() {
                           {isJapanese ? '👑 代表' : '👑 조장'}
                         </span>
                       )}
-                      <span>{player.name}</span>
+                      <span>{formatPlayerDisplayName(player.name, player.isSelf, isJapanese)}</span>
                       {player.isSelf && (
                         <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-blue-100 text-blue-700">
                           {isJapanese ? '本人' : '본인'}
@@ -724,7 +726,7 @@ function ResultContent() {
                     return (
                       <tr key={player.id} className="hover:bg-stone-50/60 transition">
                         <td className="py-2.5 px-2 text-left pl-3 font-bold text-stone-900 sticky left-0 bg-white z-10 whitespace-nowrap shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)]">
-                          {player.name}
+                          {formatPlayerDisplayName(player.name, player.isSelf, isJapanese)}
                         </td>
                         {c.full9Holes.map((hNum) => {
                           const score = player.scores?.[hNum];

@@ -39,6 +39,9 @@ import { CompanionFeedWidget } from '@/components/CompanionFeedWidget';
 import { CompanionLightningModal } from '@/components/CompanionLightningModal';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { formatPlayerDisplayName } from '@/lib/playerUtils';
+import { PILGRIMAGE_COURSES, PilgrimageStorage, PilgrimageCourse } from '@/lib/pilgrimageStorage';
+import { PilgrimageDetailModal } from '@/components/PilgrimageDetailModal';
 
 function ChronicleContent() {
   const router = useRouter();
@@ -46,7 +49,8 @@ function ChronicleContent() {
   const { t, isJapanese, isEnglish } = useTranslation();
   const addFriendParam = searchParams.get('addFriend');
 
-  const [userName, setUserName] = useState<string>('김대희');
+  const [mounted, setMounted] = useState(false);
+  const [userName, setUserName] = useState<string>('');
   const [companions, setCompanions] = useState<Companionship[]>([]);
   const [lightningRounds, setLightningRounds] = useState<CompanionLightningRound[]>([]);
   const [exchangedCards, setExchangedCards] = useState<UserBusinessCard[]>([]);
@@ -56,6 +60,7 @@ function ChronicleContent() {
   const [toastMsg, setToastMsg] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'MILESTONE' | 'CLUB_MATCH' | 'COMPANIONS' | 'STAMP_MAP'>('MILESTONE');
   const [selectedMedalModal, setSelectedMedalModal] = useState<'HIO' | 'EAGLE' | 'ALBATROSS' | null>(null);
+  const [selectedPilgrimCourse, setSelectedPilgrimCourse] = useState<PilgrimageCourse | null>(null);
 
   // Handle incoming addFriend query param from QR scan
   useEffect(() => {
@@ -70,8 +75,10 @@ function ChronicleContent() {
   }, [addFriendParam]);
 
   useEffect(() => {
+    setMounted(true);
     const load = () => {
-      setUserName(ParkOnStorage.getUserDisplayName());
+      const raw = ParkOnStorage.getUserDisplayName();
+      setUserName(formatPlayerDisplayName(raw, true, isJapanese));
       setCompanions(CompanionStorage.getCompanions());
       setLightningRounds(CompanionStorage.getLightningRounds());
       setExchangedCards(BusinessCardStorage.getExchangedCards());
@@ -87,7 +94,7 @@ function ChronicleContent() {
       window.removeEventListener('parkon_business_cards_exchanged', load);
       window.removeEventListener('storage', load);
     };
-  }, []);
+  }, [isJapanese]);
 
   // 1. 실제 사용자가 완주한 공식 라운드만 반영 (가상 연습 라운드 제외)
   const completedRounds = ParkOnStorage.getCompletedRounds().filter(
@@ -101,6 +108,9 @@ function ChronicleContent() {
 
   // 실제 완주한 구장 및 코스 메타데이터
   const allCourses = ParkOnStorage.getAllCourses();
+
+  // ⛩️ 한일 양대 성지순례 및 트로피 실시간 현황 계산
+  const pilgrimStatus = PilgrimageStorage.getUserStatus(completedRounds);
 
   // 훈장 상세 기록 구조 정의
   interface MedalRecord {
@@ -251,6 +261,16 @@ function ChronicleContent() {
     };
   });
 
+  if (!mounted) {
+    return (
+      <div className="p-4 space-y-4">
+        <div className="h-44 bg-emerald-950/20 rounded-3xl animate-pulse" />
+        <div className="h-12 bg-stone-100 rounded-2xl animate-pulse" />
+        <div className="h-64 bg-stone-100 rounded-2xl animate-pulse" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 space-y-5">
       {/* Toast Banner on successful 1촌 connection */}
@@ -266,12 +286,12 @@ function ChronicleContent() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-14 h-14 rounded-2xl bg-amber-400 text-emerald-950 flex items-center justify-center font-black text-2xl shadow-md border-2 border-amber-300">
-              {userName.slice(0, 1)}
+              {userName.slice(0, 1) || (isJapanese ? 'プ' : '플')}
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <h1 className="text-xl font-black text-white tracking-tight">
-                  {userName} {isJapanese ? '様' : '님'}
+                  {userName || (isJapanese ? 'プレイヤー' : '플레이어')} {isJapanese ? '様' : '님'}
                 </h1>
                 <span className="text-[10px] bg-amber-400 text-emerald-950 font-black px-2 py-0.5 rounded-full">
                   {skillStarTitle}
@@ -398,7 +418,7 @@ function ChronicleContent() {
           }`}
         >
           <Compass className="w-4 h-4 text-blue-600" />
-          <span>{isJapanese ? '全国制覇' : '도장깨기'}</span>
+          <span>{isJapanese ? '聖地・全国制覇' : '성지순례·도장깨기'}</span>
         </button>
       </div>
 
@@ -470,6 +490,66 @@ function ChronicleContent() {
               </button>
             </div>
           )}
+
+          {/* ⛩️ 한일 양대 공식 성지순례 여권 미리보기 배너 */}
+          <div className="bg-gradient-to-br from-amber-950 via-stone-900 to-emerald-950 text-white rounded-3xl p-5 border-2 border-amber-400/60 shadow-lg space-y-3.5 relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-400 text-stone-950 flex items-center justify-center font-black text-xl shadow-md border border-amber-300">
+                  ⛩️
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-sm font-black text-amber-200">
+                      {isJapanese ? '日韓 聖地巡礼パスポート' : '한·일 공식 성지순례 여권'}
+                    </h3>
+                    <span className="text-[9px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full">
+                      NEW
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-stone-300 font-medium">
+                    {isJapanese ? '歴史の4大聖地から全国5大名門コース巡礼実録' : '역사 4대 성지부터 전국 5대 명품 구장 완주 실록'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('STAMP_MAP')}
+                className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1 cursor-pointer"
+              >
+                <span>{isJapanese ? 'パスポートを見る' : '여권 펼치기'}</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* 4대 여권 스탬프 요약 지표 */}
+            <div className="grid grid-cols-4 gap-2 text-center text-xs">
+              <div className="p-2.5 bg-white/10 rounded-2xl border border-white/10">
+                <div className="text-[10px] text-amber-300 font-bold">{isJapanese ? '歴史聖地' : '역사 성지'}</div>
+                <div className="text-sm font-black text-white mt-0.5">
+                  {pilgrimStatus.visitedHeritageCount}/{pilgrimStatus.totalHeritageCount}
+                </div>
+              </div>
+              <div className="p-2.5 bg-white/10 rounded-2xl border border-white/10">
+                <div className="text-[10px] text-emerald-300 font-bold">{isJapanese ? '韓国5大' : '한국 5대'}</div>
+                <div className="text-sm font-black text-white mt-0.5">
+                  {pilgrimStatus.visitedKoreaMasterpieceCount}/{pilgrimStatus.totalKoreaMasterpieceCount}
+                </div>
+              </div>
+              <div className="p-2.5 bg-white/10 rounded-2xl border border-white/10">
+                <div className="text-[10px] text-rose-300 font-bold">{isJapanese ? '日本5大' : '일본 5대'}</div>
+                <div className="text-sm font-black text-white mt-0.5">
+                  {pilgrimStatus.visitedJapanMasterpieceCount}/{pilgrimStatus.totalJapanMasterpieceCount}
+                </div>
+              </div>
+              <div className="p-2.5 bg-white/10 rounded-2xl border border-white/10">
+                <div className="text-[10px] text-cyan-300 font-bold">{isJapanese ? '開拓者' : '개척자'}</div>
+                <div className="text-sm font-black text-white mt-0.5">
+                  {pilgrimStatus.hasGlobalPioneer ? '🏆 달성' : '도전'}
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* 명예의 전당 특별 훈장 */}
           <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
@@ -1094,19 +1174,391 @@ function ChronicleContent() {
       )}
 
       {activeTab === 'STAMP_MAP' && (
-        <div className="space-y-4">
-          <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-3xl p-5 shadow-sm space-y-2">
-            <div className="flex items-center gap-2">
-              <Compass className="w-5 h-5 text-amber-300" />
-              <h3 className="text-base font-black">
-                {isJapanese ? '全国コース制覇スタンプ' : '전국 구장 도장깨기 스탬프'}
-              </h3>
+        <div className="space-y-5">
+          {/* ⛩️ 한·일 양대 공식 성지순례 여권 상단 마스터 대형 전광판 */}
+          <div className="bg-gradient-to-br from-stone-900 via-amber-950 to-stone-900 text-white rounded-3xl p-5 border-2 border-amber-400/60 shadow-xl space-y-4 relative overflow-hidden">
+            <div className="flex items-center justify-between border-b border-amber-500/30 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-12 h-12 rounded-2xl bg-amber-400 text-stone-950 flex items-center justify-center font-black text-2xl shadow-lg border-2 border-amber-300">
+                  ⛩️
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-base font-black tracking-tight text-amber-200">
+                      {isJapanese ? '日韓 公認 聖地巡礼パスポート' : '한·일 공식 성지순례 여권'}
+                    </h3>
+                    <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
+                      OFFICIAL
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-300 font-medium">
+                    {isJapanese
+                      ? '人類の発祥地から最高権威の名門コースまで公認巡礼実録'
+                      : '인류 파크골프 발상지부터 한일 최고 권위 명품 구장까지 완주 공인 실록'}
+                  </p>
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-blue-200 font-medium">
-              {isJapanese
-                ? '全国のパークゴルフ場を回り、完走したコースで黄金のトロフィーピンを獲得しましょう！'
-                : '전국 500여 개 파크골프장을 누비며 완주한 구장에 황금 트로피 핀을 획득하세요!'}
+
+            {/* 4대 여권 스탬프 요약 지표 */}
+            <div className="grid grid-cols-4 gap-2 text-center text-xs">
+              <div className="p-2.5 bg-white/10 rounded-2xl border border-white/10">
+                <div className="text-[10px] text-amber-300 font-bold">{isJapanese ? '歴史聖地' : '역사 성지'}</div>
+                <div className="text-base font-black text-white mt-0.5">
+                  {pilgrimStatus.visitedHeritageCount}/{pilgrimStatus.totalHeritageCount}
+                </div>
+                <div className="text-[9px] text-stone-300 mt-0.5">
+                  {pilgrimStatus.visitedHeritageCount === pilgrimStatus.totalHeritageCount ? '👑 제패' : '순례중'}
+                </div>
+              </div>
+              <div className="p-2.5 bg-white/10 rounded-2xl border border-white/10">
+                <div className="text-[10px] text-emerald-300 font-bold">{isJapanese ? '韓国5大' : '한국 5대'}</div>
+                <div className="text-base font-black text-white mt-0.5">
+                  {pilgrimStatus.visitedKoreaMasterpieceCount}/{pilgrimStatus.totalKoreaMasterpieceCount}
+                </div>
+                <div className="text-[9px] text-stone-300 mt-0.5">
+                  {pilgrimStatus.visitedKoreaMasterpieceCount === pilgrimStatus.totalKoreaMasterpieceCount ? '👑 제패' : '순례중'}
+                </div>
+              </div>
+              <div className="p-2.5 bg-white/10 rounded-2xl border border-white/10">
+                <div className="text-[10px] text-rose-300 font-bold">{isJapanese ? '日本5大' : '일본 5대'}</div>
+                <div className="text-base font-black text-white mt-0.5">
+                  {pilgrimStatus.visitedJapanMasterpieceCount}/{pilgrimStatus.totalJapanMasterpieceCount}
+                </div>
+                <div className="text-[9px] text-stone-300 mt-0.5">
+                  {pilgrimStatus.visitedJapanMasterpieceCount === pilgrimStatus.totalJapanMasterpieceCount ? '👑 제패' : '순례중'}
+                </div>
+              </div>
+              <div className="p-2.5 bg-white/10 rounded-2xl border border-white/10">
+                <div className="text-[10px] text-cyan-300 font-bold">{isJapanese ? '開拓者' : '개척자'}</div>
+                <div className="text-base font-black text-amber-300 mt-0.5">
+                  {pilgrimStatus.hasGlobalPioneer ? '🏆 달성' : '도전'}
+                </div>
+                <div className="text-[9px] text-stone-300 mt-0.5">
+                  {pilgrimStatus.hasGlobalPioneer ? '현해탄 수여' : '해외 완주'}
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-amber-200/90 bg-amber-950/60 p-2.5 rounded-xl border border-amber-500/30 text-center font-medium">
+              💡 {isJapanese
+                ? '聖地コースをタップすると、歴史的価値・コース攻略法・完走証明書(証書)を確認できます。'
+                : '성지 구장을 터치하면 역사적 가치와 공략 포인트, 완주 황금 인증서와 카카오 길안내를 확인할 수 있습니다.'}
             </p>
+          </div>
+
+          {/* 🏛️ 트랙 A: 불멸의 역사 4대 성지 (Heritage Sacred 4) */}
+          <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xl">🏛️</span>
+                <div>
+                  <h4 className="text-sm font-black text-stone-900">
+                    {isJapanese ? '不滅の歴史 4大聖地' : '불멸의 역사 4대 성지'}
+                  </h4>
+                  <p className="text-[10px] text-stone-500">
+                    {isJapanese ? '発祥地・始発地・公認1号コース' : '세계 발상지·한국 시발지·여의도 1호·국내 공인 1호'}
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                {pilgrimStatus.visitedHeritageCount}/{pilgrimStatus.totalHeritageCount} {isJapanese ? '巡礼完了' : '완주'}
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              {PILGRIMAGE_COURSES.filter((c) => c.category === 'HERITAGE').map((course) => {
+                const rec = PilgrimageStorage.getUserCourseRecord(course.courseId, completedRounds);
+                const isCompleted = rec.isVisited;
+                return (
+                  <button
+                    key={course.id}
+                    type="button"
+                    onClick={() => setSelectedPilgrimCourse(course)}
+                    className="w-full text-left p-3.5 bg-stone-50 hover:bg-amber-50/70 border border-stone-200 hover:border-amber-300 rounded-2xl transition active:scale-[0.98] cursor-pointer space-y-2 shadow-xs group touch-manipulation select-none"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{course.country === 'JP' ? '🇯🇵' : '🇰🇷'}</span>
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-black text-stone-900 group-hover:text-amber-950 transition">
+                              {isJapanese ? course.nameJa : course.nameKo}
+                            </span>
+                            <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded-md">
+                              {course.badgeEmoji} {isJapanese ? course.historicTitleJa : course.historicTitleKo}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-stone-500 font-medium mt-0.5">
+                            📍 {isJapanese ? course.regionJa : course.regionKo}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[11px] text-stone-400 group-hover:text-amber-700 font-black shrink-0">
+                        {isJapanese ? '詳細 🔍' : '상세 실록 🔍'}
+                      </span>
+                    </div>
+
+                    <div className="text-[11.5px] text-stone-600 bg-white p-2 rounded-xl border border-stone-200/80 font-medium">
+                      {isJapanese ? course.taglineJa : course.taglineKo}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-0.5 text-xs">
+                      {isCompleted ? (
+                        <span className="font-black text-amber-800 bg-amber-200/80 px-2.5 py-1 rounded-xl flex items-center gap-1">
+                          <span>🏆</span>
+                          <span>
+                            {isJapanese
+                              ? `巡礼完走 ${rec.roundCount}回 ${rec.bestScore ? `(最少 ${rec.bestScore}打)` : ''} · 証明書`
+                              : `성지 완주 ${rec.roundCount}회 ${rec.bestScore ? `(최저 ${rec.bestScore}타)` : ''} · 인증서 발급`}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="font-bold text-stone-500 bg-stone-200/80 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                          <span>⛩️</span>
+                          <span>{isJapanese ? '巡礼挑戦待機中 (タップで案内)' : '성지 순례 도전 대기 (터치 시 안내)'}</span>
+                        </span>
+                      )}
+                      <span className="text-[10px] text-stone-400 font-bold">
+                        {course.petitionVotes}{isJapanese ? '票 推薦' : '표 추천'}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 🇰🇷 트랙 B: 대한민국 5대 명품 성지 (Korea Masterpiece 5) */}
+          <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xl">🇰🇷</span>
+                <div>
+                  <h4 className="text-sm font-black text-stone-900">
+                    {isJapanese ? '大韓民国 5大名門聖地' : '대한민국 5대 명품 성지'}
+                  </h4>
+                  <p className="text-[10px] text-stone-500">
+                    {isJapanese ? '全国ゴルファー羨望の最高峰コース' : '전국 파크골퍼들이 가장 가고 싶어하는 최고 권위 코스'}
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                {pilgrimStatus.visitedKoreaMasterpieceCount}/{pilgrimStatus.totalKoreaMasterpieceCount} {isJapanese ? '巡礼完了' : '완주'}
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              {PILGRIMAGE_COURSES.filter((c) => c.category === 'KOREA_MASTERPIECE').map((course) => {
+                const rec = PilgrimageStorage.getUserCourseRecord(course.courseId, completedRounds);
+                const isCompleted = rec.isVisited;
+                return (
+                  <button
+                    key={course.id}
+                    type="button"
+                    onClick={() => setSelectedPilgrimCourse(course)}
+                    className="w-full text-left p-3.5 bg-stone-50 hover:bg-emerald-50/70 border border-stone-200 hover:border-emerald-300 rounded-2xl transition active:scale-[0.98] cursor-pointer space-y-2 shadow-xs group touch-manipulation select-none"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-black text-stone-900 group-hover:text-emerald-950 transition">
+                            {isJapanese ? course.nameJa : course.nameKo}
+                          </span>
+                          <span className="text-[10px] bg-emerald-100 text-emerald-900 font-bold px-1.5 py-0.2 rounded-md">
+                            {course.badgeEmoji} {isJapanese ? course.historicTitleJa : course.historicTitleKo}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-500 font-medium mt-0.5">
+                          📍 {isJapanese ? course.regionJa : course.regionKo}
+                        </p>
+                      </div>
+                      <span className="text-[11px] text-stone-400 group-hover:text-emerald-700 font-black shrink-0">
+                        {isJapanese ? '詳細 🔍' : '상세 실록 🔍'}
+                      </span>
+                    </div>
+
+                    <div className="text-[11.5px] text-stone-600 bg-white p-2 rounded-xl border border-stone-200/80 font-medium">
+                      {isJapanese ? course.taglineJa : course.taglineKo}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-0.5 text-xs">
+                      {isCompleted ? (
+                        <span className="font-black text-emerald-800 bg-emerald-200/80 px-2.5 py-1 rounded-xl flex items-center gap-1">
+                          <span>🏆</span>
+                          <span>
+                            {isJapanese
+                              ? `巡礼完走 ${rec.roundCount}回 ${rec.bestScore ? `(最少 ${rec.bestScore}打)` : ''} · 証明書`
+                              : `성지 완주 ${rec.roundCount}회 ${rec.bestScore ? `(최저 ${rec.bestScore}타)` : ''} · 인증서 발급`}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="font-bold text-stone-500 bg-stone-200/80 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                          <span>⛩️</span>
+                          <span>{isJapanese ? '巡礼挑戦待機中 (タップで案内)' : '성지 순례 도전 대기 (터치 시 안내)'}</span>
+                        </span>
+                      )}
+                      <span className="text-[10px] text-stone-400 font-bold">
+                        {course.petitionVotes}{isJapanese ? '票 推薦' : '표 추천'}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 🇯🇵 트랙 C: 일본 열도 5대 명품 성지 (Japan Masterpiece 5) */}
+          <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xl">🇯🇵</span>
+                <div>
+                  <h4 className="text-sm font-black text-stone-900">
+                    {isJapanese ? '日本列島 5大名門聖地' : '일본 열도 5대 명품 성지'}
+                  </h4>
+                  <p className="text-[10px] text-stone-500">
+                    {isJapanese ? '北海道から九州まで本場日本の代表名門コース' : '홋카이도에서 규슈까지 본토 일본을 대표하는 공인 명문 구장'}
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-black text-rose-800 bg-rose-100 px-2 py-0.5 rounded-full">
+                {pilgrimStatus.visitedJapanMasterpieceCount}/{pilgrimStatus.totalJapanMasterpieceCount} {isJapanese ? '巡礼完了' : '완주'}
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              {PILGRIMAGE_COURSES.filter((c) => c.category === 'JAPAN_MASTERPIECE').map((course) => {
+                const rec = PilgrimageStorage.getUserCourseRecord(course.courseId, completedRounds);
+                const isCompleted = rec.isVisited;
+                return (
+                  <button
+                    key={course.id}
+                    type="button"
+                    onClick={() => setSelectedPilgrimCourse(course)}
+                    className="w-full text-left p-3.5 bg-stone-50 hover:bg-rose-50/70 border border-stone-200 hover:border-rose-300 rounded-2xl transition active:scale-[0.98] cursor-pointer space-y-2 shadow-xs group touch-manipulation select-none"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-black text-stone-900 group-hover:text-rose-950 transition">
+                            {isJapanese ? course.nameJa : course.nameKo}
+                          </span>
+                          <span className="text-[10px] bg-rose-100 text-rose-900 font-bold px-1.5 py-0.2 rounded-md">
+                            {course.badgeEmoji} {isJapanese ? course.historicTitleJa : course.historicTitleKo}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-500 font-medium mt-0.5">
+                          📍 {isJapanese ? course.regionJa : course.regionKo}
+                        </p>
+                      </div>
+                      <span className="text-[11px] text-stone-400 group-hover:text-rose-700 font-black shrink-0">
+                        {isJapanese ? '詳細 🔍' : '상세 실록 🔍'}
+                      </span>
+                    </div>
+
+                    <div className="text-[11.5px] text-stone-600 bg-white p-2 rounded-xl border border-stone-200/80 font-medium">
+                      {isJapanese ? course.taglineJa : course.taglineKo}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-0.5 text-xs">
+                      {isCompleted ? (
+                        <span className="font-black text-rose-800 bg-rose-200/80 px-2.5 py-1 rounded-xl flex items-center gap-1">
+                          <span>🏆</span>
+                          <span>
+                            {isJapanese
+                              ? `巡礼完走 ${rec.roundCount}回 ${rec.bestScore ? `(最少 ${rec.bestScore}打)` : ''} · 証明書`
+                              : `성지 완주 ${rec.roundCount}회 ${rec.bestScore ? `(최저 ${rec.bestScore}타)` : ''} · 인증서 발급`}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="font-bold text-stone-500 bg-stone-200/80 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                          <span>⛩️</span>
+                          <span>{isJapanese ? '巡礼挑戦待機中 (タップで案内)' : '성지 순례 도전 대기 (터치 시 안내)'}</span>
+                        </span>
+                      )}
+                      <span className="text-[10px] text-stone-400 font-bold">
+                        {course.petitionVotes}{isJapanese ? '票 推薦' : '표 추천'}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ✈️ 트랙 D: 현해탄을 건넌 한일 글로벌 개척자 트로피 */}
+          {(() => {
+            const pioneerCourse = PILGRIMAGE_COURSES.find((c) => c.category === 'GLOBAL_PIONEER');
+            if (!pioneerCourse) return null;
+            return (
+              <div
+                onClick={() => setSelectedPilgrimCourse(pioneerCourse)}
+                className="bg-gradient-to-br from-cyan-950 via-slate-900 to-indigo-950 text-white rounded-3xl p-5 border-2 border-cyan-400/50 shadow-lg space-y-3 cursor-pointer hover:border-cyan-300 transition active:scale-[0.98] touch-manipulation select-none"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-12 h-12 rounded-2xl bg-cyan-400 text-stone-950 flex items-center justify-center font-black text-2xl shadow-lg border border-cyan-300">
+                      ✈️
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="text-sm font-black text-cyan-200">
+                          {isJapanese ? pioneerCourse.nameJa : pioneerCourse.nameKo}
+                        </h4>
+                        <span className="text-[10px] bg-cyan-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full">
+                          GLOBAL
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-stone-300">
+                        {isJapanese ? '日韓海峡を越えたグローバルフロンティア' : '현해탄을 건너 양국의 필드를 개척한 골퍼 영예'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-cyan-300">
+                    {isJapanese ? '詳細 🔍' : '실록 보기 🔍'}
+                  </span>
+                </div>
+
+                <p className="text-xs text-stone-300 bg-white/10 p-3 rounded-2xl border border-white/10 leading-relaxed font-medium">
+                  {isJapanese ? pioneerCourse.taglineJa : pioneerCourse.taglineKo}
+                </p>
+
+                <div className="flex items-center justify-between pt-1">
+                  {pilgrimStatus.hasGlobalPioneer ? (
+                    <span className="text-xs font-black text-amber-300 bg-amber-400/20 px-3 py-1 rounded-xl border border-amber-400/40 flex items-center gap-1.5">
+                      <span>🏆</span>
+                      <span>{isJapanese ? '授与完了 (黄金証明書 閲覧可能)' : '공식 수여 완료 (황금 인증서 열람 가능)'}</span>
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-cyan-200 bg-cyan-900/50 px-3 py-1 rounded-xl border border-cyan-500/30 flex items-center gap-1.5">
+                      <span>⏳</span>
+                      <span>{isJapanese ? '挑戦中 (海外コース1回完走で即時達成)' : '도전 진행 중 (해외 구장 1회 완주 시 즉시 획득)'}</span>
+                    </span>
+                  )}
+                  <span className="text-[10px] text-stone-400">
+                    {isJapanese ? 'タップして詳細確認' : '터치하여 상세 확인'}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 기존 전국 시도별 정복 및 완주 구장 섹션 연결 */}
+          <div className="pt-2 border-t border-stone-200">
+            <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-3xl p-5 shadow-sm space-y-2">
+              <div className="flex items-center gap-2">
+                <Compass className="w-5 h-5 text-amber-300" />
+                <h3 className="text-base font-black">
+                  {isJapanese ? '全国コース制覇スタンプ' : '전국 구장 도장깨기 스탬프'}
+                </h3>
+              </div>
+              <p className="text-xs text-blue-200 font-medium">
+                {isJapanese
+                  ? '全国のパークゴルフ場を回り、完走したコースで黄金のトロフィーピンを獲得しましょう！'
+                  : '전국 500여 개 파크골프장을 누비며 완주한 구장에 황금 트로피 핀을 획득하세요!'}
+              </p>
+            </div>
           </div>
 
           {/* 시도별 정복 현황 */}
@@ -1562,6 +2014,14 @@ function ChronicleContent() {
           </div>
         </div>
       )}
+
+      {/* ⛩️ 한일 공식 성지순례 상세 모달 */}
+      <PilgrimageDetailModal
+        course={selectedPilgrimCourse}
+        completedRounds={completedRounds}
+        isOpen={!!selectedPilgrimCourse}
+        onClose={() => setSelectedPilgrimCourse(null)}
+      />
     </div>
   );
 }

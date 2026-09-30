@@ -185,12 +185,26 @@ export const ParkOnStorage = {
         c === '본인' ||
         c === '회원' ||
         c === '파크골퍼' ||
+        c === '골퍼' ||
+        c === '손오공' ||
+        c === '게스트' ||
         c === '山田太郎' ||
         c === 'ゲスト' ||
         c === 'プレイヤー' ||
-        c === 'リーダー'
+        c === 'リーダー' ||
+        c === '孫悟空' ||
+        c === 'パークの達人' ||
+        c === 'パーク達人' ||
+        c === 'ゴルファー'
       );
     };
+
+    const isJapan = typeof window !== 'undefined' && (
+      localStorage.getItem(STORAGE_KEYS.SERVICE_COUNTRY) === 'JP' ||
+      localStorage.getItem('parkon_language') === 'ja' ||
+      localStorage.getItem('parkon_language_preference') === 'ja'
+    );
+    const defaultFallback = isJapan ? 'プレイヤー' : '플레이어';
 
     const user = this.getKakaoUser();
     if (!user) {
@@ -198,7 +212,7 @@ export const ParkOnStorage = {
       if (profile && profile.userName && !isSample(profile.userName)) {
         return profile.userName;
       }
-      return '플레이어';
+      return defaultFallback;
     }
 
     if (clubId && user.clubAliases && user.clubAliases[clubId] && !isSample(user.clubAliases[clubId])) {
@@ -220,7 +234,7 @@ export const ParkOnStorage = {
     if (user.nickname && !isSample(user.nickname)) {
       return user.nickname;
     }
-    return '플레이어';
+    return defaultFallback;
   },
 
   // 클럽별 사용자 활동명 저장

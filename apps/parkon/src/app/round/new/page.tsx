@@ -758,7 +758,7 @@ function NewRoundForm() {
                   onChange={(e) => handlePlayerNameChange(idx, e.target.value)}
                   placeholder={
                     player.isSelf
-                      ? (isJapanese ? '本人の名前 (山田/佐藤)' : '본인 이름 (홍길동/손오공)')
+                      ? (isJapanese ? '本人の名前 (山田/佐藤)' : '본인 이름 (홍길동)')
                       : (isJapanese ? `同伴者 ${idx + 1} 名前入力` : `동반자 ${idx + 1} 이름 입력`)
                   }
                   className="w-full bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-sm font-bold text-stone-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none"

@@ -2169,7 +2169,7 @@ export default function HomePage() {
                             </div>
                             <div className="text-right shrink-0">
                               <span className="text-sm font-black text-emerald-800">
-                                {player.score}타
+                                {player.score}{isJapanese ? '打' : '타'}
                               </span>
                             </div>
                           </div>
@@ -2272,7 +2272,7 @@ export default function HomePage() {
                             </div>
                             <div className="text-right shrink-0">
                               <span className="text-sm font-black text-emerald-900">
-                                월 {player.rounds}회
+                                {isJapanese ? `月 ${player.rounds}回` : `월 ${player.rounds}회`}
                               </span>
                             </div>
                           </div>

@@ -154,8 +154,8 @@ export function Header() {
                 alt="파크골프 올인원 마스코트 파키"
                 className="w-9 h-9 rounded-full shadow-md border-2 border-amber-300 object-cover"
               />
-              <span className="absolute -bottom-1 -right-1 bg-amber-400 text-emerald-950 rounded-full px-1 text-[8px] font-black shadow-xs">
-                {isJapanese ? 'パキ' : '파키'}
+              <span className="absolute -bottom-1 -right-1 bg-amber-400 text-emerald-950 rounded-full px-1.5 text-[8px] font-black shadow-xs tracking-tight">
+                PARKY
               </span>
             </div>
             <div className="flex flex-col justify-center leading-none">

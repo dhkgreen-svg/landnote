@@ -16,12 +16,19 @@ export function isSampleOrPlaceholder(name?: string | null): boolean {
     clean === '본인' ||
     clean === '회원' ||
     clean === '파크골퍼' ||
+    clean === '골퍼' ||
+    clean === '손오공' ||
+    clean === '게스트' ||
     clean === '山田太郎' ||
     clean === 'ゲスト' ||
     clean === 'プレイヤー' ||
     clean === 'リーダー' ||
     clean === '선수' ||
-    clean === '選手'
+    clean === '選手' ||
+    clean === '孫悟空' ||
+    clean === 'パークの達人' ||
+    clean === 'パーク達人' ||
+    clean === 'ゴルファー'
   );
 }
 
@@ -53,8 +60,10 @@ export function formatPlayerDisplayName(rawName?: string | null, isSelf?: boolea
     if (clean === '리더') return 'リーダー';
     if (clean === '본인' || clean === '조장(본인)') return 'プレイヤー';
     if (clean === '홍길동' || clean === '홍길동(본인)') return isSelf ? 'プレイヤー' : '同伴者';
+    if (clean === '손오공' || clean === '孫悟空') return isSelf ? 'プレイヤー' : '同伴者';
+    if (clean === '플레이어') return isSelf ? 'プレイヤー' : '同伴者';
   } else {
-    if (clean === '홍길동' || clean === '홍길동(본인)') {
+    if (clean === '홍길동' || clean === '홍길동(본인)' || clean === '손오공') {
       return isSelf ? '플레이어' : '동반자';
     }
   }

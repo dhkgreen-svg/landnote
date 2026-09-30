@@ -8164,7 +8164,7 @@ ${shareUrl}`;
                   )}
                 </p>
                 <p className="text-[11px] text-stone-500 mt-0.5">
-                  {isJapanese ? 'クラブごとに本名(例: 田中太郎)またはニックネーム(例: 孫悟空)を個別に設定できます。' : '클럽마다 실명(예: 홍길동) 또는 닉네임(예: 손오공)을 다르게 지정할 수 있습니다.'}
+                  {isJapanese ? 'クラブごとに本名(例: 田中太郎)またはニックネーム(例: ゴルファー)を個別に設定できます。' : '클럽마다 실명(예: 홍길동) 또는 닉네임(예: 골퍼)을 다르게 지정할 수 있습니다.'}
                 </p>
               </div>
 
@@ -8190,13 +8190,13 @@ ${shareUrl}`;
                     type="button"
                     onClick={() => {
                       const kakaoUser = ParkOnStorage.getKakaoUser();
-                      setAliasInputName(kakaoUser?.aliasName || (isJapanese ? '孫悟空' : '손오공'));
+                      setAliasInputName(kakaoUser?.aliasName || (isJapanese ? 'ゴルファー' : '골퍼'));
                     }}
                     className="p-2.5 rounded-xl border border-purple-300 bg-purple-50 hover:bg-purple-100 text-left transition cursor-pointer"
                   >
                     <div className="text-[10px] font-bold text-purple-700">{isJapanese ? '仮名/ニックネーム適用' : '가명/닉네임 적용'}</div>
                     <div className="text-xs font-black text-purple-950 truncate">
-                      {ParkOnStorage.getKakaoUser()?.aliasName || (isJapanese ? '孫悟空' : '손오공')}
+                      {ParkOnStorage.getKakaoUser()?.aliasName || (isJapanese ? 'ゴルファー' : '골퍼')}
                     </div>
                   </button>
                 </div>
@@ -8209,7 +8209,7 @@ ${shareUrl}`;
                   type="text"
                   value={aliasInputName}
                   onChange={(e) => setAliasInputName(e.target.value)}
-                  placeholder={isJapanese ? '例: 田中太郎 または 孫悟空' : '예: 홍길동 또는 손오공'}
+                  placeholder={isJapanese ? '例: 田中太郎 または ゴルファー' : '예: 홍길동 또는 골퍼'}
                   maxLength={15}
                   className="w-full px-3 py-2.5 border-2 border-stone-300 focus:border-emerald-600 rounded-xl text-sm font-black focus:outline-none"
                 />

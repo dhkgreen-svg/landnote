@@ -2486,15 +2486,15 @@ export default function ClubRoomDetailPage() {
                     type="button"
                     onClick={() => {
                       const user = ParkOnStorage.getKakaoUser();
-                      setNewPlayerName(user?.aliasName || (isJapanese ? 'パークの達人' : '손오공'));
+                      setNewPlayerName(user?.aliasName || (isJapanese ? 'パーク達人' : '골퍼'));
                     }}
                     className={`flex-1 py-1.5 px-2 rounded-lg border text-[11px] font-black transition cursor-pointer text-center ${
-                      newPlayerName === (ParkOnStorage.getKakaoUser()?.aliasName || (isJapanese ? 'パークの達人' : '손오공'))
+                      newPlayerName === (ParkOnStorage.getKakaoUser()?.aliasName || (isJapanese ? 'パーク達人' : '골퍼'))
                         ? 'bg-purple-100 border-purple-600 text-purple-950 ring-2 ring-purple-200'
                         : 'bg-purple-50 hover:bg-purple-100 border-purple-300 text-purple-800'
                     }`}
                   >
-                    🔘 {isJapanese ? '仮名' : '가명'} ({ParkOnStorage.getKakaoUser()?.aliasName || (isJapanese ? 'パークの達人' : '손오공')})
+                    🔘 {isJapanese ? '仮名' : '가명'} ({ParkOnStorage.getKakaoUser()?.aliasName || (isJapanese ? 'パーク達人' : '골퍼')})
                   </button>
                   <button
                     type="button"
