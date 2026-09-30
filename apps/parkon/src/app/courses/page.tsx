@@ -241,9 +241,7 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>(() => ParkOnStorage.getAllCourses());
   const [homeCourseId, setHomeCourseId] = useState<string>('');
   const [favoriteHomeCourseIds, setFavoriteHomeCourseIds] = useState<string[]>([]);
-  const [countryFilter, setCountryFilter] = useState<'ALL' | 'KR' | 'JP'>(() => {
-    return ParkOnStorage.getServiceCountry() === 'JP' ? 'JP' : 'ALL';
-  });
+  const [countryFilter, setCountryFilter] = useState<'ALL' | 'KR' | 'JP'>('ALL');
   
   // Search input and applied search term
   const [inputQuery, setInputQuery] = useState<string>('');
@@ -772,6 +770,11 @@ export default function CoursesPage() {
 
   // Filter Courses based on search query or country filter
   const activeSearchTerm = appliedQuery.trim().toLowerCase();
+  const isTextSearchActive =
+    activeSearchTerm.length > 0 &&
+    activeSearchTerm !== '전체' &&
+    activeSearchTerm !== '전국' &&
+    activeSearchTerm !== '全国';
   const isSearchActive = activeSearchTerm.length > 0 || countryFilter !== 'ALL';
 
   const filteredCourses = isSearchActive
@@ -1041,8 +1044,8 @@ export default function CoursesPage() {
           </button>
         </div>
 
-        {/* 🇰🇷 🇯🇵 국가별 필터 탭 & ⛳ 전국 17개 시·도 탐색 바 (대표님 지침: 검색 결과 표출 시에는 화면 단순화를 위해 숨김) */}
-        {!isSearchActive && (
+        {/* 🇰🇷 🇯🇵 국가별 필터 탭 & ⛳ 전국 17개 시·도 탐색 바 (검색어 직접 입력 시에만 숨김) */}
+        {!isTextSearchActive && (
           <>
             {/* 🇰🇷 🇯🇵 국가별 필터 탭 (전체 / 대한민국 / 일본 본토) */}
             <div className="flex items-center gap-1.5 p-1 bg-stone-100/90 rounded-2xl border border-stone-200 text-xs font-black">
@@ -1273,7 +1276,31 @@ export default function CoursesPage() {
             <div className="flex items-center gap-1.5 text-emerald-950 font-black">
               <Search className="w-4 h-4 text-emerald-700" />
               <span>
-                &apos;{appliedQuery}&apos; {isJapanese ? '検索結果:' : '검색 결과:'} <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>{isJapanese ? '件' : '개 구장'}
+                {appliedQuery ? (
+                  <>
+                    &apos;{appliedQuery}&apos; {isJapanese ? '検索結果:' : '검색 결과:'}{' '}
+                    <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>
+                    {isJapanese ? '件' : '개 구장'}
+                  </>
+                ) : countryFilter === 'JP' ? (
+                  <>
+                    🇯🇵 {isJapanese ? '日本公認コース一覧:' : '일본 공인 구장 목록:'}{' '}
+                    <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>
+                    {isJapanese ? '件' : '개 구장'}
+                  </>
+                ) : countryFilter === 'KR' ? (
+                  <>
+                    🇰🇷 {isJapanese ? '韓国公認コース一覧:' : '대한민국 공인 구장 목록:'}{' '}
+                    <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>
+                    {isJapanese ? '件' : '개 구장'}
+                  </>
+                ) : (
+                  <>
+                    🌐 {isJapanese ? '全コース一覧:' : '전체 등록 구장:'}{' '}
+                    <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>
+                    {isJapanese ? '件' : '개 구장'}
+                  </>
+                )}
               </span>
             </div>
             <button
@@ -1330,40 +1357,48 @@ export default function CoursesPage() {
                         : 'bg-white border-stone-200 hover:border-emerald-400'
                     }`}
                   >
-                    {/* 1줄 컴팩트 요약 행 (터치 시 상세 펼치기 / 접기) */}
+                    {/* 2줄 카드 헤더 행 (구장명 및 지역명 잘림 완전 방지) */}
                     <div
                       onClick={() => setExpandedCourseId(isExpanded ? null : c.id)}
-                      className="p-3 sm:p-3.5 flex items-center justify-between gap-2 cursor-pointer select-none active:bg-stone-50 transition"
+                      className="p-3 sm:p-3.5 flex items-start justify-between gap-2.5 cursor-pointer select-none active:bg-stone-50 transition"
                     >
-                      {/* 1. 구장명 & 배지 */}
-                      <div className="min-w-0 flex-1 flex items-center gap-1.5">
-                        <span className="font-black text-sm sm:text-base text-stone-900 truncate">
-                          {dual.primary}
-                        </span>
-                        {c.isVerified && (
-                          <span className="text-[9px] bg-blue-100 text-blue-800 font-extrabold px-1.5 py-0.2 rounded shrink-0">
-                            {isJapanese ? '公認' : '공인'}
+                      {/* 좌측: 구장명 및 배지 (1행) + 지역명 & 서브발음 (2행) */}
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center flex-wrap gap-1.5">
+                          <span className="font-black text-sm sm:text-base text-stone-900 leading-tight">
+                            {dual.primary}
                           </span>
-                        )}
-                        {isHome ? (
-                          <span className="text-[9px] bg-emerald-700 text-white font-black px-1.5 py-0.2 rounded shrink-0">
-                            {isJapanese ? '選択中' : '선택중'}
-                          </span>
-                        ) : isFavorite ? (
-                          <span className="text-[9px] bg-amber-400 text-amber-950 font-black px-1.5 py-0.2 rounded shrink-0">
-                            ★{isJapanese ? 'マイ' : '홈'}
-                          </span>
-                        ) : null}
+                          {dual.showSecondary && dual.secondary && (
+                            <span className="text-xs text-stone-500 font-bold">
+                              {dual.secondary}
+                            </span>
+                          )}
+                          {c.isVerified && (
+                            <span className="text-[9px] bg-blue-100 text-blue-800 font-extrabold px-1.5 py-0.2 rounded shrink-0">
+                              {isJapanese ? '公認' : '공인'}
+                            </span>
+                          )}
+                          {isHome ? (
+                            <span className="text-[9px] bg-emerald-700 text-white font-black px-1.5 py-0.2 rounded shrink-0">
+                              {isJapanese ? '選択中' : '선택중'}
+                            </span>
+                          ) : isFavorite ? (
+                            <span className="text-[9px] bg-amber-400 text-amber-950 font-black px-1.5 py-0.2 rounded shrink-0">
+                              ★{isJapanese ? 'マイ' : '홈'}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {/* 지역명 서브 라인 (구장명 공간을 전혀 뺏지 않음) */}
+                        <div className="flex items-center gap-1 text-xs text-stone-600 font-bold">
+                          <span className="text-stone-400 text-[10px]">📍</span>
+                          <span className="truncate">{displayRegion}</span>
+                        </div>
                       </div>
 
-                      {/* 2. 지역 (경북 구미시 등) */}
-                      <div className="text-xs text-stone-600 font-bold shrink-0 max-w-[100px] sm:max-w-[130px] text-center truncate">
-                        {displayRegion}
-                      </div>
-
-                      {/* 3. 코스 / 홀수 & 펼침 아이콘 */}
-                      <div className="flex items-center justify-end gap-1 shrink-0">
-                        <span className="text-xs font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                      {/* 우측: 코스 / 홀수 배지 & 펼침 아이콘 */}
+                      <div className="flex items-center justify-end gap-1.5 shrink-0 pt-0.5">
+                        <span className="text-xs font-black text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 shadow-2xs whitespace-nowrap">
                           {isJapanese
                             ? `全${c.totalCourses || Math.max(1, Math.round(c.totalHoles / 9))}コース ${c.totalHoles}H`
                             : formatCourseHolesText(c)}
