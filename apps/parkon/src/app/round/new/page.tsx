@@ -294,7 +294,7 @@ function NewRoundForm() {
   const leaderName = currentLeader?.name || '조장';
   const inviteUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`
-    : `https://www.parkongolf.com/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`;
+    : `https://www.parkgolfallinone.com/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`;
 
   useEffect(() => {
     if (showQrModal && inviteUrl) {

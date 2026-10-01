@@ -76,7 +76,7 @@ export default function HomePage() {
   const handleShareParkon = async () => {
     const rawUser = ParkOnStorage.getUserDisplayName();
     const cleanUser = rawUser && rawUser !== '파크골퍼' && rawUser !== 'パークゴルファー' ? rawUser : '';
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkongolf.com';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkgolfallinone.com';
     const shareUrl = cleanUser
       ? `${origin}/install?by=${encodeURIComponent(cleanUser)}`
       : `${origin}/install`;

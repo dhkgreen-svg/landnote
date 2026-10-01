@@ -23,7 +23,7 @@ export function CompanionQRModal({ isOpen, onClose, onCompanionAdded }: Companio
 
   useEffect(() => {
     if (!isOpen) return;
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkongolf.com';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkgolfallinone.com';
     const connectUrl = `${origin}/chronicle?addFriend=${encodeURIComponent(myName)}&t=${Date.now()}`;
 
     QRCode.toDataURL(connectUrl, {
@@ -41,7 +41,7 @@ export function CompanionQRModal({ isOpen, onClose, onCompanionAdded }: Companio
   if (!isOpen) return null;
 
   const handleCopyLink = async () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkongolf.com';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkgolfallinone.com';
     const connectUrl = `${origin}/chronicle?addFriend=${encodeURIComponent(myName)}`;
     if (navigator.clipboard) {
       await navigator.clipboard.writeText(connectUrl);

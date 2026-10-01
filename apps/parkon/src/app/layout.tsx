@@ -8,7 +8,7 @@ import { LanguageProvider } from '@/lib/i18n/LanguageContext';
 import { InstallPwaBanner } from '@/components/InstallPwaBanner';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://parkongolf.com'),
+  metadataBase: new URL('https://www.parkgolfallinone.com'),
   title: '파크골프 올인원 (ParkGolf All-in-One) - 전국 400개 구장 포털 & 1초 스코어보드',
   description: '50~70대 시니어를 위한 전국 400개 구장 날씨·1초 스코어보드·길안내 올인원',
   manifest: '/manifest.json',

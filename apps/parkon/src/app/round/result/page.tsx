@@ -274,7 +274,7 @@ function ResultContent() {
 
     lines.push(`━━━━━━━━━━━━━━━━`);
     lines.push(isJapanese ? `📱 同伴者自身のスマホにスコアを保存:` : `📱 동반자 본인 폰에 성적 담기:`);
-    const originUrl = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkongolf.com';
+    const originUrl = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkgolfallinone.com';
     lines.push(`${originUrl}/round/result?id=${session.id}`);
 
     return lines.join('\n');
