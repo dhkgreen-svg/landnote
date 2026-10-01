@@ -406,10 +406,10 @@ function NewRoundForm() {
   // 강력한 카카오톡/문자/링크 공유 함수 (모바일 네이티브 공유 -> 클립보드 -> 임시 텍스트에어리어 -> 프롬프트 폴백)
   const handleShareInvite = async () => {
     const courseName = currentCourse?.name || (isJapanese ? 'パークゴルフ場' : '파크골프장');
-    const shareTitle = isJapanese ? `[パークゴルフ オールインワン] ${courseName} ラウンド招待` : `[파크골프 올인원] ${courseName} 라운딩 초대`;
+    const shareTitle = isJapanese ? `[PARKY パキ] ${courseName} ラウンド招待` : `[파키 PARKY] ${courseName} 라운딩 초대`;
     const shareText = isJapanese
-      ? `[パークゴルフ オールインワン 同伴者招待]\n⛳ ${courseName} で一緒にラウンドしましょう！\nリーダー: ${leaderName}\n以下のリンクを開くと同伴者として自動登録されます:\n${inviteUrl}`
-      : `[파크골프 올인원 동반자 초대]\n⛳ ${courseName} 함께 라운딩해요!\n조장: ${leaderName}\n아래 링크를 누르면 동반자로 자동 등록됩니다:\n${inviteUrl}`;
+      ? `[PARKY パキ同伴者招待]\n⛳ ${courseName} で一緒にラウンドしましょう！\nリーダー: ${leaderName}\n以下のリンクを開くと同伴者として自動登録されます:\n${inviteUrl}`
+      : `[파키 PARKY 동반자 초대]\n⛳ ${courseName} 함께 라운딩해요!\n조장: ${leaderName}\n아래 링크를 누르면 동반자로 자동 등록됩니다:\n${inviteUrl}`;
 
     // 1. 모바일 환경에서 시스템 공유 시트 (카카오톡, 문자 등 직접 선택 가능)
     if (typeof navigator !== 'undefined' && navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent || '')) {

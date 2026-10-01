@@ -179,7 +179,7 @@ function RoundJoinContent() {
             />
           </div>
           <span className="inline-block px-3 py-1 rounded-full bg-yellow-400 text-emerald-950 font-black text-xs shadow-xs mb-1">
-            {isJapanese ? 'PARKON 同伴者招待' : 'PARKON 동반자 초대'}
+            {isJapanese ? 'PARKY 同伴者招待' : 'PARKY 파키 동반자 초대'}
           </span>
           <h1 className="text-xl font-black tracking-tight text-white">
             {isJapanese ? '一緒にパークゴルフをプレーしましょう！ ⛳' : '함께 파크골프 쳐요! ⛳'}
