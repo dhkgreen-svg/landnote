@@ -169,11 +169,15 @@ function RoundJoinContent() {
       <div className="bg-white rounded-3xl shadow-2xl border border-stone-200 w-full max-w-sm overflow-hidden flex flex-col">
         {/* 상단 캐릭터 환영 히어로 배너 */}
         <div className="bg-gradient-to-b from-emerald-800 to-emerald-950 p-5 text-center text-white relative">
-          <div className="relative w-24 h-24 mx-auto mb-2 rounded-2xl overflow-hidden shadow-lg border-2 border-emerald-400/40 bg-emerald-900/60">
+          <div
+            className="relative w-24 h-24 mx-auto mb-2 rounded-2xl overflow-hidden shadow-lg border-2 border-emerald-400/40 bg-emerald-900/60"
+            style={{ width: '96px', height: '96px' }}
+          >
             <Image
               src="/mascot/사진저장고_사진_20260913_28.jpg"
               alt={isJapanese ? 'パキ歓迎マスコット' : '파키 환영 마스코트'}
               fill
+              sizes="96px"
               className="object-cover"
               priority
             />
