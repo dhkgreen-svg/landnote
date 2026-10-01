@@ -5,6 +5,7 @@ import { Footer } from '@/components/Footer';
 import { VisitorTracker } from '@/components/VisitorTracker';
 import { MainWrapper } from '@/components/MainWrapper';
 import { LanguageProvider } from '@/lib/i18n/LanguageContext';
+import { InstallPwaBanner } from '@/components/InstallPwaBanner';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://parkongolf.com'),
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     title: '파크골프 올인원',
   },
   openGraph: {
@@ -90,6 +91,7 @@ export default function RootLayout({
             {children}
           </MainWrapper>
           <Footer />
+          <InstallPwaBanner />
         </LanguageProvider>
       </body>
     </html>
