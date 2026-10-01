@@ -149,8 +149,8 @@ function InstallPageContent() {
           </p>
           <p className="text-[11px] text-emerald-200 mt-0.5 font-medium">
             {isJapanese
-              ? '同伴者4名リアルタイムスコア · マイ年代記(生涯戦績)'
-              : '동반자 4인 실시간 모바일 스코어 · 나의 연대기 (평생 전적)'}
+              ? 'リアルタイム モバイルスコア · マイ年代記(生涯戦績)'
+              : '실시간 모바일 스코어 · 나의 연대기 (평생 전적)'}
           </p>
         </div>
 
@@ -170,19 +170,19 @@ function InstallPageContent() {
 
           {/* 2대 핵심 가치 카드 (대표님 특명: 불필요한 날씨 제외, 모바일 스코어보드 & 나의 연대기 집중) */}
           <div className="space-y-3">
-            {/* 혜택 1: 동반자 4인 실시간 모바일 스코어보드 */}
+            {/* 혜택 1: 파크골프 실시간 모바일 스코어보드 (대표님 지침: 4인 제한 문구 삭제) */}
             <div className="p-3.5 bg-emerald-50/60 rounded-2xl border-2 border-emerald-500/40 flex items-center gap-3.5 shadow-xs">
               <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-xl shrink-0 shadow-sm">
                 📱
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs sm:text-sm font-black text-stone-950">
-                  {isJapanese ? '同伴者4名 リアルタイム モバイル スコアボード' : '동반자 4인 실시간 모바일 스코어보드'}
+                  {isJapanese ? 'パークゴルフ リアルタイム モバイル スコアボード' : '파크골프 실시간 모바일 스코어보드'}
                 </div>
                 <div className="text-[11px] text-emerald-800 font-medium mt-0.5 leading-tight">
                   {isJapanese
-                    ? '紙のカード不要、スマホ1台で4名の打数を自動計算・共有'
-                    : '종이 카드 없이 스마트폰 하나로 4명 타수를 실시간 자동 계산·공유'}
+                    ? '紙のカード不要、スマホ1台で打数をリアルタイム自動計算・共有'
+                    : '종이 카드 없이 스마트폰 하나로 타수를 실시간 자동 계산·공유'}
                 </div>
               </div>
             </div>
@@ -205,18 +205,18 @@ function InstallPageContent() {
             </div>
           </div>
 
-          {/* 3. 초대형 메인 액션 버튼 (대표님 특명: 이탈용 둘러보기 버튼 완전 삭제, 100% 설치 집중) */}
+          {/* 3. 초대형 메인 액션 버튼 (대표님 특명: 모바일 스코어보드 파키 바로 설치하기 & 무료 삭제) */}
           <div className="pt-2">
             <button
               type="button"
               onClick={handleInstallClick}
               className="w-full py-4.5 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition active:scale-98 flex items-center justify-center gap-2.5 cursor-pointer border-2 border-emerald-400"
             >
-              <Smartphone className="w-5 h-5 sm:w-6 sm:h-6" />
+              <Smartphone className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
               <span>
                 {isStandalone
                   ? (isJapanese ? '⛳ アプリをすぐに開く' : '⛳ 앱 바로 실행하기')
-                  : (isJapanese ? '📱 スマホのホーム画面に登録 (無料)' : '📱 내 휴대폰 바탕화면에 바로 설치 (무료)')}
+                  : (isJapanese ? '📱 モバイルスコアボード パキを今すぐ登録' : '📱 모바일 스코어보드 파키 바로 설치하기')}
               </span>
             </button>
           </div>

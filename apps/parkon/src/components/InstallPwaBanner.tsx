@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { X, Smartphone, Share2, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 
@@ -10,6 +11,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function InstallPwaBanner() {
+  const pathname = usePathname();
   const { isJapanese } = useTranslation();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showBanner, setShowBanner] = useState<boolean>(false);
@@ -113,7 +115,7 @@ export function InstallPwaBanner() {
     } catch {}
   };
 
-  if (isStandalone || !showBanner) return null;
+  if (pathname === '/install' || isStandalone || !showBanner) return null;
 
   return (
     <>
