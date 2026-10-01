@@ -39,21 +39,8 @@ function RoundJoinContent() {
     // 2. 카카오 회원 로그인 여부 확인
     const user = ParkOnStorage.getKakaoUser();
     setKakaoUser(user);
-    if (user) {
-      const candidate = user.realName || user.nickname || '';
-      setUserName(candidate && candidate !== '홍길동' ? candidate : '');
-    } else {
-      const defaultName = ParkOnStorage.getUserDisplayName();
-      setUserName(
-        defaultName &&
-          defaultName !== '파크골퍼' &&
-          defaultName !== 'パークゴルファー' &&
-          defaultName !== '김대희' &&
-          defaultName !== '홍길동'
-          ? defaultName
-          : ''
-      );
-    }
+    // 게스트 이름 입력칸은 홍길동 등의 기본값 없이 항상 깨끗한 빈칸으로 시작
+    setUserName('');
   }, [courseParam, isJapanese]);
 
   const executeJoin = async (name: string, isGuest: boolean) => {
@@ -233,8 +220,8 @@ function RoundJoinContent() {
                 onChange={(e) => setUserName(e.target.value)}
                 placeholder={
                   isJapanese
-                    ? 'お名前入力 (例: パク・プロ)'
-                    : "이름 또는 별명 입력 (예: 이프로, 최사장)"
+                    ? 'お名前を入力してください (例: パク・プロ)'
+                    : "성함을 입력하세요 (예: 이프로, 최사장...)"
                 }
                 className="w-full px-3.5 py-3 text-base bg-stone-50 text-stone-900 border-2 border-stone-200 rounded-xl font-bold focus:outline-hidden focus:border-emerald-600 focus:bg-white transition"
               />
@@ -248,7 +235,7 @@ function RoundJoinContent() {
               </button>
             </div>
 
-            {/* [선택 2] 카카오톡으로 가입하고 합류하기 (정회원 평생 전적 보존) */}
+            {/* [선택 2] 파키 회원가입과 동시 합류하기 (정회원 평생 전적 보존) */}
             <div className="p-4 rounded-3xl bg-gradient-to-br from-amber-50 via-yellow-50/50 to-amber-50 border-2 border-yellow-400 shadow-sm space-y-2.5 text-center">
               <div className="flex items-center justify-center gap-1.5 text-[11px] font-black text-amber-900">
                 <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
@@ -263,8 +250,8 @@ function RoundJoinContent() {
                 >
                   <span>
                     {isJapanese
-                      ? `⚡ '${kakaoUser.realName || kakaoUser.nickname}' 会員として合流`
-                      : `⚡ '${kakaoUser.realName || kakaoUser.nickname}' 회원으로 합류하기`}
+                      ? `⚡ カカオ認証で合流 (${kakaoUser.realName || kakaoUser.nickname} 様)`
+                      : `⚡ 카카오 인증으로 합류하기 ('${kakaoUser.realName || kakaoUser.nickname}' 회원)`}
                   </span>
                   <ArrowRight className="w-4 h-4 text-stone-950" />
                 </button>
@@ -274,15 +261,15 @@ function RoundJoinContent() {
                   onClick={() => setShowKakaoModal(true)}
                   className="w-full py-3.5 bg-yellow-400 hover:bg-yellow-300 text-stone-950 font-black text-sm sm:text-base rounded-2xl shadow-md transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-yellow-500/60"
                 >
-                  <span>{isJapanese ? '⚡ カカオで登録して合流する' : '⚡ 카카오톡으로 가입하고 합류하기'}</span>
+                  <span>{isJapanese ? '⚡ パキ会員登録と同時に合流する' : '⚡ 파키 회원가입과 동시 합류하기'}</span>
                   <ArrowRight className="w-4 h-4 text-stone-950" />
                 </button>
               )}
 
               <p className="text-[10px] text-stone-500 font-medium">
                 {isJapanese
-                  ? '※ カカオでログインすると、本日の戦績がマイ年代記に永久保存されます。'
-                  : '※ 카카오로 가입하면 오늘 친 18홀 전적이 나의 연대기에 영구 저장됩니다.'}
+                  ? '※ カカオ1秒簡単認証でパキ正会員となり、本日の18ホールの戦績がマイ年代記に永久保存されます。'
+                  : '※ 카카오 1초 간편인증으로 파키 정회원이 되며, 오늘 친 18홀 전적이 나의 연대기에 평생 저장됩니다.'}
               </p>
             </div>
           </div>
