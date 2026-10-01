@@ -250,8 +250,8 @@ function RoundJoinContent() {
                 >
                   <span>
                     {isJapanese
-                      ? `⚡ カカオ認証で合流 (${kakaoUser.realName || kakaoUser.nickname} 様)`
-                      : `⚡ 카카오 인증으로 합류하기 ('${kakaoUser.realName || kakaoUser.nickname}' 회원)`}
+                      ? '⚡ パキ正会員として公式合流する'
+                      : '⚡ 파키 정회원으로 공식 합류하기'}
                   </span>
                   <ArrowRight className="w-4 h-4 text-stone-950" />
                 </button>
@@ -268,8 +268,8 @@ function RoundJoinContent() {
 
               <p className="text-[10px] text-stone-500 font-medium">
                 {isJapanese
-                  ? '※ カカオ1秒簡単認証でパキ正会員となり、本日の18ホールの戦績がマイ年代記に永久保存されます。'
-                  : '※ 카카오 1초 간편인증으로 파키 정회원이 되며, 오늘 친 18홀 전적이 나의 연대기에 평생 저장됩니다.'}
+                  ? '※ 1秒簡単認証でパキ正会員となり、本日の戦績がマイ年代記に永久保存されます。'
+                  : '※ 1초 간편인증으로 파키 정회원이 되며, 오늘 친 18홀 전적이 나의 연대기에 평생 저장됩니다.'}
               </p>
             </div>
           </div>
