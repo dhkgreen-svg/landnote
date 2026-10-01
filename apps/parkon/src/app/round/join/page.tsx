@@ -75,7 +75,7 @@ function RoundJoinContent() {
       if (activeRound && activeRound.id === roundIdParam) {
         // 이미 명단에 없으면 동반자로 추가 등록
         const alreadyIn = activeRound.players.some((p) => p.name === trimmedName);
-        if (!alreadyIn && activeRound.players.length < 4) {
+        if (!alreadyIn) {
           activeRound.players.push({
             id: `p_join_${Date.now()}`,
             name: trimmedName,
@@ -288,7 +288,7 @@ function RoundJoinContent() {
         <div className="bg-stone-50 p-3 border-t border-stone-100 text-center">
           <p className="text-[10px] text-stone-600 font-medium">
             {isJapanese
-              ? 'ParkOnはアプリのインストール不要で、スマートフォンのブラウザですぐにご利用いただけます。'
+              ? 'パークゴルフ オールインワンはアプリのインストール不要で、スマートフォンのブラウザですぐにご利用いただけます。'
               : '파크골프 올인원은 별도 앱 설치 없이 스마트폰 브라우저에서 바로 사용하실 수 있습니다.'}
           </p>
         </div>
