@@ -212,9 +212,9 @@ export default function ClubGatheringHomePage() {
 
   // 클럽 가입 신청 모달 상태
   const [applyingClub, setApplyingClub] = useState<ParkGolfClub | null>(null);
-  const [applicantName, setApplicantName] = useState('홍길동(본인)');
-  const [applicantPhone, setApplicantPhone] = useState('010-3814-1422');
-  const [applicantMessage, setApplicantMessage] = useState('클럽에 가입하여 매너 라운드 함께하고 싶습니다!');
+  const [applicantName, setApplicantName] = useState('');
+  const [applicantPhone, setApplicantPhone] = useState('');
+  const [applicantMessage, setApplicantMessage] = useState('');
 
   // 새 클럽 창단 폼 상태
   const [newClubName, setNewClubName] = useState('');
@@ -1545,19 +1545,27 @@ ${shareUrl}`;
     const appliedClubName = applyingClub.name;
     setApplyingClub(null);
     setShowClubBrowseModal(false);
-    showToast(`📨 '${appliedClubName}'에 가입 신청이 완료되었습니다. 총무님 승인 후 정회원으로 등록됩니다.`);
+    showToast(
+      isJapanese
+        ? `📨 '${appliedClubName}'への加入申請が完了しました。総務の承認後に正会員として登録されます。`
+        : `📨 '${appliedClubName}'에 가입 신청이 완료되었습니다. 총무님 승인 후 정회원으로 등록됩니다.`
+    );
   };
 
   // 초청장 링크로 즉시 가입
   const handleDirectJoinByInvite = (club: ParkGolfClub) => {
-    const myName = applicantName || getDefaultSelfName() || '홍길동(본인)';
+    const myName = applicantName || getDefaultSelfName() || (isJapanese ? '会員' : '회원');
     ClubStorage.directJoinViaInvite(club.id, {
       name: myName,
-      phone: applicantPhone || '010-3814-1422',
+      phone: applicantPhone || '',
     });
     refreshAllData();
     setShowClubBrowseModal(false);
-    showToast(`🎉 '${club.name}'에 즉시 정회원으로 가입되었습니다!`);
+    showToast(
+      isJapanese
+        ? `🎉 '${club.name}'に正会員として即時加入しました！`
+        : `🎉 '${club.name}'에 즉시 정회원으로 가입되었습니다!`
+    );
   };
 
   // ========================================================
