@@ -157,13 +157,19 @@ export async function POST(req: NextRequest) {
           updatedAt: Date.now(),
         };
       } else {
+        const isPlaceholder = (n?: string) => {
+          if (!n) return true;
+          const trimmed = n.trim();
+          return trimmed.startsWith('동반자') || trimmed.startsWith('同伴者') || trimmed.startsWith('ゲスト') || trimmed.startsWith('Player');
+        };
+
         // 기존 방 업데이트: 동반자가 이미 입장해서 입력한 실제 이름은 절대 덮어쓰지 않음
         const mergedPlayers: RoomPlayer[] = (players || room.players).map((p: RoomPlayer, idx: number) => {
           if (idx === 0) {
             return { ...p, isLeader: true, name: leaderName || p.name || '조장' };
           }
           const existing = room!.players[idx];
-          if (existing && !existing.name.startsWith('동반자') && p.name.startsWith('동반자')) {
+          if (existing && !isPlaceholder(existing.name) && isPlaceholder(p.name)) {
             return existing;
           }
           return p;
@@ -212,10 +218,15 @@ export async function POST(req: NextRequest) {
           status: 'WAITING',
           updatedAt: Date.now(),
         };
-      } else {
-        // 첫 번째 빈 슬롯(동반자1, 동반자2...)에 게스트를 즉시 배치
+        const isPlaceholder = (n?: string) => {
+          if (!n) return true;
+          const trimmed = n.trim();
+          return trimmed.startsWith('동반자') || trimmed.startsWith('同伴者') || trimmed.startsWith('ゲスト') || trimmed.startsWith('Player');
+        };
+
+        // 첫 번째 빈 슬롯(동반자1, 同伴者1...)에 게스트를 즉시 배치
         const placeholderIdx = room.players.findIndex(
-          (p, idx) => idx > 0 && !p.isLeader && (p.name.startsWith('동반자') || !p.name.trim())
+          (p, idx) => idx > 0 && !p.isLeader && (isPlaceholder(p.name) || !p.name.trim())
         );
 
         if (placeholderIdx !== -1) {
