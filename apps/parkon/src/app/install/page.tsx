@@ -6,16 +6,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
   Smartphone,
-  Sparkles,
   Share2,
   CheckCircle2,
-  MapPin,
-  Clock,
-  Compass,
-  ArrowRight,
-  ShieldCheck,
   X,
-  CloudSun,
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 
@@ -154,10 +147,10 @@ function InstallPageContent() {
               ? 'パークゴルフ オールインワン (ParkGolf All-in-One)'
               : '파크골프 올인원 (ParkGolf All-in-One)'}
           </p>
-          <p className="text-[11px] text-stone-300 mt-0.5">
+          <p className="text-[11px] text-emerald-200 mt-0.5 font-medium">
             {isJapanese
-              ? '全国コース天気 · 1秒スコアボード · スマート道案内'
-              : '전국 400개 구장 실시간 날씨 · 1초 스코어보드 · 길안내'}
+              ? '同伴者4名リアルタイムスコア · マイ年代記(生涯戦績)'
+              : '동반자 4인 실시간 모바일 스코어 · 나의 연대기 (평생 전적)'}
           </p>
         </div>
 
@@ -175,82 +168,57 @@ function InstallPageContent() {
             </div>
           )}
 
-          {/* 3대 핵심 혜택 카드 */}
-          <div className="space-y-2.5">
-            {/* 혜택 1: 날씨 */}
-            <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center text-lg shrink-0 shadow-xs">
-                <CloudSun className="w-5 h-5 text-white" />
+          {/* 2대 핵심 가치 카드 (대표님 특명: 불필요한 날씨 제외, 모바일 스코어보드 & 나의 연대기 집중) */}
+          <div className="space-y-3">
+            {/* 혜택 1: 동반자 4인 실시간 모바일 스코어보드 */}
+            <div className="p-3.5 bg-emerald-50/60 rounded-2xl border-2 border-emerald-500/40 flex items-center gap-3.5 shadow-xs">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-xl shrink-0 shadow-sm">
+                📱
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-black text-stone-900">
-                  {isJapanese ? '全国400コースのリアルタイム天気' : '전국 400개 구장 실시간 날씨'}
+                <div className="text-xs sm:text-sm font-black text-stone-950">
+                  {isJapanese ? '同伴者4名 リアルタイム モバイル スコアボード' : '동반자 4인 실시간 모바일 스코어보드'}
                 </div>
-                <div className="text-[11px] text-stone-500 font-medium">
+                <div className="text-[11px] text-emerald-800 font-medium mt-0.5 leading-tight">
                   {isJapanese
-                    ? '風速・降水確率・気温を1秒で確認'
-                    : '풍속 · 강수확률 · 기온을 1초 만에 확인'}
+                    ? '紙のカード不要、スマホ1台で4名の打数を自動計算・共有'
+                    : '종이 카드 없이 스마트폰 하나로 4명 타수를 실시간 자동 계산·공유'}
                 </div>
               </div>
             </div>
 
-            {/* 혜택 2: 스코어보드 */}
-            <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-lg shrink-0 shadow-xs">
-                <Clock className="w-5 h-5 text-white" />
+            {/* 혜택 2: 나의 연대기 (파크골프장 순례기 & 나의 기록) */}
+            <div className="p-3.5 bg-amber-50/60 rounded-2xl border-2 border-amber-500/40 flex items-center gap-3.5 shadow-xs">
+              <div className="w-11 h-11 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center text-xl shrink-0 shadow-sm">
+                🏆
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-black text-stone-900">
-                  {isJapanese ? '同伴者4名の1秒リアルタイム共有' : '동반자 4인 1초 실시간 스코어보드'}
+                <div className="text-xs sm:text-sm font-black text-stone-950">
+                  {isJapanese ? 'マイ年代記 (コース巡礼記＆マイ記録)' : '나의 연대기 (파크골프장 순례기 & 나의 기록)'}
                 </div>
-                <div className="text-[11px] text-stone-500 font-medium">
+                <div className="text-[11px] text-amber-900 font-medium mt-0.5 leading-tight">
                   {isJapanese
-                    ? '紙のスコアカード不要、スマホ同期'
-                    : '종이 스코어카드 없이 동반자 폰과 즉시 동기화'}
-                </div>
-              </div>
-            </div>
-
-            {/* 혜택 3: 성지순례 여권 */}
-            <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-lg shrink-0 shadow-xs">
-                <Compass className="w-5 h-5 text-white" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-black text-stone-900">
-                  {isJapanese ? '日韓 公認 聖地巡礼パスポート' : '한·일 공식 성지순례 여권 & 도장'}
-                </div>
-                <div className="text-[11px] text-stone-500 font-medium">
-                  {isJapanese
-                    ? '発祥地・全国5大名門コース制覇実録'
-                    : '발상지 마쿠베츠부터 전국 5대 명품 구장 완주 실록'}
+                    ? '巡った全国コース、ホールインワン勲章、生涯戦績を永久保存'
+                    : '내가 다녀온 전국 구장, 홀인원 훈장, 평생의 전적과 메달을 영구 보존'}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 3. 초대형 메인 액션 버튼 */}
-          <div className="pt-1 space-y-2.5">
+          {/* 3. 초대형 메인 액션 버튼 (대표님 특명: 이탈용 둘러보기 버튼 완전 삭제, 100% 설치 집중) */}
+          <div className="pt-2">
             <button
               type="button"
               onClick={handleInstallClick}
-              className="w-full py-4 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-base rounded-2xl shadow-xl transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border-2 border-emerald-400"
+              className="w-full py-4.5 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition active:scale-98 flex items-center justify-center gap-2.5 cursor-pointer border-2 border-emerald-400"
             >
-              <Smartphone className="w-5 h-5" />
+              <Smartphone className="w-5 h-5 sm:w-6 sm:h-6" />
               <span>
                 {isStandalone
                   ? (isJapanese ? '⛳ アプリをすぐに開く' : '⛳ 앱 바로 실행하기')
                   : (isJapanese ? '📱 スマホのホーム画面に登録 (無料)' : '📱 내 휴대폰 바탕화면에 바로 설치 (무료)')}
               </span>
             </button>
-
-            <Link
-              href="/"
-              className="w-full py-3.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-black text-xs rounded-xl shadow-xs transition active:scale-98 flex items-center justify-center gap-1.5 border border-stone-300"
-            >
-              <span>{isJapanese ? '⛳ 全国コース＆天気を先に見る' : '⛳ 전국 구장 & 실시간 날씨 먼저 둘러보기'}</span>
-              <ArrowRight className="w-3.5 h-3.5 text-stone-600" />
-            </Link>
           </div>
 
           {/* 하단 안심 안내문구 */}
