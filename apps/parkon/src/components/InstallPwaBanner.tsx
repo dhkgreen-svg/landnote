@@ -115,7 +115,7 @@ export function InstallPwaBanner() {
     } catch {}
   };
 
-  if (pathname === '/install' || isStandalone || !showBanner) return null;
+  if (pathname === '/install' || pathname?.startsWith('/round/') || isStandalone || !showBanner) return null;
 
   return (
     <>

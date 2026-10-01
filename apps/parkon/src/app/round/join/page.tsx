@@ -40,7 +40,8 @@ function RoundJoinContent() {
     const user = ParkOnStorage.getKakaoUser();
     setKakaoUser(user);
     if (user) {
-      setUserName(user.realName || user.nickname || (isJapanese ? '会員' : '회원'));
+      const candidate = user.realName || user.nickname || '';
+      setUserName(candidate && candidate !== '홍길동' ? candidate : '');
     } else {
       const defaultName = ParkOnStorage.getUserDisplayName();
       setUserName(
@@ -214,116 +215,77 @@ function RoundJoinContent() {
             </div>
           )}
 
-          {/* [CASE 1] 이미 카카오 정회원 로그인되어 있는 경우 */}
-          {kakaoUser ? (
-            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-500 rounded-2xl p-4 text-center space-y-3 shadow-xs">
-              <div className="inline-flex items-center gap-1.5 text-emerald-800 text-[11px] font-black bg-emerald-100 px-3 py-1 rounded-full">
-                <Sparkles className="w-3.5 h-3.5 text-yellow-500 fill-yellow-400" />
-                <span>{isJapanese ? '正会員認証完了' : '회원 인증 완료'}</span>
-              </div>
-              <div>
-                <p className="text-lg font-black text-stone-900">
-                  '{kakaoUser.realName || kakaoUser.nickname}' {isJapanese ? '様' : '님'}
-                </p>
-                <p className="text-xs text-stone-600 font-semibold mt-0.5">
-                  {isJapanese
-                    ? '本日の戦績がマイ年代記に永久保存されます。'
-                    : '오늘의 라운딩 전적이 나의 연대기에 영구 저장됩니다.'}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => executeJoin(kakaoUser.realName || kakaoUser.nickname || (isJapanese ? '会員' : '회원'), false)}
-                className="w-full py-4 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-black text-base rounded-2xl shadow-lg transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-emerald-500"
-              >
-                <span>{isJapanese ? '🏌️ ラウンドに合流する' : '🏌️ 라운딩 바로 합류하기'}</span>
-                <ArrowRight className="w-5 h-5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsGuestInputOpen(true)}
-                className="text-xs text-stone-500 hover:text-stone-700 underline font-bold pt-1 cursor-pointer block mx-auto"
-              >
-                {isJapanese ? '今回だけ別の名前(ゲスト)で一時参加する' : '이번만 다른 이름(게스트)으로 임시 참여하기'}
-              </button>
-            </div>
-          ) : (
-            /* [CASE 2] 비로그인 상태: 성함 입력 후 원터치 바로 합류하기 (대표님 특명 초간결 동선) */
-            <div className="space-y-4">
-              <div className="p-4 rounded-3xl bg-white border-2 border-emerald-500 shadow-md space-y-3">
+          {/* 대표님 특명: 2대 핵심 선택 (1. 가입 없이 바로 합류하기 vs 2. 카카오톡으로 가입하고 합류하기) */}
+          <div className="space-y-4">
+            {/* [선택 1] 가입 없이 바로 합류하기 (게스트 빠른 입장) */}
+            <div className="p-4 rounded-3xl bg-white border-2 border-emerald-500 shadow-md space-y-3">
+              <div className="flex items-center justify-between">
                 <label className="block text-xs font-black text-stone-800">
                   {isJapanese ? 'お名前 (またはニックネーム)' : '성함 또는 닉네임 입력'}
                 </label>
-                <input
-                  type="text"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  placeholder={
-                    isJapanese
-                      ? '例: パク・プロ (未入力時は同伴者)'
-                      : "예: 이프로, 최사장 (미입력 시 '동반자')"
-                  }
-                  className="w-full px-3.5 py-3 text-base bg-stone-50 text-stone-900 border-2 border-stone-200 rounded-xl font-bold focus:outline-hidden focus:border-emerald-600 focus:bg-white transition"
-                />
-                <button
-                  type="button"
-                  onClick={() => executeJoin(userName.trim() || (isJapanese ? '同伴者' : '동반자'), true)}
-                  className="w-full py-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-base rounded-2xl shadow-lg transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-emerald-400"
-                >
-                  <span>{isJapanese ? '🏌️ ラウンドに合流する' : '🏌️ 라운딩 바로 합류하기'}</span>
-                  <ArrowRight className="w-5 h-5" />
-                </button>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  {isJapanese ? '登録なしで即合流' : '가입 없이 1초 합류'}
+                </span>
               </div>
-
-              {/* 하단 보조 옵션: 카카오 로그인으로 기록 평생 저장 */}
-              <div className="pt-1 text-center space-y-2">
-                <button
-                  type="button"
-                  onClick={() => setShowKakaoModal(true)}
-                  className="w-full py-3 bg-yellow-400 hover:bg-yellow-300 text-stone-950 font-black text-xs rounded-xl shadow-xs transition active:scale-98 flex items-center justify-center gap-1.5 cursor-pointer border border-yellow-500/40"
-                >
-                  <span>⚡ {isJapanese ? 'カカオログインして記録を永久保存する' : '카카오 로그인하고 내 기록 평생 저장하기'}</span>
-                </button>
-                <p className="text-[10px] text-stone-400 font-medium">
-                  {isJapanese
-                    ? '※ ログインなしでもリーダー端末とリアルタイムスコアは正常に共有されます'
-                    : '※ 로그인 없이도 조장과 실시간 스코어보드는 정상 공유됩니다'}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* 게스트 수동 입력창 모달/드로어 (회원 로그인 상태에서 다른 이름 입력 원할 때) */}
-          {kakaoUser && isGuestInputOpen && (
-            <div className="p-3 bg-stone-100 rounded-xl border border-stone-300 space-y-2">
-              <label className="text-xs font-bold text-stone-700">{isJapanese ? 'ゲスト用の一時的なお名前' : '게스트로 사용할 임시 이름'}</label>
               <input
                 type="text"
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
-                placeholder={isJapanese ? '一時名を入力' : '임시 이름 입력'}
-                className="w-full px-3 py-2 text-xs bg-white border border-stone-300 rounded-lg font-bold"
+                placeholder={
+                  isJapanese
+                    ? 'お名前入力 (例: パク・プロ)'
+                    : "이름 또는 별명 입력 (예: 이프로, 최사장)"
+                }
+                className="w-full px-3.5 py-3 text-base bg-stone-50 text-stone-900 border-2 border-stone-200 rounded-xl font-bold focus:outline-hidden focus:border-emerald-600 focus:bg-white transition"
               />
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => executeJoin(userName.trim() || (isJapanese ? 'ゲスト' : '게스트'), true)}
-                  className="flex-1 py-2 bg-stone-700 text-white text-xs font-black rounded-lg"
-                >
-                  {isJapanese ? 'ゲストとして入場' : '게스트로 입장'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsGuestInputOpen(false)}
-                  className="px-3 py-2 bg-stone-200 text-stone-700 text-xs font-bold rounded-lg"
-                >
-                  {isJapanese ? 'キャンセル' : '취소'}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => executeJoin(userName.trim() || (isJapanese ? '同伴者' : '동반자'), true)}
+                className="w-full py-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-base rounded-2xl shadow-lg transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-emerald-400"
+              >
+                <span>{isJapanese ? '🏌️ 会員登録なしで今すぐ合流する' : '🏌️ 가입 없이 바로 합류하기'}</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
             </div>
-          )}
+
+            {/* [선택 2] 카카오톡으로 가입하고 합류하기 (정회원 평생 전적 보존) */}
+            <div className="p-4 rounded-3xl bg-gradient-to-br from-amber-50 via-yellow-50/50 to-amber-50 border-2 border-yellow-400 shadow-sm space-y-2.5 text-center">
+              <div className="flex items-center justify-center gap-1.5 text-[11px] font-black text-amber-900">
+                <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
+                <span>{isJapanese ? 'マイ年代記・生涯戦績を永久保存' : '나의 연대기 · 평생 전적 영구 보존'}</span>
+              </div>
+
+              {kakaoUser ? (
+                <button
+                  type="button"
+                  onClick={() => executeJoin(kakaoUser.realName || kakaoUser.nickname || (isJapanese ? '会員' : '회원'), false)}
+                  className="w-full py-3.5 bg-yellow-400 hover:bg-yellow-300 text-stone-950 font-black text-sm sm:text-base rounded-2xl shadow-md transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-yellow-500/60"
+                >
+                  <span>
+                    {isJapanese
+                      ? `⚡ '${kakaoUser.realName || kakaoUser.nickname}' 会員として合流`
+                      : `⚡ '${kakaoUser.realName || kakaoUser.nickname}' 회원으로 합류하기`}
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-stone-950" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowKakaoModal(true)}
+                  className="w-full py-3.5 bg-yellow-400 hover:bg-yellow-300 text-stone-950 font-black text-sm sm:text-base rounded-2xl shadow-md transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-yellow-500/60"
+                >
+                  <span>{isJapanese ? '⚡ カカオで登録して合流する' : '⚡ 카카오톡으로 가입하고 합류하기'}</span>
+                  <ArrowRight className="w-4 h-4 text-stone-950" />
+                </button>
+              )}
+
+              <p className="text-[10px] text-stone-500 font-medium">
+                {isJapanese
+                  ? '※ カカオでログインすると、本日の戦績がマイ年代記に永久保存されます。'
+                  : '※ 카카오로 가입하면 오늘 친 18홀 전적이 나의 연대기에 영구 저장됩니다.'}
+              </p>
+            </div>
+          </div>
 
           {/* 하단 보조 홈 이동 */}
           <Link
