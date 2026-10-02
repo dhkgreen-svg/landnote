@@ -5,7 +5,6 @@ import { Footer } from '@/components/Footer';
 import { VisitorTracker } from '@/components/VisitorTracker';
 import { MainWrapper } from '@/components/MainWrapper';
 import { LanguageProvider } from '@/lib/i18n/LanguageContext';
-import { InstallPwaBanner } from '@/components/InstallPwaBanner';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.parkgolfallinone.com'),
@@ -82,6 +81,18 @@ export default function RootLayout({
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8564518885257853"
           crossOrigin="anonymous"
         />
+        {/* PWA Service Worker Registration for Android 1-Click Install */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').catch(function() {});
+                });
+              }
+            `,
+          }}
+        />
       </head>
       <body className="min-h-screen flex flex-col antialiased bg-stone-100 text-stone-900">
         <LanguageProvider>
@@ -91,7 +102,6 @@ export default function RootLayout({
             {children}
           </MainWrapper>
           <Footer />
-          <InstallPwaBanner />
         </LanguageProvider>
       </body>
     </html>

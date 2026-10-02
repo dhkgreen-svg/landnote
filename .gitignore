@@ -48,6 +48,7 @@ tmp_*.html
 
 # PWA build artifacts
 **/public/sw.js
+!apps/parkon/public/sw.js
 **/public/workbox-*.js
 
 # large backups and media

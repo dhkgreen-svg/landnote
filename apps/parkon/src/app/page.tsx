@@ -53,6 +53,8 @@ export default function HomePage() {
   const [showKakaoModal, setShowKakaoModal] = useState<boolean>(false);
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
   const [showInstallGuideModal, setShowInstallGuideModal] = useState<boolean>(false);
+  const [installGuideTab, setInstallGuideTab] = useState<'KAKAO' | 'CHROME' | 'IOS'>('KAKAO');
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showCourseTodayModal, setShowCourseTodayModal] = useState<boolean>(false);
   const [selectedCourseForDetail, setSelectedCourseForDetail] = useState<Course | null>(null);
   const [showQuickGuideModal, setShowQuickGuideModal] = useState<boolean>(false);
@@ -129,6 +131,66 @@ export default function HomePage() {
         if (err?.name === 'AbortError') return;
       }
     }
+  };
+
+  useEffect(() => {
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    const handleAppInstalled = () => {
+      setDeferredPrompt(null);
+      try {
+        localStorage.setItem('parkon_app_installed', 'true');
+      } catch {}
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleAppInstallClick = async () => {
+    const ua = typeof window !== 'undefined' ? window.navigator.userAgent.toLowerCase() : '';
+    const isIos = /iphone|ipad|ipod/.test(ua) && !ua.includes('crios');
+    const isKakao = ua.includes('kakaotalk');
+
+    // 1. 애플 (아이폰/아이패드) 기기인 경우: 설치 안내문 (사파리 홈 화면 추가 안내) 즉시 실행
+    if (isIos) {
+      setInstallGuideTab('IOS');
+      setShowInstallGuideModal(true);
+      return;
+    }
+
+    // 2. 안드로이드 / 크롬 / 삼성인터넷: PWA 자동 설치창이 준비되어 있으면 즉시 시스템 설치창 호출
+    if (deferredPrompt && deferredPrompt.prompt) {
+      try {
+        await deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          try {
+            localStorage.setItem('parkon_app_installed', 'true');
+          } catch {}
+        }
+        setDeferredPrompt(null);
+        return;
+      } catch (err) {
+        console.warn('Direct prompt failed or blocked, opening guide modal', err);
+      }
+    }
+
+    // 3. 카카오톡 내부 브라우저인 경우: 카톡 전용 탈출 및 바로가기 안내문 즉시 실행
+    if (isKakao) {
+      setInstallGuideTab('KAKAO');
+      setShowInstallGuideModal(true);
+      return;
+    }
+
+    // 4. 그 외 안드로이드/PC 브라우저 안내창 표출
+    setInstallGuideTab('CHROME');
+    setShowInstallGuideModal(true);
   };
 
   useEffect(() => {
@@ -1186,7 +1248,7 @@ export default function HomePage() {
           {/* 좌측 50%: 앱 설치하기 버튼 */}
           <button
             type="button"
-            onClick={() => setShowInstallGuideModal(true)}
+            onClick={handleAppInstallClick}
             className="w-full py-2.5 px-2.5 bg-emerald-800 hover:bg-emerald-900 active:scale-[0.99] border-2 border-emerald-600 text-yellow-300 font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition group"
             title={isJapanese ? 'スマホ・PC 画面にアプリ追加' : isEnglish ? 'Install App on Home Screen' : '스마트폰·PC 바탕화면에 앱 설치'}
           >
@@ -2593,6 +2655,8 @@ export default function HomePage() {
       <InstallGuideModal
         isOpen={showInstallGuideModal}
         onClose={() => setShowInstallGuideModal(false)}
+        initialTab={installGuideTab}
+        deferredPrompt={deferredPrompt}
       />
 
       {/* 파크골프 올인원 소개 URL 복사 완료 토스트 */}

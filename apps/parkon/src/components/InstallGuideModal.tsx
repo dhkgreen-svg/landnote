@@ -8,22 +8,38 @@ interface InstallGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
   deferredPrompt?: any;
+  initialTab?: 'KAKAO' | 'CHROME' | 'IOS';
 }
 
-export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialPrompt }: InstallGuideModalProps) {
+export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialPrompt, initialTab }: InstallGuideModalProps) {
   const { isJapanese, isEnglish } = useTranslation();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(initialPrompt || null);
   const [mobileSubTab, setMobileSubTab] = useState<'KAKAO' | 'CHROME' | 'IOS'>('KAKAO');
   const [showPcOption, setShowPcOption] = useState<boolean>(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (initialPrompt) {
+      setDeferredPrompt(initialPrompt);
+    }
+  }, [initialPrompt]);
 
-    // 일본어 환경에서는 크롬/안드로이드가 기본, 한국어에서는 카카오톡이 기본
-    if (isJapanese) {
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isOpen) return;
+
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isIosDevice = /iphone|ipad|ipod/.test(ua) && !ua.includes('crios');
+    const isKakao = ua.includes('kakaotalk');
+
+    if (initialTab) {
+      setMobileSubTab(initialTab);
+    } else if (isIosDevice) {
+      setMobileSubTab('IOS');
+    } else if (isKakao) {
+      setMobileSubTab('KAKAO');
+    } else if (isJapanese) {
       setMobileSubTab('CHROME');
     } else {
-      setMobileSubTab('KAKAO');
+      setMobileSubTab('CHROME');
     }
 
     const handleBeforeInstall = (e: Event) => {
@@ -33,7 +49,7 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-  }, [isJapanese]);
+  }, [isOpen, initialTab, isJapanese]);
 
   if (!isOpen) return null;
 
@@ -56,7 +72,7 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+    <div className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-xs flex items-start justify-center p-2.5 sm:p-4 pt-3 sm:pt-6 overflow-y-auto animate-fadeIn">
       <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-4 flex items-center justify-between shrink-0">

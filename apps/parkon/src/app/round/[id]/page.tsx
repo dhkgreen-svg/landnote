@@ -115,6 +115,8 @@ export default function RoundPlayPage() {
   useEffect(() => {
     // 📱 새 조장 스마트폰으로 카톡 링크 열었을 때 경기 세션 즉시 복원 (Handoff)
     if (typeof window !== 'undefined') {
+      // 대표님 원칙: 라운드 시작/진입 시 항상 화면 제일 최상단이 기준이 되도록 스크롤 초기화
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
       try {
         const searchParams = new URLSearchParams(window.location.search);
         const handoffParam = searchParams.get('handoff');
