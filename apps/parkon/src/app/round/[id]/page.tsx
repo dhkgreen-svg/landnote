@@ -1511,11 +1511,10 @@ export default function RoundPlayPage() {
             </div>
           </div>
 
-          {/* 2. 상단 로컬룰 주의 띠 & 1위 베스트 공략 */}
+          {/* 2. 상단 로컬룰 주의 띠 (로컬룰 등록 시만 표시) */}
           <LocalRuleBanner hole={actualHoleNumber} localRule={holeMetadata.localRule} />
-          <TipCard hole={actualHoleNumber} tip={holeMetadata.tip} />
 
-          {/* 3. [점수판 없이] 단일 대형 버튼: [ 🏌️ 확인 완료 (티샷 시작) ] */}
+          {/* 3. [최상단 배치] 단일 대형 버튼: [ 🏌️ 확인 완료 (티샷 시작) ] */}
           <div className="pt-2 space-y-2.5">
             <button
               type="button"
@@ -1536,16 +1535,8 @@ export default function RoundPlayPage() {
               <ChevronRight className="w-6 h-6 ml-1" />
             </button>
 
-            {/* 초보자 안심 안내: 티샷 후 점수판 전환 설명 */}
-            <p className={`text-center text-[11px] font-bold ${
-              sunlightMode ? 'text-yellow-300' : 'text-emerald-800 bg-emerald-50/90 py-1.5 px-3 rounded-xl border border-emerald-200'
-            }`}>
-              {isJapanese
-                ? '💡 ティーショット終了後、上のボタンをタップすると4名スコア入力画面に切り替わります。'
-                : isEnglish
-                ? '💡 Tap the button above after your tee shot to enter scores for 4 players.'
-                : '💡 티샷을 마치신 후 위 버튼을 터치하시면 4인 스코어(타수) 기입창으로 전환됩니다.'}
-            </p>
+            {/* 코스 공략 제공 (확인 완료 버튼 밑으로 배치) */}
+            <TipCard hole={actualHoleNumber} tip={holeMetadata.tip} />
 
             {/* 4. 하단 보조 버튼: [ 🔄 다른 홀로 이동 ] [ ☕ 잠시 빠지기 (저장) ] */}
             <div className="grid grid-cols-2 gap-2 pt-1">
