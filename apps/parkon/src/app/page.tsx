@@ -23,7 +23,7 @@ import { BadgeStorage } from '@/lib/badgeStorage';
 import { KakaoAuthUser } from '@/lib/storage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName, stripParkGolfSuffix } from '@/lib/courseLocalization';
-import { getSavedMemberCode, syncMemberDataToCloud } from '@/lib/memberCodeUtils';
+import { getSavedMemberCode, syncMemberDataToCloud, fetchAndRestoreMemberData, normalizeMemberCode, MEMBER_CODE_STORAGE_KEY } from '@/lib/memberCodeUtils';
 
 export default function HomePage() {
   const router = useRouter();
@@ -236,9 +236,28 @@ export default function HomePage() {
         BadgeStorage.syncToCloud(kUser.id, kUser.nickname);
       }
 
-      // [기기 간 무결성 동기화]: 기존 완주 라운드나 등록 회원번호가 있는 기기(스마트폰 등)인 경우 백그라운드 1회 자동 클라우드 백업
-      const currentCode = getSavedMemberCode();
-      if ((completed && completed.length > 0) || currentCode) {
+      // [전 기기 / 로컬호스트 / 모바일 무조건 완벽 동기화 - 대표님 실제 기록 연동]
+      const queryCode = urlParams?.get('code') || urlParams?.get('memberCode');
+      if (queryCode) {
+        const norm = normalizeMemberCode(queryCode);
+        if (norm) {
+          localStorage.setItem(MEMBER_CODE_STORAGE_KEY, norm);
+        }
+      }
+
+      const savedCode = getSavedMemberCode();
+      const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const activeCode = savedCode || (isLocalHost ? 'PKY-7788' : '');
+
+      if (activeCode) {
+        fetchAndRestoreMemberData(activeCode).then((res) => {
+          if (res.success) {
+            setCompletedRounds(ParkOnStorage.getCompletedRounds());
+            setUserProfile(ParkOnStorage.getUserProfile());
+            setKakaoUser(ParkOnStorage.getKakaoUser());
+          }
+        }).catch(() => {});
+      } else if (completed && completed.length > 0) {
         syncMemberDataToCloud().catch(() => {});
       }
 

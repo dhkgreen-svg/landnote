@@ -224,10 +224,39 @@ export async function POST(req: NextRequest) {
     }
 
     const map = getMembersMap();
+    let existing = map.get(cleanCode);
+    if (!existing && fs.existsSync(MEMBER_SYNC_CACHE_FILE)) {
+      try {
+        const diskObj = JSON.parse(fs.readFileSync(MEMBER_SYNC_CACHE_FILE, 'utf-8'));
+        existing = diskObj[cleanCode];
+      } catch {}
+    }
+
+    // 완주 경기 기록(전적) 무손실 병합: 클라우드 기록과 클라이언트 기록의 합집합 보존
+    const roundMap = new Map<string, any>();
+    if (existing?.completedRounds && Array.isArray(existing.completedRounds)) {
+      existing.completedRounds.forEach((r: any) => {
+        const key = r.id || `${r.courseName}_${r.completedAt}`;
+        roundMap.set(key, r);
+      });
+    }
+    if (body.completedRounds && Array.isArray(body.completedRounds)) {
+      body.completedRounds.forEach((r: any) => {
+        const key = r.id || `${r.courseName}_${r.completedAt}`;
+        roundMap.set(key, r);
+      });
+    }
+    const mergedRounds = Array.from(roundMap.values()).sort((a: any, b: any) => {
+      const tA = new Date(a.completedAt || 0).getTime();
+      const tB = new Date(b.completedAt || 0).getTime();
+      return tB - tA;
+    });
+
     const record: MemberSyncRecord = {
       ...body,
+      completedRounds: mergedRounds,
       memberCode: rawCode.includes('-') ? rawCode : (cleanCode.length === 7 ? `${cleanCode.slice(0, 3)}-${cleanCode.slice(3)}` : rawCode),
-      phoneNumber: body.phoneNumber || (body as any).userPhone || body.profile?.phoneNumber || body.profile?.phone || '',
+      phoneNumber: body.phoneNumber || (body as any).userPhone || body.profile?.phoneNumber || body.profile?.phone || existing?.phoneNumber || '',
       updatedAt: body.updatedAt || new Date().toISOString(),
     };
 

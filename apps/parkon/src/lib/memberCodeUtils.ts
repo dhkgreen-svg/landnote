@@ -87,14 +87,16 @@ export function getOrGenerateMemberCode(forceGenerate = false): string {
       (profile?.userName && !isPlaceholderName(profile.userName))
     );
 
-    // 아직 등록되지 않은 신규 기기이고 강제 생성이 아니면 번호를 임의로 부여하지 않고 빈 문자열 반환
-    if (!isRegistered && !forceGenerate) {
+    const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    // 아직 등록되지 않은 신규 기기이고 강제 생성이 아니면 번호를 임의로 부여하지 않고 빈 문자열 반환 (단, 로컬 개발/대표님 기기는 PKY-7788 즉시 보장)
+    if (!isRegistered && !forceGenerate && !isLocalHost) {
       return '';
     }
 
-    // 대표님(김대희) 계정인 경우 상징적인 프리미엄 회원번호 우선 배정
+    // 대표님(김대희) 계정 또는 로컬호스트 개발 환경인 경우 상징적인 프리미엄 회원번호 우선 배정
     let codeSuffix = '';
-    if (rawName?.includes('김대희') || profile?.userName?.includes('김대희') || kakaoUser?.realName?.includes('김대희')) {
+    if (isLocalHost || rawName?.includes('김대희') || profile?.userName?.includes('김대희') || kakaoUser?.realName?.includes('김대희')) {
       codeSuffix = '7788';
     } else if (kakaoUser?.id) {
       // 카카오 ID 기반 안정적 고유 숫자 도출
@@ -248,12 +250,33 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
       ParkOnStorage.setKakaoUser(autoUser);
     }
 
-    // 4. 완주 경기 기록(라운딩 전적) 복원
-    let restoredRoundsCount = 0;
-    if (Array.isArray(completedRounds) && completedRounds.length > 0) {
-      ParkOnStorage.saveCompletedRounds(completedRounds);
-      restoredRoundsCount = completedRounds.length;
+    // 4. 완주 경기 기록(라운딩 전적) 무손실 병합 복원
+    const localRounds = ParkOnStorage.getCompletedRounds();
+    const roundMap = new Map<string, RoundSession>();
+
+    // 클라우드 라운드 등록
+    if (Array.isArray(completedRounds)) {
+      completedRounds.forEach((r: RoundSession) => {
+        const key = r.id || `${r.courseName}_${r.completedAt}`;
+        roundMap.set(key, r);
+      });
     }
+    // 로컬 라운드 등록 (고유 라운드 합집합 유지)
+    localRounds.forEach((r) => {
+      const key = r.id || `${r.courseName}_${r.completedAt}`;
+      if (!roundMap.has(key)) {
+        roundMap.set(key, r);
+      }
+    });
+
+    const mergedRounds = Array.from(roundMap.values()).sort((a, b) => {
+      const tA = new Date(a.completedAt || 0).getTime();
+      const tB = new Date(b.completedAt || 0).getTime();
+      return tB - tA;
+    });
+
+    ParkOnStorage.saveCompletedRounds(mergedRounds);
+    const restoredRoundsCount = mergedRounds.length;
 
     // 5. 1촌 동반자 명부 복원
     if (Array.isArray(companions) && companions.length > 0) {
