@@ -41,6 +41,8 @@ export default function HomePage() {
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
   const [statsSubTab, setStatsSubTab] = useState<'TIMELINE_RANK' | 'MEDALS_COURSES'>('TIMELINE_RANK');
   const [showGradePopup, setShowGradePopup] = useState<boolean>(false);
+  const [medalsViewSubTab, setMedalsViewSubTab] = useState<'COURSES_TOUR' | 'MEDALS_RANK'>('COURSES_TOUR');
+  const [courseRegionFilter, setCourseRegionFilter] = useState<'ALL' | 'KR' | 'OVERSEAS'>('ALL');
   const [showNationalStatsModal, setShowNationalStatsModal] = useState<boolean>(false);
   const [showRulesWebtoonModal, setShowRulesWebtoonModal] = useState<boolean>(false);
   const [showRulesSolomonPopup, setShowRulesSolomonPopup] = useState<boolean>(false);
@@ -1536,10 +1538,12 @@ export default function HomePage() {
 
               {/* ======================= [탭 2: 🏅 방문 구장 & 기념 메달] ======================= */}
               {statsSubTab === 'MEDALS_COURSES' && (() => {
-                // 1. 방문 구장 집계
+                // 1. 방문 구장 집계 (국내 vs 일본/해외 투어 구분)
                 const visitedCoursesMap: Record<string, {
                   courseId: string;
                   courseName: string;
+                  region: string;
+                  isOverseas: boolean;
                   visitCount: number;
                   bestScore: number;
                   bestParDiff: number;
@@ -1549,6 +1553,16 @@ export default function HomePage() {
                 completedRounds.forEach((r) => {
                   const cName = r.courseName || '파크골프장';
                   const cId = r.courseId || cName;
+                  const courseObj = courses.find((c) => c.id === cId || c.name === cName);
+                  const isOverseas = Boolean(
+                    courseObj?.country === 'JP' ||
+                    cId.startsWith('jp-') ||
+                    cName.includes('일본') ||
+                    cName.includes('홋카이도') ||
+                    cName.includes('마쿠베츠') ||
+                    cName.includes('つつじが丘')
+                  );
+                  const region = courseObj?.regionKo || (isOverseas ? (courseObj?.regionJa || '일본 홋카이도') : (courseObj?.region || '전국'));
                   const me = (r.players && r.players.length > 0)
                     ? (r.players.find((p) => p.isSelf) || r.players[0])
                     : ({ id: 'me', name: '나', totalStrokes: (r as any).totalScore || 54, totalParDiff: 0, scores: {}, obCount: {} } as any);
@@ -1560,6 +1574,8 @@ export default function HomePage() {
                     visitedCoursesMap[cName] = {
                       courseId: cId,
                       courseName: cName,
+                      region,
+                      isOverseas,
                       visitCount: 1,
                       bestScore: strokes > 0 ? strokes : 999,
                       bestParDiff: parDiff,
@@ -1582,9 +1598,20 @@ export default function HomePage() {
                     const rawBadges = BadgeStorage.getAllBadges();
                     Object.values(rawBadges).forEach((b) => {
                       if (b && b.courseName && !visitedCoursesMap[b.courseName]) {
+                        const courseObj = courses.find((c) => c.id === b.courseId || c.name === b.courseName);
+                        const isOverseas = Boolean(
+                          courseObj?.country === 'JP' ||
+                          b.courseId?.startsWith('jp-') ||
+                          b.courseName.includes('일본') ||
+                          b.courseName.includes('홋카이도') ||
+                          b.courseName.includes('마쿠베츠')
+                        );
+                        const region = courseObj?.regionKo || (isOverseas ? (courseObj?.regionJa || '일본 홋카이도') : (courseObj?.region || '전국'));
                         visitedCoursesMap[b.courseName] = {
                           courseId: b.courseId,
                           courseName: b.courseName,
+                          region,
+                          isOverseas,
                           visitCount: b.visitCount || 1,
                           bestScore: 999,
                           bestParDiff: 0,
@@ -1598,6 +1625,8 @@ export default function HomePage() {
                 }
 
                 const visitedCoursesList = Object.values(visitedCoursesMap);
+                const koreaCourses = visitedCoursesList.filter((c) => !c.isOverseas);
+                const overseasCourses = visitedCoursesList.filter((c) => c.isOverseas);
 
                 // 2. 기념 메달 8종 판별
                 const medals = [
@@ -1678,7 +1707,7 @@ export default function HomePage() {
                 const tourSummary = BadgeStorage.getNationalTourSummary();
 
                 return (
-                  <div className="space-y-4">
+                  <div className="space-y-3.5">
                     {/* 상단 파키 전국 명예의 전당 배너 (5스타 마스터 트로피 파키) */}
                     <div className="relative rounded-2xl overflow-hidden border border-amber-300 shadow-xs bg-stone-100 flex items-center bg-gradient-to-r from-amber-100 to-amber-50 p-2.5 gap-3">
                       <div className="relative w-16 h-16 rounded-xl overflow-hidden shadow-xs border border-amber-400 shrink-0 bg-white">
@@ -1702,272 +1731,342 @@ export default function HomePage() {
                       </div>
                     </div>
 
-                    {/* 구장별 1~100위 랭킹 센터 (대표님 지침: 방문 구장 & 기념 메달 탭으로 이동) */}
-                    <div className="grid grid-cols-2 gap-2">
+                    {/* 대표님 지침 탭 스위처: [⛳ 방문 구장 통계] vs [🏅 기념 메달 & 랭킹] */}
+                    <div className="flex bg-stone-100 p-1 rounded-2xl border border-stone-200">
                       <button
                         type="button"
-                        onClick={() => {
-                          setRankingMainTab('SKILL_100');
-                          setShowLeaderboard100Popup(true);
-                        }}
-                        className="p-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 font-black rounded-xl shadow-xs transition flex items-center justify-between cursor-pointer border border-amber-400/80 active:scale-[0.98]"
+                        onClick={() => setMedalsViewSubTab('COURSES_TOUR')}
+                        className={`flex-1 py-2 px-1 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                          medalsViewSubTab === 'COURSES_TOUR'
+                            ? 'bg-white text-emerald-950 shadow-xs border border-emerald-300 font-black'
+                            : 'text-stone-500 hover:text-stone-800'
+                        }`}
                       >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="text-sm">🏆</span>
-                          <div className="text-left min-w-0">
-                            <div className="text-[11px] font-black text-stone-950 truncate">
-                              {isJapanese ? '公認実力 1〜100位' : '공인 실력 1~100위'}
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-black text-stone-950 bg-white/70 px-1.5 py-0.5 rounded shrink-0">
-                          ❯
+                        <span className="shrink-0">⛳</span>
+                        <span className="shrink-0">{isJapanese ? '訪問コース統計' : '방문 구장 통계'}</span>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold shrink-0 ${
+                          medalsViewSubTab === 'COURSES_TOUR' ? 'bg-emerald-100 text-emerald-900' : 'bg-stone-200 text-stone-600'
+                        }`}>
+                          {visitedCoursesList.length}곳
                         </span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => {
-                          setRankingMainTab('ACTIVITY_100');
-                          setShowLeaderboard100Popup(true);
-                        }}
-                        className="p-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black rounded-xl shadow-xs transition flex items-center justify-between cursor-pointer border border-emerald-500/80 active:scale-[0.98]"
+                        onClick={() => setMedalsViewSubTab('MEDALS_RANK')}
+                        className={`flex-1 py-2 px-1 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                          medalsViewSubTab === 'MEDALS_RANK'
+                            ? 'bg-white text-amber-950 shadow-xs border border-amber-300 font-black'
+                            : 'text-stone-500 hover:text-stone-800'
+                        }`}
                       >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="text-sm">🔥</span>
-                          <div className="text-left min-w-0">
-                            <div className="text-[11px] font-black text-white truncate">
-                              {isJapanese ? 'フィールド活動 1〜100位' : '필드 활동 1~100위'}
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-black text-emerald-950 bg-white/90 px-1.5 py-0.5 rounded shrink-0">
-                          ❯
+                        <span className="shrink-0">🏅</span>
+                        <span className="shrink-0">{isJapanese ? '記念メダル & 順位' : '기념 메달 & 랭킹'}</span>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold shrink-0 ${
+                          medalsViewSubTab === 'MEDALS_RANK' ? 'bg-amber-100 text-amber-900' : 'bg-stone-200 text-stone-600'
+                        }`}>
+                          {earnedCount}/{medals.length}
                         </span>
                       </button>
                     </div>
 
-                    {/* 섹션 1: 🏅 나의 기념 메달 & 업적 컬렉션 */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between px-1">
-                        <div className="flex items-center gap-1.5 font-black text-xs text-stone-900">
-                          <span className="text-amber-600">🏅</span>
-                          <span>{isJapanese ? '獲得記念メダルコレクション' : '나의 기념 메달 & 업적 컬렉션'}</span>
-                        </div>
-                        <span className="text-[11px] font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
-                          {isJapanese ? `獲得: ${earnedCount} / ${medals.length}` : `획득: ${earnedCount} / ${medals.length}개`}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        {medals.map((m) => (
-                          <div
-                            key={m.id}
-                            className={`p-2.5 rounded-2xl border transition ${
-                              m.unlocked
-                                ? 'bg-gradient-to-br from-amber-50 via-white to-amber-100/70 border-amber-300 shadow-2xs'
-                                : 'bg-stone-50 border-stone-200/80 opacity-75'
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-1 mb-1">
-                              <span className={`text-xl ${m.unlocked ? '' : 'grayscale opacity-60'}`}>{m.icon}</span>
-                              <span
-                                className={`text-[9px] font-black px-1.5 py-0.2 rounded ${
-                                  m.unlocked
-                                    ? 'bg-amber-500 text-stone-950 shadow-2xs'
-                                    : 'bg-stone-200 text-stone-600'
-                                }`}
-                              >
-                                {m.unlocked ? (isJapanese ? '獲得' : '획득') : (isJapanese ? '挑戦中 🔒' : '도전 🔒')}
-                              </span>
-                            </div>
-                            <div className={`text-xs font-black truncate ${m.unlocked ? 'text-amber-950' : 'text-stone-600'}`}>
-                              {m.title}
-                            </div>
-                            <div className={`text-[10px] leading-tight truncate mt-0.5 ${m.unlocked ? 'text-amber-900/80 font-medium' : 'text-stone-400'}`}>
-                              {m.desc}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 섹션 2: ⛳ 내가 방문한 구장 스탬프 & 완주 명패 */}
-                    <div className="space-y-2 pt-1">
-                      <div className="flex items-center justify-between px-1">
-                        <div className="flex items-center gap-1.5 font-black text-xs text-stone-900">
-                          <span className="text-emerald-700">⛳</span>
-                          <span>{isJapanese ? '訪問コーススタンプ＆完走名牌' : '내가 방문한 구장 스탬프 & 완주 명패'}</span>
-                        </div>
-                        <span className="text-[11px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                          {isJapanese ? `総 ${visitedCoursesList.length}箇所` : `총 ${visitedCoursesList.length}곳 방문`}
-                        </span>
-                      </div>
-
-                      {visitedCoursesList.length > 0 ? (
-                        <div className="space-y-2">
-                          {visitedCoursesList.map((vc) => {
-                            const tierBadge = vc.visitCount >= 100
-                              ? { title: '터줏대감 👑', color: 'bg-purple-100 text-purple-900 border-purple-300' }
-                              : vc.visitCount >= 30
-                              ? { title: '명예 마스터 🥇', color: 'bg-amber-100 text-amber-900 border-amber-300' }
-                              : vc.visitCount >= 10
-                              ? { title: '지역 에이스 🥈', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' }
-                              : vc.visitCount >= 5
-                              ? { title: '단골 골퍼 🥉', color: 'bg-blue-100 text-blue-900 border-blue-300' }
-                              : { title: '공식 정복자 ⛳', color: 'bg-stone-100 text-stone-800 border-stone-300' };
-
-                            return (
-                              <div
-                                key={vc.courseId}
-                                className="bg-white rounded-2xl p-3 border border-stone-200 shadow-2xs flex items-center justify-between gap-3 hover:border-emerald-300 transition"
-                              >
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-xs font-black text-stone-900 truncate">
-                                      ⛳ {vc.courseName}
-                                    </span>
-                                    <span className={`text-[9.5px] px-1.5 py-0.2 rounded font-black border ${tierBadge.color}`}>
-                                      {tierBadge.title}
-                                    </span>
-                                  </div>
-                                  <div className="text-[10.5px] text-stone-500 font-medium mt-1 flex items-center gap-2">
-                                    <span>{isJapanese ? `累計 ${vc.visitCount}回 完走` : `총 ${vc.visitCount}회 완주`}</span>
-                                    {vc.bestScore < 999 && (
-                                      <>
-                                        <span>·</span>
-                                        <span className="text-emerald-700 font-bold">
-                                          {isJapanese ? `ベスト ${vc.bestScore}打` : `최고 ${vc.bestScore}타`}
-                                        </span>
-                                      </>
-                                    )}
-                                    {vc.lastDate && (
-                                      <>
-                                        <span>·</span>
-                                        <span>{vc.lastDate}</span>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center text-sm font-black shrink-0 shadow-2xs">
-                                  💮
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="bg-stone-50 rounded-xl p-4 text-center border border-stone-200 text-xs text-stone-500 leading-relaxed">
-                          ⛳ {isJapanese ? 'まだ訪問したコースがありません。初ラウンドでスタンプを獲得しましょう！' : '아직 완주한 구장이 없습니다. 첫 구장에 출격하여 도장을 찍어보세요!'}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 섹션 3: 🗺️ 전국 17개 시·도 투어 퍼즐 지도 연결 */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowStatsModal(false);
-                        setShowNationalTourModal(true);
-                      }}
-                      className="w-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-stone-950 p-3 rounded-2xl shadow-sm hover:shadow flex items-center justify-between border-2 border-yellow-200 transition active:scale-98 cursor-pointer select-none"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-stone-950 text-amber-300 flex items-center justify-center text-xl font-black shadow shrink-0">
-                          🗺️
-                        </div>
-                        <div className="text-left min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[10px] bg-stone-950 text-amber-300 font-black px-1.5 py-0.5 rounded leading-none">
-                              {isJapanese ? '全国制覇' : '전국 도장 깨기'}
-                            </span>
-                            <span className="text-xs font-black text-stone-950">
-                              {isJapanese ? '全国ツアー制覇パズル' : '전국 17개 시·도 투어 퍼즐'}
-                            </span>
-                          </div>
-                          <div className="text-[11px] font-extrabold text-stone-900 mt-0.5 truncate">
-                            {isJapanese ? '制覇: ' : '정복: '}<strong className="text-rose-800">{tourSummary.unlockedCount} / 17</strong> ({tourSummary.progressPercent}%) · {tourSummary.currentTitle}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 text-xs font-black text-stone-950 bg-white/80 px-2.5 py-1.5 rounded-xl shadow-xs shrink-0 ml-2">
-                        <span>{isJapanese ? '地図を見る' : '지도 보기'}</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </div>
-                    </button>
-
-                    {/* 섹션 4: 카카오 1초 평생 전적 보관 배너 */}
-                    <div className="bg-[#FEE500] p-3.5 rounded-2xl border border-[#E6CF00] shadow-sm text-[#191919] space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-base leading-none">💬</span>
-                          <span className="text-xs font-black">
-                            {isJapanese
-                              ? (kakaoUser ? `${kakaoUser.nickname}様のアカウント連携中` : 'クラウド全戦績を安全保管')
-                              : (kakaoUser ? `${kakaoUser.nickname}님의 카카오 계정 연동됨` : '카카오톡 1초 평생 전적 보관')}
-                          </span>
-                        </div>
-                        {kakaoUser ? (
-                          <span className="text-[10px] bg-emerald-700 text-white font-black px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                            <Check className="w-2.5 h-2.5" /> {isJapanese ? '安全保管中' : '안전 보관 중'}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] bg-black/10 text-stone-900 font-bold px-2 py-0.5 rounded-full">
-                            {isJapanese ? '推奨' : '추천'}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-stone-800 font-medium leading-relaxed">
-                        {isJapanese
-                          ? 'スマートフォンを変更してもクラウドにすべての戦績と等級・記念メダルが安全に保存されます。'
-                          : (kakaoUser
-                            ? '휴대폰을 변경하거나 캐시를 초기화해도 카카오 계정에 모든 전적과 등급, 기념 메달이 안전하게 유지됩니다.'
-                            : '카카오톡 1초 연동 시 스마트폰을 바꾸거나 분실해도 모든 메달과 성적표, 전국 5스타 등급이 평생 안전 보관됩니다.')}
-                      </p>
-                      {!kakaoUser ? (
+                    {/* ---------------- 1) 나의 방문 구장 통계 & 전국·해외 도장 깨기 ---------------- */}
+                    {medalsViewSubTab === 'COURSES_TOUR' && (
+                      <div className="space-y-3">
+                        {/* 전국 17개 시·도 도장 깨기 (투어 퍼즐) 배너 */}
                         <button
                           type="button"
-                          onClick={() => setShowKakaoModal(true)}
-                          className="w-full py-2.5 bg-stone-950 hover:bg-stone-800 active:scale-95 text-[#FEE500] font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          onClick={() => {
+                            setShowStatsModal(false);
+                            setShowNationalTourModal(true);
+                          }}
+                          className="w-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-stone-950 p-3 rounded-2xl shadow-xs hover:shadow-sm flex items-center justify-between border-2 border-yellow-200 transition active:scale-[0.98] cursor-pointer select-none"
                         >
-                          <span className="text-sm leading-none">💬</span>
-                          <span>{isJapanese ? '戦績・等級を一生安全保管する' : '카카오로 1초 전적 평생 보관하기'}</span>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-stone-950 text-amber-300 flex items-center justify-center text-xl font-black shadow-xs shrink-0">
+                              🗺️
+                            </div>
+                            <div className="text-left min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] bg-stone-950 text-amber-300 font-black px-1.5 py-0.5 rounded leading-none">
+                                  {isJapanese ? '全国制覇' : '전국 도장 깨기'}
+                                </span>
+                                <span className="text-xs font-black text-stone-950">
+                                  {isJapanese ? '全国17地域制覇パズル' : '전국 17개 시·도 투어 퍼즐'}
+                                </span>
+                              </div>
+                              <div className="text-[11px] font-extrabold text-stone-900 mt-0.5 truncate">
+                                {isJapanese ? '制覇: ' : '정복: '}
+                                <strong className="text-rose-800">{tourSummary.unlockedCount} / 17</strong> ({tourSummary.progressPercent}%) · {tourSummary.currentTitle}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs font-black text-stone-950 bg-white/80 px-2.5 py-1.5 rounded-xl shadow-xs shrink-0 ml-2">
+                            <span>{isJapanese ? '地図を見る' : '지도 보기'}</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </div>
                         </button>
-                      ) : (
-                        <div className="flex items-center justify-between pt-0.5">
-                          <span className="text-[10px] text-stone-700 font-bold">
-                            {isJapanese ? '連携日時: ' : '연동일시: '}{new Date(kakaoUser.connectedAt).toLocaleDateString()}
-                          </span>
+
+                        {/* 국내 & 일본/해외 투어 순례 구장 통계 */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between px-1">
+                            <div className="flex items-center gap-1.5 font-black text-xs text-stone-900">
+                              <span className="text-emerald-700">⛳</span>
+                              <span>{isJapanese ? '訪問コーススタンプ＆完走名牌' : '내가 방문한 구장 스탬프 & 완주 명패'}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-[10.5px]">
+                              <span className="text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                🇰🇷 국내 {koreaCourses.length}
+                              </span>
+                              <span className="text-rose-800 font-bold bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                                🇯🇵 해외 {overseasCourses.length}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* 국내 / 해외(일본) 지역 필터 탭 */}
+                          <div className="flex gap-1.5 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => setCourseRegionFilter('ALL')}
+                              className={`px-3 py-1.5 rounded-xl font-bold transition cursor-pointer text-xs ${
+                                courseRegionFilter === 'ALL'
+                                  ? 'bg-stone-900 text-white shadow-2xs'
+                                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                              }`}
+                            >
+                              {isJapanese ? 'すべて' : '전체'} ({visitedCoursesList.length})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCourseRegionFilter('KR')}
+                              className={`px-3 py-1.5 rounded-xl font-bold transition cursor-pointer text-xs flex items-center gap-1 ${
+                                courseRegionFilter === 'KR'
+                                  ? 'bg-emerald-700 text-white shadow-2xs'
+                                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                              }`}
+                            >
+                              <span>🇰🇷</span>
+                              <span>{isJapanese ? '韓国コース' : '국내 구장'}</span>
+                              <span>({koreaCourses.length})</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCourseRegionFilter('OVERSEAS')}
+                              className={`px-3 py-1.5 rounded-xl font-bold transition cursor-pointer text-xs flex items-center gap-1 ${
+                                courseRegionFilter === 'OVERSEAS'
+                                  ? 'bg-rose-700 text-white shadow-2xs'
+                                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                              }`}
+                            >
+                              <span>🇯🇵</span>
+                              <span>{isJapanese ? '日本・海外' : '일본·해외 투어'}</span>
+                              <span>({overseasCourses.length})</span>
+                            </button>
+                          </div>
+
+                          {/* 필터링된 구장 리스트 */}
+                          {(() => {
+                            const displayedCourses = visitedCoursesList.filter((c) => {
+                              if (courseRegionFilter === 'KR') return !c.isOverseas;
+                              if (courseRegionFilter === 'OVERSEAS') return c.isOverseas;
+                              return true;
+                            });
+
+                            if (displayedCourses.length === 0) {
+                              return (
+                                <div className="bg-stone-50 rounded-2xl p-5 text-center border border-stone-200 text-xs text-stone-500 space-y-1">
+                                  <div className="text-xl">{courseRegionFilter === 'OVERSEAS' ? '✈️' : '⛳'}</div>
+                                  <div className="font-bold text-stone-700">
+                                    {courseRegionFilter === 'OVERSEAS'
+                                      ? (isJapanese ? 'まだ日本・海外コースの完走記録がありません' : '아직 일본·해외 구장 완주 기록이 없습니다')
+                                      : (isJapanese ? 'まだ訪問したコースがありません' : '아직 완주한 구장 기록이 없습니다')}
+                                  </div>
+                                  <p className="text-[11px] text-stone-400">
+                                    {courseRegionFilter === 'OVERSEAS'
+                                      ? (isJapanese ? '日本の本場コースをラウンドして海外スタンプを獲得しましょう！' : '일본/해외 구장 라운드 시 전용 해외 원정 명패가 발급됩니다.')
+                                      : (isJapanese ? 'ラウンドを完走して全国名牌を集めましょう！' : '라운드를 완주하시면 전국 순례 도장이 자동으로 찍힙니다.')}
+                                  </p>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div className="space-y-2">
+                                {displayedCourses.map((vc) => {
+                                  const tierBadge = vc.visitCount >= 100
+                                    ? { title: '터줏대감 👑', color: 'bg-purple-100 text-purple-900 border-purple-300' }
+                                    : vc.visitCount >= 30
+                                    ? { title: '명예 마스터 🥇', color: 'bg-amber-100 text-amber-900 border-amber-300' }
+                                    : vc.visitCount >= 10
+                                    ? { title: '지역 에이스 🥈', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' }
+                                    : vc.visitCount >= 5
+                                    ? { title: '단골 골퍼 🥉', color: 'bg-blue-100 text-blue-900 border-blue-300' }
+                                    : { title: '공식 정복자 ⛳', color: 'bg-stone-100 text-stone-800 border-stone-300' };
+
+                                  return (
+                                    <div
+                                      key={vc.courseId}
+                                      className="bg-white rounded-2xl p-3 border border-stone-200 shadow-2xs flex items-center justify-between gap-3 hover:border-emerald-300 transition"
+                                    >
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className="text-xs font-black text-stone-900 truncate">
+                                            {vc.isOverseas ? '✈️' : '⛳'} {vc.courseName}
+                                          </span>
+                                          <span className={`text-[9px] px-1.5 py-0.2 rounded font-black border ${
+                                            vc.isOverseas ? 'bg-rose-100 text-rose-900 border-rose-300' : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                          }`}>
+                                            {vc.isOverseas ? '🇯🇵 해외' : '🇰🇷 국내'}
+                                          </span>
+                                          <span className={`text-[9px] px-1.5 py-0.2 rounded font-black border ${tierBadge.color}`}>
+                                            {tierBadge.title}
+                                          </span>
+                                        </div>
+                                        <div className="text-[10.5px] text-stone-500 font-medium mt-1 flex items-center gap-1.5 flex-wrap">
+                                          <span className="text-stone-400 font-bold whitespace-nowrap">{vc.region}</span>
+                                          <span className="text-stone-300">·</span>
+                                          <span className="font-bold text-stone-700 whitespace-nowrap">{isJapanese ? `累計 ${vc.visitCount}回` : `총 ${vc.visitCount}회 완주`}</span>
+                                          {vc.bestScore < 999 && (
+                                            <>
+                                              <span className="text-stone-300">·</span>
+                                              <span className="text-emerald-700 font-bold whitespace-nowrap">
+                                                {isJapanese ? `ベスト ${vc.bestScore}打` : `최고 ${vc.bestScore}타`}
+                                              </span>
+                                            </>
+                                          )}
+                                          {vc.lastDate && (
+                                            <>
+                                              <span className="text-stone-300">·</span>
+                                              <span className="whitespace-nowrap">{vc.lastDate}</span>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center text-sm font-black shrink-0 shadow-2xs">
+                                        💮
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ---------------- 2) 기념 메달 컬렉션 & 랭킹 센터 ---------------- */}
+                    {medalsViewSubTab === 'MEDALS_RANK' && (
+                      <div className="space-y-3">
+                        {/* 구장별 1~100위 랭킹 센터 */}
+                        <div className="grid grid-cols-2 gap-2">
                           <button
                             type="button"
-                            onClick={() => setShowKakaoModal(true)}
-                            className="text-[11px] font-black text-stone-900 underline cursor-pointer hover:text-stone-700"
+                            onClick={() => {
+                              setRankingMainTab('SKILL_100');
+                              setShowLeaderboard100Popup(true);
+                            }}
+                            className="p-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 font-black rounded-xl shadow-xs transition flex items-center justify-between cursor-pointer border border-amber-400/80 active:scale-[0.98]"
                           >
-                            {isJapanese ? 'アカウント管理 / ログアウト' : '계정 관리 / 로그아웃'}
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-sm">🏆</span>
+                              <div className="text-left min-w-0">
+                                <div className="text-[11px] font-black text-stone-950 truncate">
+                                  {isJapanese ? '公認実力 1〜100位' : '공인 실력 1~100위'}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-black text-stone-950 bg-white/70 px-1.5 py-0.5 rounded shrink-0">
+                              ❯
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRankingMainTab('ACTIVITY_100');
+                              setShowLeaderboard100Popup(true);
+                            }}
+                            className="p-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black rounded-xl shadow-xs transition flex items-center justify-between cursor-pointer border border-emerald-500/80 active:scale-[0.98]"
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-sm">🔥</span>
+                              <div className="text-left min-w-0">
+                                <div className="text-[11px] font-black text-white truncate">
+                                  {isJapanese ? 'フィールド活動 1〜100位' : '필드 활동 1~100위'}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-black text-emerald-950 bg-white/90 px-1.5 py-0.5 rounded shrink-0">
+                              ❯
+                            </span>
                           </button>
                         </div>
-                      )}
-                    </div>
 
-                    {/* 섹션 5: 데이터 1초 백업 & 카카오톡 보관 / 복원 카드 */}
-                    <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-2">
+                        {/* 나의 기념 메달 & 업적 컬렉션 */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between px-1">
+                            <div className="flex items-center gap-1.5 font-black text-xs text-stone-900">
+                              <span className="text-amber-600">🏅</span>
+                              <span>{isJapanese ? '獲得記念メダルコレクション' : '나의 기념 메달 & 업적 컬렉션'}</span>
+                            </div>
+                            <span className="text-[11px] font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                              {isJapanese ? `獲得: ${earnedCount} / ${medals.length}` : `획득: ${earnedCount} / ${medals.length}개`}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            {medals.map((m) => (
+                              <div
+                                key={m.id}
+                                className={`p-2.5 rounded-2xl border transition ${
+                                  m.unlocked
+                                    ? 'bg-gradient-to-br from-amber-50 via-white to-amber-100/70 border-amber-300 shadow-2xs'
+                                    : 'bg-stone-50 border-stone-200/80 opacity-75'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-1 mb-1">
+                                  <span className={`text-xl ${m.unlocked ? '' : 'grayscale opacity-60'}`}>{m.icon}</span>
+                                  <span
+                                    className={`text-[9px] font-black px-1.5 py-0.2 rounded ${
+                                      m.unlocked
+                                        ? 'bg-amber-500 text-stone-950 shadow-2xs'
+                                        : 'bg-stone-200 text-stone-600'
+                                    }`}
+                                  >
+                                    {m.unlocked ? (isJapanese ? '獲得' : '획득') : (isJapanese ? '挑戦中 🔒' : '도전 🔒')}
+                                  </span>
+                                </div>
+                                <div className={`text-xs font-black truncate ${m.unlocked ? 'text-amber-950' : 'text-stone-600'}`}>
+                                  {m.title}
+                                </div>
+                                <div className={`text-[10px] leading-tight truncate mt-0.5 ${m.unlocked ? 'text-amber-900/80 font-medium' : 'text-stone-400'}`}>
+                                  {m.desc}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 백업 기록 보관 / 복원 카드 (카카오 배너 완전 삭제 후 깔끔한 단일 관리 카드 유지) */}
+                    <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3 space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
-                          <Share2 className="w-4 h-4 text-emerald-600" />
+                          <Share2 className="w-3.5 h-3.5 text-stone-600" />
                           <span className="text-xs font-black text-stone-900">내 전적 데이터 1초 백업 &amp; 복원</span>
                         </div>
-                        <span className="text-[10px] font-bold text-stone-600 bg-stone-200/80 px-2 py-0.5 rounded-full">
+                        <span className="text-[9.5px] font-bold text-stone-500 bg-stone-200/80 px-2 py-0.5 rounded-full">
                           기기변경/초기화 대비
                         </span>
                       </div>
-                      <p className="text-[11px] text-stone-600 font-medium leading-relaxed">
-                        현재까지 기록된 라운드 성적표와 전국 등급, 메달 데이터를 암호화 코드로 복사하여 카카오톡 &apos;나와의 채팅&apos; 등에 안전하게 보관할 수 있습니다.
-                      </p>
-                      <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div className="grid grid-cols-2 gap-2 pt-0.5">
                         <button
                           type="button"
                           onClick={handleExportBackup}
-                          className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="py-2 px-3 bg-stone-800 hover:bg-stone-900 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <Share2 className="w-3.5 h-3.5" />
                           <span>내 전적 백업 복사</span>
@@ -1975,7 +2074,7 @@ export default function HomePage() {
                         <button
                           type="button"
                           onClick={handleImportBackup}
-                          className="py-2.5 px-3 bg-white hover:bg-stone-100 active:scale-95 text-stone-800 font-black text-xs rounded-xl border border-stone-300 shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="py-2 px-3 bg-white hover:bg-stone-100 active:scale-95 text-stone-800 font-black text-xs rounded-xl border border-stone-300 shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <Download className="w-3.5 h-3.5 text-stone-600" />
                           <span>백업 기록 복원</span>
