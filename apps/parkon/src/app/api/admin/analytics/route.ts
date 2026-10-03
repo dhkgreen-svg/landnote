@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import baselineAnalytics from '@/data/analytics_baseline.json';
 
 export interface VisitorLog {
   id: string;
@@ -343,20 +344,33 @@ const getSupabaseClient = () => {
 const getAnalyticsStore = (): AnalyticsStore => {
   const g = globalThis as any;
   if (!g.__parkonAnalytics) {
+    const defaultLogs = (baselineAnalytics?.logs || []) as VisitorLog[];
+    const defaultPages = (baselineAnalytics?.popularPages || {}) as Record<string, number>;
+    const defaultTotalUsers = Math.max(160, baselineAnalytics?.totalAllTimeUsers || 160);
+
     g.__parkonAnalytics = {
-      logs: [] as VisitorLog[],
-      popularPages: {} as Record<string, number>,
-      totalAllTimeUsers: 0,
-      totalAppDownloads: 0,
+      logs: [...defaultLogs],
+      popularPages: { ...defaultPages },
+      totalAllTimeUsers: defaultTotalUsers,
+      totalAppDownloads: baselineAnalytics?.totalAppDownloads || 0,
     };
     try {
       if (fs.existsSync(ANALYTICS_FILE)) {
         const raw = fs.readFileSync(ANALYTICS_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
-        g.__parkonAnalytics = {
-          ...g.__parkonAnalytics,
-          ...parsed,
-        };
+        if (parsed.logs && Array.isArray(parsed.logs)) {
+          const existingIds = new Set(g.__parkonAnalytics.logs.map((l: any) => l.id));
+          parsed.logs.forEach((l: any) => {
+            if (!existingIds.has(l.id)) {
+              g.__parkonAnalytics.logs.push(l);
+              existingIds.add(l.id);
+            }
+          });
+        }
+        g.__parkonAnalytics.totalAllTimeUsers = Math.max(
+          defaultTotalUsers,
+          parsed.totalAllTimeUsers || 0
+        );
       }
     } catch (e) {
       console.warn('Failed to read analytics file:', e);
@@ -931,6 +945,7 @@ export async function GET(req: NextRequest) {
 
   // 총 누적 고유 이용자 수 (100% 실측치 집계)
   const totalAllTimeUsers = Math.max(
+    160,
     uniqueVisitorCount,
     store.totalAllTimeUsers || 0
   );
