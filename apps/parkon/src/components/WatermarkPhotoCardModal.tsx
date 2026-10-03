@@ -11,9 +11,16 @@ interface WatermarkPhotoCardModalProps {
   onClose: () => void;
   session?: RoundSession | null;
   initialImage?: string | null;
+  onSaveAndReturn?: (cardDataUrl: string) => void;
 }
 
-export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage }: WatermarkPhotoCardModalProps) {
+export function WatermarkPhotoCardModal({
+  isOpen,
+  onClose,
+  session,
+  initialImage,
+  onSaveAndReturn,
+}: WatermarkPhotoCardModalProps) {
   const { isJapanese, isEnglish } = useTranslation();
   const [selectedImage, setSelectedImage] = useState<string | null>(initialImage || null);
   const [clubTag, setClubTag] = useState<string>('');
@@ -267,6 +274,34 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
     setTimeout(() => setSavedSuccess(false), 2500);
   };
 
+  // 🔥 대표님 절대 원칙 지침: 사진 저장 완료 즉시 타수 기입창(2단계)으로 0.1초 원터치 복귀
+  const handleSaveAndReturn = () => {
+    // 1. Download to phone
+    handleDownload();
+
+    // 2. Persist to active session photos if session is present
+    if (cardDataUrl && session) {
+      try {
+        const curPhotos = session.photos || [];
+        const updatedSession: RoundSession = {
+          ...session,
+          photos: [...curPhotos, cardDataUrl],
+        };
+        ParkOnStorage.saveCurrentRound(updatedSession);
+      } catch (err) {
+        console.error('Failed to append photo to session:', err);
+      }
+    }
+
+    // 3. Trigger callback if passed
+    if (cardDataUrl && onSaveAndReturn) {
+      onSaveAndReturn(cardDataUrl);
+    }
+
+    // 4. Close modal instantly
+    onClose();
+  };
+
   // Web Share API (KakaoTalk / Band)
   const handleShare = async () => {
     if (!cardDataUrl) return;
@@ -310,9 +345,11 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-300 flex items-center justify-center cursor-pointer transition"
+            className="py-1.5 px-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white flex items-center gap-1.5 cursor-pointer transition text-xs font-black border border-stone-700 active:scale-95"
+            title={isJapanese ? '閉じて競技画面に戻る' : '닫고 점수 입력 복귀'}
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 text-stone-400" />
+            <span>{isJapanese ? 'スコア入力へ復帰' : '점수 입력 복귀'}</span>
           </button>
         </div>
 
@@ -375,26 +412,47 @@ export function WatermarkPhotoCardModal({ isOpen, onClose, session, initialImage
           </div>
         )}
 
-        {/* 2대 핵심 액션 버튼 (Senior Friendly 54px+) */}
+        {/* 🌟 대표님 현장 대응 UX: 3대 액션 버튼 (Senior Friendly 56px+) */}
         <div className="space-y-2 pt-1">
-          {/* 1. 카톡 / 밴드 1초 공유 버튼 */}
+          {/* 🔥 1. 최우선 초대형 버튼: 사진 저장 후 즉시 경기 화면(점수 기입) 복귀 */}
           <button
             type="button"
-            onClick={handleShare}
-            className="w-full min-h-[54px] bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black rounded-2xl text-base flex items-center justify-center gap-2 shadow-lg active:scale-98 transition cursor-pointer"
+            onClick={handleSaveAndReturn}
+            className="w-full min-h-[56px] bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black rounded-2xl text-base flex items-center justify-center gap-2 shadow-xl shadow-emerald-950/40 active:scale-98 transition cursor-pointer border-2 border-emerald-400"
           >
-            <Share2 className="w-5 h-5 text-[#191919]" />
-            <span>{isJapanese ? '💬 LINE / SNSで同伴者に1秒共有' : '💬 카카오톡 / 밴드 동반자에게 1초 공유'}</span>
+            <Sparkles className="w-5 h-5 text-amber-300" />
+            <span>{isJapanese ? '🏌️ 写真保存 ➔ プレイ復帰 (スコア入力)' : '🏌️ 사진 저장 완료 ➔ 바로 경기 복귀 (점수 입력)'}</span>
           </button>
 
-          {/* 2. 사진첩 다운로드 저장 버튼 */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* 2. 카톡 / 밴드 1초 공유 버튼 */}
+            <button
+              type="button"
+              onClick={handleShare}
+              className="w-full min-h-[50px] bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition cursor-pointer"
+            >
+              <Share2 className="w-4 h-4 text-[#191919]" />
+              <span>{isJapanese ? 'LINE/SNS共有' : '💬 카톡 1초 공유'}</span>
+            </button>
+
+            {/* 3. 사진첩 다운로드 저장 버튼 */}
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="w-full min-h-[50px] bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition cursor-pointer border border-stone-700"
+            >
+              <Download className="w-4 h-4 text-emerald-400" />
+              <span>{isJapanese ? 'アルバム保存' : '💾 사진첩 저장'}</span>
+            </button>
+          </div>
+
+          {/* 4. 보조: 저장 없이 바로 닫기 */}
           <button
             type="button"
-            onClick={handleDownload}
-            className="w-full min-h-[52px] bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl text-base flex items-center justify-center gap-2 shadow-md active:scale-98 transition cursor-pointer"
+            onClick={onClose}
+            className="w-full py-2.5 bg-transparent hover:bg-stone-800/60 text-stone-400 hover:text-stone-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1 transition active:scale-98 cursor-pointer"
           >
-            <Download className="w-5 h-5 text-white" />
-            <span>{isJapanese ? '💾 スマホの写真アルバムに保存' : '💾 스마트폰 사진첩 앨범에 저장하기'}</span>
+            <span>{isJapanese ? '✕ 写真保存なしで競技画面へ戻る' : '✕ 저장 없이 바로 경기 화면(점수 기입) 복귀'}</span>
           </button>
         </div>
       </div>

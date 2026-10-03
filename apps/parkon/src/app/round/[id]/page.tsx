@@ -394,7 +394,18 @@ export default function RoundPlayPage() {
     distanceMeter: 50,
     localRule: undefined,
     tip: undefined,
+    isVerified: false,
   };
+
+  // [대표님 지침]: 엉터리 더미 제원 방지 & 실측 검증 여부 판별
+  // 1) 개별 홀에 isVerified: true 가 있거나
+  // 2) 구장 전체 isSpecsVerified: true 이거나 (단, holeMetadata.isVerified !== false)
+  // 3) 사용자가 직접 기여한 실측 데이터(contributedBy)가 있는 경우에만 '공인 실측'으로 인정
+  const isHoleVerified = Boolean(
+    holeMetadata.isVerified === true ||
+    (course.isSpecsVerified && holeMetadata.isVerified !== false) ||
+    holeMetadata.contributedBy
+  );
 
   const currentPar = Number(holeMetadata.par);
 
@@ -1113,6 +1124,13 @@ export default function RoundPlayPage() {
       };
     });
 
+    const sTime = new Date(session.startedAt || Date.now()).getTime();
+    const eTime = Date.now();
+    const elapsedMinutes = Math.max(1, Math.round((eTime - sTime) / (1000 * 60)));
+    const holesCount = currentConfirmed.length || session.totalHoles || 9;
+    const isRealisticTime = elapsedMinutes >= (holesCount <= 9 ? 25 : 50);
+    const isFieldVerified = isOfficial && isRealisticTime && !session.isVirtual;
+
     const finished: RoundSession = {
       ...session,
       status: 'COMPLETED',
@@ -1122,6 +1140,8 @@ export default function RoundPlayPage() {
       confirmedHoles: currentConfirmed,
       players: updatedPlayers,
       completedAt: new Date().toISOString(),
+      durationMinutes: elapsedMinutes,
+      isFieldVerified,
     };
     ParkOnStorage.saveCompletedRound(finished);
 
@@ -1167,8 +1187,15 @@ export default function RoundPlayPage() {
   };
 
   const openHoleSpecModal = () => {
-    setEditingPar(Number(holeMetadata.par) || 3);
-    setEditingDistance(String(Number(holeMetadata.distanceMeter) || 50));
+    // 대표님 지침: 미확인 구장은 Par와 거리가 공란으로 시작!
+    if (!isHoleVerified) {
+      setEditingPar(0); // 0 = 미선택 / 공란
+      setEditingDistance(''); // 빈 칸 = 공란
+    } else {
+      setEditingPar(Number(holeMetadata.par) || 3);
+      setEditingDistance(String(Number(holeMetadata.distanceMeter) || ''));
+    }
+    setSignboardChecked(false);
     setShowSpecConfirmStep(false);
     setShowHoleSpecModal(true);
   };
@@ -1199,6 +1226,7 @@ export default function RoundPlayPage() {
 
     // 2. Update hole metadata in current course (replace or add)
     let found = false;
+    const contributor = session.players[0]?.name || '골퍼 실측';
     const updatedMetadata = (course.holesMetadata || []).map((m) => {
       if (Number(m.hole) === targetHoleNum) {
         found = true;
@@ -1206,6 +1234,8 @@ export default function RoundPlayPage() {
           ...m,
           par: validatedPar,
           distanceMeter: validatedDist,
+          isVerified: true,
+          contributedBy: contributor,
         };
       }
       return m;
@@ -1216,14 +1246,19 @@ export default function RoundPlayPage() {
         hole: targetHoleNum,
         par: validatedPar,
         distanceMeter: validatedDist,
+        isVerified: true,
+        contributedBy: contributor,
       });
     }
 
     const updatedCourse: Course = {
       ...course,
       holesMetadata: updatedMetadata,
+      isSpecsVerified: true,
+      specContributorName: course.specContributorName || contributor,
     };
     setCourse(updatedCourse);
+    ParkOnStorage.updateCourse(updatedCourse);
 
     // 3. Recalculate total par for selected holes
     let totalParSoFar = 0;
@@ -1437,9 +1472,9 @@ export default function RoundPlayPage() {
               );
             })()}
 
-            {/* 초대형 홀 번호 표출 */}
-            <div className="py-4">
-              <div className="text-xs font-extrabold tracking-wider text-emerald-200/90 mb-1">
+            {/* 초대형 홀 번호 표출 (상단 시원한 전광판) */}
+            <div className="py-3">
+              <div className="text-xs font-extrabold tracking-wider text-emerald-200/90 mb-0.5">
                 {currentRoundNumber > 1 ? (isJapanese ? `[${currentRoundNumber}周目 巡回プレー]` : `[${currentRoundNumber}회차 순환 플레이]`) : (isJapanese ? '現在攻略ホール' : '현재 공략 홀')}
               </div>
               <div className={`text-6xl font-black tracking-tight ${
@@ -1450,26 +1485,115 @@ export default function RoundPlayPage() {
               </div>
             </div>
 
-            {/* 초대형 Par & 거리m 제원 카드 */}
+            {/* [대표님 절대 원칙 지침]: A-1번 홀 바로 밑에 '현장 제원 미확인 구장 안내' 배치 (공식 확인된 구장은 일절 미노출) */}
+            {!isHoleVerified && (
+              <div className="bg-gradient-to-r from-amber-950 via-yellow-950 to-amber-950 text-white rounded-2xl p-3 border-2 border-amber-400 shadow-xl text-left space-y-1.5 animate-fadeIn mb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-black text-xs text-yellow-300">
+                    <span className="text-base animate-pulse">📢</span>
+                    <span>{isJapanese ? '現地諸元 未確認コースのご案内' : '현장 제원 미확인 구장 안내'}</span>
+                  </div>
+                  <span className="text-[10px] bg-amber-500/30 text-amber-200 border border-amber-400/50 px-2 py-0.5 rounded-full font-bold">
+                    {isJapanese ? '初代貢献者 募集中' : '최초 실측 기여자 모집'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-100 font-medium leading-relaxed">
+                  {isJapanese
+                    ? 'この球場はまだ現地の公式案内看板(距離・Par)が未登録です。ティーグラウンドの看板をご確認いただき、入力しながらプレイしていただくと次回から全国公式DBに永久反映されます！'
+                    : '이 구장은 아직 협회 공인 실측 팻말이 등록되지 않았습니다. 티박스 팻말의 거리(m)와 Par를 확인하시고 입력하시면서 라운딩해 주시면, 다음 방문하시는 모든 분들에게 공인 제원으로 영구 반영됩니다!'}
+                </p>
+                <div className="pt-0.5">
+                  <button
+                    type="button"
+                    onClick={openHoleSpecModal}
+                    className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-stone-950 font-black text-xs py-2 rounded-xl shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
+                  >
+                    <span>✏️</span>
+                    <span>{isJapanese ? 'ティー看板を見て距離・Parを1秒入力' : '티박스 팻말 보고 거리·Par 1초 입력'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 초대형 Par & 거리m 제원 카드 (대표님 지침: 미확인 시 가짜 더미 숫자 4/77m 완전 블라인드 가림) */}
             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/20">
-              <div className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center ${
-                sunlightMode ? 'bg-zinc-900 border-yellow-400' : 'bg-black/35 border-emerald-400/40 shadow-inner'
-              }`}>
-                <span className="text-[11px] font-bold text-stone-300 mb-0.5">{isJapanese ? '基準打数' : isEnglish ? 'Standard Par' : '기준 타수'}</span>
-                <span className={`text-4xl font-black ${
-                  sunlightMode ? 'text-yellow-300' : 'text-yellow-400'
-                }`}>
-                  Par {holeMetadata.par}
-                </span>
+              {/* Par 카드 */}
+              <div 
+                onClick={openHoleSpecModal}
+                className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center cursor-pointer active:scale-95 transition ${
+                  !isHoleVerified
+                    ? 'border-amber-400/60 bg-amber-950/30 hover:bg-amber-900/40 shadow-inner'
+                    : sunlightMode
+                    ? 'bg-zinc-900 border-yellow-400'
+                    : 'bg-black/35 border-emerald-400/40 shadow-inner'
+                }`}
+                title={isJapanese ? 'タップしてPar入力' : '터치하여 Par 입력'}
+              >
+                <div className="flex items-center gap-1 mb-1">
+                  <span className="text-[11px] font-bold text-stone-300">{isJapanese ? '基準打数' : isEnglish ? 'Standard Par' : '기준 타수'}</span>
+                  {isHoleVerified ? (
+                    <span className="text-[9px] bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 px-1 py-0.2 rounded font-extrabold">
+                      {isJapanese ? '公認' : '공인'}
+                    </span>
+                  ) : (
+                    <span className="text-[9px] bg-amber-500/30 text-yellow-300 border border-amber-400/50 px-1.5 py-0.2 rounded font-black animate-pulse">
+                      {isJapanese ? '未確認' : '미확인'}
+                    </span>
+                  )}
+                </div>
+                {isHoleVerified ? (
+                  <span className={`text-4xl font-black ${
+                    sunlightMode ? 'text-yellow-300' : 'text-yellow-400'
+                  }`}>
+                    Par {holeMetadata.par}
+                  </span>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-0.5">
+                    <span className="text-3xl font-black text-amber-300 tracking-wider">
+                      Par --
+                    </span>
+                    <span className="text-[10px] text-amber-200 font-bold underline mt-1">
+                      {isJapanese ? '看板見てPar選択' : '팻말 보고 Par선택'}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              <div className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center ${
-                sunlightMode ? 'bg-zinc-900 border-yellow-400' : 'bg-black/35 border-emerald-400/40 shadow-inner'
-              }`}>
-                <span className="text-[11px] font-bold text-stone-300 mb-0.5">{isJapanese ? '公式距離' : isEnglish ? 'Distance' : '공식 거리'}</span>
-                <span className="text-4xl font-black text-white">
-                  {holeMetadata.distanceMeter}<span className="text-2xl font-bold ml-0.5">m</span>
-                </span>
+              {/* 거리 카드 */}
+              <div 
+                onClick={openHoleSpecModal}
+                className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center cursor-pointer active:scale-95 transition ${
+                  !isHoleVerified ? 'border-amber-400 bg-amber-950/40 shadow-lg ring-1 ring-amber-400/50 hover:bg-amber-900/50' :
+                  sunlightMode ? 'bg-zinc-900 border-yellow-400' : 'bg-black/35 border-emerald-400/40 shadow-inner'
+                }`}
+                title={isJapanese ? 'タップして距離入力' : '터치하여 거리 입력'}
+              >
+                <div className="flex items-center gap-1 mb-1">
+                  <span className="text-[11px] font-bold text-stone-300">{isJapanese ? '公式距離' : isEnglish ? 'Distance' : '공식 거리'}</span>
+                  {isHoleVerified ? (
+                    <span className="text-[9px] bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 px-1 py-0.2 rounded font-extrabold">
+                      {isJapanese ? '実測済' : '실측'}
+                    </span>
+                  ) : (
+                    <span className="text-[9px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded animate-bounce">
+                      {isJapanese ? '入力要' : '입력요망'}
+                    </span>
+                  )}
+                </div>
+                {isHoleVerified ? (
+                  <span className="text-4xl font-black text-white">
+                    {holeMetadata.distanceMeter}<span className="text-2xl font-bold ml-0.5">m</span>
+                  </span>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-0.5">
+                    <span className="text-3xl font-black text-amber-300 tracking-wider">
+                      -- <span className="text-xl">m</span>
+                    </span>
+                    <span className="text-[10px] text-amber-200 font-bold underline mt-1">
+                      {isJapanese ? '看板見て距離入力' : '팻말 보고 거리입력'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1478,11 +1602,19 @@ export default function RoundPlayPage() {
               <button
                 type="button"
                 onClick={openHoleSpecModal}
-                className="bg-emerald-800 hover:bg-emerald-700 text-emerald-100 hover:text-white px-3 py-1.5 rounded-xl border border-emerald-500 font-black text-xs flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
+                className={`${
+                  !isHoleVerified
+                    ? 'bg-gradient-to-r from-amber-600 to-yellow-600 text-stone-950 border-2 border-yellow-300 font-black text-xs px-3.5 py-2 shadow-lg animate-pulse'
+                    : 'bg-emerald-800 hover:bg-emerald-700 text-emerald-100 hover:text-white px-3 py-1.5 border border-emerald-500 font-black text-xs shadow-sm'
+                } rounded-xl flex items-center gap-1.5 transition active:scale-95 cursor-pointer`}
                 title={isJapanese ? '現地の案内看板と異なる場合は修正' : '현장 팻말과 다를 경우 수정'}
               >
-                <Pencil className="w-3.5 h-3.5 text-yellow-300" />
-                <span>{isJapanese ? '✏️ 現地諸元を修正' : isEnglish ? '✏️ Edit Spec' : '✏️ 현장 제원 수정'}</span>
+                <Pencil className="w-3.5 h-3.5" />
+                <span>
+                  {!isHoleVerified
+                    ? (isJapanese ? '✏️ 現地看板の諸元を入力' : '✏️ 현장 팻말 제원 입력')
+                    : (isJapanese ? '✏️ 現地諸元を修正' : isEnglish ? '✏️ Edit Spec' : '✏️ 현장 제원 수정')}
+                </span>
               </button>
 
               {/* 카운트 방식 2분할 토글 (localStorage 영구 연동) */}
@@ -1650,7 +1782,7 @@ export default function RoundPlayPage() {
                 {courseLetter}-{holeInCourse}{isJapanese ? '番ホール' : '번 홀'}
               </span>
               <span className="text-[11px] sm:text-xs font-black text-white bg-black/30 px-1.5 sm:px-2 py-0.5 rounded-lg border border-white/20 whitespace-nowrap">
-                Par {holeMetadata.par} · {holeMetadata.distanceMeter}m
+                {isHoleVerified ? `Par ${holeMetadata.par} · ${holeMetadata.distanceMeter}m` : (isJapanese ? '諸元未確認' : '제원 미확인')}
               </span>
             </div>
 
@@ -2376,9 +2508,20 @@ export default function RoundPlayPage() {
                     </div>
                     <div>
                       <h3 className="font-black text-stone-900 text-base flex items-center gap-1.5">
-                        <span>{courseLetter}-{holeInCourse}{isJapanese ? '番ホール 現地諸元修正' : '번 홀 현장 제원 수정'}</span>
-                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.5 rounded">
-                          {isJapanese ? '2-Strike 検証' : '2-Strike 검증'}
+                        <span>
+                          {courseLetter}-{holeInCourse}
+                          {!isHoleVerified
+                            ? (isJapanese ? '番ホール 現地看板入力' : '번 홀 현장 팻말 제원 등록')
+                            : (isJapanese ? '番ホール 現地諸元修正' : '번 홀 현장 제원 수정')}
+                        </span>
+                        <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${
+                          !isHoleVerified
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {!isHoleVerified
+                            ? (isJapanese ? '初代貢献者 登録' : '최초 실측 기여')
+                            : (isJapanese ? '2-Strike 検証' : '2-Strike 검증')}
                         </span>
                       </h3>
                       <p className="text-[11px] text-stone-500 font-medium">
@@ -2395,22 +2538,42 @@ export default function RoundPlayPage() {
                   </button>
                 </div>
 
-                {/* [5대 마스터 아키텍처 4]: 상단 고대비 팻말 일치 경고 배너 */}
-                <div className="bg-rose-600 text-white p-3 rounded-2xl font-black text-xs space-y-1 shadow-md border-2 border-yellow-300">
-                  <div className="flex items-center gap-1.5 text-sm text-yellow-300">
-                    <span>⚠️</span>
-                    <span>{isJapanese ? '[必須原則] 現地案内看板との一致確認' : '[필수 원칙] 현장 팻말 일치 확인'}</span>
+                {/* 안내 배너: 미확인 구장 vs 기존 제원 수정 분기 */}
+                {!isHoleVerified ? (
+                  <div className="bg-gradient-to-r from-amber-700 to-yellow-700 text-white p-3 rounded-2xl font-black text-xs space-y-1 shadow-md border-2 border-yellow-300">
+                    <div className="flex items-center gap-1.5 text-sm text-yellow-300">
+                      <span>👑</span>
+                      <span>{isJapanese ? '[初代貢献者] 現地ティー看板の数値を入力' : '[최초 실측 등록] 티박스 팻말 수치 입력'}</span>
+                    </div>
+                    <p className="text-amber-50 text-[11px] leading-snug">
+                      {isJapanese
+                        ? 'ティーグラウンドの公式看板に書かれた正確な距離(m)とParを入力してください。登録した諸元は即座に全国公式DBへ永久反映されます！'
+                        : '티박스 공식 팻말에 적힌 정확한 거리(m)와 Par를 입력해 주십시오. 입력하신 제원은 즉시 본 구장의 전국 공식 DB로 영구 승격됩니다!'}
+                    </p>
                   </div>
-                  <p className="text-white text-[11px] leading-snug">
-                    {isJapanese ? '必ずティーグラウンドの公式案内看板に書かれた数値と完全に一致させて入力してください。(未検証の誤入力は48時間後に自動破棄されます)' : '반드시 티박스 공식 안내판(팻말)에 적힌 숫자와 완벽히 일치하게 입력해 주십시오. (미검증 허위 수정은 48시간 후 자동 폐기됩니다)'}
-                  </p>
-                </div>
+                ) : (
+                  <div className="bg-rose-600 text-white p-3 rounded-2xl font-black text-xs space-y-1 shadow-md border-2 border-yellow-300">
+                    <div className="flex items-center gap-1.5 text-sm text-yellow-300">
+                      <span>⚠️</span>
+                      <span>{isJapanese ? '[必須原則] 現地案内看板との一致確認' : '[필수 원칙] 현장 팻말 일치 확인'}</span>
+                    </div>
+                    <p className="text-white text-[11px] leading-snug">
+                      {isJapanese
+                        ? '必ずティーグラウンドの公式案内看板に書かれた数値と完全に一致させて入力してください。(未検証の誤入力は48時間後に自動破棄されます)'
+                        : '반드시 티박스 공식 안내판(팻말)에 적힌 숫자와 완벽히 일치하게 입력해 주십시오. (미검증 허위 수정은 48시간 후 자동 폐기됩니다)'}
+                    </p>
+                  </div>
+                )}
 
                 {/* Par Selection */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-black text-stone-700 flex items-center justify-between">
                     <span>{isJapanese ? '1. 基準打数 (Par) 選択' : '1. 기준 타수 (Par) 선택'}</span>
-                    <span className="text-emerald-700 font-bold text-[11px]">{isJapanese ? `現在選択: Par ${editingPar}` : `현재 선택: Par ${editingPar}`}</span>
+                    <span className={`font-bold text-[11px] ${editingPar > 0 ? 'text-emerald-700' : 'text-amber-600 font-black'}`}>
+                      {editingPar > 0
+                        ? (isJapanese ? `現在選択: Par ${editingPar}` : `현재 선택: Par ${editingPar}`)
+                        : (isJapanese ? '未選択 (Par 3, 4, 5から選択)' : '공란 (팻말 보고 Par 3, 4, 5 중 선택)')}
+                    </span>
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     {[3, 4, 5].map((p) => {
@@ -2438,10 +2601,10 @@ export default function RoundPlayPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-black text-stone-700 flex items-center justify-between">
                     <span>{isJapanese ? '2. ホール距離 (m) 設定' : '2. 홀 거리 (m) 설정'}</span>
-                    <span className="text-emerald-700 font-bold text-[11px]">
-                      {isJapanese
-                        ? `現在設定: ${editingDistance ? `${editingDistance}m` : '未入力'}`
-                        : `현재 설정: ${editingDistance ? `${editingDistance}m` : '미입력 (직접 입력)'}`}
+                    <span className={`font-bold text-[11px] ${editingDistance ? 'text-emerald-700' : 'text-amber-600 font-black'}`}>
+                      {editingDistance
+                        ? (isJapanese ? `現在設定: ${editingDistance}m` : `현재 설정: ${editingDistance}m`)
+                        : (isJapanese ? '未入力 (直接入力)' : '공란 (팻말 보고 직접 입력)')}
                     </span>
                   </label>
 
@@ -2464,7 +2627,7 @@ export default function RoundPlayPage() {
                           const clean = raw.replace(/^0+/, '');
                           setEditingDistance(clean);
                         }}
-                        placeholder={isJapanese ? '距離を入力 (例: 65)' : '거리 입력 (예: 65)'}
+                        placeholder={isJapanese ? '看板の距離を入力 (例: 65)' : '팻말 거리 입력 (예: 65)'}
                         className="w-full h-12 text-center text-2xl font-black rounded-xl border-2 border-stone-200 focus:border-emerald-600 focus:bg-white focus:outline-none bg-stone-50 text-stone-800 pr-9 pl-3 placeholder:text-stone-400 placeholder:text-base placeholder:font-normal"
                       />
                       {editingDistance ? (
@@ -2488,7 +2651,7 @@ export default function RoundPlayPage() {
                         key={delta}
                         type="button"
                         onClick={() => {
-                          const cur = Number(editingDistance) || Number(holeMetadata.distanceMeter) || 50;
+                          const cur = Number(editingDistance) || 50;
                           const next = Math.max(10, Math.min(300, cur + delta));
                           setEditingDistance(String(next));
                         }}
@@ -2518,9 +2681,13 @@ export default function RoundPlayPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      if (!editingPar || editingPar < 3 || editingPar > 5) {
+                        alert(isJapanese ? 'ティー看板を確認し、基準打数 (Par 3, 4, 5) を選択してください。' : '티박스 팻말을 확인하시고 기준 타수 (Par 3, 4, 5) 를 선택해 주십시오.');
+                        return;
+                      }
                       const numDist = Number(editingDistance);
                       if (!editingDistance || isNaN(numDist) || numDist < 10) {
-                        alert(isJapanese ? '有効なホール距離 (10m〜300m) を入力してください。' : '올바른 홀 거리 (10m ~ 300m) 를 입력해 주십시오.');
+                        alert(isJapanese ? 'ティー看板を確認し、有効なホール距離 (10m〜300m) を入力してください。' : '티박스 팻말을 확인하시고 올바른 홀 거리 (10m ~ 300m) 를 입력해 주십시오.');
                         return;
                       }
                       if (!signboardChecked) {
@@ -2537,7 +2704,7 @@ export default function RoundPlayPage() {
                     }`}
                   >
                     <CheckCircle2 className="w-5 h-5" />
-                    <span>{isJapanese ? `入力内容確認へ進む (Par ${editingPar}, ${editingDistance || '0'}m)` : `입력 내용 확인 단계로 이동 (Par ${editingPar}, ${editingDistance || '0'}m)`}</span>
+                    <span>{isJapanese ? `入力内容確認へ進む (Par ${editingPar || '--'}, ${editingDistance || '--'}m)` : `입력 내용 확인 단계로 이동 (Par ${editingPar || '--'}, ${editingDistance || '--'}m)`}</span>
                   </button>
                   <button
                     type="button"
@@ -2546,6 +2713,70 @@ export default function RoundPlayPage() {
                   >
                     {isJapanese ? 'キャンセル' : '취소'}
                   </button>
+
+                  {/* [대표님 테스트 안심 원복 기능]: 테스트로 등록한 제원을 언제든 0.1초 만에 미확인 상태로 되돌리기 */}
+                  {isHoleVerified && (
+                    <div className="pt-2 border-t border-stone-200 space-y-1.5 animate-fadeIn">
+                      <div className="flex items-center justify-between text-[11px] text-stone-500 font-bold">
+                        <span>🧪 테스트 입력 데이터 되돌리기 (원복 / 초기화)</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(isJapanese ? 'このホールを「諸元未確認」状態にリセットしますか？' : `${courseLetter}-${holeInCourse}번 홀을 다시 「현장 제원 미확인」 상태로 되돌릴까요?`)) {
+                              ParkOnStorage.resetHoleSpecToUnverified(course.id, course.name, Number(baseHoleNumber));
+                              const updatedMetadata = (course.holesMetadata || []).map((m) => {
+                                if (Number(m.hole) === Number(baseHoleNumber)) {
+                                  return { ...m, isVerified: false, contributedBy: undefined };
+                                }
+                                return m;
+                              });
+                              const anyVerified = updatedMetadata.some((m) => m.isVerified);
+                              const updatedCourse = {
+                                ...course,
+                                holesMetadata: updatedMetadata,
+                                isSpecsVerified: anyVerified,
+                              };
+                              setCourse(updatedCourse);
+                              setShowHoleSpecModal(false);
+                              setSpecSavedToast(isJapanese ? '諸元をリセットし、未確認状態に戻しました。' : `${courseLetter}-${holeInCourse}번 홀이 '미확인 상태'로 깨끗이 되돌려졌습니다.`);
+                              setTimeout(() => setSpecSavedToast(null), 3000);
+                            }
+                          }}
+                          className="py-2 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black rounded-xl text-[11px] flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
+                        >
+                          <span>↺ 이 홀 미확인 원복</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(isJapanese ? 'この球場の全ホールの入力諸元をリセットしますか？' : `[${course.name}] 구장의 모든 홀 입력 제원을 완전히 초기화(전체 미확인 원복)할까요?`)) {
+                              ParkOnStorage.resetAllHoleSpecsForCourse(course.id, course.name);
+                              const updatedMetadata = (course.holesMetadata || []).map((m) => ({
+                                ...m,
+                                isVerified: false,
+                                contributedBy: undefined,
+                              }));
+                              const updatedCourse = {
+                                ...course,
+                                holesMetadata: updatedMetadata,
+                                isSpecsVerified: false,
+                              };
+                              setCourse(updatedCourse);
+                              setShowHoleSpecModal(false);
+                              setSpecSavedToast(isJapanese ? '球場全体の諸元が未確認にリセットされました。' : `[${course.name}] 구장 전체 제원이 '미확인 상태'로 깨끗이 초기화되었습니다.`);
+                              setTimeout(() => setSpecSavedToast(null), 3000);
+                            }
+                          }}
+                          className="py-2 px-2 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 font-black rounded-xl text-[11px] flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
+                        >
+                          <span>↺ 구장 전체 초기화</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
@@ -2573,7 +2804,11 @@ export default function RoundPlayPage() {
                   <div className="flex items-center justify-between border-b border-stone-200 pb-1.5">
                     <span className="font-bold text-stone-600">{isJapanese ? '基準打数 (Par)' : '기준 타수 (Par)'}</span>
                     <div className="flex items-center gap-2 font-black">
-                      <span className="text-stone-400 line-through">Par {holeMetadata.par}</span>
+                      {isHoleVerified ? (
+                        <span className="text-stone-400 line-through">Par {holeMetadata.par}</span>
+                      ) : (
+                        <span className="text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded text-[11px]">미확인(공란)</span>
+                      )}
                       <span className="text-emerald-700 text-sm">➔ Par {editingPar}</span>
                     </div>
                   </div>
@@ -2581,7 +2816,11 @@ export default function RoundPlayPage() {
                   <div className="flex items-center justify-between border-b border-stone-200 pb-1.5">
                     <span className="font-bold text-stone-600">{isJapanese ? 'ホール距離 (m)' : '홀 거리 (m)'}</span>
                     <div className="flex items-center gap-2 font-black">
-                      <span className="text-stone-400 line-through">{holeMetadata.distanceMeter}m</span>
+                      {isHoleVerified ? (
+                        <span className="text-stone-400 line-through">{holeMetadata.distanceMeter}m</span>
+                      ) : (
+                        <span className="text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded text-[11px]">미확인(공란)</span>
+                      )}
                       <span className="text-emerald-700 text-sm">➔ {editingDistance}m</span>
                     </div>
                   </div>
@@ -2606,7 +2845,11 @@ export default function RoundPlayPage() {
                     className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border border-emerald-400 cursor-pointer"
                   >
                     <CheckCircle2 className="w-5 h-5" />
-                    <span>{isJapanese ? '正解です！自分の組の諸元に即時適用' : '맞습니다! 본인 팀 제원 즉시 적용'}</span>
+                    <span>
+                      {!isHoleVerified
+                        ? (isJapanese ? '✍️ 看板と一致！公認諸元として即時登録' : '✍️ 팻말과 일치! 공인 제원으로 즉시 영구 등록')
+                        : (isJapanese ? '正解です！自分の組の諸元に即時適用' : '맞습니다! 본인 팀 제원 즉시 적용')}
+                    </span>
                   </button>
 
                   {/* 2-Strike 공식 승격 버튼 */}
@@ -3961,6 +4204,19 @@ export default function RoundPlayPage() {
         session={session}
         currentHoleNumber={actualHoleNumber}
         currentCourseName={course?.name}
+        onSaveAndReturn={(photoUrl) => {
+          if (session) {
+            const currentPhotos = session.photos || [];
+            const updated: RoundSession = {
+              ...session,
+              photos: [...currentPhotos, photoUrl],
+            };
+            setSession(updated);
+            ParkOnStorage.saveCurrentRound(updated);
+          }
+          // 대표님 절대 원칙 지침: 사진 촬영 완료 즉시 타수를 기록할 수 있는 2단계 스코어 기입창으로 0.1초 복귀!
+          setHoleStep('SCORING');
+        }}
       />
     </div>
   );

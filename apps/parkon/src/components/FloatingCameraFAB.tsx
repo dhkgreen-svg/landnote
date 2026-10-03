@@ -11,9 +11,15 @@ interface FloatingCameraFABProps {
   session?: RoundSession | null;
   currentHoleNumber?: number;
   currentCourseName?: string;
+  onSaveAndReturn?: (photoUrl: string) => void;
 }
 
-export function FloatingCameraFAB({ session, currentHoleNumber, currentCourseName }: FloatingCameraFABProps) {
+export function FloatingCameraFAB({
+  session,
+  currentHoleNumber,
+  currentCourseName,
+  onSaveAndReturn,
+}: FloatingCameraFABProps) {
   const { isJapanese, isEnglish } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState<boolean>(false);
@@ -66,6 +72,13 @@ export function FloatingCameraFAB({ session, currentHoleNumber, currentCourseNam
         }}
         session={session}
         initialImage={capturedImage}
+        onSaveAndReturn={(cardDataUrl) => {
+          setShowPhotoModal(false);
+          setCapturedImage(null);
+          if (onSaveAndReturn) {
+            onSaveAndReturn(cardDataUrl);
+          }
+        }}
       />
     </>
   );

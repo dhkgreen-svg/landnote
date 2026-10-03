@@ -6,6 +6,8 @@ export interface HoleMetadata {
   distanceMeter: number;
   localRule?: string;
   tip?: string;
+  isVerified?: boolean; // 실측 검증 완료 여부 (false면 미확인 팻말)
+  contributedBy?: string; // 최초 실측 입력자
 }
 
 export interface CourseContribution {
@@ -27,6 +29,8 @@ export interface Course {
   totalHoles: number;    // e.g. 63홀
   holesMetadata: HoleMetadata[];
   isVerified: boolean;
+  isSpecsVerified?: boolean; // 전체 코스 제원이 공식 협회/골퍼 실측 검증 완료되었는지 여부
+  specContributorName?: string; // 최초 제원 기여자
   isLocked?: boolean;    // 공식 제원 확정 잠금 여부
   certNo?: string;       // 일본 NPGA 공인 코스 번호 (예: 公認第439号)
   mapCode?: string;      // 일본 내비게이션 맵코드 (예: 574 819 013*44)
@@ -140,6 +144,10 @@ export interface RoundSession {
   matchType?: 'CLUB_MATCH' | 'TOURNAMENT' | 'CASUAL'; // 클럽전 | 정규대회 | 개인친선
   clubRoomId?: string;
   clubGroupNumber?: number;
+  photos?: string[]; // 현장 인증샷 및 워터마크 포토카드 목록
+  durationMinutes?: number; // 총 소요 시간 (분 단위)
+  holeTimestamps?: Record<number, string>; // 홀별 완료 시각 타임스탬프
+  isFieldVerified?: boolean; // 🏅 실제 필드 정규 완주 검증 여부 (정상 소요시간 & 홀 진행 검증)
 }
 
 export interface CourseSkillRankItem {

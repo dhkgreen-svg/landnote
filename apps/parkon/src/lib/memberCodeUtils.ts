@@ -296,11 +296,12 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
     } catch {}
 
     const roundMap = new Map<string, RoundSession>();
+    const deletedIds = new Set(ParkOnStorage.getDeletedRoundIds());
 
-    // 1) 클라우드 전적 등록 (가짜/목업 필터링)
+    // 1) 클라우드 전적 등록 (가짜/목업 및 대표님이 삭제한 기록 영구 필터링)
     if (Array.isArray(completedRounds)) {
       completedRounds.forEach((r: RoundSession) => {
-        if (!isMockOrCorruptedRound(r)) {
+        if (!isMockOrCorruptedRound(r) && r?.id && !deletedIds.has(r.id)) {
           const key = r.id || `${r.courseName}_${r.completedAt}`;
           roundMap.set(key, r);
         }
@@ -308,16 +309,20 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
     }
     // 2) 로컬 전적 등록 (클라우드에 아직 안 올라간 게스트 라운드 보존)
     localRounds.forEach((r) => {
-      const key = r.id || `${r.courseName}_${r.completedAt}`;
-      if (!roundMap.has(key)) {
-        roundMap.set(key, r);
+      if (r?.id && !deletedIds.has(r.id)) {
+        const key = r.id || `${r.courseName}_${r.completedAt}`;
+        if (!roundMap.has(key)) {
+          roundMap.set(key, r);
+        }
       }
     });
     // 3) 안전 보관함 전적 등록 (연동 직전 스마트폰에서 쳤던 기록 원천 복구)
     stashRounds.forEach((r) => {
-      const key = r.id || `${r.courseName}_${r.completedAt}`;
-      if (!roundMap.has(key)) {
-        roundMap.set(key, r);
+      if (r?.id && !deletedIds.has(r.id)) {
+        const key = r.id || `${r.courseName}_${r.completedAt}`;
+        if (!roundMap.has(key)) {
+          roundMap.set(key, r);
+        }
       }
     });
 

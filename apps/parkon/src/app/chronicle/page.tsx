@@ -33,6 +33,9 @@ import {
   KeyRound,
   ArrowRight,
   Trash2,
+  Lock,
+  Camera,
+  Clock,
 } from 'lucide-react';
 import { RoundSession } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
@@ -75,6 +78,7 @@ function ChronicleContent() {
   const [selectedMedalModal, setSelectedMedalModal] = useState<'HIO' | 'EAGLE' | 'ALBATROSS' | null>(null);
   const [selectedPilgrimCourse, setSelectedPilgrimCourse] = useState<PilgrimageCourse | null>(null);
   const [selectedRoundForPopup, setSelectedRoundForPopup] = useState<RoundSession | null>(null);
+  const [timelineFilter, setTimelineFilter] = useState<'OFFICIAL' | 'ALL'>('OFFICIAL');
 
   // Handle incoming addFriend query param from QR scan
   useEffect(() => {
@@ -138,12 +142,17 @@ function ChronicleContent() {
     }
   };
 
-  // 1. 실제 사용자가 완주한 공식 라운드만 반영 (가상 연습 라운드 제외)
+  // 1. 전체 저장된 라운드 (연습/테스트 포함)
+  const allCompletedRounds = useMemo(() => {
+    return ParkOnStorage.getCompletedRounds();
+  }, [syncVersion]);
+
+  // 1-1. 실제 사용자가 완주한 공식 라운드만 반영 (가상 연습 라운드 제외)
   const completedRounds = useMemo(() => {
-    return ParkOnStorage.getCompletedRounds().filter(
+    return allCompletedRounds.filter(
       (r) => !r.isVirtual && r.isOfficial !== false
     );
-  }, [syncVersion]);
+  }, [allCompletedRounds]);
   const totalRoundsCount = completedRounds.length;
   const totalHolesCount = completedRounds.reduce(
     (sum, r) => sum + (r.confirmedHoles?.length || r.totalHoles || 0),
@@ -177,7 +186,10 @@ function ChronicleContent() {
 
   const parPattern = [4, 3, 4, 3, 4, 4, 3, 3, 5];
 
-  completedRounds.forEach((r) => {
+  // 공식 필드 라운드만 명예의 전당 훈장, 평균 타수, 스타 등급에 반영 (집에서 임의로 눌러본 연습/테스트 제외)
+  const officialRounds = completedRounds.filter((r) => r.isOfficial !== false && !r.isVirtual);
+
+  officialRounds.forEach((r) => {
     const p = (r.players || []).find(
       (pl) => pl.isSelf || pl.name === userName || pl.isLeader
     ) || (r.players && r.players[0]);
@@ -759,70 +771,179 @@ function ChronicleContent() {
                   {isJapanese ? '最近のラウンドタイムライン' : '최근 라운드 타임라인'}
                 </h3>
               </div>
-              <span className="text-xs text-stone-400 font-medium">
-                {isJapanese ? '永久記録保存' : '영구 기록 보존'}
+              <span className="text-[10px] text-stone-400 font-bold bg-stone-100 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                <Lock className="w-2.5 h-2.5" />
+                <span>{isJapanese ? '改ざん防止公認記録' : '타임스탬프 공인 보존'}</span>
               </span>
             </div>
 
-            {completedRounds.length === 0 ? (
-              <div className="text-center py-6 bg-stone-50 rounded-2xl border border-dashed border-stone-300 space-y-1.5">
-                <span className="text-3xl">⛳</span>
-                <p className="font-black text-xs text-stone-700">
-                  {isJapanese ? 'まだ完了した公式ラウンド記録がありません。' : '아직 완료된 공식 라운드 기록이 없습니다.'}
-                </p>
-                <p className="text-[11px] text-stone-400">
-                  {isJapanese
-                    ? 'フィールドでスコアカードを完走して保存すると、実際の試合記録がタイムラインに自動登録されます。'
-                    : '필드에서 스코어카드를 완주하고 저장하면 실제 경기 기록이 타임라인에 자동으로 등록됩니다.'}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {completedRounds.slice(0, 10).map((r) => {
-                  const myPl =
-                    (r.players || []).find((p) => p.isSelf || p.name === userName || p.isLeader) || (r.players && r.players[0]) || { totalStrokes: (r as any).totalScore || 54, totalParDiff: 0 };
-                  const strokes = myPl?.totalStrokes || 0;
-                  const parDiff = myPl?.totalParDiff ?? 0;
-                  const parStr = parDiff === 0 ? 'Even' : parDiff > 0 ? `+${parDiff}` : `${parDiff}`;
-                  const companionsText =
-                    (r.players || [])
-                      .filter((p) => !p.isSelf && p.name !== userName)
-                      .map((p) => p.name)
-                      .join(', ') || (isJapanese ? '単独プレー' : '단독 플레이');
+            {/* 🏆 [대표님 지시] 공식 필드 경기 vs 전체(연습/테스트) 필터 토글 */}
+            <div className="flex items-center gap-1.5 p-1 bg-stone-100 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setTimelineFilter('OFFICIAL')}
+                className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
+                  timelineFilter === 'OFFICIAL'
+                    ? 'bg-emerald-700 text-white shadow-xs'
+                    : 'text-stone-500 hover:text-stone-800'
+                }`}
+              >
+                <MapPin className="w-3 h-3 text-emerald-300" />
+                <span>{isJapanese ? '🏆 公式フィールド戦のみ' : '🏆 공식 필드 경기만'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimelineFilter('ALL')}
+                className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
+                  timelineFilter === 'ALL'
+                    ? 'bg-stone-800 text-white shadow-xs'
+                    : 'text-stone-500 hover:text-stone-800'
+                }`}
+              >
+                <span>{isJapanese ? '📋 全記録 (練習含む)' : '📋 전체 (연습/테스트 포함)'}</span>
+              </button>
+            </div>
 
-                  return (
-                    <div
-                      key={r.id}
-                      onClick={() => setSelectedRoundForPopup(r)}
-                      className="p-3 bg-stone-50 hover:bg-emerald-50/60 rounded-2xl border border-stone-200 hover:border-emerald-300 space-y-1.5 cursor-pointer transition shadow-2xs group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-stone-900 group-hover:text-emerald-900 flex items-center gap-1.5">
-                          <span>{r.courseName}</span>
-                          <span className="text-[10px] text-stone-400 font-normal">
-                            ({r.confirmedHoles?.length || r.totalHoles}{isJapanese ? 'ホール' : '홀'})
+            {(() => {
+              const displayRounds = timelineFilter === 'OFFICIAL' ? completedRounds : allCompletedRounds;
+
+              if (displayRounds.length === 0) {
+                return (
+                  <div className="text-center py-6 bg-stone-50 rounded-2xl border border-dashed border-stone-300 space-y-1.5">
+                    <span className="text-3xl">⛳</span>
+                    <p className="font-black text-xs text-stone-700">
+                      {timelineFilter === 'OFFICIAL'
+                        ? (isJapanese ? 'まだ完了した公式フィールドラウンド記録がありません。' : '아직 완료된 공식 필드 라운드 기록이 없습니다.')
+                        : (isJapanese ? 'まだ保存されたラウンド記録がありません。' : '아직 저장된 라운드 기록이 없습니다.')}
+                    </p>
+                    <p className="text-[11px] text-stone-400">
+                      {isJapanese
+                        ? 'フィールドでGPS認証のスコアカードを完走すると、公式タイムラインに自動登録されます。'
+                        : '실제 구장에서 GPS 인증과 함께 스코어카드를 완주하면 공인 타임라인에 등록됩니다.'}
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-2.5">
+                  {displayRounds.slice(0, 15).map((r) => {
+                    const myPl =
+                      (r.players || []).find((p) => p.isSelf || p.name === userName || p.isLeader) ||
+                      (r.players && r.players[0]) ||
+                      { totalStrokes: (r as any).totalScore || 54, totalParDiff: 0 };
+                    const strokes = myPl?.totalStrokes || 0;
+                    const parDiff = myPl?.totalParDiff ?? 0;
+                    const parStr = parDiff === 0 ? 'Even' : parDiff > 0 ? `+${parDiff}` : `${parDiff}`;
+                    const companionsText =
+                      (r.players || [])
+                        .filter((p) => !p.isSelf && p.name !== userName)
+                        .map((p) => p.name)
+                        .join(', ') || (isJapanese ? '単独プレー' : '단독 플레이');
+
+                    // Exact start & end timestamps and duration calculation
+                    const sDate = new Date(r.startedAt || r.completedAt || Date.now());
+                    const eDate = r.completedAt ? new Date(r.completedAt) : new Date(sDate.getTime() + 104 * 60 * 1000);
+                    const dateText = sDate.toLocaleDateString(isJapanese ? 'ja-JP' : 'ko-KR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      weekday: 'short',
+                    });
+                    const timeText = `${sDate.toLocaleTimeString(isJapanese ? 'ja-JP' : 'ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })} ~ ${eDate.toLocaleTimeString(isJapanese ? 'ja-JP' : 'ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+
+                    const durationMin = r.durationMinutes || Math.max(1, Math.round((eDate.getTime() - sDate.getTime()) / (1000 * 60)));
+                    const holesCount = r.confirmedHoles?.length || r.totalHoles || 9;
+                    const isRealisticTime = durationMin >= (holesCount <= 9 ? 25 : 50);
+                    const isFieldVerified = r.isFieldVerified ?? (r.isOfficial !== false && !r.isVirtual && isRealisticTime);
+                    const isFastTest = !isRealisticTime && durationMin < 15;
+                    const durationText = durationMin >= 60 ? `${Math.floor(durationMin / 60)}시간 ${durationMin % 60}분` : `${durationMin}분`;
+
+                    return (
+                      <div
+                        key={r.id}
+                        onClick={() => setSelectedRoundForPopup(r)}
+                        className="p-3 bg-stone-50 hover:bg-emerald-50/60 rounded-2xl border border-stone-200 hover:border-emerald-300 space-y-1.5 cursor-pointer transition shadow-2xs group"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-black text-stone-900 group-hover:text-emerald-900">
+                              {r.courseName}
+                            </span>
+                            <span className="text-[10px] text-stone-400 font-normal">
+                              ({r.confirmedHoles?.length || r.totalHoles}{isJapanese ? 'ホール' : '홀'})
+                            </span>
+                            {/* [대표님 핵심 지침]: 필드 정상 완주 인증 마크 vs 모의/빠른 입력 구분 */}
+                            {isFieldVerified ? (
+                              <span className="text-[9.5px] bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1 border border-amber-300">
+                                <span>🏅</span>
+                                <span>{isJapanese ? 'コース公式完走 認証' : '정규 필드 완주 인증'}</span>
+                              </span>
+                            ) : isFastTest ? (
+                              <span className="text-[9px] bg-stone-200 text-stone-700 font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                <span>🧪</span>
+                                <span>{isJapanese ? '模擬 / 入力テスト' : '모의 / 빠른 입력'}</span>
+                              </span>
+                            ) : (
+                              <span className="text-[9px] bg-stone-100 text-stone-600 font-medium px-1.5 py-0.5 rounded-full">
+                                {isJapanese ? '一般記録' : '일반 기록'}
+                              </span>
+                            )}
+                            {r.photos && r.photos.length > 0 && (
+                              <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
+                                <Camera className="w-2.5 h-2.5 text-amber-600" />
+                                <span>사진 {r.photos.length}</span>
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-xs font-black text-emerald-700">
+                              {strokes}{isJapanese ? '打' : '타'} ({parStr})
+                            </span>
+                            {/* [대표님 절대 원칙]: 테스트/더미 기록이든 원하는 어떤 기록이든 0.1초 만에 영구 삭제 */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm(isJapanese 
+                                  ? `このラウンド記録(${r.courseName})を完全に削除しますか？\n(削除された記録は二度と再表示されません)` 
+                                  : `이 라운드 기록(${r.courseName})을 완전히 삭제하시겠습니까?\n(영구 삭제되어 다시 나타나지 않습니다)`)) {
+                                  ParkOnStorage.deleteCompletedRound(r.id);
+                                  setSyncVersion((v) => v + 1);
+                                  setToastMsg(isJapanese ? '🗑️ ラウンド記録を永久削除しました。' : '🗑️ 라운드 기록이 영구 삭제되었습니다.');
+                                  setTimeout(() => setToastMsg(''), 3000);
+                                }
+                              }}
+                              className="text-stone-400 hover:text-rose-600 font-bold p-1 rounded-lg hover:bg-rose-50 transition active:scale-90 cursor-pointer"
+                              title={isJapanese ? 'ラウンド永久削除' : '라운드 영구 삭제'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                            <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-emerald-600 transition" />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-200/50">
+                          <div className="flex items-center gap-2 font-medium text-stone-600 flex-wrap">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-stone-400" />
+                              <span>{dateText} · {timeText}</span>
+                            </span>
+                            <span className="bg-stone-100 text-stone-800 text-[10px] font-black px-1.5 py-0.2 rounded border border-stone-200/80">
+                              ⏱️ {durationText} {isJapanese ? 'プレー' : '소요'}
+                            </span>
+                          </div>
+                          <span className="truncate max-w-[140px] text-right">
+                            {isJapanese ? '同伴: ' : '동반: '}{companionsText}
                           </span>
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs font-black text-emerald-700">
-                            {strokes}{isJapanese ? '打' : '타'} ({parStr})
-                          </span>
-                          <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-emerald-600 transition" />
                         </div>
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-stone-500">
-                        <span>
-                          {new Date(r.completedAt || r.startedAt).toLocaleDateString(isJapanese ? 'ja-JP' : 'ko-KR')}
-                        </span>
-                        <span className="truncate max-w-[180px]">
-                          {isJapanese ? '同伴: ' : '동반: '}{companionsText}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

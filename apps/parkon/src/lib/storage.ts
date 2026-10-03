@@ -39,6 +39,7 @@ const STORAGE_KEYS = {
   SUNLIGHT_MODE: 'parkon_sunlight_mode_v1',
   KAKAO_USER: 'parkon_kakao_user_v1',
   SERVICE_COUNTRY: 'parkon_service_country_v1',
+  DELETED_ROUND_IDS: 'parkon_deleted_round_ids_v1',
 };
 
 export interface KakaoAuthUser {
@@ -85,6 +86,7 @@ export interface CrowdsourcedHoleSpec {
   distanceMeter: number;
   updatedAt: string;
   contributorCount?: number;
+  contributorName?: string;
   isInitialRegistered?: boolean;
   proposals?: CrowdSpecProposal[];
 }
@@ -510,27 +512,49 @@ export const ParkOnStorage = {
   },
 
   // 3. Completed Rounds
+  // 3-0. 영구 삭제된 라운드 ID 블랙리스트 (재부활 100% 방지)
+  getDeletedRoundIds(): string[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.DELETED_ROUND_IDS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
   getCompletedRounds(): RoundSession[] {
     if (typeof window === 'undefined') return [];
     try {
+      const deletedIds = new Set(this.getDeletedRoundIds());
       const data = localStorage.getItem(STORAGE_KEYS.COMPLETED_ROUNDS);
       if (data) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // 가짜/목업 테스트 기록 영구 정제 (수성 54타 등)
+        if (Array.isArray(parsed)) {
+          // 가짜/목업 테스트 기록 및 대표님이 삭제한 기록 영구 필터링
           const valid = parsed.filter((r: any) => {
-            if (!r) return false;
+            if (!r || !r.id) return false;
+            if (deletedIds.has(r.id)) return false;
             if (r.id === 'round_rec_1' || r.id === 'round_suseong_sample') return false;
             if (r.courseName === '수성파크골프장' && r.players?.some((p: any) => p.name === '김대희' && p.totalStrokes === 54)) return false;
             return true;
           });
-          if (valid.length > 0) return valid;
+          return valid;
         }
       }
-      // 로컬 개발 환경(localhost) 또는 김대희 대표님 기기에서 초기 빈 상태 방지 및 공식 기록(구미파크골프장 74타) 즉시 표출
+
+      // 대표님이 직접 삭제하셨거나 기록을 비우신 경우 더미 샘플 재부활 금지!
+      if (deletedIds.size > 0 || data === '[]') {
+        return [];
+      }
+
+      // 순수 첫 방문 초기 상태일 때만 로컬 기본 샘플 제공
       if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        const defaultId = 'round_kim_gumi_20261002';
+        if (deletedIds.has(defaultId)) return [];
+
         const defaultRealRound: RoundSession = {
-          id: 'round_kim_gumi_20261002',
+          id: defaultId,
           courseName: '구미파크골프장',
           courseId: 'course-3d43d16b-0a42-4a6f-b8d0-00a74a3bfb09',
           totalHoles: 18,
@@ -540,6 +564,8 @@ export const ParkOnStorage = {
           startedAt: '2026-10-02T16:15:00.000Z',
           completedAt: '2026-10-02T18:09:00.000Z',
           selectedCourseLetters: ['A', 'B'],
+          durationMinutes: 114,
+          isFieldVerified: true,
           players: [
             {
               id: 'p_kim',
@@ -591,8 +617,10 @@ export const ParkOnStorage = {
   saveCompletedRounds(rounds: RoundSession[]): void {
     if (typeof window === 'undefined') return;
     try {
+      const deletedIds = new Set(this.getDeletedRoundIds());
       const clean = rounds.filter((r) => {
-        if (!r) return false;
+        if (!r || !r.id) return false;
+        if (deletedIds.has(r.id)) return false;
         if (r.id === 'round_rec_1' || r.id === 'round_suseong_sample') return false;
         if (r.courseName === '수성파크골프장' && r.players?.some((p: any) => p.name === '김대희' && p.totalStrokes === 54)) return false;
         return true;
@@ -610,11 +638,33 @@ export const ParkOnStorage = {
   },
 
   deleteCompletedRound(roundId: string): void {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !roundId) return;
     try {
+      // 1. 영구 삭제 블랙리스트에 등록 (클라우드나 세이프티 스태시에서 다시 불러와도 100% 차단)
+      const deletedSet = new Set(this.getDeletedRoundIds());
+      deletedSet.add(roundId);
+      localStorage.setItem(STORAGE_KEYS.DELETED_ROUND_IDS, JSON.stringify(Array.from(deletedSet)));
+
+      // 2. 완료 라운드 목록에서 즉시 제거
       const existing = this.getCompletedRounds();
       const updated = existing.filter((r) => r.id !== roundId);
       localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(updated));
+
+      // 3. 브라우저 안전 보관함(Safety Stash)에서도 영구 삭제
+      try {
+        const rawStash = localStorage.getItem('parkon_safety_stash_rounds_v1');
+        if (rawStash) {
+          const stashList: RoundSession[] = JSON.parse(rawStash);
+          if (Array.isArray(stashList)) {
+            const cleanStash = stashList.filter((r) => r && r.id !== roundId);
+            localStorage.setItem('parkon_safety_stash_rounds_v1', JSON.stringify(cleanStash));
+          }
+        }
+      } catch {}
+
+      // 4. 전역 동기화 이벤트 발생
+      window.dispatchEvent(new Event('parkon_member_synced'));
+      window.dispatchEvent(new Event('storage'));
     } catch (e) {
       console.error('Failed to delete completed round:', e);
     }
@@ -623,7 +673,16 @@ export const ParkOnStorage = {
   clearCompletedRounds(): void {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.removeItem(STORAGE_KEYS.COMPLETED_ROUNDS);
+      const existing = this.getCompletedRounds();
+      const deletedSet = new Set(this.getDeletedRoundIds());
+      existing.forEach((r) => {
+        if (r && r.id) deletedSet.add(r.id);
+      });
+      localStorage.setItem(STORAGE_KEYS.DELETED_ROUND_IDS, JSON.stringify(Array.from(deletedSet)));
+      localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify([]));
+      localStorage.removeItem('parkon_safety_stash_rounds_v1');
+      window.dispatchEvent(new Event('parkon_member_synced'));
+      window.dispatchEvent(new Event('storage'));
     } catch (e) {
       console.error('Failed to clear completed rounds:', e);
     }
@@ -637,9 +696,18 @@ export const ParkOnStorage = {
       const customCourses: Course[] = customData ? JSON.parse(customData) : [];
       const crowdSpecs = this.getCrowdsourcedHoleSpecs();
 
+      // [대표님 지침]: 엉터리 더미 제원 방지 & 실제 공인 검증 구장 명단
+      const VERIFIED_COURSE_NAMES = new Set([
+        '수성파크골프장',
+        '동락파크골프장',
+        '살곶이파크골프장',
+      ]);
+
       // Apply crowdsourced specs (Par, distance) onto any course's holes
       const applyCrowdSpecs = (c: Course): Course => {
         const cleanName = c.name.replace(/\s+/g, '');
+        const isOfficiallyVerified = VERIFIED_COURSE_NAMES.has(c.name) || Boolean(c.isSpecsVerified);
+
         const holes = (c.holesMetadata || generateStandardHoles(c.totalHoles)).map((h) => {
           const numHole = Number(h.hole);
           const key1 = `${c.id}_hole_${numHole}`;
@@ -650,11 +718,27 @@ export const ParkOnStorage = {
               ...h,
               par: Number(crowd.par),
               distanceMeter: Number(crowd.distanceMeter),
+              isVerified: true,
+              contributedBy: crowd.contributorName || '골퍼 실측 기여',
             };
           }
-          return h;
+          if (isOfficiallyVerified && h.isVerified !== false) {
+            return {
+              ...h,
+              isVerified: true,
+            };
+          }
+          return {
+            ...h,
+            isVerified: false,
+          };
         });
-        return { ...c, holesMetadata: holes };
+        const hasAnyVerified = holes.some((h) => h.isVerified);
+        return {
+          ...c,
+          holesMetadata: holes,
+          isSpecsVerified: isOfficiallyVerified || hasAnyVerified,
+        };
       };
 
       // Map customized courses by id and by normalized name
@@ -899,6 +983,78 @@ export const ParkOnStorage = {
         requiredVotes: 10,
         message: '저장 처리 중 오류가 발생했습니다.',
       };
+    }
+  },
+
+  // 6. [대표님 테스트 보호용]: 등록된 제원을 다시 '미확인 상태'로 깨끗이 되돌리기(원복/초기화)
+  resetHoleSpecToUnverified(courseId: string, courseName: string, hole: number): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const numHole = Number(hole);
+      const cleanName = courseName.replace(/\s+/g, '');
+      const key1 = `${courseId}_hole_${numHole}`;
+      const key2 = `${cleanName}_hole_${numHole}`;
+
+      // 1) 빅데이터 등록 목록에서 삭제
+      const specs = this.getCrowdsourcedHoleSpecs();
+      delete specs[key1];
+      delete specs[key2];
+      localStorage.setItem(STORAGE_KEYS.CROWD_HOLE_SPECS, JSON.stringify(specs));
+
+      // 2) 커스텀 코스 캐시에서 미확인 상태로 갱신
+      const customData = localStorage.getItem(STORAGE_KEYS.CUSTOM_COURSES);
+      if (customData) {
+        const list: Course[] = JSON.parse(customData);
+        const updated = list.map((c) => {
+          if (c.id === courseId || c.name.replace(/\s+/g, '') === cleanName) {
+            const holes = (c.holesMetadata || []).map((h) => {
+              if (Number(h.hole) === numHole) {
+                return {
+                  ...h,
+                  isVerified: false,
+                  contributedBy: undefined,
+                };
+              }
+              return h;
+            });
+            const anyVerified = holes.some((h) => h.isVerified);
+            return {
+              ...c,
+              holesMetadata: holes,
+              isSpecsVerified: anyVerified,
+            };
+          }
+          return c;
+        });
+        localStorage.setItem(STORAGE_KEYS.CUSTOM_COURSES, JSON.stringify(updated));
+      }
+    } catch (e) {
+      console.error('Failed to reset hole spec:', e);
+    }
+  },
+
+  resetAllHoleSpecsForCourse(courseId: string, courseName: string): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const cleanName = courseName.replace(/\s+/g, '');
+      // 1) 해당 구장의 모든 빅데이터 제원 키 삭제
+      const specs = this.getCrowdsourcedHoleSpecs();
+      Object.keys(specs).forEach((k) => {
+        if (k.startsWith(`${courseId}_`) || k.startsWith(`${cleanName}_`)) {
+          delete specs[k];
+        }
+      });
+      localStorage.setItem(STORAGE_KEYS.CROWD_HOLE_SPECS, JSON.stringify(specs));
+
+      // 2) 커스텀 코스 캐시에서 구장 제원 완전 초기화
+      const customData = localStorage.getItem(STORAGE_KEYS.CUSTOM_COURSES);
+      if (customData) {
+        const list: Course[] = JSON.parse(customData);
+        const updated = list.filter((c) => c.id !== courseId && c.name.replace(/\s+/g, '') !== cleanName);
+        localStorage.setItem(STORAGE_KEYS.CUSTOM_COURSES, JSON.stringify(updated));
+      }
+    } catch (e) {
+      console.error('Failed to reset all specs for course:', e);
     }
   },
 
