@@ -3,7 +3,7 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Award, Share2, Copy, Check, Home, BookmarkCheck, ArrowRight, ShieldAlert, Sparkles, Trophy, Camera, CreditCard } from 'lucide-react';
+import { Award, Share2, Copy, Check, Home, BookmarkCheck, ArrowRight, ShieldAlert, Sparkles, Trophy, Camera, CreditCard, Trash2 } from 'lucide-react';
 import { RoundSession, Course } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
 import { CompanionStorage } from '@/lib/companionStorage';
@@ -1009,6 +1009,21 @@ function ResultContent() {
           <Home className="w-5 h-5" />
           <span>{isJapanese ? 'ホーム画面へ移動' : '홈 화면으로 이동'}</span>
         </Link>
+        {/* 개별 라운드 기록 삭제 버튼 (안전한 1건 전용 삭제) */}
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm(isJapanese ? 'このラウンド記録を削除しますか？\n（この操作は元に戻せません）' : '이 라운드 기록을 삭제하시겠습니까?\n(이 작업은 복구할 수 없습니다)')) {
+              ParkOnStorage.deleteCompletedRound(session.id);
+              alert(isJapanese ? 'ラウンド記録が削除されました。' : '해당 라운드 기록이 삭제되었습니다.');
+              window.location.href = '/';
+            }
+          }}
+          className="w-full py-3 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-2xl border border-red-200 text-xs transition flex items-center justify-center gap-1.5 cursor-pointer mt-2"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          <span>{isJapanese ? 'このラウンド記録を削除' : '이 라운드 기록 삭제'}</span>
+        </button>
       </div>
 
       {/* Watermark Photo Card Modal */}
