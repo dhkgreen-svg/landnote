@@ -214,17 +214,29 @@ function RoundJoinContent() {
                   {isJapanese ? '登録なしで即合流' : '가입 없이 1초 합류'}
                 </span>
               </div>
-              <input
-                type="text"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                placeholder={
-                  isJapanese
-                    ? 'お名前を入力してください (例: パク・プロ)'
-                    : "성함을 입력하세요 (예: 이프로, 최사장...)"
-                }
-                className="w-full px-3.5 py-3 text-base bg-stone-50 text-stone-900 border-2 border-stone-200 rounded-xl font-bold focus:outline-hidden focus:border-emerald-600 focus:bg-white transition"
-              />
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  placeholder={
+                    isJapanese
+                      ? 'お名前を入力してください (例: 山田プロ)'
+                      : "성명을 적어주세요 (예: 이프로, 최사장...)"
+                  }
+                  className="w-full pl-3.5 pr-10 py-3 text-base bg-stone-50 text-stone-900 border-2 border-stone-200 rounded-xl font-bold focus:outline-hidden focus:border-emerald-600 focus:bg-white transition placeholder:text-stone-400"
+                />
+                {userName ? (
+                  <button
+                    type="button"
+                    onClick={() => setUserName('')}
+                    className="absolute right-3 w-6 h-6 flex items-center justify-center rounded-full bg-stone-200 hover:bg-stone-300 text-stone-600 hover:text-stone-900 text-xs transition cursor-pointer"
+                    title={isJapanese ? 'クリア' : '지우기'}
+                  >
+                    ✕
+                  </button>
+                ) : null}
+              </div>
               <button
                 type="button"
                 onClick={() => executeJoin(userName.trim() || (isJapanese ? '同伴者' : '동반자'), true)}

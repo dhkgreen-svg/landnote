@@ -10,7 +10,7 @@ import { ClubStorage } from '@/lib/clubStorage';
 import { LocalRuleBanner } from '@/components/LocalRuleBanner';
 import { TipCard } from '@/components/TipCard';
 import { ConditionVoteModal } from '@/components/ConditionVoteModal';
-import { cleanPlayerName, sortPlayersByLeaderAndAlphabetical, getDefaultSelfName, syncRoundSelfNameToUserProfile, formatPlayerDisplayName, isSampleOrPlaceholder } from '@/lib/playerUtils';
+import { cleanPlayerName, sortPlayersByLeaderAndAlphabetical, getDefaultSelfName, syncRoundSelfNameToUserProfile, formatPlayerDisplayName, isSampleOrPlaceholder, isDefaultCompanionName } from '@/lib/playerUtils';
 import { HoleScoreBadge, ScoreBadgeLegend } from '@/components/HoleScoreBadge';
 import { FloatingCameraFAB } from '@/components/FloatingCameraFAB';
 import { BadgeStorage } from '@/lib/badgeStorage';
@@ -42,7 +42,7 @@ export default function RoundPlayPage() {
   const [showHoleSpecModal, setShowHoleSpecModal] = useState<boolean>(false);
   const [showSpecConfirmStep, setShowSpecConfirmStep] = useState<boolean>(false);
   const [editingPar, setEditingPar] = useState<number>(3);
-  const [editingDistance, setEditingDistance] = useState<number>(50);
+  const [editingDistance, setEditingDistance] = useState<string>('50');
   const [specSavedToast, setSpecSavedToast] = useState<string | null>(null);
 
   // Total Cumulative Score & Course Breakdown Modal State
@@ -97,8 +97,9 @@ export default function RoundPlayPage() {
           name = !isSampleOrPlaceholder(selfName) ? selfName : (isJapanese ? 'プレイヤー' : '플레이어');
         }
       } else {
-        if (!name) {
-          name = isJapanese ? `同伴者${idx + 1}` : `동반자 ${idx + 1}`;
+        // 동반자 기본 이름(동반자1, 동반자 2 등)이면 입력창을 깨끗이 비워 바로 새 성명 입력 가능하도록
+        if (isDefaultCompanionName(name)) {
+          name = '';
         }
       }
       return {
@@ -1167,7 +1168,7 @@ export default function RoundPlayPage() {
 
   const openHoleSpecModal = () => {
     setEditingPar(Number(holeMetadata.par) || 3);
-    setEditingDistance(Number(holeMetadata.distanceMeter) || 50);
+    setEditingDistance(String(Number(holeMetadata.distanceMeter) || 50));
     setShowSpecConfirmStep(false);
     setShowHoleSpecModal(true);
   };
@@ -2437,19 +2438,46 @@ export default function RoundPlayPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-black text-stone-700 flex items-center justify-between">
                     <span>{isJapanese ? '2. ホール距離 (m) 設定' : '2. 홀 거리 (m) 설정'}</span>
-                    <span className="text-emerald-700 font-bold text-[11px]">{isJapanese ? `現在設定: ${editingDistance}m` : `현재 설정: ${editingDistance}m`}</span>
+                    <span className="text-emerald-700 font-bold text-[11px]">
+                      {isJapanese
+                        ? `現在設定: ${editingDistance ? `${editingDistance}m` : '未入力'}`
+                        : `현재 설정: ${editingDistance ? `${editingDistance}m` : '미입력 (직접 입력)'}`}
+                    </span>
                   </label>
 
                   <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={10}
-                      max={300}
-                      step={1}
-                      value={editingDistance}
-                      onChange={(e) => setEditingDistance(Number(e.target.value) || 0)}
-                      className="flex-1 h-12 text-center text-xl font-black rounded-xl border-2 border-stone-200 focus:border-emerald-600 focus:outline-none bg-stone-50 text-stone-800"
-                    />
+                    <div className="flex-1 relative flex items-center">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={editingDistance}
+                        onFocus={(e) => {
+                          e.target.select();
+                        }}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/[^0-9]/g, '');
+                          if (!raw) {
+                            setEditingDistance('');
+                            return;
+                          }
+                          const clean = raw.replace(/^0+/, '');
+                          setEditingDistance(clean);
+                        }}
+                        placeholder={isJapanese ? '距離を入力 (例: 65)' : '거리 입력 (예: 65)'}
+                        className="w-full h-12 text-center text-2xl font-black rounded-xl border-2 border-stone-200 focus:border-emerald-600 focus:bg-white focus:outline-none bg-stone-50 text-stone-800 pr-9 pl-3 placeholder:text-stone-400 placeholder:text-base placeholder:font-normal"
+                      />
+                      {editingDistance ? (
+                        <button
+                          type="button"
+                          onClick={() => setEditingDistance('')}
+                          className="absolute right-3 w-6 h-6 flex items-center justify-center rounded-full bg-stone-200 hover:bg-stone-300 text-stone-600 hover:text-stone-900 text-xs font-bold transition cursor-pointer"
+                          title={isJapanese ? 'クリア' : '지우기'}
+                        >
+                          ✕
+                        </button>
+                      ) : null}
+                    </div>
                     <span className="text-stone-600 font-black text-base pr-1">m</span>
                   </div>
 
@@ -2459,8 +2487,12 @@ export default function RoundPlayPage() {
                       <button
                         key={delta}
                         type="button"
-                        onClick={() => setEditingDistance((prev) => Math.max(10, Math.min(300, prev + delta)))}
-                        className="h-9 rounded-lg bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-700 font-black text-xs border border-stone-300 flex items-center justify-center"
+                        onClick={() => {
+                          const cur = Number(editingDistance) || Number(holeMetadata.distanceMeter) || 50;
+                          const next = Math.max(10, Math.min(300, cur + delta));
+                          setEditingDistance(String(next));
+                        }}
+                        className="h-9 rounded-lg bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-700 font-black text-xs border border-stone-300 flex items-center justify-center cursor-pointer"
                       >
                         {delta > 0 ? `+${delta}m` : `${delta}m`}
                       </button>
@@ -2486,6 +2518,11 @@ export default function RoundPlayPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      const numDist = Number(editingDistance);
+                      if (!editingDistance || isNaN(numDist) || numDist < 10) {
+                        alert(isJapanese ? '有効なホール距離 (10m〜300m) を入力してください。' : '올바른 홀 거리 (10m ~ 300m) 를 입력해 주십시오.');
+                        return;
+                      }
                       if (!signboardChecked) {
                         alert(isJapanese ? '現地の案内看板確認チェックボックスにチェックを入れてください。' : '현장 안내판(팻말) 확인 체크박스에 체크해 주셔야 저장 단계로 진행하실 수 있습니다.');
                         return;
@@ -2500,12 +2537,12 @@ export default function RoundPlayPage() {
                     }`}
                   >
                     <CheckCircle2 className="w-5 h-5" />
-                    <span>{isJapanese ? `入力内容確認へ進む (Par ${editingPar}, ${editingDistance}m)` : `입력 내용 확인 단계로 이동 (Par ${editingPar}, ${editingDistance}m)`}</span>
+                    <span>{isJapanese ? `入力内容確認へ進む (Par ${editingPar}, ${editingDistance || '0'}m)` : `입력 내용 확인 단계로 이동 (Par ${editingPar}, ${editingDistance || '0'}m)`}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowHoleSpecModal(false)}
-                    className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold rounded-xl text-xs"
+                    className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold rounded-xl text-xs cursor-pointer"
                   >
                     {isJapanese ? 'キャンセル' : '취소'}
                   </button>
@@ -2565,7 +2602,7 @@ export default function RoundPlayPage() {
                 <div className="space-y-2 pt-1">
                   <button
                     type="button"
-                    onClick={() => handleSaveHoleSpec(editingPar, editingDistance, false)}
+                    onClick={() => handleSaveHoleSpec(editingPar, Number(editingDistance) || 50, false)}
                     className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border border-emerald-400 cursor-pointer"
                   >
                     <CheckCircle2 className="w-5 h-5" />
@@ -2575,7 +2612,7 @@ export default function RoundPlayPage() {
                   {/* 2-Strike 공식 승격 버튼 */}
                   <button
                     type="button"
-                    onClick={() => handleSaveHoleSpec(editingPar, editingDistance, true)}
+                    onClick={() => handleSaveHoleSpec(editingPar, Number(editingDistance) || 50, true)}
                     className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-95 shadow-xs cursor-pointer"
                     title={isJapanese ? '2組一致確認で全国公式DBへ即時永久昇格' : '2개 팀 일치 확인으로 전국 공식 DB에 즉시 영구 승격'}
                   >
@@ -3546,7 +3583,7 @@ export default function RoundPlayPage() {
                   </div>
                 </div>
 
-                {editPlayersDraft.map((draftP) => {
+                {editPlayersDraft.map((draftP, idx) => {
                   const isSelectedLeader = draftP.isLeader && !draftP.isOut;
                   const selfName = getDefaultSelfName();
                   const currentDisplayName = draftP.name || (draftP.isSelf ? selfName : '선수');
@@ -3632,25 +3669,54 @@ export default function RoundPlayPage() {
                       {/* 이름 입력 필드 */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-[11px] font-bold text-stone-600">{isJapanese ? '氏名' : '이름'}</span>
+                          <span className="text-[11px] font-bold text-stone-600">{isJapanese ? '氏名' : '성명'}</span>
                           {draftP.isSelf && (
                             <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-blue-100 text-blue-700">
                               {isJapanese ? '本人' : '본인'}
                             </span>
                           )}
                         </div>
-                        <input
-                          type="text"
-                          value={draftP.name}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setEditPlayersDraft((prev) =>
-                              prev.map((p) => (p.id === draftP.id ? { ...p, name: val } : p))
-                            );
-                          }}
-                          placeholder={draftP.isSelf ? (isJapanese ? '本人' : selfName) : (isJapanese ? '氏名入力' : '이름 입력')}
-                          className="w-full px-2.5 py-1 text-sm bg-white text-stone-900 border border-stone-300 rounded-lg focus:outline-hidden focus:border-emerald-500 font-bold placeholder:text-stone-400"
-                        />
+                        <div className="relative flex items-center">
+                          <input
+                            type="text"
+                            value={draftP.name}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditPlayersDraft((prev) =>
+                                prev.map((p) => (p.id === draftP.id ? { ...p, name: val } : p))
+                              );
+                            }}
+                            onFocus={(e) => {
+                              if (isDefaultCompanionName(e.target.value)) {
+                                setEditPlayersDraft((prev) =>
+                                  prev.map((p) => (p.id === draftP.id ? { ...p, name: '' } : p))
+                                );
+                              } else {
+                                e.target.select();
+                              }
+                            }}
+                            placeholder={
+                              draftP.isSelf
+                                ? (isJapanese ? '代表のお名前 (本人)' : '성명을 적어주세요 (본인)')
+                                : (isJapanese ? `お名前を入力 (同伴者 ${idx + 1})` : `성명을 적어주세요 (동반자 ${idx + 1})`)
+                            }
+                            className="w-full pl-2.5 pr-8 py-1.5 text-sm bg-white text-stone-900 border border-stone-300 rounded-lg focus:outline-hidden focus:border-emerald-500 font-bold placeholder:text-stone-400"
+                          />
+                          {draftP.name ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditPlayersDraft((prev) =>
+                                  prev.map((p) => (p.id === draftP.id ? { ...p, name: '' } : p))
+                                );
+                              }}
+                              className="absolute right-2 w-5 h-5 flex items-center justify-center rounded-full bg-stone-200 hover:bg-stone-300 text-stone-600 hover:text-stone-900 text-xs transition cursor-pointer"
+                              title={isJapanese ? 'クリア' : '지우기'}
+                            >
+                              ✕
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
 
                       {/* 🚪 중도 퇴장 버튼 */}
@@ -3702,10 +3768,9 @@ export default function RoundPlayPage() {
                         alert(isJapanese ? '1組の最大同伴者は4名です。' : '한 조의 최대 동반자는 4명입니다.');
                         return;
                       }
-                      const newNum = editPlayersDraft.length + 1;
                       const newPlayer: RoundPlayer = {
                         id: `player_add_${Date.now()}`,
-                        name: isJapanese ? `同伴者${newNum}` : `동반자 ${newNum}`,
+                        name: '', // 깔끔하게 빈칸으로 초기화하여 '성명을 적어주세요' 노출
                         scores: {},
                         obCount: {},
                         totalStrokes: 0,
@@ -3784,17 +3849,18 @@ export default function RoundPlayPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const selfName = getDefaultSelfName();
+                  const selfName = getDefaultSelfName(isJapanese);
+                  const cleanSelf = (!selfName || isSampleOrPlaceholder(selfName)) ? (isJapanese ? '代表' : '조장') : selfName;
                   let updated = editPlayersDraft.map((p, idx) => {
                     const isSelf = p.isSelf ?? (idx === 0);
                     let name = (p.name || '').trim();
                     if (isSelf) {
-                      if (!name || name === '본인' || name.startsWith('본인(')) {
-                        name = selfName;
+                      if (!name || isDefaultCompanionName(name)) {
+                        name = cleanSelf;
                       }
                     } else {
-                      if (!name) {
-                        name = `동반자 ${idx + 1}`;
+                      if (!name || isDefaultCompanionName(name)) {
+                        name = isJapanese ? `同伴者 ${idx + 1}` : `동반자 ${idx + 1}`;
                       }
                     }
                     return {

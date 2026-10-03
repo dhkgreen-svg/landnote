@@ -704,3 +704,6 @@ export const BadgeStorage = {
     }
   },
 };
+
+export const badgeStorage = BadgeStorage;
+

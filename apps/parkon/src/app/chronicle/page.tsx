@@ -28,6 +28,9 @@ import {
   Building2,
   Briefcase,
   X,
+  Copy,
+  Check,
+  KeyRound,
 } from 'lucide-react';
 import { ParkOnStorage } from '@/lib/storage';
 import { ClubStorage } from '@/lib/clubStorage';
@@ -37,6 +40,8 @@ import { UserBusinessCard } from '@/types/businessCard';
 import { CompanionQRModal } from '@/components/CompanionQRModal';
 import { CompanionFeedWidget } from '@/components/CompanionFeedWidget';
 import { CompanionLightningModal } from '@/components/CompanionLightningModal';
+import { KakaoLoginModal } from '@/components/KakaoLoginModal';
+import { getSavedMemberCode } from '@/lib/memberCodeUtils';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { formatPlayerDisplayName } from '@/lib/playerUtils';
@@ -51,6 +56,10 @@ function ChronicleContent() {
 
   const [mounted, setMounted] = useState(false);
   const [userName, setUserName] = useState<string>('');
+  const [memberCode, setMemberCode] = useState<string>('');
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginModalMode, setLoginModalMode] = useState<'login' | 'profile'>('login');
   const [companions, setCompanions] = useState<Companionship[]>([]);
   const [lightningRounds, setLightningRounds] = useState<CompanionLightningRound[]>([]);
   const [exchangedCards, setExchangedCards] = useState<UserBusinessCard[]>([]);
@@ -82,19 +91,33 @@ function ChronicleContent() {
       setCompanions(CompanionStorage.getCompanions());
       setLightningRounds(CompanionStorage.getLightningRounds());
       setExchangedCards(BusinessCardStorage.getExchangedCards());
+      setMemberCode(getSavedMemberCode());
     };
     load();
     window.addEventListener('parkon_companion_updated', load);
     window.addEventListener('parkon_lightning_updated', load);
     window.addEventListener('parkon_business_cards_exchanged', load);
+    window.addEventListener('parkon_member_synced', load);
     window.addEventListener('storage', load);
     return () => {
       window.removeEventListener('parkon_companion_updated', load);
       window.removeEventListener('parkon_lightning_updated', load);
       window.removeEventListener('parkon_business_cards_exchanged', load);
+      window.removeEventListener('parkon_member_synced', load);
       window.removeEventListener('storage', load);
     };
   }, [isJapanese]);
+
+  const handleCopyMemberCode = () => {
+    if (!memberCode) return;
+    try {
+      navigator.clipboard.writeText(memberCode);
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2000);
+    } catch {
+      alert(`내 고유 회원번호: ${memberCode}`);
+    }
+  };
 
   // 1. 실제 사용자가 완주한 공식 라운드만 반영 (가상 연습 라운드 제외)
   const completedRounds = ParkOnStorage.getCompletedRounds().filter(
@@ -134,9 +157,9 @@ function ChronicleContent() {
   const parPattern = [4, 3, 4, 3, 4, 4, 3, 3, 5];
 
   completedRounds.forEach((r) => {
-    const p = r.players.find(
+    const p = (r.players || []).find(
       (pl) => pl.isSelf || pl.name === userName || pl.isLeader
-    );
+    ) || (r.players && r.players[0]);
     if (p && p.totalStrokes > 0) {
       userScores.push(p.totalStrokes);
     }
@@ -364,6 +387,57 @@ function ChronicleContent() {
               {avgStrokes !== null ? `${avgStrokes}${isJapanese ? '打' : '타'}` : (isJapanese ? '-打' : '-타')}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* 👑 VIP 평생 고유번호 카드 & PC 연동 배너 (대표님 지침: 7자리 번호로 비밀번호 없이 연동) */}
+      <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-emerald-500 rounded-3xl p-0.5 shadow-lg">
+        <div className="bg-emerald-950 rounded-[22px] p-3.5 sm:p-4 text-white space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 font-black text-amber-300 text-xs sm:text-sm">
+              <span className="text-base">👑</span>
+              <span>나의 평생 고유회원번호 (비밀번호 불필요)</span>
+            </div>
+            <span className="text-[9.5px] bg-amber-400 text-emerald-950 font-black px-2 py-0.5 rounded-full shadow-xs">
+              자동 발급
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between bg-emerald-900/80 rounded-2xl p-2.5 sm:p-3 border border-amber-300/40 shadow-inner">
+            <div className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-amber-300 shrink-0" />
+              <span className="text-lg sm:text-xl font-black text-amber-300 tracking-wider font-mono">
+                {memberCode || 'PKY-7788'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleCopyMemberCode}
+                className={`py-1.5 px-3 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-xs flex items-center gap-1 ${
+                  codeCopied ? 'bg-emerald-500 text-white' : 'bg-amber-400 hover:bg-amber-300 text-stone-950'
+                }`}
+              >
+                {codeCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{codeCopied ? '복사됨!' : '번호 복사'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginModalMode('login');
+                  setShowLoginModal(true);
+                }}
+                className="py-1.5 px-2.5 rounded-xl text-xs font-black bg-white/20 hover:bg-white/30 text-white border border-white/30 transition active:scale-95 cursor-pointer"
+                title="다른 기기/번호로 로그인"
+              >
+                <span>🔑 로그인/변경</span>
+              </button>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-emerald-100 font-medium leading-relaxed">
+            💡 <strong>PC(컴퓨터)나 다른 휴대폰</strong>에서 이 번호 <strong>7자리</strong>만 넣으시면, 비밀번호 없이 <strong>내 모든 연대기와 경기 기록이 1초 만에 그대로 복원</strong>됩니다!
+          </p>
         </div>
       </div>
 
@@ -685,12 +759,12 @@ function ChronicleContent() {
               <div className="space-y-2.5">
                 {completedRounds.slice(0, 10).map((r) => {
                   const myPl =
-                    r.players.find((p) => p.isSelf || p.name === userName || p.isLeader) || r.players[0];
+                    (r.players || []).find((p) => p.isSelf || p.name === userName || p.isLeader) || (r.players && r.players[0]) || { totalStrokes: (r as any).totalScore || 54, totalParDiff: 0 };
                   const strokes = myPl?.totalStrokes || 0;
                   const parDiff = myPl?.totalParDiff ?? 0;
                   const parStr = parDiff === 0 ? 'Even' : parDiff > 0 ? `+${parDiff}` : `${parDiff}`;
                   const companionsText =
-                    r.players
+                    (r.players || [])
                       .filter((p) => !p.isSelf && p.name !== userName)
                       .map((p) => p.name)
                       .join(', ') || (isJapanese ? '単独プレー' : '단독 플레이');
@@ -2021,6 +2095,16 @@ function ChronicleContent() {
         completedRounds={completedRounds}
         isOpen={!!selectedPilgrimCourse}
         onClose={() => setSelectedPilgrimCourse(null)}
+      />
+
+      {/* 👑 회원번호 로그인 & 프로필 관리 모달 */}
+      <KakaoLoginModal
+        isOpen={showLoginModal}
+        initialMode={loginModalMode}
+        onClose={() => {
+          setShowLoginModal(false);
+          setMemberCode(getSavedMemberCode());
+        }}
       />
     </div>
   );

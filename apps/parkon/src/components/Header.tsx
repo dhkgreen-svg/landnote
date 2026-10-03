@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { HelpCircle, MapPin, AlertTriangle, Trophy, Newspaper, Globe } from 'lucide-react';
 import { ParkOnStorage, KakaoAuthUser } from '@/lib/storage';
+import { getSavedMemberCode, isPlaceholderName } from '@/lib/memberCodeUtils';
 import { KakaoLoginModal } from './KakaoLoginModal';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 
@@ -23,7 +24,9 @@ export function Header() {
   const { language, setLanguage, t, isJapanese } = useTranslation();
 
   const [showKakaoModal, setShowKakaoModal] = useState(false);
+  const [modalMode, setModalMode] = useState<'login' | 'profile'>('login');
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
+  const [memberCode, setMemberCode] = useState<string>('');
   const [pendingGuard, setPendingGuard] = useState<NavGuardInfo | null>(null);
   const [showLoginTip, setShowLoginTip] = useState(false);
   const [tipUserName, setTipUserName] = useState('');
@@ -35,24 +38,6 @@ export function Header() {
     pathname !== '/round/result'
   );
 
-  // 등록된 사용자 이름 산출 (홍길동/플레이어/조장 등 예시값 제외하고 본인 직접 입력 여부 판별)
-  const isSampleOrPlaceholder = (name?: string | null) => {
-    if (!name) return true;
-    const clean = name.trim();
-    return (
-      !clean ||
-      clean === '홍길동' ||
-      clean === '홍길동(본인)' ||
-      clean === '플레이어' ||
-      clean === '조장(본인)' ||
-      clean === '본인' ||
-      clean === '회원' ||
-      clean === '파크골퍼' ||
-      clean === '山田太郎' ||
-      clean === 'ゲスト'
-    );
-  };
-
   const userProfile = typeof window !== 'undefined' ? ParkOnStorage.getUserProfile() : null;
   const rawDisplayName =
     (kakaoUser
@@ -61,12 +46,18 @@ export function Header() {
           : kakaoUser.realName || kakaoUser.nickname)
       : (userProfile?.userName || '')) || '';
 
-  const hasRegisteredName = Boolean(rawDisplayName && !isSampleOrPlaceholder(rawDisplayName));
+  const hasRegisteredName = Boolean(rawDisplayName && !isPlaceholderName(rawDisplayName));
   const currentDisplayName = hasRegisteredName ? rawDisplayName.trim() : '';
+
+  const handleOpenModal = (mode: 'login' | 'profile') => {
+    setModalMode(mode);
+    setShowKakaoModal(true);
+  };
 
   useEffect(() => {
     const checkUser = () => {
       setKakaoUser(ParkOnStorage.getKakaoUser());
+      setMemberCode(getSavedMemberCode());
     };
     checkUser();
 
@@ -79,12 +70,14 @@ export function Header() {
     window.addEventListener('storage', checkUser);
     window.addEventListener('parkon_profile_updated', checkUser);
     window.addEventListener('parkon_round_player_sync', checkUser);
+    window.addEventListener('parkon_member_synced', checkUser);
     window.addEventListener('parkon_show_header_login_tip', handleShowTip);
 
     return () => {
       window.removeEventListener('storage', checkUser);
       window.removeEventListener('parkon_profile_updated', checkUser);
       window.removeEventListener('parkon_round_player_sync', checkUser);
+      window.removeEventListener('parkon_member_synced', checkUser);
       window.removeEventListener('parkon_show_header_login_tip', handleShowTip);
     };
   }, []);
@@ -169,29 +162,44 @@ export function Header() {
           </Link>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* ✍️ 성명 입력 / 회원 프로필 버튼 */}
-            <button
-              type="button"
-              onClick={() => setShowKakaoModal(true)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black shadow-xs transition active:scale-95 cursor-pointer shrink-0 border ${
+            {/* ✍️ 2줄 프로필/로그인 버튼: [성명 + 고유번호] 또는 [성명 입력 + 로그인] */}
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-2xl text-xs font-black shadow-xs transition shrink-0 border ${
                 hasRegisteredName
                   ? 'bg-emerald-800/90 hover:bg-emerald-900 text-amber-300 border-amber-300/60'
                   : 'bg-amber-400 hover:bg-amber-300 text-stone-950 border-amber-500 shadow-sm animate-pulse'
               }`}
-              title={
-                hasRegisteredName
-                  ? (isJapanese ? 'お名前・ニックネーム変更・連携' : '내 성명/별명 수정 및 카카오 연동')
-                  : (isJapanese ? 'お名前入力＆簡単連携' : '내 성명 입력 및 카카오톡 간편 연동')
-              }
             >
-              <span className="text-[11px] leading-none">{hasRegisteredName ? '👤' : '✍️'}</span>
-              <span className="truncate max-w-[75px] sm:max-w-[100px] leading-none">
-                {hasRegisteredName
-                  ? currentDisplayName
-                  : (isJapanese ? 'お名前入力' : '성명 입력')}
-              </span>
-              {hasRegisteredName && <span className="text-[9px] opacity-75 leading-none">✏️</span>}
-            </button>
+              <button
+                type="button"
+                onClick={() => handleOpenModal(hasRegisteredName ? 'profile' : 'login')}
+                className="text-[12px] leading-none shrink-0 cursor-pointer hover:scale-110 transition active:scale-95"
+                title={hasRegisteredName ? `${currentDisplayName} 님 프로필 확인` : '성명 입력 및 로그인'}
+              >
+                {hasRegisteredName ? '👤' : '✍️'}
+              </button>
+              <div className="flex flex-col items-start leading-none text-left">
+                {/* 1행: 이름 (누르면 프로필/회원정보) */}
+                <button
+                  type="button"
+                  onClick={() => handleOpenModal(hasRegisteredName ? 'profile' : 'login')}
+                  className="text-[11px] font-black tracking-tight truncate max-w-[70px] sm:max-w-[95px] cursor-pointer hover:underline text-left"
+                >
+                  {hasRegisteredName ? currentDisplayName : (isJapanese ? 'お名前入力' : '성명 입력')}
+                </button>
+                {/* 2행: 로그인/고유번호 (누르면 무조건 7자리 고유번호 입력 로그인 창으로 직행!) */}
+                <button
+                  type="button"
+                  onClick={() => handleOpenModal('login')}
+                  className={`text-[8.5px] font-extrabold tracking-tight mt-0.5 cursor-pointer hover:underline text-left ${
+                    hasRegisteredName ? 'text-emerald-200 hover:text-amber-200' : 'text-amber-950 hover:text-black font-black'
+                  }`}
+                  title="스마트폰 7자리 회원번호로 1초 로그인하기"
+                >
+                  {hasRegisteredName && memberCode ? memberCode : (isJapanese ? 'ログイン 🔑' : '로그인 🔑')}
+                </button>
+              </div>
+            </div>
 
             {/* 0. 나의 파크골프 연대기 & 1촌 */}
             <Link
@@ -343,12 +351,15 @@ export function Header() {
       {/* 카카오 로그인 모달 */}
       <KakaoLoginModal
         isOpen={showKakaoModal}
+        initialMode={modalMode}
         onClose={() => {
           setShowKakaoModal(false);
           setKakaoUser(ParkOnStorage.getKakaoUser());
+          setMemberCode(getSavedMemberCode());
         }}
         onLoginSuccess={(user) => {
           setKakaoUser(user);
+          setMemberCode(getSavedMemberCode());
         }}
       />
     </>

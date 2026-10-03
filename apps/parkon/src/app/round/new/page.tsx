@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { Course, RoundPlayer, RoundSession, formatCourseHolesText } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
 import { generateStandardHoles } from '@/lib/defaultCourses';
-import { getDefaultSelfName, sortPlayersByLeaderAndAlphabetical } from '@/lib/playerUtils';
+import { getDefaultSelfName, sortPlayersByLeaderAndAlphabetical, isDefaultCompanionName, isSampleOrPlaceholder } from '@/lib/playerUtils';
 import { generateQrCodeDataUrl } from '@/lib/qrUtils';
 import { PlayStartNoticeModal } from '@/components/PlayStartNoticeModal';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
@@ -40,10 +40,10 @@ function NewRoundForm() {
   const [startHoleIndex, setStartHoleIndex] = useState<number>(1);
   const [playerCount, setPlayerCount] = useState<number>(4);
   const [playersList, setPlayersList] = useState<SetupPlayer[]>(() => [
-    { id: 'p_self', name: isJapanese ? 'リーダー(本人)' : '조장(본인)', isLeader: true, isSelf: true },
-    { id: 'p_2', name: isJapanese ? '同伴者1' : '동반자1', isLeader: false, isSelf: false },
-    { id: 'p_3', name: isJapanese ? '同伴者2' : '동반자2', isLeader: false, isSelf: false },
-    { id: 'p_4', name: isJapanese ? '同伴者3' : '동반자3', isLeader: false, isSelf: false },
+    { id: 'p_self', name: '', isLeader: true, isSelf: true },
+    { id: 'p_2', name: '', isLeader: false, isSelf: false },
+    { id: 'p_3', name: '', isLeader: false, isSelf: false },
+    { id: 'p_4', name: '', isLeader: false, isSelf: false },
   ]);
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
   const [roomId] = useState<string>(() => 'room_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
@@ -56,6 +56,9 @@ function NewRoundForm() {
   const [showRoundModeSelector, setShowRoundModeSelector] = useState<boolean>(false);
 
   useEffect(() => {
+    const selfName = getDefaultSelfName(isJapanese);
+    const hasCustomSelf = Boolean(selfName && !isSampleOrPlaceholder(selfName));
+
     if (playersParam) {
       const names = playersParam
         .split(',')
@@ -65,14 +68,17 @@ function NewRoundForm() {
       if (names.length > 0) {
         const count = Math.min(4, Math.max(names.length, 4));
         setPlayerCount(count);
-        const selfName = getDefaultSelfName();
         const newList: SetupPlayer[] = [];
         for (let i = 0; i < count; i++) {
-          let name = names[i] || `동반자${i}`;
+          let name = names[i] || '';
           const isFirst = i === 0;
-          if (isFirst && (name === '플레이어' || name === '조장(본인)')) {
-            if (selfName && selfName !== '플레이어' && selfName !== '조장(본인)') {
-              name = selfName;
+          if (isFirst) {
+            if (isDefaultCompanionName(name)) {
+              name = hasCustomSelf ? selfName : '';
+            }
+          } else {
+            if (isDefaultCompanionName(name)) {
+              name = '';
             }
           }
           newList.push({
@@ -85,14 +91,13 @@ function NewRoundForm() {
         setPlayersList(newList);
       }
     } else {
-      const selfName = getDefaultSelfName();
-      if (selfName && selfName !== '플레이어' && selfName !== '조장(본인)') {
+      if (hasCustomSelf) {
         setPlayersList((prev) =>
-          prev.map((p, idx) => (idx === 0 || p.isSelf ? { ...p, name: selfName, isSelf: true } : p))
+          prev.map((p, idx) => ((idx === 0 || p.isSelf) && (!p.name || isDefaultCompanionName(p.name)) ? { ...p, name: selfName, isSelf: true } : p))
         );
       }
     }
-  }, [playersParam]);
+  }, [playersParam, isJapanese]);
 
   // Course correction/expansion modal state
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
@@ -225,20 +230,21 @@ function NewRoundForm() {
   // 플레이어 수 선택 변경 (1명 ~ 6명)
   const handlePlayerCountChange = (count: number) => {
     setPlayerCount(count);
-    const selfName = getDefaultSelfName();
+    const selfName = getDefaultSelfName(isJapanese);
+    const hasCustomSelf = Boolean(selfName && !isSampleOrPlaceholder(selfName));
     setPlayersList((prev) => {
       const current = [...prev];
       if (current.length === 0) {
-        current.push({ id: 'p_self', name: selfName, isLeader: true, isSelf: true });
+        current.push({ id: 'p_self', name: hasCustomSelf ? selfName : '', isLeader: true, isSelf: true });
       } else {
-        current[0] = { ...current[0], name: current[0].name || selfName, isSelf: true };
+        current[0] = { ...current[0], name: current[0].name || (hasCustomSelf ? selfName : ''), isSelf: true };
       }
 
       if (count > current.length) {
         for (let i = current.length; i < count; i++) {
           current.push({
             id: `p_${Date.now()}_${i}`,
-            name: `동반자${i}`,
+            name: '', // 빈 칸으로 초기화하여 '성명을 적어주세요' 플레이스홀더 노출
             isLeader: false,
             isSelf: false,
           });
@@ -255,7 +261,7 @@ function NewRoundForm() {
 
   // QR 코드 동반자 입장 시뮬레이션
   const handleSimulateQrJoin = (guestName: string) => {
-    const targetIdx = playersList.findIndex((p, idx) => idx > 0 && (p.name.startsWith('동반자') || !p.name.trim()));
+    const targetIdx = playersList.findIndex((p, idx) => idx > 0 && (!p.name.trim() || isDefaultCompanionName(p.name)));
     if (targetIdx !== -1) {
       setPlayersList((prev) => {
         const updated = [...prev];
@@ -355,7 +361,7 @@ function NewRoundForm() {
               const next = [...prev];
 
               serverPlayers.forEach((sp, idx) => {
-                if (idx > 0 && sp.name && !sp.name.startsWith('동반자')) {
+                if (idx > 0 && sp.name && !isDefaultCompanionName(sp.name)) {
                   if (next[idx] && next[idx].name !== sp.name) {
                     next[idx] = { ...next[idx], name: sp.name };
                     updated = true;
@@ -367,7 +373,7 @@ function NewRoundForm() {
               });
 
               if (updated) {
-                const latestGuest = serverPlayers.find((sp) => sp.name && !sp.isLeader && !sp.name.startsWith('동반자'));
+                const latestGuest = serverPlayers.find((sp) => sp.name && !sp.isLeader && !isDefaultCompanionName(sp.name));
                 if (latestGuest) {
                   setJoinSimulationToast(`🎉 '${latestGuest.name}' 님이 QR 코드로 라운드에 자동 입장하였습니다!`);
                   setTimeout(() => setJoinSimulationToast(null), 3500);
@@ -488,16 +494,30 @@ function NewRoundForm() {
 
     // Map active players based on current playerCount and apply sorting: Leader is always #1, others in Korean alphabetical order (가나다순)
     const activePlayers = playersList.slice(0, playerCount);
-    const rawPlayers: RoundPlayer[] = activePlayers.map((p, idx) => ({
-      id: `player_${idx}_${Date.now()}`,
-      name: p.name.trim() || (p.isSelf ? getDefaultSelfName() : `선수 ${idx + 1}`),
-      isLeader: p.isLeader,
-      isSelf: p.isSelf,
-      scores: {},
-      obCount: {},
-      totalStrokes: 0,
-      totalParDiff: 0,
-    }));
+    const selfName = getDefaultSelfName(isJapanese);
+    const cleanSelfName = (!selfName || isSampleOrPlaceholder(selfName)) ? (isJapanese ? '代表' : '조장') : selfName;
+
+    const rawPlayers: RoundPlayer[] = activePlayers.map((p, idx) => {
+      const trimmed = p.name.trim();
+      let finalName = trimmed;
+      if (!finalName || isDefaultCompanionName(finalName)) {
+        if (p.isSelf || p.isLeader) {
+          finalName = cleanSelfName;
+        } else {
+          finalName = isJapanese ? `同伴者 ${idx + 1}` : `동반자 ${idx + 1}`;
+        }
+      }
+      return {
+        id: `player_${idx}_${Date.now()}`,
+        name: finalName,
+        isLeader: p.isLeader,
+        isSelf: p.isSelf,
+        scores: {},
+        obCount: {},
+        totalStrokes: 0,
+        totalParDiff: 0,
+      };
+    });
 
     const sortedPlayers = sortPlayersByLeaderAndAlphabetical(rawPlayers);
 
@@ -756,18 +776,34 @@ function NewRoundForm() {
                   type="text"
                   value={player.name}
                   onChange={(e) => handlePlayerNameChange(idx, e.target.value)}
+                  onFocus={(e) => {
+                    if (isDefaultCompanionName(e.target.value)) {
+                      handlePlayerNameChange(idx, '');
+                    } else {
+                      e.target.select();
+                    }
+                  }}
                   placeholder={
                     player.isSelf
-                      ? (isJapanese ? '本人の名前 (山田/佐藤)' : '본인 이름 (홍길동)')
-                      : (isJapanese ? `同伴者 ${idx + 1} 名前入力` : `동반자 ${idx + 1} 이름 입력`)
+                      ? (isJapanese ? '代表のお名前 (例: 山田)' : '성명을 적어주세요 (조장/본인)')
+                      : (isJapanese ? `お名前を入力 (同伴者 ${idx + 1})` : `성명을 적어주세요 (동반자 ${idx + 1})`)
                   }
-                  className="w-full bg-white border border-stone-300 rounded-lg px-3 py-1.5 text-sm font-bold text-stone-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none"
+                  className="w-full bg-white border border-stone-300 rounded-lg pl-3 pr-8 py-1.5 text-sm font-bold text-stone-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none placeholder:text-stone-400"
                 />
-                {player.isSelf && (
-                  <span className="absolute right-2 text-[10px] font-black text-blue-700 bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded">
+                {player.name ? (
+                  <button
+                    type="button"
+                    onClick={() => handlePlayerNameChange(idx, '')}
+                    className="absolute right-2 w-5 h-5 flex items-center justify-center rounded-full bg-stone-200 hover:bg-stone-300 text-stone-600 hover:text-stone-900 text-xs transition cursor-pointer"
+                    title={isJapanese ? 'クリア' : '지우기'}
+                  >
+                    ✕
+                  </button>
+                ) : player.isSelf ? (
+                  <span className="absolute right-2 text-[10px] font-black text-blue-700 bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded pointer-events-none">
                     {isJapanese ? '本人' : '본인'}
                   </span>
-                )}
+                ) : null}
               </div>
 
               <button

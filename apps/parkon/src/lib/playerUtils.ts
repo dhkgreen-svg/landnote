@@ -26,10 +26,19 @@ export function isSampleOrPlaceholder(name?: string | null): boolean {
     clean === '선수' ||
     clean === '選手' ||
     clean === '孫悟空' ||
-    clean === 'パークの達人' ||
     clean === 'パーク達人' ||
     clean === 'ゴルファー'
   );
+}
+
+/**
+ * 동반자 기본/임시 플레이스홀더 이름 여부 판별 (동반자1, 동반자 1, 同伴者1, 선수 1 등)
+ */
+export function isDefaultCompanionName(name?: string | null): boolean {
+  if (!name) return true;
+  const clean = name.trim();
+  if (isSampleOrPlaceholder(clean)) return true;
+  return /^(동반자|선수|同伴者|選手|플레이어|プレイヤー|Player|Companion)\s*\d*$/i.test(clean);
 }
 
 /**

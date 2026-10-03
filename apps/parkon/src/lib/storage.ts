@@ -58,13 +58,15 @@ export interface UserGolfProfile {
   userName: string;
   nationalGrade: string; // '5스타 마스터' | '4스타 상급' | '3스타 중급' | '2스타 중초급' | '1스타 초급' | '일반 루키'
   clubName: string;
+  phoneNumber?: string; // 회원번호 분실 시 1초 조회용 연락처
   kakaoUser?: KakaoAuthUser | null;
 }
 
 export const DEFAULT_USER_PROFILE: UserGolfProfile = {
-  userName: '플레이어',
+  userName: '',
   nationalGrade: '기록 준비중',
   clubName: '',
+  phoneNumber: '',
   kakaoUser: null,
 };
 
@@ -105,8 +107,10 @@ export const ParkOnStorage = {
       const data = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
       if (!data) return DEFAULT_USER_PROFILE;
       const parsed: UserGolfProfile = JSON.parse(data);
-      if (!parsed.userName || parsed.userName === '본인(조장)' || parsed.userName === '본인') {
-        parsed.userName = '플레이어';
+      // 더미 이름(손오공, 홍길동, 플레이어, 본인 등)은 빈 문자열로 정화하여 완전한 제로 베이스 유지
+      const rawName = (parsed.userName || '').trim();
+      if (!rawName || rawName === '손오공' || rawName === '홍길동' || rawName === '홍길동(본인)' || rawName === '플레이어' || rawName === '본인(조장)' || rawName === '조장(본인)' || rawName === '본인' || rawName === '파크골퍼' || rawName === 'パークゴルファー') {
+        parsed.userName = '';
       }
       if (parsed.clubName === '동락 파크골프 클럽') {
         parsed.clubName = '';
@@ -124,6 +128,12 @@ export const ParkOnStorage = {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
+      // 회원 클라우드 자동 동기화 트리거 (백그라운드)
+      setTimeout(() => {
+        try {
+          import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud()).catch(() => {});
+        } catch {}
+      }, 300);
     } catch (e) {
       console.error('Failed to save user profile:', e);
     }
@@ -511,6 +521,12 @@ export const ParkOnStorage = {
       const updated = [session, ...existing.filter((r) => r.id !== session.id)].slice(0, 50);
       localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(updated));
       this.clearCurrentRound();
+      // 완주 스코어 클라우드 자동 동기화 트리거
+      setTimeout(() => {
+        try {
+          import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud()).catch(() => {});
+        } catch {}
+      }, 500);
     } catch (e) {
       console.error('Failed to save completed round:', e);
     }
@@ -520,6 +536,11 @@ export const ParkOnStorage = {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(rounds.slice(0, 100)));
+      setTimeout(() => {
+        try {
+          import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud()).catch(() => {});
+        } catch {}
+      }, 500);
     } catch (e) {
       console.error('Failed to save completed rounds:', e);
     }

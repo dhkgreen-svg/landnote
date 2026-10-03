@@ -433,7 +433,7 @@ export default function HomePage() {
     // 각 라운드별 18홀 환산 타수 산출 (9홀 라운드는 18홀 기준으로 정확 환산)
     const validScores: number[] = [];
     officialRounds.forEach((r) => {
-      const me = r.players[0];
+      const me = (r.players && r.players[0]) || { totalStrokes: (r as any).totalScore || 0, scores: {} };
       if (!me || !me.totalStrokes || me.totalStrokes <= 0) return;
       const holesCount = Object.keys(me.scores || {}).length || r.totalHoles || 9;
       if (holesCount > 0) {
@@ -615,15 +615,15 @@ export default function HomePage() {
 
     // 18홀 완주 라운드와 9홀 라운드를 엄격히 분리
     const round18List = courseRounds.filter((r) => {
-      const p = r.players[0];
+      const p = r.players?.[0] || { totalStrokes: (r as any).totalScore || 0, scores: {} };
       const scoreCount = p ? Object.keys(p.scores || {}).length : 0;
-      return r.totalHoles >= 18 || scoreCount >= 18;
+      return (r.totalHoles && r.totalHoles >= 18) || scoreCount >= 18 || (r as any).holes >= 18;
     });
 
     const round9List = courseRounds.filter((r) => {
-      const p = r.players[0];
+      const p = r.players?.[0] || { totalStrokes: (r as any).totalScore || 0, scores: {} };
       const scoreCount = p ? Object.keys(p.scores || {}).length : 0;
-      return r.totalHoles < 18 && scoreCount < 18 && (p?.totalStrokes || 0) > 0;
+      return (r.totalHoles || 9) < 18 && scoreCount < 18 && (p?.totalStrokes || 0) > 0;
     });
 
     const actualHas18 = round18List.length > 0;
@@ -633,7 +633,7 @@ export default function HomePage() {
       let strokeSum18 = 0;
       let minScore18 = 999;
       round18List.forEach((r) => {
-        const me = r.players[0];
+        const me = r.players?.[0] || { totalStrokes: (r as any).totalScore || 0 };
         if (me && me.totalStrokes > 0) {
           strokeSum18 += me.totalStrokes;
           if (me.totalStrokes < minScore18) minScore18 = me.totalStrokes;
@@ -671,14 +671,14 @@ export default function HomePage() {
         ],
         has9HoleOnly: round9List.length > 0,
         roundCount9: round9List.length,
-        avgScore9: round9List.length > 0 ? Number((round9List.reduce((acc, cur) => acc + (cur.players[0]?.totalStrokes || 0), 0) / round9List.length).toFixed(1)) : null,
+        avgScore9: round9List.length > 0 ? Number((round9List.reduce((acc, cur) => acc + (cur.players?.[0]?.totalStrokes || (cur as any).totalScore || 0), 0) / round9List.length).toFixed(1)) : null,
       };
     }
 
     // 2. 실제 18홀 완주 기록이 없으나 9홀 기록만 있는 경우
     const has9Only = round9List.length > 0;
     const avg9 = has9Only
-      ? Number((round9List.reduce((acc, cur) => acc + (cur.players[0]?.totalStrokes || 0), 0) / round9List.length).toFixed(1))
+      ? Number((round9List.reduce((acc, cur) => acc + (cur.players?.[0]?.totalStrokes || (cur as any).totalScore || 0), 0) / round9List.length).toFixed(1))
       : null;
 
     return {
@@ -1728,8 +1728,10 @@ export default function HomePage() {
                     {completedRounds.length > 0 ? (
                       <div className="space-y-2">
                         {completedRounds.slice(0, 5).map((r) => {
-                          const bestPlayer = [...r.players].sort((a, b) => a.totalStrokes - b.totalStrokes)[0];
-                          const is18Holes = r.totalHoles >= 18 || Object.keys(bestPlayer?.scores || {}).length >= 18;
+                          const bestPlayer = (r.players && r.players.length > 0)
+                            ? [...r.players].sort((a, b) => a.totalStrokes - b.totalStrokes)[0]
+                            : { name: '나', totalStrokes: (r as any).totalScore || 54, totalParDiff: 0, scores: {} };
+                          const is18Holes = (r.totalHoles && r.totalHoles >= 18) || Object.keys(bestPlayer?.scores || {}).length >= 18 || (r as any).holes >= 18;
                           const isOfficial = r.isOfficial !== false;
                           return (
                             <div
@@ -1747,7 +1749,7 @@ export default function HomePage() {
                                   </span>
                                 </div>
                                 <div className="text-[11px] text-stone-500 mt-0.5">
-                                  {r.completedAt ? new Date(r.completedAt).toLocaleDateString('ko-KR') : '최근'} · {r.players.length}명 참여
+                                  {r.completedAt ? new Date(r.completedAt).toLocaleDateString('ko-KR') : '최근'} · {r.players?.length || 1}명 참여
                                 </div>
                               </div>
                               <div className="text-right shrink-0">
