@@ -23,6 +23,7 @@ import { BadgeStorage } from '@/lib/badgeStorage';
 import { KakaoAuthUser } from '@/lib/storage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName, stripParkGolfSuffix } from '@/lib/courseLocalization';
+import { getSavedMemberCode, syncMemberDataToCloud } from '@/lib/memberCodeUtils';
 
 export default function HomePage() {
   const router = useRouter();
@@ -223,11 +224,18 @@ export default function HomePage() {
         setActiveRound(null);
       }
 
-      setCompletedRounds(ParkOnStorage.getCompletedRounds());
+      const completed = ParkOnStorage.getCompletedRounds();
+      setCompletedRounds(completed);
       const kUser = ParkOnStorage.getKakaoUser();
       setKakaoUser(kUser);
       if (kUser?.id) {
         BadgeStorage.syncToCloud(kUser.id, kUser.nickname);
+      }
+
+      // [기기 간 무결성 동기화]: 기존 완주 라운드나 등록 회원번호가 있는 기기(스마트폰 등)인 경우 백그라운드 1회 자동 클라우드 백업
+      const currentCode = getSavedMemberCode();
+      if ((completed && completed.length > 0) || currentCode) {
+        syncMemberDataToCloud().catch(() => {});
       }
 
       // 클럽 앤 번개 대회 실제 상태 연동 및 신규 공지/번개 알림 체크
@@ -1778,7 +1786,7 @@ export default function HomePage() {
                       <div className="min-w-0 flex-1">
                         <span className="text-[10.5px] text-emerald-300 font-bold flex items-center gap-1">
                           <span>📍</span>
-                          <span>조회 중인 구장</span>
+                          <span>{isJapanese ? '現在分析中のコース' : '현재 분석 중인 구장'}</span>
                         </span>
                         {/* 카카오톡 검색 결과 스타일의 깔끔한 흰색 박스 */}
                         <div className="mt-1.5 bg-white text-stone-950 font-black px-3.5 py-1.5 rounded-xl text-sm shadow-sm border border-stone-200 inline-flex items-center gap-1.5 max-w-full">

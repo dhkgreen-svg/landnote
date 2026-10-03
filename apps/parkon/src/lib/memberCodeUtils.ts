@@ -141,6 +141,9 @@ export async function syncMemberDataToCloud(): Promise<{ success: boolean; membe
     const badges = BadgeStorage.getAllBadges();
     const tour = BadgeStorage.getNationalTourRecords();
 
+    const customCourses = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_custom_courses_v1') || '[]') : [];
+    const crowdSpecs = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_crowd_hole_specs_v1') || '{}') : {};
+
     const payload = {
       memberCode,
       userName,
@@ -150,6 +153,8 @@ export async function syncMemberDataToCloud(): Promise<{ success: boolean; membe
       companions,
       badges,
       tour,
+      customCourses,
+      crowdSpecs,
       updatedAt: new Date().toISOString(),
     };
 
@@ -212,7 +217,7 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
       };
     }
 
-    const { memberCode, userName, profile, kakaoUser, completedRounds, companions, badges, tour } = result.data;
+    const { memberCode, userName, profile, kakaoUser, completedRounds, companions, badges, tour, customCourses, crowdSpecs } = result.data;
 
     // 1. 고유 회원번호 저장
     localStorage.setItem(MEMBER_CODE_STORAGE_KEY, memberCode);
@@ -261,6 +266,14 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
     }
     if (tour) {
       localStorage.setItem('parkon_national_tour_v1', JSON.stringify(tour));
+    }
+
+    // 7. 현장 실측 수정 구장 제원 및 빅데이터 홀 스펙 복원
+    if (Array.isArray(customCourses) && customCourses.length > 0) {
+      localStorage.setItem('parkon_custom_courses_v1', JSON.stringify(customCourses));
+    }
+    if (crowdSpecs && typeof crowdSpecs === 'object' && Object.keys(crowdSpecs).length > 0) {
+      localStorage.setItem('parkon_crowd_hole_specs_v1', JSON.stringify(crowdSpecs));
     }
 
     // 7. 시스템 전역 이벤트 트리거 (새로고침 없이 실시간 반영)
