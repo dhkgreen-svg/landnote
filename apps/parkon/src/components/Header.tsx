@@ -164,26 +164,26 @@ export function Header() {
           <div className="flex items-center gap-1.5 shrink-0">
             {/* ✍️ 2줄 프로필/로그인 버튼: [성명 + 고유번호] 또는 [성명 입력 + 로그인] */}
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-2xl text-xs font-black shadow-xs transition shrink-0 border ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl text-xs font-black shadow-xs transition shrink-0 border ${
                 hasRegisteredName
                   ? 'bg-emerald-800/90 hover:bg-emerald-900 text-amber-300 border-amber-300/60'
-                  : 'bg-amber-400 hover:bg-amber-300 text-stone-950 border-amber-500 shadow-sm animate-pulse'
+                  : 'bg-amber-400 hover:bg-amber-300 text-stone-950 border-amber-500 shadow-sm'
               }`}
             >
               <button
                 type="button"
                 onClick={() => handleOpenModal(hasRegisteredName ? 'profile' : 'login')}
-                className="text-[12px] leading-none shrink-0 cursor-pointer hover:scale-110 transition active:scale-95"
-                title={hasRegisteredName ? `${currentDisplayName} 님 프로필 확인` : '성명 입력 및 로그인'}
+                className="text-[13px] leading-none shrink-0 cursor-pointer hover:scale-110 transition active:scale-95"
+                title={hasRegisteredName ? `${currentDisplayName} 님 프로필 확인` : (isJapanese ? 'お名前入力 ＆ ログイン' : '성명 입력 및 로그인')}
               >
                 {hasRegisteredName ? '👤' : '✍️'}
               </button>
-              <div className="flex flex-col items-start leading-none text-left">
+              <div className="flex flex-col items-start leading-tight text-left">
                 {/* 1행: 이름 (누르면 프로필/회원정보) */}
                 <button
                   type="button"
                   onClick={() => handleOpenModal(hasRegisteredName ? 'profile' : 'login')}
-                  className="text-[11px] font-black tracking-tight truncate max-w-[70px] sm:max-w-[95px] cursor-pointer hover:underline text-left"
+                  className="text-[11.5px] font-black tracking-tight truncate max-w-[70px] sm:max-w-[95px] cursor-pointer hover:underline text-left py-0.5 leading-none"
                 >
                   {hasRegisteredName ? currentDisplayName : (isJapanese ? 'お名前入力' : '성명 입력')}
                 </button>
@@ -191,10 +191,10 @@ export function Header() {
                 <button
                   type="button"
                   onClick={() => handleOpenModal('login')}
-                  className={`text-[8.5px] font-extrabold tracking-tight mt-0.5 cursor-pointer hover:underline text-left ${
+                  className={`text-[9px] font-extrabold tracking-tight cursor-pointer hover:underline text-left py-0.5 leading-none ${
                     hasRegisteredName ? 'text-emerald-200 hover:text-amber-200' : 'text-amber-950 hover:text-black font-black'
                   }`}
-                  title="스마트폰 7자리 회원번호로 1초 로그인하기"
+                  title={isJapanese ? '7桁会員番号で1秒ログイン' : '스마트폰 7자리 회원번호로 1초 로그인하기'}
                 >
                   {hasRegisteredName && memberCode ? memberCode : (isJapanese ? 'ログイン 🔑' : '로그인 🔑')}
                 </button>

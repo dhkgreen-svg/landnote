@@ -14,7 +14,12 @@ export const MEMBER_CODE_STORAGE_KEY = 'parkon_member_code_v1';
  */
 export function normalizeMemberCode(input: string): string {
   if (!input) return '';
-  const clean = input.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // 일본어 모바일 자판 등 전각 문자(全角: ＰＫＹ-７７８８ 등)를 반각 영숫자로 자동 변환
+  const half = input
+    .trim()
+    .replace(/[！-～]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+    .replace(/　/g, ' ');
+  const clean = half.toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (clean.length === 7) {
     // 3자리 영문 + 4자리 숫자 형태이면 표준 하이픈 포맷 적용
     const prefix = clean.slice(0, 3);

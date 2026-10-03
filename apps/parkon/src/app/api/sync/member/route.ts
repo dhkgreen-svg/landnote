@@ -62,6 +62,11 @@ const persistMembers = (members: Map<string, MemberSyncRecord>) => {
   }
 };
 
+function toHalfWidth(str: string): string {
+  if (!str) return '';
+  return str.replace(/[！-～]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).replace(/　/g, ' ');
+}
+
 // GET /api/sync/member?code=... OR ?find=true&name=...&phone=...
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -149,9 +154,9 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // 2. 7자리 고유번호로 데이터 단건 조회
+  // 2. 7자리 고유번호로 데이터 단건 조회 (일본어 전각 지원)
   const rawCode = searchParams.get('code') || '';
-  const cleanCode = rawCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const cleanCode = toHalfWidth(rawCode).toUpperCase().replace(/[^A-Z0-9]/g, '');
 
   if (!cleanCode) {
     return NextResponse.json({ success: false, message: '회원번호가 누락되었습니다.' }, { status: 400 });
@@ -212,7 +217,7 @@ export async function POST(req: NextRequest) {
   try {
     const body: MemberSyncRecord = await req.json();
     const rawCode = body.memberCode || '';
-    const cleanCode = rawCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const cleanCode = toHalfWidth(rawCode).toUpperCase().replace(/[^A-Z0-9]/g, '');
 
     if (!cleanCode) {
       return NextResponse.json({ success: false, message: '유효한 회원번호가 필요합니다.' }, { status: 400 });

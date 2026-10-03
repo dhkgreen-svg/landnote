@@ -343,7 +343,9 @@ export function KakaoLoginModal({
                   : (isJapanese ? '会員ログイン ＆ クラウド同期' : '회원번호 1초 로그인 & 동기화')}
               </h3>
               <p className="text-[10px] text-emerald-100 font-medium">
-                비밀번호 없이 7자리 번호로 어디서든 즉시 이용
+                {isJapanese
+                  ? 'パスワード不要・7桁番号でどこでもすぐ利用'
+                  : '비밀번호 없이 7자리 번호로 어디서든 즉시 이용'}
               </p>
             </div>
           </div>
@@ -364,7 +366,7 @@ export function KakaoLoginModal({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 font-black text-amber-950 text-xs sm:text-sm">
                   <Search className="w-4 h-4 text-amber-600" />
-                  <span>🔍 내 고유번호 1초 찾기</span>
+                  <span>{isJapanese ? '🔍 会員番号を1秒検索' : '🔍 내 고유번호 1초 찾기'}</span>
                 </div>
                 <button
                   type="button"
@@ -375,32 +377,38 @@ export function KakaoLoginModal({
                   }}
                   className="text-stone-400 hover:text-stone-700 text-xs font-bold p-1 cursor-pointer"
                 >
-                  ✕ 닫기
+                  {isJapanese ? '✕ 閉じる' : '✕ 닫기'}
                 </button>
               </div>
 
               <p className="text-[11px] text-stone-700 font-bold leading-relaxed bg-white/70 p-2 rounded-xl border border-amber-200">
-                💡 폰을 바꾸어 고유번호를 잊으셨나요? <strong>성함과 휴대폰 번호</strong>만 입력하시면 나만의 평생 고유번호를 즉시 찾아드립니다!
+                {isJapanese
+                  ? '💡 スマホを機種変更してお忘れですか？ お名前と電話番号を入力するだけで、マイ会員番号をすぐにお探しします！'
+                  : '💡 폰을 바꾸어 고유번호를 잊으셨나요? 성함과 휴대폰 번호만 입력하시면 나만의 평생 고유번호를 즉시 찾아드립니다!'}
               </p>
 
               <div className="space-y-2">
                 <div>
-                  <label className="font-black text-stone-800 text-[10.5px] block mb-0.5">성함 (실제 이름) *</label>
+                  <label className="font-black text-stone-800 text-[10.5px] block mb-0.5">
+                    {isJapanese ? 'お名前 (本名) *' : '성함 (실제 이름) *'}
+                  </label>
                   <input
                     type="text"
                     value={findName}
                     onChange={(e) => setFindName(e.target.value)}
-                    placeholder="예: 김대희"
+                    placeholder={isJapanese ? '例: 佐藤' : '예: 김대희'}
                     className="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl font-bold text-xs outline-none focus:border-amber-500"
                   />
                 </div>
                 <div>
-                  <label className="font-black text-stone-800 text-[10.5px] block mb-0.5">휴대폰 번호 (또는 뒷 4자리)</label>
+                  <label className="font-black text-stone-800 text-[10.5px] block mb-0.5">
+                    {isJapanese ? '電話番号 (または下4桁)' : '휴대폰 번호 (또는 뒷 4자리)'}
+                  </label>
                   <input
                     type="text"
                     value={findPhone}
                     onChange={(e) => setFindPhone(e.target.value)}
-                    placeholder="예: 7788 또는 010-1234-7788"
+                    placeholder={isJapanese ? '例: 7788 または 090-1234-7788' : '예: 7788 또는 010-1234-7788'}
                     className="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl font-bold text-xs outline-none focus:border-amber-500"
                   />
                 </div>
@@ -412,7 +420,11 @@ export function KakaoLoginModal({
                   className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-amber-950 font-black text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <Search className="w-3.5 h-3.5" />
-                  <span>{isFinding ? '조회 중...' : '🔍 내 회원번호 조회하기'}</span>
+                  <span>
+                    {isFinding
+                      ? (isJapanese ? '検索中...' : '조회 중...')
+                      : (isJapanese ? '🔍 会員番号を検索する' : '🔍 내 회원번호 조회하기')}
+                  </span>
                 </button>
               </div>
 
@@ -425,13 +437,13 @@ export function KakaoLoginModal({
               {foundMatches && foundMatches.length > 0 && (
                 <div className="space-y-2 pt-1 border-t border-amber-200">
                   <p className="text-[11px] font-black text-emerald-800">
-                    🎉 찾았습니다! 아래 번호로 즉시 로그인하세요:
+                    {isJapanese ? '🎉 見つかりました！以下の番号ですぐログイン:' : '🎉 찾았습니다! 아래 번호로 즉시 로그인하세요:'}
                   </p>
                   {foundMatches.map((m, idx) => (
                     <div key={idx} className="bg-white p-3 rounded-xl border border-amber-200 shadow-sm flex items-center justify-between gap-2">
                       <div>
-                        <div className="font-black text-xs text-stone-900">{m.userName} 님</div>
-                        <div className="text-[10px] text-stone-500">{m.clubName || '클럽'} · 경기 {m.roundCount}회</div>
+                        <div className="font-black text-xs text-stone-900">{m.userName} {isJapanese ? '様' : '님'}</div>
+                        <div className="text-[10px] text-stone-500">{m.clubName || (isJapanese ? 'クラブ' : '클럽')} · {isJapanese ? `ラウンド ${m.roundCount}回` : `경기 ${m.roundCount}회`}</div>
                         <div className="text-sm font-black text-amber-600 font-mono tracking-wider">{m.memberCode}</div>
                       </div>
                       <button
@@ -443,7 +455,7 @@ export function KakaoLoginModal({
                         }}
                         className="py-2 px-3 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-[11px] rounded-xl shadow-xs transition active:scale-95 cursor-pointer shrink-0"
                       >
-                        🚀 즉시 로그인
+                        {isJapanese ? '🚀 即時ログイン' : '🚀 즉시 로그인'}
                       </button>
                     </div>
                   ))}
@@ -482,15 +494,17 @@ export function KakaoLoginModal({
                     }`}
                   >
                     {codeCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{codeCopied ? '복사됨!' : '번호 복사'}</span>
+                    <span>{codeCopied ? (isJapanese ? 'コピー済' : '복사됨!') : (isJapanese ? '番号コピー' : '번호 복사')}</span>
                   </button>
                 </div>
 
                 <p className="text-[11px] text-stone-700 font-bold leading-relaxed bg-white/70 p-2 rounded-xl border border-amber-100">
-                  💡 <strong>PC(컴퓨터)나 다른 휴대폰</strong>에서 이 번호 <strong>7자리</strong>만 넣으시면, 비밀번호 없이 <strong>내 모든 경기 기록과 연대기가 1초 만에 그대로 복원</strong>됩니다!
+                  {isJapanese
+                    ? '💡 パソコンや別のスマホでこの7桁の番号を入れるだけで、パスワード不要で過去の全スコアと年代記がそのまま復元されます！'
+                    : '💡 PC(컴퓨터)나 다른 휴대폰에서 이 번호 7자리만 넣으시면, 비밀번호 없이 내 모든 경기 기록과 연대기가 1초 만에 그대로 복원됩니다!'}
                 </p>
 
-                {/* 📲 폰 변경 대비: 내 카톡 / 클립보드로 번호 전송 보관 */}
+                {/* 📲 폰 변경 대비: 번호 전송 보관 */}
                 <div className="space-y-1">
                   <button
                     type="button"
@@ -498,11 +512,13 @@ export function KakaoLoginModal({
                     className="w-full py-2.5 px-3 bg-[#FEE500] hover:bg-[#FDD835] active:scale-95 text-[#191919] font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-[#E6CF00]"
                   >
                     <MessageSquare className="w-3.5 h-3.5 text-[#191919]" />
-                    <span>📲 폰 바꿀 때 대비: 내 카톡으로 번호 보내두기</span>
+                    <span>{isJapanese ? '📲 機種変更に備えて番号をコピーしてメモ' : '📲 폰 바꿀 때 대비: 내 카톡으로 번호 보내두기'}</span>
                   </button>
                   {sentToKakaoNotice && (
                     <div className="p-2 bg-amber-100 text-amber-950 font-bold text-[10.5px] rounded-xl text-center animate-fadeIn">
-                      ✓ 회원번호 안내문이 안전하게 복사되었습니다! 카톡 '나와의 채팅'에 붙여넣어 평생 보관하세요.
+                      {isJapanese
+                        ? '✓ 会員番号案内文が安全にコピーされました！メモ帳やLINEに貼り付けて保管してください。'
+                        : '✓ 회원번호 안내문이 안전하게 복사되었습니다! 카톡 \'나와의 채팅\'에 붙여넣어 평생 보관하세요.'}
                     </div>
                   )}
                 </div>
@@ -515,7 +531,7 @@ export function KakaoLoginModal({
                     className="flex-1 py-2 px-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-[11px] rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
                   >
                     <Cloud className="w-3.5 h-3.5" />
-                    <span>{isBackingUp ? '클라우드 저장 중...' : '☁️ 지금 클라우드 백업'}</span>
+                    <span>{isBackingUp ? (isJapanese ? '保存中...' : '클라우드 저장 중...') : (isJapanese ? '☁️ クラウドへバックアップ' : '☁️ 지금 클라우드 백업')}</span>
                   </button>
                   <button
                     type="button"
@@ -523,7 +539,7 @@ export function KakaoLoginModal({
                     className="py-2 px-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-[10.5px] rounded-xl flex items-center justify-center gap-1 border border-stone-200 transition cursor-pointer"
                   >
                     <RefreshCw className="w-3 h-3" />
-                    <span>다른 번호로 로그인</span>
+                    <span>{isJapanese ? '別の番号でログイン' : '다른 번호로 로그인'}</span>
                   </button>
                 </div>
               </div>
@@ -539,11 +555,11 @@ export function KakaoLoginModal({
                       {ParkOnStorage.getUserDisplayName()}
                     </span>
                     <span className="text-[10px] bg-emerald-600 text-white font-black px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
-                      <CheckCircle className="w-2.5 h-2.5" /> 연동 완료
+                      <CheckCircle className="w-2.5 h-2.5" /> {isJapanese ? '連携完了' : '연동 완료'}
                     </span>
                   </div>
                   <div className="text-[11px] text-stone-500 font-medium mt-0.5">
-                    현재 표시 활동명: {ParkOnStorage.getUserDisplayName()}
+                    {isJapanese ? '表示中の名前' : '현재 표시 활동명'}: {ParkOnStorage.getUserDisplayName()}
                   </div>
                 </div>
               </div>
@@ -683,7 +699,7 @@ export function KakaoLoginModal({
                   }`}
                 >
                   <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>내 폰 기록 불러오기</span>
+                  <span>{isJapanese ? 'スマホの記録読込' : '내 폰 기록 불러오기'}</span>
                 </button>
                 <button
                   type="button"
@@ -695,7 +711,7 @@ export function KakaoLoginModal({
                   }`}
                 >
                   <User className="w-3.5 h-3.5 text-amber-600" />
-                  <span>새 성명 입력하기</span>
+                  <span>{isJapanese ? '新規お名前登録' : '새 성명 입력하기'}</span>
                 </button>
               </div>
 
@@ -705,27 +721,34 @@ export function KakaoLoginModal({
                   <div className="space-y-1">
                     <div className="flex items-center gap-1.5 font-black text-emerald-950 text-xs">
                       <KeyRound className="w-4 h-4 text-emerald-700" />
-                      <span>회원번호 7자리로 1초 자동 로그인</span>
+                      <span>{isJapanese ? '7桁会員番号で1秒自動ログイン' : '회원번호 7자리로 1초 자동 로그인'}</span>
                     </div>
                     <p className="text-[11px] text-stone-600 font-bold leading-relaxed">
-                      스마트폰에서 확인하신 <strong>7자리 고유번호</strong>를 입력하시면, 비밀번호 없이 휴대폰의 모든 경기 기록과 연대기가 PC로 그대로 복원됩니다!
+                      {isJapanese
+                        ? 'スマートフォンで確認した7桁の会員番号を入力すると、パスワード不要でスマホのすべてのスコア記録と年代記がPCにそのまま復元されます！'
+                        : '스마트폰에서 확인하신 7자리 고유번호를 입력하시면, 비밀번호 없이 휴대폰의 모든 경기 기록과 연대기가 PC로 그대로 복원됩니다!'}
                     </p>
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="font-black text-stone-800 text-[11px] flex items-center justify-between">
-                      <span>7자리 고유번호 입력</span>
-                      <span className="text-[10px] text-emerald-700 font-bold">비밀번호 불필요</span>
+                      <span>{isJapanese ? '7桁会員番号を入力' : '7자리 고유번호 입력'}</span>
+                      <span className="text-[10px] text-emerald-700 font-bold">{isJapanese ? 'パスワード不要' : '비밀번호 불필요'}</span>
                     </label>
                     <div className="relative">
                       <input
                         type="text"
                         value={inputCode}
-                        onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+                        onChange={(e) => {
+                          const val = e.target.value
+                            .replace(/[！-～]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+                            .replace(/　/g, ' ');
+                          setInputCode(val.toUpperCase());
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleRestoreByMemberCode();
                         }}
-                        placeholder="예: PKY-7788 또는 ABC1234"
+                        placeholder={isJapanese ? '例: PKY-7788 または ABC1234' : '예: PKY-7788 또는 ABC1234'}
                         className="w-full px-3.5 py-3 bg-white border-2 border-emerald-500 rounded-xl font-black text-sm tracking-wider font-mono outline-none text-stone-900 placeholder:text-stone-400 uppercase"
                       />
                       {inputCode && (
@@ -747,7 +770,7 @@ export function KakaoLoginModal({
                         className="text-[11px] text-emerald-800 hover:text-emerald-950 font-black underline underline-offset-2 flex items-center gap-1 cursor-pointer"
                       >
                         <HelpCircle className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>고유번호를 잊으셨나요? (성함/전화번호로 찾기)</span>
+                        <span>{isJapanese ? '会員番号をお忘れですか？ (お名前/電話番号で検索)' : '고유번호를 잊으셨나요? (성함/전화번호로 찾기)'}</span>
                       </button>
                     </div>
                   </div>
@@ -767,12 +790,22 @@ export function KakaoLoginModal({
                     className="w-full py-3.5 px-4 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer border border-emerald-800 disabled:opacity-50"
                   >
                     <KeyRound className="w-4 h-4 text-amber-300" />
-                    <span>{isRestoring ? '내 기록 불러오는 중...' : '🚀 내 기록 불러오기 (비밀번호 없이 즉시 로그인)'}</span>
+                    <span>
+                      {isRestoring
+                        ? (isJapanese ? '記録読込中...' : '내 기록 불러오는 중...')
+                        : (isJapanese ? '🚀 記録を呼び出す (パスワード不要で即時ログイン)' : '🚀 내 기록 불러오기 (비밀번호 없이 즉시 로그인)')}
+                    </span>
                   </button>
 
                   <div className="bg-white/80 p-2.5 rounded-xl border border-stone-200 text-[10.5px] text-stone-600 space-y-1">
-                    <p className="font-extrabold text-stone-800">💡 내 고유번호는 어디서 확인하나요?</p>
-                    <p>스마트폰 화면 상단 <strong>내 이름 밑</strong> 또는 <strong>[나의 연대기]</strong> 화면에 적힌 <strong>'👑 고유번호: PKY-XXXX'</strong>를 확인하시고 여기에 입력하시면 됩니다.</p>
+                    <p className="font-extrabold text-stone-800">
+                      {isJapanese ? '💡 会員番号はどこで確認できますか？' : '💡 내 고유번호는 어디서 확인하나요?'}
+                    </p>
+                    <p>
+                      {isJapanese
+                        ? 'スマホ画面上部のお名前の下、または【私の年代記】画面に記載された【👑 会員番号: PKY-XXXX】をご確認の上、ここに入力してください。'
+                        : '스마트폰 화면 상단 내 이름 밑 또는 [나의 연대기] 화면에 적힌 \'👑 고유번호: PKY-XXXX\'를 확인하시고 여기에 입력하시면 됩니다.'}
+                    </p>
                   </div>
                 </div>
               ) : (
@@ -781,52 +814,54 @@ export function KakaoLoginModal({
                   <div className="text-center space-y-1">
                     <div className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-100 text-amber-900 rounded-full text-[10px] font-extrabold">
                       <Sparkles className="w-3 h-3 text-amber-600" />
-                      <span>비밀번호 없이 성명만 입력하면 끝!</span>
+                      <span>{isJapanese ? 'パスワード不要・お名前入力だけで完了！' : '비밀번호 없이 성명만 입력하면 끝!'}</span>
                     </div>
                     <h4 className="font-black text-stone-900 text-xs sm:text-sm">
-                      성함을 입력하시면 나만의 7자리 평생 고유번호가 자동 발급됩니다.
+                      {isJapanese
+                        ? 'お名前を入力すると、マイ7桁の会員番号が自動発行されます。'
+                        : '성함을 입력하시면 나만의 7자리 평생 고유번호가 자동 발급됩니다.'}
                     </h4>
                   </div>
 
                   <div className="space-y-2 bg-stone-50 p-3 rounded-2xl border border-stone-200">
                     <div className="space-y-1">
                       <label className="font-black text-stone-800 flex items-center justify-between">
-                        <span>성함 (실제 이름) *</span>
-                        <span className="text-[10px] text-emerald-700 font-bold">공식 대회 출전용</span>
+                        <span>{isJapanese ? 'お名前 (本名) *' : '성함 (실제 이름) *'}</span>
+                        <span className="text-[10px] text-emerald-700 font-bold">{isJapanese ? '公式大会用' : '공식 대회 출전용'}</span>
                       </label>
                       <input
                         type="text"
                         value={realName}
                         onChange={(e) => setRealName(e.target.value)}
-                        placeholder="성함을 입력하세요 (예: 김대희)"
+                        placeholder={isJapanese ? 'お名前を入力 (例: 佐藤 健一)' : '성함을 입력하세요 (예: 김대희)'}
                         className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs outline-none"
                       />
                     </div>
 
                     <div className="space-y-1">
                       <label className="font-black text-stone-800 flex items-center justify-between">
-                        <span>휴대폰 번호 (고유번호 분실 시 1초 조회용)</span>
-                        <span className="text-[10px] text-amber-700 font-bold">안심 보관</span>
+                        <span>{isJapanese ? '電話番号 (番号紛失時の照会用)' : '휴대폰 번호 (고유번호 분실 시 1초 조회용)'}</span>
+                        <span className="text-[10px] text-amber-700 font-bold">{isJapanese ? '安全保管' : '안심 보관'}</span>
                       </label>
                       <input
                         type="text"
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
-                        placeholder="예: 010-1234-7788 또는 끝 4자리"
+                        placeholder={isJapanese ? '例: 090-1234-7788 または下4桁' : '예: 010-1234-7788 또는 끝 4자리'}
                         className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs outline-none"
                       />
                     </div>
 
                     <div className="space-y-1">
                       <label className="font-black text-stone-800 flex items-center justify-between">
-                        <span>가명 / 닉네임 (별명)</span>
-                        <span className="text-[10px] text-purple-700 font-bold">친선 번개용</span>
+                        <span>{isJapanese ? 'ニックネーム (呼称)' : '가명 / 닉네임 (별명)'}</span>
+                        <span className="text-[10px] text-purple-700 font-bold">{isJapanese ? '親善・フレンド用' : '친선 번개용'}</span>
                       </label>
                       <input
                         type="text"
                         value={aliasName}
                         onChange={(e) => setAliasName(e.target.value)}
-                        placeholder="예: 나이스샷, 홀인원"
+                        placeholder={isJapanese ? '例: ナイスショット, 名人' : '예: 나이스샷, 홀인원'}
                         className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs outline-none"
                       />
                     </div>
@@ -836,11 +871,11 @@ export function KakaoLoginModal({
                       onClick={handleSaveProfile}
                       className="w-full mt-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer"
                     >
-                      ✓ 이 성명으로 즉시 시작하기
+                      {isJapanese ? '✓ このお名前ですぐ始める' : '✓ 이 성명으로 즉시 시작하기'}
                     </button>
                   </div>
 
-                  {/* 카카오톡 1초 간편 연동 */}
+                  {/* 카카오톡/LINE 1초 간편 연동 */}
                   <div className="pt-0.5">
                     <button
                       type="button"
@@ -855,8 +890,8 @@ export function KakaoLoginModal({
                       <span className="text-base leading-none">💬</span>
                       <span>
                         {isLoading
-                          ? '자동 가입 처리 중...'
-                          : '💬 카카오톡 [확인] 누르고 1초 자동 가입'}
+                          ? (isJapanese ? '自動連携中...' : '자동 가입 처리 중...')
+                          : (isJapanese ? '💬 LINE連携で1秒簡単ログイン' : '💬 카카오톡 [확인] 누르고 1초 자동 가입')}
                       </span>
                     </button>
                   </div>
@@ -871,7 +906,7 @@ export function KakaoLoginModal({
                     onClick={onClose}
                     className="py-2.5 px-2 bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-700 font-black text-[11px] rounded-xl transition flex items-center justify-center gap-1 border border-stone-300 cursor-pointer"
                   >
-                    <span>👉 가입 없이 둘러보기</span>
+                    <span>{isJapanese ? '👉 登録なしで見学' : '👉 가입 없이 둘러보기'}</span>
                   </button>
                   <button
                     type="button"
@@ -882,7 +917,7 @@ export function KakaoLoginModal({
                     }}
                     className="py-2.5 px-2 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 active:scale-95 text-white font-black text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-xs cursor-pointer"
                   >
-                    <span>🎯 프로그램 체험 연습</span>
+                    <span>{isJapanese ? '🎯 練習ラウンド体験' : '🎯 프로그램 체험 연습'}</span>
                   </button>
                 </div>
 
@@ -893,7 +928,7 @@ export function KakaoLoginModal({
                     className="text-[10.5px] text-stone-400 hover:text-rose-600 font-bold underline transition cursor-pointer inline-flex items-center gap-1"
                   >
                     <Trash2 className="w-3 h-3" />
-                    <span>기기 데이터 초기화 (손오공 등 임시정보 삭제 / 백지 리셋)</span>
+                    <span>{isJapanese ? '端末データ初期化 (ゲスト情報削除 / リセット)' : '기기 데이터 초기화 (손오공 등 임시정보 삭제 / 백지 리셋)'}</span>
                   </button>
                 </div>
               </div>

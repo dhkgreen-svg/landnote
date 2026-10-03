@@ -305,7 +305,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
                 }}
                 className="text-[11px] text-emerald-800 hover:text-emerald-950 font-black underline underline-offset-2 cursor-pointer transition flex items-center justify-center gap-1 mx-auto"
               >
-                <span>🔑 폰에서 쓰던 7자리 회원번호로 로그인하기</span>
+                <span>{isJapanese ? '🔑 7桁会員番号でログイン' : '🔑 폰에서 쓰던 7자리 회원번호로 로그인하기'}</span>
               </button>
             </div>
           </div>
