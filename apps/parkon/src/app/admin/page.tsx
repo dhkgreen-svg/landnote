@@ -261,7 +261,8 @@ export default function AdminDashboardPage() {
         if (res.status === 401) {
           throw new Error('마스터 보안암호(PIN)가 일치하지 않습니다.');
         }
-        throw new Error('데이터를 불러오는 중 오류가 발생했습니다.');
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || '데이터를 불러오는 중 오류가 발생했습니다.');
       }
       const data = await res.json();
       setMetrics(data.metrics);
@@ -333,7 +334,7 @@ export default function AdminDashboardPage() {
               <Lock className="w-8 h-8" />
             </div>
             <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">
-              ParkOn 마스터 관리자
+              파크골프 올인원 마스터 관리자
             </h1>
             <p className="text-sm text-zinc-500 mt-1">
               관리자 전용 마스터 PIN(6자리)을 입력하세요.
@@ -402,7 +403,7 @@ export default function AdminDashboardPage() {
           {/* Brand Logo & Subtitle in one inline group */}
           <div className="flex items-baseline gap-1.5 sm:gap-2 shrink-0">
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white whitespace-nowrap">
-              ParkOn
+              파크골프 올인원
             </h1>
             <span className="text-xs sm:text-sm font-bold text-emerald-200 tracking-tight whitespace-nowrap">
               전국 통합 관제센터

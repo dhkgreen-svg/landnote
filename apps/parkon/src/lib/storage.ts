@@ -137,16 +137,18 @@ export const ParkOnStorage = {
     }
   },
 
-  saveUserProfile(profile: UserGolfProfile): void {
+  saveUserProfile(profile: UserGolfProfile, skipSync = false): void {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
-      // 회원 클라우드 자동 동기화 트리거 (백그라운드)
-      setTimeout(() => {
-        try {
-          import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud()).catch(() => {});
-        } catch {}
-      }, 300);
+      if (!skipSync) {
+        // 회원 클라우드 자동 동기화 트리거 (백그라운드)
+        setTimeout(() => {
+          try {
+            import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud()).catch(() => {});
+          } catch {}
+        }, 1000);
+      }
     } catch (e) {
       console.error('Failed to save user profile:', e);
     }
@@ -590,7 +592,7 @@ export const ParkOnStorage = {
     }
   },
 
-  saveCompletedRound(session: RoundSession): void {
+  saveCompletedRound(session: RoundSession, skipSync = false): void {
     if (typeof window === 'undefined') return;
     // 가상 라운딩(체험 모드)인 경우 영구 기록/전적에 저장하지 않고 종료 (기록 제로 보장)
     if (session.isVirtual) {
@@ -602,19 +604,21 @@ export const ParkOnStorage = {
       const updated = [session, ...existing.filter((r) => r.id !== session.id)].slice(0, 50);
       localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(updated));
       this.clearCurrentRound();
-      window.dispatchEvent(new Event('parkon_member_synced'));
-      // 완주 스코어 클라우드 자동 동기화 트리거
-      setTimeout(() => {
-        try {
-          import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud()).catch(() => {});
-        } catch {}
-      }, 500);
+      if (!skipSync) {
+        window.dispatchEvent(new Event('parkon_member_synced'));
+        // 완주 스코어 클라우드 자동 동기화 트리거
+        setTimeout(() => {
+          try {
+            import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud()).catch(() => {});
+          } catch {}
+        }, 1000);
+      }
     } catch (e) {
       console.error('Failed to save completed round:', e);
     }
   },
 
-  saveCompletedRounds(rounds: RoundSession[]): void {
+  saveCompletedRounds(rounds: RoundSession[], skipSync = false): void {
     if (typeof window === 'undefined') return;
     try {
       const deletedIds = new Set(this.getDeletedRoundIds());
@@ -626,12 +630,14 @@ export const ParkOnStorage = {
         return true;
       });
       localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(clean.slice(0, 100)));
-      window.dispatchEvent(new Event('parkon_member_synced'));
-      setTimeout(() => {
-        try {
-          import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud()).catch(() => {});
-        } catch {}
-      }, 500);
+      if (!skipSync) {
+        window.dispatchEvent(new Event('parkon_member_synced'));
+        setTimeout(() => {
+          try {
+            import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud()).catch(() => {});
+          } catch {}
+        }, 1000);
+      }
     } catch (e) {
       console.error('Failed to save completed rounds:', e);
     }

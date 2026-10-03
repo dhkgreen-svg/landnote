@@ -302,7 +302,7 @@ function formatKST(timestamp: number | Date = Date.now()) {
 }
 
 function parseDeviceType(userAgent: string = ''): string {
-  const ua = userAgent.toLowerCase();
+  const ua = (userAgent || '').toLowerCase();
   if (ua.includes('iphone')) return '📱 아이폰 (iOS)';
   if (ua.includes('ipad')) return '📱 아이패드 (iPadOS)';
   if (ua.includes('android')) return '📱 안드로이드 모바일';
@@ -853,8 +853,9 @@ const PROVINCE_CONFIGS: ProvinceSeedConfig[] = [
 ];
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const pin = searchParams.get('pin') || req.headers.get('x-admin-pin');
+  try {
+    const { searchParams } = new URL(req.url);
+    const pin = searchParams.get('pin') || req.headers.get('x-admin-pin');
 
   // Verify Master PIN (768517)
   if (pin !== '768517') {
@@ -965,8 +966,8 @@ export async function GET(req: NextRequest) {
     // 1. 해당 시·도에 속한 모든 고유 IP 추출
     const provIps = new Set<string>();
     allIpRegionMap.forEach((reg, ip) => {
-      const r = reg.toLowerCase();
-      const provName = prov.name.toLowerCase();
+      const r = (reg || '').toLowerCase();
+      const provName = (prov.name || '').toLowerCase();
       if (
         r.includes(provName) ||
         (prov.name === '서울' && (r.includes('seoul') || r.includes('영등포') || r.includes('송파') || r.includes('마포') || r.includes('gangseo') || r.includes('강서') || r.includes('서초') || r.includes('강남'))) ||
@@ -1018,8 +1019,8 @@ export async function GET(req: NextRequest) {
       let detectedCity = '';
       const rawReg = (log.userRegion || allIpRegionMap.get(log.ip) || '').trim();
       for (const city of prov.cities) {
-        const cleanCity = city.name.replace(/[시구군]/g, '').toLowerCase();
-        if (rawReg.toLowerCase().includes(cleanCity) || (city.aliases && city.aliases.some((a) => rawReg.toLowerCase().includes(a.toLowerCase())))) {
+        const cleanCity = (city.name || '').replace(/[시구군]/g, '').toLowerCase();
+        if ((rawReg || '').toLowerCase().includes(cleanCity) || (city.aliases && city.aliases.some((a) => (rawReg || '').toLowerCase().includes((a || '').toLowerCase())))) {
           detectedCity = city.name;
           break;
         }
@@ -1096,11 +1097,11 @@ export async function GET(req: NextRequest) {
       let cityLive = 0;
 
       const aliases = c.aliases || [];
-      const cleanCity = c.name.replace(/[시구군]/g, '').toLowerCase();
+      const cleanCity = (c.name || '').replace(/[시구군]/g, '').toLowerCase();
 
       userGroups.forEach((g, uKey) => {
         const uCity = (userCityMap.get(uKey) || '').toLowerCase();
-        const matches = uCity.includes(cleanCity) || aliases.some((a) => uCity.includes(a.toLowerCase()));
+        const matches = uCity.includes(cleanCity) || aliases.some((a) => uCity.includes((a || '').toLowerCase()));
         if (matches) {
           cityUsers++;
           matchedUsers.add(uKey);
@@ -1122,7 +1123,7 @@ export async function GET(req: NextRequest) {
           if (r.roundSession?.isVirtual === true || r.roundSession?.isOfficial === false) return false;
           const clubIdInRoom = r.clubId || '';
           const clubNameInRoom = (r.clubName || '').toLowerCase();
-          return clubIdInRoom === club.id || (clubNameInRoom && clubNameInRoom === club.name.toLowerCase());
+          return clubIdInRoom === club.id || (clubNameInRoom && clubNameInRoom === (club.name || '').toLowerCase());
         });
 
         const actualRoundsCount = clubRounds.length;
@@ -1902,6 +1903,13 @@ export async function GET(req: NextRequest) {
       }),
     },
   });
+  } catch (err: any) {
+    console.error('Analytics GET error:', err);
+    return NextResponse.json(
+      { error: err?.message || '데이터를 불러오는 중 오류가 발생했습니다.' },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {

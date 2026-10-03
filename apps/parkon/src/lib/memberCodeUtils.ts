@@ -144,11 +144,25 @@ export function getOrGenerateMemberCode(forceGenerate = false): string {
   }
 }
 
+// 재귀 동기화 및 브라우저 메모리 폭주 원천 방지 락(Lock)
+let isSyncingMemberData = false;
+let isRestoringMemberData = false;
+let lastSyncTimestamp = 0;
+
 /**
  * 현재 기기의 모든 경기 기록, 연대기, 프로필, 1촌 명부를 클라우드에 자동 백업
  */
 export async function syncMemberDataToCloud(): Promise<{ success: boolean; memberCode: string; message?: string }> {
   if (typeof window === 'undefined') return { success: false, memberCode: '' };
+
+  // 1. 이미 동기화 중이거나 최근 3초 이내에 동기화가 수행된 경우 중복 호출 차단
+  const now = Date.now();
+  if (isSyncingMemberData || now - lastSyncTimestamp < 3000) {
+    return { success: true, memberCode: getSavedMemberCode(), message: '최신 동기화 유지 중' };
+  }
+
+  isSyncingMemberData = true;
+  lastSyncTimestamp = now;
 
   try {
     const memberCode = getOrGenerateMemberCode();
@@ -192,6 +206,8 @@ export async function syncMemberDataToCloud(): Promise<{ success: boolean; membe
   } catch (err: any) {
     console.warn('Cloud sync error (fallback to local):', err?.message || err);
     return { success: false, memberCode: getOrGenerateMemberCode(), message: err?.message };
+  } finally {
+    isSyncingMemberData = false;
   }
 }
 
@@ -209,8 +225,15 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
     return { success: false, memberCode: inputCode, message: '브라우저 환경이 아닙니다.' };
   }
 
+  // 중복 복원 작업 락
+  if (isRestoringMemberData) {
+    return { success: false, memberCode: inputCode, message: '이미 복원 작업이 진행 중입니다.' };
+  }
+  isRestoringMemberData = true;
+
   const cleanCode = normalizeMemberCode(inputCode);
   if (!cleanCode || cleanCode.replace('-', '').length < 6) {
+    isRestoringMemberData = false;
     return { success: false, memberCode: inputCode, message: '올바른 7자리 고유 회원번호를 입력해 주세요. (예: PKY-7788)' };
   }
 
@@ -256,15 +279,15 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
     // 1. 고유 회원번호 저장
     localStorage.setItem(MEMBER_CODE_STORAGE_KEY, memberCode);
 
-    // 2. 프로필 복원
+    // 2. 프로필 복원 (skipSync=true로 클라우드 재귀 트리거 차단)
     if (profile) {
-      ParkOnStorage.saveUserProfile(profile);
+      ParkOnStorage.saveUserProfile(profile, true);
     } else if (userName) {
       ParkOnStorage.saveUserProfile({
         userName,
         nationalGrade: '공인 싱글 1급',
         clubName: '구미 파크골프 클럽',
-      });
+      }, true);
     }
 
     // 3. 카카오/LINE 유저 복원
@@ -307,21 +330,32 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
         }
       });
     }
-    // 2) 로컬 전적 등록 (클라우드에 아직 안 올라간 게스트 라운드 보존)
+    // 2) 로컬 전적 등록 (클라우드에 아직 안 올라간 게스트 라운드 보존 및 로컬 사진 무손실 보존)
     localRounds.forEach((r) => {
       if (r?.id && !deletedIds.has(r.id)) {
         const key = r.id || `${r.courseName}_${r.completedAt}`;
         if (!roundMap.has(key)) {
           roundMap.set(key, r);
+        } else {
+          // 로컬 기기에 저장된 현장 기념사진이 있으면 클라우드 복원본에 무손실 병합
+          const existing = roundMap.get(key)!;
+          if (r.photos && r.photos.length > 0) {
+            existing.photos = Array.from(new Set([...(existing.photos || []), ...r.photos]));
+          }
         }
       }
     });
-    // 3) 안전 보관함 전적 등록 (연동 직전 스마트폰에서 쳤던 기록 원천 복구)
+    // 3) 안전 보관함 전적 등록 (연동 직전 스마트폰에서 쳤던 기록 및 사진 원천 복구)
     stashRounds.forEach((r) => {
       if (r?.id && !deletedIds.has(r.id)) {
         const key = r.id || `${r.courseName}_${r.completedAt}`;
         if (!roundMap.has(key)) {
           roundMap.set(key, r);
+        } else {
+          const existing = roundMap.get(key)!;
+          if (r.photos && r.photos.length > 0) {
+            existing.photos = Array.from(new Set([...(existing.photos || []), ...r.photos]));
+          }
         }
       }
     });
@@ -332,7 +366,8 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
       return tB - tA;
     });
 
-    ParkOnStorage.saveCompletedRounds(mergedRounds);
+    // skipSync = true: 복원된 기록을 다시 클라우드로 즉시 업로드하는 무한 루프 원천 방지
+    ParkOnStorage.saveCompletedRounds(mergedRounds, true);
     const restoredRoundsCount = mergedRounds.length;
 
     // 5. 1촌 동반자 명부 복원
@@ -356,8 +391,7 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
       localStorage.setItem('parkon_crowd_hole_specs_v1', JSON.stringify(crowdSpecs));
     }
 
-    // 7. 시스템 전역 이벤트 트리거 (새로고침 없이 실시간 반영)
-    window.dispatchEvent(new Event('storage'));
+    // 8. 전용 커스텀 이벤트만 안전하게 발송 (브라우저 가짜 storage 이벤트 중복 트리거 차단)
     window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: userName } }));
     window.dispatchEvent(new CustomEvent('parkon_companion_updated'));
     window.dispatchEvent(new CustomEvent('parkon_member_synced', { detail: { memberCode, userName } }));
@@ -376,6 +410,8 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
       memberCode: cleanCode,
       message: `복원 중 오류가 발생했습니다: ${e?.message || e}`,
     };
+  } finally {
+    isRestoringMemberData = false;
   }
 }
 

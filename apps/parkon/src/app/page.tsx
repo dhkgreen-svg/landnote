@@ -1,6 +1,6 @@
 'use client';
 // Build: 2026-09-16-clean-home
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Play, MapPin, History, Award, Flame, Trophy, X, ArrowRight, ChevronDown, ChevronRight, Check, Plus, Star, Search, Trash2, Share2, Download, Heart, Smartphone, Target, Sparkles } from 'lucide-react';
@@ -199,6 +199,38 @@ export default function HomePage() {
     setShowInstallGuideModal(true);
   };
 
+  const hasRestoredMemberRef = useRef(false);
+
+  // 1. 최초 마운트 시 1회만 클라우드 연동 복원 수행 (무한 루프 방지)
+  useEffect(() => {
+    if (hasRestoredMemberRef.current) return;
+    hasRestoredMemberRef.current = true;
+
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const queryCode = urlParams?.get('code') || urlParams?.get('memberCode');
+    if (queryCode) {
+      const norm = normalizeMemberCode(queryCode);
+      if (norm) {
+        localStorage.setItem(MEMBER_CODE_STORAGE_KEY, norm);
+      }
+    }
+
+    const savedCode = getSavedMemberCode();
+    const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const activeCode = savedCode || (isLocalHost ? 'PKY-7788' : '');
+
+    if (activeCode) {
+      fetchAndRestoreMemberData(activeCode).then((res) => {
+        if (res.success) {
+          setCompletedRounds(ParkOnStorage.getCompletedRounds());
+          setUserProfile(ParkOnStorage.getUserProfile());
+          setKakaoUser(ParkOnStorage.getKakaoUser());
+        }
+      }).catch(() => {});
+    }
+  }, []);
+
+  // 2. 로컬 스토리지 및 이벤트 감청 (순수 로컬 상태 갱신만 수행, 재귀 API 호출 차단)
   useEffect(() => {
     const loadData = () => {
       const allCourses = ParkOnStorage.getAllCourses();
@@ -233,34 +265,6 @@ export default function HomePage() {
       setCompletedRounds(completed);
       const kUser = ParkOnStorage.getKakaoUser();
       setKakaoUser(kUser);
-      if (kUser?.id) {
-        BadgeStorage.syncToCloud(kUser.id, kUser.nickname);
-      }
-
-      // [전 기기 / 로컬호스트 / 모바일 무조건 완벽 동기화 - 대표님 실제 기록 연동]
-      const queryCode = urlParams?.get('code') || urlParams?.get('memberCode');
-      if (queryCode) {
-        const norm = normalizeMemberCode(queryCode);
-        if (norm) {
-          localStorage.setItem(MEMBER_CODE_STORAGE_KEY, norm);
-        }
-      }
-
-      const savedCode = getSavedMemberCode();
-      const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const activeCode = savedCode || (isLocalHost ? 'PKY-7788' : '');
-
-      if (activeCode) {
-        fetchAndRestoreMemberData(activeCode).then((res) => {
-          if (res.success) {
-            setCompletedRounds(ParkOnStorage.getCompletedRounds());
-            setUserProfile(ParkOnStorage.getUserProfile());
-            setKakaoUser(ParkOnStorage.getKakaoUser());
-          }
-        }).catch(() => {});
-      } else if (completed && completed.length > 0) {
-        syncMemberDataToCloud().catch(() => {});
-      }
 
       // 클럽 앤 번개 대회 실제 상태 연동 및 신규 공지/번개 알림 체크
       const clubRooms = ClubStorage.getAllRooms();
@@ -300,6 +304,7 @@ export default function HomePage() {
     window.addEventListener('parkon_favorite_courses_updated', loadData);
     window.addEventListener('parkon_club_updated', loadData);
     window.addEventListener('parkon_country_changed', loadData);
+    window.addEventListener('parkon_member_synced', loadData);
     return () => {
       window.removeEventListener('storage', loadData);
       window.removeEventListener('parkon_profile_updated', loadData);
@@ -307,6 +312,7 @@ export default function HomePage() {
       window.removeEventListener('parkon_favorite_courses_updated', loadData);
       window.removeEventListener('parkon_club_updated', loadData);
       window.removeEventListener('parkon_country_changed', loadData);
+      window.removeEventListener('parkon_member_synced', loadData);
     };
   }, []);
 
@@ -1497,6 +1503,7 @@ export default function HomePage() {
                         const myRank = sortedPlayers.findIndex((p) => p.id === me?.id || p.name === me?.name) + 1 || 1;
                         const is18Holes = (r.totalHoles && r.totalHoles >= 18) || Object.keys(me?.scores || {}).length >= 18 || (r as any).holes >= 18;
                         const isOfficial = r.isOfficial !== false;
+                        const hasPhotos = Boolean(r.photos && r.photos.length > 0);
 
                         // 날짜 포맷 (한 줄에 최적화: 2026.10.02 (금))
                         const dObj = r.completedAt ? new Date(r.completedAt) : new Date();
@@ -1514,7 +1521,12 @@ export default function HomePage() {
                           ? `A ${aSum} · B ${bSum}`
                           : `${me.totalStrokes}타 완주`;
 
-                        const totalOB = Object.values(me?.obCount || {}).reduce<number>((acc, cur) => acc + (Number(cur) || 0), 0);
+                        // Par 기준 타수 차이 계산 (+undefined 버그 완벽 방어)
+                        const basePar = is18Holes ? 66 : (r.totalHoles && r.totalHoles <= 9 ? 33 : 66);
+                        const computedParDiff = me.totalParDiff !== undefined && !isNaN(Number(me.totalParDiff))
+                          ? Number(me.totalParDiff)
+                          : (me.totalStrokes - basePar);
+                        const parDiffText = computedParDiff === 0 ? '+0' : computedParDiff > 0 ? `+${computedParDiff}` : `${computedParDiff}`;
 
                         return (
                           <button
@@ -1524,32 +1536,55 @@ export default function HomePage() {
                             className="w-full bg-white hover:bg-emerald-50/50 active:bg-emerald-100/60 p-3 rounded-2xl border border-stone-200/90 shadow-2xs hover:border-emerald-400 transition flex items-center justify-between gap-2.5 cursor-pointer text-left select-none"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              {/* 날짜 박스 */}
-                              <div className="w-11 h-11 rounded-xl bg-stone-100 border border-stone-200 flex flex-col items-center justify-center shrink-0">
-                                <span className="text-[10px] text-stone-500 font-bold leading-tight">
-                                  {String(dObj.getMonth() + 1).padStart(2, '0')}.{String(dObj.getDate()).padStart(2, '0')}
-                                </span>
-                                <span className="text-xs font-black text-stone-800 leading-tight">
-                                  {['일', '월', '화', '수', '목', '금', '토'][dObj.getDay()]}
-                                </span>
-                              </div>
+                              {/* 📸 [대표님 핵심 지시]: 사진이 있으면 실제 현장 사진 썸네일, 없으면 기본 날짜 박스 */}
+                              {hasPhotos ? (
+                                <div className="w-12 h-12 rounded-2xl border-2 border-amber-400 overflow-hidden relative shrink-0 shadow-xs bg-gradient-to-br from-emerald-700 to-teal-800 flex items-center justify-center">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={r.photos![0]}
+                                    alt="인증샷"
+                                    className="w-full h-full object-cover absolute inset-0"
+                                    onError={(e) => {
+                                      (e.currentTarget as HTMLElement).style.display = 'none';
+                                    }}
+                                  />
+                                  <span className="text-lg select-none">📸</span>
+                                  <div className="absolute top-0.5 right-0.5 bg-black/70 text-white text-[8px] font-black px-1 rounded-sm z-10">
+                                    📸
+                                  </div>
+                                  <div className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-2xs text-white text-[8px] font-black text-center py-0.2 z-10">
+                                    {String(dObj.getMonth() + 1).padStart(2, '0')}.{String(dObj.getDate()).padStart(2, '0')}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="w-12 h-12 rounded-2xl bg-stone-100 border border-stone-200 flex flex-col items-center justify-center shrink-0">
+                                  <span className="text-[10px] text-stone-500 font-bold leading-tight">
+                                    {String(dObj.getMonth() + 1).padStart(2, '0')}.{String(dObj.getDate()).padStart(2, '0')}
+                                  </span>
+                                  <span className="text-xs font-black text-stone-800 leading-tight">
+                                    {['일', '월', '화', '수', '목', '금', '토'][dObj.getDay()]}
+                                  </span>
+                                </div>
+                              )}
 
                               {/* 경기 제원 및 코스 요약 */}
-                              <div className="text-left min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
+                              <div className="text-left min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 min-w-0">
                                   <span className="text-xs font-black text-stone-900 truncate">
                                     ⛳ {r.courseName}
                                   </span>
-                                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-black ${isOfficial ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'}`}>
+                                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-black shrink-0 ${isOfficial ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'}`}>
                                     {is18Holes ? '18H' : `${r.totalHoles || 9}H`}
                                   </span>
                                 </div>
+                                {/* [대표님 핵심 지시]: 불필요한 OB N회 자리에 [📸 사진 N장] 마크 표출 */}
                                 <div className="text-[10.5px] text-stone-500 font-medium mt-0.5 flex items-center gap-1.5 flex-wrap">
                                   <span className="text-stone-700 font-bold">{courseSummary}</span>
-                                  {totalOB > 0 ? (
-                                    <span className="text-rose-600 font-bold">· OB {totalOB}회</span>
-                                  ) : (
-                                    <span className="text-emerald-700 font-bold">· 노OB ✨</span>
+                                  {hasPhotos && (
+                                    <span className="text-[9.5px] bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full shadow-2xs flex items-center gap-0.5 border border-amber-300">
+                                      <span>📸</span>
+                                      <span>사진 {r.photos!.length}장</span>
+                                    </span>
                                   )}
                                   {sortedPlayers.length > 1 && (
                                     <span>· 👥 {sortedPlayers.length}명</span>
@@ -1567,7 +1602,7 @@ export default function HomePage() {
                                 <div className="text-sm font-black text-stone-950 leading-tight mt-0.5">
                                   {me.totalStrokes}타
                                   <span className="text-[10px] text-stone-500 font-medium ml-0.5">
-                                    ({(me.totalParDiff ?? 0) >= 0 ? `+${me.totalParDiff}` : me.totalParDiff})
+                                    ({parDiffText})
                                   </span>
                                 </div>
                               </div>
@@ -2316,6 +2351,10 @@ export default function HomePage() {
         onClose={() => setSelectedRoundForPopup(null)}
         onDelete={(roundId) => {
           ParkOnStorage.deleteCompletedRound(roundId);
+          setCompletedRounds(ParkOnStorage.getCompletedRounds());
+        }}
+        onUpdate={(updated) => {
+          setSelectedRoundForPopup(updated);
           setCompletedRounds(ParkOnStorage.getCompletedRounds());
         }}
       />

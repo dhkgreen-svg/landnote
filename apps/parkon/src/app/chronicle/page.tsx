@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -93,7 +93,25 @@ function ChronicleContent() {
   }, [addFriendParam]);
 
   const [syncVersion, setSyncVersion] = useState(0);
+  const hasRestoredMemberRef = useRef(false);
 
+  // 1. 최초 마운트 시 1회만 클라우드 연동 복원 수행 (무한 루프 방지)
+  useEffect(() => {
+    if (hasRestoredMemberRef.current) return;
+    hasRestoredMemberRef.current = true;
+
+    const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const activeCode = getSavedMemberCode() || (isLocalHost ? 'PKY-7788' : '');
+    if (activeCode) {
+      import('@/lib/memberCodeUtils').then((m) => {
+        m.fetchAndRestoreMemberData(activeCode).then(() => {
+          setSyncVersion((v) => v + 1);
+        }).catch(() => {});
+      }).catch(() => {});
+    }
+  }, []);
+
+  // 2. 로컬 스토리지 및 이벤트 감청 (순수 로컬 상태 갱신만 수행)
   useEffect(() => {
     setMounted(true);
     const load = () => {
@@ -106,16 +124,6 @@ function ChronicleContent() {
       setSyncVersion((v) => v + 1);
     };
     load();
-
-    const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    const activeCode = getSavedMemberCode() || (isLocalHost ? 'PKY-7788' : '');
-    if (activeCode) {
-      import('@/lib/memberCodeUtils').then((m) => {
-        m.fetchAndRestoreMemberData(activeCode).then(() => {
-          load();
-        }).catch(() => {});
-      }).catch(() => {});
-    }
 
     window.addEventListener('parkon_companion_updated', load);
     window.addEventListener('parkon_lightning_updated', load);
@@ -833,8 +841,13 @@ function ChronicleContent() {
                       (r.players && r.players[0]) ||
                       { totalStrokes: (r as any).totalScore || 54, totalParDiff: 0 };
                     const strokes = myPl?.totalStrokes || 0;
-                    const parDiff = myPl?.totalParDiff ?? 0;
+                    const is18Holes = (r.totalHoles && r.totalHoles >= 18) || Object.keys(myPl?.scores || {}).length >= 18 || (r as any).holes >= 18;
+                    const basePar = is18Holes ? 66 : (r.totalHoles && r.totalHoles <= 9 ? 33 : 66);
+                    const parDiff = myPl?.totalParDiff !== undefined && !isNaN(Number(myPl.totalParDiff))
+                      ? Number(myPl.totalParDiff)
+                      : (strokes - basePar);
                     const parStr = parDiff === 0 ? 'Even' : parDiff > 0 ? `+${parDiff}` : `${parDiff}`;
+                    const hasPhotos = Boolean(r.photos && r.photos.length > 0);
                     const companionsText =
                       (r.players || [])
                         .filter((p) => !p.isSelf && p.name !== userName)
@@ -865,36 +878,63 @@ function ChronicleContent() {
                         onClick={() => setSelectedRoundForPopup(r)}
                         className="p-3 bg-stone-50 hover:bg-emerald-50/60 rounded-2xl border border-stone-200 hover:border-emerald-300 space-y-1.5 cursor-pointer transition shadow-2xs group"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs font-black text-stone-900 group-hover:text-emerald-900">
-                              {r.courseName}
-                            </span>
-                            <span className="text-[10px] text-stone-400 font-normal">
-                              ({r.confirmedHoles?.length || r.totalHoles}{isJapanese ? 'ホール' : '홀'})
-                            </span>
-                            {/* [대표님 핵심 지침]: 필드 정상 완주 인증 마크 vs 모의/빠른 입력 구분 */}
-                            {isFieldVerified ? (
-                              <span className="text-[9.5px] bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1 border border-amber-300">
-                                <span>🏅</span>
-                                <span>{isJapanese ? 'コース公式完走 認証' : '정규 필드 완주 인증'}</span>
-                              </span>
-                            ) : isFastTest ? (
-                              <span className="text-[9px] bg-stone-200 text-stone-700 font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                                <span>🧪</span>
-                                <span>{isJapanese ? '模擬 / 入力テスト' : '모의 / 빠른 입력'}</span>
-                              </span>
-                            ) : (
-                              <span className="text-[9px] bg-stone-100 text-stone-600 font-medium px-1.5 py-0.5 rounded-full">
-                                {isJapanese ? '一般記録' : '일반 기록'}
-                              </span>
-                            )}
-                            {r.photos && r.photos.length > 0 && (
-                              <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
-                                <Camera className="w-2.5 h-2.5 text-amber-600" />
-                                <span>사진 {r.photos.length}</span>
-                              </span>
-                            )}
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex items-start gap-2.5 min-w-0">
+                            {/* 📸 [대표님 핵심 지시]: 사진이 있으면 실제 현장 사진 썸네일 표출 */}
+                            {hasPhotos ? (
+                              <div className="w-12 h-12 rounded-xl border-2 border-amber-400 overflow-hidden relative shrink-0 shadow-xs bg-gradient-to-br from-emerald-700 to-teal-800 flex items-center justify-center">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={r.photos![0]}
+                                  alt="인증샷"
+                                  className="w-full h-full object-cover absolute inset-0"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                                <span className="text-lg select-none">📸</span>
+                                <div className="absolute top-0.5 right-0.5 bg-black/70 text-white text-[8px] font-black px-1 rounded-sm z-10">
+                                  📸
+                                </div>
+                                <div className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-2xs text-white text-[8px] font-black text-center py-0.2 z-10">
+                                  {String(sDate.getMonth() + 1).padStart(2, '0')}.{String(sDate.getDate()).padStart(2, '0')}
+                                </div>
+                              </div>
+                            ) : null}
+
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-xs font-black text-stone-900 group-hover:text-emerald-900 truncate">
+                                  {r.courseName}
+                                </span>
+                                <span className="text-[10px] text-stone-400 font-normal">
+                                  ({r.confirmedHoles?.length || r.totalHoles}{isJapanese ? 'ホール' : '홀'})
+                                </span>
+                                {/* [대표님 핵심 지침]: 필드 정상 완주 인증 마크 vs 모의/빠른 입력 구분 */}
+                                {isFieldVerified ? (
+                                  <span className="text-[9.5px] bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1 border border-amber-300">
+                                    <span>🏅</span>
+                                    <span>{isJapanese ? 'コース公式完走 認証' : '정규 필드 완주 인증'}</span>
+                                  </span>
+                                ) : isFastTest ? (
+                                  <span className="text-[9px] bg-stone-200 text-stone-700 font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                                    <span>🧪</span>
+                                    <span>{isJapanese ? '模擬 / 入力テスト' : '모의 / 빠른 입력'}</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] bg-stone-100 text-stone-600 font-medium px-1.5 py-0.5 rounded-full">
+                                    {isJapanese ? '一般記録' : '일반 기록'}
+                                  </span>
+                                )}
+                                {/* 📸 [대표님 핵심 지시]: 사진 유무 확인 배지 */}
+                                {hasPhotos && (
+                                  <span className="text-[9px] bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full shadow-2xs flex items-center gap-0.5 border border-amber-300">
+                                    <span>📸</span>
+                                    <span>사진 {r.photos!.length}장</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
 
                           <div className="flex items-center gap-1.5 shrink-0">
@@ -2267,6 +2307,10 @@ function ChronicleContent() {
         onClose={() => setSelectedRoundForPopup(null)}
         onDelete={(roundId) => {
           ParkOnStorage.deleteCompletedRound(roundId);
+          setSyncVersion((v) => v + 1);
+        }}
+        onUpdate={(updated) => {
+          setSelectedRoundForPopup(updated);
           setSyncVersion((v) => v + 1);
         }}
       />
