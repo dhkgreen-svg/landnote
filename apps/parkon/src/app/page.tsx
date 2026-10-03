@@ -1347,8 +1347,8 @@ export default function HomePage() {
                   </h3>
                   <p className="text-[11px] text-stone-500 font-medium">
                     {isJapanese
-                      ? '公認5スター等級・直近成績表・100位ランキング'
-                      : '공인 5스타 등급 · 최근 라운드 성적표 · 100위 랭킹'}
+                      ? '公認5スター等級・競技タイムライン・詳細スコア分析'
+                      : '공인 5스타 등급 · 경기 타임라인 · 상세 스코어 분석'}
                   </p>
                 </div>
               </div>
@@ -1385,8 +1385,8 @@ export default function HomePage() {
                     : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
                 }`}
               >
-                <span className="text-sm">📋</span>
-                <span>{isJapanese ? '直近成績表＆コース分析' : '최근 성적표 & 구장 분석'}</span>
+                <span className="text-sm">⏱️</span>
+                <span>{isJapanese ? '競技タイムライン＆分析' : '경기 타임라인 & 분석'}</span>
               </button>
             </div>
 
@@ -1697,218 +1697,179 @@ export default function HomePage() {
                 </>
               )}
 
-              {/* ======================= [탭 2: 📋 최근 성적표 & 코스 분석] ======================= */}
+              {/* ======================= [탭 2: ⏱️ 경기 타임라인 & 분석] ======================= */}
               {statsSubTab === 'RECENT_ROUNDS' && (
-                <>
-                  {/* 상단 파키 스코어카드 분석 배너 (37번: 스코어카드와 연필 든 스마트 파키) */}
-                  <div className="relative rounded-2xl overflow-hidden border border-emerald-300 shadow-xs bg-stone-100 flex items-center bg-gradient-to-r from-emerald-100 to-teal-50 p-2.5 gap-3">
-                    <div className="relative w-16 h-16 rounded-xl overflow-hidden shadow-xs border border-emerald-400 shrink-0 bg-white">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src="/mascot/사진저장고_사진_20260913_37.jpg"
-                        alt="스코어카드 기록 분석 파키"
-                        className="w-full h-full object-cover"
-                      />
+                <div className="space-y-3">
+                  {/* 상단 타임라인 요약 헤더 바 */}
+                  <div className="flex items-center justify-between px-1 py-1">
+                    <div className="flex items-center gap-1.5 font-black text-sm text-stone-900">
+                      <span className="text-emerald-700">⏱️</span>
+                      <span>{isJapanese ? '私の競技タイムライン' : '나의 경기 타임라인'}</span>
                     </div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-black text-emerald-950 flex items-center gap-1">
-                        <span>파키의 실전 스코어 분석 리포트</span>
-                        <span className="text-[9px] bg-emerald-700 text-white font-black px-1.5 py-0.2 rounded">공식 전적</span>
-                      </div>
-                      <p className="text-[10.5px] text-emerald-900 font-medium leading-tight mt-0.5">
-                        최근 라운드 상세 전적표 및 구장별 코스 완주 기록입니다.
-                      </p>
-                    </div>
+                    <span className="text-xs bg-emerald-100 text-emerald-800 font-black px-2.5 py-0.5 rounded-full">
+                      {isJapanese ? `総 ${completedRounds.length}回 完走` : `총 ${completedRounds.length}회 완주`}
+                    </span>
                   </div>
 
-                  {/* 1. 최근 내 라운드 성적표 리스트 */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between px-0.5">
-                      <div className="flex items-center gap-1.5 font-extrabold text-xs text-stone-900">
-                        <History className="w-4 h-4 text-emerald-700" />
-                        <span>최근 내 라운드 성적표</span>
-                      </div>
-                      <span className="text-[11px] text-stone-600 font-bold">
-                        총 {completedRounds.length}회 기록
-                      </span>
-                    </div>
+                  {/* 타임라인 카드 목록: 군더더기 일절 없이 실제 게임 내용만 시간순으로 표출 */}
+                  {completedRounds.length > 0 ? (
+                    <div className="space-y-3">
+                      {completedRounds.map((r, rIdx) => {
+                        const me = (r.players && r.players.length > 0)
+                          ? (r.players.find((p) => p.isSelf) || r.players[0])
+                          : ({ id: 'me', name: '나', totalStrokes: (r as any).totalScore || 54, totalParDiff: 0, scores: {}, obCount: {} } as any);
+                        const sortedPlayers = [...(r.players || [])].sort((a, b) => (a.totalStrokes || 0) - (b.totalStrokes || 0));
+                        const myRank = sortedPlayers.findIndex((p) => p.id === me?.id || p.name === me?.name) + 1 || 1;
+                        const is18Holes = (r.totalHoles && r.totalHoles >= 18) || Object.keys(me?.scores || {}).length >= 18 || (r as any).holes >= 18;
+                        const isOfficial = r.isOfficial !== false;
+                        const dateFormatted = r.completedAt
+                          ? new Date(r.completedAt).toLocaleDateString(isJapanese ? 'ja-JP' : 'ko-KR', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              weekday: 'short',
+                            })
+                          : '최근 라운드';
 
-                    {completedRounds.length > 0 ? (
-                      <div className="space-y-2">
-                        {completedRounds.slice(0, 5).map((r) => {
-                          const bestPlayer = (r.players && r.players.length > 0)
-                            ? [...r.players].sort((a, b) => a.totalStrokes - b.totalStrokes)[0]
-                            : { name: '나', totalStrokes: (r as any).totalScore || 54, totalParDiff: 0, scores: {} };
-                          const is18Holes = (r.totalHoles && r.totalHoles >= 18) || Object.keys(bestPlayer?.scores || {}).length >= 18 || (r as any).holes >= 18;
-                          const isOfficial = r.isOfficial !== false;
-                          return (
-                            <div
-                              key={r.id}
-                              className="bg-stone-50 rounded-2xl p-3 border border-stone-200/90 flex items-center justify-between shadow-2xs"
-                            >
-                              <div>
-                                <div className="font-bold text-xs sm:text-sm text-stone-900 flex items-center gap-1.5 flex-wrap">
-                                  <span>{r.courseName}</span>
-                                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${isOfficial ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-600'}`}>
-                                    {isOfficial ? '🏆 공식' : '🧪 연습·테스트'}
-                                  </span>
-                                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${is18Holes ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
-                                    {is18Holes ? '18홀' : '9홀'}
-                                  </span>
-                                </div>
-                                <div className="text-[11px] text-stone-500 mt-0.5">
-                                  {r.completedAt ? new Date(r.completedAt).toLocaleDateString('ko-KR') : '최근'} · {r.players?.length || 1}명 참여
-                                </div>
-                              </div>
-                              <div className="text-right shrink-0">
-                                <div className="text-[10px] font-bold text-emerald-700">
-                                  1위 {bestPlayer?.name}
-                                </div>
-                                <div className="text-sm font-black text-stone-900">
-                                  {bestPlayer?.totalStrokes}타 ({bestPlayer?.totalParDiff >= 0 ? `+${bestPlayer?.totalParDiff}` : bestPlayer?.totalParDiff})
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="bg-stone-50 rounded-2xl p-4 text-center border border-stone-200 text-xs text-stone-500">
-                        아직 완료된 라운드 기록이 없습니다.<br />
-                        첫 라운드를 진행해 보세요! ⛳
-                      </div>
-                    )}
-                  </div>
+                        // 코스별 타수 집계 (A, B, C, D)
+                        const COURSE_LETTERS = ['A', 'B', 'C', 'D'];
+                        const courseScores: { letter: string; strokes: number; count: number }[] = [];
+                        const pScores = me?.scores || {};
+                        COURSE_LETTERS.forEach((letter, cIdx) => {
+                          const startH = cIdx * 9 + 1;
+                          const endH = (cIdx + 1) * 9;
+                          let sum = 0;
+                          let count = 0;
+                          for (const [kStr, v] of Object.entries(pScores)) {
+                            const hNum = Number(kStr);
+                            const baseH = ((hNum - 1) % 1000) + 1;
+                            if (baseH >= startH && baseH <= endH && Number(v) > 0) {
+                              sum += Number(v);
+                              count++;
+                            }
+                          }
+                          if (count > 0) {
+                            courseScores.push({ letter, strokes: sum, count });
+                          }
+                        });
 
-                  {/* 2. 선택된 구장에서의 [나의 등급 & 실력 요약 카드] */}
-                  <div className="bg-gradient-to-br from-emerald-800 to-emerald-950 text-white rounded-2xl p-4 space-y-3 shadow-md border border-emerald-700/60">
-                    <div className="flex items-center justify-between border-b border-emerald-700/60 pb-2.5 gap-2">
-                      <div className="min-w-0 flex-1">
-                        <span className="text-[10.5px] text-emerald-300 font-bold flex items-center gap-1">
-                          <span>📍</span>
-                          <span>{isJapanese ? '現在分析中のコース' : '현재 분석 중인 구장'}</span>
-                        </span>
-                        {/* 카카오톡 검색 결과 스타일의 깔끔한 흰색 박스 */}
-                        <div className="mt-1.5 bg-white text-stone-950 font-black px-3.5 py-1.5 rounded-xl text-sm shadow-sm border border-stone-200 inline-flex items-center gap-1.5 max-w-full">
-                          <span className="text-emerald-700 text-base leading-none">⛳</span>
-                          <span className="truncate">{activeStatsCourse.name}</span>
-                        </div>
-                      </div>
+                        const totalOB = Object.values(me?.obCount || {}).reduce<number>((acc, cur) => acc + (Number(cur) || 0), 0);
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStatsSearchQuery('');
-                          setShowStatsSearchModal(true);
-                        }}
-                        className="bg-[#FEE500] hover:bg-[#FDD835] active:scale-95 text-[#191919] font-black text-xs px-3 py-2 rounded-xl shadow-md border border-[#E6CF00] flex items-center gap-1.5 transition cursor-pointer shrink-0 mt-3"
-                        title="전국 파크골프장 검색 및 조회 구장 변경"
-                      >
-                        <Search className="w-3.5 h-3.5 text-stone-900 stroke-[2.5]" />
-                        <span>다른 구장 검색하기</span>
-                      </button>
-                    </div>
-
-                    {/* 18홀 성적 요약 */}
-                    {activeCourseStats.has18HoleCompleted ? (
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="bg-white/10 rounded-xl p-2 border border-white/10">
-                          <div className="text-[10px] text-emerald-200 font-medium">18홀 평균</div>
-                          <div className="text-lg font-black text-yellow-300 mt-0.5">
-                            {activeCourseStats.avgScore18}타
-                          </div>
-                        </div>
-                        <div className="bg-white/10 rounded-xl p-2 border border-white/10">
-                          <div className="text-[10px] text-emerald-200 font-medium">18홀 라베</div>
-                          <div className="text-lg font-black text-white mt-0.5">
-                            {activeCourseStats.bestScore18}타
-                          </div>
-                        </div>
-                        <div className="bg-white/10 rounded-xl p-2 border border-white/10">
-                          <div className="text-[10px] text-emerald-200 font-medium">18홀 완주</div>
-                          <div className="text-lg font-black text-emerald-100 mt-0.5">
-                            {activeCourseStats.roundCount18}회
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-emerald-900/60 border border-emerald-600/40 rounded-xl p-2.5 text-center text-xs text-emerald-200">
-                        <div className="font-black text-amber-300">⚠️ 아직 이 구장에서의 18홀 완주 기록이 없습니다</div>
-                        <div className="text-[10.5px] text-emerald-200 mt-0.5">
-                          18홀을 완주하시면 정규 평균 타수와 순위가 자동으로 등록됩니다.
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 구장 내 나의 순위 현황 (실력 순위 & 활동 순위) */}
-                    <div className="space-y-1.5 pt-1 border-t border-emerald-700/60 text-xs">
-                      <div className="bg-white/15 rounded-xl p-2.5 flex items-center justify-between font-bold">
-                        <span className="flex items-center gap-1.5 text-amber-200">
-                          <span>🏅</span>
-                          <span>{activeStatsCourse.name} 실력 순위</span>
-                        </span>
-                        <span className="font-black text-white">
-                          {activeCourseLeaderboard.mySkillRank
-                            ? activeCourseLeaderboard.mySkillRank.rankLabel
-                            : '완주 시 등록'}
-                        </span>
-                      </div>
-
-                      <div className="bg-white/15 rounded-xl p-2.5 flex items-center justify-between font-bold">
-                        <span className="flex items-center gap-1.5 text-emerald-200">
-                          <span>🔥</span>
-                          <span>{activeStatsCourse.name} 활동 순위</span>
-                        </span>
-                        <span className="font-black text-white">
-                          {activeCourseLeaderboard.myActivityRank
-                            ? activeCourseLeaderboard.myActivityRank.rankLabel
-                            : '라운드 시 등록'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 3. 코스별(A, B, C, D) 세부 타수 분석 */}
-                  {activeCourseStats.subCourses.length > 0 && (
-                    <div className="bg-stone-50 rounded-2xl p-3.5 border border-stone-200/80 space-y-2">
-                      <div className="flex items-center justify-between text-xs font-black text-stone-800">
-                        <span>⛳ {activeStatsCourse.name} 코스별 타수 분석</span>
-                        <span className="text-[10px] text-stone-500 font-medium">9홀 기준</span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        {activeCourseStats.subCourses.map((sc) => (
+                        return (
                           <div
-                            key={sc.letter}
-                            className="bg-white rounded-xl p-2.5 border border-stone-200/70 space-y-1 shadow-2xs"
+                            key={r.id || rIdx}
+                            className="bg-white rounded-2xl p-4 border border-stone-200/90 shadow-sm space-y-3 transition hover:border-emerald-400"
                           >
-                            <div className="flex items-center justify-between">
-                              <span className="font-black text-xs text-stone-800">{sc.name}</span>
-                              <span className="text-[10px] text-stone-500 font-bold bg-stone-100 px-1.5 py-0.2 rounded">
-                                {sc.roundCount}회 완주
-                              </span>
+                            {/* 상단: 구장명, 공식 여부, 홀수, 일자 */}
+                            <div className="flex items-start justify-between gap-2 border-b border-stone-100 pb-2.5">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-base font-black text-stone-900 truncate">
+                                    ⛳ {r.courseName}
+                                  </span>
+                                  <span className={`text-[10px] px-2 py-0.5 rounded font-black ${isOfficial ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'}`}>
+                                    {isOfficial ? (isJapanese ? '🏆 公式' : '🏆 공식') : (isJapanese ? '🧪 練習' : '🧪 연습')}
+                                  </span>
+                                  <span className={`text-[10px] px-2 py-0.5 rounded font-black ${is18Holes ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                                    {is18Holes ? '18홀' : `${r.totalHoles || 9}홀`}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-stone-500 font-medium mt-1 flex items-center gap-2">
+                                  <span>📅 {dateFormatted}</span>
+                                  <span>·</span>
+                                  <span>👥 {r.players?.length || 1}명 라운딩</span>
+                                </div>
+                              </div>
+
+                              {/* 본인 최종 타수 고대비 표출 */}
+                              <div className="text-right shrink-0">
+                                <div className="text-[10.5px] font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full inline-block">
+                                  {myRank === 1 ? '🥇 1위 (챔피언)' : `${myRank}위`}
+                                </div>
+                                <div className="text-2xl font-black text-stone-950 mt-0.5 leading-none">
+                                  {me.totalStrokes}타
+                                  <span className="text-xs font-bold text-stone-500 ml-1">
+                                    ({(me.totalParDiff ?? 0) >= 0 ? `+${me.totalParDiff}` : me.totalParDiff})
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex items-baseline justify-between pt-0.5">
-                              <span className="text-[10px] text-stone-500">평균 타수</span>
-                              <span className="text-xs font-black text-emerald-800">
-                                {sc.roundCount > 0 ? `${sc.avgScore}타` : '기록 없음'}
-                              </span>
+
+                            {/* 중단: 코스별 타수 & OB 실전 분석 */}
+                            <div className="bg-stone-50 rounded-xl p-2.5 flex items-center justify-between text-xs font-bold text-stone-700">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-stone-500 text-[11px] font-medium">코스별:</span>
+                                {courseScores.length > 0 ? (
+                                  courseScores.map((cs) => (
+                                    <span key={cs.letter} className="bg-white px-2 py-0.5 rounded border border-stone-200 text-stone-900 font-black text-[11.5px]">
+                                      {cs.letter}코스 {cs.strokes}타
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-stone-700 font-black">{me.totalStrokes}타 완주</span>
+                                )}
+                              </div>
+                              {totalOB > 0 ? (
+                                <span className="text-rose-600 font-black bg-rose-50 px-2 py-0.5 rounded border border-rose-200 text-[11px]">
+                                  ⚠️ OB {totalOB}회
+                                </span>
+                              ) : (
+                                <span className="text-emerald-700 font-black bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[11px]">
+                                  ✨ 노(No) OB
+                                </span>
+                              )}
                             </div>
-                            <div className="flex items-baseline justify-between text-[10px] text-stone-600 font-medium">
-                              <span>코스 라베</span>
-                              <span className="font-bold text-amber-700">
-                                {sc.roundCount > 0 ? `${sc.bestScore}타` : '-'}
-                              </span>
+
+                            {/* 하단: 동반자 순위 리스트 & 상세 스코어카드 직행 버튼 */}
+                            <div className="space-y-2 pt-0.5">
+                              {sortedPlayers.length > 1 && (
+                                <div className="text-[11px] text-stone-600 flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-stone-400 font-medium">동반 순위:</span>
+                                  {sortedPlayers.map((p, pIdx) => (
+                                    <span
+                                      key={p.id || pIdx}
+                                      className={`px-1.5 py-0.5 rounded text-[11px] ${
+                                        p.id === me?.id
+                                          ? 'bg-emerald-100 text-emerald-900 font-black ring-1 ring-emerald-400'
+                                          : 'bg-stone-100 text-stone-700 font-medium'
+                                      }`}
+                                    >
+                                      {pIdx + 1}위 {p.name} ({p.totalStrokes}타)
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              <Link
+                                href={`/round/result?id=${r.id}`}
+                                onClick={() => setShowStatsModal(false)}
+                                className="w-full py-2.5 bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 border border-stone-200 text-stone-800 font-black rounded-xl text-xs transition flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <span>📋 이 게임 홀별 상세 스코어카드 보기</span>
+                                <ArrowRight className="w-3.5 h-3.5 text-stone-600" />
+                              </Link>
                             </div>
                           </div>
-                        ))}
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="bg-stone-50 rounded-2xl p-6 text-center border border-stone-200 space-y-2">
+                      <div className="text-3xl">⛳</div>
+                      <div className="font-black text-sm text-stone-800">
+                        {isJapanese ? 'まだ完了した競技記録がありません' : '아직 기록된 경기 타임라인이 없습니다'}
                       </div>
+                      <p className="text-xs text-stone-500 leading-relaxed">
+                        {isJapanese
+                          ? 'ラウンドを完了すると、あなたの全競技記録と詳細スコアがタイムライン順に自動保存されます。'
+                          : '라운드를 완료하시면 내가 플레이한 모든 게임 내용과 상세 타수가 시간 순서대로 타임라인에 안전하게 보관됩니다.'}
+                      </p>
                     </div>
                   )}
 
                   {/* 누적/테스트 기록 전체 비우기 버튼 */}
                   {completedRounds.length > 0 && (
-                    <div className="pt-1">
+                    <div className="pt-2">
                       <button
                         type="button"
                         onClick={() => {
@@ -1926,7 +1887,7 @@ export default function HomePage() {
                       </button>
                     </div>
                   )}
-                </>
+                </div>
               )}
             </div>
 
