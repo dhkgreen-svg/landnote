@@ -1,5 +1,5 @@
 'use client';
-// Build: 2026-09-16-clean-home
+// Build: 2026-10-03-field-ux-analytics-baseline-160
 import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';

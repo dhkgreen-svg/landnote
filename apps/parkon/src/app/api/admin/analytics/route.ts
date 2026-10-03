@@ -3,7 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import baselineAnalytics from '@/data/analytics_baseline.json';
+import baselineAnalytics from '@/data/analyticsBaseline';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export interface VisitorLog {
   id: string;
