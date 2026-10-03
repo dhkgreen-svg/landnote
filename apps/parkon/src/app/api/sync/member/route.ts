@@ -80,19 +80,46 @@ export async function GET(req: NextRequest) {
     const map = getMembersMap();
     const matches: MemberSyncRecord[] = [];
 
-    map.forEach((rec) => {
+    const checkMatch = (rec: MemberSyncRecord) => {
       const recName = (rec.userName || rec.profile?.userName || '').replace(/\s+/g, '');
-      const recPhone = (rec.phoneNumber || rec.profile?.phoneNumber || '').replace(/\D/g, '');
+      const recPhone = (rec.phoneNumber || (rec as any).userPhone || rec.profile?.phoneNumber || rec.profile?.phone || '').replace(/\D/g, '');
 
       // 이름 일치 검사
       const nameMatch = recName === cleanSearchName || (cleanSearchName.length >= 2 && recName.includes(cleanSearchName));
       // 전화번호 일치 검사 (전화번호가 입력된 경우 전체 또는 뒷 4자리 일치)
       const phoneMatch = !searchPhone || (recPhone && (recPhone.endsWith(searchPhone) || searchPhone.endsWith(recPhone)));
 
-      if (nameMatch && phoneMatch) {
+      return nameMatch && phoneMatch;
+    };
+
+    map.forEach((rec) => {
+      if (checkMatch(rec)) {
         matches.push(rec);
       }
     });
+
+    // Supabase 백업에서도 일치 회원 검색 (서버리스 인스턴스 재부팅 대응)
+    if (matches.length === 0) {
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from('parkon_member_sync')
+            .select('*');
+          if (!error && Array.isArray(data)) {
+            data.forEach((row: any) => {
+              const rec = row.payload as MemberSyncRecord;
+              if (rec && checkMatch(rec)) {
+                // 중복 방지
+                if (!matches.some(m => m.memberCode === rec.memberCode)) {
+                  matches.push(rec);
+                }
+              }
+            });
+          }
+        } catch {}
+      }
+    }
 
     if (matches.length > 0) {
       return NextResponse.json({
@@ -185,7 +212,7 @@ export async function POST(req: NextRequest) {
     const record: MemberSyncRecord = {
       ...body,
       memberCode: rawCode.includes('-') ? rawCode : (cleanCode.length === 7 ? `${cleanCode.slice(0, 3)}-${cleanCode.slice(3)}` : rawCode),
-      phoneNumber: body.phoneNumber || body.profile?.phoneNumber || '',
+      phoneNumber: body.phoneNumber || (body as any).userPhone || body.profile?.phoneNumber || body.profile?.phone || '',
       updatedAt: body.updatedAt || new Date().toISOString(),
     };
 
