@@ -104,16 +104,23 @@ export async function GET(req: NextRequest) {
       if (supabase) {
         try {
           const { data, error } = await supabase
-            .from('parkon_member_sync')
-            .select('*');
+            .from('parkon_analytics_logs')
+            .select('*')
+            .like('path', 'member_sync:%')
+            .order('timestamp', { ascending: false })
+            .limit(100);
+
           if (!error && Array.isArray(data)) {
             data.forEach((row: any) => {
-              const rec = row.payload as MemberSyncRecord;
-              if (rec && checkMatch(rec)) {
-                // 중복 방지
-                if (!matches.some(m => m.memberCode === rec.memberCode)) {
-                  matches.push(rec);
-                }
+              if (row.referrer) {
+                try {
+                  const rec = JSON.parse(row.referrer) as MemberSyncRecord;
+                  if (rec && checkMatch(rec)) {
+                    if (!matches.some((m) => m.memberCode === rec.memberCode)) {
+                      matches.push(rec);
+                    }
+                  }
+                } catch {}
               }
             });
           }
@@ -168,20 +175,23 @@ export async function GET(req: NextRequest) {
     } catch {}
   }
 
-  // Fallback to Supabase
+  // Fallback to Supabase (parkon_analytics_logs)
   if (!record) {
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
         const { data, error } = await supabase
-          .from('parkon_member_sync')
+          .from('parkon_analytics_logs')
           .select('*')
-          .eq('member_code', cleanCode)
-          .maybeSingle();
+          .eq('path', `member_sync:${cleanCode}`)
+          .order('timestamp', { ascending: false })
+          .limit(1);
 
-        if (!error && data && data.payload) {
-          record = data.payload as MemberSyncRecord;
-          map.set(cleanCode, record);
+        if (!error && Array.isArray(data) && data.length > 0 && data[0].referrer) {
+          try {
+            record = JSON.parse(data[0].referrer) as MemberSyncRecord;
+            map.set(cleanCode, record);
+          } catch {}
         }
       } catch {}
     }
@@ -219,21 +229,26 @@ export async function POST(req: NextRequest) {
     map.set(cleanCode, record);
     persistMembers(map);
 
-    // Supabase에 비동기 백업 시도 (테이블이 존재할 경우 자동 반영)
-    // Supabase에 비동기 백업 시도 (테이블이 존재할 경우 자동 반영)
+    // Supabase parkon_analytics_logs 에 영구 클라우드 보관
     const supabase = getSupabaseClient();
     if (supabase) {
       (async () => {
         try {
           await supabase
-            .from('parkon_member_sync')
-            .upsert({
-              member_code: cleanCode,
-              user_name: record.userName || '골퍼',
-              payload: record,
-              updated_at: record.updatedAt,
-            });
-        } catch {}
+            .from('parkon_analytics_logs')
+            .insert([{
+              id: `sync_${cleanCode}_${Date.now()}`,
+              path: `member_sync:${cleanCode}`,
+              referrer: JSON.stringify(record),
+              userName: record.userName || '골퍼',
+              homeCourse: record.memberCode,
+              timestamp: Date.now(),
+              dateStr: new Date().toISOString().slice(0, 10),
+              timeStr: new Date().toTimeString().slice(0, 8),
+            }]);
+        } catch (err) {
+          console.error('Supabase persistence error:', err);
+        }
       })();
     }
 
