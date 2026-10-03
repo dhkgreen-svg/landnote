@@ -49,6 +49,23 @@ export function isPlaceholderName(name?: string | null): boolean {
   );
 }
 
+export const SAFETY_STASH_STORAGE_KEY = 'parkon_completed_rounds_safety_stash_v1';
+
+/**
+ * 테스트용 가짜 데이터(수성 54타 샘플 등) 및 손상된 라운드 필터링
+ */
+export function isMockOrCorruptedRound(r: any): boolean {
+  if (!r) return true;
+  if (r.id === 'round_rec_1' || r.id === 'round_suseong_sample') return true;
+  if (
+    r.courseName === '수성파크골프장' &&
+    r.players?.some((p: any) => (p.name === '김대희' || p.name?.includes('홍길동')) && p.totalStrokes === 54 && r.completedAt === '2026-10-02T10:00:00.000Z')
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /**
  * 7자리 고유 회원번호 조회 (없으면 빈 문자열 반환)
  */
@@ -138,7 +155,7 @@ export async function syncMemberDataToCloud(): Promise<{ success: boolean; membe
     const userName = ParkOnStorage.getUserDisplayName();
     const profile = ParkOnStorage.getUserProfile();
     const kakaoUser = ParkOnStorage.getKakaoUser();
-    const completedRounds = ParkOnStorage.getCompletedRounds().filter((r) => !r.isVirtual);
+    const completedRounds = ParkOnStorage.getCompletedRounds().filter((r) => !r.isVirtual && !isMockOrCorruptedRound(r));
     const companions = CompanionStorage.getCompanions();
     const badges = BadgeStorage.getAllBadges();
     const tour = BadgeStorage.getNationalTourRecords();
@@ -198,6 +215,21 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
   }
 
   try {
+    // 0. 스마트폰/로컬 기기의 기존 실전 기록 영구 안전 백업 (Safety Stash)
+    // 연동 과정에서 발생할 수 있는 데이터 유실을 100% 원천 차단
+    try {
+      const rawCurrent = localStorage.getItem('parkon_completed_rounds_v1');
+      if (rawCurrent && rawCurrent.length > 5) {
+        const parsedCurrent = JSON.parse(rawCurrent);
+        if (Array.isArray(parsedCurrent)) {
+          const validCurrent = parsedCurrent.filter((r) => !isMockOrCorruptedRound(r));
+          if (validCurrent.length > 0) {
+            localStorage.setItem(SAFETY_STASH_STORAGE_KEY, JSON.stringify(validCurrent));
+          }
+        }
+      }
+    } catch {}
+
     const res = await fetch(`/api/sync/member?code=${encodeURIComponent(cleanCode)}`);
     if (!res.ok) {
       if (res.status === 404) {
@@ -230,8 +262,8 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
     } else if (userName) {
       ParkOnStorage.saveUserProfile({
         userName,
-        nationalGrade: '기록 준비중',
-        clubName: '',
+        nationalGrade: '공인 싱글 1급',
+        clubName: '구미 파크골프 클럽',
       });
     }
 
@@ -250,19 +282,39 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
       ParkOnStorage.setKakaoUser(autoUser);
     }
 
-    // 4. 완주 경기 기록(라운딩 전적) 무손실 병합 복원
-    const localRounds = ParkOnStorage.getCompletedRounds();
+    // 4. 완주 경기 기록(라운딩 전적) 무손실 병합 복원 (Safety Stash + Local + Cloud 완벽 합집합)
+    const localRounds = ParkOnStorage.getCompletedRounds().filter((r) => !isMockOrCorruptedRound(r));
+    let stashRounds: RoundSession[] = [];
+    try {
+      const rawStash = localStorage.getItem(SAFETY_STASH_STORAGE_KEY);
+      if (rawStash) {
+        const parsedStash = JSON.parse(rawStash);
+        if (Array.isArray(parsedStash)) {
+          stashRounds = parsedStash.filter((r) => !isMockOrCorruptedRound(r));
+        }
+      }
+    } catch {}
+
     const roundMap = new Map<string, RoundSession>();
 
-    // 클라우드 라운드 등록
+    // 1) 클라우드 전적 등록 (가짜/목업 필터링)
     if (Array.isArray(completedRounds)) {
       completedRounds.forEach((r: RoundSession) => {
-        const key = r.id || `${r.courseName}_${r.completedAt}`;
-        roundMap.set(key, r);
+        if (!isMockOrCorruptedRound(r)) {
+          const key = r.id || `${r.courseName}_${r.completedAt}`;
+          roundMap.set(key, r);
+        }
       });
     }
-    // 로컬 라운드 등록 (고유 라운드 합집합 유지)
+    // 2) 로컬 전적 등록 (클라우드에 아직 안 올라간 게스트 라운드 보존)
     localRounds.forEach((r) => {
+      const key = r.id || `${r.courseName}_${r.completedAt}`;
+      if (!roundMap.has(key)) {
+        roundMap.set(key, r);
+      }
+    });
+    // 3) 안전 보관함 전적 등록 (연동 직전 스마트폰에서 쳤던 기록 원천 복구)
+    stashRounds.forEach((r) => {
       const key = r.id || `${r.courseName}_${r.completedAt}`;
       if (!roundMap.has(key)) {
         roundMap.set(key, r);

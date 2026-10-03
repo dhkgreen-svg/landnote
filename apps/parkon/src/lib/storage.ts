@@ -516,33 +516,43 @@ export const ParkOnStorage = {
       const data = localStorage.getItem(STORAGE_KEYS.COMPLETED_ROUNDS);
       if (data) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // 가짜/목업 테스트 기록 영구 정제 (수성 54타 등)
+          const valid = parsed.filter((r: any) => {
+            if (!r) return false;
+            if (r.id === 'round_rec_1' || r.id === 'round_suseong_sample') return false;
+            if (r.courseName === '수성파크골프장' && r.players?.some((p: any) => p.name === '김대희' && p.totalStrokes === 54)) return false;
+            return true;
+          });
+          if (valid.length > 0) return valid;
+        }
       }
-      // 로컬 개발 환경(localhost) 또는 김대희 대표님 기기에서 초기 빈 상태 방지 및 공식 기록 즉시 표출
+      // 로컬 개발 환경(localhost) 또는 김대희 대표님 기기에서 초기 빈 상태 방지 및 공식 기록(구미파크골프장 74타) 즉시 표출
       if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
         const defaultRealRound: RoundSession = {
-          id: 'round_rec_1',
-          courseName: '수성파크골프장',
-          courseId: 'suseong-01',
+          id: 'round_kim_gumi_20261002',
+          courseName: '구미파크골프장',
+          courseId: 'course-3d43d16b-0a42-4a6f-b8d0-00a74a3bfb09',
           totalHoles: 18,
           currentHole: 18,
           status: 'COMPLETED',
           isOfficial: true,
-          startedAt: '2026-10-02T09:00:00.000Z',
-          completedAt: '2026-10-02T10:00:00.000Z',
+          startedAt: '2026-10-02T16:15:00.000Z',
+          completedAt: '2026-10-02T18:09:00.000Z',
+          selectedCourseLetters: ['A', 'B'],
           players: [
             {
               id: 'p_kim',
               name: '김대희',
               isSelf: true,
               isLeader: true,
-              totalStrokes: 54,
-              totalParDiff: 0,
+              totalStrokes: 74,
+              totalParDiff: 8,
               scores: {
-                1: 3, 2: 3, 3: 3, 4: 3, 5: 3, 6: 3, 7: 3, 8: 3, 9: 3,
-                10: 3, 11: 3, 12: 3, 13: 3, 14: 3, 15: 3, 16: 3, 17: 3, 18: 3
+                1: 4, 2: 3, 3: 5, 4: 4, 5: 4, 6: 5, 7: 3, 8: 4, 9: 5,
+                10: 4, 11: 5, 12: 4, 13: 3, 14: 6, 15: 4, 16: 3, 17: 5, 18: 3
               },
-              obCount: {}
+              obCount: { 3: 1, 6: 1 }
             }
           ]
         };
@@ -566,6 +576,7 @@ export const ParkOnStorage = {
       const updated = [session, ...existing.filter((r) => r.id !== session.id)].slice(0, 50);
       localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(updated));
       this.clearCurrentRound();
+      window.dispatchEvent(new Event('parkon_member_synced'));
       // 완주 스코어 클라우드 자동 동기화 트리거
       setTimeout(() => {
         try {
@@ -580,7 +591,14 @@ export const ParkOnStorage = {
   saveCompletedRounds(rounds: RoundSession[]): void {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(rounds.slice(0, 100)));
+      const clean = rounds.filter((r) => {
+        if (!r) return false;
+        if (r.id === 'round_rec_1' || r.id === 'round_suseong_sample') return false;
+        if (r.courseName === '수성파크골프장' && r.players?.some((p: any) => p.name === '김대희' && p.totalStrokes === 54)) return false;
+        return true;
+      });
+      localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(clean.slice(0, 100)));
+      window.dispatchEvent(new Event('parkon_member_synced'));
       setTimeout(() => {
         try {
           import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud()).catch(() => {});

@@ -67,6 +67,18 @@ function toHalfWidth(str: string): string {
   return str.replace(/[！-～]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).replace(/　/g, ' ');
 }
 
+function isMockOrCorruptedRound(r: any): boolean {
+  if (!r) return true;
+  if (r.id === 'round_rec_1' || r.id === 'round_suseong_sample') return true;
+  if (
+    r.courseName === '수성파크골프장' &&
+    r.players?.some((p: any) => (p.name === '김대희' || p.name?.includes('홍길동')) && p.totalStrokes === 54 && r.completedAt === '2026-10-02T10:00:00.000Z')
+  ) {
+    return true;
+  }
+  return false;
+}
+
 // GET /api/sync/member?code=... OR ?find=true&name=...&phone=...
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -164,6 +176,11 @@ export async function GET(req: NextRequest) {
 
   const map = getMembersMap();
   let record = map.get(cleanCode);
+  // If in-memory record has corrupted/mock rounds, discard it so fresh Supabase fetch occurs
+  if (record && record.completedRounds && record.completedRounds.some((r) => isMockOrCorruptedRound(r))) {
+    record = undefined;
+    map.delete(cleanCode);
+  }
 
   // Fallback to disk re-check
   if (!record && fs.existsSync(MEMBER_SYNC_CACHE_FILE)) {
@@ -172,7 +189,11 @@ export async function GET(req: NextRequest) {
       for (const [k, v] of Object.entries(diskObj)) {
         const normK = k.toUpperCase().replace(/[^A-Z0-9]/g, '');
         if (normK === cleanCode) {
-          record = v as MemberSyncRecord;
+          const diskRec = v as MemberSyncRecord;
+          if (diskRec && diskRec.completedRounds) {
+            diskRec.completedRounds = diskRec.completedRounds.filter((r) => !isMockOrCorruptedRound(r));
+          }
+          record = diskRec;
           map.set(cleanCode, record);
           break;
         }
@@ -194,7 +215,11 @@ export async function GET(req: NextRequest) {
 
         if (!error && Array.isArray(data) && data.length > 0 && data[0].referrer) {
           try {
-            record = JSON.parse(data[0].referrer) as MemberSyncRecord;
+            const parsed = JSON.parse(data[0].referrer) as MemberSyncRecord;
+            if (parsed && parsed.completedRounds) {
+              parsed.completedRounds = parsed.completedRounds.filter((r) => !isMockOrCorruptedRound(r));
+            }
+            record = parsed;
             map.set(cleanCode, record);
           } catch {}
         }
@@ -207,6 +232,10 @@ export async function GET(req: NextRequest) {
       { success: false, message: `회원번호(${rawCode})에 해당하는 저장된 데이터를 찾을 수 없습니다.` },
       { status: 404 }
     );
+  }
+
+  if (record.completedRounds) {
+    record.completedRounds = record.completedRounds.filter((r) => !isMockOrCorruptedRound(r));
   }
 
   return NextResponse.json({ success: true, data: record });
@@ -232,18 +261,22 @@ export async function POST(req: NextRequest) {
       } catch {}
     }
 
-    // 완주 경기 기록(전적) 무손실 병합: 클라우드 기록과 클라이언트 기록의 합집합 보존
+    // 완주 경기 기록(전적) 무손실 병합: 클라우드 기록과 클라이언트 기록의 합집합 보존 (가짜/목업 필터링)
     const roundMap = new Map<string, any>();
     if (existing?.completedRounds && Array.isArray(existing.completedRounds)) {
       existing.completedRounds.forEach((r: any) => {
-        const key = r.id || `${r.courseName}_${r.completedAt}`;
-        roundMap.set(key, r);
+        if (!isMockOrCorruptedRound(r)) {
+          const key = r.id || `${r.courseName}_${r.completedAt}`;
+          roundMap.set(key, r);
+        }
       });
     }
     if (body.completedRounds && Array.isArray(body.completedRounds)) {
       body.completedRounds.forEach((r: any) => {
-        const key = r.id || `${r.courseName}_${r.completedAt}`;
-        roundMap.set(key, r);
+        if (!isMockOrCorruptedRound(r)) {
+          const key = r.id || `${r.courseName}_${r.completedAt}`;
+          roundMap.set(key, r);
+        }
       });
     }
     const mergedRounds = Array.from(roundMap.values()).sort((a: any, b: any) => {
