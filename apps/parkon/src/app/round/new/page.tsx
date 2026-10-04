@@ -47,7 +47,7 @@ function NewRoundForm() {
     { id: 'p_4', name: '', isLeader: false, isSelf: false },
   ]);
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
-  const [roomId] = useState<string>(() => 'room_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6));
+  const [roomId] = useState<string>(() => searchParams.get('roomId') || ('room_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)));
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [joinSimulationToast, setJoinSimulationToast] = useState<string | null>(null);
