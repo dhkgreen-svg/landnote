@@ -7,6 +7,7 @@ import { HelpCircle, MapPin, AlertTriangle, Trophy, Newspaper, Globe } from 'luc
 import { ParkOnStorage, KakaoAuthUser } from '@/lib/storage';
 import { getSavedMemberCode, isPlaceholderName } from '@/lib/memberCodeUtils';
 import { KakaoLoginModal } from './KakaoLoginModal';
+import { HelpRulesHubModal } from './HelpRulesHubModal';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 interface NavGuardInfo {
@@ -24,6 +25,7 @@ export function Header() {
   const { language, setLanguage, t, isJapanese } = useTranslation();
 
   const [showKakaoModal, setShowKakaoModal] = useState(false);
+  const [showHelpRulesModal, setShowHelpRulesModal] = useState(false);
   const [modalMode, setModalMode] = useState<'login' | 'profile'>('login');
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
   const [memberCode, setMemberCode] = useState<string>('');
@@ -215,15 +217,15 @@ export function Header() {
               </span>
             </Link>
 
-            {/* 1. 룰 솔로몬 (물음표) 버튼 */}
-            <Link
-              href="/rules"
-              onClick={(e) => handleNavClick(e, '/rules', 'RULES')}
-              className="w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
-              title={isJapanese ? '公式ルール ＆ AIルール案内' : '파크골프 규정 & AI 룰 솔로몬'}
+            {/* 1. 가이드 & 룰 센터 (물음표 3단 허브 모달) 버튼 */}
+            <button
+              type="button"
+              onClick={() => setShowHelpRulesModal(true)}
+              className="w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer"
+              title={isJapanese ? 'ガイド ＆ ルールセンター' : '가이드 & 룰 센터 (초간단 설명서 · 공식 룰북 · Q&A)'}
             >
               <HelpCircle className="w-4 h-4 stroke-[2.5]" />
-            </Link>
+            </button>
 
             {/* 2. 전국 구장 (장소 찾기) 버튼 */}
             <Link
@@ -340,6 +342,12 @@ export function Header() {
           </div>
         </div>
       )}
+
+      {/* 가이드 & 룰 3단 통합 허브 모달 */}
+      <HelpRulesHubModal
+        isOpen={showHelpRulesModal}
+        onClose={() => setShowHelpRulesModal(false)}
+      />
 
       {/* 카카오 로그인 모달 */}
       <KakaoLoginModal
