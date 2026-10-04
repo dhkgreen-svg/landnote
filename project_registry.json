@@ -1,14 +1,22 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "master": "김대희 대표님",
   "lastUpdated": "2026-10-04",
+  "controlTower": {
+    "orchestrator": "hub/orchestrator.py",
+    "reporter": "hub/status_reporter.py",
+    "deployer": "hub/deploy.py",
+    "backup": "hub/drive_sync.py",
+    "stateDocument": "SYSTEM_STATE.md",
+    "directiveDocument": "DIRECTIVE.md"
+  },
   "projects": {
     "paki": {
       "name": "파크골프 올인원",
       "englishName": "ParkGolf All-in-One",
       "japaneseName": "パークゴルフ オールインワン",
-      "aliases": ["paki", "parkon", "parkgolf"],
+      "aliases": ["paki", "parkon", "parkgolf", "파키", "파크온"],
       "path": "apps/parkon",
       "package": "@parkon/web",
       "localPort": 3008,
@@ -16,23 +24,25 @@
       "productionUrl": "https://www.parkgolfallinone.com",
       "vercelDomain": "https://landnote-parkon.vercel.app",
       "framework": "Next.js 15 (Turbopack, PWA)",
-      "status": "Production Live"
+      "status": "Production Live",
+      "features": ["Kakao In-App Escape (Phase 1)", "1-Touch PWA Install (Phase 2)", "4-Tab Scoring (Phase 3)", "Bilingual JP/KR DB (Phase 4)"]
     },
     "landnote": {
       "name": "랜드노트",
       "englishName": "LandNote",
-      "aliases": ["landnote", "web", "crm"],
+      "aliases": ["landnote", "web", "crm", "랜드노트"],
       "path": "apps/web",
       "package": "@landnote/web",
       "localPort": 3000,
       "localUrl": "http://localhost:3000",
       "productionUrl": "https://landnote-web.vercel.app",
       "framework": "Next.js",
-      "status": "Production Live"
+      "status": "Production Live",
+      "features": ["160억 범어동 통빌딩 매칭 CRM", "매물 자동 분석", "고객 데이터 관리"]
     },
     "landnote-api": {
       "name": "랜드노트 백엔드 API",
-      "aliases": ["api", "backend"],
+      "aliases": ["api", "backend", "서버"],
       "path": "apps/api",
       "package": "@landnote/api",
       "localPort": 4000,
@@ -40,13 +50,41 @@
       "framework": "Express / Node.js",
       "status": "Production Live"
     },
+    "tax-office": {
+      "name": "전국내수면어로어업인연합회 행정 웹",
+      "englishName": "Inland Fishery Tax & Admin",
+      "aliases": ["tax-office", "fishery", "내수면", "어업", "세무"],
+      "path": "inland-fishery-web",
+      "localPort": 3010,
+      "localUrl": "http://localhost:3010",
+      "framework": "HTML5 / Web App",
+      "status": "Active"
+    },
+    "cheongiseong": {
+      "name": "천기성 사주 & 만세력",
+      "englishName": "CheonGiSeong Saju",
+      "aliases": ["cheongiseong", "saju", "사주", "만세력"],
+      "path": "D:/UserFiles/Desktop/2. [사주 & 만세력]",
+      "framework": "Standalone Mobile Web App",
+      "status": "Active"
+    },
+    "dualsub-ai": {
+      "name": "DualSub AI 어학 학습기",
+      "englishName": "DualSub AI / DualTalk",
+      "aliases": ["dualsub", "dualtalk", "어학", "토론스튜디오"],
+      "path": "D:/UserFiles/Desktop/4. [AI & 자동화 도구]",
+      "framework": "AI Learning App",
+      "status": "Active"
+    },
     "marketing-hub": {
       "name": "마케팅 총괄 관제센터",
-      "aliases": ["marketing", "hub"],
+      "englishName": "Omni-Channel Marketing Hub",
+      "aliases": ["marketing", "hub", "관제센터"],
       "path": "hub",
       "localPort": 4005,
       "localUrl": "http://localhost:4005",
-      "status": "Active"
+      "status": "Active",
+      "channels": ["네이버 밴드", "페이스북 그룹", "유튜브 쇼츠", "인스타 릴스"]
     }
   }
 }

@@ -1,7 +1,7 @@
 # 📊 Anti-Gravity 통합 시스템 상태 보고서 (SYSTEM_STATE.md)
 
 > **총괄 마스터**: 김대희 대표님  
-> **기준 타임스탬프**: 2026-10-04 14:39:59  
+> **기준 타임스탬프**: 2026-10-04 14:40:39  
 > **현재 Git 브랜치**: `google_drive_docs_search`  
 > **최신 커밋**: ``  
 
@@ -41,9 +41,7 @@
 
 ## 4. 최근 작업 변경 파일 목록
 ```text
-?? .antigravityrules
 ?? .git.worktree_bak
-?? SYSTEM_STATE.md
 ?? apps/parkon/audit_400_bilingual_simulation_result.json
 ?? apps/parkon/audit_5_users_result.json
 ?? apps/parkon/simulate_400_bilingual_users.js
@@ -64,8 +62,6 @@
 ?? apps/restore_backup_golden_20260930.py
 ?? apps/restore_backup_tutorial.py
 ?? apps/web/public/worker-b3fcd49e78fac557.js
-?? hub/
-?? project_registry.json
 ?? rules.html
 ?? scratch/__pycache__/
 ?? scratch/analyze_custom_courses.js

@@ -24,7 +24,17 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REGISTRY_PATH = os.path.join(ROOT_DIR, "project_registry.json")
 STATE_PATH = os.path.join(ROOT_DIR, "SYSTEM_STATE.md")
 
-def get_cmd_output(cmd, cwd=ROOT_DIR):
+def get_git_repo_path():
+    if os.path.exists(os.path.join(ROOT_DIR, ".git")):
+        return ROOT_DIR
+    sibling = os.path.join(os.path.dirname(ROOT_DIR), "google_drive_docs_search")
+    if os.path.exists(os.path.join(sibling, ".git")):
+        return sibling
+    return ROOT_DIR
+
+def get_cmd_output(cmd, cwd=None):
+    if cwd is None:
+        cwd = get_git_repo_path()
     try:
         res = subprocess.run(cmd, shell=True, capture_output=True, text=True, cwd=cwd, encoding="utf-8")
         return res.stdout.strip()
