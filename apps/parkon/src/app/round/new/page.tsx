@@ -317,7 +317,7 @@ function NewRoundForm() {
         ? `http://192.168.0.4:${window.location.port || '3008'}`
         : window.location.origin)
     : 'http://192.168.0.4:3008';
-  const inviteUrl = `${currentOrigin}/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}&count=${playerCount}`;
+  const inviteUrl = `${currentOrigin}/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}&count=${playerCount}&t=${Date.now()}`;
 
   useEffect(() => {
     if (showQrModal && inviteUrl) {
