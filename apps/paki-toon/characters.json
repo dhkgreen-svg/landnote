@@ -1,0 +1,108 @@
+[
+  {
+    "id": "parky",
+    "name": "파키 (Parky)",
+    "role": "주인공 / 대표 마스코트",
+    "emoji": "🐥",
+    "avatar": "/mascot/master_cuts/ch-1_cut1.jpg",
+    "desc": "밝고 싹싹하고 예의 바른 파크골프 요정 캐릭터. 공인 규정을 완벽 숙지한 룰 박사!",
+    "poses": [
+      {
+        "key": "default",
+        "label": "기본 파키",
+        "emoji": "🐥",
+        "desc": "밝은 인사와 친절한 안내"
+      },
+      {
+        "key": "referee",
+        "label": "심판 파키",
+        "emoji": "🚩",
+        "desc": "호루라기 & 단호한 판정"
+      },
+      {
+        "key": "swing",
+        "label": "스윙 파키",
+        "emoji": "🏌️",
+        "desc": "호쾌한 파크골프 나이스 샷"
+      },
+      {
+        "key": "shock",
+        "label": "당황 파키",
+        "emoji": "😱",
+        "desc": "앗! 벌타 위기 당황"
+      },
+      {
+        "key": "thumb",
+        "label": "엄지척 파키",
+        "emoji": "👍",
+        "desc": "완벽한 매너 굿샷"
+      }
+    ]
+  },
+  {
+    "id": "kim_pro",
+    "name": "김프로 (Kim Pro)",
+    "role": "70대 베테랑 고수",
+    "emoji": "👨‍🦳",
+    "avatar": "",
+    "desc": "구력 15년 차 파크골프 지도자. 동호인들에게 올바른 에티켓과 스윙을 전수하는 멋쟁이 어르신.",
+    "poses": [
+      {
+        "key": "default",
+        "label": "훈훈한 조언",
+        "emoji": "👨‍🦳",
+        "desc": "자상한 설명"
+      },
+      {
+        "key": "pointer",
+        "label": "원포인트 레슨",
+        "emoji": "🎯",
+        "desc": "정확한 팁 전달"
+      }
+    ]
+  },
+  {
+    "id": "park_lady",
+    "name": "박여사 (Mrs. Park)",
+    "role": "60대 퍼팅 장인",
+    "emoji": "👩",
+    "avatar": "",
+    "desc": "매너 만점의 우아한 동호회 총무님. 그린 위에서 원퍼트 홀인을 노리는 집중력의 달인.",
+    "poses": [
+      {
+        "key": "default",
+        "label": "우아한 미소",
+        "emoji": "👩",
+        "desc": "동호회 분위기 메이커"
+      },
+      {
+        "key": "focus",
+        "label": "퍼팅 초집중",
+        "emoji": "⛳",
+        "desc": "라이 읽기"
+      }
+    ]
+  },
+  {
+    "id": "choi_newbie",
+    "name": "최초보 (Choi Newbie)",
+    "role": "50대 신입 골퍼",
+    "emoji": "🧑",
+    "avatar": "",
+    "desc": "이제 막 파크골프에 입문한 열정 골퍼. 의욕은 넘치나 매트 이탈과 OB 실수를 자주 저지르는 좌충우돌 주인공.",
+    "poses": [
+      {
+        "key": "default",
+        "label": "열정 가득",
+        "emoji": "🧑",
+        "desc": "질문 폭발"
+      },
+      {
+        "key": "oops",
+        "label": "앗 나의 실수",
+        "emoji": "💦",
+        "desc": "머쓱한 표정"
+      }
+    ]
+  }
+]
