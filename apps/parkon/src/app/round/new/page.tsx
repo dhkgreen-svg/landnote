@@ -309,12 +309,14 @@ function NewRoundForm() {
     }
   }, [joinedPlayer]);
 
-  // 초대 링크 및 실제 카메라 인식용 QR 코드 생성 (접속 도메인 parkongolf.com 및 www.parkgolfallinone.com 완벽 지원)
+  // 초대 링크 및 실제 카메라 인식용 QR 코드 생성 (로컬 접속 시 192.168.0.4:3008 자동 치환, 실서버 접속 시 해당 도메인 적용)
   const currentLeader = playersList.find((p) => p.isLeader) || playersList[0];
   const leaderName = currentLeader?.name || '조장';
-  const currentOrigin = typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')
-    ? window.location.origin
-    : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.parkgolfallinone.com');
+  const currentOrigin = typeof window !== 'undefined'
+    ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? `http://192.168.0.4:${window.location.port || '3008'}`
+        : window.location.origin)
+    : 'http://192.168.0.4:3008';
   const inviteUrl = `${currentOrigin}/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}&count=${playerCount}`;
 
   useEffect(() => {
