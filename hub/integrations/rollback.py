@@ -52,7 +52,6 @@ def get_all_snapshots():
         for entry in os.listdir(DESKTOP_BACKUP):
             full_p = os.path.join(DESKTOP_BACKUP, entry)
             if os.path.isdir(full_p) and entry.startswith("snapshot_"):
-                # 중복 id 방지
                 if not any(s["id"] == entry for s in snapshots):
                     mtime = os.path.getmtime(full_p)
                     mtime_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
@@ -61,6 +60,23 @@ def get_all_snapshots():
                         "path": full_p,
                         "time": mtime_str,
                         "source": "D: 드라이브 백업",
+                        "mtime_raw": mtime
+                    })
+
+    # 3. E: 드라이브 세컨더리 금고 스냅샷
+    edrive_backup = "E:/AntiGravity_Backups"
+    if os.path.exists(edrive_backup):
+        for entry in os.listdir(edrive_backup):
+            full_p = os.path.join(edrive_backup, entry)
+            if os.path.isdir(full_p) and entry.startswith("snapshot_"):
+                if not any(s["id"] == entry for s in snapshots):
+                    mtime = os.path.getmtime(full_p)
+                    mtime_str = datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
+                    snapshots.append({
+                        "id": entry,
+                        "path": full_p,
+                        "time": mtime_str,
+                        "source": "E: 대용량 금고",
                         "mtime_raw": mtime
                     })
 

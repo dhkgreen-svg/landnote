@@ -102,6 +102,8 @@ def classify_command_with_gemini(user_instruction: str) -> dict:
     api_key = os.getenv("GEMINI_API_KEY")
     lower_cmd = user_instruction.lower().strip()
     
+    if any(k in lower_cmd for k in ["브리핑", "briefing", "요약", "일일 보고", "3줄"]):
+        return {"action": "briefing", "target": "all", "params": {}}
     if any(k in lower_cmd for k in ["롤백", "복원", "되돌려", "원복", "rollback", "restore"]):
         return {"action": "rollback", "target": "all", "params": {}}
     if any(k in lower_cmd for k in ["이력", "기록", "history", "로그", "과거", "어제 뭐", "지난 지휘"]):
@@ -132,6 +134,7 @@ def classify_command_with_gemini(user_instruction: str) -> dict:
 다음 사용자 명령을 분석하여 가장 알맞은 작업 1개를 JSON으로 응답하십시오.
 
 작업 목록:
+- "briefing": 대표님 전용 일일/3줄 총괄 브리핑 및 요약 보고 요청
 - "status_report": 시스템 상태, 도메인, 헬스체크 확인 요청
 - "backup": Google Drive 또는 로컬 스토리지 백업/동기화 요청
 - "rollback": 이전 백업 스냅샷으로 롤백/복원 요청
@@ -141,7 +144,7 @@ def classify_command_with_gemini(user_instruction: str) -> dict:
 - "code_audit": 시스템 무결성, 코드 품질 감사 요청
 
 반환 형식 (JSON만 출력):
-{{"action": "status_report" | "backup" | "rollback" | "media_image" | "media_video" | "history_view" | "code_audit", "params": {{"prompt": "{user_instruction}"}}}}
+{{"action": "briefing" | "status_report" | "backup" | "rollback" | "media_image" | "media_video" | "history_view" | "code_audit", "params": {{"prompt": "{user_instruction}"}}}}
 
 사용자 명령: {user_instruction}
 """
@@ -170,6 +173,7 @@ def execute_action(plan: dict, raw_input: str):
     params = plan.get("params", {})
 
     action_kor_map = {
+        "briefing": "대표님 전용 일일 총괄 3줄 브리핑 및 클립보드 복사",
         "status_report": "전체 시스템 실시간 상태 및 도메인 점검",
         "backup": "Google Drive & 로컬 스토리지 백업 동기화",
         "media_image": "고화질 마케팅 배너 이미지 생성",
@@ -185,7 +189,12 @@ def execute_action(plan: dict, raw_input: str):
     status = "success"
     summary = ""
 
-    if action == "status_report":
+    if action == "briefing":
+        bf_script = os.path.join(HUB_DIR, "daily_briefing.py")
+        run_script(bf_script, ["--ai", "--save"])
+        summary = "대표님 전용 일일 총괄 브리핑 생성 및 클립보드 자동 복사 완료"
+
+    elif action == "status_report":
         reporter = os.path.join(HUB_DIR, "status_reporter.py")
         run_script(reporter)
         summary = "전체 시스템 헬스체크 및 SYSTEM_STATE.md 최신 갱신 완료"
@@ -286,6 +295,7 @@ def main():
     subparsers.add_parser("sync", help="SYSTEM_STATE.md 동기화")
     subparsers.add_parser("list", help="사령탑 등록 프로젝트 전체 목록")
     subparsers.add_parser("history", help="최근 지휘 이력 및 대화 로그 조회")
+    subparsers.add_parser("briefing", help="대표님 전용 일일/3줄 총괄 브리핑 생성")
 
     if len(sys.argv) == 1:
         while True:
@@ -318,12 +328,13 @@ def main():
             print("  [6] 📋 사령탑 등록 프로젝트 전체 목록 확인 (list)")
             print("  [7] 📜 최근 지휘 이력 및 대화 로그 확인 (history)")
             print("  [8] 🔄 백업 스냅샷 이력 확인 및 원클릭 복원 (rollback)")
+            print("  [9] 📋 대표님 전용 일일 총괄 브리핑 & 클립보드 복사 (briefing)")
             print("  [0] 🚪 사령탑 콘솔 종료 (exit)")
             print("-" * 80)
-            print("💬 [자연어 지휘]: 번호 대신 '상태 점검해줘', '지금 백업해', '지난 백업으로 복원해' 등 입력")
+            print("💬 [자연어 지휘]: 번호 대신 '브리핑해줘', '상태 점검해줘', '지금 백업해' 등 입력")
             print("=" * 80)
             try:
-                choice = input("\n👉 명령 입력 (0~8 또는 자연어): ").strip()
+                choice = input("\n👉 명령 입력 (0~9 또는 자연어): ").strip()
             except (EOFError, KeyboardInterrupt):
                 break
 
@@ -369,6 +380,8 @@ def main():
                         run_script(rb_script, ["--id", rb_choice])
                 except (EOFError, KeyboardInterrupt):
                     pass
+            elif choice == "9":
+                run_script(os.path.join(HUB_DIR, "daily_briefing.py"), ["--ai", "--save"])
             else:
                 # 자연어 입력으로 처리
                 plan = classify_command_with_gemini(choice)
@@ -385,6 +398,8 @@ def main():
         if not os.path.exists(sync_script):
             sync_script = os.path.join(HUB_DIR, "drive_sync.py")
         run_script(sync_script, ["--target", args.target])
+    elif args.command == "briefing":
+        run_script(os.path.join(HUB_DIR, "daily_briefing.py"), ["--ai", "--save"])
     elif args.command == "image":
         img_script = os.path.join(HUB_DIR, "generators", "image_gen.py")
         cmd_args = ["--prompt", args.prompt, "--aspect-ratio", args.aspect_ratio]

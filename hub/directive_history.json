@@ -22,5 +22,29 @@
     "action": "history_view",
     "status": "success",
     "summary": "최근 5건 지휘 이력 조회 완료"
+  },
+  {
+    "timestamp": "2026-10-04 15:22:41",
+    "commander": "김대희 대표님",
+    "command": "직전 백업으로 롤백해줘",
+    "action": "rollback",
+    "status": "success",
+    "summary": "가장 최근 정상 스냅샷으로 원클릭 롤백 복원 완료"
+  },
+  {
+    "timestamp": "2026-10-04 15:22:50",
+    "commander": "김대희 대표님",
+    "command": "history",
+    "action": "history_view",
+    "status": "success",
+    "summary": "최근 5건 지휘 이력 조회 완료"
+  },
+  {
+    "timestamp": "2026-10-04 15:27:35",
+    "commander": "김대희 대표님",
+    "command": "브리핑 요약해줘",
+    "action": "briefing",
+    "status": "success",
+    "summary": "대표님 전용 일일 총괄 브리핑 생성 및 클립보드 자동 복사 완료"
   }
 ]
