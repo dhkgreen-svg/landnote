@@ -428,6 +428,46 @@ class CyberVillageHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(resp_data, ensure_ascii=False).encode('utf-8'))
             return
 
+        # 5. NPC 위치 좌표 저장 API (드래그 앤 드롭 이동 영구 저장)
+        if parsed.path == '/api/village/update_npc_pos':
+            npc_id = req_json.get('npc_id')
+            new_x = req_json.get('x')
+            new_y = req_json.get('y')
+            if npc_id and new_x is not None and new_y is not None:
+                npcs = load_json(NPCS_FILE, [])
+                for n in npcs:
+                    if n["id"] == npc_id:
+                        n["x"] = max(5, min(95, round(float(new_x), 1)))
+                        n["y"] = max(10, min(90, round(float(new_y), 1)))
+                        break
+                save_json(NPCS_FILE, npcs)
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "npc_id": npc_id, "x": new_x, "y": new_y}, ensure_ascii=False).encode('utf-8'))
+                return
+
+        # 6. NPC 활성/보관함 토글 API (마을 배치 ↔ 보관함에 휴식)
+        if parsed.path == '/api/village/toggle_npc_active':
+            npc_id = req_json.get('npc_id')
+            is_active = req_json.get('is_active')
+            if npc_id and is_active is not None:
+                npcs = load_json(NPCS_FILE, [])
+                found_name = npc_id
+                for n in npcs:
+                    if n["id"] == npc_id:
+                        n["is_active"] = bool(is_active)
+                        found_name = n.get("name", npc_id)
+                        break
+                save_json(NPCS_FILE, npcs)
+                state_str = "마을로 복귀 배치" if is_active else "주민 보관함으로 이동"
+                log_directive(f"NPC [{found_name}] {state_str}", "toggle_vault", "success", f"{state_str} 완료", found_name)
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "npc_id": npc_id, "is_active": is_active}, ensure_ascii=False).encode('utf-8'))
+                return
+
         self.send_response(404)
         self.end_headers()
 

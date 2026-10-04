@@ -29,7 +29,7 @@
     html, body {
       width: 100vw;
       height: 100vh;
-      overflow: hidden; /* 한 화면에 완전히 맞춤 */
+      overflow: hidden; /* 한 화면 완벽 고정 */
       font-family: var(--font-main);
       background: #2D6A4F;
       display: flex;
@@ -105,17 +105,26 @@
       background: rgba(255,255,255,0.15);
       border: 1px solid rgba(255,255,255,0.25);
       color: #FFF;
-      padding: 4px 10px;
+      padding: 5px 12px;
       border-radius: 16px;
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
       transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .btn-header:hover {
       background: rgba(255,255,255,0.3);
       transform: translateY(-1px);
+    }
+
+    .btn-header.vault {
+      background: linear-gradient(135deg, #457B9D 0%, #1D3557 100%);
+      border: 1px solid #A8DADC;
+      font-weight: 800;
     }
 
     .btn-header.accent {
@@ -125,58 +134,51 @@
       box-shadow: 0 2px 6px rgba(231,111,81,0.4);
     }
 
-    /* 2. 마을 맵 뷰포트 (한 화면 전체 차지) */
+    /* 2. 마을 맵 뷰포트 (한 화면 전체) */
     .village-viewport {
       flex: 1;
       position: relative;
       background: radial-gradient(circle at 50% 50%, #74C69D 0%, #52B788 50%, #40916C 100%);
       overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      cursor: crosshair;
     }
 
-    /* 마을 그래픽 레이아웃 (SVG/Canvas 배경) */
-    .village-map-bg {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      pointer-events: none;
-    }
-
-    /* 포장도로 (Roads) */
+    /* 도로 레이아웃 */
     .road-horizontal {
       position: absolute;
-      top: 50%; left: 10%; right: 10%;
-      height: 48px;
+      top: 50%; left: 8%; right: 8%;
+      height: 44px;
       background: #E9D8A6;
       border-top: 3px dashed #BB9457;
       border-bottom: 3px dashed #BB9457;
       transform: translateY(-50%);
-      border-radius: 24px;
+      border-radius: 22px;
       opacity: 0.85;
+      pointer-events: none;
     }
 
     .road-vertical {
       position: absolute;
-      left: 50%; top: 12%; bottom: 12%;
-      width: 48px;
+      left: 50%; top: 10%; bottom: 10%;
+      width: 44px;
       background: #E9D8A6;
       border-left: 3px dashed #BB9457;
       border-right: 3px dashed #BB9457;
       transform: translateX(-50%);
-      border-radius: 24px;
+      border-radius: 22px;
       opacity: 0.85;
+      pointer-events: none;
     }
 
-    /* 중앙 분수대 광장 (Center Plaza) */
+    /* 중앙 분수대 */
     .central-fountain {
       position: absolute;
       top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      width: 140px;
-      height: 140px;
+      width: 130px;
+      height: 130px;
       background: radial-gradient(circle, #ADE8F4 30%, #48CAE4 70%, #0096C7 100%);
-      border: 6px solid #FFF;
+      border: 5px solid #FFF;
       border-radius: 50%;
       box-shadow: 0 8px 24px rgba(0,0,0,0.25), inset 0 2px 8px rgba(255,255,255,0.6);
       display: flex;
@@ -193,46 +195,53 @@
     }
 
     .fountain-icon {
-      font-size: 34px;
+      font-size: 32px;
       animation: waterSplash 2s infinite ease-in-out;
     }
 
     @keyframes waterSplash {
       0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
+      50% { transform: translateY(-5px); }
     }
 
     .fountain-label {
       font-size: 11px;
       font-weight: 800;
       color: #0077B6;
-      background: rgba(255,255,255,0.9);
+      background: rgba(255,255,255,0.92);
       padding: 1px 6px;
       border-radius: 10px;
       margin-top: 2px;
     }
 
-    /* 마을 건물 & NPC 콤팩트 노드 */
+    /* 드래그 앤 드롭 가능한 NPC 노드 */
     .village-spot {
       position: absolute;
       transform: translate(-50%, -50%);
       display: flex;
       flex-direction: column;
       align-items: center;
-      cursor: pointer;
+      cursor: grab;
       z-index: 10;
-      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      touch-action: none;
+      transition: transform 0.15s ease-out;
     }
 
     .village-spot:hover {
       transform: translate(-50%, -50%) scale(1.15);
-      z-index: 20;
+      z-index: 25;
     }
 
-    /* 건물 아이콘 */
+    .village-spot.dragging {
+      cursor: grabbing;
+      transform: translate(-50%, -50%) scale(1.25);
+      z-index: 50;
+      filter: drop-shadow(0 12px 24px rgba(0,0,0,0.35));
+    }
+
     .spot-building-icon {
-      width: 60px;
-      height: 60px;
+      width: 58px;
+      height: 58px;
       background: #FFF;
       border-radius: 18px;
       display: flex;
@@ -244,7 +253,6 @@
       position: relative;
     }
 
-    /* 소형 네임태그 (대표님 요청: 이름만 콤팩트하게 표시) */
     .spot-name-pill {
       background: rgba(27, 67, 50, 0.95);
       color: #FFF;
@@ -270,31 +278,28 @@
       font-weight: 700;
     }
 
-    /* NPC 말풍선 힌트 */
     .spot-speech-hint {
       position: absolute;
-      top: -28px;
+      top: -26px;
       background: #FFF;
       color: #1A202C;
       font-size: 10px;
       font-weight: 700;
-      padding: 3px 8px;
+      padding: 2px 8px;
       border-radius: 10px;
       white-space: nowrap;
       box-shadow: 0 4px 10px rgba(0,0,0,0.15);
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.2s, transform 0.2s;
-      transform: translateY(4px);
+      transition: opacity 0.2s;
       border: 1px solid #CBD5E0;
     }
 
     .village-spot:hover .spot-speech-hint {
       opacity: 1;
-      transform: translateY(0);
     }
 
-    /* 3. 하단 슬림 컨트롤 바 (대표님 지휘 및 합동 작전, 높이: 48px) */
+    /* 3. 하단 슬림 컨트롤 바 (높이: 48px) */
     .bottom-command-bar {
       height: 48px;
       background: rgba(27, 67, 50, 0.98);
@@ -338,13 +343,14 @@
 
     .command-input-wrap {
       flex: 1;
-      max-width: 500px;
+      max-width: 520px;
       display: flex;
       align-items: center;
       background: #FFF;
       border-radius: 20px;
       padding: 3px 10px;
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+      gap: 6px;
     }
 
     .bottom-cmd-input {
@@ -358,18 +364,53 @@
       font-family: inherit;
     }
 
+    /* 마이크 음성 버튼 스타일 */
+    .btn-mic {
+      background: #EDF2F7;
+      border: 1px solid #CBD5E0;
+      color: #2D3748;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .btn-mic:hover {
+      background: #E2E8F0;
+      transform: scale(1.08);
+    }
+
+    .btn-mic.listening {
+      background: #E63946;
+      color: #FFF;
+      border-color: #E63946;
+      animation: micPulse 1s infinite alternate;
+    }
+
+    @keyframes micPulse {
+      from { transform: scale(1); box-shadow: 0 0 0 0 rgba(230,57,70,0.6); }
+      to { transform: scale(1.15); box-shadow: 0 0 0 10px rgba(230,57,70,0); }
+    }
+
     .btn-cmd-send {
       background: #E76F51;
       color: #FFF;
       border: none;
-      padding: 4px 10px;
+      padding: 5px 12px;
       border-radius: 12px;
       font-size: 12px;
       font-weight: 800;
       cursor: pointer;
+      flex-shrink: 0;
     }
 
-    /* 4. 플로팅 1:1 대화 모달 (슬림 RPG 대화창) */
+    /* 4. 플로팅 1:1 NPC 도메인 대화창 */
     .chat-drawer {
       position: fixed;
       right: 20px;
@@ -392,9 +433,7 @@
       to { transform: translateY(0); opacity: 1; }
     }
 
-    .chat-drawer.active {
-      display: flex;
-    }
+    .chat-drawer.active { display: flex; }
 
     .chat-header {
       background: #1B4332;
@@ -422,15 +461,8 @@
       justify-content: center;
     }
 
-    .chat-npc-title {
-      font-size: 14px;
-      font-weight: 800;
-    }
-
-    .chat-npc-domain {
-      font-size: 11px;
-      color: #D8F3DC;
-    }
+    .chat-npc-title { font-size: 14px; font-weight: 800; }
+    .chat-npc-domain { font-size: 11px; color: #D8F3DC; }
 
     .btn-close-chat {
       background: transparent;
@@ -481,6 +513,7 @@
       background: #FFF;
       border-top: 1px solid #E2E8F0;
       display: flex;
+      align-items: center;
       gap: 8px;
     }
 
@@ -499,17 +532,145 @@
       color: #FFF;
       border: none;
       padding: 0 14px;
+      height: 34px;
       border-radius: 10px;
       font-size: 13px;
       font-weight: 700;
       cursor: pointer;
     }
 
-    /* 5. 새 NPC 생산/영입 모달 */
+    /* 5. NPC 주민 보관함 모달 (대표님 요청: 안 쓰는 NPC 보관 및 소환 관리) */
+    .vault-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      padding: 20px;
+    }
+
+    .vault-modal-overlay.active { display: flex; }
+
+    .vault-modal-card {
+      background: #FFF;
+      border-radius: 20px;
+      border: 3px solid #457B9D;
+      max-width: 680px;
+      width: 100%;
+      padding: 24px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .vault-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .vault-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #1D3557;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .vault-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .vault-tab-btn {
+      padding: 6px 14px;
+      border-radius: 14px;
+      border: 1px solid #CBD5E0;
+      background: #F8F9FA;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .vault-tab-btn.active {
+      background: #1D3557;
+      color: #FFF;
+      border-color: #1D3557;
+    }
+
+    .vault-npc-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 4px;
+    }
+
+    .vault-npc-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #F8F9FA;
+      border: 1px solid #E2E8F0;
+      border-radius: 14px;
+      padding: 10px 14px;
+    }
+
+    .vault-npc-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .vault-npc-avatar {
+      font-size: 28px;
+      width: 44px;
+      height: 44px;
+      background: #FFF;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #CBD5E0;
+    }
+
+    .vault-npc-name { font-size: 14px; font-weight: 800; }
+    .vault-npc-domain { font-size: 12px; color: #718096; }
+
+    .btn-vault-toggle {
+      padding: 6px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-vault-toggle.to-vault {
+      background: #E2E8F0;
+      color: #2D3748;
+    }
+    .btn-vault-toggle.to-vault:hover { background: #CBD5E0; }
+
+    .btn-vault-toggle.to-map {
+      background: #52B788;
+      color: #FFF;
+    }
+    .btn-vault-toggle.to-map:hover { background: #2D6A4F; }
+
+    /* 6. 신규 NPC 영입 모달 */
     .spawn-modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.6);
+      background: rgba(0,0,0,0.65);
       backdrop-filter: blur(4px);
       display: none;
       align-items: center;
@@ -527,7 +688,6 @@
       max-width: 480px;
       width: 100%;
       padding: 24px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
     }
 
     .spawn-title {
@@ -540,35 +700,12 @@
       gap: 8px;
     }
 
-    .form-group {
-      margin-bottom: 12px;
-    }
+    .form-group { margin-bottom: 12px; }
+    .form-label { display: block; font-size: 12px; font-weight: 700; color: #4A5568; margin-bottom: 4px; }
+    .form-input { width: 100%; border: 1px solid #CBD5E0; border-radius: 10px; padding: 8px 10px; font-size: 13px; outline: none; }
+    .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 
-    .form-label {
-      display: block;
-      font-size: 12px;
-      font-weight: 700;
-      color: #4A5568;
-      margin-bottom: 4px;
-    }
-
-    .form-input {
-      width: 100%;
-      border: 1px solid #CBD5E0;
-      border-radius: 10px;
-      padding: 8px 10px;
-      font-size: 13px;
-      outline: none;
-    }
-
-    .form-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-top: 18px;
-    }
-
-    /* 6. NPC 협업 합동 작전실 모달 */
+    /* 7. 합동 작전실 모달 */
     .collab-modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -602,7 +739,6 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      padding-right: 4px;
     }
 
     .collab-step-item {
@@ -616,12 +752,9 @@
       line-height: 1.5;
     }
 
-    .collab-avatar {
-      font-size: 26px;
-      flex-shrink: 0;
-    }
+    .collab-avatar { font-size: 26px; flex-shrink: 0; }
 
-    /* 청소 중 오버레이 */
+    /* 빗자루 청소 오버레이 */
     .broom-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -660,7 +793,7 @@
 
     <!-- 실시간 상태 게이지 -->
     <div class="header-center-gauges">
-      <div class="weather-pill" id="weatherBadge">☀️ 화창함 (95점)</div>
+      <div class="weather-pill" id="weatherBadge">☀️ 화창함 (100점)</div>
       <div class="status-pill">
         <span>CPU</span>
         <b id="cpuPill" style="color: #D8F3DC;">15%</b>
@@ -676,15 +809,15 @@
     </div>
 
     <div class="header-actions">
-      <button class="btn-header accent" onclick="openSpawnModal()">+ 새 NPC 주민 영입</button>
-      <button class="btn-header" onclick="openCollabModal()">🤝 주민 합동 작전실</button>
+      <button class="btn-header vault" onclick="openVaultModal()">👥 주민 보관함 (<span id="vaultCountBadge">0</span>)</button>
+      <button class="btn-header accent" onclick="openSpawnModal()">+ 새 NPC 영입</button>
+      <button class="btn-header" onclick="openCollabModal()">🤝 합동 작전실</button>
       <button class="btn-header" onclick="fetchStatus()">🔄 새로고침</button>
     </div>
   </header>
 
-  <!-- 2. 마을 맵 뷰포트 (한 화면 전체에 쏙 들어옴) -->
+  <!-- 2. 마을 맵 뷰포트 (한 화면 전체에 쏙 들어옴, 드래그 이동 가능) -->
   <main class="village-viewport" id="villageMap">
-    <!-- 도로 및 분수대 배경 -->
     <div class="road-horizontal"></div>
     <div class="road-vertical"></div>
 
@@ -694,7 +827,7 @@
       <div class="fountain-label">중앙 광장</div>
     </div>
 
-    <!-- 동적으로 렌더링될 NPC 및 건물 스팟 컨테이너 -->
+    <!-- 마을에 배치된 활성 NPC 스팟 컨테이너 -->
     <div id="spotsContainer"></div>
   </main>
 
@@ -708,20 +841,21 @@
       <button class="pill-btn" onclick="window.open('https://landnote.vercel.app', '_blank')">⛳ 파크온 웹앱</button>
     </div>
 
-    <!-- 대표님 자연어 지휘창 -->
+    <!-- 대표님 음성/자연어 지휘창 -->
     <div class="command-input-wrap">
+      <button class="btn-mic" id="bottomMicBtn" title="음성으로 말씀하세요" onclick="toggleVoiceSTT('bottom')">🎙️</button>
       <input 
         type="text" 
         id="bottomCmdInput" 
         class="bottom-cmd-input" 
-        placeholder="사령관님, 지시를 입력하세요 (예: 바탕화면 청소해줘, 백업해줘)" 
+        placeholder="사령관님, 지시를 입력하거나 마이크🎙️를 눌러 말씀하세요" 
         onkeydown="if(event.key==='Enter') sendBottomCommand()"
       />
       <button class="btn-cmd-send" onclick="sendBottomCommand()">지휘 하달</button>
     </div>
   </footer>
 
-  <!-- 4. 플로팅 1:1 NPC 도메인 전문 대화창 (슬림 RPG) -->
+  <!-- 4. 플로팅 1:1 NPC 도메인 대화창 (항상 마이크 탑재) -->
   <div class="chat-drawer" id="chatDrawer">
     <div class="chat-header">
       <div class="chat-header-info">
@@ -735,22 +869,50 @@
     </div>
 
     <div class="chat-messages" id="chatMessages">
-      <!-- 대화 메시지 동적 렌더링 -->
+      <!-- 대화 메시지 -->
     </div>
 
     <div class="chat-input-area">
+      <!-- 항상 배치된 마이크 버튼 (대표님 요청) -->
+      <button class="btn-mic" id="chatMicBtn" title="음성으로 질문하기" onclick="toggleVoiceSTT('chat')">🎙️</button>
       <input 
         type="text" 
         id="chatInput" 
         class="chat-input" 
-        placeholder="무엇이든 물어보세요..." 
+        placeholder="무엇이든 물어보세요... (마이크🎙️ 클릭 지원)" 
         onkeydown="if(event.key==='Enter') sendChatMessage()"
       />
       <button class="btn-chat-send" onclick="sendChatMessage()">전송</button>
     </div>
   </div>
 
-  <!-- 5. 새 NPC 주민 생산/영입 모달 -->
+  <!-- 5. NPC 주민 보관함 모달 (대표님 요청: 안 쓰는 NPC 보관 및 소환) -->
+  <div class="vault-modal-overlay" id="vaultModal">
+    <div class="vault-modal-card">
+      <div class="vault-header">
+        <div class="vault-title">
+          <span>👥</span>
+          <span>NPC 주민 보관함 & 관리소</span>
+        </div>
+        <button class="btn-close-chat" style="color:#2D3748;" onclick="closeVaultModal()">✕</button>
+      </div>
+
+      <p style="font-size: 13px; color: #4A5568; margin-bottom: 12px;">
+        마을 맵을 깔끔하게 유지하기 위해 오래 안 쓰는 주민을 보관함에 쉬게 하거나, 언제든 다시 마을로 불러올 수 있습니다.
+      </p>
+
+      <div class="vault-tabs">
+        <button class="vault-tab-btn active" id="tabActiveBtn" onclick="switchVaultTab('active')">🏡 마을 활동 중 (<span id="activeCount">0</span>)</button>
+        <button class="vault-tab-btn" id="tabVaultBtn" onclick="switchVaultTab('vault')">🛌 보관함 휴식 중 (<span id="vaultCount">0</span>)</button>
+      </div>
+
+      <div class="vault-npc-list" id="vaultNpcList">
+        <!-- 동적 렌더링 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. 새 NPC 주민 생산/영입 모달 -->
   <div class="spawn-modal-overlay" id="spawnModal">
     <div class="spawn-modal-card">
       <div class="spawn-title">
@@ -774,7 +936,7 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">대표 이모지 (예: 🔮, 🏢, 📈, 🤖)</label>
+        <label class="form-label">대표 이모지</label>
         <input type="text" id="spawnEmoji" class="form-input" placeholder="🔮" value="🧑" />
       </div>
 
@@ -785,7 +947,7 @@
     </div>
   </div>
 
-  <!-- 6. NPC 주민 합동 작전실 모달 -->
+  <!-- 7. NPC 주민 합동 작전실 모달 -->
   <div class="collab-modal-overlay" id="collabModal">
     <div class="collab-modal-card">
       <div class="spawn-title" style="color: #E76F51;">
@@ -801,7 +963,7 @@
           type="text" 
           id="collabTaskInput" 
           class="form-input" 
-          placeholder="합동 미션 입력 (예: 파크골프 티샷 OB 룰을 4컷 만화로 제작하고 구글 드라이브에 백업해줘)" 
+          placeholder="합동 미션 입력" 
           value="파크골프 티샷 OB 룰을 4컷 만화로 제작하고 구글 드라이브에 백업해줘"
         />
         <button class="btn-header accent" style="white-space:nowrap;" onclick="runCollabTask()">작전 개시</button>
@@ -828,7 +990,8 @@
   <script>
     let activeNpc = null;
     let audioCtx = null;
-    let cachedNpcs = [];
+    let allNpcs = [];
+    let currentVaultTab = 'active';
 
     // 사운드 이펙트
     function playBeep(type = 'chime') {
@@ -860,37 +1023,47 @@
       } catch (e) {}
     }
 
-    // 서버 상태 및 마을 맵 렌더링
+    // 서버 상태 조회
     async function fetchStatus() {
       try {
         const res = await fetch('/api/village/status');
         const data = await res.json();
         
-        // 헤더 갱신
         document.getElementById('weatherBadge').innerText = `${data.weather_label} (${data.health_score}점)`;
         document.getElementById('cpuPill').innerText = `${data.cpu_pct}%`;
         document.getElementById('ramPill').innerText = `${data.ram_pct}%`;
         const cDrive = data.storage.find(s => s.drive === 'C:');
         if (cDrive) document.getElementById('cDrivePill').innerText = `${cDrive.free_gb} GB`;
 
-        cachedNpcs = data.npcs || [];
-        renderVillageSpots(cachedNpcs);
+        allNpcs = data.npcs || [];
+        updateVaultCounts();
+        renderActiveNpcsOnMap();
       } catch (e) {
         console.error(e);
       }
     }
 
-    // 마을 스팟 렌더링 (대표님 요구: 거대한 카드 제거 ➔ 소형 네임태그와 건물로 한 화면 압축)
-    function renderVillageSpots(npcs) {
+    function updateVaultCounts() {
+      const activeList = allNpcs.filter(n => n.is_active !== false);
+      const vaultList = allNpcs.filter(n => n.is_active === false);
+      document.getElementById('activeCount').innerText = activeList.length;
+      document.getElementById('vaultCount').innerText = vaultList.length;
+      document.getElementById('vaultCountBadge').innerText = vaultList.length;
+    }
+
+    // 마을 맵에 활성 NPC만 렌더링 & 드래그 앤 드롭 이동 이벤트 부착
+    function renderActiveNpcsOnMap() {
       const container = document.getElementById('spotsContainer');
       container.innerHTML = '';
 
-      npcs.forEach(npc => {
+      const activeNpcs = allNpcs.filter(n => n.is_active !== false);
+
+      activeNpcs.forEach(npc => {
         const spot = document.createElement('div');
         spot.className = 'village-spot';
+        spot.id = `spot_${npc.id}`;
         spot.style.left = `${npc.x}%`;
         spot.style.top = `${npc.y}%`;
-        spot.onclick = () => openChatWithNpc(npc);
 
         spot.innerHTML = `
           <div class="spot-speech-hint">💬 "${npc.greeting || '무엇이든 물어보세요'}"</div>
@@ -903,11 +1076,101 @@
           </div>
         `;
 
+        // 마우스 드래그 이동 핸들러
+        attachDragHandler(spot, npc);
+
         container.appendChild(spot);
       });
     }
 
-    // NPC 1:1 도메인 대화창 열기 (대표님 요구: 파크골프 NPC를 누르면 파크골프의 모든 것을 대화할 수 있음)
+    // 마우스 드래그 앤 드롭 위치 이동 엔진 (대표님 요청: NPC 위치 관리)
+    function attachDragHandler(element, npc) {
+      let isDragging = false;
+      let startX = 0, startY = 0;
+      let initialLeft = 0, initialTop = 0;
+      let hasMoved = false;
+
+      element.addEventListener('pointerdown', (e) => {
+        // 우클릭 제외
+        if (e.button !== 0) return;
+        isDragging = true;
+        hasMoved = false;
+        startX = e.clientX;
+        startY = e.clientY;
+
+        const rect = element.getBoundingClientRect();
+        const mapRect = document.getElementById('villageMap').getBoundingClientRect();
+        initialLeft = rect.left - mapRect.left + (rect.width / 2);
+        initialTop = rect.top - mapRect.top + (rect.height / 2);
+
+        element.classList.add('dragging');
+        element.setPointerCapture(e.pointerId);
+      });
+
+      element.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+          hasMoved = true;
+        }
+
+        const map = document.getElementById('villageMap');
+        const mapRect = map.getBoundingClientRect();
+
+        let currentX = initialLeft + dx;
+        let currentY = initialTop + dy;
+
+        let pctX = Math.max(5, Math.min(95, (currentX / mapRect.width) * 100));
+        let pctY = Math.max(10, Math.min(90, (currentY / mapRect.height) * 100));
+
+        element.style.left = `${pctX}%`;
+        element.style.top = `${pctY}%`;
+      });
+
+      element.addEventListener('pointerup', async (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        element.classList.remove('dragging');
+        element.releasePointerCapture(e.pointerId);
+
+        if (!hasMoved) {
+          // 클릭: 1:1 대화창 열기
+          openChatWithNpc(npc);
+        } else {
+          // 드래그 완료: 새 좌표 저장 API 호출
+          const map = document.getElementById('villageMap');
+          const mapRect = map.getBoundingClientRect();
+          const rect = element.getBoundingClientRect();
+          const currentX = rect.left - mapRect.left + (rect.width / 2);
+          const currentY = rect.top - mapRect.top + (rect.height / 2);
+
+          const newX = Math.max(5, Math.min(95, (currentX / mapRect.width) * 100));
+          const newY = Math.max(10, Math.min(90, (currentY / mapRect.height) * 100));
+
+          npc.x = newX;
+          npc.y = newY;
+          playBeep('chime');
+
+          try {
+            await fetch('/api/village/update_npc_pos', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({
+                npc_id: npc.id,
+                x: newX,
+                y: newY
+              })
+            });
+          } catch (err) {
+            console.error('좌표 저장 실패:', err);
+          }
+        }
+      });
+    }
+
+    // 1:1 대화창 열기
     function openChatWithNpc(npc) {
       activeNpc = npc;
       playBeep('chime');
@@ -920,7 +1183,7 @@
       msgsDiv.innerHTML = `
         <div class="msg-bubble npc">
           대표님, 안녕하십니까! 저는 <b>${npc.name}</b>입니다.<br>
-          제 담당 분야(<b>${npc.domain}</b>)에 대해 무엇이든 편하게 물어보십시오!
+          제 담당 분야(<b>${npc.domain}</b>)에 대해 무엇이든 편하게 물어보십시오! (마이크🎙️로 말씀하셔도 됩니다)
         </div>
       `;
 
@@ -932,7 +1195,7 @@
       document.getElementById('chatDrawer').classList.remove('active');
     }
 
-    // 1:1 대화 메시지 전송
+    // 1:1 대화 전송
     async function sendChatMessage() {
       if (!activeNpc) return;
       const input = document.getElementById('chatInput');
@@ -946,10 +1209,9 @@
       msgsDiv.innerHTML += `<div class="msg-bubble user">${text}</div>`;
       msgsDiv.scrollTop = msgsDiv.scrollHeight;
 
-      // 타이핑 로딩 표시
       const loadingBubble = document.createElement('div');
       loadingBubble.className = 'msg-bubble npc';
-      loadingBubble.innerText = '답변 작성 중... ✍️';
+      loadingBubble.innerText = '답변 생각 중... ✍️';
       msgsDiv.appendChild(loadingBubble);
       msgsDiv.scrollTop = msgsDiv.scrollHeight;
 
@@ -968,6 +1230,156 @@
         msgsDiv.scrollTop = msgsDiv.scrollHeight;
       } catch (err) {
         loadingBubble.innerText = '답변을 가져오는 중 오류가 발생했습니다.';
+      }
+    }
+
+    // 항상 사용 가능한 마이크 기능 (STT - Speech to Text, 대표님 요청)
+    let recognition = null;
+    let activeMicTarget = null; // 'chat' or 'bottom'
+
+    function toggleVoiceSTT(target) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert('현재 브라우저에서 음성 인식을 지원하지 않습니다. Chrome 또는 Edge 브라우저를 이용해 주세요.');
+        return;
+      }
+
+      const micBtn = target === 'chat' ? document.getElementById('chatMicBtn') : document.getElementById('bottomMicBtn');
+
+      if (recognition) {
+        recognition.stop();
+        recognition = null;
+        micBtn.classList.remove('listening');
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.lang = 'ko-KR';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      micBtn.classList.add('listening');
+      playBeep('chime');
+
+      const inputField = target === 'chat' ? document.getElementById('chatInput') : document.getElementById('bottomCmdInput');
+      const originalPlaceholder = inputField.placeholder;
+      inputField.placeholder = '🎙️ 듣고 있습니다... 말씀하세요!';
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        inputField.value = transcript;
+        inputField.placeholder = originalPlaceholder;
+        micBtn.classList.remove('listening');
+        recognition = null;
+        playBeep('fanfare');
+
+        // 자동 전송
+        if (target === 'chat') {
+          sendChatMessage();
+        } else {
+          sendBottomCommand();
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error('음성 인식 오류:', event.error);
+        inputField.placeholder = originalPlaceholder;
+        micBtn.classList.remove('listening');
+        recognition = null;
+      };
+
+      recognition.onend = () => {
+        inputField.placeholder = originalPlaceholder;
+        micBtn.classList.remove('listening');
+        recognition = null;
+      };
+
+      recognition.start();
+    }
+
+    // NPC 주민 보관함 모달 관리
+    function openVaultModal() {
+      document.getElementById('vaultModal').classList.add('active');
+      renderVaultList();
+    }
+
+    function closeVaultModal() {
+      document.getElementById('vaultModal').classList.remove('active');
+    }
+
+    function switchVaultTab(tab) {
+      currentVaultTab = tab;
+      document.getElementById('tabActiveBtn').className = `vault-tab-btn ${tab === 'active' ? 'active' : ''}`;
+      document.getElementById('tabVaultBtn').className = `vault-tab-btn ${tab === 'vault' ? 'active' : ''}`;
+      renderVaultList();
+    }
+
+    function renderVaultList() {
+      const listContainer = document.getElementById('vaultNpcList');
+      listContainer.innerHTML = '';
+
+      const targetList = currentVaultTab === 'active'
+        ? allNpcs.filter(n => n.is_active !== false)
+        : allNpcs.filter(n => n.is_active === false);
+
+      if (targetList.length === 0) {
+        listContainer.innerHTML = `<div style="text-align:center; padding:30px; color:#A0AEC0; font-size:13px;">해당 분류의 NPC 주민이 없습니다.</div>`;
+        return;
+      }
+
+      targetList.forEach(npc => {
+        const row = document.createElement('div');
+        row.className = 'vault-npc-row';
+
+        const isCurrentlyActive = npc.is_active !== false;
+
+        row.innerHTML = `
+          <div class="vault-npc-info">
+            <div class="vault-npc-avatar">${npc.emoji}</div>
+            <div>
+              <div class="vault-npc-name">${npc.name}</div>
+              <div class="vault-npc-domain">${npc.domain || npc.role}</div>
+            </div>
+          </div>
+          <div>
+            ${isCurrentlyActive ? `
+              <button class="btn-vault-toggle to-vault" onclick="toggleNpcVaultState('${npc.id}', false)">
+                🛌 보관함으로 보내기
+              </button>
+            ` : `
+              <button class="btn-vault-toggle to-map" onclick="toggleNpcVaultState('${npc.id}', true)">
+                🏡 마을로 소환하기
+              </button>
+            `}
+          </div>
+        `;
+        listContainer.appendChild(row);
+      });
+    }
+
+    async function toggleNpcVaultState(npcId, shouldBeActive) {
+      playBeep('chime');
+      try {
+        const res = await fetch('/api/village/toggle_npc_active', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            npc_id: npcId,
+            is_active: shouldBeActive
+          })
+        });
+        const data = await res.json();
+        
+        // 로컬 상태 동기화
+        const target = allNpcs.find(n => n.id === npcId);
+        if (target) target.is_active = shouldBeActive;
+
+        updateVaultCounts();
+        renderVaultList();
+        renderActiveNpcsOnMap();
+        playBeep('fanfare');
+      } catch (err) {
+        alert('보관함 상태 변경 중 오류가 발생했습니다.');
       }
     }
 
@@ -993,7 +1405,6 @@
       }
     }
 
-    // 하단 지휘 입력창
     function sendBottomCommand() {
       const input = document.getElementById('bottomCmdInput');
       const cmd = input.value.trim();
@@ -1004,8 +1415,7 @@
       else if (cmd.includes('백업')) executeQuick('backup');
       else if (cmd.includes('점검') || cmd.includes('건강')) executeQuick('inspect');
       else {
-        // 기본 김프로 챗으로 연결
-        const golfNpc = cachedNpcs.find(n => n.id === 'golf_pro') || cachedNpcs[0];
+        const golfNpc = allNpcs.find(n => n.id === 'golf_pro') || allNpcs[0];
         if (golfNpc) {
           openChatWithNpc(golfNpc);
           document.getElementById('chatInput').value = cmd;
@@ -1014,14 +1424,9 @@
       }
     }
 
-    // 새 NPC 주민 영입 모달
-    function openSpawnModal() {
-      document.getElementById('spawnModal').classList.add('active');
-    }
-
-    function closeSpawnModal() {
-      document.getElementById('spawnModal').classList.remove('active');
-    }
+    // 신규 주민 영입
+    function openSpawnModal() { document.getElementById('spawnModal').classList.add('active'); }
+    function closeSpawnModal() { document.getElementById('spawnModal').classList.remove('active'); }
 
     async function submitSpawnNpc() {
       const name = document.getElementById('spawnName').value.trim();
@@ -1051,14 +1456,9 @@
       }
     }
 
-    // NPC 주민 합동 작전실 모달 (대표님 요구: NPC들끼리 협업/분업)
-    function openCollabModal() {
-      document.getElementById('collabModal').classList.add('active');
-    }
-
-    function closeCollabModal() {
-      document.getElementById('collabModal').classList.remove('active');
-    }
+    // 합동 작전실
+    function openCollabModal() { document.getElementById('collabModal').classList.add('active'); }
+    function closeCollabModal() { document.getElementById('collabModal').classList.remove('active'); }
 
     async function runCollabTask() {
       const task = document.getElementById('collabTaskInput').value.trim();
