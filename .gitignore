@@ -56,3 +56,4 @@ tmp_*.html
 **/public/swe-worker-*.js
 
 .vercel
+.env*

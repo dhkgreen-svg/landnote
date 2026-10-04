@@ -1,0 +1,13 @@
+# Vercel Ignore for Monorepo
+apps/parkon_backup_*
+backups_and_archives
+python_apps
+scratch
+apps/parkon/audit_*
+apps/parkon/simulate_*
+apps/parkon/test_*
+apps/restore_*
+.git
+.git.worktree_bak
+*.mp4
+*.exe
