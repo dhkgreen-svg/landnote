@@ -61,6 +61,16 @@
       "localPort": 4005,
       "localUrl": "http://localhost:4005",
       "status": "Active"
+    },
+    "paki-toon": {
+      "name": "파크온 만화/웹툰 생성 스튜디오",
+      "englishName": "Paki Toon Generator Studio",
+      "aliases": ["toon", "만화", "웹툰", "만화생성기", "paki-toon"],
+      "path": "apps/paki-toon",
+      "localPort": 3050,
+      "localUrl": "http://localhost:3050",
+      "framework": "Python / HTML5 Canvas / Gemini AI",
+      "status": "Active"
     }
   }
 }

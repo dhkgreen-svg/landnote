@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>파크온 만화/웹툰 생성 스튜디오 - 김대희 대표님 전용</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Pretendard -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    body { font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+    .speech-bubble {
+      position: relative;
+      background: #ffffff;
+      border-radius: 1.25rem;
+      border: 2px solid #10b981;
+    }
+    .speech-bubble:after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 2.5rem;
+      width: 0;
+      height: 0;
+      border: 14px solid transparent;
+      border-top-color: #10b981;
+      border-bottom: 0;
+      border-left: 0;
+      margin-left: -7px;
+      margin-bottom: -14px;
+    }
+    .speech-bubble-inner:after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 2.5rem;
+      width: 0;
+      height: 0;
+      border: 12px solid transparent;
+      border-top-color: #ffffff;
+      border-bottom: 0;
+      border-left: 0;
+      margin-left: -5px;
+      margin-bottom: -11px;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- 1. 최상단 네비게이션 헤더 -->
+  <header class="bg-slate-950 border-b border-slate-800 px-6 py-4 flex items-center justify-between sticky top-0 z-50 shadow-xl">
+    <div class="flex items-center gap-3">
+      <span class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-xl shadow-lg shadow-emerald-500/20">
+        ⛳
+      </span>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-black text-lg text-white tracking-tight">파크온 웹툰·만화 생성 스튜디오</h1>
+          <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
+            v1.0 사령탑 가동
+          </span>
+          <span class="px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-300 text-xs font-bold">
+            🧠 Gemini 3.5 AI 연동
+          </span>
+        </div>
+        <p class="text-xs text-slate-400">김대희 대표님 전용 파크골프 규정 & 홍보 만화 실시간 창작/개선 관제실</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button onclick="saveAllChapters()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition-all shadow-lg shadow-emerald-600/30 flex items-center gap-2 cursor-pointer active:scale-95">
+        <span>💾</span>
+        <span>파크온 앱에 반영 저장</span>
+      </button>
+      <button onclick="copyImprovementPrompt()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-sm transition-all flex items-center gap-2 cursor-pointer active:scale-95">
+        <span>💬</span>
+        <span>안티그래비티 개선 요청 복사</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 2. 메인 작업 레이아웃 (3열 구조) -->
+  <main class="flex-1 grid grid-cols-12 gap-0 overflow-hidden">
+
+    <!-- [왼쪽 1열] 챕터 및 컷 네비게이터 (너비: 3/12) -->
+    <aside class="col-span-3 bg-slate-950/70 border-r border-slate-800 p-4 flex flex-col h-[calc(100vh-73px)] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-2">
+          <span>📚</span> 챕터 & 컷 목록
+        </h2>
+        <span id="chapterCountBadge" class="text-xs font-bold text-emerald-400">3개 챕터</span>
+      </div>
+
+      <div id="chapterListContainer" class="space-y-3 flex-1">
+        <!-- 챕터 카드들이 JS로 동적 렌더링됩니다 -->
+      </div>
+    </aside>
+
+    <!-- [가운데 2열] 실시간 웹툰 컷 미리보기 캔버스 (너비: 5/12) -->
+    <section class="col-span-5 bg-slate-900 p-6 flex flex-col items-center justify-start h-[calc(100vh-73px)] overflow-y-auto border-r border-slate-800">
+      <div class="w-full max-w-md">
+        
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+            <span>👁️</span> 실시간 파크온 앱 화면 뷰어
+          </span>
+          <span id="previewCutIndicator" class="px-2.5 py-0.5 rounded-full bg-slate-800 text-amber-300 text-xs font-bold border border-slate-700">
+            제1장 · 1번째 컷
+          </span>
+        </div>
+
+        <!-- 📱 모바일 파크온 웹툰 카드 프레임 -->
+        <div id="webtoonCard" class="bg-slate-950 rounded-3xl p-5 shadow-2xl border-2 border-emerald-500/30 flex flex-col gap-4 text-slate-900 transition-all">
+          
+          <!-- 카드 상단: 뱃지 및 제목 -->
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <span id="cardBadge" class="inline-block px-3 py-1 rounded-full text-xs font-black mb-1.5 bg-blue-100 text-blue-800 border border-blue-200">
+                공인 규격
+              </span>
+              <h3 id="cardTitle" class="text-base sm:text-lg font-black text-white leading-tight">
+                파크골프의 정석! 9홀 Par 33 공인 규격
+              </h3>
+            </div>
+            <span class="text-2xl shrink-0 p-2 rounded-2xl bg-slate-800 border border-slate-700">
+              ⛳
+            </span>
+          </div>
+
+          <!-- 상황 설명 배너 -->
+          <div class="bg-slate-900/90 rounded-2xl p-3.5 border border-slate-800">
+            <span class="text-[11px] font-bold text-amber-400 block mb-1">📢 코스 상황</span>
+            <p id="cardSituation" class="text-xs text-slate-300 font-medium leading-relaxed">
+              파크골프는 일반 골프와 홀수 및 기준 타수가 어떻게 다를까요?
+            </p>
+          </div>
+
+          <!-- 마스코트 파키 & 대사 말풍선 -->
+          <div class="bg-gradient-to-b from-emerald-950/40 to-slate-900 rounded-2xl p-4 border border-emerald-500/20 flex flex-col gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 flex items-center justify-center text-2xl shadow-md border-2 border-white shrink-0">
+                🐥
+              </div>
+              <div>
+                <strong class="text-sm font-black text-emerald-300 block">마스코트 파키</strong>
+                <span class="text-[10px] text-slate-400">규정 친절 안내 요정</span>
+              </div>
+            </div>
+
+            <!-- 말풍선 대사 -->
+            <div class="speech-bubble speech-bubble-inner p-3.5 text-slate-800">
+              <p id="cardDialogue" class="text-xs sm:text-sm font-bold leading-relaxed text-slate-900">
+                안녕하세요! 파크골프 올인원 마스코트 파키예요! 파크골프 공인 규격은 9홀 기준 총 33타(Par 33)가 표준이랍니다!
+              </p>
+            </div>
+          </div>
+
+          <!-- 판정 및 핵심 규정 박스 -->
+          <div class="bg-slate-900 rounded-2xl p-3.5 border border-slate-800 flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-black text-emerald-400">⚖️ 공식 판정</span>
+              <span id="cardPenalty" class="text-[10px] font-black px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                규정 준수
+              </span>
+            </div>
+            <p id="cardVerdict" class="text-xs font-black text-white">
+              9홀 기준 기준타수 33타 (18홀 66타)
+            </p>
+            <div class="pt-2 border-t border-slate-800">
+              <span class="text-[10px] font-bold text-slate-400 block mb-0.5">💡 핵심 요약</span>
+              <p id="cardKeyPoint" class="text-[11px] text-slate-300 leading-normal">
+                전체 거리는 9홀 약 660m 내외로 남녀노소 누구나 걷기 좋은 도심 속 친환경 코스입니다.
+              </p>
+            </div>
+            <div class="text-right">
+              <span id="cardArticle" class="text-[10px] text-slate-500 font-bold">
+                제1장 제2조 (코스의 구성 및 구역)
+              </span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- [오른쪽 3열] AI 자동 생성 & 컷 상세 편집기 (너비: 4/12) -->
+    <aside class="col-span-4 bg-slate-950 p-6 flex flex-col h-[calc(100vh-73px)] overflow-y-auto">
+      
+      <!-- 1. Gemini AI 웹툰 컷 자동 창작기 -->
+      <div class="bg-gradient-to-br from-purple-950/50 via-slate-900 to-slate-900 border border-purple-500/30 rounded-2xl p-4.5 mb-6 shadow-xl">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-lg">🤖</span>
+          <h3 class="text-sm font-black text-purple-300">구글 AI 웹툰 대본 자동 생성기</h3>
+        </div>
+        <p class="text-xs text-slate-400 mb-3">궁금한 파크골프 상황을 입력하면 파키의 명쾌한 만화 대본을 즉시 작성합니다.</p>
+        
+        <div class="flex gap-2 mb-2">
+          <input id="aiTopicInput" type="text" placeholder="예: 벙커에서 모래를 손으로 치웠을 때" 
+                 class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-400">
+          <button onclick="generateWithAI()" id="aiGenBtn"
+                  class="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs transition-all shrink-0 cursor-pointer active:scale-95 flex items-center gap-1">
+            <span>✨</span>
+            <span>생성</span>
+          </button>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <button onclick="setTopic('티샷 헛스윙 타수 계산')" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700">헛스윙</button>
+          <button onclick="setTopic('OB 났을 때 드롭 방법과 벌타')" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700">OB 처치</button>
+          <button onclick="setTopic('그린에서 퍼팅 마크 에티켓')" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700">마크 에티켓</button>
+          <button onclick="setTopic('공이 벙커 턱에 박혔을 때')" class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700">벙커 구제</button>
+        </div>
+      </div>
+
+      <!-- 2. 현재 선택된 컷 상세 편집 폼 -->
+      <div class="flex-1 flex flex-col gap-3">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+          <h3 class="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <span>✏️</span> 만화 컷 내용 실시간 수정
+          </h3>
+          <span class="text-[10px] text-emerald-400 font-bold">수정 즉시 화면 반영</span>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">컷 제목</label>
+          <input id="editTitle" type="text" oninput="updateCurrentCutFromInputs()"
+                 class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-400 mb-1">주의 배지 명칭</label>
+            <input id="editBadge" type="text" oninput="updateCurrentCutFromInputs()"
+                   class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-400 mb-1">배지 색상</label>
+            <select id="editBadgeType" onchange="updateCurrentCutFromInputs()"
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+              <option value="info">파랑 (안내/공인규격)</option>
+              <option value="caution">주황 (주의/1타가산)</option>
+              <option value="penalty">빨강 (벌타/실격주의)</option>
+              <option value="safe">초록 (무벌타/정상)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">상황 설명 (동호인이 겪는 상황)</label>
+          <textarea id="editSituation" rows="2" oninput="updateCurrentCutFromInputs()"
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 resize-none"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-emerald-400 mb-1">마스코트 파키 대사 (어르신 맞춤 설명)</label>
+          <textarea id="editDialogue" rows="3" oninput="updateCurrentCutFromInputs()"
+                    class="w-full bg-slate-900 border border-emerald-500/40 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400 resize-none"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">공식 최종 판정</label>
+          <input id="editVerdict" type="text" oninput="updateCurrentCutFromInputs()"
+                 class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">핵심 요약 팁</label>
+          <input id="editKeyPoint" type="text" oninput="updateCurrentCutFromInputs()"
+                 class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">관련 규정 조항</label>
+          <input id="editArticle" type="text" oninput="updateCurrentCutFromInputs()"
+                 class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div class="pt-3 flex gap-2">
+          <button onclick="addNewCutToCurrentChapter()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs transition-all cursor-pointer">
+            ➕ 현재 챕터에 새 컷 추가
+          </button>
+        </div>
+
+      </div>
+
+    </aside>
+
+  </main>
+
+  <script>
+    let currentData = {};
+    let selectedChapterId = 'ch-1';
+    let selectedCutIndex = 0;
+
+    const BADGE_COLORS = {
+      info: 'bg-blue-100 text-blue-800 border-blue-300',
+      caution: 'bg-amber-100 text-amber-900 border-amber-300',
+      penalty: 'bg-rose-100 text-rose-900 border-rose-300',
+      safe: 'bg-emerald-100 text-emerald-900 border-emerald-300'
+    };
+
+    // 1. 초기 데이터 로드
+    async function loadChapters() {
+      try {
+        const res = await fetch('/api/chapters');
+        currentData = await res.json();
+        renderChapterList();
+        selectCut(selectedChapterId, 0);
+      } catch (err) {
+        console.error('데이터 로드 실패:', err);
+      }
+    }
+
+    // 2. 챕터 목록 렌더링
+    function renderChapterList() {
+      const container = document.getElementById('chapterListContainer');
+      container.innerHTML = '';
+
+      const chapterIds = Object.keys(currentData);
+      document.getElementById('chapterCountBadge').textContent = `${chapterIds.length}개 챕터`;
+
+      chapterIds.forEach(chId => {
+        const ch = currentData[chId];
+        const isSelectedCh = (chId === selectedChapterId);
+
+        const chCard = document.createElement('div');
+        chCard.className = `rounded-2xl p-3 border transition-all ${isSelectedCh ? 'bg-slate-900 border-emerald-500/50 shadow-lg' : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'}`;
+
+        let cutsHtml = '';
+        ch.cuts.forEach((cut, idx) => {
+          const isSelectedCut = (isSelectedCh && idx === selectedCutIndex);
+          cutsHtml += `
+            <button onclick="selectCut('${chId}', ${idx})" 
+                    class="w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer ${isSelectedCut ? 'bg-emerald-600 text-white font-bold shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}">
+              <span class="truncate pr-2">${cut.cutNumber}. ${cut.title}</span>
+              <span class="text-[10px] opacity-75 shrink-0">${cut.badge || '규정'}</span>
+            </button>
+          `;
+        });
+
+        chCard.innerHTML = `
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-black text-amber-400">${ch.chapterNumber}</span>
+              <strong class="text-xs text-white font-bold truncate max-w-[140px]">${ch.title}</strong>
+            </div>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">${ch.cuts.length}컷</span>
+          </div>
+          <div class="space-y-1">
+            ${cutsHtml}
+          </div>
+        `;
+
+        container.appendChild(chCard);
+      });
+    }
+
+    // 3. 특정 컷 선택
+    function selectCut(chId, cutIdx) {
+      selectedChapterId = chId;
+      selectedCutIndex = cutIdx;
+
+      const ch = currentData[chId];
+      if (!ch || !ch.cuts[cutIdx]) return;
+
+      const cut = ch.cuts[cutIdx];
+
+      // 미리보기 카드 갱신
+      document.getElementById('previewCutIndicator').textContent = `${ch.chapterNumber} · ${cut.cutNumber}번째 컷`;
+      document.getElementById('cardBadge').textContent = cut.badge || '규정';
+      document.getElementById('cardBadge').className = `inline-block px-3 py-1 rounded-full text-xs font-black mb-1.5 border ${BADGE_COLORS[cut.badgeType] || BADGE_COLORS.info}`;
+      document.getElementById('cardTitle').textContent = cut.title;
+      document.getElementById('cardSituation').textContent = cut.situation;
+      document.getElementById('cardDialogue').textContent = cut.parkyDialogue;
+      document.getElementById('cardVerdict').textContent = cut.verdict;
+      document.getElementById('cardPenalty').textContent = cut.penaltyText || '규정 적용';
+      document.getElementById('cardKeyPoint').textContent = cut.keyPoint;
+      document.getElementById('cardArticle').textContent = cut.article;
+
+      // 우측 입력 폼 갱신
+      document.getElementById('editTitle').value = cut.title;
+      document.getElementById('editBadge').value = cut.badge;
+      document.getElementById('editBadgeType').value = cut.badgeType || 'info';
+      document.getElementById('editSituation').value = cut.situation;
+      document.getElementById('editDialogue').value = cut.parkyDialogue;
+      document.getElementById('editVerdict').value = cut.verdict;
+      document.getElementById('editKeyPoint').value = cut.keyPoint;
+      document.getElementById('editArticle').value = cut.article;
+
+      renderChapterList();
+    }
+
+    // 4. 입력 폼 변경 시 실시간 카드 업데이트
+    function updateCurrentCutFromInputs() {
+      const ch = currentData[selectedChapterId];
+      if (!ch || !ch.cuts[selectedCutIndex]) return;
+
+      const cut = ch.cuts[selectedCutIndex];
+      cut.title = document.getElementById('editTitle').value;
+      cut.badge = document.getElementById('editBadge').value;
+      cut.badgeType = document.getElementById('editBadgeType').value;
+      cut.situation = document.getElementById('editSituation').value;
+      cut.parkyDialogue = document.getElementById('editDialogue').value;
+      cut.verdict = document.getElementById('editVerdict').value;
+      cut.keyPoint = document.getElementById('editKeyPoint').value;
+      cut.article = document.getElementById('editArticle').value;
+
+      // 카드 화면 즉시 반영
+      document.getElementById('cardBadge').textContent = cut.badge;
+      document.getElementById('cardBadge').className = `inline-block px-3 py-1 rounded-full text-xs font-black mb-1.5 border ${BADGE_COLORS[cut.badgeType] || BADGE_COLORS.info}`;
+      document.getElementById('cardTitle').textContent = cut.title;
+      document.getElementById('cardSituation').textContent = cut.situation;
+      document.getElementById('cardDialogue').textContent = cut.parkyDialogue;
+      document.getElementById('cardVerdict').textContent = cut.verdict;
+      document.getElementById('cardKeyPoint').textContent = cut.keyPoint;
+      document.getElementById('cardArticle').textContent = cut.article;
+    }
+
+    // 5. AI 자동 대본 생성
+    async function generateWithAI() {
+      const topic = document.getElementById('aiTopicInput').value.trim();
+      if (!topic) {
+        alert('주제를 입력해 주세요!');
+        return;
+      }
+
+      const btn = document.getElementById('aiGenBtn');
+      btn.innerHTML = '<span>⏳</span><span>창작중..</span>';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/generate_ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            topic: topic,
+            chapterNumber: selectedChapterId.replace('ch-', '')
+          })
+        });
+        const generated = await res.json();
+
+        // 폼에 반영
+        document.getElementById('editTitle').value = generated.title;
+        document.getElementById('editBadge').value = generated.badge;
+        document.getElementById('editBadgeType').value = generated.badgeType || 'caution';
+        document.getElementById('editSituation').value = generated.situation;
+        document.getElementById('editDialogue').value = generated.parkyDialogue;
+        document.getElementById('editVerdict').value = generated.verdict;
+        document.getElementById('editKeyPoint').value = generated.keyPoint;
+        document.getElementById('editArticle').value = generated.article;
+
+        updateCurrentCutFromInputs();
+        alert('✨ Gemini 3.5 AI가 만화 대본을 성공적으로 작성했습니다!');
+      } catch (err) {
+        alert('AI 생성 실패: ' + err);
+      } finally {
+        btn.innerHTML = '<span>✨</span><span>생성</span>';
+        btn.disabled = false;
+      }
+    }
+
+    function setTopic(text) {
+      document.getElementById('aiTopicInput').value = text;
+      generateWithAI();
+    }
+
+    // 6. 새 컷 추가
+    function addNewCutToCurrentChapter() {
+      const ch = currentData[selectedChapterId];
+      if (!ch) return;
+
+      const newCutNum = ch.cuts.length + 1;
+      const newCut = {
+        cutNumber: newCutNum,
+        title: `새 만화 ${newCutNum}컷`,
+        badge: '새 규정',
+        badgeType: 'info',
+        situation: '어떤 상황인지 입력해 주세요.',
+        parkyDialogue: '파키가 전해드릴 명쾌한 설명을 입력해 주세요!',
+        verdict: '최종 판정 내용',
+        penaltyText: '벌타 내용',
+        keyPoint: '핵심 요약 포인트',
+        article: '관련 조항'
+      };
+
+      ch.cuts.push(newCut);
+      renderChapterList();
+      selectCut(selectedChapterId, ch.cuts.length - 1);
+    }
+
+    // 7. 전체 저장 (앱 반영)
+    async function saveAllChapters() {
+      try {
+        const res = await fetch('/api/save_chapter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chapterId: selectedChapterId,
+            chapter: currentData[selectedChapterId]
+          })
+        });
+        const result = await res.json();
+        alert('✅ 파크온 앱 데이터베이스에 성공적으로 저장되었습니다!');
+      } catch (err) {
+        alert('저장 실패: ' + err);
+      }
+    }
+
+    // 8. 안티그래비티 대화창 개선 요청문 복사
+    function copyImprovementPrompt() {
+      const ch = currentData[selectedChapterId];
+      const cut = ch.cuts[selectedCutIndex];
+      const prompt = `[파크온 만화 개선 요청]\n현재 작업 중인 ${ch.chapterNumber} ${cut.cutNumber}번째 컷("${cut.title}")을 보고 있는데, 다음 사항을 개선해줘:\n- 대사 보완:\n- 디자인/캐릭터 스타일 변경:`;
+      navigator.clipboard.writeText(prompt);
+      alert('📋 안티그래비티 대화창에 바로 붙여넣으실 수 있는 개선 요청문이 클립보드에 복사되었습니다!');
+    }
+
+    window.onload = loadChapters;
+  </script>
+</body>
+</html>
