@@ -102,6 +102,8 @@ def classify_command_with_gemini(user_instruction: str) -> dict:
     api_key = os.getenv("GEMINI_API_KEY")
     lower_cmd = user_instruction.lower().strip()
     
+    if any(k in lower_cmd for k in ["바탕화면", "바탕", "청소", "정리해", "중복", "clean"]):
+        return {"action": "desktop_clean", "target": "desktop", "params": {}}
     if any(k in lower_cmd for k in ["브리핑", "briefing", "요약", "일일 보고", "3줄"]):
         return {"action": "briefing", "target": "all", "params": {}}
     if any(k in lower_cmd for k in ["롤백", "복원", "되돌려", "원복", "rollback", "restore"]):
@@ -134,6 +136,7 @@ def classify_command_with_gemini(user_instruction: str) -> dict:
 다음 사용자 명령을 분석하여 가장 알맞은 작업 1개를 JSON으로 응답하십시오.
 
 작업 목록:
+- "desktop_clean": 바탕화면 정리, 중복 바로가기/파일 청소 및 5대 테마 폴더 정돈 요청
 - "briefing": 대표님 전용 일일/3줄 총괄 브리핑 및 요약 보고 요청
 - "status_report": 시스템 상태, 도메인, 헬스체크 확인 요청
 - "backup": Google Drive 또는 로컬 스토리지 백업/동기화 요청
@@ -144,7 +147,7 @@ def classify_command_with_gemini(user_instruction: str) -> dict:
 - "code_audit": 시스템 무결성, 코드 품질 감사 요청
 
 반환 형식 (JSON만 출력):
-{{"action": "briefing" | "status_report" | "backup" | "rollback" | "media_image" | "media_video" | "history_view" | "code_audit", "params": {{"prompt": "{user_instruction}"}}}}
+{{"action": "desktop_clean" | "briefing" | "status_report" | "backup" | "rollback" | "media_image" | "media_video" | "history_view" | "code_audit", "params": {{"prompt": "{user_instruction}"}}}}
 
 사용자 명령: {user_instruction}
 """
@@ -173,6 +176,7 @@ def execute_action(plan: dict, raw_input: str):
     params = plan.get("params", {})
 
     action_kor_map = {
+        "desktop_clean": "바탕화면 스마트 정리 및 중복 파일 청소",
         "briefing": "대표님 전용 일일 총괄 3줄 브리핑 및 클립보드 복사",
         "status_report": "전체 시스템 실시간 상태 및 도메인 점검",
         "backup": "Google Drive & 로컬 스토리지 백업 동기화",
@@ -189,7 +193,12 @@ def execute_action(plan: dict, raw_input: str):
     status = "success"
     summary = ""
 
-    if action == "briefing":
+    if action == "desktop_clean":
+        clean_script = os.path.join(HUB_DIR, "desktop_cleaner.py")
+        run_script(clean_script)
+        summary = "바탕화면 중복 파일 청소 및 5대 테마 폴더 자동 정돈 완료"
+
+    elif action == "briefing":
         bf_script = os.path.join(HUB_DIR, "daily_briefing.py")
         run_script(bf_script, ["--ai", "--save"])
         summary = "대표님 전용 일일 총괄 브리핑 생성 및 클립보드 자동 복사 완료"
@@ -296,6 +305,7 @@ def main():
     subparsers.add_parser("list", help="사령탑 등록 프로젝트 전체 목록")
     subparsers.add_parser("history", help="최근 지휘 이력 및 대화 로그 조회")
     subparsers.add_parser("briefing", help="대표님 전용 일일/3줄 총괄 브리핑 생성")
+    subparsers.add_parser("clean", help="바탕화면 중복 파일 청소 및 5대 폴더 자동 정돈")
 
     if len(sys.argv) == 1:
         while True:
@@ -329,12 +339,13 @@ def main():
             print("  [7] 📜 최근 지휘 이력 및 대화 로그 확인 (history)")
             print("  [8] 🔄 백업 스냅샷 이력 확인 및 원클릭 복원 (rollback)")
             print("  [9] 📋 대표님 전용 일일 총괄 브리핑 & 클립보드 복사 (briefing)")
+            print("  [10] 🧹 바탕화면 스마트 정리 및 중복 파일 청소 (clean)")
             print("  [0] 🚪 사령탑 콘솔 종료 (exit)")
             print("-" * 80)
-            print("💬 [자연어 지휘]: 번호 대신 '브리핑해줘', '상태 점검해줘', '지금 백업해' 등 입력")
+            print("💬 [자연어 지휘]: 번호 대신 '바탕화면 청소해줘', '브리핑해줘', '지금 백업해' 등 입력")
             print("=" * 80)
             try:
-                choice = input("\n👉 명령 입력 (0~9 또는 자연어): ").strip()
+                choice = input("\n👉 명령 입력 (0~10 또는 자연어): ").strip()
             except (EOFError, KeyboardInterrupt):
                 break
 
@@ -382,6 +393,8 @@ def main():
                     pass
             elif choice == "9":
                 run_script(os.path.join(HUB_DIR, "daily_briefing.py"), ["--ai", "--save"])
+            elif choice == "10":
+                run_script(os.path.join(HUB_DIR, "desktop_cleaner.py"))
             else:
                 # 자연어 입력으로 처리
                 plan = classify_command_with_gemini(choice)
@@ -400,6 +413,8 @@ def main():
         run_script(sync_script, ["--target", args.target])
     elif args.command == "briefing":
         run_script(os.path.join(HUB_DIR, "daily_briefing.py"), ["--ai", "--save"])
+    elif args.command == "clean":
+        run_script(os.path.join(HUB_DIR, "desktop_cleaner.py"))
     elif args.command == "image":
         img_script = os.path.join(HUB_DIR, "generators", "image_gen.py")
         cmd_args = ["--prompt", args.prompt, "--aspect-ratio", args.aspect_ratio]
