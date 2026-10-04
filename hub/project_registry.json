@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.2.0",
+  "master": "김대희 대표님",
+  "description": "Google Control Hub - 다중 앱 통합 메타데이터 레지스트리",
+  "lastUpdated": "2026-10-04",
+  "template": {
+    "name": "앱 정식 명칭",
+    "englishName": "App English Name",
+    "aliases": ["별칭1", "별칭2"],
+    "path": "apps/앱폴더명",
+    "package": "@workspace/package-name",
+    "localPort": 3000,
+    "localUrl": "http://localhost:3000",
+    "productionUrl": "https://your-domain.com",
+    "framework": "Next.js / React / FastAPI / etc.",
+    "status": "Ready | Active | Developing"
+  },
+  "projects": {
+    "paki": {
+      "name": "파크골프 올인원",
+      "englishName": "ParkGolf All-in-One",
+      "japaneseName": "パークゴルフ オールインワン",
+      "aliases": ["paki", "parkon", "parkgolf", "파키"],
+      "path": "apps/parkon",
+      "package": "@parkon/web",
+      "localPort": 3008,
+      "localUrl": "http://localhost:3008",
+      "productionUrl": "https://www.parkgolfallinone.com",
+      "vercelDomain": "https://landnote-parkon.vercel.app",
+      "framework": "Next.js 15 (Turbopack, PWA)",
+      "status": "Production Live"
+    },
+    "landnote": {
+      "name": "랜드노트",
+      "englishName": "LandNote",
+      "aliases": ["landnote", "web", "crm", "랜드노트"],
+      "path": "apps/web",
+      "package": "@landnote/web",
+      "localPort": 3000,
+      "localUrl": "http://localhost:3000",
+      "productionUrl": "https://landnote-web.vercel.app",
+      "framework": "Next.js",
+      "status": "Production Live"
+    },
+    "landnote-api": {
+      "name": "랜드노트 백엔드 API",
+      "aliases": ["api", "backend", "서버"],
+      "path": "apps/api",
+      "package": "@landnote/api",
+      "localPort": 4000,
+      "productionUrl": "https://api.landnote.kr",
+      "framework": "Express / Node.js",
+      "status": "Production Live"
+    },
+    "marketing-hub": {
+      "name": "마케팅 총괄 관제센터",
+      "englishName": "Omni-Channel Marketing Hub",
+      "aliases": ["marketing", "hub", "관제센터"],
+      "path": "hub",
+      "localPort": 4005,
+      "localUrl": "http://localhost:4005",
+      "status": "Active"
+    }
+  }
+}
