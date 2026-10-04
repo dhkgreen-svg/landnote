@@ -2,15 +2,19 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
   Smartphone,
-  Share2,
   CheckCircle2,
-  X,
+  Check,
 } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import {
+  isKakaoTalkWebView,
+  isLineWebView,
+  escapeKakaoTalk,
+  autoEscapeIfKakao,
+} from '@/lib/kakaoEscape';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -19,13 +23,14 @@ interface BeforeInstallPromptEvent extends Event {
 
 function InstallPageContent() {
   const searchParams = useSearchParams();
-  const { isJapanese, isEnglish } = useTranslation();
+  const { isJapanese } = useTranslation();
   const byParam = searchParams.get('by') || '';
 
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState<boolean>(false);
-  const [isIos, setIsIos] = useState<boolean>(false);
-  const [showIosModal, setShowIosModal] = useState<boolean>(false);
+  const [isKakao, setIsKakao] = useState<boolean>(false);
+  const [isLine, setIsLine] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [installSuccessToast, setInstallSuccessToast] = useState<boolean>(false);
 
   useEffect(() => {
@@ -33,16 +38,22 @@ function InstallPageContent() {
     const isStandaloneMode =
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
-      document.referrer.includes('android-app://');
+      document.referrer.includes('android-app://') ||
+      (typeof localStorage !== 'undefined' && localStorage.getItem('parkon_app_installed') === 'true');
 
     setIsStandalone(isStandaloneMode);
 
-    // 2. iOS 기기 감지
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIosDevice = /iphone|ipad|ipod/.test(userAgent) && !userAgent.includes('crios');
-    setIsIos(isIosDevice);
+    const kakaoMode = isKakaoTalkWebView();
+    const lineMode = isLineWebView();
+    setIsKakao(kakaoMode);
+    setIsLine(lineMode);
 
-    // 3. 안드로이드 / 크롬 PWA 설치 이벤트 가로채기
+    // 카톡이나 라인이면 백그라운드에서 크롬 전환 준비
+    if (kakaoMode || lineMode) {
+      autoEscapeIfKakao();
+    }
+
+    // 2. 안드로이드 / 크롬 PWA 설치 이벤트 가로채기
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -54,6 +65,9 @@ function InstallPageContent() {
       try {
         localStorage.setItem('parkon_app_installed', 'true');
       } catch {}
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
@@ -65,45 +79,55 @@ function InstallPageContent() {
     };
   }, []);
 
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // 대표님 절대 원칙: 구구절절 설명 모달 전면 삭제! 누르면 1초 만에 시스템 설치창 직격 발동
   const handleInstallClick = async () => {
-    // 1) 이미 설치된 경우 바로 홈으로 이동
-    if (isStandalone) {
+    // 1) 이미 설치된 경우 또는 방금 설치 완료된 경우 -> 즉시 메인 홈으로 진입!
+    if (isStandalone || installSuccessToast) {
       window.location.href = '/';
       return;
     }
 
-    // 2) 안드로이드/크롬 설치 프롬프트
+    // 2) 안드로이드 크롬/삼성인터넷 등 PWA 설치 이벤트가 준비된 경우 -> 즉각 시스템 설치창 띄움!
     if (deferredPrompt) {
       try {
         await deferredPrompt.prompt();
         const choice = await deferredPrompt.userChoice;
         if (choice.outcome === 'accepted') {
           setInstallSuccessToast(true);
+          try {
+            localStorage.setItem('parkon_app_installed', 'true');
+          } catch {}
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1500);
         }
         setDeferredPrompt(null);
-      } catch {
-        // fallback
+        return;
+      } catch (err) {
+        console.warn('Install prompt error', err);
       }
+    }
+
+    // 3) 카카오톡/LINE 내부인 경우 -> 크롬으로 즉시 자동 전환 실행
+    if (isKakao || isLine) {
+      escapeKakaoTalk();
+      showToast('스마트폰 기본 인터넷(크롬)으로 열어 바로 설치합니다...');
       return;
     }
 
-    // 3) iOS 사파리 가이드 팝업
-    if (isIos) {
-      setShowIosModal(true);
-      return;
-    }
-
-    // 4) 일반 브라우저 안내
-    alert(
-      isJapanese
-        ? 'ブラウザ右上のメニュー [⋮] または共有ボタンから「ホーム画面に追加」または「アプリをインストール」をタップしてください。'
-        : '브라우저 오른쪽 상단 메뉴 [⋮] 또는 공유 버튼을 눌러 [홈 화면에 추가] 또는 [앱 설치]를 누르시면 바탕화면에 바로 설치됩니다.'
-    );
+    // 4) 그 외의 경우 (설치창 대기 상태) -> 심플 1줄 토스트만 노출 (구구절절 모달 절대 금지)
+    showToast('스마트폰 화면의 [설치] 또는 [홈 화면에 추가]를 눌러주세요.');
   };
 
   return (
-    <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-center p-3 sm:p-4">
+    <div className="min-h-screen bg-stone-900/90 sm:bg-stone-100 flex flex-col items-center justify-start sm:justify-center p-2 sm:p-4 pt-3 sm:pt-6">
       <main className="bg-white rounded-3xl shadow-2xl border border-stone-200 w-full max-w-md overflow-hidden flex flex-col animate-in fade-in duration-300">
+        
         {/* 1. 상단 히어로 배너 (3D 파키 캐릭터 + 환영 헤더) */}
         <div className="bg-gradient-to-b from-emerald-800 via-emerald-900 to-stone-900 p-5 text-center text-white relative">
           <div
@@ -154,9 +178,9 @@ function InstallPageContent() {
           </p>
         </div>
 
-        {/* 2. 본문: 3대 핵심 가치 & 초대형 원터치 설치 버튼 */}
+        {/* 2. 본문: 2대 핵심 가치 & 초대형 원터치 1초 설치 버튼 */}
         <div className="p-4 sm:p-5 space-y-4">
-          {/* 설치 완료 토스트 */}
+          {/* 설치 완료 축하 알림 */}
           {installSuccessToast && (
             <div className="p-3 bg-emerald-700 text-white rounded-2xl text-center text-xs font-black shadow-md flex items-center justify-center gap-2 animate-bounce">
               <CheckCircle2 className="w-4 h-4 text-emerald-300" />
@@ -168,9 +192,9 @@ function InstallPageContent() {
             </div>
           )}
 
-          {/* 2대 핵심 가치 카드 (대표님 특명: 불필요한 날씨 제외, 모바일 스코어보드 & 나의 연대기 집중) */}
+          {/* 2대 핵심 가치 카드 */}
           <div className="space-y-3">
-            {/* 혜택 1: 파크골프 실시간 모바일 스코어보드 (대표님 지침: 4인 제한 문구 삭제) */}
+            {/* 혜택 1: 파크골프 실시간 모바일 스코어보드 */}
             <div className="p-3.5 bg-emerald-50/60 rounded-2xl border-2 border-emerald-500/40 flex items-center gap-3.5 shadow-xs">
               <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-xl shrink-0 shadow-sm">
                 📱
@@ -205,18 +229,18 @@ function InstallPageContent() {
             </div>
           </div>
 
-          {/* 3. 초대형 메인 액션 버튼 (대표님 특명: 모바일 스코어보드 파키 바로 설치하기 & 무료 삭제) */}
+          {/* 3. 대표님 특명: 초대형 원터치 1초 직격 설치 버튼 (설명 모달 전면 삭제) */}
           <div className="pt-2">
             <button
               type="button"
               onClick={handleInstallClick}
-              className="w-full py-4.5 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition active:scale-98 flex items-center justify-center gap-2.5 cursor-pointer border-2 border-emerald-400"
+              className="w-full py-4 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-base sm:text-lg rounded-2xl shadow-xl transition active:scale-98 flex items-center justify-center gap-2.5 cursor-pointer border-2 border-emerald-400 animate-pulse"
             >
               <Smartphone className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
               <span>
-                {isStandalone
-                  ? (isJapanese ? '⛳ アプリをすぐに開く' : '⛳ 앱 바로 실행하기')
-                  : (isJapanese ? '📱 モバイルスコアボード パキを今すぐ登録' : '📱 모바일 스코어보드 파키 바로 설치하기')}
+                {isStandalone || installSuccessToast
+                  ? (isJapanese ? '⛳ パークゴルフを始める (入場) ➔' : '⛳ 파크골프 올인원 바로 시작하기 (입장) ➔')
+                  : (isJapanese ? '📲 1秒でホーム画面にアプリ追加' : '📲 1초 만에 바탕화면에 앱 깔기')}
               </span>
             </button>
           </div>
@@ -229,79 +253,11 @@ function InstallPageContent() {
           </p>
         </div>
 
-        {/* 4. 🍎 아이폰(iOS Safari) 전용 홈 화면 추가 안내 모달 */}
-        {showIosModal && (
-          <div className="fixed inset-0 z-[95] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-            <div className="bg-stone-900 border-2 border-emerald-400 text-white rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl relative">
-              <button
-                type="button"
-                onClick={() => setShowIosModal(false)}
-                className="absolute top-3.5 right-3.5 text-stone-400 hover:text-white p-1 rounded-full cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="text-center space-y-1 pt-1">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-stone-950 font-black text-2xl flex items-center justify-center mx-auto shadow-md">
-                  ⛳
-                </div>
-                <h4 className="text-base font-black text-emerald-300">
-                  {isJapanese ? 'iPhone ホーム画面追加方法' : '아이폰 바탕화면 추가 방법'}
-                </h4>
-                <p className="text-xs text-stone-300">
-                  {isJapanese
-                    ? 'Safariブラウザの下部メニューから簡単に登録できます。'
-                    : '사파리(Safari) 화면에서 딱 3초 만에 완료됩니다.'}
-                </p>
-              </div>
-
-              <div className="space-y-2 text-xs bg-stone-800/80 p-3.5 rounded-2xl border border-stone-700 font-medium">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-stone-950 font-black flex items-center justify-center text-xs shrink-0">
-                    1
-                  </span>
-                  <span>
-                    {isJapanese ? (
-                      <>画面下の <Share2 className="w-3.5 h-3.5 inline text-sky-400 mx-0.5" /> <strong>[共有]</strong> ボタンをタップ</>
-                    ) : (
-                      <>화면 맨 아래 가운데 <Share2 className="w-3.5 h-3.5 inline text-sky-400 mx-0.5" /> <strong>[공유]</strong> 버튼 누르기</>
-                    )}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-stone-950 font-black flex items-center justify-center text-xs shrink-0">
-                    2
-                  </span>
-                  <span>
-                    {isJapanese ? (
-                      <>メニューから <strong>[ホーム画面に追加]</strong> を選択</>
-                    ) : (
-                      <>메뉴를 위로 살짝 올려 <strong>[홈 화면에 추가]</strong> 선택</>
-                    )}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-full bg-emerald-500 text-stone-950 font-black flex items-center justify-center text-xs shrink-0">
-                    3
-                  </span>
-                  <span>
-                    {isJapanese ? (
-                      <>右上の <strong>[追加]</strong> をタップで完了！</>
-                    ) : (
-                      <>오른쪽 위 <strong>[추가]</strong> 누르면 끝!</>
-                    )}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowIosModal(false)}
-                className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black text-xs rounded-xl shadow-md transition cursor-pointer"
-              >
-                {isJapanese ? '確認しました' : '확인했습니다'}
-              </button>
-            </div>
+        {/* 심플 1줄 토스트 알림 (어르신 눈높이) */}
+        {toastMessage && (
+          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-xl border border-amber-400 flex items-center gap-2 animate-fadeIn whitespace-nowrap">
+            <Check className="w-4 h-4 text-amber-400" />
+            <span>{toastMessage}</span>
           </div>
         )}
       </main>

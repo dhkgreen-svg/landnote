@@ -66,15 +66,24 @@ export function isMockOrCorruptedRound(r: any): boolean {
   return false;
 }
 
-/**
- * 7자리 고유 회원번호 조회 (없으면 빈 문자열 반환)
- */
 export function getSavedMemberCode(): string {
   if (typeof window === 'undefined') return '';
   try {
+    const rawName = ParkOnStorage.getUserDisplayName();
+    const isMasterDaehee = rawName?.includes('김대희');
     const existing = localStorage.getItem(MEMBER_CODE_STORAGE_KEY);
+
     if (existing && existing.trim()) {
-      return normalizeMemberCode(existing.trim());
+      const norm = normalizeMemberCode(existing.trim());
+      // 만약 기존 코드가 PKY-7788인데 이름이 김대희가 아닌 경우(예: '1', '홍길동'), 과거 로컬 기본값 버그이므로 자동 재발급
+      if (norm === 'PKY-7788' && !isMasterDaehee && rawName && !isPlaceholderName(rawName)) {
+        return getOrGenerateMemberCode(true);
+      }
+      return norm;
+    }
+
+    if (rawName && !isPlaceholderName(rawName)) {
+      return getOrGenerateMemberCode(true);
     }
   } catch {}
   return '';
@@ -89,32 +98,59 @@ export function getOrGenerateMemberCode(forceGenerate = false): string {
   if (typeof window === 'undefined') return '';
 
   try {
-    const existing = localStorage.getItem(MEMBER_CODE_STORAGE_KEY);
-    if (existing && existing.trim()) {
-      return normalizeMemberCode(existing.trim());
-    }
-
     const kakaoUser = ParkOnStorage.getKakaoUser();
     const profile = ParkOnStorage.getUserProfile();
     const rawName = ParkOnStorage.getUserDisplayName();
+    const cleanName = (rawName || profile?.userName || kakaoUser?.realName || '').trim();
+    const isMasterDaehee = cleanName.includes('김대희');
+
+    const existing = localStorage.getItem(MEMBER_CODE_STORAGE_KEY);
+    if (existing && existing.trim()) {
+      const norm = normalizeMemberCode(existing.trim());
+      // 버그 수정: 기존 코드가 PKY-7788인데 이름이 김대희가 아닌 경우(예: '1', '홍길동'), 과거 로컬 기본값 버그이므로 자동 재발급
+      if (norm === 'PKY-7788' && !isMasterDaehee && cleanName) {
+        // Fall through to regenerate proper code for this user!
+      } else {
+        return norm;
+      }
+    }
 
     const isRegistered = Boolean(
       kakaoUser?.id ||
-      (rawName && !isPlaceholderName(rawName)) ||
-      (profile?.userName && !isPlaceholderName(profile.userName))
+      (cleanName && !isPlaceholderName(cleanName))
     );
 
     const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-    // 아직 등록되지 않은 신규 기기이고 강제 생성이 아니면 번호를 임의로 부여하지 않고 빈 문자열 반환 (단, 로컬 개발/대표님 기기는 PKY-7788 즉시 보장)
+    // 아직 등록되지 않은 신규 기기이고 강제 생성이 아니면 번호를 임의로 부여하지 않고 빈 문자열 반환
     if (!isRegistered && !forceGenerate && !isLocalHost) {
       return '';
     }
 
-    // 대표님(김대희) 계정 또는 로컬호스트 개발 환경인 경우 상징적인 프리미엄 회원번호 우선 배정
+    // 이름 및 사용자 맞춤형 고유번호 배정
     let codeSuffix = '';
-    if (isLocalHost || rawName?.includes('김대희') || profile?.userName?.includes('김대희') || kakaoUser?.realName?.includes('김대희')) {
-      codeSuffix = '7788';
+    if (isMasterDaehee) {
+      codeSuffix = '7788'; // 김대희 대표님 전용 골드 넘버
+    } else if (cleanName && !isPlaceholderName(cleanName)) {
+      // 1. 숫자로 된 이름인 경우 (예: '1', '2', '3' 등)
+      // 대표님 원칙: "이 사람이 이름이 1이잖아, 그러면 이 사람에 맞게 번호를 줘야 된다고"
+      if (/^\d+$/.test(cleanName)) {
+        const numVal = parseInt(cleanName, 10);
+        if (numVal >= 1 && numVal <= 999) {
+          codeSuffix = String(1000 + numVal); // 1 -> 1001, 2 -> 1002, 3 -> 1003
+        } else {
+          codeSuffix = String(numVal).slice(-4).padStart(4, '0');
+        }
+      } else {
+        // 2. 일반 이름인 경우: 이름 텍스트의 유니코드 해시 기반 결정론적 4자리 번호
+        let hash = 0;
+        for (let i = 0; i < cleanName.length; i++) {
+          hash = ((hash << 5) - hash) + cleanName.charCodeAt(i);
+          hash |= 0;
+        }
+        const num = 1000 + (Math.abs(hash) % 8900);
+        codeSuffix = String(num);
+      }
     } else if (kakaoUser?.id) {
       // 카카오 ID 기반 안정적 고유 숫자 도출
       const numStr = kakaoUser.id.replace(/\D/g, '');
@@ -125,7 +161,7 @@ export function getOrGenerateMemberCode(forceGenerate = false): string {
         codeSuffix = String(1000 + (hash % 9000));
       }
     } else {
-      // 신규/게스트 유저가 직접 번호 발급을 요청한 경우: 1000 ~ 9999 난수 배정
+      // 신규/게스트 유저: 1000 ~ 9999 난수 배정
       codeSuffix = String(Math.floor(1000 + Math.random() * 9000));
     }
 

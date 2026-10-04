@@ -187,27 +187,28 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
             </div>
 
             {/* 1) 카카오톡 링크로 접속한 경우 (Phase 1 카톡 원터치 탈출 엔진 탑재) */}
+            {/* 1) 카카오톡 링크로 접속한 경우 */}
             {mobileSubTab === 'KAKAO' && (
               <div className="space-y-3">
-                {/* 1초 원터치 탈출 골드 액션 박스 */}
+                {/* 인터넷 창 바로 열기 액션 박스 */}
                 <div className="p-3.5 bg-gradient-to-br from-amber-100 via-amber-50 to-yellow-100 border-2 border-amber-400 rounded-2xl shadow-sm text-center">
                   <div className="flex items-center justify-center gap-1.5 text-amber-950 font-black text-xs mb-1">
-                    <Rocket className="w-4 h-4 text-amber-600" />
-                    <span>{isJapanese ? 'LINE・カカオ画面内ではアプリ追加が制限されます！' : '카톡·LINE 안에서는 앱 설치가 제한됩니다!'}</span>
+                    <Smartphone className="w-4 h-4 text-emerald-700" />
+                    <span>{isJapanese ? 'LINE・カカオ画面内ではアプリ追加が制限されます' : '카카오톡 화면 안에서는 앱 추가가 제한됩니다'}</span>
                   </div>
                   <p className="text-[11px] text-amber-900 font-semibold mb-3">
                     {isJapanese
-                      ? '複雑なメニューを探さず、下のボタンをタップするとSafari・Chrome正規ブラウザに1秒で自動移動します：'
-                      : '복잡한 메뉴 찾지 마시고, 아래 버튼을 누르면 크롬 / 사파리 정규 브라우저로 1초 만에 자동 이동합니다:'}
+                      ? '下のボタンをタップすると、スマートフォン標準ブラウザ（Safari・Chrome）が開き、すぐにインストールできます：'
+                      : '아래 버튼을 누르시면 스마트폰 기본 인터넷 창(크롬·사파리)이 열리며 바탕화면에 바로 설치하실 수 있습니다:'}
                   </p>
 
                   <button
                     type="button"
                     onClick={handleKakaoEscape}
-                    className="w-full py-3 px-3 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:brightness-105 active:scale-98 text-emerald-950 font-black text-xs rounded-xl shadow-md border-2 border-amber-300 flex items-center justify-center gap-2 cursor-pointer transition"
+                    className="w-full py-3 px-3 bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-700 hover:brightness-105 active:scale-98 text-white font-black text-xs rounded-xl shadow-md border-2 border-emerald-500 flex items-center justify-center gap-2 cursor-pointer transition"
                   >
-                    <Rocket className="w-4 h-4 text-emerald-950" />
-                    <span>{isJapanese ? '🚀 外部ブラウザで1秒脱出 (ワンタッチ)' : '🚀 바깥 브라우저로 1초 만에 나가기 (원터치)'}</span>
+                    <Smartphone className="w-4 h-4 text-yellow-300" />
+                    <span>{isJapanese ? '📲 標準ブラウザで開いてアプリ追加' : '📲 기본 인터넷 창으로 열고 앱 설치하기'}</span>
                   </button>
 
                   {/* 주소 복사 보조 버튼 */}
@@ -224,7 +225,7 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
                 </div>
 
                 <div className="text-[11px] text-stone-500 font-bold px-1">
-                  {isJapanese ? '💡 ワンタッチ脱出が作動しない場合のみ、以下の手順をご確認ください：' : '💡 위 원터치 버튼이 동작하지 않을 때만 아래 순서대로 진행해 주세요:'}
+                  {isJapanese ? '💡 画面が自動で開かない場合のみ、以下の手順をご確認ください：' : '💡 혹시 화면이 자동으로 안 뜰 때만 아래 3단계를 확인해 주세요:'}
                 </div>
 
                 <div className="space-y-2.5 text-xs">

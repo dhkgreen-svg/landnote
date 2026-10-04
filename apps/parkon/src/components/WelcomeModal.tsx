@@ -17,6 +17,23 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
   const [aliasNameInput, setAliasNameInput] = useState('');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
+  const [isAlreadyInstalled, setIsAlreadyInstalled] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const checkInstalled = () => {
+      const isStandalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true ||
+        document.referrer.includes('android-app://') ||
+        localStorage.getItem('parkon_app_installed') === 'true';
+      if (isStandalone) {
+        setIsAlreadyInstalled(true);
+      }
+    };
+    checkInstalled();
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -89,20 +106,14 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
     return { realName: effectiveReal || '플레이어', aliasName: effectiveAlias };
   };
 
-  // 1. 1초 만에 바로 시작하기 (가상 세션 생성 후 최상단 스크롤과 함께 1번 홀 직행)
+  // 1. 1초 만에 바로 시작하기 (실명/별명 저장 후 모달을 닫고 깨끗한 메인 홈 화면 표출)
   const handleStartPractice = () => {
     const { realName } = saveEffectiveName();
-    const virtualSession = ParkOnStorage.createVirtualRoundSession();
-    if (virtualSession && virtualSession.players && virtualSession.players[0]) {
-      virtualSession.players[0].name = realName;
-      ParkOnStorage.saveCurrentRound(virtualSession);
-    }
     setIsOpen(false);
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
     }
     window.dispatchEvent(new CustomEvent('parkon_show_header_login_tip', { detail: { name: realName } }));
-    window.location.href = `/round/${virtualSession.id}`;
   };
 
   // 2. 모달 내 앱 설치하기 버튼 핸들러
@@ -186,8 +197,8 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
               className="w-full h-full object-cover"
             />
             <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-emerald-950/85 via-emerald-950/40 to-transparent p-1 text-white">
-              <span className="text-[9px] font-black bg-amber-400 text-emerald-950 px-1.5 py-0.2 rounded-full shadow-xs inline-flex items-center gap-0.5">
-                <Sparkles className="w-2.5 h-2.5 fill-emerald-950" />
+              <span className="text-[9px] font-black bg-amber-400 text-emerald-950 px-2 py-0.5 rounded-full shadow-xs inline-flex items-center gap-0.5 whitespace-nowrap">
+                <Sparkles className="w-2.5 h-2.5 fill-emerald-950 shrink-0" />
                 <span>{isJapanese ? '公式マスコット パキ' : '공식 마스코트 파키'}</span>
               </span>
             </div>
@@ -260,40 +271,42 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
             </div>
           </div>
 
-          {/* 2대 원터치 실행 버튼 (1초 바로 해보기 vs 앱 설치하기) */}
+          {/* 실행 버튼 (앱 모드일 때는 시작하기 단독 표출, 브라우저일 때는 설치 안내 병기) */}
           <div className="space-y-2 pt-0.5">
-            {/* 1. 설치 안 하고 바로 1번 홀 체험해보기 */}
+            {/* 1. 시작하기 버튼 */}
             <button
               type="button"
               onClick={handleStartPractice}
-              className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 active:scale-95 text-white font-black text-xs sm:text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer border border-emerald-800"
+              className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 active:scale-95 text-white font-black text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer border border-emerald-800"
             >
               <Play className="w-4 h-4 text-yellow-300 fill-yellow-300 animate-pulse" />
               <span>
                 {isJapanese
-                  ? '🏌️ 1秒ですぐ体験してみる ▶'
-                  : '🏌️ 1초 만에 바로 해보기 ▶'}
+                  ? (isAlreadyInstalled ? '⛳ 1秒ですぐスタート ▶' : '🏌️ 1秒ですぐ体験してみる ▶')
+                  : (isAlreadyInstalled ? '⛳ 1초 만에 바로 시작하기 ▶' : '🏌️ 1초 만에 바로 해보기 ▶')}
               </span>
             </button>
 
-            {/* 2. 휴대폰에 앱 설치하기 버튼 */}
-            <button
-              type="button"
-              onClick={handleAppInstallClick}
-              className="w-full py-2.5 px-4 bg-emerald-800 hover:bg-emerald-900 active:scale-[0.99] border-2 border-emerald-600 text-yellow-300 font-black text-xs sm:text-sm rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition group"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/icon.png"
-                alt="파키 심볼"
-                className="w-4 h-4 rounded-md border border-amber-300 object-cover shrink-0"
-              />
-              <span>
-                {isJapanese
-                  ? '📲 スマホにアプリインストール'
-                  : '📲 휴대폰에 앱 설치하기'}
-              </span>
-            </button>
+            {/* 2. 휴대폰에 앱 설치하기 버튼 (이미 설치된 독립 앱 모드에서는 불필요하므로 노출 안 함) */}
+            {!isAlreadyInstalled && (
+              <button
+                type="button"
+                onClick={handleAppInstallClick}
+                className="w-full py-2.5 px-4 bg-emerald-800 hover:bg-emerald-900 active:scale-[0.99] border-2 border-emerald-600 text-yellow-300 font-black text-xs sm:text-sm rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition group"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/icon.png"
+                  alt="파키 심볼"
+                  className="w-4 h-4 rounded-md border border-amber-300 object-cover shrink-0"
+                />
+                <span>
+                  {isJapanese
+                    ? '📲 スマホにアプリインストール'
+                    : '📲 휴대폰에 앱 설치하기'}
+                </span>
+              </button>
+            )}
 
             {/* 3. 기존 회원의 7자리 회원번호 로그인 안내 */}
             <div className="text-center pt-1">

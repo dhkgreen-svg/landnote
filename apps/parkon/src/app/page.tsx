@@ -11,7 +11,6 @@ import { ConditionStatus } from '@/components/ConditionStatus';
 import { CourseTodayModal } from '@/components/CourseTodayModal';
 import { CourseDetailModal } from '@/components/CourseDetailModal';
 import { InstallPrompt } from '@/components/InstallPrompt';
-import { InstallGuideModal } from '@/components/InstallGuideModal';
 import { autoEscapeIfKakao, isKakaoTalkWebView, escapeKakaoTalk, isIOS } from '@/lib/kakaoEscape';
 import { KakaoLoginModal } from '@/components/KakaoLoginModal';
 import { WelcomeModal } from '@/components/WelcomeModal';
@@ -59,8 +58,6 @@ export default function HomePage() {
   const [hasNewClubNotice, setHasNewClubNotice] = useState<boolean>(false);
   const [showKakaoModal, setShowKakaoModal] = useState<boolean>(false);
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
-  const [showInstallGuideModal, setShowInstallGuideModal] = useState<boolean>(false);
-  const [installGuideTab, setInstallGuideTab] = useState<'KAKAO' | 'CHROME' | 'IOS'>('KAKAO');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showCourseTodayModal, setShowCourseTodayModal] = useState<boolean>(false);
   const [selectedCourseForDetail, setSelectedCourseForDetail] = useState<Course | null>(null);
@@ -163,15 +160,16 @@ export default function HomePage() {
   }, []);
 
   const handleAppInstallClick = async () => {
-    // 1. 카카오톡 내부 브라우저인 경우: 1초 탈출 우선 실행 & 가이드 모달 카톡 탭 오픈
+    // 1. 카카오톡 내부 브라우저인 경우: 스마트폰 기본 인터넷(크롬)으로 즉시 열기
     if (isKakaoTalkWebView()) {
       escapeKakaoTalk();
-      setInstallGuideTab('KAKAO');
-      setShowInstallGuideModal(true);
+      setShareToastMessage('스마트폰 기본 인터넷(크롬)으로 열어 바로 설치합니다...');
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 3500);
       return;
     }
 
-    // 2. 안드로이드 / 크롬 / 삼성인터넷: PWA 자동 설치창이 준비되어 있으면 즉시 시스템 설치창 호출
+    // 2. 안드로이드 / 크롬 / 삼성인터넷: PWA 자동 설치창이 준비되어 있으면 즉시 시스템 설치창 호출!
     if (deferredPrompt && deferredPrompt.prompt) {
       try {
         await deferredPrompt.prompt();
@@ -184,20 +182,14 @@ export default function HomePage() {
         setDeferredPrompt(null);
         return;
       } catch (err) {
-        console.warn('Direct prompt failed or blocked, opening guide modal', err);
+        console.warn('Direct prompt error', err);
       }
     }
 
-    // 3. 애플 iOS Safari 기기인 경우: 2스텝 사파리 홈 화면 추가 가이드 모달 즉시 실행
-    if (isIOS()) {
-      setInstallGuideTab('IOS');
-      setShowInstallGuideModal(true);
-      return;
-    }
-
-    // 4. 그 외 안드로이드/PC 브라우저 안내창 표출
-    setInstallGuideTab('CHROME');
-    setShowInstallGuideModal(true);
+    // 3. 심플 1줄 토스트 안내 (어르신 눈높이)
+    setShareToastMessage('스마트폰 화면의 [설치]를 눌러주세요.');
+    setShowShareToast(true);
+    setTimeout(() => setShowShareToast(false), 3500);
   };
 
   const hasRestoredMemberRef = useRef(false);
@@ -217,8 +209,7 @@ export default function HomePage() {
     }
 
     const savedCode = getSavedMemberCode();
-    const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    const activeCode = savedCode || (isLocalHost ? 'PKY-7788' : '');
+    const activeCode = savedCode;
 
     if (activeCode) {
       fetchAndRestoreMemberData(activeCode).then((res) => {
@@ -249,14 +240,36 @@ export default function HomePage() {
       }
 
       const homeId = ParkOnStorage.getHomeCourseId();
-      const foundHome = allCourses.find((c) => c.id === homeId) || (country === 'JP' ? allCourses.find((c) => c.country === 'JP') : allCourses[0]) || allCourses[0];
+      const isGoro = homeId?.toLowerCase().includes('goro') || homeId?.includes('고로');
+      if (isGoro && typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('parkon_home_course_id_v1');
+          localStorage.removeItem('parkon_home_course_id');
+        } catch {}
+      }
+      const foundHome = (homeId && !isGoro) ? allCourses.find((c) => c.id === homeId) || null : null;
       setHomeCourse(foundHome);
+
+      // 대표님 절대 지침: 과거 더미 4개 즐겨찾기(고로, 구미, 동락, 양포) 캐시 완전 삭제
+      if (typeof window !== 'undefined') {
+        try {
+          const rawFavs = localStorage.getItem('parkon_favorite_home_courses_v1') || localStorage.getItem('parkon_favorite_home_courses');
+          if (rawFavs && (rawFavs.includes('goro') || rawFavs.includes('고로') || rawFavs.includes('course-gumi-dongrak'))) {
+            localStorage.removeItem('parkon_favorite_home_courses_v1');
+            localStorage.removeItem('parkon_favorite_home_courses');
+          }
+        } catch {}
+      }
 
       const favIds = ParkOnStorage.getFavoriteHomeCourseIds();
       setFavoriteHomeCourseIds(favIds);
 
       const current = ParkOnStorage.getCurrentRound();
-      if (current && current.status === 'IN_PROGRESS') {
+      // 가상 연습(virtual_) 세션이나 찌꺼기 라운드는 홈 메인에 배너로 남기지 않고 즉시 정리
+      if (current && (current.id?.startsWith('virtual_') || current.courseName === '고로')) {
+        ParkOnStorage.clearCurrentRound();
+        setActiveRound(null);
+      } else if (current && current.status === 'IN_PROGRESS') {
         setActiveRound(current);
       } else {
         setActiveRound(null);
@@ -889,7 +902,7 @@ export default function HomePage() {
       {/* -1. 첫 방문자 환영 및 로그인/게스트 선택 관문 모달 */}
       <WelcomeModal
         onOpenKakaoLogin={() => setShowKakaoModal(true)}
-        onOpenInstallGuide={() => setShowInstallGuideModal(true)}
+        onOpenInstallGuide={handleAppInstallClick}
       />
 
       {/* -2. 파키의 파크골프 웹툰북 & 룰 Q&A 모달 */}
@@ -1021,31 +1034,62 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* 검색 결과 창 스타일: 흰색 배경에 선택된 구장 이름과 2줄 이중 병기 표출 */}
-          {(() => {
-            const dual = getCourseDualName(homeCourse, isJapanese);
-            return (
-              <div
-                onClick={() => setShowHomeModal(true)}
-                className="w-full bg-white text-stone-900 rounded-2xl px-4 py-2.5 shadow-md flex items-center justify-between cursor-pointer hover:bg-stone-50 transition active:scale-[0.99]"
-              >
-                <div className="flex flex-col min-w-0 pr-2">
-                  <div className="flex items-center gap-1.5 truncate">
-                    <span className="text-base sm:text-lg font-black text-stone-950 tracking-tight truncate flex items-center gap-1.5" suppressHydrationWarning>
-                      {dual.flag && <span>{dual.flag}</span>}
-                      <span>{dual.primary}</span>
-                    </span>
-                  </div>
-                  {dual.showSecondary && dual.secondary && (
-                    <div className="text-xs font-bold text-stone-500 truncate mt-0.5" suppressHydrationWarning>
-                      {dual.secondary}
-                    </div>
-                  )}
+          {/* 대표님 지침 UX: 신규 진입 시 엉뚱한 구장 노출 금지 -> 친절한 클린 검색창 표출 */}
+          {!homeCourse ? (
+            <div
+              onClick={() => setShowHomeModal(true)}
+              className="w-full bg-white text-stone-900 rounded-2xl px-4 py-3 shadow-md flex items-center justify-between cursor-pointer hover:bg-stone-50 border-2 border-amber-400 transition active:scale-[0.99] group"
+            >
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                  <Search className="w-4 h-4 text-emerald-700 stroke-[2.5]" />
                 </div>
-                <ChevronDown className="w-4 h-4 text-stone-400 shrink-0" />
+                <div className="flex flex-col text-left min-w-0 flex-1">
+                  <span className="text-sm sm:text-base font-black text-stone-800 group-hover:text-emerald-700 transition truncate">
+                    {isJapanese
+                      ? '🔍 コース名・地名を入力してください'
+                      : '🔍 지명이나 골프장 이름을 입력하세요'}
+                  </span>
+                  <span className="text-[11px] font-bold text-stone-400 truncate mt-0.5">
+                    {isJapanese
+                      ? '(例: 忠類、幕別、札幌... タップして検索)'
+                      : '(예: 구미, 양평, 대구, 송도, 화천... 터치하여 검색)'}
+                  </span>
+                </div>
               </div>
-            );
-          })()}
+              <span className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-xs shrink-0 ml-2">
+                {isJapanese ? 'コース検索' : '구장 검색'}
+              </span>
+            </div>
+          ) : (
+            (() => {
+              const dual = getCourseDualName(homeCourse, isJapanese);
+              return (
+                <div
+                  onClick={() => setShowHomeModal(true)}
+                  className="w-full bg-white text-stone-900 rounded-2xl px-4 py-2.5 shadow-md flex items-center justify-between cursor-pointer hover:bg-stone-50 transition active:scale-[0.99] border border-stone-200"
+                >
+                  <div className="flex flex-col min-w-0 pr-2">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="text-base sm:text-lg font-black text-stone-950 tracking-tight truncate flex items-center gap-1.5" suppressHydrationWarning>
+                        {dual.flag && <span>{dual.flag}</span>}
+                        <span>{dual.primary}</span>
+                      </span>
+                    </div>
+                    {dual.showSecondary && dual.secondary && (
+                      <div className="text-xs font-bold text-stone-500 truncate mt-0.5" suppressHydrationWarning>
+                        {dual.secondary}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 text-emerald-700 text-xs font-black shrink-0">
+                    <span>{isJapanese ? '変更' : '변경'}</span>
+                    <ChevronDown className="w-4 h-4 text-stone-400" />
+                  </div>
+                </div>
+              );
+            })()
+          )}
 
           {/* 대표님 제안: 2분할 버튼 [초간단 설명서 (1초 튜토리얼)] vs [라운딩 바로 시작하기 (실전)] */}
           <div className="pt-1">
@@ -1066,18 +1110,36 @@ export default function HomePage() {
               </button>
 
               {/* 오른쪽: 라운딩 바로 시작하기 (실전 정식 기록) */}
-              <Link
-                href={`/round/new?courseId=${homeCourse?.id}`}
-                className="bg-gradient-to-br from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 text-emerald-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition active:scale-[0.97] border-2 border-emerald-300 group"
-              >
-                <div className="flex items-center gap-1 text-sm sm:text-base font-black leading-tight">
-                  <Play className="w-4 h-4 sm:w-4.5 sm:h-4.5 fill-current text-emerald-950" />
-                  <span className="truncate">{isJapanese ? 'スコア記録スタート' : isEnglish ? 'Start Score Record' : '스코어 기록 시작하기'}</span>
-                </div>
-                <span className="text-[10px] sm:text-[10.5px] font-extrabold text-emerald-950 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-                  {isJapanese ? '公式スコアボード保存' : isEnglish ? 'Official Scoreboard' : '공식 스코어보드 저장'}
-                </span>
-              </Link>
+              {homeCourse ? (
+                <Link
+                  href={`/round/new?courseId=${homeCourse.id}`}
+                  className="bg-gradient-to-br from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 text-emerald-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition active:scale-[0.97] border-2 border-emerald-300 group"
+                >
+                  <div className="flex items-center gap-1 text-sm sm:text-base font-black leading-tight">
+                    <Play className="w-4 h-4 sm:w-4.5 sm:h-4.5 fill-current text-emerald-950" />
+                    <span className="truncate">{isJapanese ? 'スコア記録スタート' : isEnglish ? 'Start Score Record' : '스코어 기록 시작하기'}</span>
+                  </div>
+                  <span className="text-[10px] sm:text-[10.5px] font-extrabold text-emerald-950 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
+                    {isJapanese ? '公式スコアボード保存' : isEnglish ? 'Official Scoreboard' : '공식 스코어보드 저장'}
+                  </span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowHomeModal(true);
+                  }}
+                  className="bg-gradient-to-br from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 text-emerald-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition active:scale-[0.97] border-2 border-emerald-300 group cursor-pointer"
+                >
+                  <div className="flex items-center gap-1 text-sm sm:text-base font-black leading-tight">
+                    <Play className="w-4 h-4 sm:w-4.5 sm:h-4.5 fill-current text-emerald-950" />
+                    <span className="truncate">{isJapanese ? 'スコア記録スタート' : isEnglish ? 'Start Score Record' : '스코어 기록 시작하기'}</span>
+                  </div>
+                  <span className="text-[10px] sm:text-[10.5px] font-extrabold text-emerald-950 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
+                    {isJapanese ? 'コースを先に選択' : '구장 먼저 선택하기'}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -2824,26 +2886,29 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 📍 내 지정 홈구장 선택 팝업 모달 */}
+      {/* 📍 골프장 검색 & 선택 모달 (대표님 지침: 엉뚱한 리스트 노출 금지, 오직 깔끔한 지명/구장 검색 및 결과만 표출) */}
       {showHomeModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-stone-200 overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[85vh]">
             {/* Header */}
-            <div className="bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-4 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-amber-300" />
+                <Search className="w-5 h-5 text-amber-300 stroke-[2.5]" />
                 <div>
                   <h3 className="font-black text-base leading-tight">
-                    {isJapanese ? 'マイコース選択' : '다른 내 구장 선택'}
+                    {isJapanese ? 'コース検索 & 選択' : '골프장 검색 & 선택'}
                   </h3>
                   <p className="text-[11px] text-emerald-200 font-medium">
-                    {isJapanese ? 'タップすると選択したコースに切り替わります' : '홈구장을 터치하면 즉시 변경됩니다'}
+                    {isJapanese ? 'コース名・地名を入力して検索してください' : '지명이나 골프장 이름을 입력하여 검색하세요'}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setShowHomeModal(false)}
+                onClick={() => {
+                  setShowHomeModal(false);
+                  setHomeModalSearch('');
+                }}
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -2851,162 +2916,154 @@ export default function HomePage() {
             </div>
 
             {/* Quick Add Course Search Input */}
-            <div className="p-3.5 bg-stone-100/90 border-b border-stone-200">
+            <div className="p-3.5 bg-stone-100 border-b border-stone-200 shrink-0">
               <div className="relative">
-                <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-emerald-600 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={homeModalSearch}
                   onChange={(e) => setHomeModalSearch(e.target.value)}
-                  placeholder={isJapanese ? '新しいコースを検索追加 (例: 忠類、札幌、幕別...)' : '새로운 내 구장 검색 추가 (예: 양포, 양호, 선산, 도개...)'}
-                  className="w-full bg-white text-stone-900 pl-9 pr-3 py-2 rounded-xl text-xs border border-stone-300 focus:outline-hidden focus:border-emerald-600 font-bold placeholder:text-stone-400"
+                  placeholder={isJapanese ? 'コース名・地名を入力 (例: 忠類、幕別、札幌...)' : '지명이나 골프장 이름을 입력하세요 (예: 구미, 양평, 대구, 송도...)'}
+                  className="w-full bg-white text-stone-900 pl-9 pr-9 py-2.5 rounded-xl text-xs sm:text-sm border-2 border-emerald-500/60 focus:outline-hidden focus:border-emerald-600 font-bold placeholder:text-stone-400 shadow-inner"
+                  autoFocus
                 />
+                {homeModalSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setHomeModalSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
-
-              {/* 검색 결과 드롭다운 */}
-              {homeModalSearch.trim() && (
-                <div className="mt-2 max-h-44 overflow-y-auto bg-white rounded-xl border border-stone-200 shadow-md divide-y divide-stone-100">
-                  {courses
-                    .filter((c) => {
-                      const q = homeModalSearch.trim().toLowerCase();
-                      const noSpaceQ = q.replace(/\s+/g, '');
-                      const name = c.name.toLowerCase();
-                      const noSpaceName = name.replace(/\s+/g, '');
-                      const reg = (c.region || '').toLowerCase();
-                      const addr = (c.address || '').toLowerCase();
-                      const isYanghoQuery = q.includes('양포') || q.includes('양호') || noSpaceQ.includes('양포') || noSpaceQ.includes('양호');
-                      const isYanghoCourse = name.includes('양포') || name.includes('양호') || addr.includes('양호');
-                      return (
-                        name.includes(q) ||
-                        noSpaceName.includes(noSpaceQ) ||
-                        reg.includes(q) ||
-                        addr.includes(q) ||
-                        (isYanghoQuery && isYanghoCourse)
-                      );
-                    })
-                    .slice(0, 8)
-                    .map((sc) => {
-                      const isAlreadyInMyList = myHomeCourseList.some((m) => m.id === sc.id);
-                      return (
-                        <div key={sc.id} className="p-2.5 flex items-center justify-between hover:bg-stone-50 text-xs">
-                          <div>
-                            <div className="font-black text-stone-900">{getLocalizedCourseName(sc)}</div>
-                            <div className="text-[10px] text-stone-500">{getLocalizedCourseRegion(sc)} · {formatCourseHolesText(sc)}</div>
-                          </div>
-                          {isAlreadyInMyList ? (
-                            <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">
-                              {isJapanese ? '登録済み' : '내 구장 등록됨'}
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                ParkOnStorage.addFavoriteHomeCourse(sc.id);
-                                setFavoriteHomeCourseIds(ParkOnStorage.getFavoriteHomeCourseIds());
-                                setHomeModalSearch('');
-                              }}
-                              className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-[11px] rounded-lg cursor-pointer transition active:scale-95"
-                            >
-                              {isJapanese ? '+ マイコース追加' : '+ 내 구장 추가'}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                </div>
-              )}
             </div>
 
-            {/* Content: 내 구장 목록 */}
-            <div className="p-4 space-y-2.5 max-h-[50vh] overflow-y-auto">
-              <div className="flex items-center justify-between text-xs text-stone-600 font-bold mb-1">
-                <span>{isJapanese ? `設定したマイコース (${myHomeCourseList.length}箇所)` : `내가 지정한 홈 구장 (${myHomeCourseList.length}개소)`}</span>
-                <Link
-                  href="/courses"
-                  onClick={() => setShowHomeModal(false)}
-                  className="text-emerald-700 hover:text-emerald-900 flex items-center gap-0.5 text-[11px] font-black"
-                >
-                  <span>{isJapanese ? '全国コース検索' : '전국 구장 찾기'}</span>
-                  <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
+            {/* Modal Body: 검색어 입력 전 vs 검색 결과 표출 */}
+            {!homeModalSearch.trim() ? (
+              <div className="p-6 text-center space-y-4 my-auto overflow-y-auto">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-2xl shadow-inner">
+                  ⛳
+                </div>
+                <div>
+                  <h4 className="font-black text-stone-800 text-sm sm:text-base">
+                    {isJapanese ? 'どのコースをお探しですか？' : '어느 골프장으로 가시나요?'}
+                  </h4>
+                  <p className="text-xs text-stone-500 mt-1 leading-relaxed font-medium">
+                    {isJapanese
+                      ? '上の検索バーにコース名や地域名を入力すると、該当コースがリアルタイムで表示されます。'
+                      : '위 검색창에 지역명이나 골프장 이름을 입력하시면 실시간으로 구장이 나타납니다.'}
+                  </p>
+                </div>
 
-              {myHomeCourseList.map((c) => {
-                const isSelected = c.id === homeCourse?.id;
-                return (
-                  <div
-                    key={c.id}
-                    onClick={() => {
-                      handleSelectHomeCourse(c.id);
-                      setShowHomeModal(false);
-                    }}
-                    className={`p-3.5 rounded-2xl border-2 transition cursor-pointer flex items-center justify-between ${
-                      isSelected
-                        ? 'bg-emerald-50/90 border-emerald-600 shadow-xs ring-2 ring-emerald-500/30'
-                        : 'bg-stone-50 border-stone-200 hover:border-emerald-400 hover:bg-emerald-50/30'
-                    }`}
+                {/* 인기 검색 지명 칩 */}
+                <div className="pt-2">
+                  <span className="text-[11px] font-black text-stone-400 block mb-2">
+                    💡 빠른 지명 선택
+                  </span>
+                  <div className="flex flex-wrap justify-center gap-1.5 max-w-xs mx-auto">
+                    {['구미', '양평', '대구', '포항', '송도', '화천', '밀양', '경주'].map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => setHomeModalSearch(tag)}
+                        className="px-3 py-1.5 bg-stone-100 hover:bg-emerald-100 hover:text-emerald-800 text-stone-700 font-extrabold text-xs rounded-xl border border-stone-200 transition active:scale-95 cursor-pointer"
+                      >
+                        #{tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 전국 구장 전체 지도/목록 링크 */}
+                <div className="pt-3 border-t border-stone-100">
+                  <Link
+                    href="/courses"
+                    onClick={() => setShowHomeModal(false)}
+                    className="inline-flex items-center gap-1 text-xs font-black text-emerald-700 hover:text-emerald-900"
                   >
-                    {(() => {
-                      const dual = getCourseDualName(c, isJapanese);
-                      return (
+                    <span>{isJapanese ? '全国400コース一覧を見る ➔' : '전국 400개 구장 지도 & 전체 목록 보기 ➔'}</span>
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              (() => {
+                const searchResults = courses.filter((c) => {
+                  const q = homeModalSearch.trim().toLowerCase();
+                  const noSpaceQ = q.replace(/\s+/g, '');
+                  const name = c.name.toLowerCase();
+                  const noSpaceName = name.replace(/\s+/g, '');
+                  const reg = (c.region || '').toLowerCase();
+                  const addr = (c.address || '').toLowerCase();
+                  const isYanghoQuery = q.includes('양포') || q.includes('양호') || noSpaceQ.includes('양포') || noSpaceQ.includes('양호');
+                  const isYanghoCourse = name.includes('양포') || name.includes('양호') || addr.includes('양호');
+                  return (
+                    name.includes(q) ||
+                    noSpaceName.includes(noSpaceQ) ||
+                    reg.includes(q) ||
+                    addr.includes(q) ||
+                    (isYanghoQuery && isYanghoCourse)
+                  );
+                });
+
+                if (searchResults.length === 0) {
+                  return (
+                    <div className="p-8 text-center space-y-2 my-auto">
+                      <div className="text-3xl">🔍</div>
+                      <div className="text-sm font-black text-stone-800">
+                        {isJapanese ? '該当するコースが見つかりませんでした' : `'${homeModalSearch}' 검색 결과가 없습니다`}
+                      </div>
+                      <div className="text-xs text-stone-500 font-medium">
+                        {isJapanese
+                          ? '他のコース名や地域名で検索してみてください'
+                          : '다른 지명(시·군·구)이나 골프장 이름을 입력해 보세요.'}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="p-3 space-y-2 overflow-y-auto divide-y divide-stone-100 flex-1">
+                    <div className="text-xs text-stone-500 font-bold px-1 pb-1">
+                      검색 결과 ({searchResults.length}개)
+                    </div>
+                    {searchResults.slice(0, 20).map((sc) => (
+                      <div
+                        key={sc.id}
+                        onClick={() => {
+                          handleSelectHomeCourse(sc.id);
+                          setShowHomeModal(false);
+                          setHomeModalSearch('');
+                        }}
+                        className="p-3 rounded-2xl border-2 border-stone-200 hover:border-emerald-500 hover:bg-emerald-50/50 flex items-center justify-between transition cursor-pointer active:scale-[0.99] group bg-white shadow-2xs"
+                      >
                         <div className="min-w-0 flex-1 pr-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-black text-base text-stone-900 flex items-center gap-1.5">
-                              {dual.flag && <span>{dual.flag}</span>}
-                              <span>{dual.primary}</span>
-                            </span>
-                            {isSelected && (
-                              <span className="bg-emerald-700 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <Check className="w-3 h-3 stroke-[3]" />
-                                <span>{isJapanese ? '選択中' : '현재 선택됨'}</span>
-                              </span>
-                            )}
+                          <div className="font-black text-stone-900 text-sm sm:text-base flex items-center gap-1.5 group-hover:text-emerald-800 transition">
+                            <span>⛳</span>
+                            <span>{getLocalizedCourseName(sc)}</span>
                           </div>
-                          {dual.showSecondary && dual.secondary && (
-                            <div className="text-xs text-stone-500 font-bold mt-0.5">
-                              {dual.secondary}
-                            </div>
-                          )}
-                          <div className="text-[11px] text-stone-400 font-semibold mt-0.5">
-                            {getLocalizedCourseRegion(c)} · {formatCourseHolesText(c)}
+                          <div className="text-xs text-stone-500 font-medium mt-0.5">
+                            {getLocalizedCourseRegion(sc)} · {formatCourseHolesText(sc)}
                           </div>
                         </div>
-                      );
-                    })()}
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition ${
-                          isSelected
-                            ? 'bg-emerald-700 text-white shadow-xs'
-                            : 'bg-white border border-stone-300 text-stone-700 hover:bg-stone-100'
-                        }`}
-                      >
-                        {isSelected ? (isJapanese ? '選択中' : '선택됨') : (isJapanese ? '選択' : '선택')}
-                      </button>
-
-                      {myHomeCourseList.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={(e) => handleRemoveHomeCourse(e, c.id)}
-                          className="w-8 h-8 rounded-xl text-stone-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer"
-                          title={isJapanese ? 'マイコースから解除' : '내 구장에서 제외'}
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
+                        <span className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-xs transition shrink-0 ml-2">
+                          {isJapanese ? '選択 ➔' : '선택 ➔'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 );
-              })}
-            </div>
+              })()
+            )}
 
             {/* Footer */}
-            <div className="p-3 bg-stone-50 border-t border-stone-200 flex flex-col gap-2">
+            <div className="p-3 bg-stone-50 border-t border-stone-200 shrink-0">
               <button
                 type="button"
-                onClick={() => setShowHomeModal(false)}
+                onClick={() => {
+                  setShowHomeModal(false);
+                  setHomeModalSearch('');
+                }}
                 className="w-full py-3 bg-stone-900 hover:bg-black text-white font-black rounded-xl text-xs transition cursor-pointer active:scale-[0.99]"
               >
                 {isJapanese ? '閉じる' : '닫기'}
@@ -3069,14 +3126,6 @@ export default function HomePage() {
         isOpen={showQuickGuideModal}
         onClose={() => setShowQuickGuideModal(false)}
         homeCourseId={homeCourse?.id}
-      />
-
-      {/* 스마트폰·PC 바탕화면 앱 설치 가이드 모달 */}
-      <InstallGuideModal
-        isOpen={showInstallGuideModal}
-        onClose={() => setShowInstallGuideModal(false)}
-        initialTab={installGuideTab}
-        deferredPrompt={deferredPrompt}
       />
 
       {/* 파크골프 올인원 소개 URL 복사 완료 토스트 */}

@@ -100,8 +100,7 @@ function ChronicleContent() {
     if (hasRestoredMemberRef.current) return;
     hasRestoredMemberRef.current = true;
 
-    const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    const activeCode = getSavedMemberCode() || (isLocalHost ? 'PKY-7788' : '');
+    const activeCode = getSavedMemberCode();
     if (activeCode) {
       import('@/lib/memberCodeUtils').then((m) => {
         m.fetchAndRestoreMemberData(activeCode).then(() => {

@@ -108,13 +108,12 @@ export const ParkOnStorage = {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
       if (!data) {
-        if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        const playerName = typeof localStorage !== 'undefined' ? localStorage.getItem('parkon_player_name')?.trim() : null;
+        const isDummy = !playerName || playerName === '손오공' || playerName === '홍길동' || playerName === '홍길동(본인)' || playerName === '플레이어' || playerName === '본인(조장)' || playerName === '조장(본인)' || playerName === '본인' || playerName === '파크골퍼' || playerName === 'パークゴルファー';
+        if (playerName && !isDummy) {
           return {
-            userName: '김대희',
-            nationalGrade: '기록 준비중',
-            clubName: '수성 파크골프 클럽',
-            phoneNumber: '010-1234-7788',
-            kakaoUser: null,
+            ...DEFAULT_USER_PROFILE,
+            userName: playerName,
           };
         }
         return DEFAULT_USER_PROFILE;
@@ -315,11 +314,9 @@ export const ParkOnStorage = {
   },
 
   getHomeCourseId(): string {
-    const isJp = this.getServiceCountry() === 'JP';
-    const defaultId = isJp ? 'jp-course-makubetsu-tsutsujigaoka' : DEFAULT_COURSES[0].id;
-    if (typeof window === 'undefined') return defaultId;
-    const saved = localStorage.getItem(STORAGE_KEYS.HOME_COURSE_ID);
-    if (!saved) return defaultId;
+    if (typeof window === 'undefined') return '';
+    const saved = localStorage.getItem(STORAGE_KEYS.HOME_COURSE_ID) || localStorage.getItem('parkon_home_course_id');
+    if (!saved || saved.toLowerCase().includes('goro') || saved.includes('고로')) return '';
     return this.normalizeCourseId(saved);
   },
 
@@ -331,53 +328,34 @@ export const ParkOnStorage = {
     this.addFavoriteHomeCourse(validId);
   },
 
-  // 1-1. 복수 홈구장 관리 (최대 30개 지원)
+  // 1-1. 복수 홈구장 관리 (최대 30개 지원 - 신규 사용자는 완전한 클린 상태 유지)
   getFavoriteHomeCourseIds(): string[] {
-    const isJp = this.getServiceCountry() === 'JP';
-    const defaultId = isJp ? 'jp-course-makubetsu-tsutsujigaoka' : DEFAULT_COURSES[0].id;
-    if (typeof window === 'undefined') return [defaultId];
+    if (typeof window === 'undefined') return [];
     try {
       const data = localStorage.getItem(STORAGE_KEYS.FAVORITE_HOME_COURSES);
       if (data) {
         let parsed: string[] = JSON.parse(data);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          let hasMigrated = false;
-          let normalized = parsed.map((id) => {
-            const mapped = this.normalizeCourseId(id);
-            if (mapped !== id) hasMigrated = true;
-            return mapped;
-          });
-
-          // 만약 구미 구장들을 선택했는데 이전 버그로 양포가 누락되었을 경우 자동 복원
-          const hasGumi = normalized.some((id) => id.includes('gumi') || id === 'course-3d43d16b-0a42-4a6f-b8d0-00a74a3bfb09');
-          const hasYangpo = normalized.includes('course-26ed6cca-09c6-42fe-8e1e-773f23a30db1');
-          if (hasGumi && !hasYangpo) {
-            normalized.push('course-26ed6cca-09c6-42fe-8e1e-773f23a30db1');
-            hasMigrated = true;
+          // 과거 더미 4개 세트(고로, 동락, 구미, 양포)가 남아있는 경우 즉시 초기화
+          const isLegacyDummy = parsed.some(
+            (id) =>
+              id.toLowerCase().includes('goro') ||
+              id.includes('고로') ||
+              id === 'course-gumi-dongrak'
+          );
+          if (isLegacyDummy) {
+            localStorage.removeItem(STORAGE_KEYS.FAVORITE_HOME_COURSES);
+            return [];
           }
-
-          const uniqueList = Array.from(new Set(normalized));
-          if (hasMigrated) {
-            this.setFavoriteHomeCourseIds(uniqueList);
-          }
-          return uniqueList;
+          const normalized = parsed
+            .map((id) => this.normalizeCourseId(id))
+            .filter((id) => Boolean(id) && !id.toLowerCase().includes('goro') && !id.includes('고로'));
+          return Array.from(new Set(normalized));
         }
       }
-    } catch {
-      // fallback
-    }
-    // 기본 즐겨찾기 홈구장 시드 (구미 대표 3대 구장: 구미, 동락, 양포)
-    const curHome = this.normalizeCourseId(this.getHomeCourseId());
-    const defaults = Array.from(
-      new Set([
-        curHome,
-        'course-3d43d16b-0a42-4a6f-b8d0-00a74a3bfb09', // 구미파크골프장
-        'course-gumi-dongrak',                          // 동락파크골프장
-        'course-26ed6cca-09c6-42fe-8e1e-773f23a30db1', // 구미 양포(양호)파크골프장
-      ])
-    );
-    this.setFavoriteHomeCourseIds(defaults);
-    return defaults;
+    } catch {}
+    // 신규 방문자: 사전 정보 없는 완전한 클린(Clean) 상태 반환
+    return [];
   },
 
   setFavoriteHomeCourseIds(courseIds: string[]): void {
