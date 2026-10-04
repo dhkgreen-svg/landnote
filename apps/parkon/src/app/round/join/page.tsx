@@ -9,7 +9,7 @@ import { Course, RoundSession } from '@/types/parkon';
 import { CheckCircle2, User, Users, MapPin, ArrowRight, Home, Sparkles, ShieldCheck, Smartphone } from 'lucide-react';
 import { KakaoLoginModal } from '@/components/KakaoLoginModal';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
-import { getSavedMemberCode } from '@/lib/memberCodeUtils';
+import { getSavedMemberCode, MEMBER_CODE_STORAGE_KEY, normalizeMemberCode } from '@/lib/memberCodeUtils';
 import { supabase } from '@/lib/supabase';
 
 function RoundJoinContent() {
@@ -109,12 +109,12 @@ function RoundJoinContent() {
     kakaoUser?.realName ||
     kakaoUser?.nickname ||
     userProfile?.userName ||
-    (isJapanese ? '会員' : '김대희');
+    (isJapanese ? '会員' : '회원');
   const effectiveMemberCode =
     codeParam ||
     getSavedMemberCode() ||
     (kakaoUser as any)?.memberCode ||
-    'PKY-7788';
+    '';
 
   const executeJoin = async (name: string, isGuest: boolean) => {
     const trimmedName = name.trim() || (isGuest ? (isJapanese ? 'ゲスト' : '게스트') : (isJapanese ? '会員' : '회원'));

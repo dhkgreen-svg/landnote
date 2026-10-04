@@ -56,9 +56,27 @@ function NewRoundForm() {
   const [targetHolesCount, setTargetHolesCount] = useState<number>(18);
   const [showRoundModeSelector, setShowRoundModeSelector] = useState<boolean>(false);
 
+  const leaderParam = searchParams.get('leader') || searchParams.get('member') || searchParams.get('user');
+
   useEffect(() => {
     const selfName = getDefaultSelfName(isJapanese);
-    const hasCustomSelf = Boolean(selfName && !isSampleOrPlaceholder(selfName));
+    const effectiveLeader = leaderParam?.trim() || (selfName && !isSampleOrPlaceholder(selfName) ? selfName : (isJapanese ? '' : '김대희'));
+    const hasCustomSelf = Boolean(effectiveLeader && !isSampleOrPlaceholder(effectiveLeader));
+
+    if (effectiveLeader && !isJapanese) {
+      try {
+        const currentProf = ParkOnStorage.getUserProfile() || {};
+        ParkOnStorage.saveUserProfile({
+          ...currentProf,
+          userName: effectiveLeader,
+          nationalGrade: effectiveLeader.includes('김대희') ? '공인 싱글 1급' : '정회원',
+          clubName: '구미 파크골프 클럽',
+        });
+        if (effectiveLeader.includes('김대희')) {
+          localStorage.setItem('parkon_member_code_v1', 'PKY-7788');
+        }
+      } catch (e) {}
+    }
 
     if (playersParam) {
       const names = playersParam
@@ -74,8 +92,8 @@ function NewRoundForm() {
           let name = names[i] || '';
           const isFirst = i === 0;
           if (isFirst) {
-            if (isDefaultCompanionName(name)) {
-              name = hasCustomSelf ? selfName : '';
+            if (!name || isDefaultCompanionName(name)) {
+              name = hasCustomSelf ? effectiveLeader : '';
             }
           } else {
             if (isDefaultCompanionName(name)) {
@@ -94,11 +112,11 @@ function NewRoundForm() {
     } else {
       if (hasCustomSelf) {
         setPlayersList((prev) =>
-          prev.map((p, idx) => ((idx === 0 || p.isSelf) && (!p.name || isDefaultCompanionName(p.name)) ? { ...p, name: selfName, isSelf: true } : p))
+          prev.map((p, idx) => ((idx === 0 || p.isSelf) ? { ...p, name: effectiveLeader, isSelf: true } : p))
         );
       }
     }
-  }, [playersParam, isJapanese]);
+  }, [playersParam, leaderParam, isJapanese]);
 
   // Course correction/expansion modal state
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
