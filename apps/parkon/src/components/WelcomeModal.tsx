@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, Play, Sparkles, ShieldCheck, Lock } from 'lucide-react';
+import { X, Sparkles, ShieldCheck, Lock, Smartphone, ArrowRight } from 'lucide-react';
 import { ParkOnStorage, KakaoAuthUser } from '@/lib/storage';
+import { getOrGenerateMemberCode } from '@/lib/memberCodeUtils';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 interface WelcomeModalProps {
@@ -13,26 +14,8 @@ interface WelcomeModalProps {
 export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeModalProps) {
   const { isJapanese } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const [realNameInput, setRealNameInput] = useState('');
-  const [aliasNameInput, setAliasNameInput] = useState('');
+  const [nameInput, setNameInput] = useState('');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-
-  const [isAlreadyInstalled, setIsAlreadyInstalled] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const checkInstalled = () => {
-      const isStandalone =
-        window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as any).standalone === true ||
-        document.referrer.includes('android-app://') ||
-        localStorage.getItem('parkon_app_installed') === 'true';
-      if (isStandalone) {
-        setIsAlreadyInstalled(true);
-      }
-    };
-    checkInstalled();
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -54,6 +37,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
       localStorage.removeItem('parkon_user_profile');
       localStorage.removeItem('parkon_current_round');
       localStorage.removeItem('parkon_app_installed');
+      localStorage.removeItem('parkon_member_code_v1');
     }
 
     const isDismissed = localStorage.getItem('parkon_welcome_dismissed') === 'true';
@@ -77,80 +61,75 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
     };
   }, []);
 
-  const saveEffectiveName = (): { realName: string; aliasName: string } => {
-    const rawReal = realNameInput.trim();
-    const effectiveReal = rawReal && rawReal !== '홍길동' ? rawReal : '';
-    const effectiveAlias = aliasNameInput.trim() || '파크골퍼';
-    const profile = ParkOnStorage.getUserProfile();
-    ParkOnStorage.saveUserProfile({
-      ...profile,
-      userName: effectiveReal || '플레이어',
-    });
-    if (effectiveReal) {
+  // 📲 대표님 특명: 성명 입력 + 단 1개의 [📲 스마트폰에 앱 설치하고 바로 시작하기] 원스톱 실행
+  const handleInstallAndStart = async () => {
+    const rawName = nameInput.trim();
+    const effectiveName = rawName && rawName !== '홍길동' ? rawName : (isJapanese ? 'パークゴルファー' : '파크골퍼');
+
+    // 1. 프로필 저장 및 7자리 고유번호 발급
+    try {
+      const profile = ParkOnStorage.getUserProfile() || {};
+      ParkOnStorage.saveUserProfile({
+        ...profile,
+        userName: effectiveName,
+        nationalGrade: effectiveName.includes('김대희') ? '공인 싱글 1급' : '정회원',
+        clubName: '구미 파크골프 클럽',
+      });
+
       const guestUser: KakaoAuthUser = {
         id: 'guest_' + Date.now(),
-        nickname: effectiveAlias,
-        realName: effectiveReal,
-        aliasName: effectiveAlias,
+        nickname: effectiveName,
+        realName: effectiveName,
+        aliasName: effectiveName,
         preferredDisplay: 'REAL',
         connectedAt: new Date().toISOString(),
       };
       ParkOnStorage.setKakaoUser(guestUser);
+
+      // 7자리 회원번호 즉석 발급 & 클라우드 동기화 준비
+      getOrGenerateMemberCode(true);
+    } catch (e) {
+      console.error('Failed to save user profile in welcome modal:', e);
     }
 
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('parkon_welcomed', 'true');
-    }
-    window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: effectiveReal || '플레이어' } }));
-    return { realName: effectiveReal || '플레이어', aliasName: effectiveAlias };
-  };
-
-  // 1. 1초 만에 바로 시작하기 (실명/별명 저장 후 모달을 닫고 깨끗한 메인 홈 화면 표출)
-  const handleStartPractice = () => {
-    const { realName } = saveEffectiveName();
-    setIsOpen(false);
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
-    }
-    window.dispatchEvent(new CustomEvent('parkon_show_header_login_tip', { detail: { name: realName } }));
-  };
-
-  // 2. 모달 내 앱 설치하기 버튼 핸들러
-  const handleAppInstallClick = async () => {
+    // 2. 브라우저 PWA 앱 설치 팝업 호출
     const ua = typeof window !== 'undefined' ? window.navigator.userAgent.toLowerCase() : '';
     const isIos = /iphone|ipad|ipod/.test(ua) && !ua.includes('crios');
 
-    // 1) 애플 아이폰/아이패드 사파리인 경우: 우리가 제작한 3단계 설치 가이드 모달 즉시 실행
     if (isIos) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('parkon_welcomed', 'true');
+      }
       setIsOpen(false);
       if (onOpenInstallGuide) onOpenInstallGuide();
       return;
     }
 
-    // 2) 안드로이드/크롬 환경: PWA 자동 설치창 직접 호출
     if (deferredPrompt && deferredPrompt.prompt) {
       try {
         await deferredPrompt.prompt();
         const choice = await deferredPrompt.userChoice;
-        if (choice.outcome === 'accepted') {
+        if (choice && choice.outcome === 'accepted') {
           try {
             localStorage.setItem('parkon_app_installed', 'true');
           } catch {}
-          setIsOpen(false);
         }
         setDeferredPrompt(null);
-        return;
       } catch (err) {
         console.warn('Install prompt error', err);
       }
     }
 
-    // 3) 폴백: 설치 안내 모달 표출
-    setIsOpen(false);
-    if (onOpenInstallGuide) {
-      onOpenInstallGuide();
+    // 3. 모달 닫기 및 메인 화면 진입
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('parkon_welcomed', 'true');
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' as any });
     }
+    setIsOpen(false);
+
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: effectiveName } }));
+    window.dispatchEvent(new CustomEvent('parkon_show_header_login_tip', { detail: { name: effectiveName } }));
   };
 
   const handleClose = () => {
@@ -163,33 +142,32 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
   if (!isOpen) return null;
 
   return (
-    /* 대표님 지침: 중간에 뜨지 않고 항상 제일 위(최상단)를 기준으로 팝업 창이 시작되도록 items-start 및 상단 마진 설정 */
-    <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-sm flex items-start justify-center p-2.5 sm:p-4 pt-2 sm:pt-5 overflow-y-auto animate-fadeIn">
-      <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl animate-scaleUp overflow-hidden border-2 border-emerald-300 flex flex-col mb-8 mt-1 sm:mt-2">
+    <div className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-xs flex items-start justify-center p-2.5 sm:p-4 pt-2 sm:pt-5 overflow-y-auto animate-fadeIn">
+      <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl animate-scaleUp overflow-hidden border-2 border-emerald-400 flex flex-col mb-8 mt-1 sm:mt-2">
         {/* 상단 헤더 바 */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-emerald-600 shrink-0 bg-emerald-700 text-white">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-emerald-700 shrink-0 bg-gradient-to-r from-emerald-800 to-emerald-900 text-white">
           <div className="flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-amber-400 text-emerald-950 flex items-center justify-center font-black text-[11px] shadow-xs">
+            <span className="w-5 h-5 rounded-full bg-yellow-400 text-emerald-950 flex items-center justify-center font-black text-[11px] shadow-xs">
               ⛳
             </span>
-            <span className="text-xs font-black tracking-tight">
-              종이 없는 파크골프, 파크골프 올인원
+            <span className="text-xs font-black tracking-tight text-white">
+              {isJapanese ? 'パークゴルフ オールインワン' : '종이 없는 파크골프, 파크골프 올인원'}
             </span>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="w-7 h-7 rounded-full bg-emerald-800/80 hover:bg-emerald-900 text-white flex items-center justify-center font-bold text-sm cursor-pointer transition active:scale-95"
+            className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center font-bold text-sm cursor-pointer transition active:scale-95"
             aria-label="닫기"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* 본문 콘텐츠 (컴팩트 세로 높이) */}
-        <div className="p-3 overflow-y-auto space-y-2 flex-1 overscroll-contain text-center">
+        {/* 본문 콘텐츠 */}
+        <div className="p-4 overflow-y-auto space-y-3 flex-1 overscroll-contain text-center">
           {/* 파키 마스코트 사진 */}
-          <div className="relative rounded-2xl overflow-hidden shadow-md border-2 border-emerald-400/80 bg-stone-100 aspect-square max-w-[85px] sm:max-w-[95px] mx-auto">
+          <div className="relative rounded-2xl overflow-hidden shadow-lg border-2 border-emerald-400/80 bg-stone-100 aspect-square max-w-[90px] sm:max-w-[100px] mx-auto">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/mascot/사진저장고_사진_20260913_28.jpg"
@@ -197,7 +175,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
               className="w-full h-full object-cover"
             />
             <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-emerald-950/85 via-emerald-950/40 to-transparent p-1 text-white">
-              <span className="text-[9px] font-black bg-amber-400 text-emerald-950 px-2 py-0.5 rounded-full shadow-xs inline-flex items-center gap-0.5 whitespace-nowrap">
+              <span className="text-[9px] font-black bg-yellow-400 text-emerald-950 px-2 py-0.5 rounded-full shadow-xs inline-flex items-center gap-0.5 whitespace-nowrap">
                 <Sparkles className="w-2.5 h-2.5 fill-emerald-950 shrink-0" />
                 <span>{isJapanese ? '公式マスコット パキ' : '공식 마스코트 파키'}</span>
               </span>
@@ -206,7 +184,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
 
           {/* 환영 인사 문구 */}
           <div>
-            <h2 className="text-sm sm:text-base font-black text-stone-900 leading-snug">
+            <h2 className="text-base sm:text-lg font-black text-stone-900 leading-snug">
               {isJapanese ? (
                 <>
                   ようこそ！ <span className="text-emerald-700">パークゴルフ オールインワン</span>へ！
@@ -241,75 +219,46 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
             </div>
           </div>
 
-          {/* 성명 및 별명 (선택) 입력 카드 */}
-          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-2.5 text-left space-y-2">
-            <div>
-              <label className="text-xs font-black text-stone-800 block mb-0.5">
-                {isJapanese ? 'お名前' : '성명'}
-              </label>
-              <input
-                type="text"
-                value={realNameInput}
-                onChange={(e) => setRealNameInput(e.target.value)}
-                placeholder={isJapanese ? 'お名前を入力してください' : '성명을 입력해 주세요'}
-                maxLength={10}
-                className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm font-bold text-stone-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 outline-none transition"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-black text-stone-800 block mb-0.5">
-                {isJapanese ? 'ニックネーム (選択)' : '별명 (선택)'}
-              </label>
-              <input
-                type="text"
-                value={aliasNameInput}
-                onChange={(e) => setAliasNameInput(e.target.value)}
-                placeholder={isJapanese ? 'ニックネームを入力してください' : '별명을 입력해 주세요'}
-                maxLength={10}
-                className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm font-bold text-stone-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 outline-none transition"
-              />
-            </div>
+          {/* 1. [대표님 지침: 입력창 단일화] 성명 (또는 닉네임) 단 1개의 입력 필드 */}
+          <div className="bg-stone-50 border-2 border-emerald-200 rounded-2xl p-3 text-left space-y-1.5">
+            <label className="text-xs font-black text-stone-900 block flex items-center justify-between">
+              <span>{isJapanese ? '🏌️ お名前 (またはニックネーム)' : '🏌️ 성명 (또는 닉네임)'}</span>
+              <span className="text-[10px] text-emerald-700 font-extrabold bg-emerald-100 px-1.5 py-0.2 rounded">1초 자동가입</span>
+            </label>
+            <input
+              type="text"
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              placeholder={isJapanese ? 'お名前を入力してください (例: 山田)' : '성함(또는 닉네임)을 입력해 주세요 (예: 김대희)'}
+              maxLength={12}
+              className="w-full px-3.5 py-3 bg-white border-2 border-stone-200 rounded-xl text-sm font-bold text-stone-900 focus:border-emerald-600 focus:bg-white outline-hidden transition placeholder:text-stone-400 shadow-inner"
+            />
           </div>
 
-          {/* 실행 버튼 (앱 모드일 때는 시작하기 단독 표출, 브라우저일 때는 설치 안내 병기) */}
-          <div className="space-y-2 pt-0.5">
-            {/* 1. 시작하기 버튼 */}
+          {/* 2. [대표님 지침: 버튼 통합] 단 1개의 강력한 대형 액션 버튼 */}
+          <div className="space-y-2 pt-1">
             <button
               type="button"
-              onClick={handleStartPractice}
-              className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 active:scale-95 text-white font-black text-sm rounded-2xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer border border-emerald-800"
+              onClick={handleInstallAndStart}
+              className="w-full py-4 px-3 bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600 hover:from-emerald-500 hover:to-emerald-400 active:scale-98 text-white font-black text-sm sm:text-base rounded-2xl shadow-xl transition flex items-center justify-center gap-2 cursor-pointer border-2 border-emerald-300"
             >
-              <Play className="w-4 h-4 text-yellow-300 fill-yellow-300 animate-pulse" />
-              <span>
+              <Smartphone className="w-5 h-5 text-yellow-300 fill-yellow-300 shrink-0 animate-bounce" />
+              <span className="truncate">
                 {isJapanese
-                  ? (isAlreadyInstalled ? '⛳ 1秒ですぐスタート ▶' : '🏌️ 1秒ですぐ体験してみる ▶')
-                  : (isAlreadyInstalled ? '⛳ 1초 만에 바로 시작하기 ▶' : '🏌️ 1초 만에 바로 해보기 ▶')}
+                  ? '📲 スマホにアプリ追加＆すぐスタート ⛳'
+                  : '📲 스마트폰에 앱 설치하고 바로 시작하기'}
               </span>
+              <ArrowRight className="w-4 h-4 shrink-0" />
             </button>
 
-            {/* 2. 휴대폰에 앱 설치하기 버튼 (이미 설치된 독립 앱 모드에서는 불필요하므로 노출 안 함) */}
-            {!isAlreadyInstalled && (
-              <button
-                type="button"
-                onClick={handleAppInstallClick}
-                className="w-full py-2.5 px-4 bg-emerald-800 hover:bg-emerald-900 active:scale-[0.99] border-2 border-emerald-600 text-yellow-300 font-black text-xs sm:text-sm rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition group"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/icon.png"
-                  alt="파키 심볼"
-                  className="w-4 h-4 rounded-md border border-amber-300 object-cover shrink-0"
-                />
-                <span>
-                  {isJapanese
-                    ? '📲 スマホにアプリインストール'
-                    : '📲 휴대폰에 앱 설치하기'}
-                </span>
-              </button>
-            )}
+            <p className="text-[11px] text-stone-500 font-bold">
+              {isJapanese
+                ? '※ タッチするとホーム画面にアプリが作成され、すぐ始まります。'
+                : '※ 터치 시 바탕화면에 1초 앱이 생성되며 즉시 시작됩니다.'}
+            </p>
 
             {/* 3. 기존 회원의 7자리 회원번호 로그인 안내 */}
-            <div className="text-center pt-1">
+            <div className="text-center pt-2">
               <button
                 type="button"
                 onClick={() => {
