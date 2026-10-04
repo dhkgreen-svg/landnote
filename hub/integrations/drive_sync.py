@@ -59,12 +59,18 @@ def get_destinations():
     gdrive_candidates = [
         os.getenv("GOOGLE_DRIVE_BACKUP_PATH", "G:/내 드라이브/AntiGravity_Backups"),
         "G:/내 드라이브/AntiGravity_Backups",
-        "G:/My Drive/AntiGravity_Backups"
+        "G:/My Drive/AntiGravity_Backups",
+        "C:/Users/Admin/Google Drive/AntiGravity_Backups",
+        "D:/Google Drive/AntiGravity_Backups"
     ]
     for gpath in gdrive_candidates:
         if os.path.exists(os.path.dirname(gpath)):
-            dests.append(("gdrive", "Google Drive Desktop (G:)", gpath))
+            dests.append(("gdrive", "Google Drive Cloud Storage", gpath))
             break
+
+    # 4. E: 대용량 보조 스토리지 (834GB+ 여유 공간)
+    if os.path.exists("E:\\"):
+        dests.append(("edrive", "E: 대용량 세컨더리 금고", "E:/AntiGravity_Backups"))
 
     return dests
 

@@ -102,7 +102,8 @@ def classify_command_with_gemini(user_instruction: str) -> dict:
     api_key = os.getenv("GEMINI_API_KEY")
     lower_cmd = user_instruction.lower().strip()
     
-    # 1. 고정밀 일상 한국어 우선 분류
+    if any(k in lower_cmd for k in ["롤백", "복원", "되돌려", "원복", "rollback", "restore"]):
+        return {"action": "rollback", "target": "all", "params": {}}
     if any(k in lower_cmd for k in ["이력", "기록", "history", "로그", "과거", "어제 뭐", "지난 지휘"]):
         return {"action": "history_view", "target": "all", "params": {}}
     if any(k in lower_cmd for k in ["목록", "프로젝트", "list", "어떤 앱", "앱 목록"]):
@@ -133,13 +134,14 @@ def classify_command_with_gemini(user_instruction: str) -> dict:
 작업 목록:
 - "status_report": 시스템 상태, 도메인, 헬스체크 확인 요청
 - "backup": Google Drive 또는 로컬 스토리지 백업/동기화 요청
+- "rollback": 이전 백업 스냅샷으로 롤백/복원 요청
 - "media_image": 배너, 이미지, 사진, 일러스트 생성 요청
 - "media_video": 숏폼, 릴스, 쇼츠 대본 또는 비디오 생성 요청
 - "history_view": 이전 지휘 기록, 과거 로그 조회 요청
 - "code_audit": 시스템 무결성, 코드 품질 감사 요청
 
 반환 형식 (JSON만 출력):
-{{"action": "status_report" | "backup" | "media_image" | "media_video" | "history_view" | "code_audit", "params": {{"prompt": "{user_instruction}"}}}}
+{{"action": "status_report" | "backup" | "rollback" | "media_image" | "media_video" | "history_view" | "code_audit", "params": {{"prompt": "{user_instruction}"}}}}
 
 사용자 명령: {user_instruction}
 """
@@ -207,6 +209,11 @@ def execute_action(plan: dict, raw_input: str):
             for pk, pv in reg.get("projects", {}).items():
                 print(f"  • [{pk}] {pv.get('name')} (포트: {pv.get('localPort', '-')}, URL: {pv.get('productionUrl', '-')})")
         summary = "등록 프로젝트 목록 출력 완료"
+
+    elif action == "rollback":
+        rb_script = os.path.join(HUB_DIR, "integrations", "rollback.py")
+        run_script(rb_script, ["latest"])
+        summary = "가장 최근 정상 스냅샷으로 원클릭 롤백 복원 완료"
 
     elif action == "media_image":
         img_script = os.path.join(HUB_DIR, "generators", "image_gen.py")
@@ -310,12 +317,13 @@ def main():
             print("  [5] 🚀 로컬 애플리케이션 개발 서버 기동 (run)")
             print("  [6] 📋 사령탑 등록 프로젝트 전체 목록 확인 (list)")
             print("  [7] 📜 최근 지휘 이력 및 대화 로그 확인 (history)")
+            print("  [8] 🔄 백업 스냅샷 이력 확인 및 원클릭 복원 (rollback)")
             print("  [0] 🚪 사령탑 콘솔 종료 (exit)")
             print("-" * 80)
-            print("💬 [자연어 지휘]: 번호 대신 '상태 점검해줘', '지금 백업해', '지난 기록 보여줘' 등 입력")
+            print("💬 [자연어 지휘]: 번호 대신 '상태 점검해줘', '지금 백업해', '지난 백업으로 복원해' 등 입력")
             print("=" * 80)
             try:
-                choice = input("\n👉 명령 입력 (0~7 또는 자연어): ").strip()
+                choice = input("\n👉 명령 입력 (0~8 또는 자연어): ").strip()
             except (EOFError, KeyboardInterrupt):
                 break
 
@@ -350,6 +358,17 @@ def main():
                         print(f"  • [{pk}] {pv.get('name')} (포트: {pv.get('localPort', '-')}, URL: {pv.get('productionUrl', '-')})")
             elif choice == "7":
                 show_history(limit=5)
+            elif choice == "8":
+                rb_script = os.path.join(HUB_DIR, "integrations", "rollback.py")
+                run_script(rb_script, ["list"])
+                try:
+                    rb_choice = input("👉 복원할 스냅샷 번호(1) 또는 'latest' 입력 (0=취소): ").strip()
+                    if rb_choice in ["latest", "1"]:
+                        run_script(rb_script, ["latest"])
+                    elif rb_choice.startswith("snapshot_"):
+                        run_script(rb_script, ["--id", rb_choice])
+                except (EOFError, KeyboardInterrupt):
+                    pass
             else:
                 # 자연어 입력으로 처리
                 plan = classify_command_with_gemini(choice)

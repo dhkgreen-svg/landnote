@@ -38,7 +38,7 @@ def generate_video_script(prompt: str) -> str:
     try:
         from google import genai
         client = genai.Client(api_key=api_key)
-        model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        model = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
         
         system_instruction = (
             "당신은 바이럴 숏폼 영상 최고 감독입니다. 15~30초 분량의 쇼츠/릴스 콘티와 대본, "
