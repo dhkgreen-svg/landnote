@@ -51,42 +51,75 @@ def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-def generate_cut_with_ai(topic: str, chapter_num: str):
+def generate_multi_cut_with_ai(topic: str, cut_count: int, pose: str, chapter_num: str):
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    cut_count = int(cut_count) if str(cut_count).isdigit() else 4
+
+    fallback_cuts = []
+    pose_map = {
+        "default": "🐥 친절 안내",
+        "referee": "🚩 호루라기 심판",
+        "swing": "🏌️ 나이스 샷",
+        "shock": "😱 앗! 실수 당황",
+        "thumb": "👍 매너 엄지척"
+    }
+    pose_name = pose_map.get(pose, "🐥 친절 안내")
+
     if not api_key or api_key.startswith("your_"):
+        for i in range(1, cut_count + 1):
+            fallback_cuts.append({
+                "cutNumber": i,
+                "title": f"{topic} - {i}단계 가이드",
+                "badge": "핵심 규정" if i == cut_count else "상황 진행",
+                "badgeType": "penalty" if i == 2 else ("caution" if i == 1 else "info"),
+                "situation": f"{topic} 상황의 {i}번째 진행 단계입니다.",
+                "parkyDialogue": f"선배님들! {i}번째 단계에서는 규칙을 차근차근 확인하며 안전하게 플레이해주세요!",
+                "verdict": "규정에 맞게 처리",
+                "penaltyText": "위반 시 2벌타 주의",
+                "keyPoint": f"{topic}의 원칙을 숙지하면 파크골프가 더 즐겁습니다.",
+                "article": f"대한파크골프협회 공인 규정 제{chapter_num}장",
+                "pose": pose
+            })
         return {
-            "title": f"{topic} 기본 수칙",
-            "badge": "핵심 수칙",
-            "badgeType": "info",
-            "situation": f"{topic} 상황에서 올바른 파크골프 플레이 방법은 무엇일까요?",
-            "parkyDialogue": f"선배님들! {topic} 상황에서는 무리하지 마시고 안전을 지키면서 규정에 맞게 플레이하시는 게 최고예요!",
-            "verdict": "규정 준수 및 안전 플레이",
-            "penaltyText": "위반 시 2벌타 주의",
-            "keyPoint": f"{topic}의 기본 원칙을 숙지하면 훨씬 더 즐거운 라운드가 됩니다.",
-            "article": "대한파크골프협회 공인 규정"
+            "chapterTitle": f"{topic} 완전 정복 ({cut_count}컷)",
+            "cuts": fallback_cuts
         }
 
     try:
         from google import genai
         client = genai.Client(api_key=api_key)
         prompt = f"""
-당신은 대한민국 1등 파크골프 앱 '파키(ParkOn)'의 전속 웹툰 스토리 작가입니다.
-사용자가 요청한 다음 파크골프 규칙/상황을 바탕으로, 어르신 동호인분들이 쉽고 재미있게 이해할 수 있는 1컷 만화 대본을 작성하십시오.
+당신은 대한민국 1등 파크골프 앱 '파키(ParkOn)'의 전문 웹툰 연출 감독 겸 스토리 작가입니다.
+사용자가 요청한 상황을 바탕으로, 동호인 어르신들이 배꼽 잡고 공감하며 쉽게 룰을 배울 수 있는 {cut_count}컷 완결형 웹툰 대본을 작성하십시오.
 
-주제: {topic} (제 {chapter_num}장용)
-마스코트 이름: '파키' (밝고 싹싹하고 예의 바른 귀여운 파크골프 요정 캐릭터)
+주제: {topic}
+총 컷수: {cut_count}컷 (반드시 정확히 {cut_count}개의 컷을 배열로 반환)
+대표 마스코트: '파키' (포즈 컨셉: {pose_name})
+
+[컷별 스토리 연출 가이드]
+- 1컷: 코스에서의 실제 동호인 상황 발생 (일상적인 라운드 장면)
+- 2컷: 흔히 하는 실수나 규정 위반 위기 (동반자들의 웅성거림)
+- 3컷 (또는 중간 컷): 파키가 짠! 나타나 정확한 룰과 판정 설명 (호루라기 또는 명쾌한 해설)
+- 마지막 컷: 올바른 처리 후 멋지게 굿샷을 날리는 훈훈한 마무리
 
 반드시 아래 JSON 형식으로만 응답하십시오:
 {{
-  "title": "한눈에 꽂히는 컷 제목",
-  "badge": "주의 배지 (예: 2벌타 주의, 무벌타 구제, 실격 주의, 에티켓)",
-  "badgeType": "caution" (caution | penalty | info | safe 중 택1),
-  "situation": "동호인이 코스에서 마주치는 구체적인 상황 1~2문장",
-  "parkyDialogue": "파키가 어르신께 친절하게 설명해주는 명쾌한 대사 (2~3문장)",
-  "verdict": "명확한 최종 판정 1문장 (예: 2클럽 이내 무벌타 드롭)",
-  "penaltyText": "벌타 내용 (예: 2벌타, 무벌타, 1타 가산)",
-  "keyPoint": "꼭 기억해야 할 핵심 팁 1문장",
-  "article": "관련 협회 규정 조항 (예: 제4장 제21조)"
+  "chapterTitle": "에피소드 전체 제목 (예: 티샷 매트 두 발 이탈의 비밀)",
+  "cuts": [
+    {{
+      "cutNumber": 1,
+      "title": "1컷 제목",
+      "badge": "상황 배지 (예: 티샷 준비, 2벌타 주의, 무벌타 구제 등)",
+      "badgeType": "info" (info | caution | penalty | safe 중 택1),
+      "situation": "구체적인 만화 연출 상황 1~2문장",
+      "parkyDialogue": "파키가 정답게 설명하는 찰진 대사 2문장",
+      "verdict": "공식 최종 판정 1문장",
+      "penaltyText": "벌타 내용 (예: 2벌타, 무벌타, 1타 가산)",
+      "keyPoint": "어르신이 꼭 기억해야 할 핵심 팁 1문장",
+      "article": "관련 협회 조항 (예: 제3장 제31조)",
+      "pose": "{pose}"
+    }}
+  ]
 }}
 """
         resp = client.models.generate_content(
@@ -96,16 +129,24 @@ def generate_cut_with_ai(topic: str, chapter_num: str):
         )
         return json.loads(resp.text)
     except Exception as e:
+        # Fallback
+        for i in range(1, cut_count + 1):
+            fallback_cuts.append({
+                "cutNumber": i,
+                "title": f"{topic} {i}컷",
+                "badge": "규정 안내",
+                "badgeType": "info",
+                "situation": f"{topic}에 대한 안내입니다.",
+                "parkyDialogue": f"선배님들! {topic} 규칙을 지키면 더욱 품격 있는 라운드가 됩니다!",
+                "verdict": "규정 준수 플레이",
+                "penaltyText": "규정에 따른 처리",
+                "keyPoint": "안전과 매너가 최우선입니다.",
+                "article": "공인 규정",
+                "pose": pose
+            })
         return {
-            "title": f"{topic} 규정 가이드",
-            "badge": "규정 안내",
-            "badgeType": "info",
-            "situation": f"{topic}에 대한 규정을 안내합니다.",
-            "parkyDialogue": f"선배님들! {topic} 상황을 재미있는 만화로 쉽게 익혀보세요!",
-            "verdict": "규정에 맞게 처리",
-            "penaltyText": "상황별 규정 적용",
-            "keyPoint": "안전하고 즐거운 파크골프를 위해 규정을 숙지합시다.",
-            "article": "파크골프 공인 규정"
+            "chapterTitle": f"{topic} 에피소드",
+            "cuts": fallback_cuts
         }
 
 class ToonStudioHandler(http.server.SimpleHTTPRequestHandler):
@@ -169,15 +210,29 @@ class ToonStudioHandler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             req_json = {}
 
-        # 1. AI 컷 대본 자동 생성
+        # 1. AI 단일 컷 대본 자동 생성
         if parsed.path == '/api/generate_ai':
             topic = req_json.get('topic', 'OB 구제 규정')
             ch_num = req_json.get('chapterNumber', '1')
-            generated = generate_cut_with_ai(topic, ch_num)
+            generated = generate_multi_cut_with_ai(topic, 1, 'default', ch_num)
+            cut_data = generated['cuts'][0] if generated.get('cuts') else {}
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.end_headers()
-            self.wfile.write(json.dumps(generated, ensure_ascii=False).encode('utf-8'))
+            self.wfile.write(json.dumps(cut_data, ensure_ascii=False).encode('utf-8'))
+            return
+
+        # 1-2. AI 멀티 컷 (4컷 / 6컷 / 1컷) 에피소드 자동 생성
+        if parsed.path == '/api/generate_multi_cut':
+            topic = req_json.get('topic', '티샷 매트 두 발 이탈 규정')
+            cut_count = req_json.get('cutCount', 4)
+            pose = req_json.get('pose', 'default')
+            ch_num = req_json.get('chapterNumber', '1')
+            result = generate_multi_cut_with_ai(topic, cut_count, pose, ch_num)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
             return
 
         # 2. 챕터/컷 저장
