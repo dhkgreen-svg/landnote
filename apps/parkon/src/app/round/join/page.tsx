@@ -368,98 +368,46 @@ function RoundJoinContent() {
             </div>
           )}
 
-          {/* 대표님 특명: 기존 가입 회원 vs 신규 방문자 맞춤형 1번째 화면 표출 */}
+          {/* 대표님 지침: 정회원 / 신규 구분하여 단일 [⛳ 합류하기] 심플 원터치 버튼 제공 */}
           {isExistingMember ? (
-            /* 👑 [경우 A] 기존 가입 회원: 1초 원터치 공식 라운드 즉시 합류 카드 */
+            /* 👑 정회원: 회원 성명 확인 & 단일 [⛳ 합류하기] 버튼 */
             <div className="space-y-4">
               <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-800 via-emerald-900 to-stone-900 text-white shadow-xl border-2 border-yellow-400 space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-400 text-stone-950 font-black text-xs shadow-xs">
-                    <Sparkles className="w-3.5 h-3.5 fill-stone-950" />
-                    <span>{isJapanese ? '公式正会員 認証完了' : '👑 공식 정회원 인증 완료'}</span>
+                  <span className="text-xs text-yellow-300 font-bold tracking-wider">
+                    회원번호: {effectiveMemberCode}
                   </span>
-                  <span className="text-xs text-yellow-300 font-black tracking-wider">
-                    {effectiveMemberCode}
+                  <span className="text-[11px] bg-yellow-400 text-stone-950 font-black px-2.5 py-0.5 rounded-full">
+                    정회원
                   </span>
                 </div>
 
-                <div className="space-y-1">
-                  <h3 className="text-xl font-black text-white flex items-center gap-1.5">
-                    <span>'{effectiveMemberName}'</span>
-                    <span className="text-sm text-emerald-200 font-bold">
-                      {isJapanese ? '正会員様' : '정회원님'}
-                    </span>
+                <div className="text-center py-1">
+                  <h3 className="text-2xl font-black text-white">
+                    '{effectiveMemberName}' 님
                   </h3>
-                  <p className="text-xs text-emerald-100 font-medium leading-relaxed">
-                    {isJapanese
-                      ? 'すでに正会員としてログインされています。ワンタッチで待合室へ合流し、本日の18ホール戦績がマイ年代記に永久保存されます。'
-                      : '이미 정회원 로그인이 완료되어 있습니다. 터치 한 번으로 라운딩에 즉시 합류하며, 오늘 친 18홀 전적이 나의 연대기에 평생 안전하게 보존됩니다.'}
+                  <p className="text-xs text-emerald-200 mt-1">
+                    {leaderParam} 님의 라운드 팀에 함께합니다.
                   </p>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => executeJoin(effectiveMemberName, false)}
-                  className="w-full py-4.5 bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 hover:from-yellow-300 hover:to-yellow-200 text-stone-950 font-black text-base sm:text-lg rounded-2xl shadow-xl transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border-2 border-yellow-500"
+                  className="w-full py-4.5 bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 hover:from-yellow-300 text-stone-950 font-black text-lg rounded-2xl shadow-xl transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border-2 border-yellow-500"
                 >
-                  <Sparkles className="w-5 h-5 text-stone-950 fill-stone-950" />
-                  <span>
-                    {isJapanese
-                      ? `⚡ '${effectiveMemberName}' 様で公式合流する ⛳`
-                      : `⚡ '${effectiveMemberName}' 님으로 공식 합류하기 ⛳`}
-                  </span>
+                  <span>⛳ 합류하기</span>
                   <ArrowRight className="w-5 h-5 text-stone-950" />
                 </button>
               </div>
-
-              {/* 하단 보조: 다른 이름이나 게스트로 치고 싶은 경우 */}
-              <div className="text-center pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowAltGuestInput(!showAltGuestInput)}
-                  className="text-xs font-bold text-stone-500 hover:text-stone-800 underline underline-offset-4 transition cursor-pointer"
-                >
-                  {showAltGuestInput
-                    ? (isJapanese ? '▲ 正会員合流に戻る' : '▲ 정회원 합류로 돌아가기')
-                    : (isJapanese ? '▼ 別のニックネーム（ゲスト）で参加する' : '▼ 다른 닉네임(게스트)으로 임시 참여하기')}
-                </button>
-              </div>
-
-              {showAltGuestInput && (
-                <div className="p-4 rounded-3xl bg-white border-2 border-stone-300 shadow-sm space-y-3 animate-fadeIn">
-                  <label className="block text-xs font-black text-stone-800">
-                    {isJapanese ? '別のお名前を入力' : '임시 닉네임 입력'}
-                  </label>
-                  <input
-                    type="text"
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
-                    placeholder="예: 김프로, 박사장..."
-                    className="w-full pl-3.5 pr-3 py-3 text-sm bg-stone-50 text-stone-900 border border-stone-300 rounded-xl font-bold focus:outline-hidden focus:border-emerald-600"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => executeJoin(userName.trim() || (isJapanese ? '同伴者' : '동반자'), true)}
-                    className="w-full py-3 bg-stone-700 hover:bg-stone-800 text-white font-black text-sm rounded-xl cursor-pointer"
-                  >
-                    이 닉네임(게스트)으로 참가하기
-                  </button>
-                </div>
-              )}
             </div>
           ) : (
-            /* 🏌️ [경우 B] 신규 미가입 방문자: 2대 핵심 선택 (가입 없이 바로 합류 vs 회원가입과 동시 합류) */
+            /* 🏌️ 신규/미가입자: 성명 입력 + 단일 [⛳ 합류하기] 버튼 */
             <div className="space-y-4">
-              {/* [선택 1] 가입 없이 바로 합류하기 (게스트 빠른 입장) */}
-              <div className="p-4 rounded-3xl bg-white border-2 border-emerald-500 shadow-md space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-black text-stone-800">
-                    {isJapanese ? 'お名前 (またはニックネーム)' : '성함 또는 닉네임 입력'}
-                  </label>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                    {isJapanese ? '登録なしで即合流' : '가입 없이 1초 합류'}
-                  </span>
-                </div>
+              <div className="p-4.5 rounded-3xl bg-white border-2 border-emerald-500 shadow-md space-y-3.5">
+                <label className="block text-xs font-black text-stone-800">
+                  {isJapanese ? 'お名前を入力してください' : '성함을 입력해주세요'}
+                </label>
                 <div className="relative flex items-center">
                   <input
                     type="text"
@@ -467,10 +415,10 @@ function RoundJoinContent() {
                     onChange={(e) => setUserName(e.target.value)}
                     placeholder={
                       isJapanese
-                        ? 'お名前を入力してください (例: 山田プロ)'
-                        : "성명을 적어주세요 (예: 이프로, 최사장...)"
+                        ? 'お名前を入力 (例: 山田)'
+                        : '성명을 적어주세요 (예: 오송)'
                     }
-                    className="w-full pl-3.5 pr-10 py-3 text-base bg-stone-50 text-stone-900 border-2 border-stone-200 rounded-xl font-bold focus:outline-hidden focus:border-emerald-600 focus:bg-white transition placeholder:text-stone-400"
+                    className="w-full pl-3.5 pr-10 py-3.5 text-base bg-stone-50 text-stone-900 border-2 border-stone-200 rounded-xl font-bold focus:outline-hidden focus:border-emerald-600 focus:bg-white transition placeholder:text-stone-400"
                   />
                   {userName ? (
                     <button
@@ -485,35 +433,12 @@ function RoundJoinContent() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => executeJoin(userName.trim() || (isJapanese ? '同伴者' : '동반자'), true)}
-                  className="w-full py-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-base rounded-2xl shadow-lg transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-emerald-400"
+                  onClick={() => executeJoin(userName.trim() || (isJapanese ? '同伴者' : '동반자'), false)}
+                  className="w-full py-4.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 text-white font-black text-lg rounded-2xl shadow-lg transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-emerald-400"
                 >
-                  <span>{isJapanese ? '🏌️ 会員登録なしで今すぐ合流する' : '🏌️ 가입 없이 바로 합류하기'}</span>
+                  <span>⛳ 합류하기</span>
                   <ArrowRight className="w-5 h-5" />
                 </button>
-              </div>
-
-              {/* [선택 2] 파키 회원가입과 동시 합류하기 (정회원 평생 전적 보존) */}
-              <div className="p-4 rounded-3xl bg-gradient-to-br from-amber-50 via-yellow-50/50 to-amber-50 border-2 border-yellow-400 shadow-sm space-y-2.5 text-center">
-                <div className="flex items-center justify-center gap-1.5 text-[11px] font-black text-amber-900">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
-                  <span>{isJapanese ? 'マイ年代記・生涯戦績を永久保存' : '나의 연대기 · 평생 전적 영구 보존'}</span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setShowKakaoModal(true)}
-                  className="w-full py-3.5 bg-yellow-400 hover:bg-yellow-300 text-stone-950 font-black text-sm sm:text-base rounded-2xl shadow-md transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-yellow-500/60"
-                >
-                  <span>{isJapanese ? '⚡ パキ会員登録と同時に合流する' : '⚡ 파키 회원가입과 동시 합류하기'}</span>
-                  <ArrowRight className="w-4 h-4 text-stone-950" />
-                </button>
-
-                <p className="text-[10px] text-stone-500 font-medium">
-                  {isJapanese
-                    ? '※ 1秒簡単認証でパキ正会員となり、本日の戦績がマイ年代記に永久保存されます。'
-                    : '※ 1초 간편인증으로 파키 정회원이 되며, 오늘 친 18홀 전적이 나의 연대기에 평생 저장됩니다.'}
-                </p>
               </div>
             </div>
           )}
