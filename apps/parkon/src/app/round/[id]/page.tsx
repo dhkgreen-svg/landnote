@@ -523,15 +523,26 @@ export default function RoundPlayPage() {
 
       // 7) 🏁 조장이 경기 종료 확정 시, 동반자 전원 실시간 결과 화면으로 자동 이동!
       if (incoming.status === 'COMPLETED') {
-        const myPlayer = session?.players?.find((p) => p.isSelf);
-        const myName = myPlayer?.name;
-        const mergedForMe: RoundSession = {
+        const localCurrent = ParkOnStorage.getCurrentRound();
+        const rawDisplayName = ParkOnStorage.getUserDisplayName();
+        const localPlayerName = typeof localStorage !== 'undefined' ? localStorage.getItem('parkon_player_name')?.trim() : '';
+        const myName =
+          session?.players?.find((p) => p.isSelf)?.name ||
+          localCurrent?.players?.find((p) => p.isSelf)?.name ||
+          (rawDisplayName && rawDisplayName !== '플레이어' ? rawDisplayName : '') ||
+          localPlayerName ||
+          '';
+
+        let mergedForMe: RoundSession = {
           ...incoming,
           players: (incoming.players || []).map((p) => ({
             ...p,
-            isSelf: myName ? p.name === myName : p.isSelf,
+            isSelf: Boolean(myName && p.name === myName),
           })),
         };
+        if (!mergedForMe.players.some((p) => p.isSelf)) {
+          mergedForMe.players = (incoming.players || []).map((p) => ({ ...p }));
+        }
         ParkOnStorage.saveCompletedRound(mergedForMe);
         const rid = effectiveRoomId ? `?id=${incoming.id || roundId}&roomId=${encodeURIComponent(effectiveRoomId)}` : `?id=${incoming.id || roundId}`;
         router.replace(`/round/result${rid}`);

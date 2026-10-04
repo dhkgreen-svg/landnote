@@ -187,12 +187,14 @@ function WaitingContent() {
   };
 
   const leaderName = room?.leaderName || (isJapanese ? 'リーダー' : '조장');
-  const playersList = room?.players || [
+  const maxCount = room?.playerCount || 4;
+  const rawList = room?.players && room.players.length > 0 ? room.players : [
     { id: '1', name: leaderName, isLeader: true },
     { id: '2', name: guestName, isLeader: false },
     { id: '3', name: isJapanese ? '同伴者2 (待機中)' : '동반자2 (대기 중)', isLeader: false },
     { id: '4', name: isJapanese ? '同伴者3 (待機中)' : '동반자3 (대기 중)', isLeader: false },
   ];
+  const playersList = rawList.slice(0, Math.max(1, maxCount));
 
   return (
     <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-start p-4 select-none pb-12">

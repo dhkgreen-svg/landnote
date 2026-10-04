@@ -112,12 +112,17 @@ function ResultContent() {
           .then((data) => {
             if (data.success && data.room?.roundSession) {
               const restored = data.room.roundSession;
-              const selfName = ParkOnStorage.getUserProfile()?.userName || ParkOnStorage.getKakaoUser()?.nickname;
+              const storedPlayerName = typeof localStorage !== 'undefined' ? localStorage.getItem('parkon_player_name')?.trim() : '';
+              const selfName =
+                ParkOnStorage.getUserDisplayName() ||
+                ParkOnStorage.getUserProfile()?.userName ||
+                ParkOnStorage.getKakaoUser()?.nickname ||
+                storedPlayerName;
               const fixedRestored: RoundSession = {
                 ...restored,
                 players: (restored.players || []).map((p: any) => ({
                   ...p,
-                  isSelf: selfName ? p.name === selfName : p.isSelf,
+                  isSelf: selfName && selfName !== '플레이어' ? p.name === selfName : p.isSelf,
                 })),
               };
               ParkOnStorage.saveCompletedRound(fixedRestored);
@@ -249,8 +254,15 @@ function ResultContent() {
     };
   });
 
-  // Sort players by realTotalStrokes ascending (rankings)
-  const rankedPlayers = [...playersWithRealTotals].sort((a, b) => a.realTotalStrokes - b.realTotalStrokes);
+  // Sort players: valid scores (> 0) sorted ascending, unplayed/zero strokes pushed to the end
+  const rankedPlayers = [...playersWithRealTotals].sort((a, b) => {
+    if (a.realTotalStrokes > 0 && b.realTotalStrokes > 0) {
+      return a.realTotalStrokes - b.realTotalStrokes;
+    }
+    if (a.realTotalStrokes > 0 && b.realTotalStrokes <= 0) return -1;
+    if (a.realTotalStrokes <= 0 && b.realTotalStrokes > 0) return 1;
+    return 0;
+  });
 
   // KakaoTalk & LINE Text Generation with per-course breakdown
   const generateKakaoText = () => {
@@ -353,7 +365,8 @@ function ResultContent() {
   };
 
   // Weak Point Prescription Logic
-  const winner = rankedPlayers[0];
+  const validRankedPlayers = rankedPlayers.filter((p) => p.realTotalStrokes > 0);
+  const winner = validRankedPlayers[0] || rankedPlayers[0];
   const mostOBPlayer = [...session.players].sort(
     (a, b) =>
       Object.values(b.obCount).reduce((x, y) => x + y, 0) -
