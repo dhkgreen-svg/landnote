@@ -1034,31 +1034,26 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* 대표님 지침 UX: 신규 진입 시 엉뚱한 구장 노출 금지 -> 친절한 클린 검색창 표출 */}
+          {/* 대표님 지침 UX: 군더더기 예시 제거 및 '검색' 심플 버튼 */}
           {!homeCourse ? (
             <div
               onClick={() => setShowHomeModal(true)}
-              className="w-full bg-white text-stone-900 rounded-2xl px-4 py-3 shadow-md flex items-center justify-between cursor-pointer hover:bg-stone-50 border-2 border-amber-400 transition active:scale-[0.99] group"
+              className="w-full bg-white text-stone-900 rounded-2xl px-3.5 py-3 shadow-md flex items-center justify-between cursor-pointer hover:bg-stone-50 border-2 border-amber-400 transition active:scale-[0.99] group"
             >
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
                   <Search className="w-4 h-4 text-emerald-700 stroke-[2.5]" />
                 </div>
-                <div className="flex flex-col text-left min-w-0 flex-1">
-                  <span className="text-sm sm:text-base font-black text-stone-800 group-hover:text-emerald-700 transition truncate">
+                <div className="flex items-center text-left min-w-0 flex-1">
+                  <span className="text-xs sm:text-sm font-black text-stone-700 group-hover:text-emerald-700 transition truncate">
                     {isJapanese
-                      ? '🔍 コース名・地名を入力してください'
-                      : '🔍 지명이나 골프장 이름을 입력하세요'}
-                  </span>
-                  <span className="text-[11px] font-bold text-stone-400 truncate mt-0.5">
-                    {isJapanese
-                      ? '(例: 忠類、幕別、札幌... タップして検索)'
-                      : '(예: 구미, 양평, 대구, 송도, 화천... 터치하여 검색)'}
+                      ? 'コース名・地名を入力してください'
+                      : '지명이나 골프장 이름을 입력하세요'}
                   </span>
                 </div>
               </div>
-              <span className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-3 py-1.5 rounded-xl shadow-xs shrink-0 ml-2">
-                {isJapanese ? 'コース検索' : '구장 검색'}
+              <span className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-3.5 py-1.5 rounded-xl shadow-xs shrink-0 ml-2">
+                {isJapanese ? '検索' : '검색'}
               </span>
             </div>
           ) : (
@@ -2923,7 +2918,7 @@ export default function HomePage() {
                   type="text"
                   value={homeModalSearch}
                   onChange={(e) => setHomeModalSearch(e.target.value)}
-                  placeholder={isJapanese ? 'コース名・地名を入力 (例: 忠類、幕別、札幌...)' : '지명이나 골프장 이름을 입력하세요 (예: 구미, 양평, 대구, 송도...)'}
+                  placeholder={isJapanese ? 'コース名・地名を入力してください' : '지명이나 골프장 이름을 입력하세요'}
                   className="w-full bg-white text-stone-900 pl-9 pr-9 py-2.5 rounded-xl text-xs sm:text-sm border-2 border-emerald-500/60 focus:outline-hidden focus:border-emerald-600 font-bold placeholder:text-stone-400 shadow-inner"
                   autoFocus
                 />
