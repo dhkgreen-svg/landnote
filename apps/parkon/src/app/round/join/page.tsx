@@ -82,10 +82,27 @@ function RoundJoinContent() {
     setIsExistingMember(hasAccount);
     setUserName('');
 
+    if (memberParam) {
+      try {
+        const existingProf = profile || {};
+        ParkOnStorage.saveUserProfile({
+          ...existingProf,
+          userName: memberParam,
+          nationalGrade: memberParam.includes('김대희') ? '공인 싱글 1급' : '정회원',
+          clubName: '구미 파크골프 클럽',
+        });
+        if (codeParam) {
+          localStorage.setItem(MEMBER_CODE_STORAGE_KEY, normalizeMemberCode(codeParam));
+        }
+      } catch (e) {
+        console.error('Failed to auto-seed profile:', e);
+      }
+    }
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
     };
-  }, [courseParam, memberParam, isJapanese]);
+  }, [courseParam, memberParam, codeParam, isJapanese]);
 
   const effectiveMemberName =
     memberParam ||
