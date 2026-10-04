@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, ShieldAlert, Award, Volume2, Play, Pencil, Database, BarChart2, Search, Filter, Wifi, WifiOff } from 'lucide-react';
 import Link from 'next/link';
-import { Course, RoundPlayer, RoundSession } from '@/types/parkon';
+import { Course, CourseCompletionModalInfo, RoundPlayer, RoundSession } from '@/types/parkon';
 import { ParkOnStorage, requestWakeLock, releaseWakeLock } from '@/lib/storage';
 import { ClubStorage } from '@/lib/clubStorage';
 import { LocalRuleBanner } from '@/components/LocalRuleBanner';
@@ -75,6 +75,9 @@ export default function RoundPlayPage() {
   // 🏌️ [5대 마스터 아키텍처 4] 목표 홀 도달 시 심플 선택 팝업 ([더 치기] vs [종료하기])
   const [showTargetHoleReachedModal, setShowTargetHoleReachedModal] = useState<boolean>(false);
 
+  // 🎉 [대표님 특명 현장 표준] 매 9홀(코스) 완주 시 다음 코스 이동 / 종료 선택 모달
+  const [courseCompletedModalInfo, setCourseCompletedModalInfo] = useState<CourseCompletionModalInfo | null>(null);
+
   // 🏌️ [5대 마스터 아키텍처 5] 제원 수정 현장 팻말 필수 확인 체크박스 (2-Strike 시스템)
   const [signboardChecked, setSignboardChecked] = useState<boolean>(false);
 
@@ -84,6 +87,37 @@ export default function RoundPlayPage() {
   const [crossCheckToast, setCrossCheckToast] = useState<string | null>(null);
   const [showRefereeAssignModal, setShowRefereeAssignModal] = useState<boolean>(false);
   const [showRefereeInviteModal, setShowRefereeInviteModal] = useState<boolean>(false);
+
+  // 👑 [대표님 특명] 조장(기록원) 독점 입력 및 동반자 실시간 확인 모드 상태
+  const [leaderOnlyToast, setLeaderOnlyToast] = useState<string | null>(null);
+  const [showLeaderTransferModal, setShowLeaderTransferModal] = useState<boolean>(false);
+
+  // 현재 접속자가 조장인지 여부 판별
+  const currentLeaderPlayer = session?.players?.find((p) => p.isLeader) || session?.players?.[0];
+  const isCurrentUserLeader = Boolean(
+    currentLeaderPlayer?.isSelf ?? (session?.players?.[0]?.isSelf ?? true)
+  );
+
+  // 👑 조장(기록원) 권한 이전/위임 함수
+  const handleTransferLeader = (targetPlayerId: string) => {
+    if (!session) return;
+    const targetPlayer = session.players.find((p) => p.id === targetPlayerId);
+    const updatedPlayers = session.players.map((p) => ({
+      ...p,
+      isLeader: p.id === targetPlayerId,
+    }));
+    const updatedSession = { ...session, players: updatedPlayers };
+    setSession(updatedSession);
+    updateSession(updatedSession);
+
+    const targetName = targetPlayer?.name || '새 조장';
+    setLeaderOnlyToast(
+      isJapanese
+        ? `👑 代表が [${targetName}] 様に変更されました。`
+        : `👑 조장이 [${targetName}] 님으로 변경되었습니다.`
+    );
+    setTimeout(() => setLeaderOnlyToast(null), 3000);
+  };
 
   // 조장 및 동반자 관리 모달 열기 (본인 이름 및 동반자 이름 유실 방지 자동 보정)
   const openPlayerEditModal = () => {
@@ -135,13 +169,41 @@ export default function RoundPlayPage() {
 
     const active = ParkOnStorage.getCurrentRound();
     if (!active || active.id !== roundId) {
-      // Fallback: check completed rounds
-      const completed = ParkOnStorage.getCompletedRounds().find((r) => r.id === roundId);
-      if (completed) {
-        router.replace(`/round/result?id=${roundId}`);
-        return;
-      }
-      router.replace('/');
+      // 🌐 원격 서버 룸에서 세션 복원 시도 (동반자 직접 입장 또는 새로고침 시 이탈 방지)
+      const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const rid = searchParams?.get('roomId') || 'latest';
+      fetch(`/api/round/room?roomId=${encodeURIComponent(rid)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.room?.roundSession && (data.room.roundSession.id === roundId || !roundId)) {
+            const restored = data.room.roundSession;
+            ParkOnStorage.saveCurrentRound(restored);
+            setSession(restored);
+            setCurrentHole(restored.currentHole || 1);
+            if (restored.holeStep) {
+              setHoleStep(restored.holeStep);
+            }
+            const allCourses = ParkOnStorage.getAllCourses();
+            const foundCourse = allCourses.find((c) => c.id === restored.courseId) || allCourses[0];
+            if (foundCourse) {
+              if (restored.customHolesMetadata && restored.customHolesMetadata.length > 0) {
+                foundCourse.holesMetadata = restored.customHolesMetadata;
+                foundCourse.isSpecsVerified = true;
+              }
+              setCourse(foundCourse);
+            }
+          } else {
+            const completed = ParkOnStorage.getCompletedRounds().find((r) => r.id === roundId);
+            if (completed) {
+              router.replace(`/round/result?id=${roundId}`);
+              return;
+            }
+            router.replace('/');
+          }
+        })
+        .catch(() => {
+          router.replace('/');
+        });
       return;
     }
 
@@ -205,6 +267,9 @@ export default function RoundPlayPage() {
 
     setSession(sanitizedSession);
     setCurrentHole(sanitizedSession.currentHole || 1);
+    if (sanitizedSession.holeStep) {
+      setHoleStep(sanitizedSession.holeStep);
+    }
 
     const allCourses = ParkOnStorage.getAllCourses();
     const foundCourse = allCourses.find((c) => c.id === sanitizedSession.courseId) || allCourses[0];
@@ -316,7 +381,7 @@ export default function RoundPlayPage() {
     };
   }, [roundId]);
 
-  // Sync state to LocalStorage & Club Storage & Offline Backup
+  // Sync state to LocalStorage & Club Storage & Offline Backup & Realtime Broadcast
   const updateSession = useCallback((updated: RoundSession) => {
     setSession(updated);
     ParkOnStorage.saveCurrentRound(updated);
@@ -334,6 +399,34 @@ export default function RoundPlayPage() {
         );
       } catch (e) {}
     }
+
+    // 🌐 실시간 룸 서버 동기화 & BroadcastChannel 즉각 전송 (조장 <-> 동반자 전원 실시간 연동)
+    const effectiveRoomId =
+      updated.roomId ||
+      (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('roomId') : null) ||
+      'latest';
+
+    try {
+      fetch('/api/round/room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'start',
+          roomId: effectiveRoomId,
+          roundSession: updated,
+        }),
+      }).catch(() => {});
+
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('parkon_round_sync');
+        bc.postMessage({
+          type: 'ROUND_SESSION_SYNC',
+          roomId: effectiveRoomId,
+          session: updated,
+        });
+        bc.close();
+      }
+    } catch (e) {}
 
     // Sync to ClubStorage if linked to club room
     if (updated.clubRoomId && updated.clubGroupNumber) {
@@ -353,6 +446,132 @@ export default function RoundPlayPage() {
       ClubStorage.updateGroupScores(updated.clubRoomId, updated.clubGroupNumber, playerUpdates);
     }
   }, []);
+
+  // 🌐 실시간 멀티플레이어 세션 동기화 리스너 (조장 <-> 동반자 전원 실시간 스코어/홀스텝 연동)
+  useEffect(() => {
+    let isSubscribed = true;
+    const effectiveRoomId =
+      session?.roomId ||
+      (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('roomId') : null) ||
+      'latest';
+
+    const applyIncomingSession = (incoming: RoundSession) => {
+      if (!incoming || !isSubscribed) return;
+
+      // 1) 홀 진행 단계(holeStep: TEE_SHOT vs SCORING) 자동 동기화!
+      if (incoming.holeStep) {
+        setHoleStep(incoming.holeStep);
+      }
+
+      // 2) 현재 홀 번호 동기화
+      if (incoming.currentHole && incoming.currentHole !== currentHole) {
+        setCurrentHole(incoming.currentHole);
+      }
+
+      // 3) 카운트 모드 동기화
+      if (incoming.countingMode && incoming.countingMode !== countingMode) {
+        setCountingMode(incoming.countingMode);
+      }
+
+      // 4) 현장 제원(Par, 거리m, 실측여부 등) 팀 전원 실시간 동기화!
+      if (incoming.customHolesMetadata && incoming.customHolesMetadata.length > 0) {
+        const customHoles = incoming.customHolesMetadata;
+        setCourse((prevCourse) => {
+          const all = ParkOnStorage.getAllCourses();
+          const baseCourse = prevCourse || all.find((c) => c.id === incoming.courseId) || all[0];
+          if (!baseCourse) return prevCourse;
+          const mergedCourse: Course = {
+            ...baseCourse,
+            holesMetadata: customHoles,
+            isSpecsVerified: true,
+          };
+          ParkOnStorage.updateCourse(mergedCourse);
+          return mergedCourse;
+        });
+      }
+
+      // 5) 선수 스코어 및 상태 병합 (내 isSelf 플래그는 보존)
+      setSession((prev) => {
+        if (!prev) return incoming;
+        const myPlayer = prev.players?.find((p) => p.isSelf);
+        const myName = myPlayer?.name;
+
+        const mergedPlayers = (incoming.players || []).map((ip) => {
+          const isMe = myName ? ip.name === myName : ip.isSelf;
+          return {
+            ...ip,
+            isSelf: isMe,
+          };
+        });
+
+        const merged: RoundSession = {
+          ...prev,
+          ...incoming,
+          customHolesMetadata: incoming.customHolesMetadata || prev.customHolesMetadata,
+          courseCompletedModal: incoming.courseCompletedModal !== undefined ? incoming.courseCompletedModal : prev.courseCompletedModal,
+          holeStep: incoming.holeStep || prev.holeStep,
+          players: mergedPlayers,
+        };
+        ParkOnStorage.saveCurrentRound(merged);
+        return merged;
+      });
+
+      // 6) 9홀 코스 완주 선택 모달 실시간 동기화 (전원 동일 팝업 표출)
+      if (incoming.courseCompletedModal !== undefined) {
+        setCourseCompletedModalInfo(incoming.courseCompletedModal);
+      }
+
+      // 7) 🏁 조장이 경기 종료 확정 시, 동반자 전원 실시간 결과 화면으로 자동 이동!
+      if (incoming.status === 'COMPLETED') {
+        const myPlayer = session?.players?.find((p) => p.isSelf);
+        const myName = myPlayer?.name;
+        const mergedForMe: RoundSession = {
+          ...incoming,
+          players: (incoming.players || []).map((p) => ({
+            ...p,
+            isSelf: myName ? p.name === myName : p.isSelf,
+          })),
+        };
+        ParkOnStorage.saveCompletedRound(mergedForMe);
+        const rid = effectiveRoomId ? `?id=${incoming.id || roundId}&roomId=${encodeURIComponent(effectiveRoomId)}` : `?id=${incoming.id || roundId}`;
+        router.replace(`/round/result${rid}`);
+        return;
+      }
+    };
+
+    // 1초 주기 서버 폴링 (원격 디바이스 동기화)
+    const pollRoom = async () => {
+      try {
+        const res = await fetch(`/api/round/room?roomId=${encodeURIComponent(effectiveRoomId)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.room?.roundSession) {
+            applyIncomingSession(data.room.roundSession);
+          }
+        }
+      } catch (e) {}
+    };
+
+    pollRoom();
+    const interval = setInterval(pollRoom, 1000);
+
+    // BroadcastChannel 무지연 즉각 동기화 (동일 기기 탭/창)
+    let bc: BroadcastChannel | null = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      bc = new BroadcastChannel('parkon_round_sync');
+      bc.onmessage = (event) => {
+        if (event.data?.session && isSubscribed) {
+          applyIncomingSession(event.data.session);
+        }
+      };
+    }
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+      if (bc) bc.close();
+    };
+  }, [session?.roomId, roundId, holeStep, currentHole, countingMode]);
 
   if (!session || !course) {
     return (
@@ -388,7 +607,10 @@ export default function RoundPlayPage() {
   const courseLetter = currentHoleInfo.cLetter;
   const holeInCourse = currentHoleInfo.hInCourse;
 
-  const holeMetadata = (course.holesMetadata || []).find((m) => Number(m.hole) === baseHoleNumber) || {
+  // 1순위: session에 실시간 동기화된 customHolesMetadata (팀원 전원 즉각 일치)
+  // 2순위: course.holesMetadata
+  const activeHolesMetadata = session?.customHolesMetadata || course?.holesMetadata || [];
+  const holeMetadata = activeHolesMetadata.find((m) => Number(m.hole) === baseHoleNumber) || {
     hole: baseHoleNumber,
     par: 3,
     distanceMeter: 50,
@@ -403,11 +625,11 @@ export default function RoundPlayPage() {
   // 3) 사용자가 직접 기여한 실측 데이터(contributedBy)가 있는 경우에만 '공인 실측'으로 인정
   const isHoleVerified = Boolean(
     holeMetadata.isVerified === true ||
-    (course.isSpecsVerified && holeMetadata.isVerified !== false) ||
+    (course?.isSpecsVerified && holeMetadata.isVerified !== false) ||
     holeMetadata.contributedBy
   );
 
-  const currentPar = Number(holeMetadata.par);
+  const currentPar = Number(holeMetadata.par) || 3;
 
   // Helper to determine which course letter a hole belongs to
   const getCourseLetterForHole = (hNum: number) => {
@@ -585,6 +807,17 @@ export default function RoundPlayPage() {
 
   // Change strokes for a player
   const changeStroke = (playerId: string, delta: number) => {
+    if (!isCurrentUserLeader) {
+      const leaderName = currentLeaderPlayer?.name || '조장';
+      setLeaderOnlyToast(
+        isJapanese
+          ? `👑 スコア入力は代表(${leaderName})のみ可能です。[代表になる]で権限を変更できます。`
+          : `👑 스코어 입력은 조장(${leaderName})님만 가능합니다. 상단 [👑 내가 조장 맡기]로 권한을 가져올 수 있습니다.`
+      );
+      setTimeout(() => setLeaderOnlyToast(null), 3000);
+      return;
+    }
+
     const target = session.players.find((p) => p.id === playerId);
     if (target?.isOut) return;
 
@@ -618,6 +851,17 @@ export default function RoundPlayPage() {
 
   // One-touch OB +2 Button
   const handleOB = (playerId: string) => {
+    if (!isCurrentUserLeader) {
+      const leaderName = currentLeaderPlayer?.name || '조장';
+      setLeaderOnlyToast(
+        isJapanese
+          ? `👑 OB入力は代表(${leaderName})のみ可能です。[代表になる]で権限を変更できます。`
+          : `👑 OB 입력은 조장(${leaderName})님만 가능합니다. 상단 [👑 내가 조장 맡기]로 권한을 가져올 수 있습니다.`
+      );
+      setTimeout(() => setLeaderOnlyToast(null), 3000);
+      return;
+    }
+
     const target = session.players.find((p) => p.id === playerId);
     if (target?.isOut) return;
 
@@ -648,6 +892,17 @@ export default function RoundPlayPage() {
 
   // Reset to default for player (0베이스면 0타로 리셋, Par기준이면 해당 홀 기준타수(Par)로 리셋)
   const resetToPar = (playerId: string) => {
+    if (!isCurrentUserLeader) {
+      const leaderName = currentLeaderPlayer?.name || '조장';
+      setLeaderOnlyToast(
+        isJapanese
+          ? `👑 スコアリセットは代表(${leaderName})のみ可能です。`
+          : `👑 스코어 리셋은 조장(${leaderName})님만 가능합니다.`
+      );
+      setTimeout(() => setLeaderOnlyToast(null), 3000);
+      return;
+    }
+
     const target = session.players.find((p) => p.id === playerId);
     if (target?.isOut) return;
 
@@ -723,6 +978,17 @@ export default function RoundPlayPage() {
 
   // Confirm scores and save to storage
   const handleConfirmHole = () => {
+    if (!isCurrentUserLeader) {
+      const leaderName = currentLeaderPlayer?.name || '조장';
+      setLeaderOnlyToast(
+        isJapanese
+          ? `👑 ホールアウト確認は代表(${leaderName})のみ行えます。[代表になる]で権限を変更できます。`
+          : `👑 점수 확정은 조장(${leaderName})님만 가능합니다. 상단 [👑 내가 조장 맡기]로 권한을 가져올 수 있습니다.`
+      );
+      setTimeout(() => setLeaderOnlyToast(null), 3000);
+      return;
+    }
+
     // 1. Add current hole to confirmedHoles if not already present
     const currentConfirmed = session.confirmedHoles ? [...session.confirmedHoles] : [];
     if (!currentConfirmed.includes(actualHoleNumber)) {
@@ -866,6 +1132,73 @@ export default function RoundPlayPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // 🎉 [대표님 특명 현장 표준] 매 9홀 완주 후 다음 코스로 연장 이동
+  const handleProceedToNextCourse = (targetCourseLetter?: string) => {
+    if (!session) return;
+    const numCourses = course
+      ? course.totalCourses || Math.max(1, Math.round(course.totalHoles / 9))
+      : 2;
+    const availableLetters = COURSE_LETTERS.slice(0, numCourses);
+    const letterToUse = targetCourseLetter || courseCompletedModalInfo?.nextRecommendedLetter || 'A';
+    const targetIdx = Math.max(0, COURSE_LETTERS.indexOf(letterToUse));
+
+    const currentHoles = session.selectedHoleNumbers ? [...session.selectedHoleNumbers] : [];
+    const pastHolesOfLetter = currentHoles.filter((h) => getHoleInfo(h).cLetter === letterToUse);
+    const targetRoundNum = Math.floor(pastHolesOfLetter.length / 9) + 1;
+    const roundOffset = (targetRoundNum - 1) * 1000;
+    const courseStartHole = targetIdx * 9 + 1;
+    const newCourseHoles = [0, 1, 2, 3, 4, 5, 6, 7, 8].map(
+      (i) => roundOffset + courseStartHole + i
+    );
+
+    const updatedHolesList = [...currentHoles, ...newCourseHoles];
+    const targetCurrentHole = currentHoles.length + 1;
+
+    const updatedCourses = session.selectedCourseLetters ? [...session.selectedCourseLetters] : [];
+    if (!updatedCourses.includes(letterToUse)) {
+      updatedCourses.push(letterToUse);
+    }
+
+    const updatedSession: RoundSession = {
+      ...session,
+      currentHole: targetCurrentHole,
+      holeStep: 'TEE_SHOT',
+      totalHoles: updatedHolesList.length,
+      selectedCourseLetters: updatedCourses,
+      selectedHoleNumbers: updatedHolesList,
+      courseCompletedModal: null,
+    };
+
+    setCurrentHole(targetCurrentHole);
+    setHoleStep('TEE_SHOT');
+    setRestingPlayerIds([]);
+    setCourseCompletedModalInfo(null);
+    updateSession(updatedSession);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleFinishRoundFromModal = () => {
+    setCourseCompletedModalInfo(null);
+    if (session) {
+      updateSession({
+        ...session,
+        courseCompletedModal: null,
+      });
+    }
+    handleFinishRound();
+  };
+
+  const handleSelectCustomCourseFromModal = () => {
+    setCourseCompletedModalInfo(null);
+    if (session) {
+      updateSession({
+        ...session,
+        courseCompletedModal: null,
+      });
+    }
+    setShowCoursePicker(true);
+  };
+
   // 9홀 순환 추가 (무제한 자유 라운드 순환 및 목표 홀 연장 시)
   const handleExtendNext9Holes = () => {
     if (!session) return;
@@ -915,6 +1248,7 @@ export default function RoundPlayPage() {
     const updatedSession: RoundSession = {
       ...session,
       currentHole: targetCurrentHole,
+      holeStep: 'TEE_SHOT',
       totalHoles: updatedHolesList.length,
       selectedCourseLetters: updatedCourses,
       selectedHoleNumbers: updatedHolesList,
@@ -933,6 +1267,16 @@ export default function RoundPlayPage() {
   // 다음 홀 직접 이동 처리 (목표 도달 검사 포함)
   const handleProceedNextHoleDirectly = () => {
     if (!session) return;
+    if (!isCurrentUserLeader) {
+      const leaderName = currentLeaderPlayer?.name || '조장';
+      setLeaderOnlyToast(
+        isJapanese
+          ? `👑 次のホールへの移動は代表(${leaderName})のみ可能です。[代表になる]で権限を変更できます。`
+          : `👑 다음 홀 이동은 조장(${leaderName})님만 가능합니다. 상단 [👑 내가 조장 맡기]로 권한을 가져올 수 있습니다.`
+      );
+      setTimeout(() => setLeaderOnlyToast(null), 3000);
+      return;
+    }
     const currentConfirmed = session.confirmedHoles ? [...session.confirmedHoles] : [];
     if (!currentConfirmed.includes(actualHoleNumber)) {
       currentConfirmed.push(actualHoleNumber);
@@ -964,6 +1308,37 @@ export default function RoundPlayPage() {
       return;
     }
 
+    // 🎉 [대표님 특명 현장 표준]: 매 9홀(코스) 완주 시 다음 코스 이동 / 종료 선택 모달 출현!
+    const currentHoleInfo = getHoleInfo(actualHoleNumber);
+    const is9HolesCompleted = currentHoleInfo.hInCourse === 9;
+
+    if (is9HolesCompleted) {
+      const numCourses = course
+        ? course.totalCourses || Math.max(1, Math.round(course.totalHoles / 9))
+        : 2;
+      const availableLetters = COURSE_LETTERS.slice(0, numCourses);
+      const currCourseIdx = Math.max(0, COURSE_LETTERS.indexOf(currentHoleInfo.cLetter));
+      const nextCourseIdx = (currCourseIdx + 1) % (availableLetters.length || 1);
+      const nextRecommendedLetter = availableLetters[nextCourseIdx] || 'A';
+
+      const modalInfo: CourseCompletionModalInfo = {
+        isOpen: true,
+        completedCourseLetter: currentHoleInfo.cLetter,
+        completedRoundNumber: currentHoleInfo.round,
+        completedHolesCount: currentConfirmed.length,
+        nextRecommendedLetter,
+      };
+
+      setCourseCompletedModalInfo(modalInfo);
+      updateSession({
+        ...session,
+        confirmedHoles: currentConfirmed,
+        players: updatedPlayers,
+        courseCompletedModal: modalInfo,
+      });
+      return;
+    }
+
     if (currentHole < session.totalHoles) {
       const nextH = currentHole + 1;
       setCurrentHole(nextH);
@@ -972,6 +1347,7 @@ export default function RoundPlayPage() {
       updateSession({
         ...session,
         currentHole: nextH,
+        holeStep: 'TEE_SHOT',
         confirmedHoles: currentConfirmed,
         players: updatedPlayers,
       });
@@ -1144,6 +1520,7 @@ export default function RoundPlayPage() {
       isFieldVerified,
     };
     ParkOnStorage.saveCompletedRound(finished);
+    updateSession(finished);
 
     // Sync final completion to ClubStorage if linked to club room
     if (finished.clubRoomId && finished.clubGroupNumber) {
@@ -1164,7 +1541,8 @@ export default function RoundPlayPage() {
       ClubStorage.setGroupStatus(finished.clubRoomId, finished.clubGroupNumber, 'FINISHED');
     }
 
-    router.push(`/round/result?id=${finished.id}`);
+    const effectiveRoomId = finished.roomId || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('roomId') : null) || 'latest';
+    router.push(`/round/result?id=${finished.id}&roomId=${encodeURIComponent(effectiveRoomId)}`);
   };
 
   const handleConfirmExitHome = () => {
@@ -1226,8 +1604,9 @@ export default function RoundPlayPage() {
 
     // 2. Update hole metadata in current course (replace or add)
     let found = false;
-    const contributor = session.players[0]?.name || '골퍼 실측';
-    const updatedMetadata = (course.holesMetadata || []).map((m) => {
+    const contributor = (session.players.find((p) => p.isSelf)?.name) || session.players[0]?.name || '골퍼 실측';
+    const existingMetadata = session.customHolesMetadata || course.holesMetadata || [];
+    const updatedMetadata = existingMetadata.map((m) => {
       if (Number(m.hole) === targetHoleNum) {
         found = true;
         return {
@@ -1276,9 +1655,11 @@ export default function RoundPlayPage() {
     }
 
     // 4. Update player scores on this hole to match new par UNCONDITIONALLY (위가 파3이면 밑에도 숫자 3, 파5면 5로 100% 일치)
+    const curConfirmed = session.confirmedHoles || [];
     const updatedPlayers = session.players.map((p) => {
-      const newScores = { ...p.scores, [targetHoleNum]: validatedPar };
-      const totalStrokes = Object.values(newScores).reduce((a, b) => a + b, 0);
+      const isConfirmed = curConfirmed.includes(actualHoleNumber);
+      const newScores = isConfirmed ? p.scores : { ...p.scores, [actualHoleNumber]: validatedPar };
+      const totalStrokes = curConfirmed.reduce((sum, hNum) => sum + (newScores[hNum] || 0), 0);
 
       return {
         ...p,
@@ -1288,10 +1669,13 @@ export default function RoundPlayPage() {
       };
     });
 
-    updateSession({
+    const updatedSession: RoundSession = {
       ...session,
+      customHolesMetadata: updatedMetadata,
       players: updatedPlayers,
-    });
+    };
+    setSession(updatedSession);
+    updateSession(updatedSession);
 
     setShowHoleSpecModal(false);
     setShowSpecConfirmStep(false);
@@ -1353,6 +1737,23 @@ export default function RoundPlayPage() {
           <button
             onClick={() => setCrossCheckToast(null)}
             className="text-purple-200 hover:text-white ml-2 text-sm font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* 👑 조장 독점 입력 & 동반자 실시간 알림 토스트 */}
+      {leaderOnlyToast && (
+        <div className="bg-amber-600 text-white text-xs font-black p-3 rounded-xl shadow-xl border-2 border-yellow-300 flex items-center justify-between animate-fadeIn z-50">
+          <div className="flex items-center gap-2">
+            <span className="text-base">👑</span>
+            <span>{leaderOnlyToast}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLeaderOnlyToast(null)}
+            className="text-amber-100 hover:text-white ml-2 text-sm font-bold cursor-pointer"
           >
             ✕
           </button>
@@ -1651,10 +2052,33 @@ export default function RoundPlayPage() {
 
           {/* 3. [최상단 배치] 단일 대형 버튼: [ 🏌️ 확인 완료 (티샷 시작) ] */}
           <div className="pt-2 space-y-2.5">
+            {!isCurrentUserLeader && (
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs text-amber-900 dark:text-amber-200 font-bold mb-1 shadow-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base">👑</span>
+                  <span>{isJapanese ? `代表(${currentLeaderPlayer?.name || '代表'})がティーショットを開始するとスコア入力画面に自動切替されます。` : `조장(${currentLeaderPlayer?.name || '조장'})님이 티샷을 진행하면 전원 스코어 입력창으로 자동 전환됩니다.`}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const myPlayer = session.players.find((p) => p.isSelf);
+                    if (myPlayer) handleTransferLeader(myPlayer.id);
+                  }}
+                  className="shrink-0 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-black cursor-pointer whitespace-nowrap ml-2 shadow-xs transition active:scale-95"
+                >
+                  {isJapanese ? '私が代表になる' : '내가 조장 맡기'}
+                </button>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={() => {
-                setHoleStep('SCORING');
+                const nextStep: 'SCORING' = 'SCORING';
+                setHoleStep(nextStep);
+                const updated: RoundSession = { ...session, holeStep: nextStep };
+                setSession(updated);
+                updateSession(updated);
                 if (typeof window !== 'undefined' && 'vibrate' in navigator) {
                   try { navigator.vibrate?.(50); } catch (e) {}
                 }
@@ -1666,7 +2090,7 @@ export default function RoundPlayPage() {
               }`}
             >
               <span className="text-2xl">🏌️</span>
-              <span>{t.round.tee_shot_start}</span>
+              <span>{isCurrentUserLeader ? t.round.tee_shot_start : (isJapanese ? '確認完了 (ティーショット開始)' : '확인 완료 (티샷 시작)')}</span>
               <ChevronRight className="w-6 h-6 ml-1" />
             </button>
 
@@ -1770,7 +2194,13 @@ export default function RoundPlayPage() {
           }`}>
             <button
               type="button"
-              onClick={() => setHoleStep('TEE_SHOT')}
+              onClick={() => {
+                const prevStep: 'TEE_SHOT' = 'TEE_SHOT';
+                setHoleStep(prevStep);
+                const updated: RoundSession = { ...session, holeStep: prevStep };
+                setSession(updated);
+                updateSession(updated);
+              }}
               className="bg-white/20 hover:bg-white/30 text-white text-[11px] sm:text-xs font-black px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl transition active:scale-95 flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
             >
               <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -1811,6 +2241,60 @@ export default function RoundPlayPage() {
                 {t.round.score_mode_zero}
               </button>
             </div>
+          </div>
+
+          {/* 👑 [대표님 특명] 조장(기록원) 입력 vs 동반자 실시간 확인 모드 안내 띠 & 권한 위임/맡기 */}
+          <div className={`p-3 rounded-2xl border-2 flex items-center justify-between gap-3 shadow-md ${
+            isCurrentUserLeader
+              ? 'bg-amber-500/10 border-amber-500/50 text-amber-900 dark:text-amber-200'
+              : 'bg-emerald-500/10 border-emerald-500/50 text-emerald-900 dark:text-emerald-200'
+          }`}>
+            <div className="flex items-center gap-2.5">
+              <span className="text-2xl">{isCurrentUserLeader ? '👑' : '👀'}</span>
+              <div>
+                <div className="text-xs sm:text-sm font-black flex items-center gap-1.5">
+                  <span>
+                    {isCurrentUserLeader
+                      ? (isJapanese ? '代表(記録員) 入力モード' : '조장(기록원) 입력 모드')
+                      : (isJapanese ? '同行者 リアルタイム確認モード' : '동반자 실시간 확인 모드')}
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 font-black shadow-xs">
+                    {currentLeaderPlayer?.name || '조장'}
+                  </span>
+                </div>
+                <p className="text-[10px] sm:text-[11px] opacity-85 font-semibold mt-0.5">
+                  {isCurrentUserLeader
+                    ? (isJapanese
+                        ? '入力した打数とOBが同行者全員の画面に即時反映されます。'
+                        : '내가 입력한 타수와 OB가 동반자 전원의 스마트폰에 실시간 반영됩니다.')
+                    : (isJapanese
+                        ? '代表が入力する打数とスコアがこの画面にリアルタイムで表示されます。'
+                        : '조장님이 입력하는 스코어가 내 폰에 실시간으로 반영됩니다.')}
+                </p>
+              </div>
+            </div>
+            {!isCurrentUserLeader ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const myPlayer = session.players.find((p) => p.isSelf);
+                  if (myPlayer) handleTransferLeader(myPlayer.id);
+                }}
+                className="shrink-0 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-md transition active:scale-95 cursor-pointer whitespace-nowrap flex items-center gap-1"
+              >
+                <span>👑</span>
+                <span>{isJapanese ? '私が代表になる' : '내가 조장 맡기'}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowLeaderTransferModal(true)}
+                className="shrink-0 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-black rounded-xl shadow-md transition active:scale-95 cursor-pointer whitespace-nowrap flex items-center gap-1"
+              >
+                <span>👑</span>
+                <span>{isJapanese ? '代表委任' : '조장 위임'}</span>
+              </button>
+            )}
           </div>
 
           {/* 4인 스코어 기입 그리드 */}
@@ -2876,6 +3360,140 @@ export default function RoundPlayPage() {
         </div>
       )}
 
+      {/* 🎉 [대표님 특명 현장 표준]: 매 9홀(코스) 완주 시 다음 코스 이동 / 종료 선택 모달 */}
+      {courseCompletedModalInfo && courseCompletedModalInfo.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl border-2 border-emerald-500 overflow-hidden flex flex-col p-5 space-y-4 animate-scaleUp max-h-[90vh] overflow-y-auto">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-black text-2xl mx-auto shadow-lg shrink-0">
+              🎉
+            </div>
+
+            <div className="text-center space-y-1">
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2.5 py-0.5 rounded-full">
+                {isJapanese ? `${courseCompletedModalInfo.completedCourseLetter}コース 9ホール完走！` : `${courseCompletedModalInfo.completedCourseLetter}코스 (9홀) 완주!`}
+              </span>
+              <h3 className="text-xl font-black text-stone-900">
+                {isJapanese
+                  ? `${courseCompletedModalInfo.completedCourseLetter}コースをすべて終えました！`
+                  : `${courseCompletedModalInfo.completedCourseLetter}코스 라운드를 모두 마쳤습니다!`}
+              </h3>
+              <p className="text-xs text-stone-600 font-semibold leading-relaxed pt-0.5">
+                {isJapanese
+                  ? '次のコースへ進みますか、それとも本日のラウンドを終了しますか？'
+                  : '다음 코스로 이어서 치시겠습니까, 아니면 오늘 경기를 종료하시겠습니까?'}
+              </p>
+            </div>
+
+            {/* 📊 9홀 중간 성적 요약 카드 */}
+            <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3 space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-black text-stone-500 px-1 border-b border-stone-200 pb-1">
+                <span>{isJapanese ? 'プレーヤー' : '플레이어'}</span>
+                <span>{isJapanese ? '9ホール 打数 / 基準差' : '9홀 성적 / 파 대비'}</span>
+              </div>
+              {(() => {
+                const curConfirmed = session.confirmedHoles || [];
+                const sortedRank = [...session.players].sort((a, b) => {
+                  const sa = curConfirmed.reduce((sum, h) => sum + (a.scores[h] || 0), 0);
+                  const sb = curConfirmed.reduce((sum, h) => sum + (b.scores[h] || 0), 0);
+                  return sa - sb;
+                });
+
+                return sortedRank.map((p, idx) => {
+                  const pStrokes = curConfirmed.reduce((sum, h) => sum + (p.scores[h] || 0), 0);
+                  const pPar = curConfirmed.reduce((sum, h) => {
+                    const base = ((Number(h) - 1) % 1000) + 1;
+                    const meta = (session.customHolesMetadata || course?.holesMetadata || []).find((m) => Number(m.hole) === base);
+                    return sum + Number(meta?.par || 3);
+                  }, 0);
+                  const pDiff = pStrokes - pPar;
+
+                  return (
+                    <div key={p.id} className="flex items-center justify-between text-xs py-0.5 px-1">
+                      <div className="flex items-center gap-1.5 font-black text-stone-800">
+                        <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-black ${
+                          idx === 0 ? 'bg-amber-400 text-stone-950' : 'bg-stone-200 text-stone-700'
+                        }`}>
+                          {idx + 1}
+                        </span>
+                        {p.isLeader && <span className="text-[10px] text-amber-600 font-black">👑</span>}
+                        <span>{formatPlayerDisplayName(p.name, p.isSelf, isJapanese)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 font-black">
+                        <span className="text-stone-900">{pStrokes}{isJapanese ? '打' : '타'}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-extrabold ${
+                          pDiff === 0 ? 'bg-emerald-100 text-emerald-800' : pDiff > 0 ? 'bg-rose-100 text-rose-800' : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {pDiff === 0 ? 'E' : pDiff > 0 ? `+${pDiff}` : `${pDiff}`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* 조장 전용 선택 버튼 vs 동반자 대기 안내 */}
+            {isCurrentUserLeader ? (
+              <div className="space-y-2 pt-1">
+                {/* 1. 다음 코스로 이어서 치기 */}
+                <button
+                  type="button"
+                  onClick={() => handleProceedToNextCourse(courseCompletedModalInfo.nextRecommendedLetter)}
+                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-3.5 px-4 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg transition active:scale-[0.98] border border-emerald-400 cursor-pointer"
+                >
+                  <span>
+                    {isJapanese
+                      ? `🏌️ 次のコース(${courseCompletedModalInfo.nextRecommendedLetter}コース)へ進む ➔`
+                      : `🏌️ 다음 코스(${courseCompletedModalInfo.nextRecommendedLetter}코스)로 이어서 치기 ➔`}
+                  </span>
+                </button>
+
+                {/* 2. 오늘 라운드 여기서 경기 종료하기 */}
+                <button
+                  type="button"
+                  onClick={handleFinishRoundFromModal}
+                  className="w-full bg-stone-100 hover:bg-stone-200 text-stone-900 font-black py-3 px-4 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition active:scale-[0.98] border border-stone-300 cursor-pointer"
+                >
+                  <span>{isJapanese ? '🏁 ここでラウンドを終了する' : '🏁 오늘 라운드 여기서 경기 종료하기'}</span>
+                </button>
+
+                {/* 3. 다른 코스/홀 직접 골라가기 */}
+                <button
+                  type="button"
+                  onClick={handleSelectCustomCourseFromModal}
+                  className="w-full bg-stone-50 hover:bg-stone-100 text-stone-600 font-bold py-2.5 px-3 rounded-2xl text-xs flex items-center justify-center gap-1 transition active:scale-[0.98] border border-dashed border-stone-300 cursor-pointer"
+                >
+                  <span>{isJapanese ? '🔄 別のコース・ホールを直接選ぶ' : '🔄 다른 코스·홀 직접 골라가기'}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-center space-y-2">
+                <div className="flex items-center justify-center gap-1.5 text-amber-800 text-xs font-black">
+                  <span className="text-sm">⏳</span>
+                  <span>{isJapanese ? `代表(${currentLeaderPlayer?.name || '代表'})が選択中...` : `조장(${currentLeaderPlayer?.name || '조장'})님이 다음 코스를 선택 중입니다`}</span>
+                </div>
+                <p className="text-[11px] text-stone-600 font-medium">
+                  {isJapanese
+                    ? '代表が次のコースまたは終了を選択すると、全員の画面が自動で移動します。'
+                    : '조장님이 다음 코스 이동 또는 종료를 선택하시면 전원의 화면이 자동으로 함께 이동합니다.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const myPlayer = session.players.find((p) => p.isSelf);
+                    if (myPlayer) handleTransferLeader(myPlayer.id);
+                  }}
+                  className="inline-flex items-center gap-1 text-[11px] bg-white border border-amber-300 text-amber-900 px-3 py-1.5 rounded-xl font-black shadow-2xs hover:bg-amber-100 active:scale-95 cursor-pointer"
+                >
+                  <span>👑</span>
+                  <span>{isJapanese ? '私が代表になる' : '내가 조장 맡기'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* [5대 마스터 아키텍처 1]: 목표 홀 도달 시 심플 2가지 선택 모달 */}
       {showTargetHoleReachedModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
@@ -3777,6 +4395,63 @@ export default function RoundPlayPage() {
           isVirtual={Boolean(session?.isVirtual)}
           onClose={() => setShowConditionModal(false)}
         />
+      )}
+
+      {/* 👑 조장(기록원) 원터치 권한 위임 모달 */}
+      {showLeaderTransferModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-stone-900 border-2 border-amber-400 text-white w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-stone-800 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">👑</span>
+                <h3 className="text-base font-black text-amber-300">
+                  {isJapanese ? '代表(記録員) 権限の委任' : '조장(기록원) 권한 넘기기'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLeaderTransferModal(false)}
+                className="text-stone-400 hover:text-white text-lg font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-xs text-stone-300">
+              {isJapanese
+                ? '誰にスコア記録(代表)権限を委任しますか？'
+                : '누구에게 조장(기록원) 권한을 넘기시겠습니까? 선택한 동반자만 스코어를 입력할 수 있게 됩니다.'}
+            </p>
+            <div className="space-y-2">
+              {session.players
+                .filter((p) => !p.isLeader)
+                .map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      handleTransferLeader(p.id);
+                      setShowLeaderTransferModal(false);
+                    }}
+                    className="w-full p-3 rounded-xl bg-stone-800 hover:bg-amber-500/20 border border-stone-700 hover:border-amber-400 text-left flex items-center justify-between transition active:scale-98 cursor-pointer"
+                  >
+                    <span className="font-bold text-sm text-stone-100">{p.name}</span>
+                    <span className="px-2.5 py-1 bg-amber-500 text-stone-950 font-black text-xs rounded-lg">
+                      {isJapanese ? '委任する' : '조장 넘기기'}
+                    </span>
+                  </button>
+                ))}
+            </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setShowLeaderTransferModal(false)}
+                className="w-full py-2.5 bg-stone-800 text-stone-300 font-bold text-xs rounded-xl hover:bg-stone-700 cursor-pointer"
+              >
+                {isJapanese ? 'キャンセル' : '닫기'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 👑 조장 및 동반자 관리 모달 */}

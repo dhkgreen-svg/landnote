@@ -148,6 +148,18 @@ export interface RoundSession {
   durationMinutes?: number; // 총 소요 시간 (분 단위)
   holeTimestamps?: Record<number, string>; // 홀별 완료 시각 타임스탬프
   isFieldVerified?: boolean; // 🏅 실제 필드 정규 완주 검증 여부 (정상 소요시간 & 홀 진행 검증)
+  holeStep?: 'TEE_SHOT' | 'SCORING'; // 1단계 코스안내 전광판 vs 2단계 4인 스코어보드
+  roomId?: string; // 실시간 룸 동기화 ID
+  customHolesMetadata?: HoleMetadata[]; // 🏌️ 실시간 팀 공유 현장 실측 제원 (Par, 거리m 등)
+  courseCompletedModal?: CourseCompletionModalInfo | null; // 🎉 9홀 코스 완주 시 다음 코스 이동/종료 선택 모달
+}
+
+export interface CourseCompletionModalInfo {
+  isOpen: boolean;
+  completedCourseLetter: string;
+  completedRoundNumber: number;
+  completedHolesCount: number;
+  nextRecommendedLetter: string;
 }
 
 export interface CourseSkillRankItem {

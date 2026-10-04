@@ -104,6 +104,27 @@ function ResultContent() {
       const current = ParkOnStorage.getCurrentRound();
       if (current && current.id === roundId) {
         setSession(current);
+      } else {
+        const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+        const rid = searchParams?.get('roomId') || 'latest';
+        fetch(`/api/round/room?roomId=${encodeURIComponent(rid)}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success && data.room?.roundSession) {
+              const restored = data.room.roundSession;
+              const selfName = ParkOnStorage.getUserProfile()?.userName || ParkOnStorage.getKakaoUser()?.nickname;
+              const fixedRestored: RoundSession = {
+                ...restored,
+                players: (restored.players || []).map((p: any) => ({
+                  ...p,
+                  isSelf: selfName ? p.name === selfName : p.isSelf,
+                })),
+              };
+              ParkOnStorage.saveCompletedRound(fixedRestored);
+              setSession(fixedRestored);
+            }
+          })
+          .catch(() => {});
       }
     }
   }, [roundId]);
@@ -126,7 +147,8 @@ function ResultContent() {
       const myScoredCount = myPlayer
         ? Object.keys(myPlayer.scores || {}).filter((h) => Number(myPlayer.scores[Number(h)]) > 0).length
         : 0;
-      const isFull18 = myScoredCount >= 18;
+      const totalHolesCount = (session.selectedHoleNumbers?.length || session.confirmedHoles?.length || 0);
+      const isFull18 = myScoredCount >= 18 || totalHolesCount >= 18;
       setIsFull18Completed(isFull18);
 
       if (isFull18) {
@@ -484,6 +506,33 @@ function ResultContent() {
             <Trophy className="w-4 h-4 text-amber-300" />
             <span className="truncate">{isJapanese ? '🏆 コース名誉の殿堂' : '🏆 구장 명예의 전당'}</span>
           </button>
+        </div>
+
+        {/* 📱 동반자/조장 원터치 모바일 스코어카드 수령 & 단톡방 전송 박스 */}
+        <div className="mt-3 pt-3 border-t border-emerald-700/60 flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={handleShare}
+              className="py-3 px-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
+            >
+              <span>💬 카톡 단톡방에 성적표 전송</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowPhotoCardModal(true)}
+              className="py-3 px-3 rounded-2xl bg-white hover:bg-stone-100 text-emerald-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
+            >
+              <Camera className="w-4 h-4 text-emerald-700" />
+              <span>📱 내 스코어카드 사진 저장</span>
+            </button>
+          </div>
+          <Link
+            href="/chronicle"
+            className="py-2.5 px-3 rounded-xl bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-500/50 text-emerald-100 font-bold text-[11px] flex items-center justify-center gap-1 transition"
+          >
+            <span>📖 나의 연대기에 공식 전적으로 영구 보관되었습니다 (기록 확인 ➔)</span>
+          </Link>
         </div>
 
         <div className="mt-3.5 inline-flex items-center gap-2 bg-emerald-700/60 border border-emerald-500/40 px-4 py-2 rounded-2xl">

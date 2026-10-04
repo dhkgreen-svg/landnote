@@ -259,28 +259,32 @@ function NewRoundForm() {
     });
   };
 
-  // QR 코드 동반자 입장 시뮬레이션
+  // QR 코드 동반자 입장 실시간 감지 및 자동 배정
   const handleSimulateQrJoin = (guestName: string) => {
-    const targetIdx = playersList.findIndex((p, idx) => idx > 0 && (!p.name.trim() || isDefaultCompanionName(p.name)));
-    if (targetIdx !== -1) {
-      setPlayersList((prev) => {
+    if (!guestName || isDefaultCompanionName(guestName)) return;
+    setPlayersList((prev) => {
+      // 이미 같은 이름의 플레이어가 등록되어 있다면 중복 배정 방지
+      if (prev.some((p, idx) => idx > 0 && p.name === guestName)) {
+        return prev;
+      }
+      const targetIdx = prev.findIndex((p, idx) => idx > 0 && (!p.name.trim() || isDefaultCompanionName(p.name)));
+      if (targetIdx !== -1) {
         const updated = [...prev];
         updated[targetIdx] = { ...updated[targetIdx], name: guestName };
         return updated;
-      });
-    } else if (playerCount < 6) {
-      const newCount = playerCount + 1;
-      setPlayerCount(newCount);
-      setPlayersList((prev) => [
-        ...prev,
-        {
-          id: `p_qr_${Date.now()}`,
-          name: guestName,
-          isLeader: false,
-          isSelf: false,
-        },
-      ]);
-    }
+      } else if (prev.length < 6) {
+        return [
+          ...prev,
+          {
+            id: `p_qr_${Date.now()}`,
+            name: guestName,
+            isLeader: false,
+            isSelf: false,
+          },
+        ];
+      }
+      return prev;
+    });
     setJoinSimulationToast(`🎉 '${guestName}' 님이 QR 코드로 라운드에 자동 입장하였습니다!`);
     setTimeout(() => setJoinSimulationToast(null), 3500);
   };
@@ -361,19 +365,22 @@ function NewRoundForm() {
               const next = [...prev];
 
               serverPlayers.forEach((sp, idx) => {
-                if (idx > 0 && sp.name && !isDefaultCompanionName(sp.name)) {
-                  if (next[idx] && next[idx].name !== sp.name) {
-                    next[idx] = { ...next[idx], name: sp.name };
+                if (idx > 0) {
+                  const targetName = isDefaultCompanionName(sp.name) ? '' : (sp.name || '');
+                  if (next[idx] && next[idx].name !== targetName) {
+                    next[idx] = { ...next[idx], name: targetName };
                     updated = true;
-                  } else if (!next[idx] && next.length < 6) {
-                    next.push({ id: sp.id || `p_${Date.now()}`, name: sp.name, isLeader: false, isSelf: false });
+                  } else if (!next[idx] && targetName && next.length < 6) {
+                    next.push({ id: sp.id || `p_${Date.now()}`, name: targetName, isLeader: false, isSelf: false });
                     updated = true;
                   }
                 }
               });
 
               if (updated) {
-                const latestGuest = serverPlayers.find((sp) => sp.name && !sp.isLeader && !isDefaultCompanionName(sp.name));
+                const latestGuest = serverPlayers.find(
+                  (sp, idx) => idx > 0 && sp.name && !isDefaultCompanionName(sp.name) && prev[idx]?.name !== sp.name
+                );
                 if (latestGuest) {
                   setJoinSimulationToast(`🎉 '${latestGuest.name}' 님이 QR 코드로 라운드에 자동 입장하였습니다!`);
                   setTimeout(() => setJoinSimulationToast(null), 3500);
@@ -396,7 +403,7 @@ function NewRoundForm() {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       bc = new BroadcastChannel('parkon_room_sync');
       bc.onmessage = (event) => {
-        if (event.data && event.data.roomId === roomId && event.data.joinedPlayer && isSubscribed) {
+        if (event.data && event.data.joinedPlayer && isSubscribed) {
           handleSimulateQrJoin(event.data.joinedPlayer);
         }
       };

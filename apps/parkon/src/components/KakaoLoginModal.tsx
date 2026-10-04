@@ -16,6 +16,9 @@ interface KakaoLoginModalProps {
   initialMode?: 'login' | 'profile' | 'find';
   title?: string;
   subtitle?: string;
+  initialTab?: 'CODE_LOGIN' | 'NEW_USER';
+  initialName?: string;
+  isJoinFlow?: boolean;
 }
 
 export function KakaoLoginModal({
@@ -25,6 +28,9 @@ export function KakaoLoginModal({
   initialMode = 'login',
   title = '회원 로그인 및 활동명 설정',
   subtitle = '실명과 별명을 설정하고 파크골프 커뮤니티에 참여하세요.',
+  initialTab,
+  initialName,
+  isJoinFlow = false,
 }: KakaoLoginModalProps) {
   const { isJapanese } = useTranslation();
   const [currentUser, setCurrentUser] = useState<KakaoAuthUser | null>(null);
@@ -75,6 +81,10 @@ export function KakaoLoginModal({
       if (initialMode === 'find') {
         setShowFindModal(true);
         setShowSwitchLogin(true);
+      } else if (initialTab) {
+        setShowSwitchLogin(true);
+        setShowFindModal(false);
+        setActiveTab(initialTab);
       } else if (initialMode === 'login' || !hasRegisteredUser) {
         setShowSwitchLogin(true);
         setShowFindModal(false);
@@ -84,7 +94,9 @@ export function KakaoLoginModal({
         setShowFindModal(false);
       }
 
-      if (u) {
+      if (initialName && initialName.trim()) {
+        setRealName(initialName.trim());
+      } else if (u) {
         const uReal = !isPlaceholderName(u.realName) ? u.realName! : (!isPlaceholderName(u.nickname) ? u.nickname : '');
         setRealName(uReal);
         setAliasName(u.aliasName || '');
@@ -99,7 +111,7 @@ export function KakaoLoginModal({
       }
       setIsSavedNotice(false);
     }
-  }, [isOpen, initialMode]);
+  }, [isOpen, initialMode, initialName]);
 
   if (!isOpen) return null;
 
@@ -206,20 +218,30 @@ export function KakaoLoginModal({
   const handleLogin = async () => {
     setIsLoading(true);
     try {
+      const rName = realName.trim() || (isJapanese ? 'プレイヤー' : '회원');
+      const aName = aliasName.trim() || (isJapanese ? 'ゴルファー' : '골퍼');
+      const effectiveName =
+        (preferredDisplay === 'ALIAS' ? aName : rName) ||
+        rName ||
+        (isJapanese ? 'プレイヤー' : '회원');
+
+      const profile = ParkOnStorage.getUserProfile();
+      ParkOnStorage.saveUserProfile({
+        ...profile,
+        userName: effectiveName,
+        phoneNumber: phoneNumber.trim(),
+      });
+      getOrGenerateMemberCode();
+
       const user = await loginWithKakao({
-        realName: realName.trim() || (isJapanese ? 'プレイヤー' : '회원'),
-        aliasName: aliasName.trim() || (isJapanese ? 'ゴルファー' : '골퍼'),
+        realName: rName,
+        aliasName: aName,
         preferredDisplay: preferredDisplay,
       });
       if (isJapanese) {
         user.provider = 'line';
       }
       setCurrentUser(user);
-      const effectiveName =
-        (preferredDisplay === 'ALIAS' ? aliasName.trim() : realName.trim()) ||
-        realName.trim() ||
-        aliasName.trim() ||
-        (isJapanese ? 'プレイヤー' : '회원');
       syncSelfPlayerNameToActiveRound(effectiveName);
 
       // 클라우드에 자동 백업
@@ -252,8 +274,9 @@ export function KakaoLoginModal({
       phoneNumber: phoneNumber.trim(),
     });
 
+    let effectiveUser: KakaoAuthUser;
     if (currentUser) {
-      const updated: KakaoAuthUser = {
+      effectiveUser = {
         ...currentUser,
         realName: rName,
         aliasName: aName,
@@ -261,10 +284,10 @@ export function KakaoLoginModal({
         nickname: effectiveName,
         provider: isJapanese ? 'line' : (currentUser.provider || 'kakao'),
       };
-      ParkOnStorage.setKakaoUser(updated);
-      setCurrentUser(updated);
+      ParkOnStorage.setKakaoUser(effectiveUser);
+      setCurrentUser(effectiveUser);
     } else {
-      const localUser: KakaoAuthUser = {
+      effectiveUser = {
         id: (isJapanese ? 'line_user_' : 'kakao_user_') + Date.now(),
         nickname: effectiveName,
         realName: rName,
@@ -273,8 +296,8 @@ export function KakaoLoginModal({
         provider: isJapanese ? 'line' : 'kakao',
         connectedAt: new Date().toISOString(),
       };
-      ParkOnStorage.setKakaoUser(localUser);
-      setCurrentUser(localUser);
+      ParkOnStorage.setKakaoUser(effectiveUser);
+      setCurrentUser(effectiveUser);
     }
 
     setIsSavedNotice(true);
@@ -283,6 +306,11 @@ export function KakaoLoginModal({
 
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: effectiveName } }));
+
+    if (onLoginSuccess) {
+      onLoginSuccess(effectiveUser);
+    }
+
     setTimeout(() => {
       setIsSavedNotice(false);
       onClose();
@@ -866,13 +894,15 @@ export function KakaoLoginModal({
                       />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={handleSaveProfile}
-                      className="w-full mt-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer"
-                    >
-                      {isJapanese ? '✓ このお名前ですぐ始める' : '✓ 이 성명으로 즉시 시작하기'}
-                    </button>
+                    {!isJoinFlow && (
+                      <button
+                        type="button"
+                        onClick={handleSaveProfile}
+                        className="w-full mt-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer"
+                      >
+                        {isJapanese ? '✓ このお名前ですぐ始める' : '✓ 이 성명으로 즉시 시작하기'}
+                      </button>
+                    )}
                   </div>
 
                   {/* 카카오톡/LINE 1초 간편 연동 */}
@@ -883,14 +913,16 @@ export function KakaoLoginModal({
                       onClick={handleLogin}
                       className={
                         isJapanese
-                          ? 'w-full py-3 px-3 bg-[#06C755] hover:bg-[#05b34c] active:scale-95 text-white font-black text-xs sm:text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer border border-[#05a044]'
-                          : 'w-full py-3 px-3 bg-[#FEE500] hover:bg-[#FDD835] active:scale-95 text-[#191919] font-black text-xs sm:text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer border border-[#E6CF00]'
+                          ? 'w-full py-3.5 px-3 bg-[#06C755] hover:bg-[#05b34c] active:scale-95 text-white font-black text-xs sm:text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer border border-[#05a044]'
+                          : 'w-full py-3.5 px-3 bg-[#FEE500] hover:bg-[#FDD835] active:scale-95 text-[#191919] font-black text-xs sm:text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer border border-[#E6CF00]'
                       }
                     >
                       <span className="text-base leading-none">💬</span>
                       <span>
                         {isLoading
                           ? (isJapanese ? '自動連携中...' : '자동 가입 처리 중...')
+                          : isJoinFlow
+                          ? (isJapanese ? '💬 LINE連携で1秒自動登録 ＆ ゲーム合流 ⛳' : '💬 카카오톡 [확인] 누르고 1초 자동 가입 & 게임 합류 ⛳')
                           : (isJapanese ? '💬 LINE連携で1秒簡単ログイン' : '💬 카카오톡 [확인] 누르고 1초 자동 가입')}
                       </span>
                     </button>
@@ -898,40 +930,42 @@ export function KakaoLoginModal({
                 </div>
               )}
 
-              {/* 둘러보기 & 가상 연습 라운딩 */}
-              <div className="pt-2 border-t border-stone-200/80 space-y-1.5">
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="py-2.5 px-2 bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-700 font-black text-[11px] rounded-xl transition flex items-center justify-center gap-1 border border-stone-300 cursor-pointer"
-                  >
-                    <span>{isJapanese ? '👉 登録なしで見学' : '👉 가입 없이 둘러보기'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const virtualSession = ParkOnStorage.createVirtualRoundSession();
-                      onClose();
-                      window.location.href = `/round/${virtualSession.id}`;
-                    }}
-                    className="py-2.5 px-2 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 active:scale-95 text-white font-black text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-xs cursor-pointer"
-                  >
-                    <span>{isJapanese ? '🎯 練習ラウンド体験' : '🎯 프로그램 체험 연습'}</span>
-                  </button>
-                </div>
+              {/* 둘러보기 & 가상 연습 라운딩 (초대 합류 모드일 때는 불필요하므로 숨김) */}
+              {!isJoinFlow && (
+                <div className="pt-2 border-t border-stone-200/80 space-y-1.5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="py-2.5 px-2 bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-700 font-black text-[11px] rounded-xl transition flex items-center justify-center gap-1 border border-stone-300 cursor-pointer"
+                    >
+                      <span>{isJapanese ? '👉 登録なしで見学' : '👉 가입 없이 둘러보기'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const virtualSession = ParkOnStorage.createVirtualRoundSession();
+                        onClose();
+                        window.location.href = `/round/${virtualSession.id}`;
+                      }}
+                      className="py-2.5 px-2 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 active:scale-95 text-white font-black text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                    >
+                      <span>{isJapanese ? '🎯 練習ラウンド体験' : '🎯 프로그램 체험 연습'}</span>
+                    </button>
+                  </div>
 
-                <div className="pt-1 text-center">
-                  <button
-                    type="button"
-                    onClick={handleResetToZeroBase}
-                    className="text-[10.5px] text-stone-400 hover:text-rose-600 font-bold underline transition cursor-pointer inline-flex items-center gap-1"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    <span>{isJapanese ? '端末データ初期化 (ゲスト情報削除 / リセット)' : '기기 데이터 초기화 (손오공 등 임시정보 삭제 / 백지 리셋)'}</span>
-                  </button>
+                  <div className="pt-1 text-center">
+                    <button
+                      type="button"
+                      onClick={handleResetToZeroBase}
+                      className="text-[10.5px] text-stone-400 hover:text-rose-600 font-bold underline transition cursor-pointer inline-flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>{isJapanese ? '端末データ初期化 (ゲスト情報削除 / リセット)' : '기기 데이터 초기화 (손오공 등 임시정보 삭제 / 백지 리셋)'}</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>

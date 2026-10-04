@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ParkOnStorage } from '@/lib/storage';
 import { RoundSession, RoundPlayer } from '@/types/parkon';
-import { CheckCircle2, Users, MapPin, Flag, Home, Sparkles, Loader2 } from 'lucide-react';
+import { CheckCircle2, Users, MapPin, Flag, Home, Sparkles, Loader2, Smartphone } from 'lucide-react';
 import { ParkOnRoom } from '@/app/api/round/room/route';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 
@@ -21,6 +21,43 @@ function WaitingContent() {
   const [room, setRoom] = useState<ParkOnRoom | null>(null);
   const [guestName, setGuestName] = useState<string>(guestParam);
   const [startingToast, setStartingToast] = useState<string | null>(null);
+  const [isInstalled, setIsInstalled] = useState<boolean>(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const isApp =
+      typeof window !== 'undefined' &&
+      (window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true ||
+        localStorage.getItem('parkon_app_installed') === 'true');
+    setIsInstalled(isApp);
+
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      try {
+        await deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          setIsInstalled(true);
+          try {
+            localStorage.setItem('parkon_app_installed', 'true');
+          } catch {}
+        }
+      } catch (err) {}
+    } else {
+      window.open('/install', '_blank');
+    }
+  };
 
   // 1. 게스트 이름 초기화
   useEffect(() => {
@@ -107,9 +144,10 @@ function WaitingContent() {
       if (session) {
         // 동반자 본인(isSelf: true) 및 조장(isLeader: true) 명확 분리
         const myName = guestName.trim() || (isJapanese ? '同伴者' : '동반자');
+        const myIdx = session.players.findIndex((p, idx) => idx > 0 && !p.isLeader && p.name === myName);
         const updatedPlayers: RoundPlayer[] = session.players.map((p, idx) => {
           const isLeader = p.isLeader || idx === 0;
-          const isMe = !isLeader && (p.name === myName || idx === 1);
+          const isMe = myIdx !== -1 ? idx === myIdx : (!isLeader && p.name === myName);
           return {
             ...p,
             isLeader,
@@ -199,6 +237,30 @@ function WaitingContent() {
 
         {/* Content Body */}
         <div className="p-5 space-y-4">
+          {/* 📲 바탕화면 앱 설치 미니 권장 배너 */}
+          {!isInstalled && (
+            <div className="bg-gradient-to-r from-amber-50 to-emerald-50 border border-emerald-300 rounded-2xl p-3 flex items-center justify-between shadow-xs animate-fadeIn">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl">📲</span>
+                <div>
+                  <div className="text-xs font-black text-stone-900">
+                    {isJapanese ? 'ホーム画面にアプリを追加' : '바탕화면에 앱 설치하고 1초 실행'}
+                  </div>
+                  <div className="text-[10px] text-stone-500 font-medium">
+                    {isJapanese ? '次回もワンタッチで即時アクセス' : '다음 라운딩 때도 원터치로 바로 접속'}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleInstallClick}
+                className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-xs shrink-0 cursor-pointer active:scale-95 transition"
+              >
+                {isJapanese ? 'アプリ追加' : '1초 앱 설치'}
+              </button>
+            </div>
+          )}
+
           {/* 1. 구장 및 코스 안내 카드 */}
           <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-4 space-y-2">
             <div className="flex items-center gap-2 text-emerald-900 font-black text-sm">
@@ -230,9 +292,13 @@ function WaitingContent() {
             </div>
 
             <div className="space-y-2">
-              {playersList.map((p, idx) => {
-                const isLeader = p.isLeader || idx === 0;
-                const isMe = p.name === guestName;
+              {(() => {
+                const mySlotIndex = playersList.findIndex(
+                  (p, idx) => idx > 0 && !p.isLeader && p.name === guestName
+                );
+                return playersList.map((p, idx) => {
+                  const isLeader = p.isLeader || idx === 0;
+                  const isMe = idx === mySlotIndex;
 
                 return (
                   <div
@@ -276,7 +342,8 @@ function WaitingContent() {
                     </div>
                   </div>
                 );
-              })}
+              });
+            })()}
             </div>
           </div>
 
