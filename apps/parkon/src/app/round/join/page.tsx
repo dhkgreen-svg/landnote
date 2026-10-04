@@ -189,12 +189,34 @@ function RoundJoinContent() {
 
       // Supabase Realtime 채널로 동반자 입장 즉시 브로드캐스트 전송
       const channel = supabase.channel(`room_${joinedRoomId}`);
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          channel.send({
+            type: 'broadcast',
+            event: 'companion_joined',
+            payload: {
+              roomId: joinedRoomId,
+              userName: trimmedName,
+              name: trimmedName,
+              playerName: trimmedName,
+              nickname: trimmedName,
+              slotIndex: 1,
+              isGuest: isGuest,
+            },
+          });
+        }
+      });
+      // 즉시 1차 전송 시도
       channel.send({
         type: 'broadcast',
         event: 'companion_joined',
         payload: {
           roomId: joinedRoomId,
+          userName: trimmedName,
+          name: trimmedName,
           playerName: trimmedName,
+          nickname: trimmedName,
+          slotIndex: 1,
           isGuest: isGuest,
         },
       });

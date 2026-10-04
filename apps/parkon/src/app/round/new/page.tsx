@@ -262,14 +262,16 @@ function NewRoundForm() {
 
   // QR 코드 동반자 입장 실시간 감지 및 자동 배정 (오송 등 실시간 주입)
   const handleSimulateQrJoin = (guestName: string) => {
-    if (!guestName || isDefaultCompanionName(guestName)) return;
+    if (!guestName) return;
     const cleanGuestName = guestName.trim();
+    if (!cleanGuestName || isDefaultCompanionName(cleanGuestName)) return;
+
     setPlayersList((prev) => {
-      // 이미 같은 이름의 플레이어가 등록되어 있다면 중복 배정 방지
-      if (prev.some((p, idx) => idx > 0 && p.name === cleanGuestName)) {
+      // 이미 같은 이름의 플레이어가 1번 이후 슬롯에 등록되어 있다면 유지
+      if (prev.some((p, idx) => idx > 0 && p.name && p.name.trim() === cleanGuestName)) {
         return prev;
       }
-      const targetIdx = prev.findIndex((p, idx) => idx > 0 && (!p.name.trim() || isDefaultCompanionName(p.name)));
+      const targetIdx = prev.findIndex((p, idx) => idx > 0 && (!p.name || !p.name.trim() || isDefaultCompanionName(p.name)));
       if (targetIdx !== -1) {
         const updated = [...prev];
         updated[targetIdx] = { ...updated[targetIdx], name: cleanGuestName };
@@ -368,22 +370,25 @@ function NewRoundForm() {
         const presenceState = channel.presenceState();
         Object.values(presenceState).forEach((presences: any) => {
           presences.forEach((p: any) => {
-            if (p.playerName && p.role !== 'leader') {
-              handleSimulateQrJoin(p.playerName);
+            const guestName = p.userName || p.playerName || p.name || p.nickname;
+            if (guestName && p.role !== 'leader') {
+              handleSimulateQrJoin(guestName);
             }
           });
         });
       })
       .on('presence', { event: 'join' }, ({ newPresences }) => {
         newPresences.forEach((p: any) => {
-          if (p.playerName && p.role !== 'leader') {
-            handleSimulateQrJoin(p.playerName);
+          const guestName = p.userName || p.playerName || p.name || p.nickname;
+          if (guestName && p.role !== 'leader') {
+            handleSimulateQrJoin(guestName);
           }
         });
       })
       .on('broadcast', { event: 'companion_joined' }, ({ payload }) => {
-        if (payload?.playerName && isSubscribed) {
-          handleSimulateQrJoin(payload.playerName);
+        const guestName = payload?.userName || payload?.playerName || payload?.name || payload?.nickname;
+        if (guestName && isSubscribed) {
+          handleSimulateQrJoin(guestName);
         }
       })
       .subscribe(async (status) => {
@@ -1316,7 +1321,10 @@ function NewRoundForm() {
 
                 <div className="space-y-1.5 pt-0.5">
                   {playersList.slice(0, playerCount).map((p, idx) => {
-                    const isJoined = p.isLeader || !p.name.startsWith('동반자');
+                    const rawName = (p.name || '').trim();
+                    const isJoined = p.isLeader || (Boolean(rawName) && !isDefaultCompanionName(rawName));
+                    const displayName = rawName || (isJapanese ? `同伴者 ${idx + 1}` : `동반자 ${idx + 1}`);
+
                     return (
                       <div
                         key={p.id || idx}
@@ -1340,7 +1348,9 @@ function NewRoundForm() {
                           >
                             {idx + 1}
                           </span>
-                          <span className="truncate">{p.name}</span>
+                          <span className={`truncate ${isJoined && !p.isLeader ? 'text-emerald-950 font-black' : ''}`}>
+                            {displayName}
+                          </span>
                         </div>
 
                         <div className="shrink-0">
