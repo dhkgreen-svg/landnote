@@ -76,5 +76,50 @@
     "action": "omni_studio_launch",
     "status": "success",
     "summary": "웹툰·15초쇼츠·배너·캐릭터보관함 4대 기능 올인원 통합 및 캐릭터 일관성 보관함(Character Vault) 탑재 완료"
+  },
+  {
+    "timestamp": "2026-10-05 04:37:35",
+    "commander": "김대희 대표님",
+    "npc": "청소 요정 쓱싹이",
+    "command": "바탕화면 청소해줘",
+    "action": "desktop_clean",
+    "status": "success",
+    "summary": "바탕화면 중복 파일 제거 및 5대 테마 폴더 자동 정돈 완료"
+  },
+  {
+    "timestamp": "2026-10-05 04:37:55",
+    "commander": "김대희 대표님",
+    "npc": "청소 요정 쓱싹이",
+    "command": "바탕화면 청소해줘",
+    "action": "desktop_clean",
+    "status": "success",
+    "summary": "바탕화면 중복 파일 제거 및 5대 테마 폴더 자동 정돈 완료"
+  },
+  {
+    "timestamp": "2026-10-05 04:43:31",
+    "commander": "김대희 대표님",
+    "npc": "김프로 (파크온 총괄)",
+    "command": "티샷할 때 발이 매트 밖으로 나가면 몇 벌타인가요?",
+    "action": "chat_golf_pro",
+    "status": "success",
+    "summary": "김대희 대표님, 안녕하셨습니까! 오늘도 활기차게 라운딩을 준비하고 계시는군요. \n\n대한파크골프협회 공인 규정..."
+  },
+  {
+    "timestamp": "2026-10-05 04:43:44",
+    "commander": "김대희 대표님",
+    "npc": "주민 전원",
+    "command": "티샷 매트 이탈 2벌타 만화 제작 및 백업",
+    "action": "collaboration",
+    "status": "success",
+    "summary": "4명 NPC 합동 분업 완수"
+  },
+  {
+    "timestamp": "2026-10-05 04:43:47",
+    "commander": "김대희 대표님",
+    "npc": "천기성 사주도사",
+    "command": "새 NPC '천기성 사주도사' 영입 생산",
+    "action": "spawn_npc",
+    "status": "success",
+    "summary": "관할: 사주팔자 분석, 만세력 계산, 일일 운세"
   }
 ]

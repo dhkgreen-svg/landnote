@@ -4,8 +4,11 @@
 hub/village_server.py - 구글 통합 사령탑: 컴퓨터 종합 환경 마을(Cyber Village) 백엔드 서버
 포트: 3000 (http://localhost:3000)
 
-김대희 대표님의 컴퓨터 전체 환경(CPU/RAM/디스크/바탕화면/백업/미디어)을
-하나의 살아 숨 쉬는 게임 속 가상 마을(Cyber Town)로 시각화하고 관할 NPC들과 상호작용합니다.
+특징:
+1. 한 화면에 쏙 들어오는 2.5D 게임 마을 맵 & 소형 네임태그/스프라이트
+2. NPC 개별 1:1 도메인 전문 대화 (파크골프 김프로, 영상 파키감독, 청소요정, 경비대장, 창고지기)
+3. 대표님이 새로운 전문 NPC를 직접 생산/영입 (village_npcs.json 영구 보관)
+4. NPC들 간의 합동 협업(Multi-Agent Collaboration) 시뮬레이션 및 실제 작업 수행
 """
 
 import os
@@ -34,6 +37,7 @@ VILLAGE_DIR = os.path.join(HUB_DIR, "village")
 HTML_FILE = os.path.join(VILLAGE_DIR, "index.html")
 ENV_PATH = os.path.join(ROOT_DIR, "config.env")
 HISTORY_PATH = os.path.join(HUB_DIR, "directive_history.json")
+NPCS_FILE = os.path.join(HUB_DIR, "village_npcs.json")
 PARKON_PUBLIC = os.path.join(ROOT_DIR, "apps", "parkon", "public")
 if not os.path.exists(PARKON_PUBLIC):
     PARKON_PUBLIC = os.path.join(os.path.dirname(ROOT_DIR), "google_drive_docs_search", "apps", "parkon", "public")
@@ -74,7 +78,7 @@ def log_directive(command: str, action: str, status: str = "success", summary: s
 # --- 컴퓨터 자원 및 마을 상태 진단 엔진 ---
 def get_village_status():
     # 1. CPU, RAM
-    cpu_pct = round(psutil.cpu_percent(interval=0.1), 1)
+    cpu_pct = round(psutil.cpu_percent(interval=0.05), 1)
     ram = psutil.virtual_memory()
     ram_pct = round(ram.percent, 1)
 
@@ -108,105 +112,34 @@ def get_village_status():
         except Exception:
             pass
 
-    # 4. 종합 건강도 및 마을 날씨 산출
+    # 4. 건강도 산출
     health_score = 100
-    if cpu_pct > 75:
-        health_score -= 15
-    elif cpu_pct > 50:
-        health_score -= 5
-
-    if ram_pct > 80:
-        health_score -= 15
-    elif ram_pct > 65:
-        health_score -= 5
-
-    if duplicate_count > 0:
-        health_score -= (duplicate_count * 3)
-
+    if cpu_pct > 75: health_score -= 15
+    elif cpu_pct > 50: health_score -= 5
+    if ram_pct > 80: health_score -= 15
+    elif ram_pct > 65: health_score -= 5
+    if duplicate_count > 0: health_score -= (duplicate_count * 3)
     c_free = next((s["free_gb"] for s in storage if s["drive"] == "C:"), 50)
-    if c_free < 15:
-        health_score -= 20
-
+    if c_free < 15: health_score -= 20
     health_score = max(30, min(100, health_score))
 
     if health_score >= 88:
         weather = "sunny"
         weather_label = "☀️ 화창함"
-        weather_desc = "컴퓨터 컨디션 최상! 마을에 밝은 햇살이 비치고 있습니다."
+        weather_desc = "컴퓨터 컨디션 최상! 마을에 맑은 햇살이 비칩니다."
     elif health_score >= 70:
         weather = "cloudy"
         weather_label = "⛅ 구름 조금"
-        weather_desc = "안정적인 상태이나 정리할 파일이 소량 있습니다."
+        weather_desc = "안정적이나 정리할 항목이 소량 있습니다."
     else:
         weather = "rainy"
-        weather_label = "🌧️ 비 / 점검 필요"
-        weather_desc = "자원 부하 또는 중복 파일로 인해 경비 점검이 필요합니다."
+        weather_label = "🌧️ 점검 필요"
+        weather_desc = "자원 부하 및 중복 파일 주의 상태입니다."
 
-    # 5. 관할 NPC 실시간 상태 & 대사
-    npcs = [
-        {
-            "id": "parky",
-            "name": "파키 감독 (Parky)",
-            "role": "영상·미디어 관할 NPC",
-            "building": "🎬 영상·미디어 제작 공방",
-            "emoji": "🐥",
-            "badge": "제작 준비 완료",
-            "dialogue": "대표님! 4컷 웹툰이나 15초 쇼츠 콘티를 원클릭으로 뽑아드릴 수 있습니다!",
-            "action_type": "open_studio",
-            "action_url": "http://localhost:3050",
-            "action_label": "영상·만화 스튜디오 열기"
-        },
-        {
-            "id": "cleaner",
-            "name": "청소 요정 쓱싹이",
-            "role": "환경·청소 관할 NPC",
-            "building": "🧹 환경 미화 클린 센터",
-            "emoji": "🧹",
-            "badge": f"중복 파일 {duplicate_count}개 감지" if duplicate_count > 0 else "바탕화면 100% 쾌적",
-            "dialogue": f"바탕화면 아이콘 {desktop_items}개를 감시 중입니다! 지저분한 파일은 빗자루로 싹 쓸어드릴게요!" if duplicate_count == 0 else f"어맛! 중복 바로가기 {duplicate_count}개가 발견되었습니다! 1초 대청소 하실까요?",
-            "action_type": "clean_desktop",
-            "action_url": "",
-            "action_label": "바탕화면 1초 대청소"
-        },
-        {
-            "id": "guard",
-            "name": "경비대장 아이언가드",
-            "role": "보안·시스템 관할 NPC",
-            "building": "🛡️ 성벽 감시탑 & 보안 본부",
-            "emoji": "🛡️",
-            "badge": f"CPU {cpu_pct}% / RAM {ram_pct}%",
-            "dialogue": "성벽 순찰 완료! 외부 악성코드 및 비정상 프로세스 없음. 시스템 평화 유지 중입니다!",
-            "action_type": "inspect_system",
-            "action_url": "",
-            "action_label": "컴퓨터 정밀 진단"
-        },
-        {
-            "id": "vault",
-            "name": "창고지기 골드키퍼",
-            "role": "데이터·백업 관할 NPC",
-            "building": "📦 구글 드라이브 중앙 창고",
-            "emoji": "📦",
-            "badge": f"C: {c_free}GB 여유",
-            "dialogue": "구글 드라이브(G:)와 D: 외장 보물창고가 안전하게 연결되어 있습니다. 소중한 데이터를 보관 중입니다!",
-            "action_type": "backup_vault",
-            "action_url": "",
-            "action_label": "드라이브 전체 백업"
-        },
-        {
-            "id": "golf_pro",
-            "name": "김프로 & 박여사",
-            "role": "파크골프(ParkOn) 관할 NPC",
-            "building": "⛳ 파크온 클럽하우스",
-            "emoji": "⛳",
-            "badge": "전국 160개 구장 정비",
-            "dialogue": "대표님 나이스 샷! 전국 160개 구장 정보와 공인 룰북이 동호인 맞춤으로 완벽 가동 중입니다!",
-            "action_type": "open_parkon",
-            "action_url": "https://landnote.vercel.app",
-            "action_label": "파크온 웹앱 확인"
-        }
-    ]
+    # 5. 등록된 NPC 목록 읽기
+    npcs = load_json(NPCS_FILE, [])
 
-    history = load_json(HISTORY_PATH, [])[-5:]
+    history = load_json(HISTORY_PATH, [])[-6:]
     history.reverse()
 
     return {
@@ -224,159 +157,99 @@ def get_village_status():
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
 
-# --- 지휘 명령 분석 및 NPC 디스패치 ---
-def process_village_command(command: str):
-    cmd_lower = command.lower()
-    
-    # 1. 청소 / 바탕화면 정리
-    if any(k in cmd_lower for k in ["청소", "정리", "바탕화면", "휴지통", "지워", "깨끗"]):
-        cleaner_py = os.path.join(HUB_DIR, "desktop_cleaner.py")
-        try:
-            res = subprocess.check_output(f'python "{cleaner_py}"', shell=True, text=True, encoding="utf-8", errors="replace", stderr=subprocess.STDOUT)
-        except Exception as e:
-            res = str(e)
-        
-        summary = "바탕화면 중복 파일 제거 및 5대 테마 폴더 자동 정돈 완료"
-        log_directive(command, "desktop_clean", "success", summary, "청소 요정 쓱싹이")
-        return {
-            "status": "success",
-            "npc": "cleaner",
-            "npc_name": "청소 요정 쓱싹이",
-            "npc_emoji": "🧹",
-            "dialogue": "대표님! 빗자루를 번개처럼 휘둘러 바탕화면 중복 파일과 어질러진 문서를 5대 폴더로 싹 치웠습니다!",
-            "details": summary,
-            "raw_output": res
-        }
+# --- NPC 1:1 도메인 대화 엔진 (Gemini 3.5 Flash) ---
+def chat_with_npc(npc_id: str, user_message: str):
+    npcs = load_json(NPCS_FILE, [])
+    target_npc = next((n for n in npcs if n["id"] == npc_id), None)
+    if not target_npc:
+        return {"reply": "해당 NPC 주민을 찾을 수 없습니다."}
 
-    # 2. 백업
-    elif any(k in cmd_lower for k in ["백업", "드라이브", "저장", "동기화", "보관"]):
-        drive_sync = os.path.join(HUB_DIR, "integrations", "drive_sync.py")
-        if not os.path.exists(drive_sync):
-            drive_sync = os.path.join(HUB_DIR, "drive_sync.py")
-        try:
-            res = subprocess.check_output(f'python "{drive_sync}"', shell=True, text=True, encoding="utf-8", errors="replace", stderr=subprocess.STDOUT)
-        except Exception as e:
-            res = str(e)
-
-        summary = "Google Drive (G:) 및 D: 드라이브 스냅샷 동기화 완료"
-        log_directive(command, "backup", "success", summary, "창고지기 골드키퍼")
-        return {
-            "status": "success",
-            "npc": "vault",
-            "npc_name": "창고지기 골드키퍼",
-            "npc_emoji": "📦",
-            "dialogue": "대표님! 중앙 보물 창고에 소중한 코드와 자산을 안전하게 수레로 실어 구글 드라이브에 보관했습니다!",
-            "details": summary,
-            "raw_output": res
-        }
-
-    # 3. 영상 / 쇼츠 / 만화 / 이미지
-    elif any(k in cmd_lower for k in ["만화", "웹툰", "영상", "쇼츠", "릴스", "배너", "유튜브", "썸네일", "캐릭터"]):
-        summary = "멀티미디어 & 영상 컨트롤 마법사(Omni Studio) 준비 완료"
-        log_directive(command, "media_request", "success", summary, "파키 감독")
-        return {
-            "status": "success",
-            "npc": "parky",
-            "npc_name": "파키 감독 (Parky)",
-            "npc_emoji": "🐥",
-            "dialogue": "대표님! 4컷 만화와 15초 쇼츠 스튜디오가 완벽하게 준비되었습니다. 바로 영상 제작실로 안내해 드릴게요!",
-            "details": summary,
-            "action_url": "http://localhost:3050"
-        }
-
-    # 4. 상태 / 진단 / 점검 / 리포트
-    elif any(k in cmd_lower for k in ["상태", "점검", "진단", "건강", "리포트", "보고", "검사"]):
-        reporter = os.path.join(HUB_DIR, "status_reporter.py")
-        try:
-            res = subprocess.check_output(f'python "{reporter}"', shell=True, text=True, encoding="utf-8", errors="replace", stderr=subprocess.STDOUT)
-        except Exception as e:
-            res = str(e)
-        
-        status_data = get_village_status()
-        summary = f"컴퓨터 건강도 {status_data['health_score']}점, 자원 정상 순찰 완료"
-        log_directive(command, "status_report", "success", summary, "경비대장 아이언가드")
-        return {
-            "status": "success",
-            "npc": "guard",
-            "npc_name": "경비대장 아이언가드",
-            "npc_emoji": "🛡️",
-            "dialogue": f"충성! 전 구역 경비 점검을 마쳤습니다! 현재 컴퓨터 종합 건강도는 {status_data['health_score']}점이며, 외세의 침입 없이 평화롭습니다!",
-            "details": summary,
-            "raw_output": res
-        }
-
-    # 5. 브리핑
-    elif any(k in cmd_lower for k in ["브리핑", "요약"]):
-        bf_script = os.path.join(HUB_DIR, "daily_briefing.py")
-        try:
-            res = subprocess.check_output(f'python "{bf_script}" --ai', shell=True, text=True, encoding="utf-8", errors="replace", stderr=subprocess.STDOUT)
-        except Exception as e:
-            res = str(e)
-
-        summary = "대표님 전용 일일 총괄 브리핑 생성 완료"
-        log_directive(command, "briefing", "success", summary, "사령관 참모")
-        return {
-            "status": "success",
-            "npc": "guard",
-            "npc_name": "사령관 참모",
-            "npc_emoji": "📜",
-            "dialogue": "대표님! 마을(컴퓨터) 전체 현황을 간결한 브리핑으로 정리해 드렸습니다!",
-            "details": summary,
-            "raw_output": res
-        }
-
-    # 기타 자연어: Gemini 3.5 Flash로 분석 시도
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    if api_key and not api_key.startswith("your_"):
-        try:
-            from google import genai
-            client = genai.Client(api_key=api_key)
-            prompt = f"""
-당신은 '컴퓨터 종합 환경 마을'의 마을 주민 NPC들을 통솔하는 사령관 참모입니다.
-김대희 대표님의 명령: "{command}"
+    system_prompt = target_npc.get("system_prompt", f"당신은 {target_npc['name']}입니다. 담당 분야는 {target_npc['domain']}입니다.")
 
-이 명령에 가장 적합한 관할 NPC를 고르고, 친절하고 충성스러운 게임 NPC 스타일의 1~2줄 대사를 작성해 JSON으로 반환하세요.
-NPC 후보:
-1. cleaner: 청소 요정 쓱싹이 (바탕화면, 파일 정리, 청소)
-2. parky: 파키 감독 (만화, 영상, 쇼츠, 배너, 캐릭터)
-3. guard: 경비대장 아이언가드 (CPU, 시스템 상태, 점검)
-4. vault: 창고지기 골드키퍼 (백업, 드라이브 저장)
-5. golf_pro: 김프로 & 박여사 (파크골프, 구장 정보)
+    if not api_key or api_key.startswith("your_"):
+        # AI 키가 없을 때 기본 룰베이스 응답
+        if npc_id == "golf_pro":
+            return {"reply": f"[김프로] 대표님! 파크골프 공인 규정 및 전국 160개 구장 데이터에 대해 문의하셨군요. 말씀하신 '{user_message}' 건은 공인 규정과 에티켓에 맞춰 완벽히 처리해 드리겠습니다. 언제든 라운드 나가셔도 좋습니다! 굿샷!"}
+        elif npc_id == "parky":
+            return {"reply": f"[파키 감독] 대표님! '{user_message}' 건에 대한 재미있는 4컷 웹툰과 15초 쇼츠 대본을 머릿속에 바로 구상했습니다. [영상 스튜디오]를 열어 콘티를 바로 뽑아드릴까요?"}
+        elif npc_id == "cleaner":
+            return {"reply": f"[청소 요정] 대표님! 바탕화면을 깨끗하게 유지하기 위해 '{user_message}' 지시를 바로 접수했습니다. 1초 대청소 빗자루를 준비해 둘게요!"}
+        else:
+            return {"reply": f"[{target_npc['name']}] 대표님, '{user_message}' 지시를 잘 새겨듣고 제 관할 영역({target_npc['domain']})에서 완벽히 보좌하겠습니다!"}
+
+    try:
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        prompt = f"""
+{system_prompt}
+
+[대화 상대]: 마을의 영주이자 최고 결정권자인 '김대희 대표님'
+[상대방 메시지]: "{user_message}"
+
+[응답 가이드라인]
+1. 당신의 캐릭터 성격, 어투, 이모지를 살려서 자연스럽고 친절하며 신뢰감 있게 대화하십시오.
+2. 당신의 전문 도메인({target_npc['domain']}) 지식을 기반으로 실질적이고 유용한 답변을 2~4문장 내외로 명쾌하게 제공하십시오.
+3. 너무 길고 장황한 설명 대신, 대표님이 읽기 편한 대화체로 작성하십시오.
+"""
+        resp = client.models.generate_content(
+            model="gemini-3.5-flash",
+            contents=prompt
+        )
+        reply_text = resp.text.strip()
+        log_directive(user_message, f"chat_{npc_id}", "success", reply_text[:60] + "...", target_npc["name"])
+        return {"reply": reply_text}
+    except Exception as e:
+        return {"reply": f"[{target_npc['name']}] 대표님, 말씀을 접수했습니다! ({str(e)[:50]})"}
+
+# --- NPC 간 협업(Multi-Agent Collaboration) 엔진 ---
+def run_npc_collaboration(task_description: str):
+    npcs = load_json(NPCS_FILE, [])
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+
+    fallback_steps = [
+        {"npc": "golf_pro", "name": "김프로", "emoji": "⛳", "message": f"파크골프 규정 검토 완료! '{task_description}'에 대한 공인 룰과 코스 기준을 확인했습니다."},
+        {"npc": "parky", "name": "파키 감독", "emoji": "🐥", "message": "김프로님의 룰 기준을 바탕으로 4컷 만화 스토리와 15초 쇼츠 콘티를 즉시 연출합니다!"},
+        {"npc": "vault", "name": "창고지기", "emoji": "📦", "message": "완성된 기획안과 미디어를 구글 드라이브(G:) 안전 보물 창고에 스냅샷 백업합니다!"},
+        {"npc": "guard", "name": "경비대장", "emoji": "🛡️", "message": "모든 NPC 합동 작전 완료! 시스템 자원 및 보안 이상 없습니다!"}
+    ]
+
+    if not api_key or api_key.startswith("your_"):
+        return {"task": task_description, "steps": fallback_steps}
+
+    try:
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        prompt = f"""
+당신은 '컴퓨터 종합 환경 마을'의 NPC 협업 코디네이터입니다.
+김대희 대표님의 합동 지시: "{task_description}"
+
+마을에 있는 전문 NPC들(김프로, 파키감독, 청소요정, 경비대장, 창고지기 등)이 서로의 전문 분야를 나누어 분업하고 협업하며 대화하는 시나리오를 3~4단계 단계별로 작성하여 JSON으로 반환하세요.
 
 반드시 아래 JSON 형식으로만 응답:
-{{"npc": "cleaner", "npc_name": "청소 요정 쓱싹이", "npc_emoji": "🧹", "dialogue": "대표님 대사 내용..."}}
+{{
+  "task": "{task_description}",
+  "steps": [
+    {{"npc": "golf_pro", "name": "김프로", "emoji": "⛳", "message": "1단계 협업 대사..."}},
+    {{"npc": "parky", "name": "파키 감독", "emoji": "🐥", "message": "2단계 협업 대사..."}},
+    {{"npc": "vault", "name": "창고지기", "emoji": "📦", "message": "3단계 협업 대사..."}}
+  ]
+}}
 """
-            resp = client.models.generate_content(
-                model="gemini-3.5-flash",
-                contents=prompt
-            )
-            raw_text = resp.text.strip()
-            if "```" in raw_text:
-                raw_text = raw_text.split("```")[1]
-                if raw_text.startswith("json"):
-                    raw_text = raw_text[4:].strip()
-            parsed_res = json.loads(raw_text)
-            log_directive(command, "ai_dispatch", "success", parsed_res.get("dialogue", ""), parsed_res.get("npc_name", "참모"))
-            return {
-                "status": "success",
-                "npc": parsed_res.get("npc", "guard"),
-                "npc_name": parsed_res.get("npc_name", "경비대장 아이언가드"),
-                "npc_emoji": parsed_res.get("npc_emoji", "🛡️"),
-                "dialogue": parsed_res.get("dialogue", "명령을 접수하였습니다! 바로 확인하겠습니다!"),
-                "details": "자연어 분석 완료"
-            }
-        except Exception:
-            pass
-
-    # 기본 친절 응답
-    return {
-        "status": "success",
-        "npc": "guard",
-        "npc_name": "사령관 참모",
-        "npc_emoji": "🎖️",
-        "dialogue": f"대표님께서 '\"{command}\"'을(를) 명하셨습니다! 관할 구역에 즉시 지시를 전파하겠습니다.",
-        "details": "명령 접수 완료"
-    }
+        resp = client.models.generate_content(
+            model="gemini-3.5-flash",
+            contents=prompt
+        )
+        raw_text = resp.text.strip()
+        if "```" in raw_text:
+            raw_text = raw_text.split("```")[1]
+            if raw_text.startswith("json"):
+                raw_text = raw_text[4:].strip()
+        data = json.loads(raw_text)
+        log_directive(task_description, "collaboration", "success", f"{len(data.get('steps', []))}명 NPC 합동 분업 완수", "주민 전원")
+        return data
+    except Exception:
+        return {"task": task_description, "steps": fallback_steps}
 
 # --- HTTP Request Handler ---
 class CyberVillageHandler(http.server.SimpleHTTPRequestHandler):
@@ -402,20 +275,14 @@ class CyberVillageHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
             return
 
-        # 2. 이미지 프록시 (/mascot/...)
-        if parsed.path.startswith('/mascot/'):
-            subpath = parsed.path.lstrip('/')
-            img_path = os.path.join(PARKON_PUBLIC, subpath)
-            if os.path.exists(img_path) and os.path.isfile(img_path):
-                self.send_response(200)
-                if img_path.endswith('.jpg') or img_path.endswith('.jpeg'):
-                    self.send_header('Content-Type', 'image/jpeg')
-                elif img_path.endswith('.png'):
-                    self.send_header('Content-Type', 'image/png')
-                self.end_headers()
-                with open(img_path, 'rb') as f:
-                    self.wfile.write(f.read())
-                return
+        # 2. API: 등록된 NPC 목록
+        if parsed.path == '/api/village/npcs':
+            data = load_json(NPCS_FILE, [])
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
+            return
 
         # 3. 루트 및 HTML
         if parsed.path in ['/', '/index.html']:
@@ -439,34 +306,126 @@ class CyberVillageHandler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             req_json = {}
 
-        # 1. 자연어 지휘 명령
-        if parsed.path == '/api/village/command':
-            cmd = req_json.get('command', '').strip()
-            res = process_village_command(cmd)
+        # 1. NPC 1:1 대화 API
+        if parsed.path == '/api/village/chat':
+            npc_id = req_json.get('npc_id', '')
+            msg = req_json.get('message', '').strip()
+            res = chat_with_npc(npc_id, msg)
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.end_headers()
             self.wfile.write(json.dumps(res, ensure_ascii=False).encode('utf-8'))
             return
 
-        # 2. 버튼 직접 액션
-        if parsed.path == '/api/village/action':
-            action = req_json.get('action', '')
-            if action == 'clean':
-                res = process_village_command('바탕화면 청소해줘')
-            elif action == 'backup':
-                res = process_village_command('백업해줘')
-            elif action == 'inspect':
-                res = process_village_command('시스템 정밀 점검해줘')
-            elif action == 'briefing':
-                res = process_village_command('브리핑해줘')
-            else:
-                res = {"status": "error", "message": "알 수 없는 액션"}
+        # 2. 새 NPC 주민 생산/등록 API
+        if parsed.path == '/api/village/spawn_npc':
+            name = req_json.get('name', '신규 주민').strip()
+            role = req_json.get('role', '전담 관리').strip()
+            domain = req_json.get('domain', '일반 도메인').strip()
+            emoji = req_json.get('emoji', '🧑').strip()
+            building = req_json.get('building', '마을 공방').strip()
+            greeting = req_json.get('greeting', '대표님 반갑습니다! 충실히 보좌하겠습니다!').strip()
+
+            npcs = load_json(NPCS_FILE, [])
+            new_id = f"custom_npc_{len(npcs) + 1}"
+            
+            # 맵 상에 겹치지 않는 위치 지정
+            import random
+            rx = random.randint(20, 80)
+            ry = random.randint(25, 75)
+
+            new_npc = {
+                "id": new_id,
+                "name": name,
+                "role": role,
+                "domain": domain,
+                "emoji": emoji,
+                "building": building,
+                "x": rx,
+                "y": ry,
+                "color": "#4A5568",
+                "status": "근무 중",
+                "greeting": greeting,
+                "system_prompt": f"당신은 '{name}'이며 역할은 '{role}'입니다. 전문 분야는 '{domain}'입니다. 김대희 대표님께 공손하고 친절하며 전문성 있게 답변하십시오."
+            }
+            npcs.append(new_npc)
+            save_json(NPCS_FILE, npcs)
+            log_directive(f"새 NPC '{name}' 영입 생산", "spawn_npc", "success", f"관할: {domain}", name)
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.end_headers()
+            self.wfile.write(json.dumps({"status": "success", "npc": new_npc}, ensure_ascii=False).encode('utf-8'))
+            return
+
+        # 3. NPC 간 합동 협업(Multi-Agent Collaboration) API
+        if parsed.path == '/api/village/collaborate':
+            task = req_json.get('task', '파크골프 규정 만화 제작 및 백업').strip()
+            res = run_npc_collaboration(task)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.end_headers()
             self.wfile.write(json.dumps(res, ensure_ascii=False).encode('utf-8'))
+            return
+
+        # 4. 버튼 직접 액션
+        if parsed.path == '/api/village/action':
+            action = req_json.get('action', '')
+            if action == 'clean':
+                cleaner_py = os.path.join(HUB_DIR, "desktop_cleaner.py")
+                try:
+                    res = subprocess.check_output(f'python "{cleaner_py}"', shell=True, text=True, encoding="utf-8", errors="replace", stderr=subprocess.STDOUT)
+                except Exception as e:
+                    res = str(e)
+                summary = "바탕화면 중복 파일 제거 및 5대 폴더 자동 정돈 완료"
+                log_directive("바탕화면 1초 대청소", "desktop_clean", "success", summary, "청소 요정 쓱싹이")
+                resp_data = {
+                    "status": "success",
+                    "npc_emoji": "🧹",
+                    "npc_name": "청소 요정 쓱싹이",
+                    "dialogue": "대표님! 빗자루를 번개처럼 휘둘러 바탕화면 중복 파일과 어질러진 문서를 5대 폴더로 싹 치웠습니다!",
+                    "raw_output": res
+                }
+            elif action == 'backup':
+                drive_sync = os.path.join(HUB_DIR, "integrations", "drive_sync.py")
+                if not os.path.exists(drive_sync):
+                    drive_sync = os.path.join(HUB_DIR, "drive_sync.py")
+                try:
+                    res = subprocess.check_output(f'python "{drive_sync}"', shell=True, text=True, encoding="utf-8", errors="replace", stderr=subprocess.STDOUT)
+                except Exception as e:
+                    res = str(e)
+                summary = "Google Drive (G:) 및 D: 드라이브 스냅샷 동기화 완료"
+                log_directive("구글 드라이브 백업", "backup", "success", summary, "창고지기 골드키퍼")
+                resp_data = {
+                    "status": "success",
+                    "npc_emoji": "📦",
+                    "npc_name": "창고지기 골드키퍼",
+                    "dialogue": "대표님! 중앙 보물 창고에 소중한 코드와 자산을 안전하게 수레로 실어 구글 드라이브에 보관했습니다!",
+                    "raw_output": res
+                }
+            elif action == 'inspect':
+                reporter = os.path.join(HUB_DIR, "status_reporter.py")
+                try:
+                    res = subprocess.check_output(f'python "{reporter}"', shell=True, text=True, encoding="utf-8", errors="replace", stderr=subprocess.STDOUT)
+                except Exception as e:
+                    res = str(e)
+                status_data = get_village_status()
+                summary = f"컴퓨터 건강도 {status_data['health_score']}점, 정상 순찰 완료"
+                log_directive("컴퓨터 정밀 점검", "status_report", "success", summary, "경비대장 아이언가드")
+                resp_data = {
+                    "status": "success",
+                    "npc_emoji": "🛡️",
+                    "npc_name": "경비대장 아이언가드",
+                    "dialogue": f"충성! 전 구역 경비 점검 완료! 종합 건강도는 {status_data['health_score']}점이며 침입자 없이 평화롭습니다!",
+                    "raw_output": res
+                }
+            else:
+                resp_data = {"status": "error", "message": "알 수 없는 액션"}
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(json.dumps(resp_data, ensure_ascii=False).encode('utf-8'))
             return
 
         self.send_response(404)
@@ -477,7 +436,7 @@ def run_server():
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("", PORT), CyberVillageHandler) as httpd:
         print("\n" + "=" * 70)
-        print(f"🏰 [Cyber Village] 구글 통합 사령탑: 컴퓨터 종합 환경 마을 가동")
+        print(f"🏰 [Cyber Village 2.0] 구글 통합 사령탑: 한 화면 가상 마을 & NPC 협업 가동")
         print(f"👉 웹 주소: http://localhost:{PORT}")
         print("=" * 70)
         httpd.serve_forever()

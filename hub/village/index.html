@@ -3,21 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>구글 통합 사령탑 - 컴퓨터 종합 환경 마을 (Cyber Village)</title>
+  <title>구글 통합 사령탑 - 컴퓨터 종합 환경 마을</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-sky: #87CEEB;
-      --grass-base: #52B788;
+      --grass: #52B788;
       --grass-dark: #2D6A4F;
-      --road-stone: #E9D8A6;
+      --road: #E9D8A6;
+      --water: #48CAE4;
       --primary: #1B4332;
       --accent: #E76F51;
       --gold: #F4A261;
-      --card-bg: rgba(255, 255, 255, 0.94);
-      --font-main: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-main: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     * {
@@ -27,513 +26,487 @@
       user-select: none;
     }
 
-    body {
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden; /* 한 화면에 완전히 맞춤 */
       font-family: var(--font-main);
-      background: linear-gradient(180deg, #70C1B3 0%, #B2DBBF 40%, #52B788 100%);
-      min-height: 100vh;
-      color: #1A202C;
-      overflow-x: hidden;
-      position: relative;
-    }
-
-    /* 상단 사령탑 헤더 */
-    header {
-      background: rgba(27, 67, 50, 0.95);
-      backdrop-filter: blur(12px);
-      color: #FFF;
-      padding: 12px 24px;
+      background: #2D6A4F;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      border-bottom: 3px solid #D8F3DC;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      flex-direction: column;
     }
 
-    .brand-group {
+    /* 1. 상단 미니 슬림 헤더 (높이: 48px) */
+    header {
+      height: 48px;
+      background: rgba(27, 67, 50, 0.98);
+      border-bottom: 2px solid #52B788;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      color: #FFF;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .badge-town {
+      background: #D8F3DC;
+      color: #1B4332;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 700;
+    }
+
+    .header-center-gauges {
       display: flex;
       align-items: center;
       gap: 12px;
     }
 
-    .brand-icon {
-      font-size: 28px;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-    }
-
-    .brand-title {
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .badge-village {
-      background: #D8F3DC;
-      color: #1B4332;
-      font-size: 11px;
-      padding: 3px 8px;
+    .status-pill {
+      background: rgba(0,0,0,0.3);
+      padding: 3px 10px;
       border-radius: 20px;
-      font-weight: 700;
-    }
-
-    /* 실시간 시스템 상태 바 */
-    .system-gauges {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      background: rgba(0,0,0,0.25);
-      padding: 6px 16px;
-      border-radius: 30px;
-      border: 1px solid rgba(255,255,255,0.15);
-    }
-
-    .gauge-item {
+      font-size: 12px;
+      font-weight: 600;
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 13px;
-      font-weight: 600;
-    }
-
-    .gauge-pill {
-      background: #2D6A4F;
-      padding: 2px 8px;
-      border-radius: 12px;
-      color: #D8F3DC;
-      font-family: monospace;
+      border: 1px solid rgba(255,255,255,0.15);
     }
 
     .weather-pill {
       background: #E9C46A;
       color: #264653;
-      padding: 4px 12px;
-      border-radius: 20px;
       font-weight: 800;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      animation: pulse 2s infinite ease-in-out;
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.03); }
+      padding: 3px 12px;
+      border-radius: 20px;
+      font-size: 12px;
     }
 
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 10px;
-    }
-
-    .btn-sound {
-      background: rgba(255,255,255,0.15);
-      border: 1px solid rgba(255,255,255,0.3);
-      color: #FFF;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 13px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: all 0.2s;
-    }
-    .btn-sound:hover {
-      background: rgba(255,255,255,0.3);
-    }
-
-    /* 메인 컨테이너 */
-    .village-container {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 20px 20px 100px;
-    }
-
-    /* 영주 사령관 집무실 타워 (상단 컨트롤 바) */
-    .commander-tower {
-      background: linear-gradient(135deg, #1B4332 0%, #2D6A4F 100%);
-      border: 3px solid #E9C46A;
-      border-radius: 24px;
-      padding: 20px 28px;
-      color: #FFF;
-      box-shadow: 0 12px 32px rgba(0,0,0,0.2);
-      margin-bottom: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .commander-tower::after {
-      content: "👑";
-      position: absolute;
-      right: 20px;
-      bottom: -15px;
-      font-size: 100px;
-      opacity: 0.12;
-      pointer-events: none;
-    }
-
-    .commander-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .commander-title {
-      font-size: 18px;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: #F4A261;
-    }
-
-    .commander-status-summary {
-      font-size: 14px;
-      color: #D8F3DC;
-      background: rgba(0,0,0,0.25);
-      padding: 6px 14px;
-      border-radius: 20px;
-    }
-
-    /* 사령관 명령 입력창 */
-    .command-box {
-      display: flex;
-      gap: 10px;
-      background: rgba(255,255,255,0.95);
-      padding: 8px 12px;
-      border-radius: 16px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    }
-
-    .command-input {
-      flex: 1;
-      border: none;
-      outline: none;
-      font-size: 16px;
-      font-weight: 600;
-      color: #1A202C;
-      padding: 8px 12px;
-      background: transparent;
-      font-family: inherit;
-    }
-
-    .command-input::placeholder {
-      color: #A0AEC0;
-      font-weight: 400;
-    }
-
-    .btn-command-submit {
-      background: linear-gradient(135deg, #E76F51 0%, #F4A261 100%);
-      color: #FFF;
-      border: none;
-      padding: 0 24px;
-      border-radius: 12px;
-      font-size: 15px;
-      font-weight: 800;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .btn-command-submit:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(231,111,81,0.4);
-    }
-
-    /* 빠른 원클릭 지휘 칩 */
-    .quick-chips {
-      display: flex;
       gap: 8px;
-      flex-wrap: wrap;
     }
 
-    .chip-btn {
-      background: rgba(255,255,255,0.12);
-      border: 1px solid rgba(255,255,255,0.2);
+    .btn-header {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
       color: #FFF;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 16px;
+      font-size: 12px;
       font-weight: 700;
       cursor: pointer;
       transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
 
-    .chip-btn:hover {
-      background: rgba(255,255,255,0.25);
-      border-color: #E9C46A;
-      transform: translateY(-2px);
+    .btn-header:hover {
+      background: rgba(255,255,255,0.3);
+      transform: translateY(-1px);
     }
 
-    /* 마을 메인 뷰 (Village Field) */
-    .village-field {
-      background: radial-gradient(circle at 50% 50%, #74C69D 0%, #52B788 60%, #40916C 100%);
-      border: 4px solid #2D6A4F;
-      border-radius: 32px;
-      padding: 40px 30px;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.18), inset 0 2px 10px rgba(255,255,255,0.4);
-      position: relative;
-      margin-bottom: 24px;
-    }
-
-    /* 마을 중앙 분수대 광장 */
-    .village-center-square {
-      text-align: center;
-      margin-bottom: 30px;
-      position: relative;
-    }
-
-    .fountain-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(255,255,255,0.9);
-      padding: 8px 24px;
-      border-radius: 30px;
+    .btn-header.accent {
+      background: linear-gradient(135deg, #E76F51 0%, #F4A261 100%);
+      border: none;
       font-weight: 800;
-      font-size: 15px;
-      color: #1B4332;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.1);
-      border: 2px solid #52B788;
+      box-shadow: 0 2px 6px rgba(231,111,81,0.4);
     }
 
-    /* 5대 관할 구역 건물 그리드 */
-    .buildings-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 24px;
+    /* 2. 마을 맵 뷰포트 (한 화면 전체 차지) */
+    .village-viewport {
+      flex: 1;
       position: relative;
-      z-index: 2;
-    }
-
-    /* 개별 건물 & NPC 카드 */
-    .building-card {
-      background: var(--card-bg);
-      border-radius: 24px;
-      padding: 24px 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.12);
-      border: 3px solid transparent;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      position: relative;
+      background: radial-gradient(circle at 50% 50%, #74C69D 0%, #52B788 50%, #40916C 100%);
       overflow: hidden;
-    }
-
-    .building-card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 16px 36px rgba(0,0,0,0.18);
-      border-color: #52B788;
-    }
-
-    .building-card.active-media { border-top: 6px solid #E76F51; }
-    .building-card.active-clean { border-top: 6px solid #2A9D8F; }
-    .building-card.active-guard { border-top: 6px solid #457B9D; }
-    .building-card.active-vault { border-top: 6px solid #E9C46A; }
-    .building-card.active-golf { border-top: 6px solid #52B788; }
-
-    /* 건물 아이콘 및 애니메이션 */
-    .building-icon-wrap {
-      width: 72px;
-      height: 72px;
-      border-radius: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 38px;
-      margin-bottom: 12px;
-      background: #F8F9FA;
-      box-shadow: inset 0 2px 6px rgba(0,0,0,0.06);
-      transition: all 0.3s;
     }
 
-    .building-card:hover .building-icon-wrap {
-      transform: scale(1.1) rotate(-5deg);
+    /* 마을 그래픽 레이아웃 (SVG/Canvas 배경) */
+    .village-map-bg {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
     }
 
-    .building-title {
-      font-size: 17px;
-      font-weight: 800;
-      color: #1A202C;
-      margin-bottom: 4px;
+    /* 포장도로 (Roads) */
+    .road-horizontal {
+      position: absolute;
+      top: 50%; left: 10%; right: 10%;
+      height: 48px;
+      background: #E9D8A6;
+      border-top: 3px dashed #BB9457;
+      border-bottom: 3px dashed #BB9457;
+      transform: translateY(-50%);
+      border-radius: 24px;
+      opacity: 0.85;
     }
 
-    .npc-badge {
-      display: inline-block;
-      font-size: 12px;
-      font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 12px;
-      margin-bottom: 12px;
+    .road-vertical {
+      position: absolute;
+      left: 50%; top: 12%; bottom: 12%;
+      width: 48px;
+      background: #E9D8A6;
+      border-left: 3px dashed #BB9457;
+      border-right: 3px dashed #BB9457;
+      transform: translateX(-50%);
+      border-radius: 24px;
+      opacity: 0.85;
     }
 
-    .badge-media { background: #FFE8D6; color: #D44D22; }
-    .badge-clean { background: #E0FBFC; color: #22577A; }
-    .badge-guard { background: #EDF2F4; color: #2B2D42; }
-    .badge-vault { background: #FFF3B0; color: #7F5539; }
-    .badge-golf { background: #D8F3DC; color: #1B4332; }
-
-    /* NPC 아바타 & 말풍선 */
-    .npc-avatar-box {
-      position: relative;
-      margin-bottom: 12px;
+    /* 중앙 분수대 광장 (Center Plaza) */
+    .central-fountain {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 140px;
+      height: 140px;
+      background: radial-gradient(circle, #ADE8F4 30%, #48CAE4 70%, #0096C7 100%);
+      border: 6px solid #FFF;
+      border-radius: 50%;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25), inset 0 2px 8px rgba(255,255,255,0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      cursor: pointer;
+      transition: transform 0.2s;
     }
 
-    .npc-avatar-emoji {
-      font-size: 42px;
-      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15));
-      animation: floatNpc 2.4s infinite ease-in-out;
+    .central-fountain:hover {
+      transform: translate(-50%, -50%) scale(1.05);
     }
 
-    @keyframes floatNpc {
+    .fountain-icon {
+      font-size: 34px;
+      animation: waterSplash 2s infinite ease-in-out;
+    }
+
+    @keyframes waterSplash {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-6px); }
     }
 
-    .npc-speech-bubble {
-      background: #F1FAEE;
-      border: 1.5px solid #A8DADC;
-      border-radius: 14px;
-      padding: 10px 12px;
-      font-size: 13px;
-      color: #1D3557;
-      font-weight: 600;
-      line-height: 1.45;
-      margin-bottom: 14px;
-      min-height: 52px;
+    .fountain-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: #0077B6;
+      background: rgba(255,255,255,0.9);
+      padding: 1px 6px;
+      border-radius: 10px;
+      margin-top: 2px;
+    }
+
+    /* 마을 건물 & NPC 콤팩트 노드 */
+    .village-spot {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      z-index: 10;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .village-spot:hover {
+      transform: translate(-50%, -50%) scale(1.15);
+      z-index: 20;
+    }
+
+    /* 건물 아이콘 */
+    .spot-building-icon {
+      width: 60px;
+      height: 60px;
+      background: #FFF;
+      border-radius: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 30px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+      border: 3px solid #2D6A4F;
       position: relative;
     }
 
-    .npc-speech-bubble::before {
-      content: "";
-      position: absolute;
-      top: -8px;
-      left: 50%;
-      transform: translateX(-50%);
-      border-width: 0 8px 8px 8px;
-      border-style: solid;
-      border-color: transparent transparent #A8DADC transparent;
+    /* 소형 네임태그 (대표님 요청: 이름만 콤팩트하게 표시) */
+    .spot-name-pill {
+      background: rgba(27, 67, 50, 0.95);
+      color: #FFF;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 12px;
+      margin-top: 5px;
+      white-space: nowrap;
+      border: 1.5px solid #D8F3DC;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
-    /* 건물 인터랙션 버튼 */
-    .btn-building-action {
-      width: 100%;
-      background: #1B4332;
+    .spot-role-badge {
+      font-size: 9px;
+      background: #E9C46A;
+      color: #1A202C;
+      padding: 1px 4px;
+      border-radius: 6px;
+      font-weight: 700;
+    }
+
+    /* NPC 말풍선 힌트 */
+    .spot-speech-hint {
+      position: absolute;
+      top: -28px;
+      background: #FFF;
+      color: #1A202C;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 10px;
+      white-space: nowrap;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      transform: translateY(4px);
+      border: 1px solid #CBD5E0;
+    }
+
+    .village-spot:hover .spot-speech-hint {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* 3. 하단 슬림 컨트롤 바 (대표님 지휘 및 합동 작전, 높이: 48px) */
+    .bottom-command-bar {
+      height: 48px;
+      background: rgba(27, 67, 50, 0.98);
+      border-top: 2px solid #52B788;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
       color: #FFF;
-      border: none;
-      padding: 10px;
-      border-radius: 12px;
-      font-size: 14px;
+      gap: 12px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    .quick-action-pills {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pill-btn {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: #FFF;
+      padding: 5px 12px;
+      border-radius: 14px;
+      font-size: 12px;
       font-weight: 700;
       cursor: pointer;
       transition: all 0.2s;
-      margin-top: auto;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
-    .btn-building-action:hover {
-      background: #2D6A4F;
-      transform: translateY(-2px);
+    .pill-btn:hover {
+      background: rgba(255,255,255,0.25);
+      border-color: #E9C46A;
+      transform: translateY(-1px);
     }
 
-    /* 하단 마을 실시간 전광판 및 퀘스트 로그 */
-    .village-bottom-grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 20px;
-    }
-
-    @media (max-width: 900px) {
-      .village-bottom-grid { grid-template-columns: 1fr; }
-    }
-
-    .log-card {
+    .command-input-wrap {
+      flex: 1;
+      max-width: 500px;
+      display: flex;
+      align-items: center;
       background: #FFF;
       border-radius: 20px;
-      padding: 20px 24px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-      border: 1px solid #E2E8F0;
+      padding: 3px 10px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
     }
 
-    .log-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-      border-bottom: 2px solid #EDF2F7;
-      padding-bottom: 10px;
-    }
-
-    .log-card-title {
-      font-size: 16px;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .bottom-cmd-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 13px;
+      font-weight: 600;
       color: #1A202C;
+      padding: 4px 6px;
+      font-family: inherit;
     }
 
-    .log-list {
-      list-style: none;
+    .btn-cmd-send {
+      background: #E76F51;
+      color: #FFF;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    /* 4. 플로팅 1:1 대화 모달 (슬림 RPG 대화창) */
+    .chat-drawer {
+      position: fixed;
+      right: 20px;
+      bottom: 60px;
+      width: 380px;
+      max-height: 520px;
+      background: #FFF;
+      border: 3px solid #1B4332;
+      border-radius: 20px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.3);
+      display: none;
+      flex-direction: column;
+      z-index: 200;
+      overflow: hidden;
+      animation: slideUp 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .chat-drawer.active {
+      display: flex;
+    }
+
+    .chat-header {
+      background: #1B4332;
+      color: #FFF;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .chat-header-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chat-npc-avatar {
+      font-size: 26px;
+      background: #D8F3DC;
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chat-npc-title {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .chat-npc-domain {
+      font-size: 11px;
+      color: #D8F3DC;
+    }
+
+    .btn-close-chat {
+      background: transparent;
+      border: none;
+      color: #FFF;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 14px;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-    }
-
-    .log-item {
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      font-size: 13px;
-      padding: 8px 12px;
+      gap: 10px;
       background: #F8F9FA;
-      border-radius: 10px;
-      border-left: 4px solid #52B788;
+      min-height: 220px;
+      max-height: 320px;
     }
 
-    .log-time {
-      font-size: 11px;
-      color: #718096;
-      font-family: monospace;
-      white-space: nowrap;
-    }
-
-    .log-content {
+    .msg-bubble {
+      max-width: 85%;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-size: 13px;
+      line-height: 1.5;
       font-weight: 600;
-      color: #2D3748;
+    }
+
+    .msg-bubble.npc {
+      background: #FFF;
+      color: #1A202C;
+      border: 1px solid #E2E8F0;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg-bubble.user {
+      background: #1B4332;
+      color: #FFF;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    .chat-input-area {
+      padding: 10px 12px;
+      background: #FFF;
+      border-top: 1px solid #E2E8F0;
+      display: flex;
+      gap: 8px;
+    }
+
+    .chat-input {
       flex: 1;
+      border: 1px solid #CBD5E0;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
     }
 
-    .log-npc {
-      background: #E2E8F0;
-      padding: 2px 6px;
-      border-radius: 6px;
-      font-size: 11px;
+    .btn-chat-send {
+      background: #1B4332;
+      color: #FFF;
+      border: none;
+      padding: 0 14px;
+      border-radius: 10px;
+      font-size: 13px;
       font-weight: 700;
+      cursor: pointer;
     }
 
-    /* 대화 모달 (RPG 텍스트 박스) */
-    .dialogue-modal-overlay {
+    /* 5. 새 NPC 생산/영입 모달 */
+    .spawn-modal-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0,0,0,0.6);
@@ -541,98 +514,115 @@
       display: none;
       align-items: center;
       justify-content: center;
-      z-index: 999;
+      z-index: 300;
       padding: 20px;
     }
 
-    .dialogue-modal-overlay.active {
-      display: flex;
-      animation: fadeIn 0.2s ease-out;
-    }
+    .spawn-modal-overlay.active { display: flex; }
 
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    .dialogue-box {
+    .spawn-modal-card {
       background: #FFF;
-      border: 4px solid #1B4332;
-      border-radius: 24px;
-      max-width: 640px;
-      width: 100%;
-      padding: 28px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-      position: relative;
-    }
-
-    .dialogue-npc-header {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-
-    .dialogue-npc-avatar {
-      font-size: 54px;
-      background: #D8F3DC;
-      width: 80px;
-      height: 80px;
       border-radius: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: 2px solid #52B788;
+      border: 3px solid #1B4332;
+      max-width: 480px;
+      width: 100%;
+      padding: 24px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
     }
 
-    .dialogue-npc-name {
-      font-size: 20px;
+    .spawn-title {
+      font-size: 18px;
       font-weight: 800;
       color: #1B4332;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    .dialogue-npc-role {
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: #4A5568;
+      margin-bottom: 4px;
+    }
+
+    .form-input {
+      width: 100%;
+      border: 1px solid #CBD5E0;
+      border-radius: 10px;
+      padding: 8px 10px;
       font-size: 13px;
-      color: #718096;
-      font-weight: 600;
+      outline: none;
     }
 
-    .dialogue-text {
-      background: #F8F9FA;
-      border: 2px solid #E2E8F0;
-      border-radius: 16px;
-      padding: 18px 20px;
-      font-size: 16px;
-      line-height: 1.6;
-      font-weight: 600;
-      color: #2D3748;
-      margin-bottom: 20px;
-      min-height: 80px;
-    }
-
-    .dialogue-actions {
+    .form-actions {
       display: flex;
       justify-content: flex-end;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    /* 6. NPC 협업 합동 작전실 모달 */
+    .collab-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      padding: 20px;
+    }
+
+    .collab-modal-overlay.active { display: flex; }
+
+    .collab-modal-card {
+      background: #FFF;
+      border-radius: 20px;
+      border: 3px solid #E76F51;
+      max-width: 600px;
+      width: 100%;
+      padding: 24px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .collab-steps-list {
+      flex: 1;
+      overflow-y: auto;
+      margin: 14px 0;
+      display: flex;
+      flex-direction: column;
       gap: 12px;
+      padding-right: 4px;
     }
 
-    .btn-dialogue-confirm {
-      background: #1B4332;
-      color: #FFF;
-      border: none;
-      padding: 12px 28px;
+    .collab-step-item {
+      display: flex;
+      gap: 12px;
+      background: #F8F9FA;
+      padding: 10px 14px;
       border-radius: 12px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
+      border-left: 4px solid #E76F51;
+      font-size: 13px;
+      line-height: 1.5;
     }
 
-    .btn-dialogue-confirm:hover {
-      background: #2D6A4F;
+    .collab-avatar {
+      font-size: 26px;
+      flex-shrink: 0;
     }
 
-    /* 청소 중 빗자루 애니메이션 효과 */
-    .broom-animation-overlay {
+    /* 청소 중 오버레이 */
+    .broom-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(255,255,255,0.7);
@@ -641,462 +631,473 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      z-index: 1000;
-      font-size: 24px;
+      z-index: 999;
+      font-size: 20px;
       font-weight: 800;
       color: #1B4332;
     }
 
-    .broom-icon {
-      font-size: 80px;
-      animation: sweepBroom 1s infinite alternate ease-in-out;
+    .broom-anim {
+      font-size: 70px;
+      animation: sweep 0.8s infinite alternate ease-in-out;
     }
 
-    @keyframes sweepBroom {
-      0% { transform: rotate(-25deg) translateX(-20px); }
-      100% { transform: rotate(25deg) translateX(20px); }
+    @keyframes sweep {
+      from { transform: rotate(-25deg); }
+      to { transform: rotate(25deg); }
     }
   </style>
 </head>
 <body>
 
-  <!-- 1. 사령탑 상단 헤더 -->
+  <!-- 1. 상단 미니 슬림 헤더 -->
   <header>
-    <div class="brand-group">
-      <span class="brand-icon">🏰</span>
-      <div class="brand-title">
-        구글 통합 사령탑
-        <span class="badge-village">컴퓨터 종합 환경 마을</span>
-      </div>
+    <div class="brand-title">
+      <span>🏰</span>
+      <span>구글 통합 사령탑</span>
+      <span class="badge-town">컴퓨터 종합 환경 마을</span>
     </div>
 
-    <!-- 실시간 시스템 자원 및 날씨 게이지 -->
-    <div class="system-gauges">
-      <div class="weather-pill" id="weatherBadge">
-        ☀️ 화창함 (98점)
-      </div>
-      <div class="gauge-item">
+    <!-- 실시간 상태 게이지 -->
+    <div class="header-center-gauges">
+      <div class="weather-pill" id="weatherBadge">☀️ 화창함 (95점)</div>
+      <div class="status-pill">
         <span>CPU</span>
-        <span class="gauge-pill" id="cpuPill">18%</span>
+        <b id="cpuPill" style="color: #D8F3DC;">15%</b>
       </div>
-      <div class="gauge-item">
+      <div class="status-pill">
         <span>RAM</span>
-        <span class="gauge-pill" id="ramPill">41%</span>
+        <b id="ramPill" style="color: #D8F3DC;">40%</b>
       </div>
-      <div class="gauge-item">
+      <div class="status-pill">
         <span>C: 여유</span>
-        <span class="gauge-pill" id="cDrivePill">418 GB</span>
+        <b id="cDrivePill" style="color: #D8F3DC;">310 GB</b>
       </div>
     </div>
 
     <div class="header-actions">
-      <button class="btn-sound" id="btnSound" onclick="toggleSound()">🔊 효과음 ON</button>
-      <button class="btn-sound" onclick="fetchStatus()">🔄 새로고침</button>
+      <button class="btn-header accent" onclick="openSpawnModal()">+ 새 NPC 주민 영입</button>
+      <button class="btn-header" onclick="openCollabModal()">🤝 주민 합동 작전실</button>
+      <button class="btn-header" onclick="fetchStatus()">🔄 새로고침</button>
     </div>
   </header>
 
-  <!-- 2. 마을 메인 컨테이너 -->
-  <main class="village-container">
+  <!-- 2. 마을 맵 뷰포트 (한 화면 전체에 쏙 들어옴) -->
+  <main class="village-viewport" id="villageMap">
+    <!-- 도로 및 분수대 배경 -->
+    <div class="road-horizontal"></div>
+    <div class="road-vertical"></div>
 
-    <!-- 영주 중앙 사령관 타워 (김대희 대표님 집무실) -->
-    <section class="commander-tower">
-      <div class="commander-header">
-        <div class="commander-title">
-          <span>👑 김대희 사령관님의 중앙 집무실</span>
-        </div>
-        <div class="commander-status-summary" id="commanderSummary">
-          마을 주민(NPC) 5명이 전 구역을 안전하게 지키고 있습니다.
-        </div>
-      </div>
+    <!-- 중앙 분수대 광장 -->
+    <div class="central-fountain" onclick="playBeep('fanfare')">
+      <div class="fountain-icon">⛲</div>
+      <div class="fountain-label">중앙 광장</div>
+    </div>
 
-      <!-- 대표님 자연어 명령 입력창 -->
-      <div class="command-box">
-        <input 
-          type="text" 
-          id="commandInput" 
-          class="command-input" 
-          placeholder="원하시는 지휘를 말씀하세요! (예: 바탕화면 청소해줘, 15초 쇼츠 만들어줘, 전체 백업해줘, 상태 점검해줘)"
-          onkeydown="if(event.key==='Enter') sendVillageCommand()"
-        />
-        <button class="btn-command-submit" onclick="sendVillageCommand()">
-          <span>지휘 하달</span>
-          <span>➔</span>
-        </button>
-      </div>
-
-      <!-- 원클릭 빠른 지휘 칩 -->
-      <div class="quick-chips">
-        <button class="chip-btn" onclick="executeQuickAction('clean')">🧹 바탕화면 1초 대청소</button>
-        <button class="chip-btn" onclick="executeQuickAction('media')">🎬 15초 쇼츠·만화 스튜디오</button>
-        <button class="chip-btn" onclick="executeQuickAction('backup')">📦 구글 드라이브 백업</button>
-        <button class="chip-btn" onclick="executeQuickAction('inspect')">🛡️ 컴퓨터 정밀 건강검진</button>
-        <button class="chip-btn" onclick="executeQuickAction('briefing')">📜 일일 3줄 브리핑</button>
-      </div>
-    </section>
-
-    <!-- 3. 마을 전경 필드 (Village Field) -->
-    <section class="village-field">
-      <div class="village-center-square">
-        <div class="fountain-badge">
-          <span>⛲</span>
-          <span id="villageMotto">평화롭고 활기찬 사이버 타운 중앙 광장</span>
-        </div>
-      </div>
-
-      <!-- 5대 관할 구역 및 NPC 카드 -->
-      <div class="buildings-grid" id="buildingsGrid">
-        <!-- 동적으로 NPC 카드 렌더링 -->
-      </div>
-    </section>
-
-    <!-- 4. 하단 마을 전광판 & 지휘 이력 로그 -->
-    <section class="village-bottom-grid">
-      <div class="log-card">
-        <div class="log-card-header">
-          <div class="log-card-title">
-            <span>📜</span>
-            <span>사령탑 실시간 지휘 전광판 (최근 업무 기록)</span>
-          </div>
-          <span style="font-size: 12px; color: #718096;">자동 기록 보관</span>
-        </div>
-        <ul class="log-list" id="directiveLogList">
-          <!-- 동적 렌더링 -->
-        </ul>
-      </div>
-
-      <!-- 마을 환경 안내소 -->
-      <div class="log-card">
-        <div class="log-card-header">
-          <div class="log-card-title">
-            <span>ℹ️</span>
-            <span>컴퓨터 환경 안내</span>
-          </div>
-        </div>
-        <div style="font-size: 13px; line-height: 1.6; color: #4A5568;">
-          <p>• <b>마을 날씨</b>: 컴퓨터 CPU와 디스크 여유량에 따라 날씨가 달라집니다.</p>
-          <p style="margin-top: 8px;">• <b>단축키</b>: 키보드 <code>Ctrl+Alt+H</code>를 누르면 언제든 사령탑이 호출됩니다.</p>
-          <p style="margin-top: 8px;">• <b>원스톱 관리</b>: 각 구역 NPC를 클릭하면 해당 컴퓨터 작업이 즉각 수행됩니다.</p>
-        </div>
-      </div>
-    </section>
-
+    <!-- 동적으로 렌더링될 NPC 및 건물 스팟 컨테이너 -->
+    <div id="spotsContainer"></div>
   </main>
 
-  <!-- 대화 모달 (RPG 스타일) -->
-  <div class="dialogue-modal-overlay" id="dialogueModal">
-    <div class="dialogue-box">
-      <div class="dialogue-npc-header">
-        <div class="dialogue-npc-avatar" id="modalNpcAvatar">🐥</div>
+  <!-- 3. 하단 슬림 컨트롤 바 -->
+  <footer class="bottom-command-bar">
+    <div class="quick-action-pills">
+      <button class="pill-btn" onclick="executeQuick('clean')">🧹 바탕화면 1초 청소</button>
+      <button class="pill-btn" onclick="executeQuick('backup')">📦 구글 드라이브 백업</button>
+      <button class="pill-btn" onclick="executeQuick('inspect')">🛡️ 컴퓨터 건강검진</button>
+      <button class="pill-btn" onclick="window.open('http://localhost:3050', '_blank')">🎬 영상 스튜디오</button>
+      <button class="pill-btn" onclick="window.open('https://landnote.vercel.app', '_blank')">⛳ 파크온 웹앱</button>
+    </div>
+
+    <!-- 대표님 자연어 지휘창 -->
+    <div class="command-input-wrap">
+      <input 
+        type="text" 
+        id="bottomCmdInput" 
+        class="bottom-cmd-input" 
+        placeholder="사령관님, 지시를 입력하세요 (예: 바탕화면 청소해줘, 백업해줘)" 
+        onkeydown="if(event.key==='Enter') sendBottomCommand()"
+      />
+      <button class="btn-cmd-send" onclick="sendBottomCommand()">지휘 하달</button>
+    </div>
+  </footer>
+
+  <!-- 4. 플로팅 1:1 NPC 도메인 전문 대화창 (슬림 RPG) -->
+  <div class="chat-drawer" id="chatDrawer">
+    <div class="chat-header">
+      <div class="chat-header-info">
+        <div class="chat-npc-avatar" id="chatNpcAvatar">⛳</div>
         <div>
-          <div class="dialogue-npc-name" id="modalNpcName">파키 감독</div>
-          <div class="dialogue-npc-role" id="modalNpcRole">영상·미디어 관할 NPC</div>
+          <div class="chat-npc-title" id="chatNpcTitle">김프로 (파크온 총괄)</div>
+          <div class="chat-npc-domain" id="chatNpcDomain">파크골프 규정 & 전국 160개 구장 전문</div>
         </div>
       </div>
-      <div class="dialogue-text" id="modalDialogueText">
-        대표님! 무엇을 도와드릴까요?
+      <button class="btn-close-chat" onclick="closeChat()">✕</button>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <!-- 대화 메시지 동적 렌더링 -->
+    </div>
+
+    <div class="chat-input-area">
+      <input 
+        type="text" 
+        id="chatInput" 
+        class="chat-input" 
+        placeholder="무엇이든 물어보세요..." 
+        onkeydown="if(event.key==='Enter') sendChatMessage()"
+      />
+      <button class="btn-chat-send" onclick="sendChatMessage()">전송</button>
+    </div>
+  </div>
+
+  <!-- 5. 새 NPC 주민 생산/영입 모달 -->
+  <div class="spawn-modal-overlay" id="spawnModal">
+    <div class="spawn-modal-card">
+      <div class="spawn-title">
+        <span>✨</span>
+        <span>신규 전문 NPC 주민 생산/영입</span>
       </div>
-      <div class="dialogue-actions" id="modalActions">
-        <button class="btn-dialogue-confirm" onclick="closeDialogue()">확인</button>
+
+      <div class="form-group">
+        <label class="form-label">NPC 이름 (예: 천기성 사주도사, 부동산 김소장)</label>
+        <input type="text" id="spawnName" class="form-input" placeholder="이름 입력" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">관할 역할 (예: 사주/만세력 분석관, 부동산 매물 관리관)</label>
+        <input type="text" id="spawnRole" class="form-input" placeholder="역할 입력" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">전문 도메인 지식 (NPC가 대화할 전문 분야)</label>
+        <input type="text" id="spawnDomain" class="form-input" placeholder="예: 사주팔자, 만세력 계산, 궁합, 풍수지리" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">대표 이모지 (예: 🔮, 🏢, 📈, 🤖)</label>
+        <input type="text" id="spawnEmoji" class="form-input" placeholder="🔮" value="🧑" />
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-header" style="background:#CBD5E0; color:#1A202C;" onclick="closeSpawnModal()">취소</button>
+        <button class="btn-header accent" onclick="submitSpawnNpc()">마을에 주민 영입</button>
       </div>
     </div>
   </div>
 
-  <!-- 빗자루 청소 중 오버레이 -->
-  <div class="broom-animation-overlay" id="broomOverlay">
-    <div class="broom-icon">🧹</div>
-    <div style="margin-top: 16px;">청소 요정 쓱싹이가 바탕화면을 청소 중입니다...</div>
+  <!-- 6. NPC 주민 합동 작전실 모달 -->
+  <div class="collab-modal-overlay" id="collabModal">
+    <div class="collab-modal-card">
+      <div class="spawn-title" style="color: #E76F51;">
+        <span>🤝</span>
+        <span>NPC 주민 합동 협업 작전실</span>
+      </div>
+      <p style="font-size: 13px; color: #4A5568;">
+        여러 NPC가 각자의 전문 분야를 나누어 분업하고 대화하며 합동으로 미션을 수행합니다.
+      </p>
+
+      <div style="display:flex; gap:8px; margin: 12px 0;">
+        <input 
+          type="text" 
+          id="collabTaskInput" 
+          class="form-input" 
+          placeholder="합동 미션 입력 (예: 파크골프 티샷 OB 룰을 4컷 만화로 제작하고 구글 드라이브에 백업해줘)" 
+          value="파크골프 티샷 OB 룰을 4컷 만화로 제작하고 구글 드라이브에 백업해줘"
+        />
+        <button class="btn-header accent" style="white-space:nowrap;" onclick="runCollabTask()">작전 개시</button>
+      </div>
+
+      <div class="collab-steps-list" id="collabStepsList">
+        <div style="text-align:center; color:#A0AEC0; font-size:13px; padding:20px;">
+          [작전 개시]를 누르면 관할 NPC들이 실시간으로 회의하며 분업을 시작합니다.
+        </div>
+      </div>
+
+      <div style="text-align:right;">
+        <button class="btn-header" style="background:#718096;" onclick="closeCollabModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 빗자루 청소 오버레이 -->
+  <div class="broom-overlay" id="broomOverlay">
+    <div class="broom-anim">🧹</div>
+    <div style="margin-top: 12px;">청소 요정 쓱싹이가 바탕화면을 청소 중입니다...</div>
   </div>
 
   <script>
-    let soundEnabled = true;
+    let activeNpc = null;
     let audioCtx = null;
+    let cachedNpcs = [];
 
-    // 레트로 사운드 이펙트
+    // 사운드 이펙트
     function playBeep(type = 'chime') {
-      if (!soundEnabled) return;
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
-
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-
         const now = audioCtx.currentTime;
         if (type === 'chime') {
           osc.type = 'sine';
-          osc.frequency.setValueAtTime(523.25, now); // C5
-          osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.1); // E5
-          osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.2); // G5
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.15);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else if (type === 'fanfare') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.2);
           gain.gain.setValueAtTime(0.2, now);
           gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
           osc.start(now);
           osc.stop(now + 0.35);
-        } else if (type === 'fanfare') {
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(440, now);
-          osc.frequency.exponentialRampToValueAtTime(880, now + 0.25);
-          gain.gain.setValueAtTime(0.25, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-          osc.start(now);
-          osc.stop(now + 0.4);
         }
       } catch (e) {}
     }
 
-    function toggleSound() {
-      soundEnabled = !soundEnabled;
-      document.getElementById('btnSound').innerText = soundEnabled ? '🔊 효과음 ON' : '🔈 효과음 OFF';
-      if (soundEnabled) playBeep('chime');
-    }
-
-    // 서버 상태 조회 및 마을 렌더링
+    // 서버 상태 및 마을 맵 렌더링
     async function fetchStatus() {
       try {
         const res = await fetch('/api/village/status');
         const data = await res.json();
-        renderVillage(data);
-      } catch (err) {
-        console.error('상태 로딩 실패:', err);
+        
+        // 헤더 갱신
+        document.getElementById('weatherBadge').innerText = `${data.weather_label} (${data.health_score}점)`;
+        document.getElementById('cpuPill').innerText = `${data.cpu_pct}%`;
+        document.getElementById('ramPill').innerText = `${data.ram_pct}%`;
+        const cDrive = data.storage.find(s => s.drive === 'C:');
+        if (cDrive) document.getElementById('cDrivePill').innerText = `${cDrive.free_gb} GB`;
+
+        cachedNpcs = data.npcs || [];
+        renderVillageSpots(cachedNpcs);
+      } catch (e) {
+        console.error(e);
       }
     }
 
-    function renderVillage(data) {
-      // 1. 헤더 게이지 반영
-      document.getElementById('weatherBadge').innerText = `${data.weather_label} (${data.health_score}점)`;
-      document.getElementById('cpuPill').innerText = `${data.cpu_pct}%`;
-      document.getElementById('ramPill').innerText = `${data.ram_pct}%`;
-      const cDrive = data.storage.find(s => s.drive === 'C:');
-      if (cDrive) {
-        document.getElementById('cDrivePill').innerText = `${cDrive.free_gb} GB`;
-      }
+    // 마을 스팟 렌더링 (대표님 요구: 거대한 카드 제거 ➔ 소형 네임태그와 건물로 한 화면 압축)
+    function renderVillageSpots(npcs) {
+      const container = document.getElementById('spotsContainer');
+      container.innerHTML = '';
 
-      // 2. 사령관 요약 및 모토
-      document.getElementById('villageMotto').innerText = `${data.weather_desc}`;
+      npcs.forEach(npc => {
+        const spot = document.createElement('div');
+        spot.className = 'village-spot';
+        spot.style.left = `${npc.x}%`;
+        spot.style.top = `${npc.y}%`;
+        spot.onclick = () => openChatWithNpc(npc);
 
-      // 3. NPC 카드 렌더링
-      const grid = document.getElementById('buildingsGrid');
-      grid.innerHTML = '';
-
-      const classMap = {
-        'parky': 'active-media',
-        'cleaner': 'active-clean',
-        'guard': 'active-guard',
-        'vault': 'active-vault',
-        'golf_pro': 'active-golf'
-      };
-
-      const badgeMap = {
-        'parky': 'badge-media',
-        'cleaner': 'badge-clean',
-        'guard': 'badge-guard',
-        'vault': 'badge-vault',
-        'golf_pro': 'badge-golf'
-      };
-
-      data.npcs.forEach(npc => {
-        const card = document.createElement('div');
-        card.className = `building-card ${classMap[npc.id] || ''}`;
-        card.onclick = () => onNpcClick(npc);
-
-        card.innerHTML = `
-          <div class="building-icon-wrap">
+        spot.innerHTML = `
+          <div class="spot-speech-hint">💬 "${npc.greeting || '무엇이든 물어보세요'}"</div>
+          <div class="spot-building-icon" style="border-color: ${npc.color || '#2D6A4F'}">
             <span>${npc.emoji}</span>
           </div>
-          <div class="building-title">${npc.building}</div>
-          <div class="npc-badge ${badgeMap[npc.id] || ''}">${npc.badge}</div>
-
-          <div class="npc-avatar-box">
-            <div class="npc-avatar-emoji">${npc.emoji}</div>
+          <div class="spot-name-pill">
+            <span>${npc.name}</span>
+            <span class="spot-role-badge">${npc.role}</span>
           </div>
-
-          <div class="npc-speech-bubble">
-            "${npc.dialogue}"
-          </div>
-
-          <button class="btn-building-action" onclick="event.stopPropagation(); onNpcAction('${npc.id}')">
-            ${npc.action_label}
-          </button>
         `;
-        grid.appendChild(card);
-      });
 
-      // 4. 지휘 로그 렌더링
-      const logList = document.getElementById('directiveLogList');
-      logList.innerHTML = '';
-      if (data.recent_directives && data.recent_directives.length > 0) {
-        data.recent_directives.forEach(item => {
-          const li = document.createElement('li');
-          li.className = 'log-item';
-          li.innerHTML = `
-            <span class="log-time">${item.timestamp.split(' ')[1] || item.timestamp}</span>
-            <span class="log-npc">${item.npc || '사령탑'}</span>
-            <span class="log-content"><b>${item.command}</b> ➔ ${item.summary}</span>
-          `;
-          logList.appendChild(li);
-        });
-      } else {
-        logList.innerHTML = '<li class="log-item">최근 지휘 기록이 없습니다.</li>';
-      }
+        container.appendChild(spot);
+      });
     }
 
-    // NPC 카드 클릭 시 RPG 대화상자 표시
-    function onNpcClick(npc) {
+    // NPC 1:1 도메인 대화창 열기 (대표님 요구: 파크골프 NPC를 누르면 파크골프의 모든 것을 대화할 수 있음)
+    function openChatWithNpc(npc) {
+      activeNpc = npc;
       playBeep('chime');
-      document.getElementById('modalNpcAvatar').innerText = npc.emoji;
-      document.getElementById('modalNpcName').innerText = npc.name;
-      document.getElementById('modalNpcRole').innerText = `${npc.role} (${npc.building})`;
-      document.getElementById('modalDialogueText').innerText = `"${npc.dialogue}"`;
 
-      const actionsDiv = document.getElementById('modalActions');
-      actionsDiv.innerHTML = `
-        <button class="btn-dialogue-confirm" onclick="onNpcAction('${npc.id}')">${npc.action_label}</button>
-        <button class="btn-dialogue-confirm" style="background:#6c757d;" onclick="closeDialogue()">닫기</button>
+      document.getElementById('chatNpcAvatar').innerText = npc.emoji;
+      document.getElementById('chatNpcTitle').innerText = npc.name;
+      document.getElementById('chatNpcDomain').innerText = npc.domain || npc.role;
+
+      const msgsDiv = document.getElementById('chatMessages');
+      msgsDiv.innerHTML = `
+        <div class="msg-bubble npc">
+          대표님, 안녕하십니까! 저는 <b>${npc.name}</b>입니다.<br>
+          제 담당 분야(<b>${npc.domain}</b>)에 대해 무엇이든 편하게 물어보십시오!
+        </div>
       `;
 
-      document.getElementById('dialogueModal').classList.add('active');
+      document.getElementById('chatDrawer').classList.add('active');
+      document.getElementById('chatInput').focus();
     }
 
-    function closeDialogue() {
-      document.getElementById('dialogueModal').classList.remove('active');
+    function closeChat() {
+      document.getElementById('chatDrawer').classList.remove('active');
     }
 
-    // NPC별 고유 액션 실행
-    async function onNpcAction(npcId) {
-      closeDialogue();
-      playBeep('chime');
-
-      if (npcId === 'parky') {
-        window.open('http://localhost:3050', '_blank');
-      } else if (npcId === 'cleaner') {
-        showBroomSweep();
-        try {
-          const res = await fetch('/api/village/action', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'clean'})
-          });
-          const data = await res.json();
-          hideBroomSweep();
-          playBeep('fanfare');
-          showSimpleDialogue('🧹 청소 요정 쓱싹이', '환경·청소 관할 NPC', '🧹', data.dialogue);
-          fetchStatus();
-        } catch (e) {
-          hideBroomSweep();
-        }
-      } else if (npcId === 'guard') {
-        try {
-          const res = await fetch('/api/village/action', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'inspect'})
-          });
-          const data = await res.json();
-          playBeep('fanfare');
-          showSimpleDialogue('🛡️ 경비대장 아이언가드', '보안·시스템 관할 NPC', '🛡️', data.dialogue);
-          fetchStatus();
-        } catch (e) {}
-      } else if (npcId === 'vault') {
-        try {
-          const res = await fetch('/api/village/action', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'backup'})
-          });
-          const data = await res.json();
-          playBeep('fanfare');
-          showSimpleDialogue('📦 창고지기 골드키퍼', '데이터·백업 관할 NPC', '📦', data.dialogue);
-          fetchStatus();
-        } catch (e) {}
-      } else if (npcId === 'golf_pro') {
-        window.open('https://landnote.vercel.app', '_blank');
-      }
-    }
-
-    // 빠른 원클릭 지휘
-    function executeQuickAction(type) {
-      if (type === 'clean') onNpcAction('cleaner');
-      else if (type === 'media') onNpcAction('parky');
-      else if (type === 'backup') onNpcAction('vault');
-      else if (type === 'inspect') onNpcAction('guard');
-      else if (type === 'briefing') {
-        fetch('/api/village/action', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({action: 'briefing'})
-        }).then(r => r.json()).then(data => {
-          playBeep('fanfare');
-          showSimpleDialogue('📜 사령관 참모', '총괄 브리핑', '📜', data.dialogue);
-          fetchStatus();
-        });
-      }
-    }
-
-    // 자연어 지휘 전송
-    async function sendVillageCommand() {
-      const input = document.getElementById('commandInput');
-      const cmd = input.value.trim();
-      if (!cmd) return;
+    // 1:1 대화 메시지 전송
+    async function sendChatMessage() {
+      if (!activeNpc) return;
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
 
       playBeep('chime');
       input.value = '';
 
-      if (cmd.includes('청소') || cmd.includes('바탕화면')) {
-        showBroomSweep();
-      }
+      const msgsDiv = document.getElementById('chatMessages');
+      msgsDiv.innerHTML += `<div class="msg-bubble user">${text}</div>`;
+      msgsDiv.scrollTop = msgsDiv.scrollHeight;
+
+      // 타이핑 로딩 표시
+      const loadingBubble = document.createElement('div');
+      loadingBubble.className = 'msg-bubble npc';
+      loadingBubble.innerText = '답변 작성 중... ✍️';
+      msgsDiv.appendChild(loadingBubble);
+      msgsDiv.scrollTop = msgsDiv.scrollHeight;
 
       try {
-        const res = await fetch('/api/village/command', {
+        const res = await fetch('/api/village/chat', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({command: cmd})
+          body: JSON.stringify({
+            npc_id: activeNpc.id,
+            message: text
+          })
         });
         const data = await res.json();
-        hideBroomSweep();
+        loadingBubble.innerHTML = `<b>[${activeNpc.name}]</b><br>${data.reply.replace(/\\n/g, '<br>')}`;
         playBeep('fanfare');
-
-        showSimpleDialogue(
-          `${data.npc_emoji} ${data.npc_name}`,
-          '지휘 보고 완료',
-          data.npc_emoji,
-          data.dialogue
-        );
-
-        if (data.action_url) {
-          window.open(data.action_url, '_blank');
-        }
-
-        fetchStatus();
+        msgsDiv.scrollTop = msgsDiv.scrollHeight;
       } catch (err) {
-        hideBroomSweep();
-        alert('명령 처리 중 오류가 발생했습니다.');
+        loadingBubble.innerText = '답변을 가져오는 중 오류가 발생했습니다.';
       }
     }
 
-    function showSimpleDialogue(name, role, emoji, text) {
-      document.getElementById('modalNpcAvatar').innerText = emoji;
-      document.getElementById('modalNpcName').innerText = name;
-      document.getElementById('modalNpcRole').innerText = role;
-      document.getElementById('modalDialogueText').innerText = `"${text}"`;
-      document.getElementById('modalActions').innerHTML = `
-        <button class="btn-dialogue-confirm" onclick="closeDialogue()">확인</button>
-      `;
-      document.getElementById('dialogueModal').classList.add('active');
+    // 하단 빠른 지휘
+    async function executeQuick(action) {
+      playBeep('chime');
+      if (action === 'clean') {
+        document.getElementById('broomOverlay').style.display = 'flex';
+      }
+      try {
+        const res = await fetch('/api/village/action', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({action})
+        });
+        const data = await res.json();
+        document.getElementById('broomOverlay').style.display = 'none';
+        playBeep('fanfare');
+        alert(`[${data.npc_name}]\n${data.dialogue}`);
+        fetchStatus();
+      } catch (e) {
+        document.getElementById('broomOverlay').style.display = 'none';
+      }
     }
 
-    function showBroomSweep() {
-      document.getElementById('broomOverlay').style.display = 'flex';
+    // 하단 지휘 입력창
+    function sendBottomCommand() {
+      const input = document.getElementById('bottomCmdInput');
+      const cmd = input.value.trim();
+      if (!cmd) return;
+      input.value = '';
+
+      if (cmd.includes('청소')) executeQuick('clean');
+      else if (cmd.includes('백업')) executeQuick('backup');
+      else if (cmd.includes('점검') || cmd.includes('건강')) executeQuick('inspect');
+      else {
+        // 기본 김프로 챗으로 연결
+        const golfNpc = cachedNpcs.find(n => n.id === 'golf_pro') || cachedNpcs[0];
+        if (golfNpc) {
+          openChatWithNpc(golfNpc);
+          document.getElementById('chatInput').value = cmd;
+          sendChatMessage();
+        }
+      }
     }
 
-    function hideBroomSweep() {
-      document.getElementById('broomOverlay').style.display = 'none';
+    // 새 NPC 주민 영입 모달
+    function openSpawnModal() {
+      document.getElementById('spawnModal').classList.add('active');
     }
 
-    // 초기 실행
+    function closeSpawnModal() {
+      document.getElementById('spawnModal').classList.remove('active');
+    }
+
+    async function submitSpawnNpc() {
+      const name = document.getElementById('spawnName').value.trim();
+      const role = document.getElementById('spawnRole').value.trim();
+      const domain = document.getElementById('spawnDomain').value.trim();
+      const emoji = document.getElementById('spawnEmoji').value.trim() || '🧑';
+
+      if (!name || !role) {
+        alert('이름과 역할을 입력해 주세요.');
+        return;
+      }
+
+      playBeep('chime');
+      try {
+        const res = await fetch('/api/village/spawn_npc', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({name, role, domain, emoji})
+        });
+        const data = await res.json();
+        closeSpawnModal();
+        playBeep('fanfare');
+        alert(`🎉 축하합니다! 새 전문 주민 [${name}]이(가) 마을에 성공적으로 영입되었습니다!`);
+        fetchStatus();
+      } catch (e) {
+        alert('주민 영입 중 오류가 발생했습니다.');
+      }
+    }
+
+    // NPC 주민 합동 작전실 모달 (대표님 요구: NPC들끼리 협업/분업)
+    function openCollabModal() {
+      document.getElementById('collabModal').classList.add('active');
+    }
+
+    function closeCollabModal() {
+      document.getElementById('collabModal').classList.remove('active');
+    }
+
+    async function runCollabTask() {
+      const task = document.getElementById('collabTaskInput').value.trim();
+      if (!task) return;
+
+      playBeep('chime');
+      const list = document.getElementById('collabStepsList');
+      list.innerHTML = '<div style="text-align:center; padding:20px; font-weight:700;">주민들이 회의하며 역할을 나누고 있습니다... 🔄</div>';
+
+      try {
+        const res = await fetch('/api/village/collaborate', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({task})
+        });
+        const data = await res.json();
+        playBeep('fanfare');
+
+        list.innerHTML = '';
+        data.steps.forEach((st, idx) => {
+          const item = document.createElement('div');
+          item.className = 'collab-step-item';
+          item.innerHTML = `
+            <div class="collab-avatar">${st.emoji}</div>
+            <div>
+              <b>${idx + 1}단계. [${st.name}]</b><br>
+              ${st.message}
+            </div>
+          `;
+          list.appendChild(item);
+        });
+      } catch (err) {
+        list.innerHTML = '<div style="color:red;">합동 작전 중 오류가 발생했습니다.</div>';
+      }
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
       fetchStatus();
-      setInterval(fetchStatus, 8000); // 8초마다 실시간 동기화
+      setInterval(fetchStatus, 10000);
     });
   </script>
 </body>
