@@ -1086,23 +1086,41 @@ export default function HomePage() {
             })()
           )}
 
-          {/* 대표님 제안: 2분할 버튼 [초간단 설명서 (1초 튜토리얼)] vs [라운딩 바로 시작하기 (실전)] */}
+          {/* 대표님 지침 UX: 2분할 버튼 [오늘 구장 상태 확인] vs [스코어 기록 시작하기] */}
           <div className="pt-1">
             <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-              {/* 왼쪽: 💡 1초 초간단 설명서 & 튜토리얼 팝업 */}
-              <button
-                type="button"
-                onClick={() => setShowQuickGuideModal(true)}
-                className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-stone-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition active:scale-[0.97] cursor-pointer border-2 border-amber-300 group"
-              >
-                <div className="flex items-center gap-1.5 text-sm sm:text-base font-black leading-tight">
-                  <span className="text-base sm:text-lg">💡</span>
-                  <span className="truncate">{isJapanese ? '超簡単ガイド' : isEnglish ? 'Quick Guide' : '초간단 설명서'}</span>
-                </div>
-                <span className="text-[10px] sm:text-[10.5px] font-extrabold text-stone-900 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap truncate max-w-full">
-                  {t.hero.tutorial_badge}
-                </span>
-              </button>
+              {/* 왼쪽: 🌿 오늘 구장 상태 확인 (실시간 잔디·날씨·휴장) */}
+              {(() => {
+                const targetCourse = homeCourse || getCurrentActiveCourse() || courses[0];
+                const rawName = targetCourse?.name || '골프장';
+                const shortName = rawName.replace('파크골프장', '').replace('파크골프', '').trim();
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!homeCourse) {
+                        setShowHomeModal(true);
+                      } else {
+                        setShowCourseTodayModal(true);
+                      }
+                    }}
+                    className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-stone-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition active:scale-[0.97] cursor-pointer border-2 border-amber-300 group"
+                  >
+                    <div className="flex items-center gap-1.5 text-sm sm:text-base font-black leading-tight">
+                      <span className="text-base sm:text-lg">🌿</span>
+                      <span className="truncate">
+                        {isJapanese
+                          ? (homeCourse ? `本日 ${shortName} 状況` : '本日コース状況')
+                          : (homeCourse ? `오늘 ${shortName} 상태` : '오늘 구장 상태')}
+                      </span>
+                    </div>
+                    <span className="text-[10px] sm:text-[10.5px] font-extrabold text-stone-900 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap truncate max-w-full flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
+                      <span>{isJapanese ? 'リアルタイム天気·芝生' : '실시간 잔디·날씨 확인'}</span>
+                    </span>
+                  </button>
+                );
+              })()}
 
               {/* 오른쪽: 라운딩 바로 시작하기 (실전 정식 기록) */}
               {homeCourse ? (
@@ -1139,56 +1157,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* 3. 오늘 구장 정보 & 실시간 상태 보기 원터치 탭 (클릭 시 날씨·휴장·잔디리포트·내비 올인원 팝업) */}
-      {(() => {
-        const targetCourse = homeCourse || getCurrentActiveCourse() || courses[0];
-        if (!targetCourse) return null;
-        return (
-          <section>
-            <button
-              type="button"
-              onClick={() => setShowCourseTodayModal(true)}
-              className="w-full bg-gradient-to-r from-emerald-800 via-emerald-900 to-teal-950 text-white rounded-2xl p-2.5 sm:p-3 shadow-md border border-emerald-500/50 hover:border-emerald-300 transition active:scale-[0.98] cursor-pointer flex items-center justify-between gap-2.5 group text-left"
-            >
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <div className="w-9 h-9 rounded-xl bg-white/15 border border-emerald-400/40 flex items-center justify-center text-amber-300 text-base shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                  🌿
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs sm:text-sm font-black text-white tracking-tight truncate leading-tight" suppressHydrationWarning>
-                    {isJapanese
-                      ? `本日 ${getLocalizedCourseName(targetCourse)} 情報＆状況`
-                      : isEnglish
-                      ? `Today's ${getLocalizedCourseName(targetCourse)} Info`
-                      : `오늘 ${targetCourse.name} 정보 & 상태 보기`}
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
-                    <span className="text-[9.5px] font-black bg-emerald-400 text-stone-950 px-1.5 py-0.2 rounded-full shadow-2xs shrink-0">
-                      {isJapanese ? 'リアルタイム' : isEnglish ? 'Live' : '실시간'}
-                    </span>
-                    <span className="text-[10.5px] text-emerald-200/90 font-medium truncate">
-                      {isJapanese
-                        ? '本日の天気・定期休場日・芝生状況レポート'
-                        : isEnglish
-                        ? 'Weather · Closed Days · Turf Status'
-                        : '오늘 날씨 · 정기 휴장일 · 잔디 상태 리포트'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 text-stone-950 px-3 py-1.5 rounded-xl text-[11px] font-black border border-yellow-200 shadow-md animate-pulse-glow whitespace-nowrap">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
-                </span>
-                <span>{isJapanese ? '状況確認' : isEnglish ? 'Check' : '상태 확인'}</span>
-                <span className="text-[11px] font-black animate-arrow-slide">▶</span>
-              </div>
-            </button>
-          </section>
-        );
-      })()}
 
       {/* 4. Quick Actions (슬림형 컴팩트 탭) */}
       <section className="grid grid-cols-2 gap-2.5">
