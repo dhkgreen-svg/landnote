@@ -12,6 +12,7 @@ import { CourseTodayModal } from '@/components/CourseTodayModal';
 import { CourseDetailModal } from '@/components/CourseDetailModal';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { InstallGuideModal } from '@/components/InstallGuideModal';
+import { autoEscapeIfKakao, isKakaoTalkWebView, escapeKakaoTalk, isIOS } from '@/lib/kakaoEscape';
 import { KakaoLoginModal } from '@/components/KakaoLoginModal';
 import { WelcomeModal } from '@/components/WelcomeModal';
 import { RulesWebtoonModal } from '@/components/RulesWebtoonModal';
@@ -140,6 +141,9 @@ export default function HomePage() {
   };
 
   useEffect(() => {
+    // Phase 1: 카카오톡 인앱 브라우저 감지 시 최초 1회 안전 자동 탈출 시도
+    autoEscapeIfKakao();
+
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -159,13 +163,10 @@ export default function HomePage() {
   }, []);
 
   const handleAppInstallClick = async () => {
-    const ua = typeof window !== 'undefined' ? window.navigator.userAgent.toLowerCase() : '';
-    const isIos = /iphone|ipad|ipod/.test(ua) && !ua.includes('crios');
-    const isKakao = ua.includes('kakaotalk');
-
-    // 1. 애플 (아이폰/아이패드) 기기인 경우: 설치 안내문 (사파리 홈 화면 추가 안내) 즉시 실행
-    if (isIos) {
-      setInstallGuideTab('IOS');
+    // 1. 카카오톡 내부 브라우저인 경우: 1초 탈출 우선 실행 & 가이드 모달 카톡 탭 오픈
+    if (isKakaoTalkWebView()) {
+      escapeKakaoTalk();
+      setInstallGuideTab('KAKAO');
       setShowInstallGuideModal(true);
       return;
     }
@@ -187,9 +188,9 @@ export default function HomePage() {
       }
     }
 
-    // 3. 카카오톡 내부 브라우저인 경우: 카톡 전용 탈출 및 바로가기 안내문 즉시 실행
-    if (isKakao) {
-      setInstallGuideTab('KAKAO');
+    // 3. 애플 iOS Safari 기기인 경우: 2스텝 사파리 홈 화면 추가 가이드 모달 즉시 실행
+    if (isIOS()) {
+      setInstallGuideTab('IOS');
       setShowInstallGuideModal(true);
       return;
     }
@@ -889,12 +890,6 @@ export default function HomePage() {
       <WelcomeModal
         onOpenKakaoLogin={() => setShowKakaoModal(true)}
         onOpenInstallGuide={() => setShowInstallGuideModal(true)}
-      />
-
-      {/* -1.8. 스마트폰 바탕화면 앱 설치 가이드 모달 */}
-      <InstallGuideModal
-        isOpen={showInstallGuideModal}
-        onClose={() => setShowInstallGuideModal(false)}
       />
 
       {/* -2. 파키의 파크골프 웹툰북 & 룰 Q&A 모달 */}
