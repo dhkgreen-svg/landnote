@@ -193,10 +193,12 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
                 <div className="p-3.5 bg-gradient-to-br from-amber-100 via-amber-50 to-yellow-100 border-2 border-amber-400 rounded-2xl shadow-sm text-center">
                   <div className="flex items-center justify-center gap-1.5 text-amber-950 font-black text-xs mb-1">
                     <Rocket className="w-4 h-4 text-amber-600" />
-                    <span>카톡 안에서는 앱 설치가 제한됩니다!</span>
+                    <span>{isJapanese ? 'LINE・カカオ画面内ではアプリ追加が制限されます！' : '카톡·LINE 안에서는 앱 설치가 제한됩니다!'}</span>
                   </div>
                   <p className="text-[11px] text-amber-900 font-semibold mb-3">
-                    복잡한 메뉴 찾지 마시고, 아래 버튼을 누르면 <strong>크롬 / 사파리 정규 브라우저로 1초 만에 자동 이동</strong>합니다:
+                    {isJapanese
+                      ? '複雑なメニューを探さず、下のボタンをタップするとSafari・Chrome正規ブラウザに1秒で自動移動します：'
+                      : '복잡한 메뉴 찾지 마시고, 아래 버튼을 누르면 크롬 / 사파리 정규 브라우저로 1초 만에 자동 이동합니다:'}
                   </p>
 
                   <button
@@ -205,7 +207,7 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
                     className="w-full py-3 px-3 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:brightness-105 active:scale-98 text-emerald-950 font-black text-xs rounded-xl shadow-md border-2 border-amber-300 flex items-center justify-center gap-2 cursor-pointer transition"
                   >
                     <Rocket className="w-4 h-4 text-emerald-950" />
-                    <span>🚀 바깥 브라우저로 1초 만에 나가기 (원터치)</span>
+                    <span>{isJapanese ? '🚀 外部ブラウザで1秒脱出 (ワンタッチ)' : '🚀 바깥 브라우저로 1초 만에 나가기 (원터치)'}</span>
                   </button>
 
                   {/* 주소 복사 보조 버튼 */}
@@ -216,13 +218,13 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-stone-50 border border-amber-300 text-stone-700 text-[11px] font-bold rounded-lg cursor-pointer transition shadow-2xs"
                     >
                       {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-amber-700" />}
-                      <span>{copied ? '주소 복사 완료!' : '주소(URL) 복사하기'}</span>
+                      <span>{isJapanese ? (copied ? 'URLコピー完了！' : 'URLをコピー') : (copied ? '주소 복사 완료!' : '주소(URL) 복사하기')}</span>
                     </button>
                   </div>
                 </div>
 
                 <div className="text-[11px] text-stone-500 font-bold px-1">
-                  💡 위 원터치 버튼이 동작하지 않을 때만 아래 순서대로 진행해 주세요:
+                  {isJapanese ? '💡 ワンタッチ脱出が作動しない場合のみ、以下の手順をご確認ください：' : '💡 위 원터치 버튼이 동작하지 않을 때만 아래 순서대로 진행해 주세요:'}
                 </div>
 
                 <div className="space-y-2.5 text-xs">

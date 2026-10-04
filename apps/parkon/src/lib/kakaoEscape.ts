@@ -91,11 +91,30 @@ export function getKakaoExternalUrl(url?: string): string {
 }
 
 /**
+ * 라인(LINE) 인앱 브라우저 탈출 (?openExternalBrowser=1 스킴)
+ */
+export function escapeLineWebView(targetUrl?: string): KakaoEscapeResult {
+  if (typeof window === 'undefined') {
+    return { escaped: false, platform: 'other', method: 'none' };
+  }
+  const current = targetUrl || window.location.href;
+  const separator = current.includes('?') ? '&' : '?';
+  const externalUrl = current.includes('openExternalBrowser=1') ? current : `${current}${separator}openExternalBrowser=1`;
+  window.location.href = externalUrl;
+  return { escaped: true, platform: isIOS() ? 'ios' : 'android', method: 'line_open_external' };
+}
+
+/**
  * 카카오톡 또는 인앱 브라우저에서 바깥 정규 브라우저(크롬, 사파리)로 탈출 실행
  */
 export function escapeKakaoTalk(targetUrl?: string): KakaoEscapeResult {
   if (typeof window === 'undefined') {
     return { escaped: false, platform: 'other', method: 'none' };
+  }
+
+  // 0. LINE 인앱 브라우저 감지 시
+  if (isLineWebView()) {
+    return escapeLineWebView(targetUrl);
   }
 
   const url = targetUrl || window.location.href;
@@ -144,19 +163,25 @@ export function escapeKakaoTalk(targetUrl?: string): KakaoEscapeResult {
 }
 
 /**
- * 카카오톡 접속 시 최초 1회 자동 탈출 시도 (세션 스토리지 기반 무한 루프 차단)
+ * 카카오톡 또는 LINE 접속 시 최초 1회 자동 탈출 시도 (세션 스토리지 기반 무한 루프 차단)
  */
 export function autoEscapeIfKakao(targetUrl?: string): boolean {
   if (typeof window === 'undefined') return false;
-  if (!isKakaoTalkWebView()) return false;
+  const isKakao = isKakaoTalkWebView();
+  const isLine = isLineWebView();
+  if (!isKakao && !isLine) return false;
 
   try {
-    const alreadyEscaped = sessionStorage.getItem('parkon_kakao_auto_escaped');
+    const alreadyEscaped = sessionStorage.getItem('parkon_inapp_auto_escaped');
     if (alreadyEscaped === 'true') {
       return false;
     }
-    sessionStorage.setItem('parkon_kakao_auto_escaped', 'true');
-    escapeKakaoTalk(targetUrl);
+    sessionStorage.setItem('parkon_inapp_auto_escaped', 'true');
+    if (isLine) {
+      escapeLineWebView(targetUrl);
+    } else {
+      escapeKakaoTalk(targetUrl);
+    }
     return true;
   } catch {
     // sessionStorage 비활성화 환경 대비

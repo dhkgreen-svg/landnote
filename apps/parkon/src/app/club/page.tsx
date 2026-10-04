@@ -765,7 +765,7 @@ export default function ClubGatheringHomePage() {
   // [⚔️ 클럽 대항전 (교류전)] 모드 개설 팝업 오픈
   const handleOpenClubMatchTournament = () => {
     if (!isAnyClubExecutive()) {
-      showToast('🔒 클럽 대항전 개설은 클럽 총무 및 임원진 전용 권한입니다. 일반 회원은 개설된 대회 참가만 가능합니다.');
+      showToast(isJapanese ? '🔒 クラブ対抗戦の開設は役員専用権限です。一般会員は開設された大会への参加のみ可能です。' : '🔒 클럽 대항전 개설은 클럽 총무 및 임원진 전용 권한입니다. 일반 회원은 개설된 대회 참가만 가능합니다.');
       return;
     }
     setTournamentType('CLUB_MATCH');
@@ -790,7 +790,7 @@ export default function ClubGatheringHomePage() {
   // [🏆 시·도 단위 공식 오픈 대회] 모드 개설 팝업 오픈
   const handleOpenRegionalOpenTournament = () => {
     if (!isAnyClubExecutive()) {
-      showToast('🔒 시·도 단위 공식 대회 개설은 클럽 총무 및 임원진 전용 권한입니다. 일반 회원은 개설된 대회 참가만 가능합니다.');
+      showToast(isJapanese ? '🔒 公式大会の開設は役員専用権限です。一般会員は開設された大会への参加のみ可能です。' : '🔒 시·도 단위 공식 대회 개설은 클럽 총무 및 임원진 전용 권한입니다. 일반 회원은 개설된 대회 참가만 가능합니다.');
       return;
     }
     setTournamentType('REGIONAL_OPEN');
@@ -1219,7 +1219,7 @@ ${shareUrl}`;
   const handleCreateClubSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newClubName.trim()) {
-      alert('클럽 이름을 입력해 주세요.');
+      showToast(isJapanese ? '⚠️ クラブ名を入力してください。' : '⚠️ 클럽 이름을 입력해 주세요.');
       return;
     }
     const homeCourse = allCourses.find((c) => c.id === newClubHomeCourseId) || allCourses[0];
@@ -1369,7 +1369,7 @@ ${shareUrl}`;
   // 대항전 개설 및 대표 선수단 확정 등록
   const handleCreateClubMatchSubmit = (club: ParkGolfClub) => {
     if (matchSelectedMemberIds.length === 0) {
-      alert('대항전에 출전할 선수를 최소 1명 이상 선택해 주세요.');
+      showToast(isJapanese ? '⚠️ 対抗戦に出場する選手を最低1名以上選択してください。' : '⚠️ 대항전에 출전할 선수를 최소 1명 이상 선택해 주세요.');
       return;
     }
 
@@ -1533,7 +1533,7 @@ ${shareUrl}`;
     e.preventDefault();
     if (!applyingClub) return;
     if (!applicantName.trim()) {
-      alert('성함을 입력해 주세요.');
+      showToast(isJapanese ? '⚠️ お名前を入力してください。' : '⚠️ 성함을 입력해 주세요.');
       return;
     }
     ClubStorage.requestJoinClub(applyingClub.id, {
@@ -6819,7 +6819,7 @@ ${shareUrl}`;
                           let updated: string[];
                           if (isSelected) {
                             if (selectedLetters.length <= 1) {
-                              alert(isJapanese ? '最低1つのコースを選択してください。' : '최소 1개 코스는 선택되어야 합니다.');
+                              showToast(isJapanese ? '⚠️ 最低1つのコースを選択してください。' : '⚠️ 최소 1개 코스는 선택되어야 합니다.');
                               return;
                             }
                             updated = selectedLetters.filter((l) => l !== letStr);
@@ -8236,7 +8236,7 @@ ${shareUrl}`;
                   onClick={() => {
                     const trimmed = aliasInputName.trim();
                     if (!trimmed) {
-                      alert(isJapanese ? '活動名を入力してください。' : '활동명을 입력해 주세요.');
+                      showToast(isJapanese ? '⚠️ 活動名を入力してください。' : '⚠️ 활동명을 입력해 주세요.');
                       return;
                     }
                     ParkOnStorage.setClubUserAlias(aliasTargetClub.id, trimmed);

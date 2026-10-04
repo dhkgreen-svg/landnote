@@ -3,8 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { Download, X, Smartphone, ExternalLink, CheckCircle, Laptop, Rocket, Copy, Check, Sparkles } from 'lucide-react';
 import { ParkOnStorage } from '@/lib/storage';
-import { isKakaoTalkWebView, isIOS, isAndroid, escapeKakaoTalk, autoEscapeIfKakao, copyCurrentUrl } from '@/lib/kakaoEscape';
+import { isKakaoTalkWebView, isLineWebView, isIOS, isAndroid, escapeKakaoTalk, autoEscapeIfKakao, copyCurrentUrl } from '@/lib/kakaoEscape';
 import { InstallGuideModal } from '@/components/InstallGuideModal';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -12,10 +13,12 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function InstallPrompt() {
+  const { isJapanese } = useTranslation();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState<boolean>(false);
   const [isIosDevice, setIsIosDevice] = useState<boolean>(false);
   const [isKakao, setIsKakao] = useState<boolean>(false);
+  const [isLine, setIsLine] = useState<boolean>(false);
   const [showBanner, setShowBanner] = useState<boolean>(false);
   const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
   const [isInstalled, setIsInstalled] = useState<boolean>(false);
@@ -39,15 +42,17 @@ export function InstallPrompt() {
 
     // 2. 기기 및 브라우저 환경 감지
     const kakaoMode = isKakaoTalkWebView();
+    const lineMode = isLineWebView();
     const iosMode = isIOS();
+    const inAppMode = kakaoMode || lineMode;
     setIsKakao(kakaoMode);
+    setIsLine(lineMode);
     setIsIosDevice(iosMode);
 
-    // 3. 카카오톡 웹뷰인 경우: 최초 1회 자동 탈출 시도 (Phase 1 엔진)
-    if (kakaoMode) {
+    // 3. 카카오톡 또는 LINE 웹뷰인 경우: 최초 1회 자동 탈출 시도 (Phase 1 엔진)
+    if (inAppMode) {
       setGuideTab('KAKAO');
       autoEscapeIfKakao();
-      // 카카오톡에서는 항상 탈출 배너 표시 (시니어 사용자가 갇히는 문제 방지)
       setShowBanner(true);
     } else {
       // 일반 브라우저인 경우: 기설치 여부 및 닫기 이력 확인
@@ -167,8 +172,8 @@ export function InstallPrompt() {
 
   return (
     <>
-      {/* 1. 카카오톡 웹뷰 접속 시: 3D 파키 1초 원터치 탈출 배너 (Phase 1) */}
-      {showBanner && isKakao && (
+      {/* 1. 카카오톡 또는 LINE 웹뷰 접속 시: 3D 파키 1초 원터치 탈출 배너 (Phase 1) */}
+      {showBanner && (isKakao || isLine) && (
         <div className="bg-gradient-to-b from-amber-950 via-stone-900 to-emerald-950 text-white p-5 rounded-3xl shadow-2xl border-2 border-amber-400 mb-4 animate-fadeIn relative overflow-hidden text-center">
           <button
             type="button"
@@ -192,19 +197,25 @@ export function InstallPrompt() {
                 className="w-16 h-16 rounded-2xl shadow-xl border-2 border-amber-300 bg-emerald-950 object-cover"
               />
               <span className="absolute -bottom-1 -right-1 bg-gradient-to-r from-amber-400 to-yellow-300 text-emerald-950 rounded-full px-2 py-0.5 text-[9px] font-black shadow-xs flex items-center gap-0.5">
-                <Rocket className="w-2.5 h-2.5 text-emerald-950" /> 탈출 도우미
+                <Rocket className="w-2.5 h-2.5 text-emerald-950" /> {isJapanese ? '脱出ヘルパー' : '탈출 도우미'}
               </span>
             </div>
 
             {/* 타이틀 */}
             <div className="flex items-center justify-center gap-2">
               <h2 className="text-xl font-black tracking-tight text-yellow-300 drop-shadow-sm">
-                카카오톡으로 접속하셨네요!
+                {isLine || isJapanese
+                  ? (isJapanese ? 'LINEから接続中！' : '라인(LINE)으로 접속하셨네요!')
+                  : '카카오톡으로 접속하셨네요!'}
               </h2>
             </div>
 
             <p className="text-xs text-amber-100/90 font-medium mt-1 leading-snug px-2">
-              카톡 안에서는 앱 설치가 차단됩니다. 아래 버튼을 누르면 <strong className="text-amber-300 underline font-black">크롬 · 사파리 정규 브라우저로 1초 만에 탈출</strong>합니다!
+              {isLine || isJapanese
+                ? (isJapanese
+                  ? 'LINEアプリ内ではホーム画面へのアプリ追加が制限されます。下のボタンを押すと1秒でSafari・Chromeで開きます！'
+                  : '라인 화면 안에서는 앱 설치가 제한됩니다. 아래 버튼을 누르면 1초 만에 바깥 브라우저로 탈출합니다!')
+                : '카톡 안에서는 앱 설치가 차단됩니다. 아래 버튼을 누르면 크롬 · 사파리 정규 브라우저로 1초 만에 탈출합니다!'}
             </p>
 
             {/* 메인 1초 탈출 골드 액션 버튼 */}
@@ -214,7 +225,11 @@ export function InstallPrompt() {
               className="mt-3.5 w-full max-w-xs py-3 px-4 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 hover:brightness-105 active:scale-98 text-emerald-950 font-black text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer border-2 border-amber-200 animate-pulse"
             >
               <Rocket className="w-4 h-4 text-emerald-950" />
-              <span>🚀 크롬/사파리에서 열기 (1초 탈출)</span>
+              <span>
+                {isLine || isJapanese
+                  ? (isJapanese ? '🚀 外部ブラウザで開く (1秒脱出)' : '🚀 외부 브라우저에서 열기 (1초 탈출)')
+                  : '🚀 크롬/사파리에서 열기 (1초 탈출)'}
+              </span>
             </button>
 
             {/* 보조 링크: 주소 복사 & 수동 방법 */}
@@ -225,7 +240,7 @@ export function InstallPrompt() {
                 className="text-amber-200 hover:text-white underline font-bold flex items-center gap-1 cursor-pointer transition text-[11px]"
               >
                 <Copy className="w-3 h-3" />
-                <span>주소 복사하기</span>
+                <span>{isJapanese ? 'URLをコピー' : '주소 복사하기'}</span>
               </button>
               <span className="text-stone-500">•</span>
               <button
@@ -236,7 +251,7 @@ export function InstallPrompt() {
                 }}
                 className="text-amber-200 hover:text-white underline font-bold flex items-center gap-1 cursor-pointer transition text-[11px]"
               >
-                <span>직접 나가는 법 보기</span>
+                <span>{isJapanese ? '手動脱出方法' : '직접 나가는 법 보기'}</span>
               </button>
             </div>
           </div>
@@ -330,26 +345,26 @@ export function InstallPrompt() {
       {/* 3. 모바일 스크롤 중 언제든 접근 가능한 플로팅 FAB (Floating Action Button) */}
       {!isStandalone && (
         <div className="fixed bottom-24 right-3 z-40 animate-fadeIn">
-          {isKakao ? (
+          {isKakao || isLine ? (
             <button
               type="button"
               onClick={handleKakaoEscapeClick}
               className="py-2 px-3 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-emerald-950 font-black text-[11px] rounded-full shadow-xl border-2 border-amber-200 flex items-center gap-1.5 hover:scale-105 active:scale-95 transition cursor-pointer"
-              title="크롬/사파리로 탈출"
+              title={isJapanese ? '外部ブラウザで開く' : '크롬/사파리로 탈출'}
             >
               <Rocket className="w-3.5 h-3.5 text-emerald-950" />
-              <span>1초 탈출</span>
+              <span>{isJapanese ? '1秒脱出' : '1초 탈출'}</span>
             </button>
           ) : !isInstalled ? (
             <button
               type="button"
               onClick={handleInstallClick}
               className="py-2 px-3 bg-gradient-to-r from-emerald-800 to-emerald-900 text-yellow-300 font-black text-[11px] rounded-full shadow-xl border border-amber-400/70 flex items-center gap-1.5 hover:scale-105 active:scale-95 transition cursor-pointer"
-              title="바탕화면 앱 설치"
+              title={isJapanese ? 'スマホ画面にアプリ追加' : '바탕화면 앱 설치'}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/parky.jpg" alt="파키" className="w-3.5 h-3.5 rounded-full object-cover border border-yellow-300" />
-              <span>앱 깔기</span>
+              <span>{isJapanese ? 'アプリ追加' : '앱 깔기'}</span>
             </button>
           ) : null}
         </div>
