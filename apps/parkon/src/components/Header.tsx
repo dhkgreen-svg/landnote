@@ -137,26 +137,19 @@ export function Header() {
           <Link
             href="/"
             onClick={(e) => handleNavClick(e, '/', 'HOME')}
-            className="flex items-center gap-2.5 group shrink-0"
+            className="flex items-center group shrink-0 active:scale-95 transition"
+            title={isJapanese ? 'パークゴルフ オールインワン ホームへ' : '파크골프 올인원 홈으로 이동'}
           >
-            {/* 공식 마스코트 파키 */}
+            {/* 공식 마스코트 파키 (원터치 홈 이동) */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <div className="relative shrink-0">
               <img
                 src="/parky.jpg"
-                alt="파크골프 올인원 마스코트 파키"
-                className="w-9 h-9 rounded-full shadow-md border-2 border-amber-300 object-cover"
+                alt="파크골프 올인원 공식 마스코트 파키"
+                className="w-10 h-10 rounded-full shadow-md border-2 border-amber-300 object-cover group-hover:scale-105 transition"
               />
-              <span className="absolute -bottom-1 -right-1 bg-amber-400 text-emerald-950 rounded-full px-1.5 text-[8px] font-black shadow-xs tracking-tight">
+              <span className="absolute -bottom-1 -right-1 bg-amber-400 text-emerald-950 rounded-full px-1.5 text-[8.5px] font-black shadow-xs tracking-tight">
                 PARKY
-              </span>
-            </div>
-            <div className="flex flex-col justify-center leading-none">
-              <span className="font-black text-[12px] sm:text-[13px] tracking-wider text-white uppercase whitespace-nowrap font-sans">
-                PARKGOLF
-              </span>
-              <span className="font-black text-[9.5px] sm:text-[10.5px] tracking-widest text-amber-300 uppercase whitespace-nowrap font-sans mt-0.5">
-                ALL-IN-ONE
               </span>
             </div>
           </Link>
