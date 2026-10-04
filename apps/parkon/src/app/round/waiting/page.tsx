@@ -5,9 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ParkOnStorage } from '@/lib/storage';
-import { RoundSession, RoundPlayer } from '@/types/parkon';
+import { RoundSession, RoundPlayer, ParkOnRoom } from '@/types/parkon';
 import { CheckCircle2, Users, MapPin, Flag, Home, Sparkles, Loader2, Smartphone } from 'lucide-react';
-import { ParkOnRoom } from '@/app/api/round/room/route';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { supabase } from '@/lib/supabase';
 
@@ -172,12 +171,27 @@ function WaitingContent() {
       if (session) {
         // 동반자 본인(isSelf: true) 및 조장(isLeader: true) 명확 분리
         const myName = guestName.trim() || (isJapanese ? '同伴者' : '동반자');
-        const myIdx = session.players.findIndex((p, idx) => idx > 0 && !p.isLeader && p.name === myName);
+        const isPlaceholderName = (name?: string) => {
+          if (!name || !name.trim()) return true;
+          const clean = name.trim().toLowerCase();
+          return clean.includes('동반자') || clean.includes('동반') || clean.includes('게스트') || clean.includes('선수') || clean.includes('同伴') || clean.includes('ゲスト');
+        };
+
+        // If myName is not found, check if there is an empty/placeholder slot >= 1 to adopt myName
+        let targetIdx = session.players.findIndex((p, idx) => idx > 0 && !p.isLeader && p.name === myName);
+        if (targetIdx === -1) {
+          targetIdx = session.players.findIndex((p, idx) => idx > 0 && !p.isLeader && isPlaceholderName(p.name));
+          if (targetIdx === -1 && session.players.length > 1) {
+            targetIdx = 1;
+          }
+        }
+
         const updatedPlayers: RoundPlayer[] = session.players.map((p, idx) => {
           const isLeader = p.isLeader || idx === 0;
-          const isMe = myIdx !== -1 ? idx === myIdx : (!isLeader && p.name === myName);
+          const isMe = targetIdx !== -1 ? idx === targetIdx : (!isLeader && p.name === myName);
           return {
             ...p,
+            name: isMe ? myName : (p.name || (isJapanese ? `同伴者 ${idx + 1}` : `동반자 ${idx + 1}`)),
             isLeader,
             isSelf: isMe,
           };
@@ -216,12 +230,43 @@ function WaitingContent() {
 
   const leaderName = room?.leaderName || (isJapanese ? 'リーダー' : '조장');
   const maxCount = room?.playerCount || 4;
-  const rawList = room?.players && room.players.length > 0 ? room.players : [
-    { id: '1', name: leaderName, isLeader: true },
-    { id: '2', name: guestName, isLeader: false },
-    { id: '3', name: isJapanese ? '同伴者2 (待機中)' : '동반자2 (대기 중)', isLeader: false },
-    { id: '4', name: isJapanese ? '同伴者3 (待機中)' : '동반자3 (대기 중)', isLeader: false },
-  ];
+
+  const isPlaceholderSlot = (name?: string) => {
+    if (!name || !name.trim()) return true;
+    const clean = name.trim().toLowerCase();
+    return clean.includes('동반자') || clean.includes('동반') || clean.includes('게스트') || clean.includes('선수') || clean.includes('同伴') || clean.includes('ゲスト');
+  };
+
+  let rawList: Array<{ id?: string; name: string; isLeader?: boolean }> = [];
+  if (room?.players && room.players.length > 0) {
+    rawList = room.players.map((p, idx) => ({ ...p, isLeader: idx === 0 || p.isLeader }));
+  } else {
+    rawList = [
+      { id: '1', name: leaderName, isLeader: true },
+      { id: '2', name: guestName, isLeader: false },
+      { id: '3', name: isJapanese ? '同伴者2 (待機中)' : '동반자2 (대기 중)', isLeader: false },
+      { id: '4', name: isJapanese ? '同伴者3 (待機中)' : '동반자3 (대기 중)', isLeader: false },
+    ];
+  }
+
+  // Ensure guestName ('오송') is assigned to the companion's slot
+  if (guestName && guestName.trim()) {
+    const cleanGuest = guestName.trim();
+    const hasGuest = rawList.some((p, idx) => idx > 0 && p.name && p.name.trim() === cleanGuest);
+    if (!hasGuest) {
+      let targetIdx = rawList.findIndex((p, idx) => idx > 0 && isPlaceholderSlot(p.name));
+      if (targetIdx === -1 && rawList.length > 1) {
+        targetIdx = 1;
+      }
+      if (targetIdx !== -1 && targetIdx < rawList.length) {
+        rawList[targetIdx] = {
+          ...rawList[targetIdx],
+          name: cleanGuest,
+        };
+      }
+    }
+  }
+
   const playersList = rawList.slice(0, Math.max(1, maxCount));
 
   return (
@@ -323,9 +368,13 @@ function WaitingContent() {
 
             <div className="space-y-2">
               {(() => {
-                const mySlotIndex = playersList.findIndex(
-                  (p, idx) => idx > 0 && !p.isLeader && p.name === guestName
+                const cleanGuest = guestName.trim();
+                let mySlotIndex = playersList.findIndex(
+                  (p, idx) => idx > 0 && !p.isLeader && p.name && p.name.trim() === cleanGuest
                 );
+                if (mySlotIndex === -1 && playersList.length > 1) {
+                  mySlotIndex = 1;
+                }
                 return playersList.map((p, idx) => {
                   const isLeader = p.isLeader || idx === 0;
                   const isMe = idx === mySlotIndex;

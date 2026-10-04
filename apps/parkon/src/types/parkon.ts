@@ -260,3 +260,24 @@ export interface LessonPrescription {
   prescription: string;
   drill: string;
 }
+
+export interface RoomPlayer {
+  id: string;
+  name: string;
+  isLeader: boolean;
+}
+
+export interface ParkOnRoom {
+  roomId: string;
+  leaderName: string;
+  courseId: string;
+  courseName: string;
+  courseLetter: string;
+  startHoleIndex: number;
+  playerCount: number;
+  players: RoomPlayer[];
+  status: 'WAITING' | 'STARTED' | 'COMPLETED';
+  roundId?: string;
+  roundSession?: any;
+  updatedAt: number;
+}

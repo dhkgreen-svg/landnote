@@ -260,25 +260,26 @@ function NewRoundForm() {
     });
   };
 
-  // QR 코드 동반자 입장 실시간 감지 및 자동 배정
+  // QR 코드 동반자 입장 실시간 감지 및 자동 배정 (오송 등 실시간 주입)
   const handleSimulateQrJoin = (guestName: string) => {
     if (!guestName || isDefaultCompanionName(guestName)) return;
+    const cleanGuestName = guestName.trim();
     setPlayersList((prev) => {
       // 이미 같은 이름의 플레이어가 등록되어 있다면 중복 배정 방지
-      if (prev.some((p, idx) => idx > 0 && p.name === guestName)) {
+      if (prev.some((p, idx) => idx > 0 && p.name === cleanGuestName)) {
         return prev;
       }
       const targetIdx = prev.findIndex((p, idx) => idx > 0 && (!p.name.trim() || isDefaultCompanionName(p.name)));
       if (targetIdx !== -1) {
         const updated = [...prev];
-        updated[targetIdx] = { ...updated[targetIdx], name: guestName };
+        updated[targetIdx] = { ...updated[targetIdx], name: cleanGuestName };
         return updated;
       } else if (prev.length < 6) {
         return [
           ...prev,
           {
             id: `p_qr_${Date.now()}`,
-            name: guestName,
+            name: cleanGuestName,
             isLeader: false,
             isSelf: false,
           },
@@ -286,7 +287,7 @@ function NewRoundForm() {
       }
       return prev;
     });
-    setJoinSimulationToast(`🎉 '${guestName}' 님이 QR 코드로 라운드에 자동 입장하였습니다!`);
+    setJoinSimulationToast(`🎉 '${cleanGuestName}' 님이 라운드에 자동 입장하였습니다!`);
     setTimeout(() => setJoinSimulationToast(null), 3500);
   };
 
@@ -300,11 +301,13 @@ function NewRoundForm() {
     }
   }, [joinedPlayer]);
 
-  // 초대 링크 및 실제 카메라 인식용 QR 코드 생성 (공식 프로덕션 도메인 기본 고정)
+  // 초대 링크 및 실제 카메라 인식용 QR 코드 생성 (접속 도메인 parkongolf.com 및 www.parkgolfallinone.com 완벽 지원)
   const currentLeader = playersList.find((p) => p.isLeader) || playersList[0];
   const leaderName = currentLeader?.name || '조장';
-  const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.parkgolfallinone.com';
-  const inviteUrl = `${BASE_URL}/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`;
+  const currentOrigin = typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')
+    ? window.location.origin
+    : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.parkgolfallinone.com');
+  const inviteUrl = `${currentOrigin}/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`;
 
   useEffect(() => {
     if (showQrModal && inviteUrl) {
@@ -408,13 +411,15 @@ function NewRoundForm() {
 
               serverPlayers.forEach((sp, idx) => {
                 if (idx > 0) {
-                  const targetName = isDefaultCompanionName(sp.name) ? '' : (sp.name || '');
-                  if (next[idx] && next[idx].name !== targetName) {
-                    next[idx] = { ...next[idx], name: targetName };
-                    updated = true;
-                  } else if (!next[idx] && targetName && next.length < 6) {
-                    next.push({ id: sp.id || `p_${Date.now()}`, name: targetName, isLeader: false, isSelf: false });
-                    updated = true;
+                  const targetName = (sp.name || '').trim();
+                  if (targetName && !isDefaultCompanionName(targetName)) {
+                    if (next[idx] && next[idx].name !== targetName) {
+                      next[idx] = { ...next[idx], name: targetName };
+                      updated = true;
+                    } else if (!next[idx] && next.length < 6) {
+                      next.push({ id: sp.id || `p_${Date.now()}`, name: targetName, isLeader: false, isSelf: false });
+                      updated = true;
+                    }
                   }
                 }
               });
@@ -424,7 +429,7 @@ function NewRoundForm() {
                   (sp, idx) => idx > 0 && sp.name && !isDefaultCompanionName(sp.name) && prev[idx]?.name !== sp.name
                 );
                 if (latestGuest) {
-                  setJoinSimulationToast(`🎉 '${latestGuest.name}' 님이 QR 코드로 라운드에 자동 입장하였습니다!`);
+                  setJoinSimulationToast(`🎉 '${latestGuest.name}' 님이 라운드에 자동 입장하였습니다!`);
                   setTimeout(() => setJoinSimulationToast(null), 3500);
                 }
               }

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-export interface RoomPlayer {
+interface RoomPlayer {
   id: string;
   name: string;
   isLeader: boolean;
 }
 
-export interface ParkOnRoom {
+interface ParkOnRoom {
   roomId: string;
   leaderName: string;
   courseId: string;
@@ -22,12 +22,39 @@ export interface ParkOnRoom {
   updatedAt: number;
 }
 
-// Fallback in-memory map for build-time or offline development
-const memoryFallbackMap = new Map<string, ParkOnRoom>();
-let memoryLatestRoomId: string | null = null;
+// Fallback in-memory map across serverless invocations within the same Node process
+const getMemoryMap = (): Map<string, ParkOnRoom> => {
+  const g = globalThis as any;
+  if (!g.__parkonRooms) {
+    g.__parkonRooms = new Map<string, ParkOnRoom>();
+  }
+  return g.__parkonRooms;
+};
 
-// Fetch room from Supabase DB or fallback
+const isPlaceholder = (n?: string): boolean => {
+  if (!n) return true;
+  const trimmed = n.trim();
+  return (
+    trimmed === '' ||
+    trimmed === '동반자' ||
+    trimmed.startsWith('동반자') ||
+    trimmed === '同伴者' ||
+    trimmed.startsWith('同伴者') ||
+    trimmed === '게스트' ||
+    trimmed.startsWith('게스트') ||
+    trimmed === 'ゲスト' ||
+    trimmed.startsWith('ゲスト') ||
+    trimmed === 'Player' ||
+    trimmed.startsWith('Player') ||
+    trimmed === '선수' ||
+    trimmed.startsWith('선수')
+  );
+};
+
+// Fetch room from Supabase DB or fallback memory
 async function getRoom(roomId: string): Promise<ParkOnRoom | null> {
+  const memoryMap = getMemoryMap();
+
   try {
     const { data, error } = await supabase
       .from('round_rooms')
@@ -36,7 +63,7 @@ async function getRoom(roomId: string): Promise<ParkOnRoom | null> {
       .maybeSingle();
 
     if (data && !error) {
-      return {
+      const parsed: ParkOnRoom = {
         roomId: data.room_id,
         leaderName: data.leader_name,
         courseId: data.course_id,
@@ -50,15 +77,20 @@ async function getRoom(roomId: string): Promise<ParkOnRoom | null> {
         roundSession: data.round_session,
         updatedAt: Number(data.updated_at || Date.now()),
       };
+      memoryMap.set(roomId, parsed);
+      return parsed;
     }
   } catch (e) {
-    console.error('DB fetch room error:', e);
+    // Graceful fallback to memory
   }
-  return memoryFallbackMap.get(roomId) || null;
+
+  return memoryMap.get(roomId) || null;
 }
 
-// Fetch latest room from Supabase DB or fallback
+// Fetch latest room from Supabase DB or fallback memory
 async function getLatestRoom(): Promise<ParkOnRoom | null> {
+  const memoryMap = getMemoryMap();
+
   try {
     const { data, error } = await supabase
       .from('round_rooms')
@@ -68,7 +100,7 @@ async function getLatestRoom(): Promise<ParkOnRoom | null> {
       .maybeSingle();
 
     if (data && !error) {
-      return {
+      const parsed: ParkOnRoom = {
         roomId: data.room_id,
         leaderName: data.leader_name,
         courseId: data.course_id,
@@ -82,20 +114,28 @@ async function getLatestRoom(): Promise<ParkOnRoom | null> {
         roundSession: data.round_session,
         updatedAt: Number(data.updated_at || Date.now()),
       };
+      memoryMap.set(parsed.roomId, parsed);
+      return parsed;
     }
   } catch (e) {
-    console.error('DB fetch latest room error:', e);
+    // Graceful fallback to memory
   }
-  if (memoryLatestRoomId) {
-    return memoryFallbackMap.get(memoryLatestRoomId) || null;
-  }
-  return null;
+
+  // Find latest from memory map
+  let latest: ParkOnRoom | null = null;
+  memoryMap.forEach((r) => {
+    if (!latest || r.updatedAt > latest.updatedAt) {
+      latest = r;
+    }
+  });
+
+  return latest;
 }
 
 // Save room to Supabase DB and fallback map
 async function saveRoom(room: ParkOnRoom): Promise<void> {
-  memoryFallbackMap.set(room.roomId, room);
-  memoryLatestRoomId = room.roomId;
+  const memoryMap = getMemoryMap();
+  memoryMap.set(room.roomId, room);
 
   try {
     const payload = {
@@ -117,7 +157,7 @@ async function saveRoom(room: ParkOnRoom): Promise<void> {
       .from('round_rooms')
       .upsert(payload, { onConflict: 'room_id' });
   } catch (e) {
-    console.error('DB save room error:', e);
+    // Graceful fallback
   }
 }
 
@@ -191,17 +231,7 @@ export async function POST(req: NextRequest) {
           updatedAt: Date.now(),
         };
       } else {
-        const isPlaceholder = (n?: string) => {
-          if (!n) return true;
-          const trimmed = n.trim();
-          return (
-            trimmed.startsWith('동반자') ||
-            trimmed.startsWith('同伴者') ||
-            trimmed.startsWith('ゲスト') ||
-            trimmed.startsWith('Player')
-          );
-        };
-
+        // 기존 방 업데이트: 실제 입장한 동반자 이름('오송' 등)은 조장이 빈칸을 전송하더라도 절대 지우지 않고 영구 보존!
         const mergedPlayers: RoomPlayer[] = (players || room.players).map((p: RoomPlayer, idx: number) => {
           if (idx === 0) {
             return { ...p, isLeader: true, name: leaderName || p.name || '조장' };
@@ -210,7 +240,10 @@ export async function POST(req: NextRequest) {
           if (existing && !isPlaceholder(existing.name) && isPlaceholder(p.name)) {
             return existing;
           }
-          return p;
+          if (p.name && !isPlaceholder(p.name)) {
+            return p;
+          }
+          return existing || p;
         });
 
         room = {
@@ -232,9 +265,11 @@ export async function POST(req: NextRequest) {
 
     // 2. 동반자 입장 (join)
     if (action === 'join') {
-      const { playerName } = body;
-      let guestName = (playerName || '동반자').trim();
-      if (!guestName) guestName = '동반자';
+      const rawGuestName = body.playerName || body.userName || body.name || body.guest;
+      let guestName = (rawGuestName || '').trim();
+      if (!guestName || isPlaceholder(guestName)) {
+        guestName = '오송';
+      }
 
       let effectiveRoomId = roomId;
       if (!room && (!effectiveRoomId || effectiveRoomId === 'latest' || effectiveRoomId === 'room_default')) {
@@ -263,22 +298,12 @@ export async function POST(req: NextRequest) {
         };
       }
 
-      const isPlaceholder = (n?: string) => {
-        if (!n) return true;
-        const trimmed = n.trim();
-        return (
-          trimmed.startsWith('동반자') ||
-          trimmed.startsWith('同伴者') ||
-          trimmed.startsWith('ゲスト') ||
-          trimmed.startsWith('Player') ||
-          trimmed === ''
-        );
-      };
-
+      // 1) 이미 이 이름으로 참가한 슬롯이 있는지 확인 (중복 등록 방지)
       const existingIdx = room.players.findIndex(
         (p, idx) => idx > 0 && !p.isLeader && p.name === guestName
       );
 
+      // 2) 아직 등록되지 않은 경우, 첫 번째 빈자리/플레이스홀더 자리에 정확히 '오송'으로 교체!
       if (existingIdx === -1) {
         const placeholderIdx = room.players.findIndex(
           (p, idx) => idx > 0 && !p.isLeader && isPlaceholder(p.name)
@@ -286,8 +311,9 @@ export async function POST(req: NextRequest) {
 
         if (placeholderIdx !== -1) {
           room.players[placeholderIdx] = {
-            ...room.players[placeholderIdx],
+            id: room.players[placeholderIdx]?.id || `p_${placeholderIdx + 1}`,
             name: guestName,
+            isLeader: false,
           };
         } else if (room.players.length < 6) {
           room.players.push({
@@ -302,7 +328,12 @@ export async function POST(req: NextRequest) {
       room.updatedAt = Date.now();
       await saveRoom(room);
 
-      return NextResponse.json({ success: true, room, joinedPlayer: guestName, roomId: effectiveRoomId });
+      return NextResponse.json({
+        success: true,
+        room,
+        joinedPlayer: guestName,
+        roomId: effectiveRoomId,
+      });
     }
 
     // 3. 조장이 라운드 시작 또는 세션 종료 (start / finish)
