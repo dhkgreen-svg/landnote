@@ -272,25 +272,31 @@ function NewRoundForm() {
         return prev;
       }
       const targetIdx = prev.findIndex((p, idx) => idx > 0 && (!p.name || !p.name.trim() || isDefaultCompanionName(p.name)));
+      let nextList = [...prev];
       if (targetIdx !== -1) {
-        const updated = [...prev];
-        updated[targetIdx] = { ...updated[targetIdx], name: cleanGuestName };
-        return updated;
+        nextList[targetIdx] = { ...nextList[targetIdx], name: cleanGuestName };
       } else if (prev.length < 6) {
-        return [
-          ...prev,
-          {
-            id: `p_qr_${Date.now()}`,
-            name: cleanGuestName,
-            isLeader: false,
-            isSelf: false,
-          },
-        ];
+        nextList.push({
+          id: `p_qr_${Date.now()}`,
+          name: cleanGuestName,
+          isLeader: false,
+          isSelf: false,
+        });
       }
-      return prev;
+      return nextList;
     });
-    setJoinSimulationToast(`🎉 '${cleanGuestName}' 님이 라운드에 자동 입장하였습니다!`);
+
+    setJoinSimulationToast(
+      isJapanese
+        ? `🎉 '${cleanGuestName}' 様が参加しました！全員揃いましたのでゲームを開始できます！`
+        : `🎉 '${cleanGuestName}' 님이 입장하였습니다! (${playerCount}명 참여 완료, 바로 시작 가능)`
+    );
     setTimeout(() => setJoinSimulationToast(null), 3500);
+
+    // 대표님 절대 지침: 동반자 입장 확인 시 1.2초 후 초대 팝업창을 자동으로 닫고 즉시 [티샷 시작] 화면으로 복귀!
+    setTimeout(() => {
+      setShowQrModal(false);
+    }, 1200);
   };
 
   // URL 쿼리(초대 링크를 타고 들어온 동반자) 자동 합류 처리
@@ -309,7 +315,7 @@ function NewRoundForm() {
   const currentOrigin = typeof window !== 'undefined' && window.location.origin && !window.location.origin.includes('localhost')
     ? window.location.origin
     : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.parkgolfallinone.com');
-  const inviteUrl = `${currentOrigin}/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`;
+  const inviteUrl = `${currentOrigin}/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}&count=${playerCount}`;
 
   useEffect(() => {
     if (showQrModal && inviteUrl) {

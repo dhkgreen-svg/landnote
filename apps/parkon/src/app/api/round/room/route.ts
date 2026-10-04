@@ -211,6 +211,7 @@ export async function POST(req: NextRequest) {
       } = body;
 
       const effectiveRoomId = roomId || `room_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const targetCount = playerCount || (players ? players.length : 2);
 
       if (!room) {
         room = {
@@ -220,19 +221,18 @@ export async function POST(req: NextRequest) {
           courseName: courseName || '구미 동락 파크골프장',
           courseLetter: courseLetter || 'A',
           startHoleIndex: startHoleIndex || 1,
-          playerCount: playerCount || 4,
-          players: players || [
+          playerCount: targetCount,
+          players: players ? players.slice(0, targetCount) : [
             { id: 'p_leader', name: leaderName || '조장', isLeader: true },
             { id: 'p_2', name: '동반자1', isLeader: false },
-            { id: 'p_3', name: '동반자2', isLeader: false },
-            { id: 'p_4', name: '동반자3', isLeader: false },
           ],
           status: 'WAITING',
           updatedAt: Date.now(),
         };
       } else {
         // 기존 방 업데이트: 실제 입장한 동반자 이름('오송' 등)은 조장이 빈칸을 전송하더라도 절대 지우지 않고 영구 보존!
-        const mergedPlayers: RoomPlayer[] = (players || room.players).map((p: RoomPlayer, idx: number) => {
+        const baseList = players || room.players;
+        const mergedPlayers: RoomPlayer[] = baseList.slice(0, targetCount).map((p: RoomPlayer, idx: number) => {
           if (idx === 0) {
             return { ...p, isLeader: true, name: leaderName || p.name || '조장' };
           }
@@ -253,7 +253,7 @@ export async function POST(req: NextRequest) {
           courseName: courseName || room.courseName,
           courseLetter: courseLetter || room.courseLetter,
           startHoleIndex: startHoleIndex ?? room.startHoleIndex,
-          playerCount: playerCount ?? room.playerCount,
+          playerCount: targetCount,
           players: mergedPlayers,
           updatedAt: Date.now(),
         };
@@ -277,6 +277,8 @@ export async function POST(req: NextRequest) {
         if (room) effectiveRoomId = room.roomId;
       }
 
+      const initialCount = body.playerCount || 2;
+
       if (!room) {
         effectiveRoomId = effectiveRoomId || `room_${Date.now()}`;
         room = {
@@ -286,12 +288,10 @@ export async function POST(req: NextRequest) {
           courseName: body.courseName || '파크골프장',
           courseLetter: 'A',
           startHoleIndex: 1,
-          playerCount: 4,
+          playerCount: initialCount,
           players: [
             { id: 'p_leader', name: body.leaderName || '조장', isLeader: true },
-            { id: 'p_2', name: '동반자1', isLeader: false },
-            { id: 'p_3', name: '동반자2', isLeader: false },
-            { id: 'p_4', name: '동반자3', isLeader: false },
+            { id: 'p_2', name: guestName, isLeader: false },
           ],
           status: 'WAITING',
           updatedAt: Date.now(),
@@ -315,14 +315,24 @@ export async function POST(req: NextRequest) {
             name: guestName,
             isLeader: false,
           };
-        } else if (room.players.length < 6) {
+        } else if (room.players.length < room.playerCount) {
           room.players.push({
             id: `p_guest_${Date.now()}`,
             name: guestName,
             isLeader: false,
           });
-          room.playerCount = room.players.length;
+        } else if (room.players.length >= 2) {
+          // 슬롯 2번에 강제 치환
+          room.players[1] = {
+            id: room.players[1]?.id || 'p_2',
+            name: guestName,
+            isLeader: false,
+          };
         }
+      }
+
+      if (room.playerCount && room.players.length > room.playerCount) {
+        room.players = room.players.slice(0, room.playerCount);
       }
 
       room.updatedAt = Date.now();

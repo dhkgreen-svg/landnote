@@ -24,6 +24,7 @@ function RoundJoinContent() {
   const handoffParam = searchParams.get('handoff') || '';
   const memberParam = searchParams.get('member') || searchParams.get('user') || '';
   const codeParam = searchParams.get('code') || '';
+  const countParam = searchParams.get('count') || searchParams.get('playerCount') || '2';
 
   const [course, setCourse] = useState<Course | null>(null);
   const [userName, setUserName] = useState<string>('');
@@ -174,6 +175,7 @@ function RoundJoinContent() {
           roomId: targetRoomId,
           playerName: trimmedName,
           leaderName: leaderParam,
+          playerCount: parseInt(countParam, 10) || 2,
           courseId: course?.id || courseParam || 'course_1',
           courseName: course?.name || (isJapanese ? 'パークゴルフ場' : '파크골프장'),
           isGuest: isGuest,
@@ -201,6 +203,7 @@ function RoundJoinContent() {
               playerName: trimmedName,
               nickname: trimmedName,
               slotIndex: 1,
+              playerCount: parseInt(countParam, 10) || 2,
               isGuest: isGuest,
             },
           });
@@ -217,6 +220,7 @@ function RoundJoinContent() {
           playerName: trimmedName,
           nickname: trimmedName,
           slotIndex: 1,
+          playerCount: parseInt(countParam, 10) || 2,
           isGuest: isGuest,
         },
       });
@@ -234,7 +238,7 @@ function RoundJoinContent() {
             : `⭐ '${trimmedName}' 회원님, 공식 대기실로 입장합니다!`)
     );
 
-    const nextUrl = `/round/waiting?roomId=${encodeURIComponent(joinedRoomId)}&guest=${encodeURIComponent(trimmedName)}&isGuest=${isGuest ? '1' : '0'}`;
+    const nextUrl = `/round/waiting?roomId=${encodeURIComponent(joinedRoomId)}&guest=${encodeURIComponent(trimmedName)}&isGuest=${isGuest ? '1' : '0'}&count=${encodeURIComponent(countParam)}`;
     setPendingRedirectUrl(nextUrl);
 
     // 📲 대표님 지침: 기존 가입 회원은 이미 가입/설치된 회원이므로 불필요한 설치 팝업 없이 0.3초 만에 대기실로 즉시 직행!

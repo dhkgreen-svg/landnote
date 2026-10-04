@@ -228,8 +228,9 @@ function WaitingContent() {
     }
   };
 
+  const countParam = parseInt(searchParams.get('count') || searchParams.get('playerCount') || '0', 10);
   const leaderName = room?.leaderName || (isJapanese ? 'リーダー' : '조장');
-  const maxCount = room?.playerCount || 4;
+  const effectiveCount = room?.playerCount || countParam || (room?.players?.length ? room.players.length : 2);
 
   const isPlaceholderSlot = (name?: string) => {
     if (!name || !name.trim()) return true;
@@ -244,9 +245,16 @@ function WaitingContent() {
     rawList = [
       { id: '1', name: leaderName, isLeader: true },
       { id: '2', name: guestName, isLeader: false },
-      { id: '3', name: isJapanese ? '同伴者2 (待機中)' : '동반자2 (대기 중)', isLeader: false },
-      { id: '4', name: isJapanese ? '同伴者3 (待機中)' : '동반자3 (대기 중)', isLeader: false },
     ];
+    if (effectiveCount > 2) {
+      for (let i = 3; i <= effectiveCount; i++) {
+        rawList.push({
+          id: String(i),
+          name: isJapanese ? `同伴者 ${i}` : `동반자 ${i}`,
+          isLeader: false,
+        });
+      }
+    }
   }
 
   // Ensure guestName ('오송') is assigned to the companion's slot
@@ -267,7 +275,7 @@ function WaitingContent() {
     }
   }
 
-  const playersList = rawList.slice(0, Math.max(1, maxCount));
+  const playersList = rawList.slice(0, Math.max(1, effectiveCount));
 
   return (
     <div className="min-h-screen bg-stone-100 flex flex-col items-center justify-start p-4 select-none pb-12">
