@@ -1013,23 +1013,23 @@ export default function HomePage() {
         <div className="absolute top-0 right-0 -mr-6 -mt-6 w-32 h-32 bg-emerald-700/40 rounded-full blur-xl pointer-events-none" />
         
         <div className="relative z-10 space-y-3">
-          {/* 상단: 전국 구장 찾기 & 다른 내 구장 선택하기 2개 버튼 */}
+          {/* 상단: 전국 구장 검색 & 내 홈구장 선택 2개 버튼 */}
           <div className="flex items-center justify-between gap-2">
             <Link
               href="/courses"
               className="bg-emerald-700/90 hover:bg-emerald-600 border border-emerald-400/50 text-white text-xs font-black px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
             >
               <MapPin className="w-3.5 h-3.5 text-amber-300" />
-              <span>{isJapanese ? '全国コース検索' : isEnglish ? 'Find Courses' : '전국 구장 찾기'}</span>
+              <span>{isJapanese ? '全国コース検索' : isEnglish ? 'Search Courses' : '전국 구장 검색'}</span>
             </Link>
 
-            {/* 다른 내 구장 선택하기 버튼 */}
+            {/* 내 홈구장 선택 버튼 */}
             <button
               type="button"
               onClick={() => setShowHomeModal(true)}
               className="bg-emerald-700/90 hover:bg-emerald-600 border border-emerald-400/50 text-white text-xs font-black px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
             >
-              <span>{isJapanese ? '他のマイコース選択' : isEnglish ? 'Select Other' : '다른 내 구장 선택하기'}</span>
+              <span>{isJapanese ? 'マイホームコース選択' : isEnglish ? 'Select Home' : '내 홈구장 선택'}</span>
               <ChevronDown className="w-3.5 h-3.5 text-amber-300" />
             </button>
           </div>
