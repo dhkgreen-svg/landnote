@@ -232,7 +232,7 @@ def process_village_command(command: str):
     if any(k in cmd_lower for k in ["청소", "정리", "바탕화면", "휴지통", "지워", "깨끗"]):
         cleaner_py = os.path.join(HUB_DIR, "desktop_cleaner.py")
         try:
-            res = subprocess.check_output(f'python "{cleaner_py}"', shell=True, text=True, stderr=subprocess.STDOUT)
+            res = subprocess.check_output(f'python "{cleaner_py}"', shell=True, text=True, encoding="utf-8", errors="replace", stderr=subprocess.STDOUT)
         except Exception as e:
             res = str(e)
         
@@ -254,7 +254,7 @@ def process_village_command(command: str):
         if not os.path.exists(drive_sync):
             drive_sync = os.path.join(HUB_DIR, "drive_sync.py")
         try:
-            res = subprocess.check_output(f'python "{drive_sync}"', shell=True, text=True, stderr=subprocess.STDOUT)
+            res = subprocess.check_output(f'python "{drive_sync}"', shell=True, text=True, encoding="utf-8", errors="replace", stderr=subprocess.STDOUT)
         except Exception as e:
             res = str(e)
 
@@ -288,7 +288,7 @@ def process_village_command(command: str):
     elif any(k in cmd_lower for k in ["상태", "점검", "진단", "건강", "리포트", "보고", "검사"]):
         reporter = os.path.join(HUB_DIR, "status_reporter.py")
         try:
-            res = subprocess.check_output(f'python "{reporter}"', shell=True, text=True, stderr=subprocess.STDOUT)
+            res = subprocess.check_output(f'python "{reporter}"', shell=True, text=True, encoding="utf-8", errors="replace", stderr=subprocess.STDOUT)
         except Exception as e:
             res = str(e)
         
@@ -309,7 +309,7 @@ def process_village_command(command: str):
     elif any(k in cmd_lower for k in ["브리핑", "요약"]):
         bf_script = os.path.join(HUB_DIR, "daily_briefing.py")
         try:
-            res = subprocess.check_output(f'python "{bf_script}" --ai', shell=True, text=True, stderr=subprocess.STDOUT)
+            res = subprocess.check_output(f'python "{bf_script}" --ai', shell=True, text=True, encoding="utf-8", errors="replace", stderr=subprocess.STDOUT)
         except Exception as e:
             res = str(e)
 
