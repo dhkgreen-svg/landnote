@@ -21,6 +21,7 @@ import { NationalTourMapModal } from '@/components/NationalTourMapModal';
 import { QuickGuideModal } from '@/components/QuickGuideModal';
 import { RoundScoreboardModal } from '@/components/RoundScoreboardModal';
 import { BadgeStorage } from '@/lib/badgeStorage';
+import { AppShareModal } from '@/components/AppShareModal';
 import { KakaoAuthUser } from '@/lib/storage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName, stripParkGolfSuffix } from '@/lib/courseLocalization';
@@ -62,6 +63,7 @@ export default function HomePage() {
   const [showCourseTodayModal, setShowCourseTodayModal] = useState<boolean>(false);
   const [selectedCourseForDetail, setSelectedCourseForDetail] = useState<Course | null>(null);
   const [showQuickGuideModal, setShowQuickGuideModal] = useState<boolean>(false);
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const [showShareToast, setShowShareToast] = useState<boolean>(false);
   const [shareToastMessage, setShareToastMessage] = useState<string>('✓ 파크골프 올인원 주소(https://www.parkgolfallinone.com)가 복사되었습니다!');
 
@@ -911,6 +913,12 @@ export default function HomePage() {
         onClose={() => setShowRulesWebtoonModal(false)}
       />
 
+      {/* -2.3. 파키(PARKY) 앱 3대 채널(카톡, 라인, URL) 추천 공유 모달 */}
+      <AppShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+      />
+
       {/* -2.5. 룰 솔로몬 & 만화 웹툰 전체 가이드 팝업창 (물음표 기능 완벽 연동) */}
       {showRulesSolomonPopup && (
         <div className="fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4 animate-in fade-in duration-200">
@@ -1310,68 +1318,47 @@ export default function HomePage() {
 
       {/* 4-2. 파크골프 올인원 소개하기 & 바탕화면 추가 2대 핵심 액션 버튼 세트 */}
       <div className="pt-0.5 space-y-2">
-        {/* ① 친구에게 파키(PARKY) 앱 추천하기 */}
+        {/* ① 파키(PARKY) 앱 추천하기 (카톡·라인·URL 공유 모달 연동) */}
         <button
           type="button"
-          onClick={handleShareParkon}
-          className="w-full py-2.5 px-3.5 bg-gradient-to-r from-amber-50 via-white to-amber-50 hover:bg-amber-100/60 active:scale-[0.99] border-2 border-amber-500/80 text-stone-900 rounded-xl text-xs font-bold shadow-xs flex items-center justify-between gap-2 transition cursor-pointer group"
-          title={isJapanese ? 'LINEやメッセージで友人にアプリを推薦' : '카카오톡이나 문자로 친구에게 파키 앱 추천'}
+          onClick={() => setShowShareModal(true)}
+          className="w-full py-3 px-4 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 active:scale-[0.99] border-2 border-amber-500 text-stone-950 rounded-2xl text-xs sm:text-sm font-black shadow-md flex items-center justify-between gap-2 transition cursor-pointer group"
+          title={isJapanese ? 'PARKY アプリを推薦する' : isEnglish ? 'Recommend PARKY App' : '파키(PARKY) 앱 추천하기'}
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="w-5 h-5 rounded-lg bg-amber-400 text-stone-950 flex items-center justify-center text-[11px] font-black shrink-0 shadow-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-white/90 text-stone-950 flex items-center justify-center text-xs sm:text-sm font-black shrink-0 shadow-2xs border border-amber-400">
               📢
             </span>
-            <span className="text-[12px] font-bold text-stone-800 group-hover:text-stone-950 truncate">
+            <span className="text-xs sm:text-sm font-black text-stone-950 truncate">
               {isJapanese ? (
-                <>知人に<strong className="font-black text-amber-900">PARKY アプリ</strong>を推薦する</>
+                <>PARKY アプリを推薦する</>
               ) : isEnglish ? (
-                <>Recommend <strong className="font-black text-amber-900">PARKY App</strong> to Friends</>
+                <>Recommend PARKY App</>
               ) : (
-                <>친구에게 <strong className="font-black text-amber-900">파키(PARKY) 앱</strong> 추천하기</>
+                <>파키(PARKY) 앱 추천하기</>
               )}
             </span>
           </div>
-          <span className="shrink-0 flex items-center gap-1.5 text-[11px] font-black text-amber-950 bg-amber-200 group-hover:bg-amber-300 px-2 py-0.5 rounded-lg border border-amber-300 transition">
-            <Share2 className="w-3.5 h-3.5 text-amber-900" />
-            <span>{isJapanese ? 'LINE・共有' : '카톡·추천'}</span>
+          <span className="shrink-0 flex items-center gap-1 text-[11px] sm:text-xs font-black text-amber-950 bg-white/80 group-hover:bg-white px-2.5 py-1 rounded-xl border border-amber-400/80 transition">
+            <span>{isJapanese ? '推薦' : '추천'}</span>
+            <span>▶</span>
           </span>
         </button>
 
-        {/* ② [앱 설치하기] (좌측 50%) & [언어 선택] (우측 50%) */}
-        <div className="grid grid-cols-2 gap-2">
-          {/* 좌측 50%: 앱 설치하기 버튼 */}
-          <button
-            type="button"
-            onClick={handleAppInstallClick}
-            className="w-full py-2.5 px-2.5 bg-emerald-800 hover:bg-emerald-900 active:scale-[0.99] border-2 border-emerald-600 text-yellow-300 font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition group"
-            title={isJapanese ? 'スマホ・PC 画面にアプリ追加' : isEnglish ? 'Install App on Home Screen' : '스마트폰·PC 바탕화면에 앱 설치'}
+        {/* ② 언어 선택창 (한국어 / 日本語 / English) */}
+        <div className="relative w-full">
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value as any)}
+            className="w-full py-2.5 pl-3 pr-7 bg-white hover:bg-stone-50 border-2 border-stone-800 text-stone-900 font-black text-xs rounded-xl shadow-xs appearance-none cursor-pointer transition focus:outline-none focus:ring-2 focus:ring-emerald-500 text-center"
+            title={isJapanese ? '言語選択 (한국어 / 日本語 / English)' : '언어 선택 (한국어 / 日本語 / English)'}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/icon.png"
-              alt="파키 심볼"
-              className="w-4 h-4 rounded-md border border-amber-300 object-cover shrink-0"
-            />
-            <span className="truncate font-black">
-              {isJapanese ? '📲 アプリインストール' : isEnglish ? '📲 Install App' : '📲 앱 설치하기'}
-            </span>
-          </button>
-
-          {/* 우측 50%: 언어 선택창 (한국어 / 日本語 / English) */}
-          <div className="relative w-full">
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value as any)}
-              className="w-full h-full py-2.5 pl-3 pr-7 bg-white hover:bg-stone-50 border-2 border-stone-800 text-stone-900 font-black text-xs rounded-xl shadow-xs appearance-none cursor-pointer transition focus:outline-none focus:ring-2 focus:ring-emerald-500 text-center"
-              title={isJapanese ? '言語選択 (한국어 / 日本語 / English)' : '언어 선택 (한국어 / 日本語 / English)'}
-            >
-              <option value="ko">🇰🇷 한국어 (KO)</option>
-              <option value="ja">🇯🇵 日本語 (JA)</option>
-              <option value="en">🇺🇸 English (EN)</option>
-            </select>
-            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-stone-500 text-[10px] font-bold">
-              ▼
-            </div>
+            <option value="ko">🇰🇷 한국어 (KO)</option>
+            <option value="ja">🇯🇵 日本語 (JA)</option>
+            <option value="en">🇺🇸 English (EN)</option>
+          </select>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-stone-500 text-[10px] font-bold">
+            ▼
           </div>
         </div>
 
