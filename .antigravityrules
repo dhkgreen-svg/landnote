@@ -1,0 +1,26 @@
+# 🧭 Anti-Gravity Master Rules (최고 운영 사령탑 작업 지침)
+
+## 1. 프로젝트 식별 및 단일 진실 공급원 (Single Source of Truth)
+- 모든 애플리케이션은 `apps/{앱이름}` 하위 디렉터리에 독립 모듈로 구성되어 있습니다.
+  - `apps/parkon` (별칭: `paki`): **파크골프 올인원 (ParkGolf All-in-One)** (구 파크온) - 포트 3008 / 공식 도메인: [https://www.parkgolfallinone.com](https://www.parkgolfallinone.com)
+  - `apps/web` (별칭: `landnote`): **랜드노트 (LandNote)** 대구 범어동 160억 통빌딩 전문 CRM - 포트 3000 / 도메인: [https://landnote-web.vercel.app](https://landnote-web.vercel.app)
+  - `apps/api`: **랜드노트 백엔드 API 서비스**
+- 명령 접수 시 반드시 루트의 `project_registry.json`을 먼저 확인하고 대상 프로젝트 디렉터리를 기준으로 작업을 수행합니다.
+
+## 2. 대표님 절대 원칙 (Absolute Rules)
+- **[명칭 절대 원칙]**: 과거 명칭인 '파크온'은 전면 사용을 금지하며, **무조건 '파크골프 올인원' (영문: ParkGolf All-in-One, 일문: パークゴルフ オールインワン)** 으로만 표기 및 통일합니다.
+- **[배포 통제 원칙]**: 모든 코딩, UI 디자인, 로직 검증은 로컬 환경(`http://localhost:3008` 등)에서 100% 완료한 후, 대표님의 명시적 승인을 거쳐서만 Vercel 프로덕션에 배포합니다.
+- **[데이터 실측 원칙]**: 가상 데이터나 추정치는 배제하고, 전국 160명 실측 고유 사용자 베이스라인 및 실제 필드 라운딩 팩트 데이터를 영구 보존합니다.
+- **[마스코트 표준]**: 3D 디즈니/픽사 풍 1번 공식 마스코트 **'파키 (PAKI)'** 및 6컷 신문만화 룰북 규격을 준수합니다.
+
+## 3. 동기화 및 3줄 보고 의무
+- 파일 수정이나 빌드, 배포를 마친 후에는 반드시 `SYSTEM_STATE.md`에 최신 변경 내역, 커밋 해시, 배포 상태를 기록합니다.
+- 대표님께 답변할 때는 다음 3가지를 명확히 요약 보고합니다:
+  1. 수정한 핵심 파일 및 주요 변경 내용
+  2. 로컬 빌드 및 실서버 배포/검증 상태
+  3. 스마트폰/PC에서 즉시 체감·확인할 포인트
+
+## 4. 원클릭 통제 사령탑 CLI 활용 (`hub/`)
+- 앱 실행: `python hub/run.py --app {paki|landnote} --action {dev|build|start}`
+- 배포 및 실기기 검증: `python hub/deploy.py --app {paki|landnote}`
+- 상태 동기화: `python hub/sync.py`

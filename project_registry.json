@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.0.0",
+  "master": "김대희 대표님",
+  "lastUpdated": "2026-10-04",
+  "projects": {
+    "paki": {
+      "name": "파크골프 올인원",
+      "englishName": "ParkGolf All-in-One",
+      "japaneseName": "パークゴルフ オールインワン",
+      "aliases": ["paki", "parkon", "parkgolf"],
+      "path": "apps/parkon",
+      "package": "@parkon/web",
+      "localPort": 3008,
+      "localUrl": "http://localhost:3008",
+      "productionUrl": "https://www.parkgolfallinone.com",
+      "vercelDomain": "https://landnote-parkon.vercel.app",
+      "framework": "Next.js 15 (Turbopack, PWA)",
+      "status": "Production Live"
+    },
+    "landnote": {
+      "name": "랜드노트",
+      "englishName": "LandNote",
+      "aliases": ["landnote", "web", "crm"],
+      "path": "apps/web",
+      "package": "@landnote/web",
+      "localPort": 3000,
+      "localUrl": "http://localhost:3000",
+      "productionUrl": "https://landnote-web.vercel.app",
+      "framework": "Next.js",
+      "status": "Production Live"
+    },
+    "landnote-api": {
+      "name": "랜드노트 백엔드 API",
+      "aliases": ["api", "backend"],
+      "path": "apps/api",
+      "package": "@landnote/api",
+      "localPort": 4000,
+      "productionUrl": "https://api.landnote.kr",
+      "framework": "Express / Node.js",
+      "status": "Production Live"
+    },
+    "marketing-hub": {
+      "name": "마케팅 총괄 관제센터",
+      "aliases": ["marketing", "hub"],
+      "path": "hub",
+      "localPort": 4005,
+      "localUrl": "http://localhost:4005",
+      "status": "Active"
+    }
+  }
+}
