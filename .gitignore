@@ -12,6 +12,8 @@ build/
 # env
 .env
 .env.*
+config.env
+!config.env.example
 !.env.example
 !.env.local.example
 
@@ -48,17 +50,9 @@ tmp_*.html
 
 # PWA build artifacts
 **/public/sw.js
-!apps/parkon/public/sw.js
 **/public/workbox-*.js
-
-# large backups and media
-backups_and_archives/
-python_apps/
-*.zip
-*.mp4
 **/public/sw.js.map
 **/public/workbox-*.js.map
 **/public/swe-worker-*.js
 
 .vercel
-apps/parkon_backup*
