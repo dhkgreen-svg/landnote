@@ -16,6 +16,7 @@ import { FloatingCameraFAB } from '@/components/FloatingCameraFAB';
 import { BadgeStorage } from '@/lib/badgeStorage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
+import { supabase } from '@/lib/supabase';
 
 export default function RoundPlayPage() {
   const params = useParams();
@@ -400,7 +401,7 @@ export default function RoundPlayPage() {
       } catch (e) {}
     }
 
-    // 🌐 실시간 룸 서버 동기화 & BroadcastChannel 즉각 전송 (조장 <-> 동반자 전원 실시간 연동)
+    // 🌐 실시간 룸 서버 동기화 & Supabase Realtime 무지연 브로드캐스트 전송 (조장 <-> 동반자 전원 50ms 실시간 양방향 연동)
     const effectiveRoomId =
       updated.roomId ||
       (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('roomId') : null) ||
@@ -417,15 +418,14 @@ export default function RoundPlayPage() {
         }),
       }).catch(() => {});
 
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-        const bc = new BroadcastChannel('parkon_round_sync');
-        bc.postMessage({
-          type: 'ROUND_SESSION_SYNC',
-          roomId: effectiveRoomId,
+      const channel = supabase.channel(`room_${effectiveRoomId}`);
+      channel.send({
+        type: 'broadcast',
+        event: 'score_updated',
+        payload: {
           session: updated,
-        });
-        bc.close();
-      }
+        },
+      });
     } catch (e) {}
 
     // Sync to ClubStorage if linked to club room
@@ -550,7 +550,22 @@ export default function RoundPlayPage() {
       }
     };
 
-    // 1초 주기 서버 폴링 (원격 디바이스 동기화)
+    // Supabase Realtime 채널 구독 (외부 모바일 기기 간 50ms 무지연 스코어/홀스텝 양방향 연동)
+    const channel = supabase.channel(`room_${effectiveRoomId}`, {
+      config: {
+        broadcast: { ack: true },
+      },
+    });
+
+    channel
+      .on('broadcast', { event: 'score_updated' }, ({ payload }) => {
+        if (payload?.session && isSubscribed) {
+          applyIncomingSession(payload.session);
+        }
+      })
+      .subscribe();
+
+    // DB / API fallback 1초 주기 폴링
     const pollRoom = async () => {
       try {
         const res = await fetch(`/api/round/room?roomId=${encodeURIComponent(effectiveRoomId)}`);
@@ -566,21 +581,10 @@ export default function RoundPlayPage() {
     pollRoom();
     const interval = setInterval(pollRoom, 1000);
 
-    // BroadcastChannel 무지연 즉각 동기화 (동일 기기 탭/창)
-    let bc: BroadcastChannel | null = null;
-    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-      bc = new BroadcastChannel('parkon_round_sync');
-      bc.onmessage = (event) => {
-        if (event.data?.session && isSubscribed) {
-          applyIncomingSession(event.data.session);
-        }
-      };
-    }
-
     return () => {
       isSubscribed = false;
       clearInterval(interval);
-      if (bc) bc.close();
+      supabase.removeChannel(channel);
     };
   }, [session?.roomId, roundId, holeStep, currentHole, countingMode]);
 

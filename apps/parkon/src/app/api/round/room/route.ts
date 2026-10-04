@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import { supabase } from '@/lib/supabase';
 
 export interface RoomPlayer {
   id: string;
@@ -24,93 +22,116 @@ export interface ParkOnRoom {
   updatedAt: number;
 }
 
-// Temporary file for cross-process/serverless persistence fallback
-const ROOMS_CACHE_FILE = path.join(os.tmpdir(), 'parkon_rooms_cache.json');
-const LATEST_ROOM_FILE = path.join(os.tmpdir(), 'parkon_latest_room_id.txt');
+// Fallback in-memory map for build-time or offline development
+const memoryFallbackMap = new Map<string, ParkOnRoom>();
+let memoryLatestRoomId: string | null = null;
 
-const getLatestRoomId = (): string | null => {
-  const g = globalThis as any;
-  if (g.__parkonLatestRoomId) return g.__parkonLatestRoomId;
+// Fetch room from Supabase DB or fallback
+async function getRoom(roomId: string): Promise<ParkOnRoom | null> {
   try {
-    if (fs.existsSync(LATEST_ROOM_FILE)) {
-      return fs.readFileSync(LATEST_ROOM_FILE, 'utf-8').trim();
+    const { data, error } = await supabase
+      .from('round_rooms')
+      .select('*')
+      .eq('room_id', roomId)
+      .maybeSingle();
+
+    if (data && !error) {
+      return {
+        roomId: data.room_id,
+        leaderName: data.leader_name,
+        courseId: data.course_id,
+        courseName: data.course_name,
+        courseLetter: data.course_letter,
+        startHoleIndex: data.start_hole_index,
+        playerCount: data.player_count,
+        players: data.players || [],
+        status: data.status,
+        roundId: data.round_id,
+        roundSession: data.round_session,
+        updatedAt: Number(data.updated_at || Date.now()),
+      };
     }
-  } catch (e) {}
-  return null;
-};
-
-const setLatestRoomId = (rid: string) => {
-  const g = globalThis as any;
-  g.__parkonLatestRoomId = rid;
-  try {
-    fs.writeFileSync(LATEST_ROOM_FILE, rid, 'utf-8');
-  } catch (e) {}
-};
-
-// In-memory cache
-const getRoomsMap = (): Map<string, ParkOnRoom> => {
-  const g = globalThis as any;
-  if (!g.__parkonRooms) {
-    g.__parkonRooms = new Map<string, ParkOnRoom>();
-    // Load from disk if exists
-    try {
-      if (fs.existsSync(ROOMS_CACHE_FILE)) {
-        const raw = fs.readFileSync(ROOMS_CACHE_FILE, 'utf-8');
-        const parsed = JSON.parse(raw);
-        for (const [k, v] of Object.entries(parsed)) {
-          g.__parkonRooms.set(k, v as ParkOnRoom);
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load rooms from disk:', e);
-    }
-  }
-  return g.__parkonRooms;
-};
-
-// Save to disk
-const persistRooms = (rooms: Map<string, ParkOnRoom>) => {
-  try {
-    const obj: Record<string, ParkOnRoom> = {};
-    rooms.forEach((v, k) => {
-      obj[k] = v;
-    });
-    fs.writeFileSync(ROOMS_CACHE_FILE, JSON.stringify(obj), 'utf-8');
   } catch (e) {
-    console.error('Failed to persist rooms to disk:', e);
+    console.error('DB fetch room error:', e);
   }
-};
+  return memoryFallbackMap.get(roomId) || null;
+}
+
+// Fetch latest room from Supabase DB or fallback
+async function getLatestRoom(): Promise<ParkOnRoom | null> {
+  try {
+    const { data, error } = await supabase
+      .from('round_rooms')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (data && !error) {
+      return {
+        roomId: data.room_id,
+        leaderName: data.leader_name,
+        courseId: data.course_id,
+        courseName: data.course_name,
+        courseLetter: data.course_letter,
+        startHoleIndex: data.start_hole_index,
+        playerCount: data.player_count,
+        players: data.players || [],
+        status: data.status,
+        roundId: data.round_id,
+        roundSession: data.round_session,
+        updatedAt: Number(data.updated_at || Date.now()),
+      };
+    }
+  } catch (e) {
+    console.error('DB fetch latest room error:', e);
+  }
+  if (memoryLatestRoomId) {
+    return memoryFallbackMap.get(memoryLatestRoomId) || null;
+  }
+  return null;
+}
+
+// Save room to Supabase DB and fallback map
+async function saveRoom(room: ParkOnRoom): Promise<void> {
+  memoryFallbackMap.set(room.roomId, room);
+  memoryLatestRoomId = room.roomId;
+
+  try {
+    const payload = {
+      room_id: room.roomId,
+      leader_name: room.leaderName,
+      course_id: room.courseId,
+      course_name: room.courseName,
+      course_letter: room.courseLetter,
+      start_hole_index: room.startHoleIndex,
+      player_count: room.playerCount,
+      players: room.players,
+      status: room.status,
+      round_id: room.roundId || null,
+      round_session: room.roundSession || null,
+      updated_at: room.updatedAt || Date.now(),
+    };
+
+    await supabase
+      .from('round_rooms')
+      .upsert(payload, { onConflict: 'room_id' });
+  } catch (e) {
+    console.error('DB save room error:', e);
+  }
+}
 
 // GET /api/round/room?roomId=...
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   let roomId = searchParams.get('roomId');
 
+  let room: ParkOnRoom | null = null;
+
   if (!roomId || roomId === 'latest' || roomId === 'room_default') {
-    roomId = getLatestRoomId() || roomId || '';
-  }
-
-  if (!roomId) {
-    return NextResponse.json({ success: false, message: 'roomId is required' }, { status: 400 });
-  }
-
-  const rooms = getRoomsMap();
-  let room = rooms.get(roomId);
-
-  // If not in memory, re-check disk file
-  if (!room) {
-    try {
-      if (fs.existsSync(ROOMS_CACHE_FILE)) {
-        const raw = fs.readFileSync(ROOMS_CACHE_FILE, 'utf-8');
-        const parsed = JSON.parse(raw);
-        if (parsed && parsed[roomId]) {
-          room = parsed[roomId];
-          rooms.set(roomId, room!);
-        }
-      }
-    } catch (e) {
-      console.error('Disk read error:', e);
-    }
+    room = await getLatestRoom();
+  } else {
+    room = await getRoom(roomId);
   }
 
   if (!room) {
@@ -126,32 +147,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     let { action, roomId } = body;
 
+    let room: ParkOnRoom | null = null;
+
     if (!roomId || roomId === 'latest' || roomId === 'room_default') {
-      const lat = getLatestRoomId();
-      if (lat) roomId = lat;
-    }
-
-    if (!roomId) {
-      return NextResponse.json({ success: false, message: 'roomId is required' }, { status: 400 });
-    }
-
-    const rooms = getRoomsMap();
-    let room = rooms.get(roomId);
-
-    // If not in memory, check disk
-    if (!room) {
-      try {
-        if (fs.existsSync(ROOMS_CACHE_FILE)) {
-          const raw = fs.readFileSync(ROOMS_CACHE_FILE, 'utf-8');
-          const parsed = JSON.parse(raw);
-          if (parsed && parsed[roomId]) {
-            room = parsed[roomId];
-            rooms.set(roomId, room!);
-          }
-        }
-      } catch (e) {
-        console.error('Disk read error:', e);
+      room = await getLatestRoom();
+      if (room) {
+        roomId = room.roomId;
       }
+    } else {
+      room = await getRoom(roomId);
     }
 
     // 1. 조장 화면 설정 동기화 (sync)
@@ -166,10 +170,11 @@ export async function POST(req: NextRequest) {
         players,
       } = body;
 
+      const effectiveRoomId = roomId || `room_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+
       if (!room) {
-        // 새 방 생성
         room = {
-          roomId,
+          roomId: effectiveRoomId,
           leaderName: leaderName || '조장',
           courseId: courseId || 'course_1',
           courseName: courseName || '구미 동락 파크골프장',
@@ -189,10 +194,14 @@ export async function POST(req: NextRequest) {
         const isPlaceholder = (n?: string) => {
           if (!n) return true;
           const trimmed = n.trim();
-          return trimmed.startsWith('동반자') || trimmed.startsWith('同伴者') || trimmed.startsWith('ゲスト') || trimmed.startsWith('Player');
+          return (
+            trimmed.startsWith('동반자') ||
+            trimmed.startsWith('同伴者') ||
+            trimmed.startsWith('ゲスト') ||
+            trimmed.startsWith('Player')
+          );
         };
 
-        // 기존 방 업데이트: 동반자가 이미 입장해서 입력한 실제 이름은 절대 덮어쓰지 않음
         const mergedPlayers: RoomPlayer[] = (players || room.players).map((p: RoomPlayer, idx: number) => {
           if (idx === 0) {
             return { ...p, isLeader: true, name: leaderName || p.name || '조장' };
@@ -217,9 +226,7 @@ export async function POST(req: NextRequest) {
         };
       }
 
-      rooms.set(roomId, room);
-      persistRooms(rooms);
-      setLatestRoomId(roomId);
+      await saveRoom(room);
       return NextResponse.json({ success: true, room });
     }
 
@@ -230,42 +237,13 @@ export async function POST(req: NextRequest) {
       if (!guestName) guestName = '동반자';
 
       let effectiveRoomId = roomId;
-      if (!effectiveRoomId || effectiveRoomId === 'latest' || effectiveRoomId === 'room_default') {
-        const lat = getLatestRoomId();
-        if (lat) effectiveRoomId = lat;
-      }
-
-      if (!room && effectiveRoomId !== roomId) {
-        room = rooms.get(effectiveRoomId);
-        if (!room && fs.existsSync(ROOMS_CACHE_FILE)) {
-          try {
-            const raw = fs.readFileSync(ROOMS_CACHE_FILE, 'utf-8');
-            const parsed = JSON.parse(raw);
-            if (parsed && parsed[effectiveRoomId]) {
-              room = parsed[effectiveRoomId];
-              rooms.set(effectiveRoomId, room!);
-            }
-          } catch (e) {}
-        }
+      if (!room && (!effectiveRoomId || effectiveRoomId === 'latest' || effectiveRoomId === 'room_default')) {
+        room = await getLatestRoom();
+        if (room) effectiveRoomId = room.roomId;
       }
 
       if (!room) {
-        // 현재 실제로 조장이 개설하여 대기 중인 가장 최신의 WAITING 방이 있다면 그 방으로 자동 합류!
-        let newestWaitingRoom: ParkOnRoom | null = null;
-        rooms.forEach((r) => {
-          if (r.status === 'WAITING' && (!newestWaitingRoom || r.updatedAt > newestWaitingRoom.updatedAt)) {
-            newestWaitingRoom = r;
-          }
-        });
-
-        if (newestWaitingRoom) {
-          room = newestWaitingRoom;
-          effectiveRoomId = (newestWaitingRoom as ParkOnRoom).roomId;
-        }
-      }
-
-      if (!room) {
-        // 새 방 생성: 조장 + 깨끗한 빈 동반자 슬롯 3개
+        effectiveRoomId = effectiveRoomId || `room_${Date.now()}`;
         room = {
           roomId: effectiveRoomId,
           leaderName: body.leaderName || '조장',
@@ -297,12 +275,10 @@ export async function POST(req: NextRequest) {
         );
       };
 
-      // 1) 이미 이 이름으로 참가한 슬롯이 있는지 확인 (중복 등록 방지)
       const existingIdx = room.players.findIndex(
         (p, idx) => idx > 0 && !p.isLeader && p.name === guestName
       );
 
-      // 2) 아직 등록되지 않은 경우, 첫 번째 빈 슬롯에 정확히 1개만 배정!
       if (existingIdx === -1) {
         const placeholderIdx = room.players.findIndex(
           (p, idx) => idx > 0 && !p.isLeader && isPlaceholder(p.name)
@@ -324,14 +300,12 @@ export async function POST(req: NextRequest) {
       }
 
       room.updatedAt = Date.now();
-      rooms.set(effectiveRoomId, room);
-      persistRooms(rooms);
-      setLatestRoomId(effectiveRoomId);
+      await saveRoom(room);
 
       return NextResponse.json({ success: true, room, joinedPlayer: guestName, roomId: effectiveRoomId });
     }
 
-    // 3. 조장이 라운드 시작 또는 세션 동기화/종료 (start / finish)
+    // 3. 조장이 라운드 시작 또는 세션 종료 (start / finish)
     if (action === 'start' || action === 'finish') {
       const { roundSession } = body;
       if (!room) {
@@ -343,9 +317,7 @@ export async function POST(req: NextRequest) {
       room.roundSession = roundSession;
       room.updatedAt = Date.now();
 
-      rooms.set(roomId, room);
-      persistRooms(rooms);
-      setLatestRoomId(roomId);
+      await saveRoom(room);
       return NextResponse.json({ success: true, room });
     }
 

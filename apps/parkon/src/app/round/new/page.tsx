@@ -12,6 +12,7 @@ import { generateQrCodeDataUrl } from '@/lib/qrUtils';
 import { PlayStartNoticeModal } from '@/components/PlayStartNoticeModal';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
+import { supabase } from '@/lib/supabase';
 
 const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
@@ -299,12 +300,11 @@ function NewRoundForm() {
     }
   }, [joinedPlayer]);
 
-  // 초대 링크 및 실제 카메라 인식용 QR 코드 생성 (roomId 포함)
+  // 초대 링크 및 실제 카메라 인식용 QR 코드 생성 (공식 프로덕션 도메인 기본 고정)
   const currentLeader = playersList.find((p) => p.isLeader) || playersList[0];
   const leaderName = currentLeader?.name || '조장';
-  const inviteUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`
-    : `https://www.parkgolfallinone.com/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`;
+  const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://www.parkgolfallinone.com';
+  const inviteUrl = `${BASE_URL}/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}`;
 
   useEffect(() => {
     if (showQrModal && inviteUrl) {
@@ -318,7 +318,7 @@ function NewRoundForm() {
     }
   }, [showQrModal, inviteUrl]);
 
-  // 1. 조장의 셋업 변경사항을 서버 룸(Room)에 지속 동기화 (sync)
+  // 1. 조장의 셋업 변경사항을 서버 룸(Room)에 지속 동기화 (sync) 및 Supabase Realtime Broadcast 전송
   useEffect(() => {
     if (!roomId) return;
     try {
@@ -346,12 +346,54 @@ function NewRoundForm() {
     }
   }, [roomId, selectedCourseId, currentCourse?.name, selectedCourseLetter, startHoleIndex, playerCount, playersList, leaderName]);
 
-  // 2. 동반자 입장 실시간 감지 (1초 폴링 + BroadcastChannel 즉각 반응)
+  // 2. 동반자 입장 실시간 감지 (Supabase Realtime Presence & Broadcast 양방향 연동)
   useEffect(() => {
     if (!roomId) return;
 
     let isSubscribed = true;
 
+    // Supabase Realtime 채널 구독
+    const channel = supabase.channel(`room_${roomId}`, {
+      config: {
+        presence: { key: 'leader' },
+        broadcast: { ack: true },
+      },
+    });
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const presenceState = channel.presenceState();
+        Object.values(presenceState).forEach((presences: any) => {
+          presences.forEach((p: any) => {
+            if (p.playerName && p.role !== 'leader') {
+              handleSimulateQrJoin(p.playerName);
+            }
+          });
+        });
+      })
+      .on('presence', { event: 'join' }, ({ newPresences }) => {
+        newPresences.forEach((p: any) => {
+          if (p.playerName && p.role !== 'leader') {
+            handleSimulateQrJoin(p.playerName);
+          }
+        });
+      })
+      .on('broadcast', { event: 'companion_joined' }, ({ payload }) => {
+        if (payload?.playerName && isSubscribed) {
+          handleSimulateQrJoin(payload.playerName);
+        }
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            role: 'leader',
+            leaderName,
+            onlineAt: new Date().toISOString(),
+          });
+        }
+      });
+
+    // DB / API fallback 1초 폴링
     const pollJoinedCompanions = async () => {
       try {
         const res = await fetch(`/api/round/room?roomId=${encodeURIComponent(roomId)}`);
@@ -398,23 +440,12 @@ function NewRoundForm() {
 
     const interval = setInterval(pollJoinedCompanions, 1000);
 
-    // 동일 기기 탭 브로드캐스트 리스너
-    let bc: BroadcastChannel | null = null;
-    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-      bc = new BroadcastChannel('parkon_room_sync');
-      bc.onmessage = (event) => {
-        if (event.data && event.data.joinedPlayer && isSubscribed) {
-          handleSimulateQrJoin(event.data.joinedPlayer);
-        }
-      };
-    }
-
     return () => {
       isSubscribed = false;
       clearInterval(interval);
-      if (bc) bc.close();
+      supabase.removeChannel(channel);
     };
-  }, [roomId]);
+  }, [roomId, leaderName]);
 
   // 강력한 카카오톡/문자/링크 공유 함수 (모바일 네이티브 공유 -> 클립보드 -> 임시 텍스트에어리어 -> 프롬프트 폴백)
   const handleShareInvite = async () => {
@@ -551,7 +582,7 @@ function NewRoundForm() {
       localStorage.setItem('parkon_counting_mode', 'PAR_BASE');
     }
 
-    // 3. 서버 룸(Room)에 라운드 시작 알림 -> 대기실의 동반자들도 즉시 스코어카드로 자동 이동!
+    // 3. 서버 룸(Room)에 라운드 시작 알림 및 Supabase Realtime Broadcast 전송 -> 대기실의 동반자들도 즉시 스코어카드로 50ms 내 자동 이동!
     try {
       await fetch('/api/round/room', {
         method: 'POST',
@@ -563,18 +594,16 @@ function NewRoundForm() {
         }),
       });
 
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-        const bc = new BroadcastChannel('parkon_room_sync');
-        bc.postMessage({
+      const channel = supabase.channel(`room_${roomId}`);
+      channel.send({
+        type: 'broadcast',
+        event: 'round_started',
+        payload: {
           roomId,
-          room: {
-            status: 'STARTED',
-            roundId: newId,
-            roundSession: newSession,
-          },
-        });
-        bc.close();
-      }
+          roundId: newId,
+          roundSession: newSession,
+        },
+      });
     } catch (e) {
       console.error('Failed to notify room start:', e);
     }

@@ -9,6 +9,7 @@ import { RoundSession, RoundPlayer } from '@/types/parkon';
 import { CheckCircle2, Users, MapPin, Flag, Home, Sparkles, Loader2, Smartphone } from 'lucide-react';
 import { ParkOnRoom } from '@/app/api/round/room/route';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { supabase } from '@/lib/supabase';
 
 function WaitingContent() {
   const router = useRouter();
@@ -77,12 +78,55 @@ function WaitingContent() {
     }
   }, [guestParam, isJapanese]);
 
-  // 2. 룸 상태 1초 폴링 및 동기화
+  // 2. 룸 상태 실시간 동기화 (Supabase Realtime Channel & Broadcast & Presence)
   useEffect(() => {
     if (!roomId) return;
 
     let isSubscribed = true;
 
+    // Supabase Realtime Channel 구독
+    const channel = supabase.channel(`room_${roomId}`, {
+      config: {
+        presence: { key: `companion_${guestName}` },
+        broadcast: { ack: true },
+      },
+    });
+
+    channel
+      .on('broadcast', { event: 'round_started' }, ({ payload }) => {
+        if (payload && isSubscribed) {
+          handleRoundStart({
+            roomId: payload.roomId || roomId,
+            leaderName: payload.roundSession?.players?.find((p: any) => p.isLeader)?.name || '조장',
+            courseId: payload.roundSession?.courseId || 'course_1',
+            courseName: payload.roundSession?.courseName || '파크골프장',
+            courseLetter: payload.roundSession?.selectedCourseLetters?.[0] || 'A',
+            startHoleIndex: payload.roundSession?.selectedHoleNumbers?.[0] || 1,
+            playerCount: payload.roundSession?.players?.length || 4,
+            players: payload.roundSession?.players || [],
+            status: 'STARTED',
+            roundId: payload.roundId,
+            roundSession: payload.roundSession,
+            updatedAt: Date.now(),
+          });
+        }
+      })
+      .on('broadcast', { event: 'room_updated' }, ({ payload }) => {
+        if (payload?.room && isSubscribed) {
+          setRoom(payload.room);
+        }
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            role: 'companion',
+            playerName: guestName,
+            onlineAt: new Date().toISOString(),
+          });
+        }
+      });
+
+    // DB / API fallback 1초 폴링
     const fetchRoom = async () => {
       try {
         const res = await fetch(`/api/round/room?roomId=${encodeURIComponent(roomId)}`);
@@ -105,26 +149,10 @@ function WaitingContent() {
     fetchRoom();
     const interval = setInterval(fetchRoom, 1000);
 
-    // BroadcastChannel 이중 동기화 (동일 브라우저/디바이스 테스트 시 즉시 반응)
-    let bc: BroadcastChannel | null = null;
-    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-      bc = new BroadcastChannel('parkon_room_sync');
-      bc.onmessage = (event) => {
-        if (event.data && event.data.roomId === roomId && isSubscribed) {
-          if (event.data.room) {
-            setRoom(event.data.room);
-            if (event.data.room.status === 'STARTED') {
-              handleRoundStart(event.data.room);
-            }
-          }
-        }
-      };
-    }
-
     return () => {
       isSubscribed = false;
       clearInterval(interval);
-      if (bc) bc.close();
+      supabase.removeChannel(channel);
     };
   }, [roomId, guestName]);
 

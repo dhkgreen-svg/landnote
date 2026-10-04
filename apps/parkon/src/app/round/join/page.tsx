@@ -10,6 +10,7 @@ import { CheckCircle2, User, Users, MapPin, ArrowRight, Home, Sparkles, ShieldCh
 import { KakaoLoginModal } from '@/components/KakaoLoginModal';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getSavedMemberCode } from '@/lib/memberCodeUtils';
+import { supabase } from '@/lib/supabase';
 
 function RoundJoinContent() {
   const router = useRouter();
@@ -186,16 +187,17 @@ function RoundJoinContent() {
         }
       }
 
-      // 동일 기기/브라우저 탭 간 즉시 동기화 브로드캐스트
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-        const bc = new BroadcastChannel('parkon_room_sync');
-        bc.postMessage({
+      // Supabase Realtime 채널로 동반자 입장 즉시 브로드캐스트 전송
+      const channel = supabase.channel(`room_${joinedRoomId}`);
+      channel.send({
+        type: 'broadcast',
+        event: 'companion_joined',
+        payload: {
           roomId: joinedRoomId,
-          joinedPlayer: trimmedName,
+          playerName: trimmedName,
           isGuest: isGuest,
-        });
-        bc.close();
-      }
+        },
+      });
     } catch (err) {
       console.error('Failed to notify room join:', err);
     }
