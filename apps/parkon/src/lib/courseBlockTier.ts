@@ -15,6 +15,7 @@ export interface UserDiamondTier {
   nameKo: string;
   nameJa: string;
   badgeLabel: string;
+  badgeLabelJa: string;
   icon: string;
   minCompleted: number;
   nextMilestone: number | null;
@@ -38,6 +39,7 @@ export function calculateTier(completedCount: number): UserDiamondTier {
       nameKo: '골든 임페리얼 (명예의 전당)',
       nameJa: 'ゴールデン・インペリアル (殿堂)',
       badgeLabel: '1000+ 완주',
+      badgeLabelJa: '1000+ 完走',
       icon: '👑',
       minCompleted: 1000,
       nextMilestone: null,
@@ -55,6 +57,7 @@ export function calculateTier(completedCount: number): UserDiamondTier {
       nameKo: '팬시 핑크 다이아몬드',
       nameJa: 'ファンシーピンク・ダイヤモンド',
       badgeLabel: '750+ 완주',
+      badgeLabelJa: '750+ 完走',
       icon: '💖',
       minCompleted: 750,
       nextMilestone: 1000,
@@ -72,6 +75,7 @@ export function calculateTier(completedCount: number): UserDiamondTier {
       nameKo: '팬시 블루 다이아몬드',
       nameJa: 'ファンシーブルー・ダイヤモンド',
       badgeLabel: '500+ 완주',
+      badgeLabelJa: '500+ 完走',
       icon: '💎',
       minCompleted: 500,
       nextMilestone: 750,
@@ -89,6 +93,7 @@ export function calculateTier(completedCount: number): UserDiamondTier {
       nameKo: '화이트 다이아몬드',
       nameJa: 'ホワイト・ダイヤモンド',
       badgeLabel: '100+ 완주',
+      badgeLabelJa: '100+ 完走',
       icon: '💎',
       minCompleted: 100,
       nextMilestone: 500,
@@ -106,6 +111,7 @@ export function calculateTier(completedCount: number): UserDiamondTier {
       nameKo: '골드 티어',
       nameJa: 'ゴールド・ティア',
       badgeLabel: '골드',
+      badgeLabelJa: 'ゴールド',
       icon: '🥇',
       minCompleted: 60,
       nextMilestone: 100,
@@ -123,6 +129,7 @@ export function calculateTier(completedCount: number): UserDiamondTier {
       nameKo: '실버 티어',
       nameJa: 'シルバー・ティア',
       badgeLabel: '실버',
+      badgeLabelJa: 'シルバー',
       icon: '🥈',
       minCompleted: 30,
       nextMilestone: 60,
@@ -139,6 +146,7 @@ export function calculateTier(completedCount: number): UserDiamondTier {
     nameKo: '브론즈 티어',
     nameJa: 'ブロンズ・ティア',
     badgeLabel: '브론즈',
+    badgeLabelJa: 'ブロンズ',
     icon: '🥉',
     minCompleted: 0,
     nextMilestone: 30,

@@ -5564,7 +5564,13 @@ ${shareUrl}`;
                       <div className="space-y-2">
                         {diamondRankings.map((dr) => {
                           const medalBadge =
-                            dr.rank === 1 ? '🥇 1위' : dr.rank === 2 ? '🥈 2위' : dr.rank === 3 ? '🥉 3위' : `${dr.rank}위`;
+                            dr.rank === 1
+                              ? (isJapanese ? '🥇 1位' : '🥇 1위')
+                              : dr.rank === 2
+                              ? (isJapanese ? '🥈 2位' : '🥈 2위')
+                              : dr.rank === 3
+                              ? (isJapanese ? '🥉 3位' : '🥉 3위')
+                              : `${dr.rank}${isJapanese ? '位' : '위'}`;
                           const isTop3 = dr.rank <= 3;
                           return (
                             <div
@@ -5599,16 +5605,18 @@ ${shareUrl}`;
                                       </span>
                                     ) : dr.role === 'PRESIDENT' ? (
                                       <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full font-bold">
-                                        👑 회장
+                                        {isJapanese ? '👑 会長' : '👑 회장'}
                                       </span>
                                     ) : dr.role === 'MANAGER' ? (
                                       <span className="text-[9px] bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded-full font-bold">
-                                        📋 총무
+                                        {isJapanese ? '📋 総務' : '📋 총무'}
                                       </span>
                                     ) : null}
                                   </div>
                                   <div className="text-[10px] text-stone-500 font-medium mt-0.5">
-                                    총 {dr.totalCompleted9Holes}회 완주 달성 · {dr.tierTitle}
+                                    {isJapanese
+                                      ? `計 ${dr.totalCompleted9Holes}回 完走達成 · ${dr.tier.nameJa}`
+                                      : `총 ${dr.totalCompleted9Holes}회 완주 달성 · ${dr.tierTitle}`}
                                   </div>
                                 </div>
                               </div>
@@ -5833,17 +5841,17 @@ ${shareUrl}`;
                                                   <div className="grid grid-cols-3 gap-1 pt-0.5 text-center text-[9px] font-bold">
                                                     {chr.thirdPlaceName && (
                                                       <div className="bg-amber-50/80 border border-amber-200 rounded-lg p-1">
-                                                        <span className="text-amber-800">🥉 3위:</span> <strong className="text-stone-900">{chr.thirdPlaceName}</strong>
+                                                        <span className="text-amber-800">{isJapanese ? '🥉 3位:' : '🥉 3위:'}</span> <strong className="text-stone-900">{chr.thirdPlaceName}</strong>
                                                       </div>
                                                     )}
                                                     {chr.longestName && (
                                                       <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-1">
-                                                        <span className="text-emerald-800">🚀 롱기:</span> <strong className="text-stone-900">{chr.longestName}</strong>
+                                                        <span className="text-emerald-800">{isJapanese ? '🚀 ドラコン:' : '🚀 롱기:'}</span> <strong className="text-stone-900">{chr.longestName}</strong>
                                                       </div>
                                                     )}
                                                     {chr.nearPinName && (
                                                       <div className="bg-pink-50 border border-pink-200 rounded-lg p-1">
-                                                        <span className="text-pink-800">🎯 니어:</span> <strong className="text-stone-900">{chr.nearPinName}</strong>
+                                                        <span className="text-pink-800">{isJapanese ? '🎯 ニアピン:' : '🎯 니어:'}</span> <strong className="text-stone-900">{chr.nearPinName}</strong>
                                                       </div>
                                                     )}
                                                   </div>
@@ -5855,17 +5863,17 @@ ${shareUrl}`;
                                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                                     <img
                                                       src={chr.groupPhotoUrl}
-                                                      alt="대회 단체 기념사진"
+                                                      alt={isJapanese ? '大会団体記念写真' : '대회 단체 기념사진'}
                                                       className="w-full h-auto object-cover max-h-56"
                                                     />
                                                     <div className="bg-stone-900/80 text-amber-200 text-[10px] font-black px-2.5 py-1 flex items-center justify-between">
-                                                      <span>📸 공식 단체 기념사진</span>
-                                                      <span className="text-[9px] text-amber-300">파크골프 올인원 공식 실록</span>
+                                                      <span>{isJapanese ? '📸 公式団体記念写真' : '📸 공식 단체 기념사진'}</span>
+                                                      <span className="text-[9px] text-amber-300">{isJapanese ? 'パークゴルフ オールインワン 公式実録' : '파크골프 올인원 공식 실록'}</span>
                                                     </div>
                                                   </div>
                                                 ) : (
                                                   <label className="w-full py-1.5 bg-amber-50/80 hover:bg-amber-100 border border-amber-200 border-dashed rounded-xl text-[10px] font-black text-amber-900 flex items-center justify-center gap-1 transition cursor-pointer mt-1">
-                                                    <span>📸 단체 기념사진 등록 (골드 워터마크 자동 각인)</span>
+                                                    <span>{isJapanese ? '📸 団体記念写真の登録 (公式透かし自動刻印)' : '📸 단체 기념사진 등록 (골드 워터마크 자동 각인)'}</span>
                                                     <input
                                                       type="file"
                                                       accept="image/*"

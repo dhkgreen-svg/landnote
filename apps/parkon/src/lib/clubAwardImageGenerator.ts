@@ -35,6 +35,7 @@ export interface ClubAwardData {
   nearPinName?: string;
   nearPinDistance?: string;
   specialAwards?: { title: string; winnerName: string; badge: string }[];
+  isJapanese?: boolean;
 }
 
 export interface GeneratedClubAwardResult {
@@ -49,6 +50,7 @@ export async function generateClubAwardCardImage(
 ): Promise<GeneratedClubAwardResult | null> {
   if (typeof window === 'undefined') return null;
 
+  const isJp = Boolean(data.isJapanese);
   const width = 1080;
   const height = 1440;
   const canvas = document.createElement('canvas');
@@ -123,7 +125,7 @@ export async function generateClubAwardCardImage(
 
   ctx.font = '900 48px sans-serif';
   ctx.fillStyle = '#fef08a';
-  ctx.fillText('🏆 공식 클럽 대회 시상식 🏆', width / 2, 160);
+  ctx.fillText(isJp ? '🏆 公式クラブ大会 表彰式 🏆' : '🏆 공식 클럽 대회 시상식 🏆', width / 2, 160);
 
   // 구분선
   ctx.beginPath();
@@ -159,7 +161,9 @@ export async function generateClubAwardCardImage(
   ctx.font = '500 20px sans-serif';
   ctx.fillStyle = '#cbd5e1';
   ctx.fillText(
-    `📅 ${data.playDate}   |   📍 ${data.courseName} (${data.totalHoles}홀)   |   👥 총 ${data.totalParticipants}명 참가 (${data.gameModeTitle})`,
+    isJp
+      ? `📅 ${data.playDate}   |   📍 ${data.courseName} (${data.totalHoles}ホール)   |   👥 計 ${data.totalParticipants}名参加 (${data.gameModeTitle})`
+      : `📅 ${data.playDate}   |   📍 ${data.courseName} (${data.totalHoles}홀)   |   👥 총 ${data.totalParticipants}명 참가 (${data.gameModeTitle})`,
     width / 2,
     cardY + 124
   );
@@ -183,7 +187,7 @@ export async function generateClubAwardCardImage(
   ctx.textAlign = 'center';
   ctx.font = '900 26px sans-serif';
   ctx.fillStyle = '#fef08a';
-  ctx.fillText('👑 신 페 리 오  종 합  우 승 (1위) 👑', width / 2, champY + 45);
+  ctx.fillText(isJp ? '👑 新 ペ リ ア 総 合 優 勝 (第1位) 👑' : '👑 신 페 리 오  종 합  우 승 (1위) 👑', width / 2, champY + 45);
 
   ctx.font = '900 56px sans-serif';
   ctx.fillStyle = '#ffffff';
@@ -192,7 +196,9 @@ export async function generateClubAwardCardImage(
   ctx.font = 'bold 28px sans-serif';
   ctx.fillStyle = '#fef9c3';
   ctx.fillText(
-    `네트 스코어: ${data.championNet}타   (실타수 ${data.championGross}타 / 핸디캡 ${data.championHandicap})`,
+    isJp
+      ? `ネットスコア: ${data.championNet}打   (グロス ${data.championGross}打 / ハンディ ${data.championHandicap})`
+      : `네트 스코어: ${data.championNet}타   (실타수 ${data.championGross}타 / 핸디캡 ${data.championHandicap})`,
     width / 2,
     champY + 165
   );
@@ -214,13 +220,17 @@ export async function generateClubAwardCardImage(
   ctx.textAlign = 'center';
   ctx.font = 'bold 20px sans-serif';
   ctx.fillStyle = '#c7d2fe';
-  ctx.fillText('🥇 메 달 리 스 트 (최저 실타수)', cardX + colW / 2, colY + 36);
+  ctx.fillText(isJp ? '🥇 メダリスト (ベストグロス賞)' : '🥇 메 달 리 스 트 (최저 실타수)', cardX + colW / 2, colY + 36);
   ctx.font = '900 38px sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText(data.medalistName || data.championName, cardX + colW / 2, colY + 86);
   ctx.font = 'bold 22px sans-serif';
   ctx.fillStyle = '#a5b4fc';
-  ctx.fillText(`총 실타수: ${data.medalistGross || data.championGross}타`, cardX + colW / 2, colY + 124);
+  ctx.fillText(
+    isJp ? `総グロス: ${data.medalistGross || data.championGross}打` : `총 실타수: ${data.medalistGross || data.championGross}타`,
+    cardX + colW / 2,
+    colY + 124
+  );
 
   // 준우승 (2위)
   ctx.fillStyle = 'rgba(100, 116, 139, 0.35)';
@@ -233,15 +243,19 @@ export async function generateClubAwardCardImage(
 
   ctx.font = 'bold 20px sans-serif';
   ctx.fillStyle = '#e2e8f0';
-  ctx.fillText('🥈 준 우 승 (2위)', cardX + colW + 20 + colW / 2, colY + 36);
+  ctx.fillText(isJp ? '🥈 準 優 勝 (第2位)' : '🥈 준 우 승 (2위)', cardX + colW + 20 + colW / 2, colY + 36);
   ctx.font = '900 38px sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText(data.runnerUpName || '-', cardX + colW + 20 + colW / 2, colY + 86);
   ctx.font = 'bold 22px sans-serif';
   ctx.fillStyle = '#cbd5e1';
-  ctx.fillText(data.runnerUpNet ? `네트 스코어: ${data.runnerUpNet}타` : '-', cardX + colW + 20 + colW / 2, colY + 124);
+  ctx.fillText(
+    data.runnerUpNet ? (isJp ? `ネットスコア: ${data.runnerUpNet}打` : `네트 스코어: ${data.runnerUpNet}타`) : '-',
+    cardX + colW + 20 + colW / 2,
+    colY + 124
+  );
 
-  // C. 3열 그리드: 3위, 롱기스트, 니어핀
+  // C. 3열 그리드: 3위, 롱기스트(드라콘), 니어핀
   const row3Y = 795;
   const col3W = (cardW - 30) / 3;
   const col3H = 140;
@@ -257,15 +271,15 @@ export async function generateClubAwardCardImage(
 
   ctx.font = 'bold 18px sans-serif';
   ctx.fillStyle = '#fcd34d';
-  ctx.fillText('🥉 3 위', cardX + col3W / 2, row3Y + 32);
+  ctx.fillText(isJp ? '🥉 第 3 位' : '🥉 3 위', cardX + col3W / 2, row3Y + 32);
   ctx.font = '900 32px sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText(data.thirdPlaceName || '-', cardX + col3W / 2, row3Y + 76);
   ctx.font = 'bold 19px sans-serif';
   ctx.fillStyle = '#fde68a';
-  ctx.fillText(data.thirdPlaceNet ? `${data.thirdPlaceNet}타` : '-', cardX + col3W / 2, row3Y + 112);
+  ctx.fillText(data.thirdPlaceNet ? `${data.thirdPlaceNet}${isJp ? '打' : '타'}` : '-', cardX + col3W / 2, row3Y + 112);
 
-  // 롱기스트 (장타상)
+  // 롱기스트 (드라콘상)
   ctx.fillStyle = 'rgba(16, 185, 129, 0.25)';
   ctx.beginPath();
   ctx.roundRect(cardX + col3W + 15, row3Y, col3W, col3H, 18);
@@ -276,13 +290,13 @@ export async function generateClubAwardCardImage(
 
   ctx.font = 'bold 18px sans-serif';
   ctx.fillStyle = '#6ee7b7';
-  ctx.fillText('🚀 롱 기 스 트 (장타상)', cardX + col3W + 15 + col3W / 2, row3Y + 32);
+  ctx.fillText(isJp ? '🚀 ドラコン賞 (飛距離)' : '🚀 롱 기 스 트 (장타상)', cardX + col3W + 15 + col3W / 2, row3Y + 32);
   ctx.font = '900 32px sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText(data.longestName || '-', cardX + col3W + 15 + col3W / 2, row3Y + 76);
   ctx.font = 'bold 19px sans-serif';
   ctx.fillStyle = '#a7f3d0';
-  ctx.fillText(data.longestDistance || '비거리 최우수', cardX + col3W + 15 + col3W / 2, row3Y + 112);
+  ctx.fillText(data.longestDistance || (isJp ? '最長飛距離 1位' : '비거리 최우수'), cardX + col3W + 15 + col3W / 2, row3Y + 112);
 
   // 니어핀 (정밀상)
   ctx.fillStyle = 'rgba(236, 72, 153, 0.25)';
@@ -295,13 +309,13 @@ export async function generateClubAwardCardImage(
 
   ctx.font = 'bold 18px sans-serif';
   ctx.fillStyle = '#f472b6';
-  ctx.fillText('🎯 니 어 핀 (정밀상)', cardX + (col3W + 15) * 2 + col3W / 2, row3Y + 32);
+  ctx.fillText(isJp ? '🎯 ニアピン賞 (ピン至近)' : '🎯 니 어 핀 (정밀상)', cardX + (col3W + 15) * 2 + col3W / 2, row3Y + 32);
   ctx.font = '900 32px sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.fillText(data.nearPinName || '-', cardX + (col3W + 15) * 2 + col3W / 2, row3Y + 76);
   ctx.font = 'bold 19px sans-serif';
   ctx.fillStyle = '#fbcfe8';
-  ctx.fillText(data.nearPinDistance || '핀 밀착 최우수', cardX + (col3W + 15) * 2 + col3W / 2, row3Y + 112);
+  ctx.fillText(data.nearPinDistance || (isJp ? 'ピン至近 1位' : '핀 밀착 최우수'), cardX + (col3W + 15) * 2 + col3W / 2, row3Y + 112);
 
   // 6. 기타 특별상 명단 (있는 경우)
   const specY = 960;
@@ -317,18 +331,22 @@ export async function generateClubAwardCardImage(
   ctx.textAlign = 'left';
   ctx.font = '900 22px sans-serif';
   ctx.fillStyle = '#fde047';
-  ctx.fillText('🏅 명예의 전당 특별 부문 수상자 및 대회 기록', cardX + 30, specY + 40);
+  ctx.fillText(isJp ? '🏅 殿堂特別部門 受賞者＆大会記録' : '🏅 명예의 전당 특별 부문 수상자 및 대회 기록', cardX + 30, specY + 40);
 
   ctx.font = 'bold 19px sans-serif';
   ctx.fillStyle = '#e2e8f0';
 
-  const defaultAwards = [
+  const defaultAwards = isJp ? [
+    { badge: '🔥', title: 'バーディーマスター', name: data.medalistName || data.championName, desc: '大会最多バーディー記録' },
+    { badge: '🎯', title: 'パーマスター', name: data.runnerUpName || data.championName, desc: '18ホール連続ノーボギー' },
+    { badge: '🤝', title: 'フェアプレー・マナー賞', name: '全参加者一同', desc: '同伴者への思いやりと親睦' },
+  ] : [
     { badge: '🔥', title: '버디 마스터', name: data.medalistName || data.championName, desc: '대회 최다 버디 기록' },
     { badge: '🎯', title: '파 마스터', name: data.runnerUpName || data.championName, desc: '18홀 연속 정타 플레이' },
     { badge: '🤝', title: '화합 매너상', name: '전 참가자 일동', desc: '페어플레이 및 동반자 배려' },
   ];
   const awardsToRender = (data.specialAwards && data.specialAwards.length > 0)
-    ? data.specialAwards.map((sa) => ({ badge: sa.badge, title: sa.title, name: sa.winnerName, desc: '대회 공식 기록상' }))
+    ? data.specialAwards.map((sa) => ({ badge: sa.badge, title: sa.title, name: sa.winnerName, desc: isJp ? '大会公式記録賞' : '대회 공식 기록상' }))
     : defaultAwards;
 
   awardsToRender.slice(0, 4).forEach((aw, idx) => {
@@ -346,19 +364,21 @@ export async function generateClubAwardCardImage(
   ctx.textAlign = 'center';
   ctx.font = 'bold 22px sans-serif';
   ctx.fillStyle = '#34d399';
-  ctx.fillText('대한민국 대표 파크골프 포털 · 파크골프 올인원 (ParkGolf All-in-One)', width / 2, footerY + 40);
+  ctx.fillText(isJp ? '日本・韓国 統合公認 · パークゴルフ オールインワン (ParkGolf All-in-One)' : '대한민국 대표 파크골프 포털 · 파크골프 올인원 (ParkGolf All-in-One)', width / 2, footerY + 40);
 
   ctx.font = '500 17px sans-serif';
   ctx.fillStyle = '#94a3b8';
   ctx.fillText(
-    `본 대회 기록은 파크골프 올인원 공식 검증 및 블록체인급 무결성 해시(SHA-256)로 영구 보존됩니다. | 인증번호: PKY-AWD-${Date.now().toString(36).toUpperCase()}`,
+    isJp
+      ? `本大会記録はパークゴルフ オールインワン公式検証およびハッシュ(SHA-256)により永久保存されます。 | 認証番号: PKY-AWD-${Date.now().toString(36).toUpperCase()}`
+      : `본 대회 기록은 파크골프 올인원 공식 검증 및 블록체인급 무결성 해시(SHA-256)로 영구 보존됩니다. | 인증번호: PKY-AWD-${Date.now().toString(36).toUpperCase()}`,
     width / 2,
     footerY + 75
   );
 
   // 8. 파일명 및 결과 패키징
-  const cleanTitle = data.tournamentTitle.replace(/[^a-zA-Z0-9가-힣]/g, '_');
-  const fileName = `${cleanTitle}_공식시상카드_1080p.png`;
+  const cleanTitle = data.tournamentTitle.replace(/[^a-zA-Z0-9가-힣ぁ-んァ-ヶー一-龠]/g, '_');
+  const fileName = isJp ? `${cleanTitle}_公式表彰カード_1080p.png` : `${cleanTitle}_공식시상카드_1080p.png`;
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {

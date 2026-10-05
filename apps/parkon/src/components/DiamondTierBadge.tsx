@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { UserDiamondTier } from '../lib/courseBlockTier';
+import { useTranslation } from '../lib/i18n/LanguageContext';
 
 interface DiamondTierBadgeProps {
   tier: UserDiamondTier;
@@ -22,6 +23,7 @@ export const DiamondTierBadge: React.FC<DiamondTierBadgeProps> = ({
   className = '',
   enableAura = true,
 }) => {
+  const { isJapanese } = useTranslation();
   const isHighTier = ['BLUE_DIA', 'PINK_DIA', 'BLACK_DIA', 'GOLDEN_HALL'].includes(tier.code);
 
   const sizeClasses = {
@@ -38,12 +40,17 @@ export const DiamondTierBadge: React.FC<DiamondTierBadgeProps> = ({
     lg: 'text-lg',
   }[size];
 
+  const label = isJapanese ? (tier.badgeLabelJa || tier.badgeLabel) : tier.badgeLabel;
+  const titleText = isJapanese
+    ? `${tier.nameJa} (累積9ホール完走: ${completedCount ?? tier.minCompleted}回)`
+    : `${tier.nameKo} (누적 9홀 완주: ${completedCount ?? tier.minCompleted}회)`;
+
   return (
     <span
       className={`inline-flex items-center rounded-full font-black border tracking-tight shadow-2xs transition-all select-none relative ${sizeClasses} ${tier.bgGradient ? `bg-gradient-to-r ${tier.bgGradient}` : 'bg-stone-100'} ${tier.borderClass} ${tier.textColor} ${
         isHighTier && enableAura ? 'hover:scale-105 active:scale-95' : ''
       } ${className}`}
-      title={`${tier.nameKo} (누적 9홀 완주: ${completedCount ?? tier.minCompleted}회)`}
+      title={titleText}
     >
       {/* 🌟 상위 티어 다이아몬드 은은한 외곽 오라/글로우 효과 */}
       {isHighTier && enableAura && (
@@ -54,11 +61,11 @@ export const DiamondTierBadge: React.FC<DiamondTierBadgeProps> = ({
       <span className={`${iconSizes} leading-none drop-shadow-xs`}>{tier.icon}</span>
 
       {/* 티어 텍스트 라벨 */}
-      {showLabel && <span>{tier.badgeLabel}</span>}
+      {showLabel && <span>{label}</span>}
 
       {/* 누적 완주 횟수 (옵션) */}
       {showCount && completedCount !== undefined && (
-        <span className="opacity-80 font-bold ml-0.5">({completedCount}회)</span>
+        <span className="opacity-80 font-bold ml-0.5">({completedCount}{isJapanese ? '回' : '회'})</span>
       )}
     </span>
   );

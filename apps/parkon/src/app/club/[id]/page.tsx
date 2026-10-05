@@ -243,21 +243,26 @@ export default function ClubRoomDetailPage() {
         thirdPlaceName: thirdPlace?.playerName,
         thirdPlaceNet: thirdPlace?.netScore ?? thirdPlace?.totalStrokes,
         longestName: longestSpecial?.winnerName,
-        longestDistance: '장타 1위',
+        longestDistance: isJapanese ? '最長飛距離 1位' : '장타 1위',
         nearPinName: nearPinSpecial?.winnerName,
-        nearPinDistance: '핀 밀착 1위',
+        nearPinDistance: isJapanese ? 'ピン至近 1位' : '핀 밀착 1위',
         specialAwards: specialAwardsList,
+        isJapanese: Boolean(isJapanese),
       });
 
       if (result) {
         downloadClubAwardCard(result);
-        showToast('🏆 1080p 고화질 클럽 공식 시상식 카드가 다운로드되었습니다!');
+        showToast(
+          isJapanese
+            ? '🏆 1080p高画質クラブ公式表彰カードがダウンロードされました！'
+            : '🏆 1080p 고화질 클럽 공식 시상식 카드가 다운로드되었습니다!'
+        );
       } else {
-        alert('시상 카드 이미지 생성에 실패하였습니다.');
+        alert(isJapanese ? '表彰カード画像の生成に失敗しました。' : '시상 카드 이미지 생성에 실패하였습니다.');
       }
     } catch (e) {
       console.error(e);
-      alert('시상 카드 생성 중 오류가 발생했습니다.');
+      alert(isJapanese ? '表彰カード生成中にエラーが発生しました。' : '시상 카드 생성 중 오류가 발생했습니다.');
     } finally {
       setGeneratingAwardCard(false);
     }
@@ -990,7 +995,7 @@ export default function ClubRoomDetailPage() {
           className="w-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:from-amber-600 hover:to-yellow-500 text-stone-950 font-black text-xs py-3 rounded-2xl shadow-md transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer border border-yellow-300"
         >
           <Award className="w-4 h-4 text-stone-950 shrink-0" />
-          <span>{generatingAwardCard ? '1080p 시상 카드 렌더링 중...' : (isJapanese ? '🏆 1080p公式表彰カード1秒自動発行' : '🏆 1080p 공식 시상식 카드 1초 자동 발급')}</span>
+          <span>{generatingAwardCard ? (isJapanese ? '1080p 表彰カード作成中...' : '1080p 시상 카드 렌더링 중...') : (isJapanese ? '🏆 1080p公式表彰カード1秒自動発行' : '🏆 1080p 공식 시상식 카드 1초 자동 발급')}</span>
           <Download className="w-3.5 h-3.5 text-stone-900 ml-1" />
         </button>
       </div>
