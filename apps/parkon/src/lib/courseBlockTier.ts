@@ -161,18 +161,18 @@ export function calculateTier(completedCount: number): UserDiamondTier {
 
   return {
     code: 'BRONZE',
-    nameKo: '브론즈 티어',
-    nameJa: 'ブロンズ・ティア',
-    badgeLabel: '브론즈',
-    badgeLabelJa: 'ブロンズ',
-    icon: '🥉',
+    nameKo: '새싹 골퍼',
+    nameJa: 'ルーキー・ゴルファー',
+    badgeLabel: '새싹',
+    badgeLabelJa: 'ルーキー',
+    icon: '🌱',
     minCompleted: 1,
     nextMilestone: 30,
-    bgGradient: 'from-amber-100 to-orange-200',
-    borderClass: 'border-amber-700/30',
-    glowClass: 'text-amber-800',
-    textColor: 'text-amber-900 font-bold',
-    accentColor: '#B45309',
+    bgGradient: 'from-emerald-100 to-teal-200',
+    borderClass: 'border-emerald-600/30',
+    glowClass: 'text-emerald-800',
+    textColor: 'text-emerald-950 font-bold',
+    accentColor: '#059669',
   };
 }
 

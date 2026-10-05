@@ -1596,39 +1596,19 @@ export default function RoundPlayPage() {
   const executeFinishRound = (isOfficial: boolean) => {
     setShowFinishOfficialModal(false);
 
-    // Current hole is confirmed on finish
+    // [대표님 절대 원칙 지침]: 확인(저장)을 누른 홀만 완료 홀로 인정!
+    // 확인 안 누르고 종료한 현재 홀은 '입구에서 포기/중단'한 것이므로 절대 포함하지 않음!
     const currentConfirmed = session.confirmedHoles ? [...session.confirmedHoles] : [];
-    if (!currentConfirmed.includes(actualHoleNumber)) {
-      currentConfirmed.push(actualHoleNumber);
-    }
 
     const unplayedHoles = (session.selectedHoleNumbers || []).filter(
       (hNum) => !currentConfirmed.includes(hNum)
     );
 
     const updatedPlayers = session.players.map((p) => {
-      if (p.isOut) {
-        const newScores = { ...p.scores };
-        const newOb = { ...p.obCount };
-        unplayedHoles.forEach((hNum) => {
-          delete newScores[hNum];
-          delete newOb[hNum];
-        });
-        const totalStrokes = Object.values(newScores).reduce((sum, s) => sum + (s || 0), 0);
-        return {
-          ...p,
-          scores: newScores,
-          obCount: newOb,
-          totalStrokes,
-        };
-      }
+      const newScores = { ...p.scores };
+      const newOb = { ...p.obCount };
 
-      const defaultVal = countingMode === 'ZERO_BASE' ? 0 : currentPar;
-      const currentVal = p.scores[actualHoleNumber] ?? defaultVal;
-      const newScores = { ...p.scores, [actualHoleNumber]: currentVal };
-      const newOb = { ...p.obCount, [actualHoleNumber]: p.obCount[actualHoleNumber] ?? 0 };
-
-      // Remove future unconfirmed holes
+      // 확인되지 않은 모든 홀(현재 홀 및 이후 홀)은 점수에서 깨끗이 삭제
       unplayedHoles.forEach((hNum) => {
         delete newScores[hNum];
         delete newOb[hNum];
@@ -1638,6 +1618,7 @@ export default function RoundPlayPage() {
         (sum, hNum) => sum + (newScores[hNum] || 0),
         0
       );
+
       return {
         ...p,
         scores: newScores,
@@ -4260,13 +4241,12 @@ export default function RoundPlayPage() {
                   {course.name}
                 </span>
                 <span className="text-[11px] font-black bg-emerald-700 text-white px-2 py-0.5 rounded-full">
-                  {(session.confirmedHoles?.length || 0) + (session.confirmedHoles?.includes(actualHoleNumber) ? 0 : 1)}{isJapanese ? 'ホール完了' : '개 홀 완료'}
+                  {session.confirmedHoles?.length || 0}{isJapanese ? 'ホール完了' : '개 홀 완료'}
                 </span>
               </div>
               <div className="pt-1 grid grid-cols-2 gap-1.5 text-[11px]">
                 {session.players.map((p) => {
-                  const defaultVal = countingMode === 'ZERO_BASE' ? 0 : currentPar;
-                  const strokes = (session.confirmedHoles || []).reduce((sum, h) => sum + (p.scores[h] || 0), 0) + (session.confirmedHoles?.includes(actualHoleNumber) ? 0 : (p.scores[actualHoleNumber] ?? defaultVal));
+                  const strokes = (session.confirmedHoles || []).reduce((sum, h) => sum + (p.scores[h] || 0), 0);
                   return (
                     <div key={p.id} className="bg-white px-2 py-1.5 rounded-xl border border-stone-200/60 flex items-center justify-between font-bold shadow-2xs">
                       <span className="text-stone-700 truncate max-w-[70px]">{p.name}</span>

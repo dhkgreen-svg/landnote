@@ -498,20 +498,16 @@ function ResultContent() {
           );
         })()}
 
-        {/* 💎 골퍼 컬러 다이아몬드 티어 뱃지 */}
-        {(() => {
+        {/* 공식 9홀 이상 완주 시에만 누적 완주 횟수 표출 (1홀/2홀 등 미완주 시에는 불필요한 뱃지 전면 미표출) */}
+        {totalHolesCount >= 9 && (() => {
           const myPlayer = session.players.find((p) => p.isSelf) || rankedPlayers[0];
           const completed9H = getUserCompleted9Holes(myPlayer?.name);
-          const tier = calculateTier(completed9H);
           return (
             <div className="mt-2.5 flex items-center justify-center">
-              <DiamondTierBadge
-                tier={tier}
-                completedCount={completed9H}
-                size="md"
-                showLabel={true}
-                showCount={true}
-              />
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-emerald-900/90 text-amber-300 border border-amber-400/50 shadow-sm">
+                <span>⛳</span>
+                <span>{isJapanese ? `公式9ホール完走累計: ${completed9H}回` : `공식 9홀 누적 완주: ${completed9H}회`}</span>
+              </span>
             </div>
           );
         })()}
