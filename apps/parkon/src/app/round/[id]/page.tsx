@@ -45,6 +45,7 @@ export default function RoundPlayPage() {
   const [editingPar, setEditingPar] = useState<number>(3);
   const [editingDistance, setEditingDistance] = useState<string>('50');
   const [specSavedToast, setSpecSavedToast] = useState<string | null>(null);
+  const autoPromptedHolesRef = useRef<Record<number, boolean>>({});
 
   // Total Cumulative Score & Course Breakdown Modal State
   const [showTotalScoreModal, setShowTotalScoreModal] = useState<boolean>(false);
@@ -587,6 +588,34 @@ export default function RoundPlayPage() {
       supabase.removeChannel(channel);
     };
   }, [session?.roomId, roundId, holeStep, currentHole, countingMode]);
+
+  // [대표님 특명]: 미확인 홀 진입 시 팻말 제원 등록 모달 즉시 자동 팝업
+  useEffect(() => {
+    if (!session || !course) return;
+    const actualHole = Number(
+      session.selectedHoleNumbers && session.selectedHoleNumbers[currentHole - 1]
+        ? session.selectedHoleNumbers[currentHole - 1]
+        : currentHole
+    );
+    const baseHole = ((actualHole - 1) % 1000) + 1;
+    const activeMeta = session.customHolesMetadata || course.holesMetadata || [];
+    const meta = activeMeta.find((m) => Number(m.hole) === baseHole);
+    const verified = Boolean(
+      meta?.isVerified === true ||
+      (course.isSpecsVerified && meta?.isVerified !== false) ||
+      meta?.contributedBy
+    );
+    if (holeStep === 'TEE_SHOT' && !verified) {
+      if (!autoPromptedHolesRef.current[actualHole]) {
+        autoPromptedHolesRef.current[actualHole] = true;
+        setEditingPar(0);
+        setEditingDistance('');
+        setSignboardChecked(false);
+        setShowSpecConfirmStep(false);
+        setShowHoleSpecModal(true);
+      }
+    }
+  }, [session, course, holeStep, currentHole]);
 
   if (!session || !course) {
     return (
@@ -1579,8 +1608,6 @@ export default function RoundPlayPage() {
     ParkOnStorage.setSunlightMode(next);
   };
 
-  const autoPromptedHolesRef = useRef<Record<number, boolean>>({});
-
   const openHoleSpecModal = () => {
     // 대표님 지침: 미확인 구장은 Par와 거리가 공란으로 시작!
     if (!isHoleVerified) {
@@ -1594,16 +1621,6 @@ export default function RoundPlayPage() {
     setShowSpecConfirmStep(false);
     setShowHoleSpecModal(true);
   };
-
-  // [대표님 특명]: 미확인 홀 진입 시 팻말 제원 등록 모달 즉시 자동 팝업
-  useEffect(() => {
-    if (session && course && holeStep === 'TEE_SHOT' && !isHoleVerified) {
-      if (!autoPromptedHolesRef.current[actualHoleNumber]) {
-        autoPromptedHolesRef.current[actualHoleNumber] = true;
-        openHoleSpecModal();
-      }
-    }
-  }, [session, course, holeStep, actualHoleNumber, isHoleVerified]);
 
   const handleSaveHoleSpec = (parVal: number, distVal: number, forceConsensus: boolean = false) => {
     if (!course || !session) return;
