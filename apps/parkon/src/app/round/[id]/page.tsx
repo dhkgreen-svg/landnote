@@ -898,8 +898,8 @@ export default function RoundPlayPage() {
       const leaderName = currentLeaderPlayer?.name || '조장';
       setLeaderOnlyToast(
         isJapanese
-          ? `👑 スコア入力は代表(${leaderName})のみ可能です。[代表になる]で権限を変更できます。`
-          : `👑 스코어 입력은 조장(${leaderName})님만 가능합니다. 상단 [👑 내가 조장 맡기]로 권한을 가져올 수 있습니다.`
+          ? `👑 スコア入力は代表(${leaderName})のみ可能です。`
+          : `👑 스코어 입력은 조장(${leaderName})님만 가능합니다.`
       );
       setTimeout(() => setLeaderOnlyToast(null), 3000);
       return;
@@ -942,8 +942,8 @@ export default function RoundPlayPage() {
       const leaderName = currentLeaderPlayer?.name || '조장';
       setLeaderOnlyToast(
         isJapanese
-          ? `👑 OB入力は代表(${leaderName})のみ可能です。[代表になる]で権限を変更できます。`
-          : `👑 OB 입력은 조장(${leaderName})님만 가능합니다. 상단 [👑 내가 조장 맡기]로 권한을 가져올 수 있습니다.`
+          ? `👑 OB入力は代表(${leaderName})のみ可能です。`
+          : `👑 OB 입력은 조장(${leaderName})님만 가능합니다.`
       );
       setTimeout(() => setLeaderOnlyToast(null), 3000);
       return;
@@ -1069,8 +1069,8 @@ export default function RoundPlayPage() {
       const leaderName = currentLeaderPlayer?.name || '조장';
       setLeaderOnlyToast(
         isJapanese
-          ? `👑 ホールアウト確認は代表(${leaderName})のみ行えます。[代表になる]で権限を変更できます。`
-          : `👑 점수 확정은 조장(${leaderName})님만 가능합니다. 상단 [👑 내가 조장 맡기]로 권한을 가져올 수 있습니다.`
+          ? `👑 ホールアウト確認は代表(${leaderName})のみ行えます。`
+          : `👑 점수 저장은 조장(${leaderName})님만 가능합니다.`
       );
       setTimeout(() => setLeaderOnlyToast(null), 3000);
       return;
@@ -1358,8 +1358,8 @@ export default function RoundPlayPage() {
       const leaderName = currentLeaderPlayer?.name || '조장';
       setLeaderOnlyToast(
         isJapanese
-          ? `👑 次のホールへの移動は代表(${leaderName})のみ可能です。[代表になる]で権限を変更できます。`
-          : `👑 다음 홀 이동은 조장(${leaderName})님만 가능합니다. 상단 [👑 내가 조장 맡기]로 권한을 가져올 수 있습니다.`
+          ? `👑 次のホールへの移動は代表(${leaderName})のみ可能です。`
+          : `👑 다음 홀 이동은 조장(${leaderName})님만 가능합니다.`
       );
       setTimeout(() => setLeaderOnlyToast(null), 3000);
       return;
@@ -1513,7 +1513,16 @@ export default function RoundPlayPage() {
       const prevH = currentHole - 1;
       setCurrentHole(prevH);
       setHoleStep('SCORING');
-      updateSession({ ...session, currentHole: prevH });
+      if (session) {
+        if (isCurrentUserLeader) {
+          const updated: RoundSession = { ...session, currentHole: prevH, holeStep: 'SCORING' };
+          setSession(updated);
+          updateSession(updated);
+        } else {
+          const updated: RoundSession = { ...session, currentHole: prevH, holeStep: 'SCORING' };
+          setSession(updated);
+        }
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -2636,22 +2645,30 @@ export default function RoundPlayPage() {
             })}
           </div>
 
-          {/* 오입력 안심 안내 문구 */}
-          <div className="text-center pt-0.5 pb-0.5">
-            <span className={`text-[11px] font-bold ${
-              sunlightMode ? 'text-zinc-300' : 'text-stone-600 bg-stone-100 py-1 px-3 rounded-lg border border-stone-200 inline-block'
-            }`}>
-              {isJapanese ? '💡 スコアを押し間違えても、[確認] 前ならいつでも [-] [+] ボタンで自由に修正できます。' : isEnglish ? '💡 Even if you entered the wrong score, you can adjust with [-] [+] before confirming.' : '💡 점수를 잘못 누르셨더라도 [확인] 전에는 언제든 [-] [+] 버튼으로 자유롭게 수정하실 수 있습니다.'}
-            </span>
-          </div>
+          {/* [대표님 특명 UX]: 3단 버튼 구성 (좌: [ < 이전 홀 ] | 중: [✔️ 확인 (저장)] | 우: [다음 홀 이동 > ]) */}
+          <div className="grid grid-cols-3 gap-2 pt-1">
+            {/* 좌측: [ < 이전 홀 ] 버튼 */}
+            <button
+              type="button"
+              onClick={handlePrevHole}
+              disabled={currentHole === 1}
+              className={`h-16 rounded-2xl font-black text-sm sm:text-base shadow-md border-2 transition flex items-center justify-center gap-1 active:scale-95 ${
+                currentHole === 1
+                  ? 'opacity-35 cursor-not-allowed bg-stone-200 border-stone-300 text-stone-400 dark:bg-stone-800 dark:border-stone-700 dark:text-stone-500'
+                  : sunlightMode
+                  ? 'bg-zinc-800 text-yellow-300 border-yellow-400 hover:bg-zinc-700 cursor-pointer'
+                  : 'bg-stone-100 hover:bg-stone-200 text-stone-800 border-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 dark:text-stone-100 dark:border-stone-600 cursor-pointer'
+              }`}
+            >
+              <ChevronLeft className="w-5 h-5" />
+              <span>{isJapanese ? '前のホール' : '이전 홀'}</span>
+            </button>
 
-          {/* [대표님 특명 UX 1]: 홀아웃 완료 2개 분리 (좌: [✔️ 확인] vs 우: [다음 홀 이동 ➔]) - 초대형 크기로 시원하게 확대 */}
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            {/* 좌측: [✔️ 확인] 버튼 (타수 확정 + 드르륵 진동 + 띵똥 차임벨) */}
+            {/* 중앙: [✔️ 확인 (저장)] 버튼 (타수 확정 + 드르륵 진동 + 띵똥 차임벨) */}
             <button
               type="button"
               onClick={handleConfirmHole}
-              className={`h-18 rounded-2xl font-black text-lg sm:text-xl shadow-xl border-2 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
+              className={`h-16 rounded-2xl font-black text-sm sm:text-base shadow-xl border-2 transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
                 confirmedFeedback
                   ? 'bg-yellow-400 text-black border-yellow-500 ring-4 ring-yellow-400/50 scale-[1.02]'
                   : sunlightMode
@@ -2659,37 +2676,37 @@ export default function RoundPlayPage() {
                   : 'bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white border-emerald-400 shadow-emerald-900/30 ring-2 ring-emerald-500/20'
               }`}
             >
-              <CheckCircle2 className={`w-6 h-6 ${confirmedFeedback ? 'text-black' : 'text-yellow-300'}`} />
+              <CheckCircle2 className={`w-5 h-5 ${confirmedFeedback ? 'text-black' : 'text-yellow-300'}`} />
               <span>{confirmedFeedback ? (isJapanese ? '確認完了！' : '확인 완료!') : (isJapanese ? '確認 (保存)' : '확인 (저장)')}</span>
             </button>
 
-            {/* 우측: [다음 홀 이동 ➔] 버튼 (다음 홀 전환 ➔ 1단계 전광판 안내창) */}
+            {/* 우측: [다음 홀 이동 >] 버튼 */}
             {isRefereeMode ? (
               <button
                 type="button"
                 onClick={handleNextHole}
-                className={`h-18 rounded-2xl font-black text-base sm:text-lg shadow-xl border-2 transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer ${
+                className={`h-16 rounded-2xl font-black text-sm sm:text-base shadow-xl border-2 transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
                   sunlightMode
                     ? 'bg-purple-600 text-white border-white ring-4 ring-purple-400/40 hover:bg-purple-500'
                     : 'bg-gradient-to-r from-purple-700 to-indigo-700 text-white border-purple-400'
                 }`}
               >
                 <span>✍️</span>
-                <span>{isJapanese ? '選手確認要請' : '선수 확인요청'}</span>
+                <span>{isJapanese ? '選手確認' : '선수 확인'}</span>
                 <ChevronRight className="w-5 h-5" />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleNextHole}
-                className={`h-18 rounded-2xl font-black text-lg sm:text-xl shadow-xl border-2 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
+                className={`h-16 rounded-2xl font-black text-sm sm:text-base shadow-xl border-2 transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
                   sunlightMode
                     ? 'bg-yellow-400 text-black border-white ring-4 ring-yellow-400/40 hover:bg-yellow-300'
                     : 'bg-gradient-to-r from-teal-600 via-emerald-600 to-emerald-700 text-white border-teal-300 ring-2 ring-teal-400/30 shadow-teal-900/30'
                 }`}
               >
-                <span>{isJapanese ? '次のホールへ' : isEnglish ? 'Next Hole' : '다음 홀 이동'}</span>
-                <ChevronRight className="w-6 h-6 ml-0.5" />
+                <span>{isJapanese ? '次のホール' : isEnglish ? 'Next Hole' : '다음 홀 이동'}</span>
+                <ChevronRight className="w-5 h-5" />
               </button>
             )}
           </div>
@@ -2710,24 +2727,8 @@ export default function RoundPlayPage() {
             </button>
           </div>
 
-          {/* 하단 보조 액션 링크들 (이전 홀 보기, 다른 코스/홀 이동, 잠시 빠지기, 경기 종료) */}
-          <div className="flex items-center justify-between px-1 text-xs pt-1.5 pb-1">
-            <button
-              type="button"
-              onClick={handlePrevHole}
-              disabled={currentHole === 1}
-              className={`font-bold flex items-center gap-0.5 cursor-pointer ${
-                currentHole === 1
-                  ? 'text-stone-400 cursor-not-allowed'
-                  : sunlightMode
-                  ? 'text-yellow-300 hover:underline'
-                  : 'text-stone-700 hover:text-stone-950'
-              }`}
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span>{isJapanese ? '前のホール' : isEnglish ? 'Prev Hole' : '이전 홀 보기'}</span>
-            </button>
-
+          {/* 하단 보조 액션 링크들 (다른 코스/홀 이동, 잠시 빠지기, 경기 종료) */}
+          <div className="flex items-center justify-between px-2 text-xs pt-1.5 pb-1">
             <button
               type="button"
               onClick={openCoursePicker}
