@@ -152,6 +152,31 @@ export interface RoundSession {
   roomId?: string; // 실시간 룸 동기화 ID
   customHolesMetadata?: HoleMetadata[]; // 🏌️ 실시간 팀 공유 현장 실측 제원 (Par, 거리m 등)
   courseCompletedModal?: CourseCompletionModalInfo | null; // 🎉 9홀 코스 완주 시 다음 코스 이동/종료 선택 모달
+  blocks?: CourseBlock[]; // 🧱 9홀 모듈형 코스 블록 목록 (누적 순환 보존)
+}
+
+export interface CourseBlockHoleScore {
+  holeNumber: number; // 1~9 (코스 내 상대 번호)
+  actualHole: number; // 세션 내 절대 번호
+  par: number;
+  distanceMeter?: number;
+  strokes: Record<string, number>; // playerId -> strokes
+  obCount: Record<string, number>;  // playerId -> ob
+}
+
+export interface CourseBlock {
+  blockIndex: number;            // 0, 1, 2 ...
+  roundNumber: number;           // 1번째 순환, 2번째 순환 ...
+  courseLetter: string;          // 'A', 'B', 'C', 'D'
+  courseName: string;            // 'A코스' 등
+  holeScores: CourseBlockHoleScore[];
+  completedAt?: string;
+  totalPar: number;
+  playerTotals: Record<string, {
+    strokes: number;
+    diff: number;
+    ob: number;
+  }>;
 }
 
 export interface CourseCompletionModalInfo {
