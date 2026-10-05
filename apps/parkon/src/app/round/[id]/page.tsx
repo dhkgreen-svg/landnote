@@ -645,7 +645,6 @@ export default function RoundPlayPage() {
     const meta = activeMeta.find((m) => Number(m.hole) === baseHole);
     const verified = Boolean(
       meta?.isVerified === true ||
-      (course.isSpecsVerified && meta?.isVerified !== false) ||
       meta?.contributedBy
     );
     if (holeStep === 'TEE_SHOT' && !verified) {
@@ -706,13 +705,11 @@ export default function RoundPlayPage() {
     isVerified: false,
   };
 
-  // [대표님 지침]: 엉터리 더미 제원 방지 & 실측 검증 여부 판별
+  // [대표님 지침]: 엉터리 더미 제원 방지 & 실측 검증 여부 판별 (홀별 개별 검증)
   // 1) 개별 홀에 isVerified: true 가 있거나
-  // 2) 구장 전체 isSpecsVerified: true 이거나 (단, holeMetadata.isVerified !== false)
-  // 3) 사용자가 직접 기여한 실측 데이터(contributedBy)가 있는 경우에만 '공인 실측'으로 인정
+  // 2) 사용자가 직접 기여한 실측 데이터(contributedBy)가 있는 경우에만 '공인 실측'으로 인정
   const isHoleVerified = Boolean(
     holeMetadata.isVerified === true ||
-    (course?.isSpecsVerified && holeMetadata.isVerified !== false) ||
     holeMetadata.contributedBy
   );
 
