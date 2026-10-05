@@ -3002,13 +3002,15 @@ export default function RoundPlayPage() {
                       </p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowHoleSpecModal(false)}
-                    className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 flex items-center justify-center font-bold"
-                  >
-                    ✕
-                  </button>
+                  {isHoleVerified && (
+                    <button
+                      type="button"
+                      onClick={() => setShowHoleSpecModal(false)}
+                      className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 flex items-center justify-center font-bold"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
 
                 {/* 안내 배너: 미확인 구장 vs 기존 제원 수정 분기 */}
@@ -3246,13 +3248,6 @@ export default function RoundPlayPage() {
                       </span>
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => setShowHoleSpecModal(false)}
-                    className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold rounded-xl text-xs cursor-pointer"
-                  >
-                    {isJapanese ? 'キャンセル' : '취소'}
-                  </button>
 
                   {/* [대표님 테스트 안심 원복 기능]: 테스트로 등록한 제원을 언제든 0.1초 만에 미확인 상태로 되돌리기 */}
                   {isHoleVerified && (
