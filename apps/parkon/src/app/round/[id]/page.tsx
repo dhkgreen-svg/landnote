@@ -2110,21 +2110,9 @@ export default function RoundPlayPage() {
           {/* 3. [최상단 배치] 단일 대형 버튼: [ 🏌️ 확인 완료 (티샷 시작) ] */}
           <div className="pt-2 space-y-2.5">
             {!isCurrentUserLeader && (
-              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs text-amber-900 dark:text-amber-200 font-bold mb-1 shadow-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-base">👑</span>
-                  <span>{isJapanese ? `代表(${currentLeaderPlayer?.name || '代表'})がティーショットを開始するとスコア入力画面に自動切替されます。` : `조장(${currentLeaderPlayer?.name || '조장'})님이 티샷을 진행하면 전원 스코어 입력창으로 자동 전환됩니다.`}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const myPlayer = session.players.find((p) => p.isSelf);
-                    if (myPlayer) handleTransferLeader(myPlayer.id);
-                  }}
-                  className="shrink-0 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-black cursor-pointer whitespace-nowrap ml-2 shadow-xs transition active:scale-95"
-                >
-                  {isJapanese ? '私が代表になる' : '내가 조장 맡기'}
-                </button>
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-1.5 text-xs text-amber-900 dark:text-amber-200 font-bold mb-1 shadow-xs">
+                <span className="text-base">👑</span>
+                <span>{isJapanese ? `代表(${currentLeaderPlayer?.name || '代表'})がティーショットを開始するとスコア入力画面に自動切替されます。` : `조장(${currentLeaderPlayer?.name || '조장'})님이 티샷을 진행하면 전원 스코어 입력창으로 자동 전환됩니다.`}</span>
               </div>
             )}
 
@@ -2298,60 +2286,6 @@ export default function RoundPlayPage() {
                 {t.round.score_mode_zero}
               </button>
             </div>
-          </div>
-
-          {/* 👑 [대표님 특명] 조장(기록원) 입력 vs 동반자 실시간 확인 모드 안내 띠 & 권한 위임/맡기 */}
-          <div className={`p-3 rounded-2xl border-2 flex items-center justify-between gap-3 shadow-md ${
-            isCurrentUserLeader
-              ? 'bg-amber-500/10 border-amber-500/50 text-amber-900 dark:text-amber-200'
-              : 'bg-emerald-500/10 border-emerald-500/50 text-emerald-900 dark:text-emerald-200'
-          }`}>
-            <div className="flex items-center gap-2.5">
-              <span className="text-2xl">{isCurrentUserLeader ? '👑' : '👀'}</span>
-              <div>
-                <div className="text-xs sm:text-sm font-black flex items-center gap-1.5">
-                  <span>
-                    {isCurrentUserLeader
-                      ? (isJapanese ? '代表(記録員) 入力モード' : '조장(기록원) 입력 모드')
-                      : (isJapanese ? '同行者 リアルタイム確認モード' : '동반자 실시간 확인 모드')}
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-400 text-stone-950 font-black shadow-xs">
-                    {currentLeaderPlayer?.name || '조장'}
-                  </span>
-                </div>
-                <p className="text-[10px] sm:text-[11px] opacity-85 font-semibold mt-0.5">
-                  {isCurrentUserLeader
-                    ? (isJapanese
-                        ? '入力した打数とOBが同行者全員の画面に即時反映されます。'
-                        : '내가 입력한 타수와 OB가 동반자 전원의 스마트폰에 실시간 반영됩니다.')
-                    : (isJapanese
-                        ? '代表が入力する打数とスコアがこの画面にリアルタイムで表示されます。'
-                        : '조장님이 입력하는 스코어가 내 폰에 실시간으로 반영됩니다.')}
-                </p>
-              </div>
-            </div>
-            {!isCurrentUserLeader ? (
-              <button
-                type="button"
-                onClick={() => {
-                  const myPlayer = session.players.find((p) => p.isSelf);
-                  if (myPlayer) handleTransferLeader(myPlayer.id);
-                }}
-                className="shrink-0 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-md transition active:scale-95 cursor-pointer whitespace-nowrap flex items-center gap-1"
-              >
-                <span>👑</span>
-                <span>{isJapanese ? '私が代表になる' : '내가 조장 맡기'}</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowLeaderTransferModal(true)}
-                className="shrink-0 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-black rounded-xl shadow-md transition active:scale-95 cursor-pointer whitespace-nowrap flex items-center gap-1"
-              >
-                <span>👑</span>
-                <span>{isJapanese ? '代表委任' : '조장 위임'}</span>
-              </button>
-            )}
           </div>
 
           {/* 4인 스코어 기입 그리드 */}
