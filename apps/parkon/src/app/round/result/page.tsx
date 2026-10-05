@@ -149,21 +149,40 @@ function ResultContent() {
         BadgeStorage.syncToCloud(currentUser.id, currentUser.nickname);
       }
 
-      // 대표님 원칙 2단계: 18홀 결번 없는 정상 완주 확인 & 뱃지/당일연타석 스탬프 자동 발급
+      // [대표님 핵심 원칙]: 9홀 모듈형 기준 - 9홀 단위 완주 확인 & 뱃지/당일연타석 스탬프 자동 발급
       const myPlayer = session.players?.find((p) => p.isSelf) || session.players?.[0];
       const myScoredCount = myPlayer
         ? Object.keys(myPlayer.scores || {}).filter((h) => Number(myPlayer.scores[Number(h)]) > 0).length
         : 0;
-      const totalHolesCount = (session.selectedHoleNumbers?.length || session.confirmedHoles?.length || 0);
-      const isFull18 = myScoredCount >= 18 || totalHolesCount >= 18;
-      setIsFull18Completed(isFull18);
+      const totalHolesCount = (session.selectedHoleNumbers?.length || session.confirmedHoles?.length || session.totalHoles || 0);
+      const effectiveHoles = Math.max(myScoredCount, totalHolesCount);
+      const is9HoleCompleted = effectiveHoles >= 9;
+      setIsFull18Completed(is9HoleCompleted);
 
-      if (isFull18) {
+      // 코스 문자열 추출 (예: A코스 + B코스 + C코스)
+      const COURSE_LETTERS_MAP = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+      const playedHolesList = (session.selectedHoleNumbers && session.selectedHoleNumbers.length > 0
+        ? session.selectedHoleNumbers
+        : Array.from({ length: session.totalHoles || 18 }, (_, i) => i + 1)
+      );
+      const invCourses = Array.from(
+        new Set(
+          playedHolesList.map((hNum) => {
+            const baseH = ((hNum - 1) % 1000) + 1;
+            const cIdx = Math.floor((baseH - 1) / 9);
+            return COURSE_LETTERS_MAP[cIdx % COURSE_LETTERS_MAP.length] || 'A';
+          })
+        )
+      );
+      const cPlayedStr = invCourses.map((l) => `${l}코스`).join(' + ');
+
+      if (is9HoleCompleted) {
         const badgeResult = BadgeStorage.recordCompletion(
           found.id,
           found.name,
-          myScoredCount,
-          found.region || found.address
+          effectiveHoles,
+          found.region || found.address,
+          cPlayedStr
         );
         setBadgeRecord(badgeResult.badge);
         if (badgeResult.isNewProvinceUnlocked && badgeResult.unlockedProvince) {
@@ -1014,9 +1033,9 @@ function ResultContent() {
             </h3>
             <p className="text-xs font-bold text-stone-900 mt-1.5 leading-snug">
               {isJapanese ? (
-                <>ログインすると、今回のラウンド記録が<br />スマホの <span className="underline font-black decoration-stone-950">[マイ戦績]</span> に公式記録として永久保存されます！</>
+                <>ログインすると、今回のラウンド記録({totalHolesCount}H)が<br />スマホの <span className="underline font-black decoration-stone-950">[マイ戦績]</span> に公式記録として永久保存されます！</>
               ) : (
-                <>지금 카카오 1초 로그인하시면 방금 친 18홀 기록이<br />내 휴대폰 <span className="underline font-black decoration-stone-950">[나의 연대기]</span>에 공식 전적으로 영구 보존됩니다!</>
+                <>지금 카카오 1초 로그인하시면 방금 친 {totalHolesCount}홀 기록이<br />내 휴대폰 <span className="underline font-black decoration-stone-950">[나의 연대기]</span>에 공식 전적으로 영구 보존됩니다!</>
               )}
             </p>
           </div>
@@ -1154,12 +1173,15 @@ function ResultContent() {
         subtitle="카카오 1초 로그인 시 오늘 친 라운딩 전적이 영구 보존됩니다."
       />
 
-      {/* 대표님 원칙 2단계: 18홀 완주 기념 디지털 뱃지 팝업 & 카톡 자랑하기 */}
+      {/* 대표님 원칙 2단계: 9홀 모듈형 완주 기념 디지털 뱃지 팝업 & 카톡 자랑하기 */}
       {badgeRecord && (
         <DigitalBadgeModal
           isOpen={showBadgeModal}
           onClose={() => setShowBadgeModal(false)}
           badge={badgeRecord}
+          completedHolesCount={totalHolesCount}
+          completedBlocksCount={involvedCourses.length || Math.max(1, Math.round(totalHolesCount / 9))}
+          coursesPlayedStr={coursesPlayedStr}
           onOpenHallOfFame={() => {
             setShowBadgeModal(false);
             setShowHallOfFameModal(true);

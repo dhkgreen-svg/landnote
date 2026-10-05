@@ -10,6 +10,9 @@ interface DigitalBadgeModalProps {
   onClose: () => void;
   badge: CourseBadgeRecord;
   isNewTier?: boolean;
+  completedHolesCount?: number;
+  completedBlocksCount?: number;
+  coursesPlayedStr?: string;
   onOpenHallOfFame?: () => void;
   onOpenNationalTourMap?: () => void;
 }
@@ -19,12 +22,23 @@ export function DigitalBadgeModal({
   onClose,
   badge,
   isNewTier,
+  completedHolesCount,
+  completedBlocksCount,
+  coursesPlayedStr,
   onOpenHallOfFame,
   onOpenNationalTourMap,
 }: DigitalBadgeModalProps) {
   const [copiedToast, setCopiedToast] = useState(false);
   const tierInfo = getBadgeTierInfo(badge.visitCount);
   const tourSummary = BadgeStorage.getNationalTourSummary();
+
+  const effectiveHoles = completedHolesCount || badge.lastCompletedHoles || (badge.visitCount ? 9 : 0);
+  const effectiveBlocks = completedBlocksCount || badge.lastCompletedBlocks || Math.max(1, Math.round(effectiveHoles / 9));
+  const effectiveCoursesStr = coursesPlayedStr || badge.lastCoursesPlayedStr || '';
+
+  const badgeRoundDesc = effectiveBlocks > 1
+    ? `${effectiveHoles}홀 (${effectiveCoursesStr || `9홀 ${effectiveBlocks}개 코스`})`
+    : `${effectiveCoursesStr ? `${effectiveCoursesStr} ` : ''}9홀 코스`;
 
   useEffect(() => {
     if (isOpen) {
@@ -36,16 +50,16 @@ export function DigitalBadgeModal({
   if (!isOpen) return null;
 
   const handleShare = async () => {
-    const shareText = `[파크골프 올인원 공식 인증 🎖️]\n⛳ '${badge.courseName}' 18홀 완주 달성!\n• 나의 누적 완주: ${badge.visitCount}회 (${tierInfo.title})\n${
+    const shareText = `[파크골프 올인원 공식 인증 🎖️]\n⛳ '${badge.courseName}' ${badgeRoundDesc} 완주 달성!\n• 나의 9홀 누적 완주: ${badge.visitCount}회 (${tierInfo.title})\n${
       badge.todayRoundCount > 1 ? `• 🔥 오늘 ${badge.todayRoundCount}차전 연속 라운드 달성!\n` : ''
-    }• 완주 일자: ${badge.lastCompletedAt}\n\n👉 지금 파크골프 올인원에서 함께 도장 깨기 도전하세요!\nhttps://www.parkongolf.com`;
+    }• 완주 일자: ${badge.lastCompletedAt}\n\n👉 지금 파크골프 올인원에서 함께 도장 깨기 도전하세요!\nhttps://www.parkgolfallinone.com`;
 
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
-          title: `[파크골프 올인원] ${badge.courseName} 완주 뱃지 획득!`,
+          title: `[파크골프 올인원] ${badge.courseName} ${badgeRoundDesc} 완주 뱃지 획득!`,
           text: shareText,
-          url: 'https://www.parkongolf.com',
+          url: 'https://www.parkgolfallinone.com',
         });
         return;
       } catch {}
@@ -74,13 +88,17 @@ export function DigitalBadgeModal({
         <div className="space-y-1 pt-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 text-stone-950 text-xs font-black shadow-lg">
             <Sparkles className="w-3.5 h-3.5 fill-current" />
-            <span>18홀 완주 기념 공식 디지털 뱃지</span>
+            <span>
+              {effectiveBlocks > 1
+                ? `${effectiveHoles}홀 (${effectiveCoursesStr || `9홀 ${effectiveBlocks}개 코스`}) 완주 공식 디지털 뱃지`
+                : `${effectiveCoursesStr ? `${effectiveCoursesStr} ` : ''}9홀 완주 공식 디지털 뱃지`}
+            </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight pt-1">
             {badge.courseName}
           </h2>
           <p className="text-xs text-stone-300">
-            정상 완주를 축하합니다! 구장 스탬프가 발급되었습니다.
+            정상 완주를 축하합니다! {effectiveBlocks > 1 ? `9홀 ${effectiveBlocks}개 코스` : '9홀 코스'} 완주 스탬프가 발급되었습니다.
           </p>
         </div>
 
@@ -101,7 +119,7 @@ export function DigitalBadgeModal({
 
             {/* 방문 횟수 리본 배지 (하단 겹침) */}
             <div className="absolute -bottom-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-stone-950 font-black text-xs px-4 py-1 rounded-full shadow-xl border border-white tracking-wider">
-              {badge.visitCount}회 완주
+              누적 {badge.visitCount}회 완주 (9홀 기준)
             </div>
           </div>
 
@@ -126,6 +144,13 @@ export function DigitalBadgeModal({
           </div>
 
           <div className="flex items-center justify-between text-xs">
+            <span className="text-stone-400">이번 라운드 완주:</span>
+            <span className="font-extrabold text-amber-300">
+              +{effectiveBlocks}회 적립 ({effectiveHoles}홀 · {effectiveCoursesStr || `${effectiveBlocks}개 코스`})
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between text-xs">
             <span className="text-stone-400">완주 인증 일시:</span>
             <span className="font-bold text-stone-200">{badge.lastCompletedAt}</span>
           </div>
@@ -138,7 +163,7 @@ export function DigitalBadgeModal({
             </div>
           ) : (
             <div className="pt-1 border-t border-stone-800 text-[10.5px] text-stone-400">
-              💡 100회 완주 시 제원을 혼자 즉시 바꿀 수 있는 <strong className="text-amber-300">명예 터줏대감</strong>으로 승급합니다.
+              💡 9홀 코스 1회 완주마다 1회씩 누적되며, 100회 완주 시 제원을 혼자 즉시 바꿀 수 있는 <strong className="text-amber-300">명예 터줏대감</strong>으로 승급합니다.
             </div>
           )}
         </div>

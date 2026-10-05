@@ -133,7 +133,7 @@ export function NationalTourMapModal({ isOpen, onClose }: NationalTourMapModalPr
             <span>🗺️ 전국 17개 시·도 투어 퍼즐</span>
           </h2>
           <p className="text-xs text-stone-300">
-            전국 17개 광역시·도 구장에서 18홀 완주 시 퍼즐 조각이 황금빛으로 점등됩니다!
+            전국 17개 광역시·도 구장에서 9홀 이상 공식 완주 시 퍼즐 조각이 황금빛으로 점등됩니다!
           </p>
         </div>
 
@@ -361,7 +361,7 @@ export function NationalTourMapModal({ isOpen, onClose }: NationalTourMapModalPr
                   아직 {selectedProvince.shortName} 지역 구장 완주 기록이 없습니다.
                 </p>
                 <p className="text-[11px] text-stone-400">
-                  {selectedProvince.name} 소재 파크골프장에서 18홀을 완주하시면 퍼즐이 즉시 해금됩니다!
+                  {selectedProvince.name} 소재 파크골프장에서 공식 완주(9홀 이상)하시면 퍼즐이 즉시 해금됩니다!
                 </p>
               </div>
             )}

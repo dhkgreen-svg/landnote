@@ -17,13 +17,16 @@ export interface BadgeTierInfo {
 export interface CourseBadgeRecord {
   courseId: string;
   courseName: string;
-  visitCount: number; // 총 18홀 완주 횟수 (1회, 143회 등)
+  visitCount: number; // 총 9홀 완주 횟수 (1코스 완주 = 1회, 18홀 = 2회, 27홀 = 3회)
   todayRoundCount: number; // 당일 N차전 완주 (1차전, 2차전 등)
   lastDateStr: string; // '2026-09-24'
   lastCompletedAt: string; // '2026.09.24 14:30'
   tier: BadgeTier;
   tierTitle: string;
   hasInstantSpecAccess: boolean; // 100회 이상 터줏대감 프리패스
+  lastCompletedHoles?: number; // 최근 완주 홀 수 (예: 9, 18, 27)
+  lastCompletedBlocks?: number; // 최근 완주 코스 수 (예: 1, 2, 3)
+  lastCoursesPlayedStr?: string; // 최근 완주 코스명 (예: 'A코스 + B코스 + C코스')
 }
 
 export interface HallOfFameRanker {
@@ -386,22 +389,29 @@ export const BadgeStorage = {
     };
   },
 
-  // 4. 18홀 정상 완주 기록 & 뱃지 갱신 + 17개 시도 퍼즐 조각 자동 해금
+  // 4. 9홀 모듈형 정상 완주 기록 & 뱃지 갱신 + 17개 시도 퍼즐 조각 자동 해금
   recordCompletion(
     courseId: string,
     courseName: string,
     playedHolesCount: number,
-    courseRegionOrAddress?: string
+    courseRegionOrAddress?: string,
+    coursesPlayedStr?: string
   ): {
     badge: CourseBadgeRecord;
     isNewTier: boolean;
     todayRoundCount: number;
     consecutiveStreak: number;
     isFull18: boolean;
+    isCompleted: boolean;
+    blocksCompleted: number;
     isNewProvinceUnlocked: boolean;
     unlockedProvince?: ProvinceInfo;
     nationalSummary: NationalTourSummary;
   } {
+    // [대표님 핵심 원칙]: 9홀 모듈형 기준
+    // 9홀 1개 코스 = 1회 완주, 18홀 = 2회 완주, 27홀 = 3회 완주
+    const isCompleted = playedHolesCount >= 9;
+    const blocksCompleted = isCompleted ? Math.max(1, Math.round(playedHolesCount / 9)) : 0;
     const isFull18 = playedHolesCount >= 18;
     const all = this.getAllBadges();
     const existing = all[courseId] || {
@@ -426,8 +436,8 @@ export const BadgeStorage = {
       todayCount = (existing.todayRoundCount || 1) + 1;
     }
 
-    // 18홀 정상 완주 시에만 누적 완주 횟수 1 증가 (결번 도중합류는 횟수 미증가)
-    const newVisitCount = isFull18 ? existing.visitCount + 1 : existing.visitCount;
+    // 9홀 단위 완주 횟수 누적 반영 (9홀 1개 코스 = +1, 18홀 = +2, 27홀 = +3)
+    const newVisitCount = isCompleted ? existing.visitCount + blocksCompleted : existing.visitCount;
     const tierInfo = getBadgeTierInfo(newVisitCount);
     const isNewTier = tierInfo.tier !== existing.tier;
 
@@ -441,6 +451,9 @@ export const BadgeStorage = {
       tier: tierInfo.tier,
       tierTitle: tierInfo.title,
       hasInstantSpecAccess: tierInfo.canBypassTwoStrike,
+      lastCompletedHoles: playedHolesCount,
+      lastCompletedBlocks: blocksCompleted,
+      lastCoursesPlayedStr: coursesPlayedStr,
     };
 
     all[courseId] = updatedRecord;
@@ -451,12 +464,12 @@ export const BadgeStorage = {
     }
 
     // ==========================================
-    // 3단계: 전국 17개 시도 투어 퍼즐 조각 갱신
+    // 3단계: 전국 17개 시도 투어 퍼즐 조각 갱신 (9홀 이상 완주 시 해금)
     // ==========================================
     let isNewProvinceUnlocked = false;
     let unlockedProvince: ProvinceInfo | undefined = undefined;
 
-    if (isFull18) {
+    if (isCompleted) {
       const provinceId = resolveProvince(courseRegionOrAddress, courseName);
       const tourRecords = this.getNationalTourRecords();
       const existingTour = tourRecords[provinceId] || {
@@ -474,21 +487,21 @@ export const BadgeStorage = {
         unlockedProvince = KOREA_PROVINCES.find((p) => p.id === provinceId);
       }
 
-      // 구장별 방문 횟수 업데이트
+      // 구장별 방문 횟수 업데이트 (9홀 단위 블록 반영)
       const courseIdx = existingTour.coursesVisited.findIndex((c) => c.courseId === courseId);
       if (courseIdx >= 0) {
-        existingTour.coursesVisited[courseIdx].roundCount += 1;
+        existingTour.coursesVisited[courseIdx].roundCount += blocksCompleted;
         existingTour.coursesVisited[courseIdx].lastVisitedAt = timeStr;
       } else {
         existingTour.coursesVisited.push({
           courseId,
           courseName,
-          roundCount: 1,
+          roundCount: blocksCompleted,
           lastVisitedAt: timeStr,
         });
       }
 
-      existingTour.totalRounds = (existingTour.totalRounds || 0) + 1;
+      existingTour.totalRounds = (existingTour.totalRounds || 0) + blocksCompleted;
       const uniqueVisitedCount = existingTour.coursesVisited.length;
       if (uniqueVisitedCount >= 5) {
         existingTour.trophyTier = 'GOLD';
@@ -514,6 +527,8 @@ export const BadgeStorage = {
       todayRoundCount: todayCount,
       consecutiveStreak: todayCount,
       isFull18,
+      isCompleted,
+      blocksCompleted,
       isNewProvinceUnlocked,
       unlockedProvince,
       nationalSummary,
