@@ -3039,13 +3039,24 @@ export default function RoundPlayPage() {
                 )}
 
                 {/* Par Selection */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black text-stone-700 flex items-center justify-between">
-                    <span>{isJapanese ? '1. 基準打数 (Par) 選択' : '1. 기준 타수 (Par) 선택'}</span>
-                    <span className={`font-bold text-[11px] ${editingPar > 0 ? 'text-emerald-700' : 'text-amber-600 font-black'}`}>
+                <div className={`p-3 rounded-xl transition-all ${
+                  editingPar === 0
+                    ? 'bg-amber-50 border-2 border-amber-400 shadow-sm'
+                    : 'bg-white border-2 border-emerald-300'
+                }`}>
+                  <label className="text-xs font-black text-stone-700 flex items-center justify-between mb-2">
+                    <span className="flex items-center gap-1.5">
+                      <span>{isJapanese ? '1. 基準打数 (Par) 選択' : '1. 기준 타수 (Par) 선택'}</span>
+                      {editingPar === 0 && (
+                        <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full animate-pulse">
+                          {isJapanese ? '必須選択' : '필수 선택'}
+                        </span>
+                      )}
+                    </span>
+                    <span className={`font-bold text-[11px] ${editingPar > 0 ? 'text-emerald-700 font-black' : 'text-amber-700 font-black'}`}>
                       {editingPar > 0
                         ? (isJapanese ? `現在選択: Par ${editingPar}` : `현재 선택: Par ${editingPar}`)
-                        : (isJapanese ? '未選択 (Par 3, 4, 5から選択)' : '공란 (팻말 보고 Par 3, 4, 5 중 선택)')}
+                        : (isJapanese ? 'Par 3, 4, 5からタッチ' : '팻말 보고 Par 3, 4, 5 중 터치')}
                     </span>
                   </label>
                   <div className="grid grid-cols-3 gap-2">
@@ -3056,10 +3067,10 @@ export default function RoundPlayPage() {
                           key={p}
                           type="button"
                           onClick={() => setEditingPar(p)}
-                          className={`h-12 rounded-xl font-black text-base transition flex items-center justify-center gap-1 border-2 active:scale-95 ${
+                          className={`h-12 rounded-xl font-black text-base transition flex items-center justify-center gap-1 border-2 active:scale-95 cursor-pointer ${
                             isSelected
-                              ? 'bg-emerald-600 text-white border-emerald-700 shadow-md ring-2 ring-emerald-400'
-                              : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                              ? 'bg-emerald-600 text-white border-emerald-700 shadow-md ring-2 ring-emerald-400 scale-[1.02]'
+                              : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-100 hover:border-stone-400'
                           }`}
                         >
                           <span>Par {p}</span>
@@ -3071,13 +3082,24 @@ export default function RoundPlayPage() {
                 </div>
 
                 {/* Distance Adjustment */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black text-stone-700 flex items-center justify-between">
-                    <span>{isJapanese ? '2. ホール距離 (m) 設定' : '2. 홀 거리 (m) 설정'}</span>
-                    <span className={`font-bold text-[11px] ${editingDistance ? 'text-emerald-700' : 'text-amber-600 font-black'}`}>
+                <div className={`p-3 rounded-xl transition-all ${
+                  !editingDistance
+                    ? 'bg-amber-50 border-2 border-amber-400 shadow-sm'
+                    : 'bg-white border-2 border-emerald-300'
+                }`}>
+                  <label className="text-xs font-black text-stone-700 flex items-center justify-between mb-2">
+                    <span className="flex items-center gap-1.5">
+                      <span>{isJapanese ? '2. ホール距離 (m) 設定' : '2. 홀 거리 (m) 설정'}</span>
+                      {!editingDistance && (
+                        <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full animate-pulse">
+                          {isJapanese ? '必須入力' : '필수 입력'}
+                        </span>
+                      )}
+                    </span>
+                    <span className={`font-bold text-[11px] ${editingDistance ? 'text-emerald-700 font-black' : 'text-amber-700 font-black'}`}>
                       {editingDistance
                         ? (isJapanese ? `現在設定: ${editingDistance}m` : `현재 설정: ${editingDistance}m`)
-                        : (isJapanese ? '未入力 (直接入力)' : '공란 (팻말 보고 직접 입력)')}
+                        : (isJapanese ? '看板の数値を直接入力' : '팻말 거리 직접 입력')}
                     </span>
                   </label>
 
@@ -3101,7 +3123,7 @@ export default function RoundPlayPage() {
                           setEditingDistance(clean);
                         }}
                         placeholder={isJapanese ? '看板の距離を入力 (例: 65)' : '팻말 거리 입력 (예: 65)'}
-                        className="w-full h-12 text-center text-2xl font-black rounded-xl border-2 border-stone-200 focus:border-emerald-600 focus:bg-white focus:outline-none bg-stone-50 text-stone-800 pr-9 pl-3 placeholder:text-stone-400 placeholder:text-base placeholder:font-normal"
+                        className="w-full h-12 text-center text-2xl font-black rounded-xl border-2 border-stone-300 focus:border-emerald-600 focus:bg-white focus:outline-none bg-stone-50 text-stone-800 pr-9 pl-3 placeholder:text-stone-400 placeholder:text-base placeholder:font-normal"
                       />
                       {editingDistance ? (
                         <button
@@ -3118,7 +3140,7 @@ export default function RoundPlayPage() {
                   </div>
 
                   {/* Quick Stepper Buttons */}
-                  <div className="grid grid-cols-4 gap-1.5 pt-1">
+                  <div className="grid grid-cols-4 gap-1.5 pt-2">
                     {[-10, -1, +1, +10].map((delta) => (
                       <button
                         key={delta}
@@ -3145,7 +3167,7 @@ export default function RoundPlayPage() {
                     className="w-5 h-5 accent-emerald-600 rounded cursor-pointer shrink-0"
                   />
                   <span className="text-xs font-black text-stone-900">
-                    {isJapanese ? '☑️ 現地の案内看板を確認しました (必須)' : '☑️ 현장 안내판(팻말)을 확인했습니다 (필수)'}
+                    {isJapanese ? '現地の案内看板を確認しました (必須)' : '현장 안내판(팻말)을 확인했습니다 (필수)'}
                   </span>
                 </label>
 
@@ -3156,58 +3178,72 @@ export default function RoundPlayPage() {
                       type="button"
                       onClick={() => {
                         if (!editingPar || editingPar < 3 || editingPar > 5) {
-                          alert(isJapanese ? 'ティー看板を確認し、基準打数 (Par 3, 4, 5) を選択してください。' : '티박스 팻말을 확인하시고 기준 타수 (Par 3, 4, 5) 를 선택해 주십시오.');
+                          alert(isJapanese ? '⚠️ ティー看板を確認し、基準打数 (Par 3, 4, 5) を選択してください。' : '⚠️ 현장 팻말을 확인하시고 기준 타수 (Par 3, 4, 5 중 하나) 를 선택해 주십시오.');
                           return;
                         }
                         const numDist = Number(editingDistance);
                         if (!editingDistance || isNaN(numDist) || numDist < 10) {
-                          alert(isJapanese ? 'ティー看板を確認し、有効なホール距離 (10m〜300m) を入力してください。' : '티박스 팻말을 확인하시고 올바른 홀 거리 (10m ~ 300m) 를 입력해 주십시오.');
+                          alert(isJapanese ? '⚠️ ティー看板を確認し、有効なホール距離 (10m〜300m) を入力してください。' : '⚠️ 현장 팻말을 확인하시고 올바른 홀 거리 (10m ~ 300m) 를 입력해 주십시오.');
                           return;
                         }
                         if (!signboardChecked) {
-                          alert(isJapanese ? '現地の案内看板確認チェックボックスにチェックを入れてください。' : '현장 안내판(팻말) 확인 체크박스에 체크해 주셔야 등록하실 수 있습니다.');
+                          alert(isJapanese ? '⚠️ 現地の案内看板確認チェックボックスにチェックを入れてください。' : '⚠️ 현장 안내판(팻말) 확인 체크박스에 체크해 주셔야 등록하실 수 있습니다.');
                           return;
                         }
                         handleSaveHoleSpec(editingPar, numDist, true);
                       }}
-                      disabled={!signboardChecked || !editingPar || !editingDistance}
-                      className={`w-full font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border ${
+                      className={`w-full font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border cursor-pointer ${
                         signboardChecked && editingPar && editingDistance
-                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-emerald-400 cursor-pointer animate-pulse'
-                          : 'bg-stone-200 text-stone-400 border-stone-300 cursor-not-allowed'
+                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-emerald-400 animate-pulse'
+                          : 'bg-amber-500 hover:bg-amber-600 text-white border-amber-400'
                       }`}
                     >
                       <CheckCircle2 className="w-5 h-5" />
-                      <span>{isJapanese ? `✍️ 諸元を登録してティーショット開始 (Par ${editingPar || '--'}, ${editingDistance || '--'}m)` : `✍️ 팻말 제원 등록하고 티샷 시작하기 (Par ${editingPar || '--'}, ${editingDistance || '--'}m)`}</span>
+                      <span>
+                        {signboardChecked && editingPar && editingDistance
+                          ? (isJapanese ? `✍️ 諸元を登録してティーショット開始 (Par ${editingPar}, ${editingDistance}m)` : `✍️ 팻말 제원 등록하고 티샷 시작하기 (Par ${editingPar}, ${editingDistance}m)`)
+                          : (!editingPar
+                              ? (isJapanese ? '⚠️ 基準打数 (Par 3·4·5) を選択してください' : '⚠️ 기준 타수 (Par 3·4·5) 를 선택해 주세요')
+                              : (!editingDistance
+                                  ? (isJapanese ? '⚠️ ホール距離 (m) を入力してください' : '⚠️ 홀 거리 (m) 를 입력해 주세요')
+                                  : (isJapanese ? '⚠️ 現地看板確認チェックボックスをチェックしてください' : '⚠️ 안내판(팻말) 확인 체크박스를 체크해 주세요')
+                                )
+                            )
+                        }
+                      </span>
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={() => {
                         if (!editingPar || editingPar < 3 || editingPar > 5) {
-                          alert(isJapanese ? 'ティー看板を確認し、基準打数 (Par 3, 4, 5) を選択してください。' : '티박스 팻말을 확인하시고 기준 타수 (Par 3, 4, 5) 를 선택해 주십시오.');
+                          alert(isJapanese ? '⚠️ ティー看板を確認し、基準打数 (Par 3, 4, 5) を選択してください。' : '⚠️ 현장 팻말을 확인하시고 기준 타수 (Par 3, 4, 5) 를 선택해 주십시오.');
                           return;
                         }
                         const numDist = Number(editingDistance);
                         if (!editingDistance || isNaN(numDist) || numDist < 10) {
-                          alert(isJapanese ? 'ティー看板を確認し、有効なホール距離 (10m〜300m) を入力してください。' : '티박스 팻말을 확인하시고 올바른 홀 거리 (10m ~ 300m) 를 입력해 주십시오.');
+                          alert(isJapanese ? '⚠️ ティー看板を確認し、有効なホール距離 (10m〜300m) を入力してください。' : '⚠️ 현장 팻말을 확인하시고 올바른 홀 거리 (10m ~ 300m) 를 입력해 주십시오.');
                           return;
                         }
                         if (!signboardChecked) {
-                          alert(isJapanese ? '現地の案内看板確認チェックボックスにチェックを入れてください。' : '현장 안내판(팻말) 확인 체크박스에 체크해 주셔야 저장 단계로 진행하실 수 있습니다.');
+                          alert(isJapanese ? '⚠️ 現地の案内看板確認チェックボックスにチェックを入れてください。' : '⚠️ 현장 안내판(팻말) 확인 체크박스에 체크해 주셔야 저장 단계로 진행하실 수 있습니다.');
                           return;
                         }
                         setShowSpecConfirmStep(true);
                       }}
-                      disabled={!signboardChecked}
-                      className={`w-full font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border ${
-                        signboardChecked
-                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 cursor-pointer'
-                          : 'bg-stone-200 text-stone-400 border-stone-300 cursor-not-allowed'
+                      className={`w-full font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border cursor-pointer ${
+                        signboardChecked && editingPar && editingDistance
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400'
+                          : 'bg-amber-500 hover:bg-amber-600 text-white border-amber-400'
                       }`}
                     >
                       <CheckCircle2 className="w-5 h-5" />
-                      <span>{isJapanese ? `入力内容確認へ進む (Par ${editingPar || '--'}, ${editingDistance || '--'}m)` : `입력 내용 확인 단계로 이동 (Par ${editingPar || '--'}, ${editingDistance || '--'}m)`}</span>
+                      <span>
+                        {signboardChecked && editingPar && editingDistance
+                          ? (isJapanese ? `入力内容確認へ進む (Par ${editingPar}, ${editingDistance}m)` : `입력 내용 확인 단계로 이동 (Par ${editingPar}, ${editingDistance}m)`)
+                          : (isJapanese ? '⚠️ 諸元入力・看板確認を完了してください' : '⚠️ 팻말 제원 입력 및 확인 체크를 완료해 주세요')
+                        }
+                      </span>
                     </button>
                   )}
                   <button
