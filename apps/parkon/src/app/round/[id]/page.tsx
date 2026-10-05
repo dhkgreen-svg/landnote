@@ -1987,18 +1987,6 @@ export default function RoundPlayPage() {
         </div>
       )}
 
-      {/* 🔔 띵똥 & 드르륵 타수 확정 피드백 알림 배너 */}
-      {confirmedFeedback && (
-        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white font-black p-3 rounded-2xl shadow-xl border-2 border-yellow-300 flex items-center justify-between animate-fadeIn">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-yellow-300 shrink-0 animate-bounce" />
-            <span className="text-xs sm:text-sm">
-              🔔 {courseLetter}-{holeInCourse}번 홀 타수가 정상 확정 저장되었습니다!
-            </span>
-          </div>
-          <span className="text-yellow-300 text-xs font-black shrink-0">띵~똥 🎵</span>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* ⛳ [5대 마스터 아키텍처 1단계]: 티샷 전 [코스 안내 대형 전광판 & 제원 확인] */}
@@ -2215,32 +2203,45 @@ export default function RoundPlayPage() {
             {/* 코스 공략 제공 (확인 완료 버튼 밑으로 배치) */}
             <TipCard hole={actualHoleNumber} tip={holeMetadata.tip} />
 
-            {/* 4. 하단 보조 버튼: [ 🔄 다른 홀로 이동 ] [ ☕ 잠시 빠지기 (저장) ] */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            {/* 4. 하단 보조 3대 액션 버튼: [ 🔄 코스/홀 이동 ] [ ☕ 잠시 빠지기 ] [ 🛑 경기 종료 (빨간색) ] */}
+            <div className="grid grid-cols-3 gap-2 pt-1">
               <button
                 type="button"
                 onClick={openCoursePicker}
-                className={`py-3 px-2 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition border active:scale-95 cursor-pointer ${
+                className={`py-3 px-1.5 rounded-xl font-black text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 transition border active:scale-95 cursor-pointer ${
                   sunlightMode
                     ? 'bg-zinc-900 text-yellow-300 border-zinc-700 hover:bg-zinc-800'
                     : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50 shadow-2xs'
                 }`}
               >
-                <span>🔄</span>
-                <span>{isJapanese ? '他のホールへ移動' : isEnglish ? 'Move Hole' : '다른 홀로 이동 (밀림 시)'}</span>
+                <span className="text-base">🔄</span>
+                <span className="truncate">{isJapanese ? '他のコース' : '다른 코스 이동'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handlePauseAndGoHome}
-                className={`py-3 px-2 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition border active:scale-95 cursor-pointer ${
+                className={`py-3 px-1.5 rounded-xl font-black text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 transition border active:scale-95 cursor-pointer ${
                   sunlightMode
                     ? 'bg-zinc-900 text-amber-300 border-zinc-700 hover:bg-zinc-800'
-                    : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-50 shadow-2xs'
+                    : 'bg-white text-amber-950 border-amber-300 hover:bg-amber-50 shadow-2xs'
                 }`}
               >
-                <span>☕</span>
-                <span>{isJapanese ? '一時退出 (保存)' : isEnglish ? 'Take a Break' : '잠시 빠지기 (안전 저장)'}</span>
+                <span className="text-base">☕</span>
+                <span className="truncate">{isJapanese ? '一時退出' : '잠시 빠지기'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleEarlyFinishConfirm}
+                className={`py-3 px-1.5 rounded-xl font-black text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 transition border-2 active:scale-95 cursor-pointer shadow-md ${
+                  sunlightMode
+                    ? 'bg-red-600 text-white border-white ring-2 ring-red-400 hover:bg-red-500'
+                    : 'bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 text-white border-red-300 ring-2 ring-red-400/30 shadow-red-900/20'
+                }`}
+              >
+                <span className="text-base">🛑</span>
+                <span className="truncate font-black">{isJapanese ? 'ラウンド終了' : '경기 종료'}</span>
               </button>
             </div>
 
@@ -2564,7 +2565,7 @@ export default function RoundPlayPage() {
                       <button
                         type="button"
                         onClick={() => togglePlayerRest(player.id)}
-                        className={`text-[10.5px] font-extrabold px-2 py-1 rounded-lg border transition active:scale-95 cursor-pointer ${
+                        className={`text-[10.5px] font-extrabold px-2 h-7 flex items-center justify-center shrink-0 rounded-lg border transition active:scale-95 cursor-pointer ${
                           sunlightMode
                             ? 'bg-zinc-900 text-stone-300 border-zinc-700 hover:text-white'
                             : 'bg-stone-100 text-stone-600 border-stone-300 hover:bg-stone-200'
@@ -2574,11 +2575,11 @@ export default function RoundPlayPage() {
                         {isJapanese ? '☕ 休憩' : isEnglish ? 'Rest' : '☕ 휴식'}
                       </button>
 
-                      {/* 단독 누적 타수 배지 버튼 */}
+                      {/* 단독 누적 타수 배지 버튼 (높이 28px h-7 고정으로 확인 클릭 시 상하 떨림 완전 차단) */}
                       <button
                         type="button"
                         onClick={() => setShowTotalScoreModal(true)}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-xl font-black text-xs active:scale-95 transition shadow-sm cursor-pointer border ${
+                        className={`flex items-center justify-center gap-1 px-2.5 h-7 shrink-0 rounded-xl font-black text-xs active:scale-95 transition shadow-sm cursor-pointer border ${
                           sunlightMode
                             ? 'bg-yellow-400 text-black border-2 border-white'
                             : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500'
@@ -2586,19 +2587,19 @@ export default function RoundPlayPage() {
                         title="터치하여 홀별/코스별 총 누적 스코어 상세 보기"
                       >
                         {pConfirmedHoles.length === 0 ? (
-                          <span className={sunlightMode ? 'text-xs font-black text-black' : 'text-xs font-black text-emerald-100'}>
+                          <span className={sunlightMode ? 'text-xs font-black text-black leading-none' : 'text-xs font-black text-emerald-100 leading-none'}>
                             {isJapanese ? '計 0打' : isEnglish ? '0 Strokes' : '총 0타'}
                           </span>
                         ) : (
                           <>
-                            <span className={sunlightMode ? 'text-base font-black text-black' : 'text-sm font-black'}>
+                            <span className={sunlightMode ? 'text-xs font-black text-black leading-none' : 'text-xs font-black text-white leading-none'}>
                               {pTotalStrokes}{isJapanese ? '打' : '타'}
                             </span>
                             <span
                               className={
                                 sunlightMode
-                                  ? 'text-[10px] bg-black text-yellow-300 px-1 py-0.5 rounded font-black border border-yellow-400'
-                                  : 'text-[9px] bg-emerald-800 text-yellow-300 px-1 py-0.5 rounded font-black'
+                                  ? 'text-[10px] bg-black text-yellow-300 px-1 py-0.5 rounded font-black border border-yellow-400 leading-none'
+                                  : 'text-[9px] bg-emerald-800 text-yellow-300 px-1 py-0.5 rounded font-black leading-none'
                               }
                             >
                               {pTotalDiff === 0 ? 'E' : pTotalDiff > 0 ? `+${pTotalDiff}` : `${pTotalDiff}`}
@@ -2741,20 +2742,20 @@ export default function RoundPlayPage() {
               <span>{isJapanese ? '前のホール' : '이전 홀'}</span>
             </button>
 
-            {/* 중앙: [✔️ 확인 (저장)] 버튼 (타수 확정 + 드르륵 진동 + 띵똥 차임벨) */}
+            {/* 중앙: [✔️ 확인 (저장)] 버튼 (타수 확정 + 드르륵 진동 + 띵똥 차임벨 - 그자리 그대로 즉시 색상 전환) */}
             <button
               type="button"
               onClick={handleConfirmHole}
-              className={`h-16 rounded-2xl font-black text-sm sm:text-base shadow-xl border-2 transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
+              className={`h-16 rounded-2xl font-black text-sm sm:text-base shadow-xl border-2 transition-colors flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
                 confirmedFeedback
-                  ? 'bg-yellow-400 text-black border-yellow-500 ring-4 ring-yellow-400/50 scale-[1.02]'
+                  ? 'bg-amber-400 text-stone-950 border-amber-500 ring-2 ring-amber-400'
                   : sunlightMode
                   ? 'bg-zinc-900 text-yellow-300 border-yellow-400 hover:bg-zinc-800'
                   : 'bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white border-emerald-400 shadow-emerald-900/30 ring-2 ring-emerald-500/20'
               }`}
             >
-              <CheckCircle2 className={`w-5 h-5 ${confirmedFeedback ? 'text-black' : 'text-yellow-300'}`} />
-              <span>{confirmedFeedback ? (isJapanese ? '確認完了！' : '확인 완료!') : (isJapanese ? '確認 (保存)' : '확인 (저장)')}</span>
+              <CheckCircle2 className={`w-5 h-5 ${confirmedFeedback ? 'text-stone-950' : 'text-yellow-300'}`} />
+              <span>{confirmedFeedback ? (isJapanese ? '✅ 保存完了！' : '✅ 저장 완료!') : (isJapanese ? '確認 (保存)' : '확인 (저장)')}</span>
             </button>
 
             {/* 우측: [다음 홀 이동 >] 버튼 */}
@@ -2793,7 +2794,7 @@ export default function RoundPlayPage() {
             <button
               type="button"
               onClick={() => setShowTotalScoreModal(true)}
-              className={`w-full py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs border transition active:scale-[0.98] cursor-pointer ${
+              className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs border transition active:scale-[0.98] cursor-pointer ${
                 sunlightMode
                   ? 'bg-zinc-900 text-yellow-300 border-zinc-700 hover:bg-zinc-800'
                   : 'bg-stone-800 hover:bg-stone-700 text-stone-300 border-stone-600'
@@ -2804,36 +2805,48 @@ export default function RoundPlayPage() {
             </button>
           </div>
 
-          {/* 하단 보조 액션 링크들 (다른 코스/홀 이동, 잠시 빠지기, 경기 종료) */}
-          <div className="flex items-center justify-between px-2 text-xs pt-1.5 pb-1">
+          {/* [대표님 특명 현장 UX]: 대형 원터치 현장 대응 3대 버튼 (코스 이동 / 잠시 빠지기 / 🛑 경기 종료 빨간색 대형 버튼) */}
+          <div className="grid grid-cols-3 gap-2 pt-1 pb-1">
+            {/* 1. 다른 코스/홀 이동 */}
             <button
               type="button"
               onClick={openCoursePicker}
-              className={`font-extrabold flex items-center gap-1 cursor-pointer ${
-                sunlightMode ? 'text-yellow-400 hover:underline' : 'text-emerald-800 hover:underline'
+              className={`py-3 px-1.5 rounded-xl font-black text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer border shadow-sm ${
+                sunlightMode
+                  ? 'bg-zinc-900 text-yellow-300 border-zinc-700 hover:bg-zinc-800'
+                  : 'bg-white hover:bg-stone-50 text-stone-800 border-stone-300 shadow-stone-200'
               }`}
             >
-              <span>🔄 {isJapanese ? '他のコース/ホールへ' : '다른 코스/홀 이동'}</span>
+              <span className="text-base">🔄</span>
+              <span className="truncate">{isJapanese ? '他のコース' : '다른 코스 이동'}</span>
             </button>
 
+            {/* 2. 잠시 빠지기 */}
             <button
               type="button"
               onClick={handlePauseAndGoHome}
-              className={`font-bold cursor-pointer hover:underline ${
-                sunlightMode ? 'text-zinc-300 hover:text-white' : 'text-amber-900 hover:text-amber-950'
+              className={`py-3 px-1.5 rounded-xl font-black text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer border shadow-sm ${
+                sunlightMode
+                  ? 'bg-zinc-900 text-amber-300 border-zinc-700 hover:bg-zinc-800'
+                  : 'bg-amber-50 hover:bg-amber-100 text-amber-950 border-amber-300'
               }`}
             >
-              ☕ {isJapanese ? '一時退出' : '잠시 빠지기'}
+              <span className="text-base">☕</span>
+              <span className="truncate">{isJapanese ? '一時退出' : '잠시 빠지기'}</span>
             </button>
 
+            {/* 3. 🚨 언제든 경기 종료 (선명한 빨간색 고대비 대형 버튼!) */}
             <button
               type="button"
               onClick={handleEarlyFinishConfirm}
-              className={`font-bold underline cursor-pointer ${
-                sunlightMode ? 'text-zinc-300 hover:text-white' : 'text-stone-600 hover:text-stone-900'
+              className={`py-3 px-1.5 rounded-xl font-black text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer border-2 shadow-md ${
+                sunlightMode
+                  ? 'bg-red-600 text-white border-white ring-2 ring-red-400 hover:bg-red-500'
+                  : 'bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 text-white border-red-300 ring-2 ring-red-400/30 shadow-red-900/20'
               }`}
             >
-              {isJapanese ? 'ラウンド終了' : '경기 종료'}
+              <span className="text-base">🛑</span>
+              <span className="truncate font-black">{isJapanese ? 'ラウンド終了' : '경기 종료'}</span>
             </button>
           </div>
 
