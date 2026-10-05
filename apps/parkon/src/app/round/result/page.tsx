@@ -476,12 +476,12 @@ function ResultContent() {
           {session.isOfficial === false ? (
             <span className="inline-flex items-center gap-1 bg-amber-400 text-stone-950 font-black px-2.5 py-1 rounded-full text-xs shadow-xs">
               <span>🧪</span>
-              <span>{isJapanese ? '練習・テストラウンド (公式戦績未反映)' : '연습·테스트 라운드 (공식 전적 미반영)'}</span>
+              <span>{isJapanese ? '練習・テストラウンド (戦績未反映)' : '연습·테스트 라운드 (전적 미반영)'}</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 bg-emerald-400 text-emerald-950 font-black px-2.5 py-1 rounded-full text-xs shadow-xs">
-              <span>🏆</span>
-              <span>{isJapanese ? '公式正規ラウンド (戦績反映済み)' : '공식 정규 라운드 (전적 반영됨)'}</span>
+              <span>🏌️</span>
+              <span>{isJapanese ? '実戦ラウンド (戦績反映済み)' : '실제 라운드 (전적 반영됨)'}</span>
             </span>
           )}
           <button
@@ -490,7 +490,7 @@ function ResultContent() {
             className="text-[11px] underline text-emerald-200 hover:text-white font-bold cursor-pointer"
             title={isJapanese ? '状態切り替え' : '상태 전환'}
           >
-            {session.isOfficial === false ? (isJapanese ? '公式戦績に変更' : '공식 전적으로 변경') : (isJapanese ? '練習/テストに変更' : '연습/테스트로 변경')}
+            {session.isOfficial === false ? (isJapanese ? '戦績反映に変更' : '전적 반영으로 변경') : (isJapanese ? '연습/테스트로 변경' : '연습/테스트로 변경')}
           </button>
         </div>
 

@@ -4253,22 +4253,22 @@ export default function RoundPlayPage() {
         </div>
       )}
 
-      {/* Official Reflection Confirmation Modal ("오늘 스코어를 반영할까요?") */}
+      {/* Official Reflection Confirmation Modal ("오늘 스코어를 저장할까요?") */}
       {showFinishOfficialModal && session && course && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4 animate-scaleUp border border-stone-200">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-800 text-xl shadow-xs shrink-0">
-                  🏆
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-800 text-xl shadow-xs shrink-0">
+                  📊
                 </div>
                 <div>
                   <h3 className="text-base font-black text-stone-900 leading-tight">
-                    {isJapanese ? '本日のスコアを反映しますか？' : '오늘 스코어를 반영할까요?'}
+                    {isJapanese ? '本日のスコアを保存しますか？' : '오늘 스코어를 저장할까요?'}
                   </h3>
-                  <p className="text-[11px] text-amber-800 font-bold">
-                    {isJapanese ? '公式正規ラウンド vs 練習/テストの選択' : '공식 정규 라운드 vs 연습/테스트 선택'}
+                  <p className="text-[11px] text-stone-600 font-bold">
+                    {isJapanese ? '実戦ラウンド(戦績反映) vs 練習/テスト(戦績未反映)' : '실제 라운드 (전적 반영) vs 연습·테스트 (전적 미반영)'}
                   </p>
                 </div>
               </div>
@@ -4309,12 +4309,12 @@ export default function RoundPlayPage() {
             <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3 text-xs text-stone-700 space-y-1.5 leading-relaxed">
               <div className="font-black text-emerald-950 flex items-center gap-1">
                 <span>💡</span>
-                <span>{isJapanese ? '公式戦績管理の安心案内' : '공식 전적 관리 안심 안내'}</span>
+                <span>{isJapanese ? '戦績反映の安心案内' : '전적 반영 안심 안내'}</span>
               </div>
               <p className="text-[11px]">
                 {isJapanese
-                  ? <>テストや練習用の記録は <strong>[練習/テストとして保存]</strong> を選ぶと公式平均打数やランクに <strong>100%反映されません。</strong></>
-                  : <>테스트나 단순 연습용으로 입력하신 기록은 <strong>[연습/테스트로 저장]</strong>을 누르시면 내 공식 평균 타수와 스타 등급에 <strong>100% 반영되지 않습니다.</strong></>}
+                  ? <>実際のラウンド結果は <strong>[スコア保存 (戦績反映)]</strong> を押すと、あなたの平均打数と統計に正常に反映されます。テストや練習で入力した場合は <strong>[練習・テストとして保存 (戦績未反映)]</strong> を選択してください。</>
+                  : <>실제 필드에서 플레이하신 기록은 <strong>[스코어 저장 (전적 반영)]</strong>을 누르시면 내 평균 타수와 통계에 정상 반영됩니다. 연습이나 테스트 삼아 입력하신 경우에는 <strong>[연습·테스트로 저장 (전적 미반영)]</strong>을 누르시면 전적에 포함되지 않습니다.</>}
               </p>
             </div>
 
@@ -4325,15 +4325,16 @@ export default function RoundPlayPage() {
                 onClick={() => executeFinishRound(true)}
                 className="w-full bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white font-black py-3.5 px-4 rounded-xl text-sm shadow-md flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
               >
-                <Award className="w-4 h-4 text-amber-300" />
-                <span>{isJapanese ? '🏆 公式戦績に反映 (正規ラウンド)' : '🏆 공식 전적에 반영 (정규 라운드)'}</span>
+                <span>🏌️</span>
+                <span>{isJapanese ? 'スコア保存 (戦績反映)' : '스코어 저장 (전적 반영)'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => executeFinishRound(false)}
                 className="w-full bg-stone-100 hover:bg-stone-200 text-stone-800 font-black py-3 px-4 rounded-xl text-xs border border-stone-300 shadow-xs flex items-center justify-center gap-1.5 transition active:scale-[0.98] cursor-pointer"
               >
-                <span>{isJapanese ? '🧪 練習・テストとして保存 (戦績未反映)' : '🧪 연습·테스트로 저장 (전적 미반영)'}</span>
+                <span>🧪</span>
+                <span>{isJapanese ? '練習・テストとして保存 (戦績未反映)' : '연습·테스트로 저장 (전적 미반영)'}</span>
               </button>
               <button
                 type="button"
