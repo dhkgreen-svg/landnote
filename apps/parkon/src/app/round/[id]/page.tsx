@@ -95,9 +95,18 @@ export default function RoundPlayPage() {
   const [showLeaderTransferModal, setShowLeaderTransferModal] = useState<boolean>(false);
 
   // 현재 접속자가 조장인지 여부 판별
+  const rawDisplayName = typeof window !== 'undefined' ? ParkOnStorage.getUserDisplayName() : '';
+  const localPlayerName = typeof window !== 'undefined' ? (localStorage.getItem('parkon_player_name')?.trim() || '') : '';
+  const localMemberCode = typeof window !== 'undefined' ? (localStorage.getItem('parkon_member_code')?.trim() || '') : '';
+  const myLocalName = (rawDisplayName && rawDisplayName !== '플레이어' ? rawDisplayName : '') || localPlayerName;
+
   const currentLeaderPlayer = session?.players?.find((p) => p.isLeader) || session?.players?.[0];
   const isCurrentUserLeader = Boolean(
-    currentLeaderPlayer?.isSelf ?? (session?.players?.[0]?.isSelf ?? true)
+    currentLeaderPlayer && (
+      (localMemberCode && currentLeaderPlayer.id === localMemberCode) ||
+      (myLocalName && currentLeaderPlayer.name && (currentLeaderPlayer.name.trim() === myLocalName || currentLeaderPlayer.name.includes(myLocalName) || myLocalName.includes(currentLeaderPlayer.name))) ||
+      (currentLeaderPlayer.isSelf === true && !myLocalName)
+    )
   );
 
   // 👑 조장(기록원) 권한 이전/위임 함수
@@ -179,6 +188,26 @@ export default function RoundPlayPage() {
         .then((data) => {
           if (data.success && data.room?.roundSession && (data.room.roundSession.id === roundId || !roundId)) {
             const restored = data.room.roundSession;
+            const rawName = ParkOnStorage.getUserDisplayName();
+            const localName = typeof localStorage !== 'undefined' ? localStorage.getItem('parkon_player_name')?.trim() : '';
+            const localCode = typeof localStorage !== 'undefined' ? localStorage.getItem('parkon_member_code')?.trim() : '';
+            const effectiveName = (rawName && rawName !== '플레이어' ? rawName : '') || localName || '';
+
+            if (restored.players && restored.players.length > 0) {
+              let hasMatched = false;
+              restored.players = restored.players.map((p: RoundPlayer) => {
+                const isMe = Boolean(
+                  (localCode && p.id === localCode) ||
+                  (effectiveName && p.name && (p.name.trim() === effectiveName || p.name.includes(effectiveName) || effectiveName.includes(p.name)))
+                );
+                if (isMe) hasMatched = true;
+                return { ...p, isSelf: isMe };
+              });
+              if (!hasMatched && restored.players.length > 0 && !localName && !localCode) {
+                restored.players[0].isSelf = true;
+              }
+            }
+
             ParkOnStorage.saveCurrentRound(restored);
             setSession(restored);
             setCurrentHole(restored.currentHole || 1);
@@ -462,6 +491,10 @@ export default function RoundPlayPage() {
       // 1) 홀 진행 단계(holeStep: TEE_SHOT vs SCORING) 자동 동기화!
       if (incoming.holeStep) {
         setHoleStep(incoming.holeStep);
+        if (incoming.holeStep === 'SCORING') {
+          setShowHoleSpecModal(false);
+          setShowSpecConfirmStep(false);
+        }
       }
 
       // 2) 현재 홀 번호 동기화
@@ -589,9 +622,19 @@ export default function RoundPlayPage() {
     };
   }, [session?.roomId, roundId, holeStep, currentHole, countingMode]);
 
-  // [대표님 특명]: 미확인 홀 진입 시 팻말 제원 등록 모달 즉시 자동 팝업
+  // [대표님 특명]: 미확인 홀 진입 시 '조장(기록원)'에게만 팻말 제원 등록 모달 즉시 자동 팝업!
+  // 동반자들은 조장이 등록한 제원이 실시간 동기화될 때까지 깔끔한 안내 대기 상태 유지
   useEffect(() => {
     if (!session || !course) return;
+
+    // 조장이 아닌 일반 동반자는 제원 입력 모달을 자동 팝업하지 않음 (혹시 열려있다면 즉시 닫음)
+    if (!isCurrentUserLeader) {
+      if (showHoleSpecModal) {
+        setShowHoleSpecModal(false);
+      }
+      return;
+    }
+
     const actualHole = Number(
       session.selectedHoleNumbers && session.selectedHoleNumbers[currentHole - 1]
         ? session.selectedHoleNumbers[currentHole - 1]
@@ -615,7 +658,7 @@ export default function RoundPlayPage() {
         setShowHoleSpecModal(true);
       }
     }
-  }, [session, course, holeStep, currentHole]);
+  }, [session, course, holeStep, currentHole, isCurrentUserLeader, showHoleSpecModal]);
 
   if (!session || !course) {
     return (
