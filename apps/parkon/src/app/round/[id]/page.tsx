@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, ShieldAlert, Award, Volume2, Play, Pencil, Database, BarChart2, Search, Filter, Wifi, WifiOff } from 'lucide-react';
 import Link from 'next/link';
@@ -1579,6 +1579,8 @@ export default function RoundPlayPage() {
     ParkOnStorage.setSunlightMode(next);
   };
 
+  const autoPromptedHolesRef = useRef<Record<number, boolean>>({});
+
   const openHoleSpecModal = () => {
     // 대표님 지침: 미확인 구장은 Par와 거리가 공란으로 시작!
     if (!isHoleVerified) {
@@ -1592,6 +1594,16 @@ export default function RoundPlayPage() {
     setShowSpecConfirmStep(false);
     setShowHoleSpecModal(true);
   };
+
+  // [대표님 특명]: 미확인 홀 진입 시 팻말 제원 등록 모달 즉시 자동 팝업
+  useEffect(() => {
+    if (session && course && holeStep === 'TEE_SHOT' && !isHoleVerified) {
+      if (!autoPromptedHolesRef.current[actualHoleNumber]) {
+        autoPromptedHolesRef.current[actualHoleNumber] = true;
+        openHoleSpecModal();
+      }
+    }
+  }, [session, course, holeStep, actualHoleNumber, isHoleVerified]);
 
   const handleSaveHoleSpec = (parVal: number, distVal: number, forceConsensus: boolean = false) => {
     if (!course || !session) return;
@@ -1900,36 +1912,6 @@ export default function RoundPlayPage() {
                 <span className="text-2xl font-bold ml-1.5 text-white">{isJapanese ? '番ホール' : '번 홀'}</span>
               </div>
             </div>
-
-            {/* [대표님 절대 원칙 지침]: A-1번 홀 바로 밑에 '현장 제원 미확인 구장 안내' 배치 (공식 확인된 구장은 일절 미노출) */}
-            {!isHoleVerified && (
-              <div className="bg-gradient-to-r from-amber-950 via-yellow-950 to-amber-950 text-white rounded-2xl p-3 border-2 border-amber-400 shadow-xl text-left space-y-1.5 animate-fadeIn mb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 font-black text-xs text-yellow-300">
-                    <span className="text-base animate-pulse">📢</span>
-                    <span>{isJapanese ? '現地諸元 未確認コースのご案内' : '현장 제원 미확인 구장 안내'}</span>
-                  </div>
-                  <span className="text-[10px] bg-amber-500/30 text-amber-200 border border-amber-400/50 px-2 py-0.5 rounded-full font-bold">
-                    {isJapanese ? '初代貢献者 募集中' : '최초 실측 기여자 모집'}
-                  </span>
-                </div>
-                <p className="text-[11px] text-amber-100 font-medium leading-relaxed">
-                  {isJapanese
-                    ? 'この球場はまだ現地の公式案内看板(距離・Par)が未登録です。ティーグラウンドの看板をご確認いただき、入力しながらプレイしていただくと次回から全国公式DBに永久反映されます！'
-                    : '이 구장은 아직 협회 공인 실측 팻말이 등록되지 않았습니다. 티박스 팻말의 거리(m)와 Par를 확인하시고 입력하시면서 라운딩해 주시면, 다음 방문하시는 모든 분들에게 공인 제원으로 영구 반영됩니다!'}
-                </p>
-                <div className="pt-0.5">
-                  <button
-                    type="button"
-                    onClick={openHoleSpecModal}
-                    className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-stone-950 font-black text-xs py-2 rounded-xl shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
-                  >
-                    <span>✏️</span>
-                    <span>{isJapanese ? 'ティー看板を見て距離・Parを1秒入力' : '티박스 팻말 보고 거리·Par 1초 입력'}</span>
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* 초대형 Par & 거리m 제원 카드 (대표님 지침: 미확인 시 가짜 더미 숫자 4/77m 완전 블라인드 가림) */}
             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/20">
@@ -3145,7 +3127,7 @@ export default function RoundPlayPage() {
 
                   {/* Quick Stepper Buttons */}
                   <div className="grid grid-cols-4 gap-1.5 pt-1">
-                    {[-10, -5, +5, +10].map((delta) => (
+                    {[-10, -1, +1, +10].map((delta) => (
                       <button
                         key={delta}
                         type="button"
@@ -3175,36 +3157,67 @@ export default function RoundPlayPage() {
                   </span>
                 </label>
 
-                {/* Modal Actions: 확인 단계로 이동 */}
+                {/* Modal Actions: 미확인 구장 1-Touch 즉시 등록 vs 기존 제원 2단계 확인 */}
                 <div className="pt-1 space-y-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!editingPar || editingPar < 3 || editingPar > 5) {
-                        alert(isJapanese ? 'ティー看板を確認し、基準打数 (Par 3, 4, 5) を選択してください。' : '티박스 팻말을 확인하시고 기준 타수 (Par 3, 4, 5) 를 선택해 주십시오.');
-                        return;
-                      }
-                      const numDist = Number(editingDistance);
-                      if (!editingDistance || isNaN(numDist) || numDist < 10) {
-                        alert(isJapanese ? 'ティー看板を確認し、有効なホール距離 (10m〜300m) を入力してください。' : '티박스 팻말을 확인하시고 올바른 홀 거리 (10m ~ 300m) 를 입력해 주십시오.');
-                        return;
-                      }
-                      if (!signboardChecked) {
-                        alert(isJapanese ? '現地の案内看板確認チェックボックスにチェックを入れてください。' : '현장 안내판(팻말) 확인 체크박스에 체크해 주셔야 저장 단계로 진행하실 수 있습니다.');
-                        return;
-                      }
-                      setShowSpecConfirmStep(true);
-                    }}
-                    disabled={!signboardChecked}
-                    className={`w-full font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border ${
-                      signboardChecked
-                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 cursor-pointer'
-                        : 'bg-stone-200 text-stone-400 border-stone-300 cursor-not-allowed'
-                    }`}
-                  >
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span>{isJapanese ? `入力内容確認へ進む (Par ${editingPar || '--'}, ${editingDistance || '--'}m)` : `입력 내용 확인 단계로 이동 (Par ${editingPar || '--'}, ${editingDistance || '--'}m)`}</span>
-                  </button>
+                  {!isHoleVerified ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!editingPar || editingPar < 3 || editingPar > 5) {
+                          alert(isJapanese ? 'ティー看板を確認し、基準打数 (Par 3, 4, 5) を選択してください。' : '티박스 팻말을 확인하시고 기준 타수 (Par 3, 4, 5) 를 선택해 주십시오.');
+                          return;
+                        }
+                        const numDist = Number(editingDistance);
+                        if (!editingDistance || isNaN(numDist) || numDist < 10) {
+                          alert(isJapanese ? 'ティー看板を確認し、有効なホール距離 (10m〜300m) を入力してください。' : '티박스 팻말을 확인하시고 올바른 홀 거리 (10m ~ 300m) 를 입력해 주십시오.');
+                          return;
+                        }
+                        if (!signboardChecked) {
+                          alert(isJapanese ? '現地の案内看板確認チェックボックスにチェックを入れてください。' : '현장 안내판(팻말) 확인 체크박스에 체크해 주셔야 등록하실 수 있습니다.');
+                          return;
+                        }
+                        handleSaveHoleSpec(editingPar, numDist, true);
+                      }}
+                      disabled={!signboardChecked || !editingPar || !editingDistance}
+                      className={`w-full font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border ${
+                        signboardChecked && editingPar && editingDistance
+                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-emerald-400 cursor-pointer animate-pulse'
+                          : 'bg-stone-200 text-stone-400 border-stone-300 cursor-not-allowed'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-5 h-5" />
+                      <span>{isJapanese ? `✍️ 諸元を登録してティーショット開始 (Par ${editingPar || '--'}, ${editingDistance || '--'}m)` : `✍️ 팻말 제원 등록하고 티샷 시작하기 (Par ${editingPar || '--'}, ${editingDistance || '--'}m)`}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!editingPar || editingPar < 3 || editingPar > 5) {
+                          alert(isJapanese ? 'ティー看板を確認し、基準打数 (Par 3, 4, 5) を選択してください。' : '티박스 팻말을 확인하시고 기준 타수 (Par 3, 4, 5) 를 선택해 주십시오.');
+                          return;
+                        }
+                        const numDist = Number(editingDistance);
+                        if (!editingDistance || isNaN(numDist) || numDist < 10) {
+                          alert(isJapanese ? 'ティー看板を確認し、有効なホール距離 (10m〜300m) を入力してください。' : '티박스 팻말을 확인하시고 올바른 홀 거리 (10m ~ 300m) 를 입력해 주십시오.');
+                          return;
+                        }
+                        if (!signboardChecked) {
+                          alert(isJapanese ? '現地の案内看板確認チェックボックスにチェックを入れてください。' : '현장 안내판(팻말) 확인 체크박스에 체크해 주셔야 저장 단계로 진행하실 수 있습니다.');
+                          return;
+                        }
+                        setShowSpecConfirmStep(true);
+                      }}
+                      disabled={!signboardChecked}
+                      className={`w-full font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border ${
+                        signboardChecked
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 cursor-pointer'
+                          : 'bg-stone-200 text-stone-400 border-stone-300 cursor-not-allowed'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-5 h-5" />
+                      <span>{isJapanese ? `入力内容確認へ進む (Par ${editingPar || '--'}, ${editingDistance || '--'}m)` : `입력 내용 확인 단계로 이동 (Par ${editingPar || '--'}, ${editingDistance || '--'}m)`}</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setShowHoleSpecModal(false)}

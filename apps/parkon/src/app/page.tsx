@@ -1262,7 +1262,7 @@ export default function HomePage() {
 
       {/* 4-1. 배너 1: 천기성 사주 오늘의 무료 사주 보러 가기 제휴 배너 */}
       <a
-        href="https://cheongiseong.com"
+        href={isJapanese ? "https://cheongiseong.com?lang=ja" : "https://cheongiseong.com"}
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => {
@@ -1272,8 +1272,9 @@ export default function HomePage() {
             const height = 900;
             const left = Math.max(0, Math.round((window.screen.width - width) / 2));
             const top = Math.max(0, Math.round((window.screen.height - height) / 2));
+            const targetUrl = isJapanese ? 'https://cheongiseong.com?lang=ja' : 'https://cheongiseong.com';
             window.open(
-              'https://cheongiseong.com',
+              targetUrl,
               'CheongiseongSajuApp',
               `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
             );
