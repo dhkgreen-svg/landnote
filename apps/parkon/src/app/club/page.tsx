@@ -54,6 +54,8 @@ import { DEFAULT_COURSES } from '@/lib/defaultCourses';
 import { getDefaultSelfName } from '@/lib/playerUtils';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
+import { calculateTier, getUserCompleted9Holes } from '@/lib/courseBlockTier';
+import { DiamondTierBadge } from '@/components/DiamondTierBadge';
 
 const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
@@ -201,7 +203,7 @@ export default function ClubGatheringHomePage() {
   const [editRecruitNotes, setEditRecruitNotes] = useState<string>('');
   const [showArchivedMembers, setShowArchivedMembers] = useState<boolean>(false);
   const [expandedChronicleId, setExpandedChronicleId] = useState<string | null>(null);
-  const [clubDetailTab, setClubDetailTab] = useState<'MEMBERS' | 'CHRONICLE'>('MEMBERS');
+  const [clubDetailTab, setClubDetailTab] = useState<'MEMBERS' | 'HALL_OF_FAME' | 'CHRONICLE'>('MEMBERS');
   const [chronicleSearchTerm, setChronicleSearchTerm] = useState('');
   const [collapsedMonths, setCollapsedMonths] = useState<Record<string, boolean>>({});
 
@@ -1893,6 +1895,43 @@ ${shareUrl}`;
           {/* ===================================================================== */}
           {clubSubTab === 'SHORTCUT' && (
             <div className="space-y-3 animate-fadeIn">
+              {/* ⛳ [NEW] 실시간 기동된 내 대회 조 4인 대기실 원터치 입장 배너 */}
+              {(() => {
+                const selfName = (ParkOnStorage.getUserDisplayName() || '김대희').trim();
+                for (const r of rooms) {
+                  if (r.status === 'PLAYING') {
+                    for (const g of r.groups) {
+                      if (g.linkedRoundRoomId && g.players.some((p) => p.name.includes(selfName) || selfName.includes(p.name))) {
+                        return (
+                          <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-800 text-white rounded-2xl p-4 shadow-lg border-2 border-emerald-300 space-y-2.5 animate-fadeIn">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-stone-950 animate-ping" />
+                                {isJapanese ? '大会リアルタイム待機中' : '대회 실시간 경기 기동됨'}
+                              </span>
+                              <span className="text-[11px] text-emerald-100 font-bold truncate max-w-[200px]">
+                                {r.title}
+                              </span>
+                            </div>
+                            <div className="text-sm font-black">
+                              🏌️ <strong className="text-amber-300">{selfName}</strong> 님은 【제 {g.groupNumber}조】입니다!
+                              <span className="text-xs text-emerald-100 font-medium ml-1.5">(조장: {g.leaderName})</span>
+                            </div>
+                            <Link
+                              href={`/round/waiting?roomId=${g.linkedRoundRoomId}&guest=${encodeURIComponent(selfName)}`}
+                              className="w-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 hover:from-amber-300 text-stone-950 font-black text-xs py-3 rounded-xl shadow-md transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer border border-amber-300"
+                            >
+                              <span>👉 [ ⛳ 제 {g.groupNumber}조 실시간 경기 대기실 입장하기 ]</span>
+                            </Link>
+                          </div>
+                        );
+                      }
+                    }
+                  }
+                }
+                return null;
+              })()}
+
               {/* 도착한 초청장 목록 */}
               {clubInvitations.length > 0 && (
                 <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 rounded-2xl p-4 border-2 border-amber-400 shadow-md space-y-3">
@@ -4457,19 +4496,33 @@ ${shareUrl}`;
                         </button>
                       </div>
 
-                      {managingClub.pendingMembers.map((p) => (
-                      <div
-                        key={p.id}
-                        className="bg-stone-50 border-2 border-emerald-300 rounded-2xl p-3.5 space-y-2.5 shadow-xs"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-black text-sm text-stone-900">{p.name}</span>
-                              <span className="text-[10px] bg-amber-100 text-amber-900 font-black px-1.5 py-0.2 rounded">
-                                {isJapanese ? '承認待ち' : '승인 대기'}
-                              </span>
-                            </div>
+                      {managingClub.pendingMembers.map((p) => {
+                        const comp = p.totalCompleted9Holes !== undefined ? p.totalCompleted9Holes : getUserCompleted9Holes(p.name);
+                        const tier = calculateTier(comp);
+                        return (
+                        <div
+                          key={p.id}
+                          className="bg-stone-50 border-2 border-emerald-300 rounded-2xl p-3.5 space-y-2.5 shadow-xs"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-black text-sm text-stone-900">{p.name}</span>
+                                {p.memberCode && (
+                                  <span className="text-[10px] bg-stone-200 text-stone-700 font-mono font-bold px-1.5 py-0.2 rounded">
+                                    {p.memberCode}
+                                  </span>
+                                )}
+                                <DiamondTierBadge
+                                  tier={tier}
+                                  completedCount={comp}
+                                  size="xs"
+                                  showLabel={true}
+                                />
+                                <span className="text-[10px] bg-amber-100 text-amber-900 font-black px-1.5 py-0.2 rounded">
+                                  {isJapanese ? '承認待ち' : '승인 대기'}
+                                </span>
+                              </div>
                             <div className="text-[11px] text-stone-500 font-bold mt-0.5">
                               📞 {p.phone || (isJapanese ? '連絡先未記載' : '연락처 미기재')} · ⏱️ {p.requestedAt}
                             </div>
@@ -4500,7 +4553,8 @@ ${shareUrl}`;
                           </p>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                     </>
                   )}
                 </div>
@@ -4602,6 +4656,8 @@ ${shareUrl}`;
                         {filteredMembers.map((m, idx) => {
                       const roleBadge = getRoleBadge(m.role, m.customRoleName);
                       const isNonRegular = m.role !== 'MEMBER' || !!(m.customRoleName && m.customRoleName.trim());
+                      const comp = m.totalCompleted9Holes !== undefined ? m.totalCompleted9Holes : getUserCompleted9Holes(m.name);
+                      const tier = calculateTier(comp);
                       return (
                         <div
                           key={m.id || idx}
@@ -4615,6 +4671,17 @@ ${shareUrl}`;
                               <div>
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-black text-stone-900 text-sm">{m.name}</span>
+                                  {m.memberCode && (
+                                    <span className="text-[10px] bg-stone-200 text-stone-700 font-mono font-bold px-1.5 py-0.2 rounded">
+                                      {m.memberCode}
+                                    </span>
+                                  )}
+                                  <DiamondTierBadge
+                                    tier={tier}
+                                    completedCount={comp}
+                                    size="xs"
+                                    showLabel={true}
+                                  />
                                   <span className={`text-[10px] px-2 py-0.5 rounded-md font-black border ${roleBadge.style}`}>
                                     {roleBadge.text}
                                   </span>
@@ -5371,8 +5438,8 @@ ${shareUrl}`;
               </div>
             </div>
 
-            {/* 탭 바: [👥 회원 명부] vs [📜 클럽 대회 실록 & 명예의 전당] */}
-            <div className="grid grid-cols-2 p-1.5 bg-stone-100 border-b border-stone-200 gap-1 text-xs font-black">
+            {/* 탭 바: [👥 회원 명부] vs [💎 명예의 전당] vs [📜 클럽 대회 실록] */}
+            <div className="grid grid-cols-3 p-1.5 bg-stone-100 border-b border-stone-200 gap-1 text-xs font-black">
               <button
                 type="button"
                 onClick={() => setClubDetailTab('MEMBERS')}
@@ -5391,16 +5458,29 @@ ${shareUrl}`;
 
               <button
                 type="button"
-                onClick={() => setClubDetailTab('CHRONICLE')}
+                onClick={() => setClubDetailTab('HALL_OF_FAME')}
                 className={`py-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${
-                  clubDetailTab === 'CHRONICLE'
-                    ? 'bg-amber-500 text-stone-950 shadow-xs border border-amber-600'
+                  clubDetailTab === 'HALL_OF_FAME'
+                    ? 'bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 shadow-xs border border-amber-300'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <Trophy className="w-3.5 h-3.5 text-amber-900" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                <span>{isJapanese ? '殿堂' : '명예의 전당'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setClubDetailTab('CHRONICLE')}
+                className={`py-2 rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${
+                  clubDetailTab === 'CHRONICLE'
+                    ? 'bg-emerald-700 text-white shadow-xs border border-emerald-800'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <Trophy className="w-3.5 h-3.5 text-amber-300" />
                 <span>{isJapanese ? '大会記録' : '대회 실록'}</span>
-                <span className="bg-amber-200 text-amber-950 text-[10px] font-black px-1.5 py-0.2 rounded-full">
+                <span className="bg-emerald-800 text-emerald-100 text-[10px] font-black px-1.5 py-0.2 rounded-full">
                   {ClubStorage.getClubChronicles(selectedClubDetail.id).length}
                 </span>
               </button>
@@ -5426,27 +5506,125 @@ ${shareUrl}`;
                     {isJapanese ? `所属会員名簿 (${selectedClubDetail.members.length}名)` : `소속 회원 명부 (${selectedClubDetail.members.length}명)`}
                   </h4>
                   <div className="space-y-1.5">
-                    {selectedClubDetail.members.map((m, idx) => (
-                      <div
-                        key={m.id || idx}
-                        className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-between font-bold text-stone-800"
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] flex items-center justify-center font-black">
-                            {idx + 1}
+                    {selectedClubDetail.members.map((m, idx) => {
+                      const comp = getUserCompleted9Holes(m.name);
+                      const tier = calculateTier(comp);
+                      return (
+                        <div
+                          key={m.id || idx}
+                          className="p-2.5 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-between font-bold text-stone-800"
+                        >
+                          <span className="flex items-center gap-2 min-w-0">
+                            <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] flex items-center justify-center font-black shrink-0">
+                              {idx + 1}
+                            </span>
+                            <span className="truncate text-sm font-black text-stone-900">{m.name}</span>
+                            <DiamondTierBadge
+                              tier={tier}
+                              completedCount={comp}
+                              size="xs"
+                              showLabel={true}
+                            />
                           </span>
-                          <span>{m.name}</span>
-                        </span>
-                        <span className="text-[10px] bg-stone-200 text-stone-700 px-2 py-0.5 rounded font-black">
-                          {m.role === 'PRESIDENT' ? (isJapanese ? '👑 会長' : '👑 회장') : m.role === 'MANAGER' ? (isJapanese ? '📋 총무' : '📋 총무') : (isJapanese ? '会員' : '회원')}
-                        </span>
-                      </div>
-                    ))}
+                          <span className="text-[10px] bg-stone-200 text-stone-700 px-2 py-0.5 rounded font-black shrink-0">
+                            {m.role === 'PRESIDENT' ? (isJapanese ? '👑 会長' : '👑 회장') : m.role === 'MANAGER' ? (isJapanese ? '📋 총무' : '📋 총무') : (isJapanese ? '会員' : '회원')}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
-              {/* 탭 2: 클럽 대회 실록 & 명예의 전당 (회원 100% 열람 허용) */}
+              {/* 탭 2: 💎 클럽 다이아몬드 명예의 전당 (누적 완주 횟수 랭킹) */}
+              {clubDetailTab === 'HALL_OF_FAME' && (
+                <div className="space-y-3">
+                  <div className="bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-100 p-3.5 rounded-2xl border border-amber-300 text-stone-900 shadow-2xs space-y-1">
+                    <div className="flex items-center gap-1.5 font-black text-xs text-amber-950">
+                      <Sparkles className="w-4 h-4 text-amber-700" />
+                      <span>{isJapanese ? '👑 クラブ名誉の殿堂 (ダイヤモンドティアランキング)' : '👑 클럽 명예의 전당 (다이아몬드 티어 랭킹)'}</span>
+                    </div>
+                    <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
+                      {isJapanese
+                        ? 'クラブ会員の累計完走回数に基づき、ゴールデン、ピンク、ブルーの各ダイヤモンドティア順に公式表彰されます。'
+                        : '소속 회원들의 누적 9홀 완주 횟수에 따라 골든(500회+), 핑크(100회+), 블루(30회+) 명예의 전당에 영구 등재됩니다.'}
+                    </p>
+                  </div>
+
+                  {(() => {
+                    const diamondRankings = ClubStorage.getClubDiamondRankings(selectedClubDetail.id);
+                    if (diamondRankings.length === 0) {
+                      return (
+                        <div className="text-center py-8 text-stone-400 font-bold text-xs">
+                          {isJapanese ? '登録された会員がいません。' : '등록된 회원이 없습니다.'}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="space-y-2">
+                        {diamondRankings.map((dr) => {
+                          const medalBadge =
+                            dr.rank === 1 ? '🥇 1위' : dr.rank === 2 ? '🥈 2위' : dr.rank === 3 ? '🥉 3위' : `${dr.rank}위`;
+                          const isTop3 = dr.rank <= 3;
+                          return (
+                            <div
+                              key={dr.memberId}
+                              className={`p-3 rounded-2xl border flex items-center justify-between gap-2.5 transition ${
+                                isTop3
+                                  ? 'bg-gradient-to-r from-amber-50/80 via-white to-amber-50/40 border-amber-300 shadow-2xs'
+                                  : 'bg-white border-stone-200 shadow-2xs'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span
+                                  className={`text-xs font-black px-2 py-1 rounded-xl shrink-0 ${
+                                    dr.rank === 1
+                                      ? 'bg-amber-400 text-stone-950 font-black'
+                                      : dr.rank === 2
+                                      ? 'bg-stone-300 text-stone-900 font-bold'
+                                      : dr.rank === 3
+                                      ? 'bg-amber-700 text-white font-bold'
+                                      : 'bg-stone-100 text-stone-600 font-medium'
+                                  }`}
+                                >
+                                  {medalBadge}
+                                </span>
+                                <div>
+                                  <div className="flex items-center gap-1.5 font-black text-xs text-stone-900">
+                                    <span>{dr.memberName}</span>
+                                    <span className="text-[10px] font-mono text-stone-400">({dr.memberCode})</span>
+                                    {dr.customRoleName ? (
+                                      <span className="text-[9px] bg-purple-100 text-purple-800 px-1.5 py-0.2 rounded-full font-bold">
+                                        {dr.customRoleName}
+                                      </span>
+                                    ) : dr.role === 'PRESIDENT' ? (
+                                      <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full font-bold">
+                                        👑 회장
+                                      </span>
+                                    ) : dr.role === 'MANAGER' ? (
+                                      <span className="text-[9px] bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded-full font-bold">
+                                        📋 총무
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  <div className="text-[10px] text-stone-500 font-medium mt-0.5">
+                                    총 {dr.totalCompleted9Holes}회 완주 달성 · {dr.tierTitle}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="shrink-0">
+                                <DiamondTierBadge tier={dr.tier} completedCount={dr.totalCompleted9Holes} size="md" enableAura={isTop3} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* 탭 3: 클럽 대회 실록 & 명예의 전당 (회원 100% 열람 허용) */}
               {clubDetailTab === 'CHRONICLE' && (
                 <div className="space-y-3">
                   {/* 권한 검사: 현재 소속 회원인가? */}
@@ -5649,6 +5827,69 @@ ${shareUrl}`;
                                                     </div>
                                                   ) : null}
                                                 </div>
+
+                                                {/* 3위 / 롱기스트 / 니어핀 서브 배지 */}
+                                                {(chr.thirdPlaceName || chr.longestName || chr.nearPinName) && (
+                                                  <div className="grid grid-cols-3 gap-1 pt-0.5 text-center text-[9px] font-bold">
+                                                    {chr.thirdPlaceName && (
+                                                      <div className="bg-amber-50/80 border border-amber-200 rounded-lg p-1">
+                                                        <span className="text-amber-800">🥉 3위:</span> <strong className="text-stone-900">{chr.thirdPlaceName}</strong>
+                                                      </div>
+                                                    )}
+                                                    {chr.longestName && (
+                                                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-1">
+                                                        <span className="text-emerald-800">🚀 롱기:</span> <strong className="text-stone-900">{chr.longestName}</strong>
+                                                      </div>
+                                                    )}
+                                                    {chr.nearPinName && (
+                                                      <div className="bg-pink-50 border border-pink-200 rounded-lg p-1">
+                                                        <span className="text-pink-800">🎯 니어:</span> <strong className="text-stone-900">{chr.nearPinName}</strong>
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                )}
+
+                                                {/* 📸 [3단계] 단체 기념사진 (워터마크 각인) 표출 또는 즉석 업로드 */}
+                                                {chr.groupPhotoUrl ? (
+                                                  <div className="relative rounded-xl overflow-hidden border-2 border-amber-300 shadow-2xs mt-1">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img
+                                                      src={chr.groupPhotoUrl}
+                                                      alt="대회 단체 기념사진"
+                                                      className="w-full h-auto object-cover max-h-56"
+                                                    />
+                                                    <div className="bg-stone-900/80 text-amber-200 text-[10px] font-black px-2.5 py-1 flex items-center justify-between">
+                                                      <span>📸 공식 단체 기념사진</span>
+                                                      <span className="text-[9px] text-amber-300">파크골프 올인원 공식 실록</span>
+                                                    </div>
+                                                  </div>
+                                                ) : (
+                                                  <label className="w-full py-1.5 bg-amber-50/80 hover:bg-amber-100 border border-amber-200 border-dashed rounded-xl text-[10px] font-black text-amber-900 flex items-center justify-center gap-1 transition cursor-pointer mt-1">
+                                                    <span>📸 단체 기념사진 등록 (골드 워터마크 자동 각인)</span>
+                                                    <input
+                                                      type="file"
+                                                      accept="image/*"
+                                                      className="hidden"
+                                                      onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (!file) return;
+                                                        const compressed = await ClubStorage.compressAndWatermarkPhoto(
+                                                          file,
+                                                          `${selectedClubDetail.name} ${chr.title}`
+                                                        );
+                                                        if (compressed) {
+                                                          chr.groupPhotoUrl = compressed;
+                                                          const allChr = ClubStorage.getAllGlobalChronicles();
+                                                          const target = allChr.find((c) => c.id === chr.id);
+                                                          if (target) target.groupPhotoUrl = compressed;
+                                                          localStorage.setItem('parkon_club_chronicles_v1', JSON.stringify(allChr));
+                                                          setToastMessage('📸 단체 기념사진이 워터마크 각인되어 영구 아카이빙되었습니다!');
+                                                          setClubDetailTab('CHRONICLE');
+                                                        }
+                                                      }}
+                                                    />
+                                                  </label>
+                                                )}
 
                                                 <button
                                                   type="button"

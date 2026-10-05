@@ -22,6 +22,8 @@ import { BadgeStorage, CourseBadgeRecord, ProvinceInfo } from '@/lib/badgeStorag
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
 import { formatPlayerDisplayName } from '@/lib/playerUtils';
+import { DiamondTierBadge } from '@/components/DiamondTierBadge';
+import { calculateTier, getUserCompleted9Holes } from '@/lib/courseBlockTier';
 
 const JA_PRESCRIPTIONS = [
   {
@@ -270,14 +272,20 @@ function ResultContent() {
       ? new Date(session.completedAt).toLocaleDateString(isJapanese ? 'ja-JP' : 'ko-KR')
       : new Date().toLocaleDateString(isJapanese ? 'ja-JP' : 'ko-KR');
 
+    const topPlayer = session.players.find((p) => p.isSelf) || rankedPlayers[0];
+    const topCompleted = getUserCompleted9Holes(topPlayer?.name);
+    const topTier = calculateTier(topCompleted);
+
     const lines = isJapanese
       ? [
           `⛳ [パークゴルフ オールインワン] ${session.courseName} (${coursesPlayedStr}) ラウンド最終成績表`,
+          `👑 ${topPlayer?.name || 'プレーヤー'}様の[${topTier.nameJa}] (${topCompleted}回完走) 公式成績`,
           `📅 日時: ${dateStr} (計 ${totalHolesCount}ホール進行 / 基準 Par ${totalCoursePar})`,
           `━━━━━━━━━━━━━━━━`,
         ]
       : [
           `⛳ [파크골프 올인원] ${session.courseName} (${coursesPlayedStr}) 라운드 최종 성적표`,
+          `👑 ${topPlayer?.name || '골퍼'}님의 [${topTier.nameKo}] (${topCompleted}회 완주) 공식 성적`,
           `📅 일시: ${dateStr} (총 ${totalHolesCount}홀 진행 / 기준 Par ${totalCoursePar})`,
           `━━━━━━━━━━━━━━━━`,
         ];
@@ -467,6 +475,24 @@ function ResultContent() {
               <span className="text-xs text-emerald-200 font-bold mt-0.5">
                 {dual.showSecondary && dual.secondary ? `${dual.secondary} · ` : ''}{coursesPlayedStr} ({totalHolesCount}{isJapanese ? 'ホール進行 · 基準 Par ' : '홀 진행 · 기준 Par '}{totalCoursePar})
               </span>
+            </div>
+          );
+        })()}
+
+        {/* 💎 골퍼 컬러 다이아몬드 티어 뱃지 */}
+        {(() => {
+          const myPlayer = session.players.find((p) => p.isSelf) || rankedPlayers[0];
+          const completed9H = getUserCompleted9Holes(myPlayer?.name);
+          const tier = calculateTier(completed9H);
+          return (
+            <div className="mt-2.5 flex items-center justify-center">
+              <DiamondTierBadge
+                tier={tier}
+                completedCount={completed9H}
+                size="md"
+                showLabel={true}
+                showCount={true}
+              />
             </div>
           );
         })()}

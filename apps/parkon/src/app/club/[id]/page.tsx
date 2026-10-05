@@ -36,6 +36,8 @@ import {
   Settings,
   ShieldCheck,
   Search,
+  Download,
+  Image as ImageIcon,
 } from 'lucide-react';
 import {
   ClubEventRoom,
@@ -52,6 +54,7 @@ import { ParkOnStorage } from '@/lib/storage';
 import { RoundPlayer, RoundSession } from '@/types/parkon';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { generateClubAwardCardImage, downloadClubAwardCard } from '@/lib/clubAwardImageGenerator';
 
 export default function ClubRoomDetailPage() {
   const params = useParams();
@@ -62,6 +65,11 @@ export default function ClubRoomDetailPage() {
   const [room, setRoom] = useState<ClubEventRoom | null>(null);
   const [activeTab, setActiveTab] = useState<'roster' | 'team' | 'individual'>('roster');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // [3단계] 그로스 vs 신페리오 듀얼 탭 & 실시간 홀인원 토스트 & 1080p 시상 카드 상태
+  const [leaderboardViewMode, setLeaderboardViewMode] = useState<'NEW_PERIO' | 'GROSS'>('GROSS');
+  const [holeInOneToast, setHoleInOneToast] = useState<{ playerName: string; groupNumber: number; holeNumber: number } | null>(null);
+  const [generatingAwardCard, setGeneratingAwardCard] = useState<boolean>(false);
 
   // Join modal state (Direct group or waiting pool)
   const [joiningGroup, setJoiningGroup] = useState<number | null>(null); // null = waiting pool
@@ -138,6 +146,36 @@ export default function ClubRoomDetailPage() {
     }, 3500);
   };
 
+  // 🔄 [3단계] 전 조 실시간 스코어 동기화 & 홀인원(1타) 골든 축하 감지 (최상위 Hook)
+  useEffect(() => {
+    if (!roomId) return;
+    const interval = setInterval(async () => {
+      const res = await ClubStorage.syncTournamentScoresFromRoundRooms(roomId);
+      if (res.success && res.room && res.updatedGroupsCount > 0) {
+        setRoom(res.room);
+      }
+      if (res.holeInOneAlerts && res.holeInOneAlerts.length > 0) {
+        setHoleInOneToast(res.holeInOneAlerts[0]);
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [roomId]);
+
+  const rawIndividuals = React.useMemo(() => {
+    if (!room) return [];
+    return ClubStorage.getIndividualLeaderboard(room);
+  }, [room]);
+
+  // [3단계] 듀얼 탭(그로스 vs 신페리오)에 따른 실시간 순위 정렬 (최상위 Hook)
+  const displayIndividuals = React.useMemo(() => {
+    if (leaderboardViewMode === 'GROSS') {
+      const list = [...rawIndividuals].sort((a, b) => a.totalStrokes - b.totalStrokes || a.parDiff - b.parDiff);
+      return list.map((item, idx) => ({ ...item, rank: idx + 1 }));
+    }
+    return rawIndividuals;
+  }, [rawIndividuals, leaderboardViewMode]);
+
   if (!room) {
     return (
       <div className="p-6 text-center max-w-md mx-auto space-y-4">
@@ -157,7 +195,7 @@ export default function ClubRoomDetailPage() {
   }
 
   const teams = ClubStorage.getTeamLeaderboard(room);
-  const individuals = ClubStorage.getIndividualLeaderboard(room);
+  const individuals = rawIndividuals;
   const groupPlayersCount = room.groups.reduce((sum, g) => sum + g.players.length, 0);
   const waitingPoolCount = (room.waitingPool || []).length;
   const totalAllPlayers = groupPlayersCount + waitingPoolCount;
@@ -170,6 +208,60 @@ export default function ClubRoomDetailPage() {
   const gameModeInfo = ClubStorage.getGameModeInfo(room.gameMode);
   const specialAwards = ClubStorage.calculateSpecialAwards(room);
   const graceInfo = ClubStorage.getWinnerGraceInfo(room, individuals);
+
+  // 🏆 [3단계] 1080p 공식 시상식 카드 1초 생성 및 다운로드
+  const handleGenerateAndDownloadAwardCard = async () => {
+    if (!room) return;
+    setGeneratingAwardCard(true);
+    try {
+      const champion = individuals[0];
+      const sortedByGross = [...individuals].sort((a, b) => a.totalStrokes - b.totalStrokes);
+      const medalist = sortedByGross[0];
+      const runnerUp = individuals[1];
+      const thirdPlace = individuals[2];
+
+      const specialAwardsList = ClubStorage.calculateSpecialAwards(room);
+      const longestSpecial = specialAwardsList.find((sa) => sa.title.includes('롱기스트') || sa.badge === '🚀');
+      const nearPinSpecial = specialAwardsList.find((sa) => sa.title.includes('니어핀') || sa.badge === '🎯');
+
+      const result = await generateClubAwardCardImage({
+        clubName: room.clubName || '공식 파크골프 클럽',
+        tournamentTitle: room.title,
+        courseName: room.courseName,
+        totalHoles: room.totalHoles,
+        playDate: room.createdAt?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+        totalParticipants: totalAllPlayers,
+        gameModeTitle: room.gameModeTitle || ClubStorage.getGameModeInfo(room.gameMode).title,
+        championName: champion?.playerName || '우승자',
+        championNet: champion?.netScore ?? champion?.totalStrokes ?? 0,
+        championGross: champion?.totalStrokes ?? 0,
+        championHandicap: champion?.handicap ?? 0,
+        medalistName: medalist?.playerName,
+        medalistGross: medalist?.totalStrokes,
+        runnerUpName: runnerUp?.playerName,
+        runnerUpNet: runnerUp?.netScore ?? runnerUp?.totalStrokes,
+        thirdPlaceName: thirdPlace?.playerName,
+        thirdPlaceNet: thirdPlace?.netScore ?? thirdPlace?.totalStrokes,
+        longestName: longestSpecial?.winnerName,
+        longestDistance: '장타 1위',
+        nearPinName: nearPinSpecial?.winnerName,
+        nearPinDistance: '핀 밀착 1위',
+        specialAwards: specialAwardsList,
+      });
+
+      if (result) {
+        downloadClubAwardCard(result);
+        showToast('🏆 1080p 고화질 클럽 공식 시상식 카드가 다운로드되었습니다!');
+      } else {
+        alert('시상 카드 이미지 생성에 실패하였습니다.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('시상 카드 생성 중 오류가 발생했습니다.');
+    } finally {
+      setGeneratingAwardCard(false);
+    }
+  };
 
   // ⚙️ 경기 방식 및 시상 룰 커스텀 설정 저장
   const handleSaveAwardConfig = (e: React.FormEvent) => {
@@ -402,29 +494,77 @@ export default function ClubRoomDetailPage() {
     showToast(isJapanese ? '📢 未納者向けLINE催促案内文がコピーされました！' : '📢 미납자 대상 맞춤 카톡 독촉 안내문이 복사되었습니다!');
   };
 
-  // ⚡ [현장 긴급 대응] 결원(노쇼) 발생 시 대기 1순위 1초 즉시 투입
+  // ⚡ [현장 긴급 대응] 결원(노쇼) 발생 시 대기 1순위 투입 또는 3인 1조 즉시 전환
   const handleQuickReplaceMissingPlayer = (groupNumber: number, playerId: string, playerName: string) => {
     if (!room) return;
-    if (!room.waitingPool || room.waitingPool.length === 0) {
-      alert('현재 대기 신청자(대기 풀)에 등록된 인원이 없습니다.');
-      return;
+
+    if (room.waitingPool && room.waitingPool.length > 0) {
+      const cand = room.waitingPool.find((p) => p.waitNumber === 1) || room.waitingPool[0];
+      if (
+        confirm(
+          `🚨 [결원 발생 긴급 대체]\n\n'${playerName}' 회원님의 불참(노쇼)으로\n대기 1순위 '${cand.name}' 님을 [${groupNumber}조]로 즉시 1초 투입하시겠습니까?\n\n(취소 선택 시 '3인 1조 자동 전환'으로 넘어갑니다)`
+        )
+      ) {
+        const res = ClubStorage.replacePlayerWithWaitingCandidate(room.id, groupNumber, playerId);
+        if (res.success && res.room) {
+          setRoom(res.room);
+          showToast(res.message);
+          return;
+        }
+      }
     }
 
-    const cand = room.waitingPool.find((p) => p.waitNumber === 1) || room.waitingPool[0];
+    // 대기자가 없거나 취소 시 결번 없는 자연스러운 3인 1조 자동 전환
+    if (
+      confirm(
+        `⚡ [3인 1조 규격 자동 전환]\n\n'${playerName}' 회원님을 조에서 제외하고\n[${groupNumber}조]를 결번 없이 자연스러운 '3인 1조'로 즉시 전환하시겠습니까?`
+      )
+    ) {
+      const res = ClubStorage.convertGroupToThreePlayers(room.id, groupNumber, playerId);
+      if (res.success && res.room) {
+        setRoom(res.room);
+        showToast(res.message);
+      } else {
+        alert(res?.message || '3인 1조 전환에 실패하였습니다.');
+      }
+    }
+  };
+
+  // 🚀 [전 조 동시 출발 확정] 1조부터 N조까지 Supabase 4인 실시간 대기실 일괄 가동
+  const handleLaunchAllGroups = async () => {
+    if (!room) return;
     if (
       !confirm(
-        `🚨 [결원 발생 긴급 대체]\n\n'${playerName}' 회원님의 불참(노쇼)으로\n대기 1순위 '${cand.name}' 님을 [${groupNumber}조]로 즉시 1초 투입하시겠습니까?`
+        isJapanese
+          ? `🚀 全${room.groups.length}組のリアルタイム待機室を一括起動しますか？\n参加者のスマートフォンに待機室案内バ너がリアルタイム表示されます。`
+          : `🚀 총 ${room.groups.length}개 조의 4인 실시간 경기 대기실을 일괄 기동하시겠습니까?\n\n대회 참가자 전원의 스마트폰에 '[제 N조 실시간 경기 입장하기]' 배너가 자동 활성화됩니다.`
       )
     ) {
       return;
     }
-
-    const res = ClubStorage.replacePlayerWithWaitingCandidate(room.id, groupNumber, playerId);
+    const res = await ClubStorage.launchAllTournamentGroups(room.id);
     if (res.success && res.room) {
       setRoom(res.room);
       showToast(res.message);
-    } else {
-      alert(res.message);
+    }
+  };
+
+  // 🔓 [신페리오 자물쇠 해제] 대회 마감 시 숨은 홀 전격 공개
+  const handleUnsealHiddenHoles = () => {
+    if (!room) return;
+    if (
+      !confirm(
+        isJapanese
+          ? '🔓 新ペリア隠しホール暗号を解除し、電光掲示板に電撃公開しますか？'
+          : '🔓 신페리오 숨은 홀 자물쇠를 해제하고, 전광판에 전격 공개하시겠습니까?\n\n참가자 전원의 핸디캡과 네트 스코어가 투명하게 즉시 재계산됩니다!'
+      )
+    ) {
+      return;
+    }
+    const res = ClubStorage.unsealTournamentHiddenHoles(room.id);
+    if (res.success && res.room) {
+      setRoom(res.room);
+      showToast(res.message);
     }
   };
 
@@ -812,6 +952,16 @@ export default function ClubRoomDetailPage() {
           </div>
         </div>
 
+        {/* 🚀 [NEW] 전 조 4인 실시간 대기실 일괄 기동 및 출발 확정 버튼 */}
+        <button
+          type="button"
+          onClick={handleLaunchAllGroups}
+          className="w-full bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-700 hover:from-emerald-600 hover:to-teal-800 text-white font-black text-xs py-3 rounded-2xl shadow-md transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer border border-emerald-400"
+        >
+          <Play className="w-4 h-4 text-white fill-white" />
+          <span>{isJapanese ? '🚀 全組の4人リアルタイム待機室を一括起動 (出発確定)' : '🚀 전 조 4인 실시간 대기실 일괄 기동 (출발 확정)'}</span>
+        </button>
+
         {/* 원터치 액션 버튼들 (초대장 복사, 결과 리포트 복사) */}
         <div className="grid grid-cols-2 gap-2 pt-1">
           <button
@@ -831,6 +981,18 @@ export default function ClubRoomDetailPage() {
             <span>{isJapanese ? '📋 1秒表彰式＆受領確認' : '📋 1초 시상식 및 수령 확인'}</span>
           </button>
         </div>
+
+        {/* 🏆 [3단계] 1080p 공식 시상식 카드 1초 즉시 발급 버튼 */}
+        <button
+          type="button"
+          onClick={handleGenerateAndDownloadAwardCard}
+          disabled={generatingAwardCard}
+          className="w-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:from-amber-600 hover:to-yellow-500 text-stone-950 font-black text-xs py-3 rounded-2xl shadow-md transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer border border-yellow-300"
+        >
+          <Award className="w-4 h-4 text-stone-950 shrink-0" />
+          <span>{generatingAwardCard ? '1080p 시상 카드 렌더링 중...' : (isJapanese ? '🏆 1080p公式表彰カード1秒自動発行' : '🏆 1080p 공식 시상식 카드 1초 자동 발급')}</span>
+          <Download className="w-3.5 h-3.5 text-stone-900 ml-1" />
+        </button>
       </div>
 
       {/* 🎯 대회 경기 방식 & 공식 룰 공시 카드 */}
@@ -1674,6 +1836,60 @@ export default function ClubRoomDetailPage() {
             </button>
           </div>
 
+          {/* 🌟 [3단계] 실시간 홀인원(Hole-in-One) 골든 축하 긴급 알림 배너 */}
+          {holeInOneToast && (
+            <div className="p-3.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-stone-950 rounded-2xl shadow-lg border-2 border-yellow-200 animate-bounce flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl animate-spin">🌟</span>
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-amber-900">HOLE-IN-ONE ALERT!</div>
+                  <div className="text-xs font-black">
+                    🎉 축하합니다! [제 {holeInOneToast.groupNumber}조 {holeInOneToast.playerName} 님] {holeInOneToast.holeNumber}번 홀 홀인원(1타) 달성!! 🏆
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHoleInOneToast(null)}
+                className="text-xs font-black p-1 hover:bg-amber-400/50 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* 🔀 [3단계] 실시간 순위표 듀얼 탭 전환 (그로스 vs 신페리오) */}
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-100 rounded-xl border border-stone-200">
+            <button
+              type="button"
+              onClick={() => setLeaderboardViewMode('GROSS')}
+              className={`py-2 text-xs font-black rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
+                leaderboardViewMode === 'GROSS'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <span>🏌️ {isJapanese ? 'グロス (実打数) 順位' : '그로스 (실타수) 순위'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!room.isUnsealed) {
+                  alert(isJapanese ? '新ペリア順位は大会終了および隠しホール公開後に閲覧可能です。' : '신페리오 순위는 대회 마감 및 숨은 홀 자물쇠 해제 후에 공개됩니다.');
+                  return;
+                }
+                setLeaderboardViewMode('NEW_PERIO');
+              }}
+              className={`py-2 text-xs font-black rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
+                leaderboardViewMode === 'NEW_PERIO'
+                  ? 'bg-amber-500 text-stone-950 shadow-xs'
+                  : 'text-stone-600 hover:text-stone-900'
+              }`}
+            >
+              <span>🎯 {isJapanese ? '新ペリア (ネット) 順位' : '신페리오 (네트) 순위'} {!room.isUnsealed && '🔒'}</span>
+            </button>
+          </div>
+
           {/* 🛡️ 직전 우승자 시상 유예(독식 방지) 안내 배너 */}
           {graceInfo && (
             <div className="bg-gradient-to-r from-purple-950 via-purple-900 to-indigo-950 text-purple-100 rounded-2xl p-3.5 shadow-xs space-y-2 border border-purple-400/40">
@@ -1696,8 +1912,54 @@ export default function ClubRoomDetailPage() {
             </div>
           )}
 
+          {/* 🔒 신페리오 암호 봉인 / 전격 공개 상태 배너 */}
+          {room.gameMode === 'NEW_PERIO' && (
+            <div
+              className={`p-3.5 rounded-2xl border text-xs font-black shadow-xs space-y-2 ${
+                room.isUnsealed
+                  ? 'bg-gradient-to-r from-amber-50 via-yellow-50 to-emerald-50 border-amber-300 text-stone-900'
+                  : 'bg-gradient-to-r from-purple-950 via-stone-900 to-indigo-950 text-white border-purple-500/50'
+              }`}
+            >
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">{room.isUnsealed ? '🔓' : '🔒'}</span>
+                  <div>
+                    <div className="font-black text-sm flex items-center gap-1.5">
+                      <span>
+                        {room.isUnsealed
+                          ? (isJapanese ? '新ペリア隠しホール電撃公開完了！' : '신페리오 숨은 홀 전격 공개 완료!')
+                          : (isJapanese ? '新ペリア隠しホール暗号封印中' : '신페리오 12개 숨은 홀 비밀 암호 봉인 중')}
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        room.isUnsealed ? 'bg-amber-200 text-amber-950' : 'bg-purple-800 text-purple-200'
+                      }`}>
+                        {room.isUnsealed ? '전광판 투명 산출' : '사후 변조 방지'}
+                      </span>
+                    </div>
+                    <div className={`text-[11px] font-mono mt-0.5 ${room.isUnsealed ? 'text-amber-900 font-black' : 'text-purple-300'}`}>
+                      {room.isUnsealed
+                        ? `공개된 숨은 홀: 【 ${room.unsealedHoles?.join('번, ')}번 홀 】`
+                        : `사전 SHA-256 지문: ${room.hiddenHolesHash ? room.hiddenHolesHash.slice(0, 24) + '...' : '봉인 생성 완료'}`}
+                    </div>
+                  </div>
+                </div>
+
+                {!room.isUnsealed && (
+                  <button
+                    type="button"
+                    onClick={handleUnsealHiddenHoles}
+                    className="px-3 py-1.5 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 text-stone-950 font-black text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1 border border-amber-300"
+                  >
+                    <span>🔓 {isJapanese ? 'ホール公開' : '숨은 홀 전격 공개'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* 신페리오인 경우 1위 우승자 & 메달리스트 특별 시상 카드 */}
-          {room.gameMode === 'NEW_PERIO' && individuals.length > 0 && (() => {
+          {room.gameMode === 'NEW_PERIO' && room.isUnsealed && individuals.length > 0 && (() => {
             const champion = individuals[0];
             const sortedByGross = [...individuals].sort((a, b) => a.totalStrokes - b.totalStrokes);
             const medalist = sortedByGross[0];
@@ -1734,13 +1996,13 @@ export default function ClubRoomDetailPage() {
           {/* [대표님 지시] 200인 이상 대규모 대회 리더보드 검색 및 내 순위 원터치 점프 바 */}
           {(() => {
             const selfName = (ParkOnStorage.getUserDisplayName(room.clubId) || '').trim();
-            const myIndividual = individuals.find(
+            const myIndividual = displayIndividuals.find(
               (p) =>
                 (selfName && p.playerName.includes(selfName)) ||
                 (selfName.length >= 2 && p.playerName.includes(selfName.slice(0, 2)))
             );
 
-            const filteredIndividuals = individuals.filter((p) => {
+            const filteredIndividuals = displayIndividuals.filter((p) => {
               if (leaderboardFilter === 'TOP10' && p.rank > 10) return false;
               if (leaderboardFilter === 'MY_GROUP') {
                 if (!myIndividual) return true;

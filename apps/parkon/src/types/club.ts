@@ -23,6 +23,7 @@ export interface ClubGroup {
   leaderName: string;
   players: ClubPlayer[]; // 3~4인 (상황에 따라 2~5인 가능)
   sessionId?: string;    // linked RoundSession id
+  linkedRoundRoomId?: string; // [NEW] Supabase round_rooms 1:1 매핑 룸 ID (예: 'room_club_xxx_g1')
   totalScore?: number;
   avgScore?: number;
   status: 'WAITING' | 'PLAYING' | 'FINISHED' | 'RECRUITING';
@@ -55,6 +56,11 @@ export interface ClubEventRoom {
   nearPinHole?: number; // [NEW] 니어핀 지정 홀 번호 (선택)
   longestHole?: number; // [NEW] 롱기스트 지정 홀 번호 (선택)
   awardConfig?: AwardRuleConfig; // [NEW] 시상 룰 및 행운상 추첨 커스텀 설정
+  // 🔒 [NEW] 신페리오 공정성 SHA-256 암호학적 봉인 필드
+  hiddenHolesHash?: string; // 사전에 공시되는 위변조 방지 SHA-256 해시값 (예: 'e3b0c442...')
+  sealedSecret?: string;    // 비밀 난수 Salt + 무작위 홀 목록이 봉인된 암호 토큰
+  isUnsealed?: boolean;     // 대회 공식 종료 시점 자물쇠 해제 여부 (true = 투명 공개됨)
+  unsealedHoles?: number[]; // 전격 공개된 숨은 홀 번호 목록 (예: [2, 5, 8, 11, 14, 17])
   groups: ClubGroup[];
   waitingPool?: ClubPlayer[]; // 참가 신청 대기 명단 (조 편성 전)
   groupingMethod?: 'RANDOM' | 'BALANCED_GENDER' | 'BALANCED_TIER' | 'KEEP_LEADERS' | 'ASSIGN_LEADERS' | 'PARTIAL_ASSIGN' | 'MANUAL';
@@ -104,6 +110,9 @@ export interface ClubMember {
   duesPaidAt?: string; // [NEW] 연회비 납부 일자 (예: 2026-09-19)
   duesAmount?: number; // [NEW] 납부 금액 (예: 50000)
   duesNotes?: string; // [NEW] 납부 방식 / 메모 (예: '계좌 입금', '현금 수납')
+  memberCode?: string; // [NEW] 7자리 고유 회원번호 (e.g. 'PKY-7788')
+  diamondTier?: string; // [NEW] 컬러 다이아몬드 티어 코드 (e.g. 'GOLDEN_HALL', 'BLUE_DIA')
+  totalCompleted9Holes?: number; // [NEW] 누적 9홀 완주 횟수
 }
 
 // 🔐 탈퇴 회원 비밀 보관소 (영구 보존 & 복귀 시 원상 회복)
@@ -139,8 +148,16 @@ export interface ClubChronicleTournament {
   winnerScore: number;
   runnerUpName?: string;
   runnerUpScore?: number;
+  thirdPlaceName?: string;
+  thirdPlaceScore?: number;
   medalistName?: string;
   medalistScore?: number;
+  longestName?: string;
+  longestDistance?: string;
+  nearPinName?: string;
+  nearPinDistance?: string;
+  groupPhotoUrl?: string; // [3단계] 워터마크 각인 단체 기념사진
+  awardCardUrl?: string; // [3단계] 1080p 공식 시상식 카드 URL
   // 특별상 및 행운상
   specialAwards?: SpecialAwardWinner[];
   luckyDrawWinners?: LuckyDrawWinner[];
@@ -186,7 +203,7 @@ export interface ParkGolfClub {
   members: ClubMember[];     // 소속 활성 회원 명부
   archivedMembers?: ArchivedClubMember[]; // [NEW] 탈퇴 회원 비밀 보관함 (복귀 시 원상 회복)
   chronicles?: ClubChronicleTournament[]; // [NEW] 클럽 영구 대회 연대기 (실록)
-  pendingMembers?: { id: string; name: string; phone?: string; requestedAt: string; message?: string }[]; // 가입 승인 대기 명단
+  pendingMembers?: { id: string; name: string; phone?: string; requestedAt: string; message?: string; memberCode?: string; diamondTier?: string; totalCompleted9Holes?: number }[]; // 가입 승인 대기 명단
   isPublic: boolean;         // 공개 여부
   badgeColor?: string;       // 뱃지 테마 색상
   isParkOnClub?: boolean;    // [NEW] 파크골프 올인원 공식 가입/제휴 클럽 여부 (최우선 상단 정렬 및 👑 배지 표출)

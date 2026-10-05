@@ -1,4 +1,5 @@
 import { RoundSession, Course, RoundPlayer } from '@/types/parkon';
+import { calculateTier, getUserCompleted9Holes } from './courseBlockTier';
 
 const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
@@ -193,42 +194,48 @@ export async function generateScorecardImage(
   ctx.strokeRect(38, 38, canvas.width - 76, canvas.height - 76);
 
   // 2. Header Section
-  // Top Title Badge
+  // 💎 골퍼 컬러 다이아몬드 티어 계산
+  const primaryPlayer = round.players.find((p) => p.isSelf) || rankedPlayers[0] || round.players[0];
+  const primaryName = primaryPlayer?.name || '';
+  const primaryCompleted9Holes = typeof window !== 'undefined' ? getUserCompleted9Holes(primaryName) : 0;
+  const primaryTier = calculateTier(primaryCompleted9Holes);
+
+  // Top Title Badge (파크골프 올인원 공식 인증 스코어카드)
   ctx.fillStyle = 'rgba(251, 191, 36, 0.18)';
   ctx.beginPath();
-  ctx.roundRect(70, 56, 440, 44, 22);
+  ctx.roundRect(70, 56, 420, 44, 22);
   ctx.fill();
   ctx.strokeStyle = '#FBBF24';
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
   ctx.fillStyle = '#FDE047';
-  ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+  ctx.font = 'bold 19px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText(
-    isJapanese ? '⛳ パークゴルフ オールインワン 公式認定スコアカード' : '⛳ 파크골프 올인원 공식 인증 스코어카드',
-    90,
+    isJapanese ? '⛳ パークゴルフ オールインワン 公式認定' : '⛳ 파크골프 올인원 공식 인증 스코어카드',
+    88,
     85
   );
 
-  // Status Badge (🏅 정규 필드 완주 인증 vs 🧪 모의/빠른 입력)
+  // Status Badge (🏅 정규 완주 인증 vs 🧪 모의/연습)
   const isVerifiedRound = round.isFieldVerified ?? (round.isOfficial !== false && !round.isVirtual && durationMin >= (totalHolesCount <= 9 ? 25 : 50));
   if (isVerifiedRound) {
     ctx.fillStyle = 'rgba(251, 191, 36, 0.25)';
     ctx.beginPath();
-    ctx.roundRect(530, 56, 210, 44, 22);
+    ctx.roundRect(505, 56, 185, 44, 22);
     ctx.fill();
     ctx.strokeStyle = '#F59E0B';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
     ctx.fillStyle = '#FDE047';
-    ctx.font = '900 19px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-    ctx.fillText(isJapanese ? '🏅 公式完走 認証' : '🏅 정규 완주 인증', 550, 85);
+    ctx.font = '900 18px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+    ctx.fillText(isJapanese ? '🏅 公式完走 認証' : '🏅 정규 완주 인증', 520, 85);
   } else {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
     ctx.beginPath();
-    ctx.roundRect(530, 56, 170, 44, 22);
+    ctx.roundRect(505, 56, 185, 44, 22);
     ctx.fill();
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
     ctx.lineWidth = 1.5;
@@ -236,8 +243,29 @@ export async function generateScorecardImage(
 
     ctx.fillStyle = '#E2E8F0';
     ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-    ctx.fillText(isJapanese ? '🧪 模擬・練習' : '🧪 모의·연습', 550, 85);
+    ctx.fillText(isJapanese ? '🧪 模擬・練習' : '🧪 모의·연습', 525, 85);
   }
+
+  // 💎 [대표님 절대 지침]: 컬러 다이아몬드 훈장 직인 (상단 고해상도 뱃지)
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+  ctx.beginPath();
+  ctx.roundRect(705, 56, 305, 44, 22);
+  ctx.fill();
+  ctx.strokeStyle = primaryTier.accentColor || '#FBBF24';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '900 17px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+  ctx.textAlign = 'center';
+  const tierDisplayName = isJapanese ? primaryTier.nameJa : primaryTier.nameKo;
+  const tierShortName = tierDisplayName.length > 9 ? tierDisplayName.slice(0, 8) + '..' : tierDisplayName;
+  ctx.fillText(
+    `${primaryTier.icon} ${tierShortName} (${primaryCompleted9Holes}${isJapanese ? '回' : '회'})`,
+    705 + 152,
+    85
+  );
+  ctx.textAlign = 'left';
 
   // Course Title & Metadata
   const courseTitle = round.courseName || course.name;
@@ -322,23 +350,51 @@ export async function generateScorecardImage(
     ctx.fillText(photoLabel, photoX + photoW / 2, photoY + photoH - 15);
     ctx.textAlign = 'left';
   } else {
-    // No photo: display official GPS seal stamp on top right
-    const sealX = 770;
-    const sealY = 120;
-    ctx.fillStyle = 'rgba(52, 211, 153, 0.15)';
+    // No photo: display official Diamond Tier Honor Seal (훈장 직인) & GPS seal stamp
+    const sealX = 740;
+    const sealY = 110;
+    const sealW = 270;
+    const sealH = 150;
+
+    // Diamond Tier Seal Box (골드/티어 고급 훈장 직인)
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
     ctx.beginPath();
-    ctx.roundRect(sealX, sealY, 240, 75, 18);
+    ctx.roundRect(sealX, sealY, sealW, sealH, 18);
     ctx.fill();
-    ctx.strokeStyle = '#34D399';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = primaryTier.accentColor || '#FBBF24';
+    ctx.lineWidth = 2.5;
     ctx.stroke();
 
+    // Seal Header Banner
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.beginPath();
+    ctx.roundRect(sealX, sealY, sealW, 36, [18, 18, 0, 0]);
+    ctx.fill();
+
+    ctx.fillStyle = '#FDE047';
+    ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(isJapanese ? '🎖️ 公認ダイヤモンド栄誉勲章' : '🎖️ 공인 다이아몬드 명예 훈장', sealX + sealW / 2, sealY + 24);
+
+    // Tier Icon & Tier Name
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '900 20px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+    ctx.fillText(`${primaryTier.icon} ${isJapanese ? primaryTier.nameJa : primaryTier.nameKo}`, sealX + sealW / 2, sealY + 68);
+
+    // Completed 9-hole count
+    ctx.fillStyle = '#6EE7B7';
+    ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+    ctx.fillText(
+      isJapanese ? `9ホール通算 ${primaryCompleted9Holes}回 完走認定` : `9홀 통산 ${primaryCompleted9Holes}회 완주 공인`,
+      sealX + sealW / 2,
+      sealY + 98
+    );
+
+    // GPS Stamp line
     ctx.fillStyle = '#34D399';
-    ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-    ctx.fillText(isJapanese ? '📍 GPS公式現地認証' : '📍 GPS 공식 현장 인증', sealX + 22, sealY + 33);
-    ctx.fillStyle = '#A7F3D0';
-    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-    ctx.fillText(isJapanese ? 'タイムスタンプ公認記録' : '타임스탬프 공인 보존', sealX + 26, sealY + 58);
+    ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+    ctx.fillText(isJapanese ? '📍 GPS公式現地認証 · 永久保存' : '📍 GPS 공식 현장 인증 · 영구 보존', sealX + sealW / 2, sealY + 130);
+    ctx.textAlign = 'left';
   }
 
   // Divider
@@ -405,13 +461,15 @@ export async function generateScorecardImage(
     ctx.font = '900 22px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
     ctx.fillText(medalText, 98, rowY + 34);
 
-    // Player Name
+    // Player Name & Diamond Tier Icon
+    const playerCompleted = typeof window !== 'undefined' ? getUserCompleted9Holes(p.name) : 0;
+    const playerTier = calculateTier(playerCompleted);
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
     const leaderBadge = p.isLeader ? (isJapanese ? ' (組長)' : ' (조장)') : '';
     const selfBadge = p.isSelf ? (isJapanese ? ' [本人]' : ' [본인]') : '';
     const displayName = p.name.length > 7 ? p.name.slice(0, 6) + '..' : p.name;
-    ctx.fillText(`${displayName}${leaderBadge}${selfBadge}`, 210, rowY + 34);
+    ctx.fillText(`${playerTier.icon} ${displayName}${leaderBadge}${selfBadge}`, 210, rowY + 34);
 
     // Total Strokes
     ctx.fillStyle = idx === 0 ? '#34D399' : '#FFFFFF';
@@ -581,10 +639,10 @@ export async function generateScorecardImage(
   ctx.textAlign = 'right';
   ctx.fillText(`${isJapanese ? '公認シリアル' : '공인 시리얼'}: ${serialCode}`, 1010, footerY);
 
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-  ctx.font = 'normal 14px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+  ctx.fillStyle = primaryTier.accentColor || '#FDE047';
+  ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
   ctx.fillText(
-    isJapanese ? '🔒 偽造防止タイムスタンプ永久保存' : '🔒 위변조 방지 타임스탬프 공인 보존',
+    `${primaryTier.icon} ${isJapanese ? primaryTier.nameJa : primaryTier.nameKo} (${primaryCompleted9Holes}${isJapanese ? '回完走' : '회 완주'}) · ${isJapanese ? '公認栄誉印' : '공인 훈장 직인'}`,
     1010,
     footerY + 24
   );

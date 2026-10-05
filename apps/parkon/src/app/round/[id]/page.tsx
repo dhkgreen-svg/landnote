@@ -18,7 +18,8 @@ import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
 import { supabase } from '@/lib/supabase';
 import { CourseStampModal } from '@/components/CourseStampModal';
-import { buildCourseBlocksFromSession, incrementUserCompleted9Holes } from '@/lib/courseBlockTier';
+import { buildCourseBlocksFromSession, incrementUserCompleted9Holes, calculateTier, getUserCompleted9Holes } from '@/lib/courseBlockTier';
+import { DiamondTierBadge } from '@/components/DiamondTierBadge';
 
 export default function RoundPlayPage() {
   const params = useParams();
@@ -2523,6 +2524,19 @@ export default function RoundPlayPage() {
                           <span>{isJapanese ? '代表' : isEnglish ? 'Leader' : '조장'}</span>
                         </span>
                       )}
+
+                      {(() => {
+                        const pCompleted = getUserCompleted9Holes(player.name);
+                        const pTier = calculateTier(pCompleted);
+                        return (
+                          <DiamondTierBadge
+                            tier={pTier}
+                            completedCount={pCompleted}
+                            size="xs"
+                            showLabel={false}
+                          />
+                        );
+                      })()}
 
                       <span
                         className={`font-black ${

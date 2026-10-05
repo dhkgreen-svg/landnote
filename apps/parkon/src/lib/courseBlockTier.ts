@@ -277,7 +277,72 @@ export function incrementUserCompleted9Holes(userNameOrCode?: string, count: num
     const key = userNameOrCode ? `${TIER_STORAGE_KEY}_${userNameOrCode.trim()}` : TIER_STORAGE_KEY;
     localStorage.setItem(key, updated.toString());
     localStorage.setItem(TIER_STORAGE_KEY, updated.toString()); // default user key also sync
+
+    // 🌐 Supabase 클라우드 원격 영구 백업 비동기 발동 (오프라인 Fail-Safe)
+    if (userNameOrCode) {
+      syncUserTierToSupabase(userNameOrCode, updated).catch(() => {});
+    }
+
     return updated;
   } catch {}
   return 0;
+}
+
+/**
+ * 🌐 회원번호 기반 Supabase 'user_tier_stats' 테이블 원격 영구 저장 (Fail-Safe)
+ */
+export async function syncUserTierToSupabase(
+  userNameOrCode: string,
+  completedCount: number
+): Promise<void> {
+  if (!userNameOrCode || typeof window === 'undefined') return;
+  try {
+    const { supabase } = await import('./supabase');
+    const tier = calculateTier(completedCount);
+    const memberCode = localStorage.getItem('parkon_member_code')?.trim() || userNameOrCode;
+
+    await supabase.from('user_tier_stats').upsert(
+      {
+        member_code: memberCode,
+        user_name: userNameOrCode,
+        total_9hole_completed: completedCount,
+        current_tier_code: tier.code,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'member_code' }
+    );
+  } catch (e) {
+    // 음영 지역/테이블 미생성 시 클라이언트 무장애(Fail-Safe) 보장
+  }
+}
+
+/**
+ * 🔄 기기 변경 또는 폰 캐시 삭제 시 Supabase에서 누적 완주 횟수 100% 무결 복원
+ */
+export async function fetchUserTierFromSupabase(
+  userNameOrCode: string
+): Promise<number | null> {
+  if (!userNameOrCode || typeof window === 'undefined') return null;
+  try {
+    const { supabase } = await import('./supabase');
+    const memberCode = localStorage.getItem('parkon_member_code')?.trim() || userNameOrCode;
+    const { data, error } = await supabase
+      .from('user_tier_stats')
+      .select('total_9hole_completed')
+      .or(`member_code.eq.${memberCode},user_name.eq.${userNameOrCode}`)
+      .limit(1)
+      .maybeSingle();
+
+    if (!error && data && typeof data.total_9hole_completed === 'number') {
+      const remoteCount = data.total_9hole_completed;
+      const localCount = getUserCompleted9Holes(userNameOrCode);
+      if (remoteCount > localCount) {
+        const key = `${TIER_STORAGE_KEY}_${userNameOrCode.trim()}`;
+        localStorage.setItem(key, remoteCount.toString());
+        localStorage.setItem(TIER_STORAGE_KEY, remoteCount.toString());
+        return remoteCount;
+      }
+    }
+  } catch {}
+  return null;
 }

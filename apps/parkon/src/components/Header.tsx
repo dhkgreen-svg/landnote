@@ -9,6 +9,7 @@ import { getSavedMemberCode, isPlaceholderName } from '@/lib/memberCodeUtils';
 import { KakaoLoginModal } from './KakaoLoginModal';
 import { HelpRulesHubModal } from './HelpRulesHubModal';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { calculateTier, getUserCompleted9Holes } from '@/lib/courseBlockTier';
 
 interface NavGuardInfo {
   url: string;
@@ -178,14 +179,22 @@ export function Header() {
                 {hasRegisteredName ? '👤' : '✍️'}
               </button>
               <div className="flex flex-col items-start leading-tight text-left">
-                {/* 1행: 이름 (누르면 프로필/회원정보) */}
-                <button
-                  type="button"
-                  onClick={() => handleOpenModal(hasRegisteredName ? 'profile' : 'login')}
-                  className="text-[11.5px] font-black tracking-tight truncate max-w-[70px] sm:max-w-[95px] cursor-pointer hover:underline text-left py-0.5 leading-none"
-                >
-                  {hasRegisteredName ? currentDisplayName : (isJapanese ? 'お名前入力' : '성명 입력')}
-                </button>
+                {/* 1행: 이름 + 다이아몬드 티어 아이콘 */}
+                {(() => {
+                  const user9H = getUserCompleted9Holes(currentDisplayName);
+                  const userTier = calculateTier(user9H);
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenModal(hasRegisteredName ? 'profile' : 'login')}
+                      className="text-[11.5px] font-black tracking-tight truncate max-w-[85px] sm:max-w-[110px] cursor-pointer hover:underline text-left py-0.5 leading-none flex items-center gap-1"
+                      title={`${userTier.nameKo} (누적 ${user9H}회 완주)`}
+                    >
+                      {hasRegisteredName && <span className="text-xs leading-none drop-shadow-xs">{userTier.icon}</span>}
+                      <span>{hasRegisteredName ? currentDisplayName : (isJapanese ? 'お名前入力' : '성명 입력')}</span>
+                    </button>
+                  );
+                })()}
                 {/* 2행: 로그인/고유번호 (누르면 무조건 7자리 고유번호 입력 로그인 창으로 직행!) */}
                 <button
                   type="button"

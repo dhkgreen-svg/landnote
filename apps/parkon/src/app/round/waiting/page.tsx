@@ -9,6 +9,8 @@ import { RoundSession, RoundPlayer, ParkOnRoom } from '@/types/parkon';
 import { CheckCircle2, Users, MapPin, Flag, Home, Sparkles, Loader2, Smartphone } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { supabase } from '@/lib/supabase';
+import { DiamondTierBadge } from '@/components/DiamondTierBadge';
+import { calculateTier, getUserCompleted9Holes, fetchUserTierFromSupabase } from '@/lib/courseBlockTier';
 
 function WaitingContent() {
   const router = useRouter();
@@ -235,7 +237,7 @@ function WaitingContent() {
   const isPlaceholderSlot = (name?: string) => {
     if (!name || !name.trim()) return true;
     const clean = name.trim().toLowerCase();
-    return clean.includes('동반자') || clean.includes('동반') || clean.includes('게스트') || clean.includes('선수') || clean.includes('同伴') || clean.includes('ゲスト');
+    return clean.includes('동반자') || clean.includes('동반') || clean.includes('게스트') || clean.includes('선수') || clean.includes('플레이어') || clean.includes('player') || clean.includes('同伴') || clean.includes('ゲスト');
   };
 
   let rawList: Array<{ id?: string; name: string; isLeader?: boolean }> = [];
@@ -386,51 +388,73 @@ function WaitingContent() {
                 return playersList.map((p, idx) => {
                   const isLeader = p.isLeader || idx === 0;
                   const isMe = idx === mySlotIndex;
+                  const pName = p.name || (isJapanese ? `同伴者 ${idx + 1}` : `동반자 ${idx + 1}`);
+                  const completed9H = getUserCompleted9Holes(p.name);
+                  const tier = calculateTier(completed9H);
+                  const isHighTier = ['BLUE_DIA', 'PINK_DIA', 'BLACK_DIA', 'GOLDEN_HALL'].includes(tier.code);
 
-                return (
-                  <div
-                    key={p.id || idx}
-                    className={`flex items-center justify-between p-2.5 rounded-xl border transition ${
-                      isLeader
-                        ? 'bg-amber-50/90 border-amber-300 text-amber-950 font-black'
-                        : isMe
-                        ? 'bg-emerald-100 border-emerald-300 text-emerald-950 font-black'
-                        : 'bg-white border-stone-200 text-stone-700 font-medium'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${
-                          isLeader
-                            ? 'bg-amber-400 text-amber-950'
-                            : isMe
-                            ? 'bg-emerald-700 text-white'
-                            : 'bg-stone-200 text-stone-600'
-                        }`}
-                      >
-                        {idx + 1}
-                      </span>
-                      <span className="text-sm font-black">
-                        {p.name || (isJapanese ? `同伴者 ${idx + 1}` : `동반자 ${idx + 1}`)}
-                      </span>
-                    </div>
+                  return (
+                    <div
+                      key={p.id || idx}
+                      className={`flex items-center justify-between p-2.5 rounded-xl border transition relative overflow-hidden ${
+                        isHighTier
+                          ? 'ring-2 ring-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.35)]'
+                          : ''
+                      } ${
+                        isLeader
+                          ? 'bg-amber-50/90 border-amber-300 text-amber-950 font-black'
+                          : isMe
+                          ? 'bg-emerald-100 border-emerald-300 text-emerald-950 font-black'
+                          : 'bg-white border-stone-200 text-stone-700 font-medium'
+                      }`}
+                    >
+                      {/* 상위 티어 배경 회전/펄스 오라 */}
+                      {isHighTier && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-amber-400/10 via-pink-400/10 to-sky-400/10 pointer-events-none animate-pulse" />
+                      )}
 
-                    <div className="flex items-center gap-1">
-                      {isLeader && (
-                        <span className="text-xs bg-amber-200 text-amber-900 font-black px-2 py-0.5 rounded-md flex items-center gap-1">
-                          {isJapanese ? '👑 リーダー (設定権限)' : '👑 조장 (설정 권한)'}
+                      <div className="flex items-center gap-2 relative z-10">
+                        <span
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${
+                            isLeader
+                              ? 'bg-amber-400 text-amber-950'
+                              : isMe
+                              ? 'bg-emerald-700 text-white'
+                              : 'bg-stone-200 text-stone-600'
+                          }`}
+                        >
+                          {idx + 1}
                         </span>
-                      )}
-                      {isMe && !isLeader && (
-                        <span className="text-xs bg-emerald-700 text-white font-black px-2 py-0.5 rounded-md">
-                          {isJapanese ? '本人 (自分)' : '본인 (나)'}
+
+                        <span className="text-sm font-black truncate max-w-[110px] sm:max-w-[140px]">
+                          {pName}
                         </span>
-                      )}
+
+                        {/* 💎 컬러 다이아몬드 티어 뱃지 */}
+                        <DiamondTierBadge
+                          tier={tier}
+                          completedCount={completed9H}
+                          size="xs"
+                          showLabel={true}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1 relative z-10 shrink-0">
+                        {isLeader && (
+                          <span className="text-xs bg-amber-200 text-amber-900 font-black px-2 py-0.5 rounded-md flex items-center gap-1">
+                            {isJapanese ? '👑 リーダー' : '👑 조장'}
+                          </span>
+                        )}
+                        {isMe && !isLeader && (
+                          <span className="text-xs bg-emerald-700 text-white font-black px-2 py-0.5 rounded-md">
+                            {isJapanese ? '本人' : '본인 (나)'}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              });
-            })()}
+                  );
+                });
+              })()}
             </div>
           </div>
 

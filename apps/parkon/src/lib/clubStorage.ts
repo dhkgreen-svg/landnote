@@ -17,6 +17,13 @@ import {
   ClubRecruitStatus,
 } from '@/types/club';
 import { NATIONWIDE_PARKGOLF_CLUBS } from './clubDirectoryData';
+import { supabase } from './supabase';
+import { calculateTier, getUserCompleted9Holes, UserDiamondTier } from './courseBlockTier';
+import {
+  generateSealedNewPerioHolesSync,
+  verifyAndUnsealHolesSync,
+  calculateDynamicNewPerio,
+} from './newPerioSealer';
 
 const STORAGE_KEYS = {
   CLUB_ROOMS: 'parkon_club_rooms_v1',
@@ -732,19 +739,348 @@ export const ClubStorage = {
     };
   },
 
+  // 3-6-B. [현장 긴급 대응] 대기자가 없는 순수 결원(노쇼) 발생 시 '3인 1조' 규격으로 즉시 자동 전환
+  convertGroupToThreePlayers(
+    roomId: string,
+    groupNumber: number,
+    missingPlayerId: string
+  ): {
+    success: boolean;
+    removedPlayerName?: string;
+    group?: ClubGroup;
+    room?: ClubEventRoom;
+    message: string;
+  } {
+    const room = this.getRoom(roomId);
+    if (!room) return { success: false, message: '모임 방을 찾을 수 없습니다.' };
+
+    const targetGroup = room.groups.find((g) => g.groupNumber === groupNumber);
+    if (!targetGroup) return { success: false, message: `${groupNumber}조를 찾을 수 없습니다.` };
+
+    const pIdx = targetGroup.players.findIndex((p) => p.id === missingPlayerId);
+    if (pIdx === -1) return { success: false, message: '해당 선수를 조에서 찾을 수 없습니다.' };
+
+    const [removedPlayer] = targetGroup.players.splice(pIdx, 1);
+
+    // 잔여 인원(3인) 티오프 타순 및 조장 자동 재정렬
+    if (targetGroup.players.length > 0) {
+      if (!targetGroup.players.some((p) => p.isLeader)) {
+        targetGroup.players[0].isLeader = true;
+      }
+      const leader = targetGroup.players.find((p) => p.isLeader) || targetGroup.players[0];
+      targetGroup.leaderName = leader.name;
+    } else {
+      targetGroup.leaderName = '';
+    }
+
+    this.saveRoom(room);
+    this.syncEventToSupabase(room).catch(() => {});
+
+    return {
+      success: true,
+      removedPlayerName: removedPlayer.name,
+      group: targetGroup,
+      room,
+      message: `'${removedPlayer.name}' 님의 불참으로 [${groupNumber}조]가 결번 없이 자연스러운 3인 1조로 즉시 전환되었습니다! ⚡`,
+    };
+  },
+
+  // 3-6-C. 🔓 [신페리오 투명 공개] 대회 마감 시 자물쇠 해제 및 무결성 검증
+  unsealTournamentHiddenHoles(
+    roomId: string
+  ): {
+    success: boolean;
+    unsealedHoles: number[];
+    room?: ClubEventRoom;
+    message: string;
+  } {
+    const room = this.getRoom(roomId);
+    if (!room) return { success: false, unsealedHoles: [], message: '모임 방을 찾을 수 없습니다.' };
+
+    if (room.isUnsealed && room.unsealedHoles && room.unsealedHoles.length > 0) {
+      return {
+        success: true,
+        unsealedHoles: room.unsealedHoles,
+        room,
+        message: '이미 신페리오 숨은 홀이 공개되어 있습니다.',
+      };
+    }
+
+    if (!room.sealedSecret) {
+      // 봉인 토큰이 없을 경우 즉석에서 12개 무작위 생성
+      const fallback = generateSealedNewPerioHolesSync(room.totalHoles || 18);
+      room.sealedSecret = fallback.sealedSecret;
+      room.hiddenHolesHash = fallback.hiddenHolesHash;
+    }
+
+    const unsealRes = verifyAndUnsealHolesSync(room.sealedSecret, room.hiddenHolesHash);
+    if (!unsealRes.success) {
+      return { success: false, unsealedHoles: [], room, message: unsealRes.message };
+    }
+
+    room.isUnsealed = true;
+    room.unsealedHoles = unsealRes.unsealedHoles;
+
+    this.saveRoom(room);
+    this.syncEventToSupabase(room).catch(() => {});
+
+    return {
+      success: true,
+      unsealedHoles: unsealRes.unsealedHoles,
+      room,
+      message: `🎉 신페리오 12개 숨은 홀 [${unsealRes.unsealedHoles.join(', ')}번]이 전격 공개되었습니다!`,
+    };
+  },
+
+  // 3-6-D. 🚀 [전 조 동시 출발 확정] 1조부터 N조까지 Supabase 4인 실시간 대기실 일괄 생성
+  async launchAllTournamentGroups(
+    roomId: string
+  ): Promise<{
+    success: boolean;
+    room?: ClubEventRoom;
+    launchedCount: number;
+    message: string;
+  }> {
+    const room = this.getRoom(roomId);
+    if (!room) return { success: false, launchedCount: 0, message: '모임 방을 찾을 수 없습니다.' };
+
+    let count = 0;
+    const now = Date.now();
+
+    for (const group of room.groups) {
+      const linkedRoundRoomId = `room_club_${room.id}_g${group.groupNumber}`;
+      group.linkedRoundRoomId = linkedRoundRoomId;
+      group.sessionId = `round_club_${room.id}_g${group.groupNumber}`;
+      group.status = 'PLAYING';
+      count++;
+
+      // Supabase round_rooms 테이블 일괄 레코드 생성 (오프라인 Fail-Safe)
+      try {
+        await supabase.from('round_rooms').upsert(
+          {
+            room_id: linkedRoundRoomId,
+            leader_name: group.leaderName || (group.players[0]?.name) || '조장',
+            course_id: room.courseId,
+            course_name: room.courseName,
+            course_letter: group.startCourseLetter || 'A',
+            start_hole_index: 1,
+            player_count: group.players.length,
+            players: group.players.map((p, pIdx) => ({
+              id: p.id,
+              name: p.name,
+              isLeader: p.isLeader || pIdx === 0,
+              handicapTier: p.handicapTier || 'INTERMEDIATE',
+            })),
+            status: 'WAITING',
+            updated_at: now,
+          },
+          { onConflict: 'room_id' }
+        );
+      } catch (err) {
+        // 네트워크 장애 시에도 로컬 진행 보장
+      }
+    }
+
+    room.status = 'PLAYING';
+    this.saveRoom(room);
+    await this.syncEventToSupabase(room);
+
+    return {
+      success: true,
+      room,
+      launchedCount: count,
+      message: `🚀 총 ${count}개 조의 실시간 경기 대기실이 전원 기동되었습니다!`,
+    };
+  },
+
+  // 3-6-D. 🔄 [3단계] 전 조 실시간 스코어 동기화 & 홀인원(1타) 감지
+  async syncTournamentScoresFromRoundRooms(roomId: string): Promise<{
+    success: boolean;
+    room?: ClubEventRoom;
+    holeInOneAlerts: { playerName: string; groupNumber: number; holeNumber: number }[];
+    updatedGroupsCount: number;
+  }> {
+    const room = this.getRoom(roomId);
+    if (!room) return { success: false, holeInOneAlerts: [], updatedGroupsCount: 0 };
+
+    const holeInOneAlerts: { playerName: string; groupNumber: number; holeNumber: number }[] = [];
+    let updatedGroupsCount = 0;
+
+    // Supabase round_rooms 테이블에서 현재 대회의 연동 룸들 조회
+    try {
+      const roomPrefix = `room_club_${roomId}_g`;
+      const { data, error } = await supabase
+        .from('round_rooms')
+        .select('*')
+        .like('room_id', `${roomPrefix}%`);
+
+      if (data && !error && data.length > 0) {
+        for (const row of data) {
+          const matchedGroup = room.groups.find((g) => g.linkedRoundRoomId === row.room_id);
+          if (!matchedGroup) continue;
+
+          const session = row.round_session;
+          if (session && session.players && Array.isArray(session.players)) {
+            updatedGroupsCount++;
+            for (const sp of session.players) {
+              const targetPlayer = matchedGroup.players.find((p) => p.name === sp.name || p.id === sp.id);
+              if (targetPlayer) {
+                const prevScores = targetPlayer.scores || {};
+                targetPlayer.scores = sp.scores || targetPlayer.scores;
+                targetPlayer.totalStrokes = sp.totalStrokes || targetPlayer.totalStrokes;
+                targetPlayer.parDiff = sp.parDiff !== undefined ? sp.parDiff : targetPlayer.parDiff;
+                targetPlayer.holesCompleted = Object.keys(targetPlayer.scores || {}).length;
+
+                // 홀인원(1타) 신규 발생 감지
+                if (sp.scores) {
+                  for (const [hStr, score] of Object.entries(sp.scores)) {
+                    const hNum = Number(hStr);
+                    if (score === 1 && prevScores[hNum] !== 1) {
+                      holeInOneAlerts.push({
+                        playerName: targetPlayer.name,
+                        groupNumber: matchedGroup.groupNumber,
+                        holeNumber: hNum,
+                      });
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // 오프라인이거나 네트워크 오류 시 기존 로컬 데이터 유지
+    }
+
+    if (updatedGroupsCount > 0) {
+      this.saveRoom(room);
+    }
+
+    return {
+      success: true,
+      room,
+      holeInOneAlerts,
+      updatedGroupsCount,
+    };
+  },
+
   // 3-7. 대회 공식 마감 & 영구 실록 확정
   finalizeTournament(roomId: string): { success: boolean; room?: ClubEventRoom; message: string } {
     const room = this.getRoom(roomId);
     if (!room) return { success: false, message: '모임 방을 찾을 수 없습니다.' };
 
     room.status = 'FINISHED';
+
+    // 신페리오 경기 모드일 경우 대회 마감 시 숨은 홀 자동 자물쇠 해제 보장
+    if (room.gameMode === 'NEW_PERIO' && !room.isUnsealed) {
+      this.unsealTournamentHiddenHoles(roomId);
+    }
+
     this.saveRoom(room);
+    this.syncEventToSupabase(room).catch(() => {});
 
     return {
       success: true,
       room,
       message: `'${room.title}' 대회가 공식 마감되어 클럽 연대기에 영구 보존되었습니다! 🏆`,
     };
+  },
+
+  // 🌐 Supabase 'club_events' 원격 영구 동기화 (Fail-Safe)
+  async syncEventToSupabase(room: ClubEventRoom): Promise<void> {
+    if (!room || !room.id || typeof window === 'undefined') return;
+    try {
+      await supabase.from('club_events').upsert(
+        {
+          id: room.id,
+          club_id: room.clubId || 'club-default',
+          club_name: room.clubName,
+          tournament_type: room.tournamentType || 'CLUB_INTERNAL',
+          title: room.title,
+          course_id: room.courseId,
+          course_name: room.courseName,
+          host_name: room.hostName,
+          selected_course_letters: room.selectedCourseLetters,
+          total_holes: room.totalHoles,
+          target_total_players: room.targetTotalPlayers,
+          entry_fee: room.entryFee,
+          bank_account: room.bankAccount,
+          game_mode: room.gameMode,
+          game_mode_title: room.gameModeTitle,
+          game_rule_notes: room.gameRuleNotes,
+          near_pin_hole: room.nearPinHole,
+          longest_hole: room.longestHole,
+          award_config: room.awardConfig,
+          hidden_holes_hash: room.hiddenHolesHash,
+          sealed_secret: room.sealedSecret,
+          is_unsealed: room.isUnsealed || false,
+          unsealed_holes: room.unsealedHoles || [],
+          groups: room.groups,
+          waiting_pool: room.waitingPool || [],
+          grouping_method: room.groupingMethod,
+          status: room.status,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+    } catch {}
+  },
+
+  // 🔄 Supabase에서 클럽 대회 목록 원격 가져오기 및 로컬 병합
+  async fetchEventsFromSupabase(clubId?: string): Promise<ClubEventRoom[]> {
+    if (typeof window === 'undefined') return this.getAllRooms();
+    try {
+      let query = supabase.from('club_events').select('*').order('updated_at', { ascending: false });
+      if (clubId) {
+        query = query.eq('club_id', clubId);
+      }
+      const { data, error } = await query;
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const localRooms = this.getAllRooms();
+        const mergedMap = new Map<string, ClubEventRoom>();
+        localRooms.forEach((r) => mergedMap.set(r.id, r));
+
+        data.forEach((row: any) => {
+          const remoteRoom: ClubEventRoom = {
+            id: row.id,
+            clubId: row.club_id,
+            clubName: row.club_name,
+            tournamentType: row.tournament_type,
+            title: row.title,
+            courseId: row.course_id,
+            courseName: row.course_name,
+            hostName: row.host_name,
+            selectedCourseLetters: row.selected_course_letters || ['A', 'B'],
+            totalHoles: row.total_holes || 18,
+            targetTotalPlayers: row.target_total_players,
+            entryFee: row.entry_fee,
+            bankAccount: row.bank_account,
+            gameMode: row.game_mode,
+            gameModeTitle: row.game_mode_title,
+            gameRuleNotes: row.game_rule_notes,
+            nearPinHole: row.near_pin_hole,
+            longestHole: row.longest_hole,
+            awardConfig: row.award_config,
+            hiddenHolesHash: row.hidden_holes_hash,
+            sealedSecret: row.sealed_secret,
+            isUnsealed: row.is_unsealed,
+            unsealedHoles: row.unsealed_holes,
+            groups: row.groups || [],
+            waitingPool: row.waiting_pool || [],
+            groupingMethod: row.grouping_method,
+            status: row.status,
+            createdAt: row.created_at ? row.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+          };
+          mergedMap.set(remoteRoom.id, remoteRoom);
+        });
+
+        const mergedList = Array.from(mergedMap.values());
+        localStorage.setItem(STORAGE_KEYS.CLUB_ROOMS, JSON.stringify(mergedList));
+        return mergedList;
+      }
+    } catch {}
+    return this.getAllRooms();
   },
 
   // 4. 신규 방 생성
@@ -817,6 +1153,11 @@ export const ClubStorage = {
       gameRuleNotes: params.gameRuleNotes?.trim() || defaultRuleNotes,
       nearPinHole: params.nearPinHole,
       longestHole: params.longestHole,
+      // 🔒 [NEW] 신페리오 사전 무작위 봉인 필드 자동 생성
+      hiddenHolesHash: params.gameMode !== 'STROKE' ? generateSealedNewPerioHolesSync(letters.length * 9).hiddenHolesHash : undefined,
+      sealedSecret: params.gameMode !== 'STROKE' ? generateSealedNewPerioHolesSync(letters.length * 9).sealedSecret : undefined,
+      isUnsealed: false,
+      unsealedHoles: [],
       groups,
       waitingPool: [],
       status: 'RECRUITING',
@@ -824,6 +1165,7 @@ export const ClubStorage = {
     };
 
     this.saveRoom(newRoom);
+    this.syncEventToSupabase(newRoom).catch(() => {});
     return newRoom;
   },
 
@@ -1082,7 +1424,10 @@ export const ClubStorage = {
   getIndividualLeaderboard(room: ClubEventRoom): ClubLeaderboardIndividual[] {
     const list: ClubLeaderboardIndividual[] = [];
     const isNewPerio = room.gameMode === 'NEW_PERIO';
-    const hiddenHoles = [1, 2, 4, 5, 7, 8, 10, 11, 13, 14, 16, 17]; // 18홀 중 12개 숨은 홀 표준 배치
+    const isUnsealed = !!room.isUnsealed;
+    const activeHiddenHoles = (isUnsealed && room.unsealedHoles && room.unsealedHoles.length > 0)
+      ? room.unsealedHoles
+      : [];
 
     room.groups.forEach((g) => {
       g.players.forEach((p) => {
@@ -1090,23 +1435,20 @@ export const ClubStorage = {
         let netScore: number | undefined;
 
         if (isNewPerio && p.holesCompleted > 0) {
-          // 12개 숨은 홀 타수 집계
-          let hiddenSum = 0;
-          let countedHiddenHoles = 0;
-          hiddenHoles.forEach((hNum) => {
-            if (typeof p.scores[hNum] === 'number') {
-              hiddenSum += p.scores[hNum];
-              countedHiddenHoles++;
-            }
-          });
-
-          if (countedHiddenHoles > 0) {
-            // 표준 신페리오 공식: (12개 숨은홀 타수 합계 * 1.5 - 기준파(66)) * 0.8
-            const scale = 12 / countedHiddenHoles;
-            const estimatedHiddenSum = hiddenSum * scale;
-            const rawHandicap = (estimatedHiddenSum * 1.5 - 66) * 0.8;
-            handicap = Math.max(0, Math.round(rawHandicap * 10) / 10);
-            netScore = Math.round((p.totalStrokes - handicap) * 10) / 10;
+          if (isUnsealed && activeHiddenHoles.length > 0) {
+            // 🔓 [공개 완료] 암호 해제된 숨은 홀 기반 공정 정밀 계산
+            const calc = calculateDynamicNewPerio(
+              p.scores,
+              p.totalStrokes,
+              activeHiddenHoles,
+              room.totalHoles || 18
+            );
+            handicap = calc.handicap;
+            netScore = calc.netScore;
+          } else {
+            // 🔒 [봉인 진행 중] 경기 마감 전까지는 블라인드 처리 (사전 타수 조작 원천 차단)
+            handicap = undefined;
+            netScore = undefined;
           }
         }
 
@@ -1134,14 +1476,14 @@ export const ClubStorage = {
       });
     });
 
-    // 정렬: 신페리오는 네트 스코어 최저타순, 스트로크는 총타수 최저타순
+    // 정렬: 신페리오 공개 시 네트 스코어 최저타순, 미공개/스트로크는 총타수 최저타순
     // 동타 시 파크골프 공식 룰: 후반 9홀 백카운트 최저타순 우선!
     list.sort((a, b) => {
       if (a.holesCompleted === 0 && b.holesCompleted === 0) return 0;
       if (a.holesCompleted === 0) return 1;
       if (b.holesCompleted === 0) return -1;
 
-      if (isNewPerio && typeof a.netScore === 'number' && typeof b.netScore === 'number') {
+      if (isNewPerio && isUnsealed && typeof a.netScore === 'number' && typeof b.netScore === 'number') {
         const diff = a.netScore - b.netScore;
         if (diff !== 0) return diff;
         // 네트 동타 시: 백카운트(후반 9홀) 적은 선수 우선
@@ -1871,6 +2213,10 @@ ${link}`;
     return list.find((c) => c.id === id) || null;
   },
 
+  getClub(id: string): ParkGolfClub | null {
+    return this.getClubById(id);
+  },
+
   updateClubRecruitment(
     clubId: string,
     recruitment: {
@@ -1979,29 +2325,38 @@ ${link}`;
     }
   },
 
-  // 1. 가입 신청하기 (총무 승인 대기 상태로 등록)
+  // 1. 가입 신청하기 (총무 승인 대기 상태로 등록, memberCode 및 티어 자동 바인딩)
   requestJoinClub(
     clubId: string,
-    applicant: { name: string; phone?: string; message?: string }
+    applicant: { name: string; phone?: string; message?: string; memberCode?: string }
   ): boolean {
     const list = this.getAllClubs();
     const club = list.find((c) => c.id === clubId);
     if (!club) return false;
 
     if (!club.pendingMembers) club.pendingMembers = [];
-    const alreadyPending = club.pendingMembers.some((p) => p.name === applicant.name);
+    const cleanName = applicant.name.trim();
+    const cleanCode = (applicant.memberCode || '').trim() || (typeof window !== 'undefined' ? localStorage.getItem('parkon_member_code_v1') || localStorage.getItem('parkon_member_code') || '' : '');
+    const alreadyPending = club.pendingMembers.some((p) => p.name === cleanName || (cleanCode && p.memberCode === cleanCode));
     if (alreadyPending) return true;
+
+    const completed = typeof window !== 'undefined' ? getUserCompleted9Holes(cleanName) : 0;
+    const tier = calculateTier(completed);
 
     club.pendingMembers.push({
       id: `pm_${Date.now()}`,
-      name: applicant.name,
+      name: cleanName,
       phone: applicant.phone || '',
+      memberCode: cleanCode || `PKY-${Math.floor(1000 + Math.random() * 9000)}`,
+      diamondTier: tier.code,
+      totalCompleted9Holes: completed,
       requestedAt: '방금 전',
       message: applicant.message || '클럽 회원 가입을 신청합니다.',
     });
 
     try {
       localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      this.syncClubToSupabase(club);
       return true;
     } catch {
       return false;
@@ -2036,18 +2391,26 @@ ${link}`;
       joinedAtDate = archived.joinedAt; // 최초 가입일 원상 복구!
     }
 
+    const cleanCode = pending.memberCode || (typeof window !== 'undefined' ? localStorage.getItem('parkon_member_code_v1') || localStorage.getItem('parkon_member_code') || '' : '') || `PKY-${Math.floor(1000 + Math.random() * 9000)}`;
+    const comp9H = typeof window !== 'undefined' ? getUserCompleted9Holes(pending.name) : 0;
+    const tier = calculateTier(comp9H);
+
     // 정회원으로 등록
     club.members.push({
       id: `m_${Date.now()}`,
+      memberCode: cleanCode,
       name: pending.name,
       role: 'MEMBER',
       joinedAt: joinedAtDate,
       phone: pending.phone,
+      diamondTier: tier.code,
+      totalCompleted9Holes: comp9H,
     });
     club.memberCount = club.members.length;
 
     try {
       localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      this.syncClubToSupabase(club);
       return { success: true, isRestored, originalJoinedAt: joinedAtDate };
     } catch {
       return { success: false };
@@ -2061,7 +2424,7 @@ ${link}`;
     if (!club || !club.pendingMembers || club.pendingMembers.length === 0) return 0;
     const count = club.pendingMembers.length;
     const pendingCopy = [...club.pendingMembers];
-    pendingCopy.forEach((p, idx) => {
+    pendingCopy.forEach((p) => {
       this.approveMember(clubId, p.id);
     });
     return count;
@@ -2077,9 +2440,139 @@ ${link}`;
 
     try {
       localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      this.syncClubToSupabase(club);
       return true;
     } catch {
       return false;
+    }
+  },
+
+  // 3-1. ☁️ Supabase 원격 동기화 (오프라인 Fail-Safe 2-Way 연동)
+  async syncClubToSupabase(club: ParkGolfClub): Promise<boolean> {
+    if (!club || !club.id) return false;
+    try {
+      // 1. clubs 마스터 테이블 Upsert
+      const { error: clubErr } = await supabase.from('clubs').upsert(
+        {
+          id: club.id,
+          name: club.name,
+          region: club.region,
+          home_course_id: club.homeCourseId || '',
+          home_course_name: club.homeCourseName || '',
+          description: club.description || '',
+          president_name: club.presidentName || '',
+          manager_name: club.managerName || '',
+          contact_phone: club.contactPhone || '',
+          member_count: club.members ? club.members.length : 1,
+          is_public: club.isPublic !== false,
+          is_parkon_club: Boolean(club.isParkOnClub),
+          recruit_status: club.recruitStatus || 'ALWAYS',
+          recruit_quota: club.recruitQuota || 50,
+          annual_dues_amount: club.annualDuesAmount || 50000,
+          badge_color: club.badgeColor || 'emerald',
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+      if (clubErr) {
+        console.warn('Supabase club upsert error (fail-safe):', clubErr);
+      }
+
+      // 2. club_members 테이블 Upsert
+      if (club.members && club.members.length > 0) {
+        const memberRows = club.members.map((m) => {
+          const mCode = m.memberCode || m.id;
+          const comp = typeof window !== 'undefined' ? getUserCompleted9Holes(m.name) : 0;
+          const tier = calculateTier(comp);
+          return {
+            id: `${club.id}_${mCode}`,
+            club_id: club.id,
+            member_code: mCode,
+            name: m.name,
+            role: m.role || 'MEMBER',
+            custom_role_name: m.customRoleName || '',
+            phone: m.phone || '',
+            diamond_tier: tier.code,
+            completed_9holes: comp,
+            dues_paid: Boolean(m.duesPaid),
+            dues_paid_at: m.duesPaidAt || '',
+            joined_at: m.joinedAt || new Date().toISOString().slice(0, 10),
+            status: 'ACTIVE',
+            updated_at: new Date().toISOString(),
+          };
+        });
+
+        const { error: memErr } = await supabase.from('club_members').upsert(
+          memberRows,
+          { onConflict: 'id' }
+        );
+        if (memErr) {
+          console.warn('Supabase club_members upsert error (fail-safe):', memErr);
+        }
+      }
+      return true;
+    } catch (e) {
+      console.warn('syncClubToSupabase exception (fail-safe):', e);
+      return false;
+    }
+  },
+
+  // 3-2. ☁️ Supabase 원격 클럽 목록 불러오기 (캐시 병합)
+  async fetchClubsFromSupabase(): Promise<ParkGolfClub[]> {
+    try {
+      const { data: remoteClubs, error } = await supabase
+        .from('clubs')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error || !remoteClubs || remoteClubs.length === 0) {
+        return this.getAllClubs();
+      }
+
+      const localList = this.getAllClubs();
+      const merged = [...localList];
+
+      for (const rc of remoteClubs) {
+        const existIdx = merged.findIndex((c) => c.id === rc.id);
+        const mappedClub: ParkGolfClub = {
+          id: rc.id,
+          name: rc.name,
+          region: rc.region,
+          homeCourseId: rc.home_course_id,
+          homeCourseName: rc.home_course_name,
+          description: rc.description || '',
+          presidentName: rc.president_name || '',
+          managerName: rc.manager_name || '',
+          contactPhone: rc.contact_phone || '',
+          memberCount: rc.member_count || 1,
+          members: existIdx !== -1 ? merged[existIdx].members : [],
+          isPublic: rc.is_public !== false,
+          isParkOnClub: rc.is_parkon_club,
+          recruitStatus: rc.recruit_status || 'ALWAYS',
+          recruitQuota: rc.recruit_quota || 50,
+          annualDuesAmount: rc.annual_dues_amount || 50000,
+          badgeColor: rc.badge_color || 'emerald',
+          createdAt: rc.created_at || new Date().toISOString(),
+        };
+
+        if (existIdx === -1) {
+          merged.push(mappedClub);
+        } else {
+          merged[existIdx] = {
+            ...merged[existIdx],
+            ...mappedClub,
+            members: merged[existIdx].members,
+          };
+        }
+      }
+
+      try {
+        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(merged));
+      } catch {}
+
+      return merged;
+    } catch {
+      return this.getAllClubs();
     }
   },
 
@@ -2087,17 +2580,17 @@ ${link}`;
   generateClubInviteText(club: ParkGolfClub): string {
     const shareUrl =
       typeof window !== 'undefined'
-        ? `${window.location.origin}/club?join=${club.id}`
-        : `https://parkongolf.com/club?join=${club.id}`;
+        ? `${window.location.origin}/club/join?clubId=${club.id}`
+        : `https://www.parkgolfallinone.com/club/join?clubId=${club.id}`;
 
-    return `[파크골프 올인원 클럽 가입 초청장 ⛳]
+    return `[파크골프 올인원 공식 클럽 가입 초청장 ⛳]
 "${club.name}"에서 ${club.managerName || '총무'}님이 귀하를 정회원으로 초대합니다!
 
 📍 홈 구장: ${club.homeCourseName} (${club.region})
 👥 회원 수: ${club.memberCount}명 활동 중
 💬 클럽 소개: ${club.description}
 
-👇 아래 링크를 터치하여 파크골프 올인원에서 즉시 클럽에 입장하세요!
+👇 아래 링크를 터치하여 파크골프 올인원에서 1초 만에 가입 신청하세요!
 ${shareUrl}`;
   },
 
@@ -2334,7 +2827,10 @@ ${shareUrl}`;
   // ==========================================
   // 📜 클럽 영구 연대기 (대회 실록 & 명예의 전당) 영구 보존 및 조회
   // ==========================================
-  archiveEventRoomToClubChronicle(room: ClubEventRoom): ClubChronicleTournament | null {
+  archiveEventRoomToClubChronicle(
+    room: ClubEventRoom,
+    options?: { groupPhotoUrl?: string; awardCardUrl?: string; longestDistance?: string; nearPinDistance?: string }
+  ): ClubChronicleTournament | null {
     if (typeof window === 'undefined') return null;
     try {
       const individuals = this.getIndividualLeaderboard(room);
@@ -2344,10 +2840,14 @@ ${shareUrl}`;
 
       const winner = individuals[0];
       const runnerUp = individuals[1];
+      const thirdPlace = individuals[2];
       const medalist = individuals.reduce<ClubLeaderboardIndividual | null>((best, cur) => {
         if (!best || (cur.totalStrokes > 0 && cur.totalStrokes < best.totalStrokes)) return cur;
         return best;
       }, null);
+
+      const longestSpecial = specialAwards.find((sa) => sa.title.includes('롱기스트') || sa.badge === '🚀');
+      const nearPinSpecial = specialAwards.find((sa) => sa.title.includes('니어핀') || sa.badge === '🎯');
 
       const chronicleId = `chronicle_${room.id}`;
       const chronicleRecord: ClubChronicleTournament = {
@@ -2363,11 +2863,19 @@ ${shareUrl}`;
         gameMode: room.gameModeTitle || this.getGameModeInfo(room.gameMode).title,
         totalParticipants,
         winnerName: winner && winner.totalStrokes > 0 ? winner.playerName : '대회 진행중',
-        winnerScore: winner ? winner.totalStrokes : 0,
+        winnerScore: winner ? (winner.netScore ?? winner.totalStrokes) : 0,
         runnerUpName: runnerUp && runnerUp.totalStrokes > 0 ? runnerUp.playerName : undefined,
-        runnerUpScore: runnerUp ? runnerUp.totalStrokes : undefined,
+        runnerUpScore: runnerUp ? (runnerUp.netScore ?? runnerUp.totalStrokes) : undefined,
+        thirdPlaceName: thirdPlace && thirdPlace.totalStrokes > 0 ? thirdPlace.playerName : undefined,
+        thirdPlaceScore: thirdPlace ? (thirdPlace.netScore ?? thirdPlace.totalStrokes) : undefined,
         medalistName: medalist && medalist.totalStrokes > 0 ? medalist.playerName : undefined,
         medalistScore: medalist ? medalist.totalStrokes : undefined,
+        longestName: longestSpecial?.winnerName || undefined,
+        longestDistance: options?.longestDistance || '장타 1위',
+        nearPinName: nearPinSpecial?.winnerName || undefined,
+        nearPinDistance: options?.nearPinDistance || '핀 밀착 1위',
+        groupPhotoUrl: options?.groupPhotoUrl || undefined,
+        awardCardUrl: options?.awardCardUrl || undefined,
         specialAwards: specialAwards.length > 0 ? specialAwards : undefined,
         luckyDrawWinners: room.awardConfig?.luckyDrawWinners || [],
         rankings: individuals.map((ind) => {
@@ -2508,6 +3016,102 @@ ${shareUrl}`;
     });
 
     return playedChronicles;
+  },
+
+  // 3-8. 💎 [3단계] 클럽 다이아몬드 명예의 전당 랭킹 보드 산출
+  getClubDiamondRankings(clubId: string): {
+    rank: number;
+    memberId: string;
+    memberName: string;
+    memberCode: string;
+    role: string;
+    customRoleName?: string;
+    tier: UserDiamondTier;
+    totalCompleted9Holes: number;
+    tierTitle: string;
+  }[] {
+    const club = this.getClubById(clubId);
+    if (!club || !club.members) return [];
+
+    const ranked = club.members.map((m) => {
+      const completed = m.totalCompleted9Holes || (typeof window !== 'undefined' ? getUserCompleted9Holes(m.name) : 0);
+      const tierObj = calculateTier(completed);
+      return {
+        memberId: m.id,
+        memberName: m.name,
+        memberCode: m.memberCode || 'PKY-0000',
+        role: m.role,
+        customRoleName: m.customRoleName,
+        tier: tierObj,
+        totalCompleted9Holes: completed,
+        tierTitle: tierObj.nameKo,
+        weight: completed,
+      };
+    });
+
+    ranked.sort((a, b) => b.weight - a.weight || a.memberName.localeCompare(b.memberName));
+
+    return ranked.map((item, idx) => ({
+      rank: idx + 1,
+      memberId: item.memberId,
+      memberName: item.memberName,
+      memberCode: item.memberCode,
+      role: item.role,
+      customRoleName: item.customRoleName,
+      tier: item.tier,
+      totalCompleted9Holes: item.totalCompleted9Holes,
+      tierTitle: item.tierTitle,
+    }));
+  },
+
+  // 3-9. 📸 [3단계] 단체 기념사진 브라우저 캔버스 경량 압축(100KB 이하) & 골드 워터마크 각인
+  async compressAndWatermarkPhoto(file: File, watermarkText: string): Promise<string> {
+    if (typeof window === 'undefined') return '';
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 800;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return resolve(img.src);
+
+          ctx.drawImage(img, 0, 0, w, h);
+
+          // 우측 하단 골드 워터마크 띠
+          const barH = Math.max(32, Math.round(h * 0.07));
+          ctx.fillStyle = 'rgba(6, 40, 30, 0.75)';
+          ctx.fillRect(0, h - barH, w, barH);
+
+          ctx.fillStyle = '#fef08a';
+          ctx.font = `bold ${Math.max(12, Math.round(barH * 0.42))}px sans-serif`;
+          ctx.textAlign = 'right';
+          ctx.fillText(`파크골프 올인원 공식 실록 | ${watermarkText}`, w - 16, h - Math.round(barH * 0.32));
+
+          const compressed = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(compressed);
+        };
+        img.onerror = () => resolve('');
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
   },
 
   // ==========================================

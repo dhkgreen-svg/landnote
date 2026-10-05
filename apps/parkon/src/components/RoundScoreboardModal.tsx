@@ -23,6 +23,8 @@ import { HoleScoreBadge, ScoreBadgeLegend } from '@/components/HoleScoreBadge';
 import { formatPlayerDisplayName } from '@/lib/playerUtils';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { ParkOnStorage } from '@/lib/storage';
+import { DiamondTierBadge } from '@/components/DiamondTierBadge';
+import { calculateTier, getUserCompleted9Holes } from '@/lib/courseBlockTier';
 import { generateScorecardImage, GeneratedScorecardResult } from '@/lib/scorecardImageGenerator';
 
 export interface RoundScoreboardModalProps {
@@ -1043,11 +1045,25 @@ export function RoundScoreboardModal({
                     </div>
                     <div>
                       <div className="text-[10.5px] text-stone-400 font-bold">{isJapanese ? '授与対象 (ゴルファー)' : '수여 대상 (골퍼)'}</div>
-                      <div className="text-base font-black text-stone-900 flex items-center gap-1.5">
-                        <span>{(currentRound.players?.find((p) => p.isSelf) || currentRound.players?.[0])?.name || '김대희'}</span>
-                        <span className="text-[10px] text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md font-black border border-amber-200">
-                          {isJapanese ? '公認マスター' : '공인 마스터'}
-                        </span>
+                      <div className="text-base font-black text-stone-900 flex items-center gap-1.5 flex-wrap">
+                        {(() => {
+                          const selfPlayer = currentRound.players?.find((p) => p.isSelf) || currentRound.players?.[0];
+                          const pName = selfPlayer?.name || '김대희';
+                          const comp9H = getUserCompleted9Holes(pName);
+                          const pTier = calculateTier(comp9H);
+                          return (
+                            <>
+                              <span>{pName}</span>
+                              <DiamondTierBadge
+                                tier={pTier}
+                                completedCount={comp9H}
+                                size="xs"
+                                showLabel={true}
+                                showCount={true}
+                              />
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
