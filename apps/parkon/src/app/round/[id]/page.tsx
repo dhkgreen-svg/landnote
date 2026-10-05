@@ -1673,11 +1673,15 @@ export default function RoundPlayPage() {
       blocks,
     };
 
-    // 💎 유저 누적 9홀 완주 횟수 안전 반영 (18홀 = 2회)
-    const nineHolesCompleted = Math.max(1, Math.round(currentConfirmed.length / 9));
-    updatedPlayers.forEach((p) => {
-      incrementUserCompleted9Holes(p.name, nineHolesCompleted);
-    });
+    // 💎 유저 누적 9홀 완주 횟수 안전 반영 (공식 전적 및 9홀 이상 완주 시에만 누적)
+    if (isOfficial) {
+      const nineHolesCompleted = Math.floor(currentConfirmed.length / 9);
+      if (nineHolesCompleted > 0) {
+        updatedPlayers.forEach((p) => {
+          incrementUserCompleted9Holes(p.name, nineHolesCompleted);
+        });
+      }
+    }
 
     ParkOnStorage.saveCompletedRound(finished);
     updateSession(finished);

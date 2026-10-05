@@ -539,58 +539,54 @@ function ResultContent() {
           </button>
         </div>
 
-        {/* 대표님 원칙 2단계: 18홀 완주 기념 디지털 뱃지 & 홈구장 명예의 전당 버튼 */}
-        <div className="mt-3.5 pt-3 border-t border-emerald-700/60 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              if (badgeRecord) setShowBadgeModal(true);
-            }}
-            className="p-2.5 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
-          >
-            <Award className="w-4 h-4 fill-current text-stone-950" />
-            <span className="truncate">
-              {isFull18Completed
-                ? (isJapanese ? `🎖️ 完走バッジ (${badgeRecord?.visitCount || 1}回)` : `🎖️ 완주 뱃지 (${badgeRecord?.visitCount || 1}회)`)
-                : (isJapanese ? `📋 公式打数証書 (${totalHolesCount}ホール)` : `📋 실타수 증서 (${totalHolesCount}홀)`)}
-            </span>
-          </button>
+        {/* 구장 명예의 전당 & 완주 뱃지 (실타수 증서 전면 삭제: 9홀 이상 정규 완주 시에만 완주 뱃지 노출) */}
+        <div className={`mt-3.5 pt-3 border-t border-emerald-700/60 ${isFull18Completed ? 'grid grid-cols-2 gap-2' : 'flex justify-center'}`}>
+          {isFull18Completed && (
+            <button
+              type="button"
+              onClick={() => {
+                if (badgeRecord) setShowBadgeModal(true);
+              }}
+              className="p-2.5 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
+            >
+              <Award className="w-4 h-4 fill-current text-stone-950" />
+              <span className="truncate">
+                {isJapanese ? `🎖️ 完走バッジ (${badgeRecord?.visitCount || 1}回)` : `🎖️ 완주 뱃지 (${badgeRecord?.visitCount || 1}회)`}
+              </span>
+            </button>
+          )}
 
           <button
             type="button"
             onClick={() => setShowHallOfFameModal(true)}
-            className="p-2.5 rounded-2xl bg-emerald-900/90 hover:bg-emerald-800/90 border border-emerald-400/50 text-emerald-100 hover:text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
+            className={`p-2.5 rounded-2xl bg-emerald-900/90 hover:bg-emerald-800/90 border border-emerald-400/50 text-emerald-100 hover:text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer ${
+              isFull18Completed ? '' : 'w-full'
+            }`}
           >
             <Trophy className="w-4 h-4 text-amber-300" />
             <span className="truncate">{isJapanese ? '🏆 コース名誉の殿堂' : '🏆 구장 명예의 전당'}</span>
           </button>
         </div>
 
-        {/* 📱 동반자/조장 원터치 모바일 스코어카드 수령 & 단톡방 전송 박스 */}
+        {/* 📖 나의 연대기 보관 안내 배너 (카톡 전송 및 사진 저장 탭 삭제, 연대기 단독 안내로 간소화) */}
         <div className="mt-3 pt-3 border-t border-emerald-700/60 flex flex-col gap-2">
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={handleShare}
-              className="py-3 px-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
+          {session.isOfficial !== false ? (
+            <Link
+              href="/chronicle"
+              className="py-2.5 px-3 rounded-xl bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-500/50 text-emerald-100 font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer"
+              title="나의 연대기에서 공식 전적과 완주 뱃지 확인"
             >
-              <span>💬 카톡 단톡방에 성적표 전송</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowPhotoCardModal(true)}
-              className="py-3 px-3 rounded-2xl bg-white hover:bg-stone-100 text-emerald-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
+              <span>📖 {isJapanese ? '私の年代記に公式戦績として永久保管されました (記録確認 ➔)' : '나의 연대기에 공식 전적으로 영구 보관되었습니다 (기록 확인 ➔)'}</span>
+            </Link>
+          ) : (
+            <Link
+              href="/chronicle"
+              className="py-2.5 px-3 rounded-xl bg-stone-900/90 hover:bg-stone-800 border border-amber-500/40 text-amber-200 font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer"
+              title="나의 연대기에서 전체 기록 확인"
             >
-              <Camera className="w-4 h-4 text-emerald-700" />
-              <span>📱 내 스코어카드 사진 저장</span>
-            </button>
-          </div>
-          <Link
-            href="/chronicle"
-            className="py-2.5 px-3 rounded-xl bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-500/50 text-emerald-100 font-bold text-[11px] flex items-center justify-center gap-1 transition"
-          >
-            <span>📖 나의 연대기에 공식 전적으로 영구 보관되었습니다 (기록 확인 ➔)</span>
-          </Link>
+              <span>📖 {isJapanese ? '私の年代記には正式ラウンドのみ永久保管されます (記録確認 ➔)' : '나의 연대기에는 정식 라운딩만 영구 보관됩니다 (기록 확인 ➔)'}</span>
+            </Link>
+          )}
         </div>
 
         <div className="mt-3.5 inline-flex items-center gap-2 bg-emerald-700/60 border border-emerald-500/40 px-4 py-2 rounded-2xl">

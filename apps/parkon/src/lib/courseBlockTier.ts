@@ -141,6 +141,24 @@ export function calculateTier(completedCount: number): UserDiamondTier {
     };
   }
 
+  if (count === 0) {
+    return {
+      code: 'BRONZE',
+      nameKo: '입문 골퍼',
+      nameJa: '入門ゴルファー',
+      badgeLabel: '입문',
+      badgeLabelJa: '入門',
+      icon: '🌱',
+      minCompleted: 0,
+      nextMilestone: 1,
+      bgGradient: 'from-emerald-50 to-stone-200',
+      borderClass: 'border-emerald-600/30',
+      glowClass: 'text-emerald-800',
+      textColor: 'text-emerald-950 font-bold',
+      accentColor: '#059669',
+    };
+  }
+
   return {
     code: 'BRONZE',
     nameKo: '브론즈 티어',
@@ -148,7 +166,7 @@ export function calculateTier(completedCount: number): UserDiamondTier {
     badgeLabel: '브론즈',
     badgeLabelJa: 'ブロンズ',
     icon: '🥉',
-    minCompleted: 0,
+    minCompleted: 1,
     nextMilestone: 30,
     bgGradient: 'from-amber-100 to-orange-200',
     borderClass: 'border-amber-700/30',
@@ -260,15 +278,20 @@ export function getUserCompleted9Holes(userNameOrCode?: string): number {
       const parsed = parseInt(val, 10);
       if (!isNaN(parsed)) return parsed;
     }
-    // Fallback: calculate from chronicle/record history
-    const chronicleStr = localStorage.getItem('parkon_round_chronicle');
-    if (chronicleStr) {
-      const records = JSON.parse(chronicleStr);
+    // Fallback: calculate from completed rounds history (only official rounds with 9+ holes)
+    const roundsStr = localStorage.getItem('parkon_completed_rounds');
+    if (roundsStr) {
+      const records = JSON.parse(roundsStr);
       if (Array.isArray(records)) {
         let total9Holes = 0;
         records.forEach((r: any) => {
-          const holes = r.totalHoles || (r.confirmedHoles?.length) || 18;
-          total9Holes += Math.max(1, Math.round(holes / 9));
+          if (r && !r.isVirtual && r.isOfficial !== false) {
+            const hasPlayer = !userNameOrCode || r.players?.some((p: any) => p.name === userNameOrCode.trim());
+            if (hasPlayer) {
+              const holes = (r.confirmedHoles?.length) || r.totalHoles || 0;
+              total9Holes += Math.floor(holes / 9);
+            }
+          }
         });
         return total9Holes;
       }
@@ -278,7 +301,7 @@ export function getUserCompleted9Holes(userNameOrCode?: string): number {
 }
 
 export function incrementUserCompleted9Holes(userNameOrCode?: string, count: number = 1): number {
-  if (typeof window === 'undefined') return 0;
+  if (typeof window === 'undefined' || count <= 0) return 0;
   try {
     const current = getUserCompleted9Holes(userNameOrCode);
     const updated = current + count;
