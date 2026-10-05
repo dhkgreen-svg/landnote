@@ -5,6 +5,7 @@ import { Footer } from '@/components/Footer';
 import { VisitorTracker } from '@/components/VisitorTracker';
 import { MainWrapper } from '@/components/MainWrapper';
 import { LanguageProvider } from '@/lib/i18n/LanguageContext';
+import Script from 'next/script';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.parkgolfallinone.com'),
@@ -59,7 +60,7 @@ export default function RootLayout({
   const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
 
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/icon.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -74,27 +75,27 @@ export default function RootLayout({
         <meta property="og:image" content="/og-image.jpg" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        {/* Google AdSense Verification & Official Script */}
+        {/* Google AdSense Verification */}
         <meta name="google-adsense-account" content="ca-pub-8564518885257853" />
-        <script
-          async
+      </head>
+      <body className="min-h-screen flex flex-col antialiased bg-stone-100 text-stone-900" suppressHydrationWarning>
+        {/* Google AdSense Official Script */}
+        <Script
+          id="adsense-script"
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8564518885257853"
+          strategy="afterInteractive"
           crossOrigin="anonymous"
         />
-        {/* PWA Service Worker Registration for Android 1-Click Install */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').catch(function() {});
-                });
-              }
-            `,
-          }}
-        />
-      </head>
-      <body className="min-h-screen flex flex-col antialiased bg-stone-100 text-stone-900">
+        {/* PWA Service Worker Registration */}
+        <Script id="pwa-sw" strategy="afterInteractive">
+          {`
+            if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').catch(function() {});
+              });
+            }
+          `}
+        </Script>
         <LanguageProvider>
           <VisitorTracker />
           <Header />

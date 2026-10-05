@@ -24,10 +24,12 @@ export function Header() {
   const router = useRouter();
   const { language, setLanguage, t, isJapanese } = useTranslation();
 
+  const [mounted, setMounted] = useState(false);
   const [showKakaoModal, setShowKakaoModal] = useState(false);
   const [showHelpRulesModal, setShowHelpRulesModal] = useState(false);
   const [modalMode, setModalMode] = useState<'login' | 'profile'>('login');
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [memberCode, setMemberCode] = useState<string>('');
   const [pendingGuard, setPendingGuard] = useState<NavGuardInfo | null>(null);
   const [showLoginTip, setShowLoginTip] = useState(false);
@@ -40,15 +42,15 @@ export function Header() {
     pathname !== '/round/result'
   );
 
-  const userProfile = typeof window !== 'undefined' ? ParkOnStorage.getUserProfile() : null;
-  const rawDisplayName =
-    (kakaoUser
-      ? (kakaoUser.preferredDisplay === 'ALIAS'
-          ? kakaoUser.aliasName || kakaoUser.realName
-          : kakaoUser.realName || kakaoUser.nickname)
-      : (userProfile?.userName || '')) || '';
+  const rawDisplayName = mounted
+    ? (kakaoUser
+        ? (kakaoUser.preferredDisplay === 'ALIAS'
+            ? kakaoUser.aliasName || kakaoUser.realName
+            : kakaoUser.realName || kakaoUser.nickname)
+        : (userProfile?.userName || '')) || ''
+    : '';
 
-  const hasRegisteredName = Boolean(rawDisplayName && !isPlaceholderName(rawDisplayName));
+  const hasRegisteredName = mounted && Boolean(rawDisplayName && !isPlaceholderName(rawDisplayName));
   const currentDisplayName = hasRegisteredName ? rawDisplayName.trim() : '';
 
   const handleOpenModal = (mode: 'login' | 'profile') => {
@@ -57,8 +59,10 @@ export function Header() {
   };
 
   useEffect(() => {
+    setMounted(true);
     const checkUser = () => {
       setKakaoUser(ParkOnStorage.getKakaoUser());
+      setUserProfile(ParkOnStorage.getUserProfile());
       setMemberCode(getSavedMemberCode());
     };
     checkUser();

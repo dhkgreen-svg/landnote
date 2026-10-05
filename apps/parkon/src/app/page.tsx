@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Play, MapPin, History, Award, Flame, Trophy, X, ArrowRight, ChevronDown, ChevronRight, Check, Plus, Star, Search, Trash2, Share2, Download, Heart, Smartphone, Target, Sparkles } from 'lucide-react';
 import { Course, RoundSession, formatCourseHolesText } from '@/types/parkon';
-import { ParkOnStorage, UserGolfProfile, DEFAULT_USER_PROFILE } from '@/lib/storage';
+import { ParkOnStorage, UserGolfProfile, DEFAULT_USER_PROFILE, ALL_BASE_COURSES } from '@/lib/storage';
 import { ClubStorage } from '@/lib/clubStorage';
 import { ConditionStatus } from '@/components/ConditionStatus';
 import { CourseTodayModal } from '@/components/CourseTodayModal';
@@ -30,8 +30,9 @@ import { getSavedMemberCode, syncMemberDataToCloud, fetchAndRestoreMemberData, n
 export default function HomePage() {
   const router = useRouter();
   const { language, setLanguage, t, isJapanese, isEnglish } = useTranslation();
-  const [serviceCountry, setServiceCountryState] = useState<'KR' | 'JP'>(() => ParkOnStorage.getServiceCountry());
-  const [courses, setCourses] = useState<Course[]>(() => ParkOnStorage.getAllCourses());
+  const [mounted, setMounted] = useState<boolean>(false);
+  const [serviceCountry, setServiceCountryState] = useState<'KR' | 'JP'>('KR');
+  const [courses, setCourses] = useState<Course[]>(ALL_BASE_COURSES);
   const [homeCourse, setHomeCourse] = useState<Course | null>(null);
   const [showNationalTourModal, setShowNationalTourModal] = useState<boolean>(false);
   const [favoriteHomeCourseIds, setFavoriteHomeCourseIds] = useState<string[]>([]);
@@ -226,6 +227,7 @@ export default function HomePage() {
 
   // 2. 로컬 스토리지 및 이벤트 감청 (순수 로컬 상태 갱신만 수행, 재귀 API 호출 차단)
   useEffect(() => {
+    setMounted(true);
     const loadData = () => {
       const allCourses = ParkOnStorage.getAllCourses();
       setCourses(allCourses);
@@ -970,7 +972,7 @@ export default function HomePage() {
 
 
       {/* 1. In-Progress Round Banner (이어하기 & 끝내기) */}
-      {activeRound && (() => {
+      {mounted && activeRound && (() => {
         const activeCourse = courses.find((c) => c.id === activeRound.courseId) || activeRound.courseName;
         const dual = getCourseDualName(activeCourse, isJapanese);
 
