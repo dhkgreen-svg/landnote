@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Users, Flag, Play, Plus, Trash2, ArrowLeft, MapPin, Edit3, Settings, QrCode, Copy, Check, Sparkles, Share2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
@@ -327,27 +327,43 @@ function NewRoundForm() {
     }
   }, [joinedPlayer]);
 
-  // 초대 링크 및 실제 카메라 인식용 QR 코드 생성 (로컬 접속 시 192.168.0.4:3008 자동 치환, 실서버 접속 시 해당 도메인 적용)
+  // 초대 링크 및 실제 카메라 인식용 QR 코드 생성 (안정적 useMemo 및 캐시 적용으로 무한 루프/화면 멈춤 원천 차단)
   const currentLeader = playersList.find((p) => p.isLeader) || playersList[0];
   const leaderName = currentLeader?.name || '조장';
   const currentOrigin = typeof window !== 'undefined'
     ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? `http://192.168.0.4:${window.location.port || '3008'}`
         : window.location.origin)
-    : 'http://192.168.0.4:3008';
-  const inviteUrl = `${currentOrigin}/round/join?roomId=${encodeURIComponent(roomId)}&course=${selectedCourseId || 'course_1'}&leader=${encodeURIComponent(leaderName)}&count=${playerCount}&t=${Date.now()}`;
+    : 'https://www.parkgolfallinone.com';
+
+  const inviteUrl = useMemo(() => {
+    return `${currentOrigin}/round/join?roomId=${encodeURIComponent(roomId)}&course=${encodeURIComponent(selectedCourseId || 'course_1')}&leader=${encodeURIComponent(leaderName)}&count=${playerCount}`;
+  }, [currentOrigin, roomId, selectedCourseId, leaderName, playerCount]);
+
+  // QR 코드 중복 생성 방지용 캐시 Ref (동일 URL에 대해 중복 캔버스 연산 방지)
+  const lastGeneratedQrUrlRef = useRef<string>('');
 
   useEffect(() => {
+    let isCancelled = false;
     if (showQrModal && inviteUrl) {
+      if (lastGeneratedQrUrlRef.current === inviteUrl && qrDataUrl) {
+        return; // 이미 생성된 QR 코드가 있으므로 중복 생성 건너뜀 (CPU 0%, 화면 먹통 완전 방지)
+      }
       generateQrCodeDataUrl(inviteUrl)
         .then((url) => {
-          if (url) setQrDataUrl(url);
+          if (!isCancelled && url) {
+            lastGeneratedQrUrlRef.current = inviteUrl;
+            setQrDataUrl(url);
+          }
         })
         .catch((err) => {
           console.error('Failed to generate real QR Code:', err);
         });
     }
-  }, [showQrModal, inviteUrl]);
+    return () => {
+      isCancelled = true;
+    };
+  }, [showQrModal, inviteUrl, qrDataUrl]);
 
   // 1. 조장의 셋업 변경사항을 서버 룸(Room)에 지속 동기화 (sync) 및 Supabase Realtime Broadcast 전송
   useEffect(() => {
@@ -483,15 +499,58 @@ function NewRoundForm() {
     };
   }, [roomId, leaderName]);
 
-  // 강력한 카카오톡/문자/링크 공유 함수 (모바일 네이티브 공유 -> 클립보드 -> 임시 텍스트에어리어 -> 프롬프트 폴백)
-  const handleShareInvite = async () => {
-    const courseName = currentCourse?.name || (isJapanese ? 'パークゴルフ場' : '파크골프장');
-    const shareTitle = isJapanese ? `[PARKY パキ] ${courseName} ラウンド招待` : `[파키 PARKY] ${courseName} 라운딩 초대`;
-    const shareText = isJapanese
-      ? `[PARKY パキ同伴者招待]\n⛳ ${courseName} で一緒にラウンドしましょう！\nリーダー: ${leaderName}\n以下のリンクを開くと同伴者として自動登録されます:\n${inviteUrl}`
-      : `[파키 PARKY 동반자 초대]\n⛳ ${courseName} 함께 라운딩해요!\n조장: ${leaderName}\n아래 링크를 누르면 동반자로 자동 등록됩니다:\n${inviteUrl}`;
+  // 초대 메시지 및 공유 텍스트 (안전 메모이제이션)
+  const shareCourseName = currentCourse?.name || (isJapanese ? 'パークゴルフ場' : '구미 동락 파크골프장');
+  const shareTitle = isJapanese ? `[PARKY パキ] ${shareCourseName} ラウンド招待` : `[파키 PARKY] ${shareCourseName} 라운딩 초대`;
+  const shareText = useMemo(() => {
+    return isJapanese
+      ? `[PARKY パキ同伴者招待]\n⛳ ${shareCourseName} で一緒にラウンドしましょう！\nリーダー: ${leaderName}\n以下のリンクを開くと同伴者として自動登録されます:\n${inviteUrl}`
+      : `[파키 PARKY 동반자 초대]\n⛳ ${shareCourseName} 함께 라운딩해요!\n조장: ${leaderName}\n아래 링크를 누르면 동반자로 자동 등록됩니다:\n${inviteUrl}`;
+  }, [shareCourseName, leaderName, inviteUrl, isJapanese]);
 
-    // 1. 모바일 환경에서 시스템 공유 시트 (카카오톡, 문자 등 직접 선택 가능)
+  // 안전한 클립보드 복사 함수 (window.prompt 차단 및 모바일 인앱 브라우저 호환)
+  const copyToClipboardSafe = async (text: string): Promise<boolean> => {
+    if (typeof window === 'undefined') return false;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (err) {
+        console.warn('navigator.clipboard failed, fallback to execCommand', err);
+      }
+    }
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.top = '0';
+      textArea.style.left = '0';
+      textArea.style.width = '2em';
+      textArea.style.height = '2em';
+      textArea.style.padding = '0';
+      textArea.style.border = 'none';
+      textArea.style.outline = 'none';
+      textArea.style.boxShadow = 'none';
+      textArea.style.background = 'transparent';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return successful;
+    } catch {
+      return false;
+    }
+  };
+
+  // 강력하고 안전한 카카오톡/문자/링크 공유 함수 (화면 멈춤/블로킹 100% 방지)
+  const handleShareInvite = async () => {
+    // 1. 클립보드 복사 즉시 수행
+    await copyToClipboardSafe(shareText);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 4000);
+
+    // 2. 모바일 환경에서 시스템 공유 시트 (카카오톡, 문자 등 직접 선택 가능)
     if (typeof navigator !== 'undefined' && navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent || '')) {
       try {
         await navigator.share({
@@ -499,15 +558,13 @@ function NewRoundForm() {
           text: shareText,
           url: inviteUrl,
         });
-        setCopiedLink(true);
-        setTimeout(() => setCopiedLink(false), 3000);
         return;
       } catch (err) {
-        // 사용자가 취소했거나 권한 제한 시 클립보드 복사로 전환
+        // 사용자가 취소했더라도 클립보드 복사는 이미 완료되어 안전
       }
     }
 
-    // 1-1. 일본어 모드 시 LINE 메신저 직접 실행 지원
+    // 3. 일본어 모드 시 LINE 메신저 직접 실행 지원
     if (isJapanese && typeof window !== 'undefined') {
       try {
         window.open(`https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`, '_blank');
@@ -515,50 +572,6 @@ function NewRoundForm() {
         // popup blocker fallback
       }
     }
-
-    // 2. 최신 비동기 클립보드 API
-    let copied = false;
-    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
-      try {
-        await navigator.clipboard.writeText(shareText);
-        copied = true;
-      } catch {
-        copied = false;
-      }
-    }
-
-    // 3. 권한 제한 / HTTP 환경 대비 임시 textarea + execCommand 폴백
-    if (!copied && typeof document !== 'undefined') {
-      try {
-        const textarea = document.createElement('textarea');
-        textarea.value = shareText;
-        textarea.style.position = 'fixed';
-        textarea.style.left = '-9999px';
-        textarea.style.top = '0';
-        textarea.setAttribute('readonly', '');
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        copied = document.execCommand('copy');
-        document.body.removeChild(textarea);
-      } catch {
-        copied = false;
-      }
-    }
-
-    // 4. 최후의 수단: 브라우저 기본 안내창
-    if (!copied && typeof window !== 'undefined') {
-      window.prompt(
-        isJapanese
-          ? '招待リンクをコピーしてLINEやメッセージに貼り付けてください:'
-          : '초대 링크를 복사하여 카카오톡이나 문자에 붙여넣으세요:',
-        inviteUrl
-      );
-      copied = true;
-    }
-
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 4000);
   };
 
   const startRound = async () => {
@@ -1236,8 +1249,14 @@ function NewRoundForm() {
 
       {/* 6. QR Code Companion Auto-Invite Modal */}
       {showQrModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-stone-200 animate-scaleUp max-h-[92vh] flex flex-col overflow-hidden">
+        <div 
+          onClick={() => setShowQrModal(false)}
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-stone-200 animate-scaleUp max-h-[92vh] flex flex-col overflow-hidden cursor-default"
+          >
             <div className="flex items-center justify-between border-b border-stone-100 p-4 shrink-0 bg-white z-10">
               <div className="flex items-center gap-2">
                 <span className="text-xl">📱</span>
@@ -1299,7 +1318,7 @@ function NewRoundForm() {
                   <span className="text-base leading-none">{isJapanese ? '🟢' : '💬'}</span>
                   <span>
                     {copiedLink
-                      ? (isJapanese ? '招待リンクのコピー完了！' : '초대 링크 복사 완료!')
+                      ? (isJapanese ? '招待リンクのコピー完了！' : '초대 문구 복사 완료!')
                       : (isJapanese ? 'LINE / メッセージ招待状を送る' : '카카오톡 / 문자 초대장 보내기')}
                   </span>
                   {copiedLink ? (
@@ -1308,6 +1327,15 @@ function NewRoundForm() {
                     <Share2 className={`w-4 h-4 ml-auto ${isJapanese ? 'text-white' : 'text-stone-700'}`} />
                   )}
                 </button>
+
+                {/* 문자(SMS) 직접 발송 버튼 (스마트폰 기본 메시지 앱 즉시 연동) */}
+                <a
+                  href={`sms:?&body=${encodeURIComponent(shareText)}`}
+                  className="w-full py-2.5 px-4 font-bold rounded-xl text-xs flex items-center justify-center gap-2 bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 shadow-xs transition active:scale-98 text-center cursor-pointer"
+                >
+                  <span className="text-sm leading-none">📱</span>
+                  <span>{isJapanese ? 'SMS(ショートメッセージ)で送信' : '문자(SMS)로 바로 보내기'}</span>
+                </a>
 
                 {/* 클릭 시 안내 문구 네모 박스 */}
                 {copiedLink ? (
