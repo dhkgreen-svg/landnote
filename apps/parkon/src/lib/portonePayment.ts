@@ -2,7 +2,7 @@
 
 export const PORTONE_CONFIG = {
   storeId: 'store-dc14565c-d386-4d90-86ea-52cc5810dd25',
-  channelKey: 'channel-key-0b062364-7264-4f25-b35f-a7e505c8dd42',
+  channelKey: 'channel-key-865c9306-b23f-4b66-9a70-6cbfbb689e19',
 };
 
 export type MembershipPlanId = 'COFFEE_SUPPORT' | 'VIP_PASS_MONTH' | 'LIFETIME_FOUNDER';
@@ -76,6 +76,7 @@ export async function requestPortOnePayment(params: RequestPaymentParams) {
       orderName: plan.name,
       totalAmount: plan.price,
       currency: 'KRW',
+      payMethod: 'CARD',
       customer: {
         fullName: params.customerName || '파크골프 회원',
         phoneNumber: params.customerPhone || '010-0000-0000',
