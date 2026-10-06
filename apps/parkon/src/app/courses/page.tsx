@@ -2013,6 +2013,7 @@ export default function CoursesPage() {
               {/* 상단 닫기 X 버튼 */}
               <button
                 type="button"
+                id="btn-close-service-modal"
                 onClick={() => setActiveServiceTab(null)}
                 className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center text-lg font-black transition cursor-pointer active:scale-95 shrink-0 ml-2"
                 title="닫기"

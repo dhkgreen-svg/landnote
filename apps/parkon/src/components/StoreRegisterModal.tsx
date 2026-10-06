@@ -191,6 +191,8 @@ export function StoreRegisterModal({
           </div>
           <button
             type="button"
+            id="btn-close-store-register"
+            aria-label={isJapanese ? "閉じる" : "닫기"}
             onClick={onClose}
             className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
           >
@@ -292,7 +294,7 @@ export function StoreRegisterModal({
                 type="text"
                 value={signatureMenu}
                 onChange={(e) => setSignatureMenu(e.target.value)}
-                placeholder="예: 해물 순두부 (10,000원)"
+                placeholder={isJapanese ? "例: 特製海鮮うどん (1,000円)" : "예: 해물 순두부 (10,000원)"}
                 className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2.5 text-xs font-bold text-stone-900 outline-none focus:border-emerald-600 focus:bg-white"
               />
             </div>
