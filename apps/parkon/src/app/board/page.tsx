@@ -323,6 +323,37 @@ export default function CommunityBoardPage() {
 
       {/* 2. 4대 전문 탭 (시니어 52px+ 대형 규격) */}
       <div className="p-3 space-y-2.5">
+        {/* 📚 파크골프 공인 전문 가이드 10선 배너 */}
+        <Link
+          href="/guide"
+          className="block bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white p-3 rounded-2xl shadow-sm border border-emerald-600/60 hover:border-amber-400 transition group"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-8 h-8 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center text-sm font-black shrink-0 shadow-xs">
+                📚
+              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-black bg-amber-400 text-stone-950 px-1.5 py-0.2 rounded-md">
+                    {isJapanese ? '必読コラム' : '필독 칼럼'}
+                  </span>
+                  <span className="text-xs font-black text-white truncate">
+                    {isJapanese ? 'パークゴルフ公式専門ガイド 10選' : '파크골프 공인 전문 가이드 10선'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-200 truncate mt-0.5">
+                  {isJapanese ? '基本姿勢・ルール・用具選び・コース攻略の完全解説' : '입문·장비선택·장타스윙·OB벌타·이븐파 공략법 총정리'}
+                </p>
+              </div>
+            </div>
+            <span className="text-xs bg-white text-emerald-950 px-2.5 py-1 rounded-xl font-black shrink-0 group-hover:bg-amber-300 transition flex items-center gap-0.5">
+              <span>{isJapanese ? '読む' : '보기'}</span>
+              <span>&gt;</span>
+            </span>
+          </div>
+        </Link>
+
         <div className="grid grid-cols-4 p-1.5 bg-white rounded-2xl border-2 border-stone-200 shadow-sm gap-1 text-[11px] font-black text-stone-700">
           <button
             type="button"

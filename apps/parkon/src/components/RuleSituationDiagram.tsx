@@ -11,10 +11,12 @@ import { ScoreMannerDiagrams } from './rule-diagrams/ScoreMannerDiagrams';
 interface RuleSituationDiagramProps {
   ruleId: string;
   category: string;
+  isJp?: boolean;
 }
 
-export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramProps) {
+export function RuleSituationDiagram({ ruleId, category, isJp }: RuleSituationDiagramProps) {
   const { isJapanese } = useTranslation();
+  const activeJp = isJp ?? isJapanese;
 
   // [1] ob-1: 공이 OB 흰 선에 살짝 걸쳤을 때 (1mm 선상 접촉 시 무벌 세이프)
   if (ruleId === 'ob-1') {
@@ -23,10 +25,10 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>📐</span>
-            <span>{isJapanese ? 'NPGA公式規則 第12条 精密断面図' : '공인 규정 제33조 1항 정밀 단면도'}</span>
+            <span>{activeJp ? 'NPGA公式規則 第12条 精密断面図' : '공인 규정 제33조 1항 정밀 단면도'}</span>
           </div>
           <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-            {isJapanese ? '1mmでも線に触れていればセーフ！' : '1mm라도 선에 닿으면 세이프!'}
+            {activeJp ? '1mmでも線に触れていればセーフ！' : '1mm라도 선에 닿으면 세이프!'}
           </span>
         </div>
 
@@ -57,19 +59,19 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
             {/* Left Zone: Course Fairway / Rough (In-Play) */}
             <rect x="0" y="0" width="170" height="220" fill="url(#grassGrad)" />
             <text x="85" y="24" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900" opacity="0.95">
-              {isJapanese ? 'コース内 (インプレー区域)' : '코스 안쪽 (인플레이 구역)'}
+              {activeJp ? 'コース内 (インプレー区域)' : '코스 안쪽 (인플레이 구역)'}
             </text>
 
             {/* Middle: OB White Boundary Line */}
             <rect x="170" y="0" width="30" height="220" fill="#ffffff" stroke="#e2e8f0" strokeWidth="1" />
             <text x="185" y="115" textAnchor="middle" fill="#0f172a" fontSize="10" fontWeight="900" transform="rotate(-90 185 115)">
-              {isJapanese ? 'OB 白線' : 'OB 백색 실선'}
+              {activeJp ? 'OB 白線' : 'OB 백색 실선'}
             </text>
 
             {/* Right Zone: Out of Bounds (OB) */}
             <rect x="200" y="0" width="200" height="220" fill="url(#obHatch)" />
             <text x="300" y="24" textAnchor="middle" fill="#f87171" fontSize="11" fontWeight="900">
-              {isJapanese ? 'OB区域 (コース外)' : 'OB 구역 (코스 밖)'}
+              {activeJp ? 'OB区域 (コース外)' : 'OB 구역 (코스 밖)'}
             </text>
 
             {/* Case A: Safe Ball touching the line by 1mm */}
@@ -87,13 +89,13 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
             <path d="M 173 99 L 173 70 L 140 70" fill="none" stroke="#fbbf24" strokeWidth="2" />
             <rect x="40" y="56" width="105" height="26" rx="6" fill="#047857" stroke="#34d399" strokeWidth="1.5" />
             <text x="92" y="73" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900">
-              {isJapanese ? '1mm接触 = セーフ！' : '1mm 접촉 = 세이프!'}
+              {activeJp ? '1mm接触 = セーフ！' : '1mm 접촉 = 세이프!'}
             </text>
 
             {/* Result Badge A: SAFE */}
             <rect x="70" y="170" width="120" height="34" rx="10" fill="#059669" stroke="#6ee7b7" strokeWidth="2" />
             <text x="130" y="192" textAnchor="middle" fill="#ffffff" fontSize="13" fontWeight="900">
-              {isJapanese ? '✔ 無罰セーフ (IN)' : '✔ 무벌 세이프 (IN)'}
+              {activeJp ? '✔ 無罰セーフ (IN)' : '✔ 무벌 세이프 (IN)'}
             </text>
 
             {/* Case B: Ball completely out */}
@@ -104,18 +106,18 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
             <path d="M 235 120 L 255 120" stroke="#f87171" strokeWidth="1.5" strokeDasharray="2,2" />
             <rect x="250" y="170" width="110" height="34" rx="10" fill="#b91c1c" stroke="#fca5a5" strokeWidth="2" />
             <text x="305" y="192" textAnchor="middle" fill="#ffffff" fontSize="12" fontWeight="900">
-              {isJapanese ? '✖ OB (2打付加)' : '✖ OB (2벌타)'}
+              {activeJp ? '✖ OB (2打付加)' : '✖ OB (2벌타)'}
             </text>
           </svg>
         </div>
 
         <div className="bg-stone-800/90 rounded-xl p-2.5 text-xs text-stone-200 font-bold space-y-1">
           <div className="text-emerald-400 font-extrabold flex items-center gap-1">
-            <span>💡 {isJapanese ? '判定要約:' : '판정 요약:'}</span>
-            <span>{isJapanese ? 'ボール全体が白線を完全に越境した時のみOBです！' : '공 전체가 흰 선을 완전히 넘어가야만 OB입니다!'}</span>
+            <span>💡 {activeJp ? '判定要約:' : '판정 요약:'}</span>
+            <span>{activeJp ? 'ボール全体が白線を完全に越境した時のみOBです！' : '공 전체가 흰 선을 완전히 넘어가야만 OB입니다!'}</span>
           </div>
           <p className="text-[11px] text-stone-300 leading-relaxed break-keep">
-            {isJapanese
+            {activeJp
               ? 'ボールのわずか1mmでも白線（または杭の内側を結ぶ線）に触れていれば無罰セーフ（インプレー）ですので、そのまま打撃できます。'
               : '공의 단 1mm라도 백색 실선(또는 말뚝 내측 가상선)에 닿아 있거나 선 위에 걸쳐 있다면 무벌타 세이프(인플레이)이므로 그대로 플레이합니다.'}
           </p>
@@ -131,10 +133,10 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>⛳</span>
-            <span>OB 처치 2클럽 헤드 설치 다이어그램</span>
+            <span>{activeJp ? 'OB救済 2クラブレングス設置ダイアグラム' : 'OB 처치 2클럽 헤드 설치 다이어그램'}</span>
           </div>
           <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
-            무조건 2벌타 가산
+            {activeJp ? '2打付加 (2罰打)' : '무조건 2벌타 가산'}
           </span>
         </div>
 
@@ -145,12 +147,16 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
               <circle cx="0" cy="0" r="14" fill="#0f172a" stroke="#ffffff" strokeWidth="2" />
               <line x1="0" y1="0" x2="0" y2="-28" stroke="#ffffff" strokeWidth="3" />
               <polygon points="0,-28 20,-20 0,-12" fill="#ef4444" />
-              <text x="25" y="-18" fill="#ffffff" fontSize="10" fontWeight="900">홀컵 방향</text>
+              <text x="25" y="-18" fill="#ffffff" fontSize="10" fontWeight="900">
+                {activeJp ? 'カップ方向' : '홀컵 방향'}
+              </text>
             </g>
 
             <line x1="280" y1="0" x2="280" y2="220" stroke="#ffffff" strokeWidth="6" />
             <rect x="283" y="0" width="117" height="220" fill="#3f0e0e" opacity="0.6" />
-            <text x="340" y="110" fill="#f87171" fontSize="11" fontWeight="900" textAnchor="middle">OB 구역</text>
+            <text x="340" y="110" fill="#f87171" fontSize="11" fontWeight="900" textAnchor="middle">
+              {activeJp ? 'OB区域' : 'OB 구역'}
+            </text>
 
             <rect x="277" y="30" width="6" height="20" fill="#ffffff" stroke="#94a3b8" strokeWidth="1" />
             <rect x="277" y="110" width="6" height="20" fill="#ffffff" stroke="#94a3b8" strokeWidth="1" />
@@ -158,7 +164,7 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
 
             <circle cx="280" cy="120" r="6" fill="#ef4444" stroke="#ffffff" strokeWidth="2" />
             <text x="270" y="145" fill="#fef08a" fontSize="10" fontWeight="900" textAnchor="end">
-              나간 지점 (기준점)
+              {activeJp ? '越境地点 (基準点)' : '나간 지점 (기준점)'}
             </text>
 
             <path d="M 280 60 A 60 60 0 0 0 280 180 Z" fill="#22c55e" fillOpacity="0.3" stroke="#4ade80" strokeWidth="2" strokeDasharray="4,2" />
@@ -166,28 +172,30 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
             <line x1="280" y1="120" x2="220" y2="120" stroke="#fbbf24" strokeWidth="4" />
             <rect x="215" y="114" width="10" height="12" rx="2" fill="#d97706" />
             <text x="245" y="112" fill="#fef08a" fontSize="10" fontWeight="900" textAnchor="middle">
-              2클럽 이내
+              {activeJp ? '2クラブ以内' : '2클럽 이내'}
             </text>
 
             <circle cx="230" cy="140" r="12" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
             <text x="230" y="168" fill="#ffffff" fontSize="10" fontWeight="900" textAnchor="middle">
-              새 공 안착 지점
+              {activeJp ? 'プレース地点' : '새 공 안착 지점'}
             </text>
 
             <path d="M 230 110 L 120 60" stroke="#f87171" strokeWidth="1.5" strokeDasharray="3,3" />
             <text x="180" y="75" fill="#fca5a5" fontSize="9" fontWeight="800">
-              ※ 홀컵에 가깝지 않게!
+              {activeJp ? '※ カップに近づかない！' : '※ 홀컵에 가깝지 않게!'}
             </text>
           </svg>
         </div>
 
         <div className="bg-stone-800/90 rounded-xl p-2.5 text-xs text-stone-200 font-bold space-y-1">
           <div className="text-amber-300 font-extrabold flex items-center gap-1">
-            <span>📌 처치 핵심:</span>
-            <span>티박스로 돌아가지 않습니다!</span>
+            <span>{activeJp ? '📌 処置の要点:' : '📌 처치 핵심:'}</span>
+            <span>{activeJp ? 'ティーボックスには戻りません！' : '티박스로 돌아가지 않습니다!'}</span>
           </div>
           <p className="text-[11px] text-stone-300 leading-relaxed break-keep">
-            공이 OB 라인을 통과한 기준점에서 홀컵에 가깝지 않게 코스 안쪽으로 2클럽 이내에 공을 놓고 다음 타를 진행합니다.
+            {activeJp
+              ? 'ボールがOBラインを通過した基準点から、ホールに近づかないコース内へ2クラブレングス以内に手でプレースして次打を行います。'
+              : '공이 OB 라인을 통과한 기준점에서 홀컵에 가깝지 않게 코스 안쪽으로 2클럽 이내에 공을 놓고 다음 타를 진행합니다.'}
           </p>
         </div>
       </div>
@@ -201,10 +209,10 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>🛡️</span>
-            <span>그물망 리바운드 판정 다이어그램</span>
+            <span>{activeJp ? '防球ネット・障害物バウンド判定ダイアグラム' : '그물망 리바운드 판정 다이어그램'}</span>
           </div>
           <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-            최종 정지 위치 기준
+            {activeJp ? '最終静止位置基準' : '최종 정지 위치 기준'}
           </span>
         </div>
 
@@ -212,7 +220,7 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
           <svg viewBox="0 0 400 220" className="w-full h-full">
             <rect x="0" y="0" width="230" height="220" fill="#15803d" />
             <text x="115" y="30" fill="#ffffff" fontSize="11" fontWeight="900" textAnchor="middle">
-              코스 안 (인플레이 구역)
+              {activeJp ? 'コース内 (インプレー区域)' : '코스 안 (인플레이 구역)'}
             </text>
 
             <line x1="230" y1="0" x2="230" y2="220" stroke="#ffffff" strokeWidth="5" />
@@ -222,32 +230,38 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
             {Array.from({ length: 11 }).map((_, i) => (
               <line key={i} x1="310" y1={i * 20} x2="330" y2={i * 20} stroke="#38bdf8" strokeWidth="1.5" />
             ))}
-            <text x="355" y="110" fill="#38bdf8" fontSize="10" fontWeight="900">외곽 안전망</text>
+            <text x="355" y="110" fill="#38bdf8" fontSize="10" fontWeight="900">
+              {activeJp ? '外郭防球ネット' : '외곽 안전망'}
+            </text>
 
             <path d="M 120 160 Q 230 110 320 100 Q 280 80 180 90" fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeDasharray="5,3" />
 
             <circle cx="320" cy="100" r="14" fill="#ef4444" opacity="0.8" />
-            <text x="320" y="104" fill="#ffffff" fontSize="9" fontWeight="900" textAnchor="middle">탕!</text>
+            <text x="320" y="104" fill="#ffffff" fontSize="9" fontWeight="900" textAnchor="middle">
+              {activeJp ? 'バウンド！' : '탕!'}
+            </text>
 
             <circle cx="180" cy="90" r="12" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
             <text x="180" y="125" fill="#fef08a" fontSize="11" fontWeight="900" textAnchor="middle">
-              ★ 최종 정지 (코스 안)
+              {activeJp ? '★ 最終静止 (コース内)' : '★ 최종 정지 (코스 안)'}
             </text>
 
             <rect x="70" y="170" width="160" height="34" rx="10" fill="#059669" stroke="#6ee7b7" strokeWidth="2" />
             <text x="150" y="192" textAnchor="middle" fill="#ffffff" fontSize="13" fontWeight="900">
-              ✔ 벌타 없이 세이프!
+              {activeJp ? '✔ 無罰セーフ！' : '✔ 벌타 없이 세이프!'}
             </text>
           </svg>
         </div>
 
         <div className="bg-stone-800/90 rounded-xl p-2.5 text-xs text-stone-200 font-bold space-y-1">
           <div className="text-emerald-400 font-extrabold flex items-center gap-1">
-            <span>💡 황금 법칙:</span>
-            <span>중간 궤적이 아니라 "최종 멈춘 위치"가 기준!</span>
+            <span>{activeJp ? '💡 黄金律:' : '💡 황금 법칙:'}</span>
+            <span>{activeJp ? '通過軌跡ではなく「最終停止位置」が基準！' : '중간 궤적이 아니라 "최종 멈춘 위치"가 기준!'}</span>
           </div>
           <p className="text-[11px] text-stone-300 leading-relaxed break-keep">
-            공이 OB 말뚝 밖으로 나갔더라도 바깥의 안전망, 나무, 바위 등을 맞고 다시 코스 안으로 튕겨 들어와 멈췄다면 벌타 없이 세이프입니다.
+            {activeJp
+              ? 'ボールが一時的にOB区域の空中を通過しても、防球ネットや木などに当たってコース内に跳ね返り静止した場合、無罰セーフとなります。'
+              : '공이 OB 말뚝 밖으로 나갔더라도 바깥의 안전망, 나무, 바위 등을 맞고 다시 코스 안으로 튕겨 들어와 멈췄다면 벌타 없이 세이프입니다.'}
           </p>
         </div>
       </div>
@@ -261,17 +275,19 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>🚩</span>
-            <span>깃대 충돌 후 OB 최종 위치 판정</span>
+            <span>{activeJp ? 'ピン衝突後OB 最終位置判定ダイアグラム' : '깃대 충돌 후 OB 최종 위치 판정'}</span>
           </div>
           <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
-            2벌타 가산
+            {activeJp ? '2打付加 (2罰打)' : '2벌타 가산'}
           </span>
         </div>
 
         <div className="relative w-full aspect-[16/9] bg-stone-950 rounded-xl overflow-hidden border border-stone-800 flex items-center justify-center">
           <svg viewBox="0 0 400 220" className="w-full h-full">
             <circle cx="140" cy="110" r="100" fill="#16a34a" />
-            <text x="100" y="50" fill="#ffffff" fontSize="10" fontWeight="900">그린 (퍼팅 구역)</text>
+            <text x="100" y="50" fill="#ffffff" fontSize="10" fontWeight="900">
+              {activeJp ? 'グリーン (パッティング区域)' : '그린 (퍼팅 구역)'}
+            </text>
 
             <circle cx="150" cy="110" r="12" fill="#0f172a" stroke="#ffffff" strokeWidth="2" />
             <line x1="150" y1="110" x2="150" y2="70" stroke="#ffffff" strokeWidth="3" />
@@ -279,7 +295,9 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
 
             <line x1="270" y1="0" x2="270" y2="220" stroke="#ffffff" strokeWidth="5" />
             <rect x="273" y="0" width="127" height="220" fill="#450a0a" opacity="0.6" />
-            <text x="330" y="40" fill="#f87171" fontSize="11" fontWeight="900">OB 구역</text>
+            <text x="330" y="40" fill="#f87171" fontSize="11" fontWeight="900">
+              {activeJp ? 'OB区域' : 'OB 구역'}
+            </text>
 
             <path d="M 60 140 Q 110 120 150 110" fill="none" stroke="#38bdf8" strokeWidth="2.5" />
             <circle cx="150" cy="110" r="10" fill="#ef4444" opacity="0.8" />
@@ -287,23 +305,25 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
 
             <circle cx="320" cy="130" r="12" fill="#ef4444" stroke="#ffffff" strokeWidth="2" />
             <text x="320" y="160" fill="#fca5a5" fontSize="10" fontWeight="900" textAnchor="middle">
-              최종 위치 (OB 구역)
+              {activeJp ? '最終位置 (OB区域)' : '최종 위치 (OB 구역)'}
             </text>
 
             <rect x="230" y="170" width="150" height="34" rx="10" fill="#b91c1c" stroke="#fca5a5" strokeWidth="2" />
             <text x="305" y="192" textAnchor="middle" fill="#ffffff" fontSize="12" fontWeight="900">
-              ✖ 2벌타 OB 처치
+              {activeJp ? '✖ 2打付加 OB処置' : '✖ 2벌타 OB 처치'}
             </text>
           </svg>
         </div>
 
         <div className="bg-stone-800/90 rounded-xl p-2.5 text-xs text-stone-200 font-bold space-y-1">
           <div className="text-rose-400 font-extrabold flex items-center gap-1">
-            <span>⚖️ 판정 이유:</span>
-            <span>깃대를 맞은 것도 정상 스트로크의 일부입니다!</span>
+            <span>{activeJp ? '⚖️ 判定理由:' : '⚖️ 판정 이유:'}</span>
+            <span>{activeJp ? 'ピンに当たったのも通常ストロークの結果です！' : '깃대를 맞은 것도 정상 스트로크의 일부입니다!'}</span>
           </div>
           <p className="text-[11px] text-stone-300 leading-relaxed break-keep">
-            아쉽게 깃대를 맞고 튕겨 나갔더라도 공이 최종적으로 멈춘 위치가 OB선 밖이므로 2벌타를 받고 나간 지점 2클럽 이내에서 처치합니다.
+            {activeJp
+              ? 'ピンに当たって跳ね返ったとしても、ボールが最終的に静止した地点がOBラインの外側であれば2打付加となり、越境地点から2クラブ以内で処置します。'
+              : '아쉽게 깃대를 맞고 튕겨 나갔더라도 공이 최종적으로 멈춘 위치가 OB선 밖이므로 2벌타를 받고 나간 지점 2클럽 이내에서 처치합니다.'}
           </p>
         </div>
       </div>
@@ -317,10 +337,10 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>🏌️</span>
-            <span>티샷 OB 후 타수 계산 및 4타째 위치</span>
+            <span>{activeJp ? 'ティーショットOBの打数計算と第4打地点' : '티샷 OB 후 타수 계산 및 4타째 위치'}</span>
           </div>
           <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
-            티박스 복귀 금지
+            {activeJp ? 'ティーへの復帰禁止' : '티박스 복귀 금지'}
           </span>
         </div>
 
@@ -328,13 +348,17 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
           <svg viewBox="0 0 400 220" className="w-full h-full">
             <rect x="20" y="80" width="60" height="90" rx="6" fill="#1e293b" stroke="#38bdf8" strokeWidth="2" />
             <circle cx="50" cy="125" r="5" fill="#f59e0b" />
-            <text x="50" y="70" fill="#38bdf8" fontSize="10" fontWeight="900" textAnchor="middle">티잉그라운드</text>
-            <text x="50" y="150" fill="#ffffff" fontSize="9" fontWeight="800" textAnchor="middle">제1타(티샷)</text>
+            <text x="50" y="70" fill="#38bdf8" fontSize="10" fontWeight="900" textAnchor="middle">
+              {activeJp ? 'ティーグラウンド' : '티잉그라운드'}
+            </text>
+            <text x="50" y="150" fill="#ffffff" fontSize="9" fontWeight="800" textAnchor="middle">
+              {activeJp ? '第1打 (ティーショット)' : '제1타(티샷)'}
+            </text>
 
             <line x1="30" y1="90" x2="70" y2="160" stroke="#ef4444" strokeWidth="3" />
             <line x1="70" y1="90" x2="30" y2="160" stroke="#ef4444" strokeWidth="3" />
             <text x="50" y="195" fill="#f87171" fontSize="9" fontWeight="900" textAnchor="middle">
-              ※ 티 복귀 절대 불가!
+              {activeJp ? '※ ティー復帰絶対不可！' : '※ 티 복귀 절대 불가!'}
             </text>
 
             <rect x="100" y="0" width="160" height="220" fill="#15803d" />
@@ -345,27 +369,29 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
 
             <rect x="130" y="30" width="100" height="26" rx="6" fill="#b91c1c" />
             <text x="180" y="47" fill="#ffffff" fontSize="10" fontWeight="900" textAnchor="middle">
-              + 2벌타 가산
+              {activeJp ? '+ 2打付加' : '+ 2벌타 가산'}
             </text>
 
             <circle cx="230" cy="80" r="13" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
             <rect x="170" y="140" width="140" height="36" rx="10" fill="#047857" stroke="#34d399" strokeWidth="2" />
             <text x="240" y="156" fill="#ffffff" fontSize="11" fontWeight="900" textAnchor="middle">
-              나간 지점 2클럽 안착
+              {activeJp ? '越境地点2クラブ以内' : '나간 지점 2클럽 안착'}
             </text>
             <text x="240" y="170" fill="#fef08a" fontSize="10" fontWeight="900" textAnchor="middle">
-              다음 샷이 【제4타째】!
+              {activeJp ? '次のショットが【第4打】！' : '다음 샷이 【제4타째】!'}
             </text>
           </svg>
         </div>
 
         <div className="bg-stone-800/90 rounded-xl p-2.5 text-xs text-stone-200 font-bold space-y-1">
           <div className="text-amber-300 font-extrabold flex items-center gap-1">
-            <span>🔢 타수 계산 공식:</span>
-            <span>티샷(1타) + OB(2벌타) = 2클럽 안착 후 치는 공이 4타째!</span>
+            <span>{activeJp ? '🔢 打数計算公式:' : '🔢 타수 계산 공식:'}</span>
+            <span>{activeJp ? 'ティーショット(1打) + OB(2打付加) = プレース後の打撃が第4打！' : '티샷(1타) + OB(2벌타) = 2클럽 안착 후 치는 공이 4타째!'}</span>
           </div>
           <p className="text-[11px] text-stone-300 leading-relaxed break-keep">
-            일반 골프처럼 티박스로 돌아가서 치지 않습니다. OB 선을 통과한 지점에서 2클럽 이내에 놓고 치셔야 합니다.
+            {activeJp
+              ? '一般ゴルフのようにティーグラウンドへ戻って打ち直すことはできません。OBラインを横切った地点から2クラブレングス以内に置いて打ちます。'
+              : '일반 골프처럼 티박스로 돌아가서 치지 않습니다. OB 선을 통과한 지점에서 2클럽 이내에 놓고 치셔야 합니다.'}
           </p>
         </div>
       </div>
@@ -379,10 +405,10 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>🚫</span>
-            <span>OB 말뚝 훼손 및 라이 개선 금지</span>
+            <span>{activeJp ? 'OB白杭損壊及びライ改善の禁止' : 'OB 말뚝 훼손 및 라이 개선 금지'}</span>
           </div>
           <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
-            위반 시 2벌타
+            {activeJp ? '違反時2打付加' : '위반 시 2벌타'}
           </span>
         </div>
 
@@ -392,36 +418,40 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
 
             <rect x="185" y="60" width="30" height="110" rx="3" fill="#ffffff" stroke="#94a3b8" strokeWidth="2" />
             <text x="200" y="120" fill="#0f172a" fontSize="10" fontWeight="900" transform="rotate(-90 200 120)">
-              OB 말뚝
+              {activeJp ? 'OB杭' : 'OB 말뚝'}
             </text>
 
             <circle cx="150" cy="160" r="14" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
-            <text x="150" y="190" fill="#ffffff" fontSize="10" fontWeight="800" textAnchor="middle">내 공</text>
+            <text x="150" y="190" fill="#ffffff" fontSize="10" fontWeight="800" textAnchor="middle">
+              {activeJp ? '自球' : '내 공'}
+            </text>
 
             <circle cx="200" cy="115" r="45" fill="none" stroke="#ef4444" strokeWidth="8" opacity="0.9" />
             <line x1="168" y1="83" x2="232" y2="147" stroke="#ef4444" strokeWidth="8" opacity="0.9" />
 
             <text x="310" y="105" fill="#fca5a5" fontSize="12" fontWeight="900" textAnchor="middle">
-              뽑기 / 발로 차기
+              {activeJp ? '引き抜き / 蹴り' : '뽑기 / 발로 차기'}
             </text>
             <text x="310" y="125" fill="#ef4444" fontSize="14" fontWeight="900" textAnchor="middle">
-              절대 금지! 🚫
+              {activeJp ? '絶対禁止！ 🚫' : '절대 금지! 🚫'}
             </text>
 
             <rect x="110" y="10" width="180" height="34" rx="10" fill="#b91c1c" stroke="#fca5a5" strokeWidth="2" />
             <text x="200" y="32" textAnchor="middle" fill="#ffffff" fontSize="12" fontWeight="900">
-              라이 개선 위반 【2벌타】
+              {activeJp ? 'ライ改善違反 【2打付加】' : '라이 개선 위반 【2벌타】'}
             </text>
           </svg>
         </div>
 
         <div className="bg-stone-800/90 rounded-xl p-2.5 text-xs text-stone-200 font-bold space-y-1">
           <div className="text-rose-400 font-extrabold flex items-center gap-1">
-            <span>⚠️ 고정 장애물 규정:</span>
-            <span>OB 말뚝은 코스 고정물로 어떤 경우에도 손대선 안 됩니다.</span>
+            <span>{activeJp ? '⚠️ 固定障害物規程:' : '⚠️ 고정 장애물 규정:'}</span>
+            <span>{activeJp ? 'OB杭はコース固定物であり如何なる場合も触れてはなりません。' : 'OB 말뚝은 코스 고정물로 어떤 경우에도 손대선 안 됩니다.'}</span>
           </div>
           <p className="text-[11px] text-stone-300 leading-relaxed break-keep">
-            스윙이나 발 위치에 방해되더라도 있는 그대로 치셔야 합니다. 임의로 뽑거나 기울이면 2벌타를 받고 원래대로 꽂아놓아야 합니다.
+            {activeJp
+              ? 'スイングやスタンスの妨げになっても、あるがままの状態で打撃しなければなりません。抜いたり傾けたりすると2打付加となり元通りに戻す必要があります。'
+              : '스윙이나 발 위치에 방해되더라도 있는 그대로 치셔야 합니다. 임의로 뽑거나 기울이면 2벌타를 받고 원래대로 꽂아놓아야 합니다.'}
           </p>
         </div>
       </div>
@@ -435,10 +465,10 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>💥</span>
-            <span>공 충돌 시 동반자 공 무벌 원위치 규정</span>
+            <span>{activeJp ? '球の衝突時 同伴球無罰原位置規則' : '공 충돌 시 동반자 공 무벌 원위치 규정'}</span>
           </div>
           <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-            동반자 무벌타
+            {activeJp ? '同伴競技者無罰' : '동반자 무벌타'}
           </span>
         </div>
 
@@ -452,7 +482,9 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
             <path d="M 75 110 L 160 110" stroke="#38bdf8" strokeWidth="2.5" strokeDasharray="4,2" />
 
             <circle cx="170" cy="110" r="14" fill="#fbbf24" opacity="0.8" />
-            <text x="170" y="114" fill="#0f172a" fontSize="9" fontWeight="900" textAnchor="middle">쾅!</text>
+            <text x="170" y="114" fill="#0f172a" fontSize="9" fontWeight="900" textAnchor="middle">
+              {activeJp ? '衝突！' : '쾅!'}
+            </text>
 
             <path d="M 180 110 Q 230 110 320 80" stroke="#f97316" strokeWidth="2" strokeDasharray="3,3" />
             <circle cx="320" cy="80" r="12" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
@@ -462,25 +494,27 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
 
             <rect x="110" y="145" width="140" height="34" rx="8" fill="#047857" stroke="#34d399" strokeWidth="1.5" />
             <text x="180" y="166" fill="#ffffff" fontSize="11" fontWeight="900" textAnchor="middle">
-              동반자 공: 【무벌 원위치】
+              {activeJp ? '同伴球: 【無罰で元の位置】' : '동반자 공: 【무벌 원위치】'}
             </text>
 
             <text x="320" y="125" fill="#fca5a5" fontSize="10" fontWeight="900" textAnchor="middle">
-              친 사람 공만
+              {activeJp ? '打った球のみ' : '친 사람 공만'}
             </text>
             <text x="320" y="140" fill="#ef4444" fontSize="10" fontWeight="900" textAnchor="middle">
-              최종 위치로 판정!
+              {activeJp ? '最終位置で判定！' : '최종 위치로 판정!'}
             </text>
           </svg>
         </div>
 
         <div className="bg-stone-800/90 rounded-xl p-2.5 text-xs text-stone-200 font-bold space-y-1">
           <div className="text-emerald-400 font-extrabold flex items-center gap-1">
-            <span>💡 피해자 보호 원칙:</span>
-            <span>맞아서 튕겨 나간 동반자 공은 벌타 없이 원래 자리로 복귀!</span>
+            <span>{activeJp ? '💡 同伴競技者保護の原則:' : '💡 피해자 보호 원칙:'}</span>
+            <span>{activeJp ? '当てられて動いた同伴球は無罰で元の位置へ戻す！' : '맞아서 튕겨 나간 동반자 공은 벌타 없이 원래 자리로 복귀!'}</span>
           </div>
           <p className="text-[11px] text-stone-300 leading-relaxed break-keep">
-            내 공에 맞아 OB로 나간 동반자의 공은 원래 충돌 지점으로 돌아옵니다. 친 본인의 공이 OB가 된 경우에만 본인에게 2벌타가 부과됩니다.
+            {activeJp
+              ? '自分の打球に当たってOBへ出た同伴者のボールは元の位置に戻します。打った本人の球がOBになった場合のみ、本人に2打付加が科されます。'
+              : '내 공에 맞아 OB로 나간 동반자의 공은 원래 충돌 지점으로 돌아옵니다. 친 본인의 공이 OB가 된 경우에만 본인에게 2벌타가 부과됩니다.'}
           </p>
         </div>
       </div>
@@ -494,10 +528,10 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>⏱️</span>
-            <span>분실구 2분 수색 규정 및 2벌타 처치</span>
+            <span>{activeJp ? '紛失球 2分間捜索規程及び2打付加処置' : '분실구 2분 수색 규정 및 2벌타 처치'}</span>
           </div>
           <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
-            2분 초과 시 분실구
+            {activeJp ? '2分超過時紛失球' : '2분 초과 시 분실구'}
           </span>
         </div>
 
@@ -505,34 +539,40 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
           <svg viewBox="0 0 400 220" className="w-full h-full">
             <rect x="0" y="0" width="400" height="220" fill="#14532d" />
             <text x="200" y="30" fill="#86efac" fontSize="12" fontWeight="900" textAnchor="middle">
-              깊은 러프 / 수풀 구역
+              {activeJp ? '深いラフ / 茂み区域' : '깊은 러프 / 수풀 구역'}
             </text>
 
             <circle cx="100" cy="115" r="35" fill="#1e293b" stroke="#f59e0b" strokeWidth="3" />
             <text x="100" y="112" fill="#fbbf24" fontSize="20" textAnchor="middle">⏳</text>
-            <text x="100" y="132" fill="#ffffff" fontSize="10" fontWeight="900" textAnchor="middle">2분 수색</text>
+            <text x="100" y="132" fill="#ffffff" fontSize="10" fontWeight="900" textAnchor="middle">
+              {activeJp ? '2分捜索' : '2분 수색'}
+            </text>
 
             <circle cx="220" cy="115" r="22" fill="#334155" stroke="#94a3b8" strokeWidth="2" strokeDasharray="3,3" />
             <text x="220" y="123" fill="#94a3b8" fontSize="20" fontWeight="900" textAnchor="middle">?</text>
-            <text x="220" y="155" fill="#f87171" fontSize="10" fontWeight="800" textAnchor="middle">미발견 시</text>
+            <text x="220" y="155" fill="#f87171" fontSize="10" fontWeight="800" textAnchor="middle">
+              {activeJp ? '未発見時' : '미발견 시'}
+            </text>
 
             <rect x="270" y="90" width="115" height="60" rx="10" fill="#047857" stroke="#34d399" strokeWidth="1.5" />
             <text x="327" y="112" fill="#fef08a" fontSize="11" fontWeight="900" textAnchor="middle">
-              2벌타 가산 후
+              {activeJp ? '2打付加の上' : '2벌타 가산 후'}
             </text>
             <text x="327" y="130" fill="#ffffff" fontSize="10" fontWeight="900" textAnchor="middle">
-              분실 지점 2클럽 안착
+              {activeJp ? '紛失地点2クラブ内' : '분실 지점 2클럽 안착'}
             </text>
           </svg>
         </div>
 
         <div className="bg-stone-800/90 rounded-xl p-2.5 text-xs text-stone-200 font-bold space-y-1">
           <div className="text-amber-300 font-extrabold flex items-center gap-1">
-            <span>⏳ 수색 시간 안내:</span>
-            <span>일반 골프(3분)와 달리 파크골프 공인 수색 시간은 2분입니다!</span>
+            <span>{activeJp ? '⏳ 捜索時間のご案内:' : '⏳ 수색 시간 안내:'}</span>
+            <span>{activeJp ? '一般ゴルフ(3分)と異なり、パークゴルフ公認の捜索時間は2分です！' : '일반 골프(3분)와 달리 파크골프 공인 수색 시간은 2분입니다!'}</span>
           </div>
           <p className="text-[11px] text-stone-300 leading-relaxed break-keep">
-            동반자와 함께 2분간 찾아도 공이 안 보이면 분실구로 2벌타를 받고 분실 추정 지점 2클럽 이내에서 새 공으로 플레이합니다.
+            {activeJp
+              ? '同伴者と2分間探しても球が見つからない場合は紛失球として2打付加となり、紛失推定地点から2クラブ以内のコース内に手でプレースしてプレーします。'
+              : '동반자와 함께 2분간 찾아도 공이 안 보이면 분실구로 2벌타를 받고 분실 추정 지점 2클럽 이내에서 새 공으로 플레이합니다.'}
           </p>
         </div>
       </div>
@@ -546,10 +586,10 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>⚠️</span>
-            <span>홀에 가깝게 놓는 오소(오치) 플레이 금지도</span>
+            <span>{activeJp ? 'ホールに近づく誤所(誤置)プレー禁止図' : '홀에 가깝게 놓는 오소(오치) 플레이 금지도'}</span>
           </div>
           <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
-            2벌타 추가 부과
+            {activeJp ? '2打付加 追加' : '2벌타 추가 부과'}
           </span>
         </div>
 
@@ -563,32 +603,40 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
               <circle cx="0" cy="0" r="10" fill="#0f172a" stroke="#ffffff" strokeWidth="2" />
               <line x1="0" y1="0" x2="0" y2="-20" stroke="#ffffff" strokeWidth="2.5" />
               <polygon points="0,-20 15,-15 0,-10" fill="#ef4444" />
-              <text x="20" y="-12" fill="#ffffff" fontSize="10" fontWeight="900">홀컵 방향 (전방)</text>
+              <text x="20" y="-12" fill="#ffffff" fontSize="10" fontWeight="900">
+                {activeJp ? 'カップ方向 (前方)' : '홀컵 방향 (전방)'}
+              </text>
             </g>
 
             <circle cx="300" cy="140" r="6" fill="#fbbf24" stroke="#ffffff" strokeWidth="2" />
-            <text x="290" y="165" fill="#fef08a" fontSize="10" fontWeight="800" textAnchor="end">나간 지점</text>
+            <text x="290" y="165" fill="#fef08a" fontSize="10" fontWeight="800" textAnchor="end">
+              {activeJp ? '越境地点' : '나간 지점'}
+            </text>
 
             <path d="M 285 130 L 220 70" stroke="#ef4444" strokeWidth="4" />
             <polygon points="215,65 228,68 220,78" fill="#ef4444" />
             <circle cx="230" cy="85" r="14" fill="#ef4444" opacity="0.8" />
             <text x="230" y="89" fill="#ffffff" fontSize="12" fontWeight="900" textAnchor="middle">🚫</text>
-            <text x="200" y="105" fill="#fca5a5" fontSize="10" fontWeight="900">홀컵 쪽 전진 금지!</text>
+            <text x="200" y="105" fill="#fca5a5" fontSize="10" fontWeight="900">
+              {activeJp ? 'カップ側前進禁止！' : '홀컵 쪽 전진 금지!'}
+            </text>
 
             <path d="M 300 140 L 240 140 A 60 60 0 0 0 270 195 Z" fill="#22c55e" fillOpacity="0.4" stroke="#4ade80" strokeWidth="2" />
             <text x="230" y="180" fill="#a7f3d0" fontSize="10" fontWeight="900">
-              측면/후방 허용 구역
+              {activeJp ? '側面・後方 許容区域' : '측면/후방 허용 구역'}
             </text>
           </svg>
         </div>
 
         <div className="bg-stone-800/90 rounded-xl p-2.5 text-xs text-stone-200 font-bold space-y-1">
           <div className="text-rose-400 font-extrabold flex items-center gap-1">
-            <span>🚨 절대 주의:</span>
-            <span>2클럽을 잴 때 홀컵 방향으로 앞쪽에 놓으면 2벌타 추가!</span>
+            <span>{activeJp ? '🚨 絶対注意:' : '🚨 절대 주의:'}</span>
+            <span>{activeJp ? '2クラブを測る際、カップ方向の前方に置くと誤所で追加2打付加！' : '2클럽을 잴 때 홀컵 방향으로 앞쪽에 놓으면 2벌타 추가!'}</span>
           </div>
           <p className="text-[11px] text-stone-300 leading-relaxed break-keep">
-            구제는 반드시 나간 지점 기준 측면이나 뒤쪽(홀에 가깝지 않은 방향)으로만 놓아야 합니다. 홀 쪽으로 전진하여 치면 오소 플레이로 2벌타가 추가 가산됩니다.
+            {activeJp
+              ? '救済は必ず越境地点から側面または後方(ホールに近づかない方向)にのみ置かなければなりません。ホール側へ前進して打つと誤所からのプレーで追加2打付加となります。'
+              : '구제는 반드시 나간 지점 기준 측면이나 뒤쪽(홀에 가깝지 않은 방향)으로만 놓아야 합니다. 홀 쪽으로 전진하여 치면 오소 플레이로 2벌타가 추가 가산됩니다.'}
           </p>
         </div>
       </div>
@@ -602,10 +650,10 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>🌲</span>
-            <span>공중 수직 투영선 기준 세이프 판정도</span>
+            <span>{activeJp ? '空中垂直投影線基準セーフ判定図' : '공중 수직 투영선 기준 세이프 판정도'}</span>
           </div>
           <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-            수직 투영선 접촉 시 세이프
+            {activeJp ? '垂直投影線接触時セーフ' : '수직 투영선 접촉 시 세이프'}
           </span>
         </div>
 
@@ -624,23 +672,25 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
             <circle cx="210" cy="160" r="5" fill="#facc15" />
 
             <text x="210" y="125" fill="#fef08a" fontSize="10" fontWeight="900" textAnchor="end">
-              지면 수직 투영선 ➔
+              {activeJp ? '地面垂直投影線 ➔' : '지면 수직 투영선 ➔'}
             </text>
 
             <rect x="70" y="175" width="125" height="34" rx="8" fill="#047857" stroke="#34d399" strokeWidth="2" />
             <text x="132" y="196" fill="#ffffff" fontSize="12" fontWeight="900" textAnchor="middle">
-              ✔ 무벌 세이프(IN)
+              {activeJp ? '✔ 無罰セーフ (IN)' : '✔ 무벌 세이프(IN)'}
             </text>
           </svg>
         </div>
 
         <div className="bg-stone-800/90 rounded-xl p-2.5 text-xs text-stone-200 font-bold space-y-1">
           <div className="text-emerald-400 font-extrabold flex items-center gap-1">
-            <span>💡 수직 투영 기준:</span>
-            <span>공중에 떠 있는 공은 지면으로 내린 수직선이 기준입니다!</span>
+            <span>{activeJp ? '💡 垂直投影基準:' : '💡 수직 투영 기준:'}</span>
+            <span>{activeJp ? '空中に止まった球は地面へ下ろした垂直線が基準です！' : '공중에 떠 있는 공은 지면으로 내린 수직선이 기준입니다!'}</span>
           </div>
           <p className="text-[11px] text-stone-300 leading-relaxed break-keep">
-            나뭇가지에 걸린 공의 수직 투영선이 지면의 백색 실선에 걸쳐 있다면 코스 안쪽의 공(세이프)으로 인정됩니다.
+            {activeJp
+              ? '木の枝に引っかかった球の垂直投影線が地面の白線に掛かっていれば、コース内の球(インプレー・セーフ)と認定されます。'
+              : '나뭇가지에 걸린 공의 수직 투영선이 지면의 백색 실선에 걸쳐 있다면 코스 안쪽의 공(세이프)으로 인정됩니다.'}
           </p>
         </div>
       </div>
@@ -649,27 +699,27 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
 
   // [2] Tee & Swing Category (ts-1 ~ ts-8)
   if (ruleId.startsWith('ts-')) {
-    return <TeeSwingDiagrams ruleId={ruleId} />;
+    return <TeeSwingDiagrams ruleId={ruleId} isJp={activeJp} />;
   }
 
   // [3] Putting Green & Flagstick Category (pg-1 ~ pg-8)
   if (ruleId.startsWith('pg-')) {
-    return <PuttingGreenDiagrams ruleId={ruleId} />;
+    return <PuttingGreenDiagrams ruleId={ruleId} isJp={activeJp} />;
   }
 
   // [4] Hazard & Relief Category (hr-1 ~ hr-8)
   if (ruleId.startsWith('hr-')) {
-    return <HazardReliefDiagrams ruleId={ruleId} />;
+    return <HazardReliefDiagrams ruleId={ruleId} isJp={activeJp} />;
   }
 
   // [5] Touch & Penalty Category (tp-1 ~ tp-8)
   if (ruleId.startsWith('tp-')) {
-    return <TouchPenaltyDiagrams ruleId={ruleId} />;
+    return <TouchPenaltyDiagrams ruleId={ruleId} isJp={activeJp} />;
   }
 
   // [6] Scorecard & Manner Category (sm-1 ~ sm-8)
   if (ruleId.startsWith('sm-')) {
-    return <ScoreMannerDiagrams ruleId={ruleId} />;
+    return <ScoreMannerDiagrams ruleId={ruleId} isJp={activeJp} />;
   }
 
   // Default Mascot / Category Fallback Visual Card
@@ -678,10 +728,10 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
       <div className="flex items-center justify-between border-b border-emerald-800/60 pb-1.5">
         <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
           <span>⛳</span>
-          <span>파키의 공인 규정 현장 가이드</span>
+          <span>{activeJp ? 'パーキーの公式規則現地ガイド' : '파키의 공인 규정 현장 가이드'}</span>
         </div>
         <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-          공식 규칙 해설
+          {activeJp ? '公式規則解説' : '공식 규칙 해설'}
         </span>
       </div>
 
@@ -698,16 +748,16 @@ export function RuleSituationDiagram({ ruleId, category }: RuleSituationDiagramP
           <circle cx="190" cy="135" r="7" fill="#0f172a" />
           <line x1="190" y1="135" x2="190" y2="70" stroke="#ffffff" strokeWidth="3" />
           <polygon points="190,70 145,82 190,94" fill="#ef4444" />
-          <text x="165" y="86" fill="#ffffff" fontSize="10" fontWeight="900">KPGA</text>
+          <text x="165" y="86" fill="#ffffff" fontSize="10" fontWeight="900">{activeJp ? 'NPGA' : 'KPGA'}</text>
           <circle cx="150" cy="140" r="10" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
           <rect x="100" y="20" width="180" height="32" rx="8" fill="#0f172a" fillOpacity="0.9" stroke="#f59e0b" strokeWidth="1.5" />
           <text x="190" y="41" textAnchor="middle" fill="#fef08a" fontSize="12" fontWeight="900">
-            ⚖️ (사)대한파크골프협회 경기규칙
+            {activeJp ? '⚖️ (公社)日本パークゴルフ協会 公式競技規則' : '⚖️ (사)대한파크골프협회 경기규칙'}
           </text>
         </svg>
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 flex items-end p-3 pointer-events-none">
           <div className="text-xs font-black text-amber-300 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-amber-400/40">
-            📢 경기위원 파키의 정밀 판정 극장
+            {activeJp ? '📢 競技委員パーキーの精密判定シアター' : '📢 경기위원 파키의 정밀 판정 극장'}
           </div>
         </div>
       </div>

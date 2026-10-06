@@ -5,10 +5,11 @@ import React, { useState } from 'react';
 interface ChapterCutDiagramProps {
   chapterId: string;
   cutNumber: number;
+  isJp?: boolean;
 }
 
-function Ch2Cut1Diagram() {
-  const [viewMode, setViewMode] = useState<'comic' | 'diagram'>('comic');
+function Ch2Cut1Diagram({ isJapanese }: { isJapanese?: boolean }) {
+  const [viewMode, setViewMode] = useState<'comic' | 'diagram'>(isJapanese ? 'diagram' : 'comic');
   const [isZoomed, setIsZoomed] = useState(false);
 
   return (
@@ -16,63 +17,83 @@ function Ch2Cut1Diagram() {
       <div className="flex items-center justify-between border-b border-stone-800 pb-2">
         <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
           <span>🏷️</span>
-          <span>공인 용구 규격 및 인증 스티커 가이드</span>
+          <span>
+            {isJapanese
+              ? '公認用具の規格および認定ステッカーガイド'
+              : '공인 용구 규격 및 인증 스티커 가이드'}
+          </span>
         </div>
 
-        {/* 언제든지 이전 도해로 되돌리거나 만화로 볼 수 있는 토글 스위치 */}
-        <div className="flex items-center bg-stone-800 p-0.5 rounded-xl border border-stone-700 text-[11px] font-black shrink-0">
-          <button
-            type="button"
-            onClick={() => setViewMode('comic')}
-            className={`px-2 py-0.5 rounded-lg transition ${
-              viewMode === 'comic'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-stone-400 hover:text-white'
-            }`}
-          >
-            🎨 6컷 만화
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('diagram')}
-            className={`px-2 py-0.5 rounded-lg transition ${
-              viewMode === 'diagram'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-stone-400 hover:text-white'
-            }`}
-          >
-            📐 기존 도해
-          </button>
-        </div>
+        {/* 언제든지 이전 도해로 되돌리거나 만화로 볼 수 있는 토글 스위치 (일본어 모드에서는 다이어그램 기본) */}
+        {!isJapanese && (
+          <div className="flex items-center bg-stone-800 p-0.5 rounded-xl border border-stone-700 text-[11px] font-black shrink-0">
+            <button
+              type="button"
+              onClick={() => setViewMode('comic')}
+              className={`px-2 py-0.5 rounded-lg transition ${
+                viewMode === 'comic'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-stone-400 hover:text-white'
+              }`}
+            >
+              🎨 6컷 만화
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('diagram')}
+              className={`px-2 py-0.5 rounded-lg transition ${
+                viewMode === 'diagram'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-stone-400 hover:text-white'
+              }`}
+            >
+              📐 기존 도해
+            </button>
+          </div>
+        )}
       </div>
 
-      {viewMode === 'comic' ? (
+      {viewMode === 'comic' && !isJapanese ? (
         <div className="space-y-2">
           {/* 대표님 제작 6컷 만화 */}
           <div
             className="relative w-full rounded-xl overflow-hidden border-2 border-amber-400/90 shadow-lg cursor-pointer group bg-white"
             onClick={() => setIsZoomed(true)}
-            title="클릭 시 큰 화면으로 확대하여 보실 수 있습니다"
+            title={
+              isJapanese
+                ? 'タップして大画面で拡大表示'
+                : '클릭 시 큰 화면으로 확대하여 보실 수 있습니다'
+            }
           >
             <img
               src="/mascot/master_cuts/ch-2_comic_guide_6cut.jpg"
-              alt="공식 파크골프 용구 규격 완벽 가이드 6컷 만화"
+              alt={
+                isJapanese
+                  ? '公式パークゴルフ用具規格完全ガイド6コマ漫画'
+                  : '공식 파크골프 용구 규격 완벽 가이드 6컷 만화'
+              }
               className="w-full h-auto object-contain block transition duration-200 group-hover:scale-[1.01]"
               loading="eager"
             />
             <div className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-xs text-amber-300 px-2.5 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 shadow-md border border-amber-400/40">
               <span>🔍</span>
-              <span>터치하여 크게 보기</span>
+              <span>{isJapanese ? '拡大して見る' : '터치하여 크게 보기'}</span>
             </div>
           </div>
 
           <div className="flex items-center justify-between text-[11px] px-1 text-emerald-300 font-bold">
             <span className="flex items-center gap-1">
               <span>⭐</span>
-              <span>대표님 제작 공식 6컷 만화 연동 완료</span>
+              <span>
+                {isJapanese
+                  ? '公式6コマ漫画ガイド連動中'
+                  : '대표님 제작 공식 6컷 만화 연동 완료'}
+              </span>
             </span>
             <span className="text-stone-400 text-[10px]">
-              [📐 기존 도해] 버튼으로 언제든 복원 가능
+              {isJapanese
+                ? '[📐 公式図解] ボタンでいつでも切替可能'
+                : '[📐 기존 도해] 버튼으로 언제든 복원 가능'}
             </span>
           </div>
 
@@ -89,7 +110,11 @@ function Ch2Cut1Diagram() {
                 <div className="p-2 flex items-center justify-between border-b border-stone-200 bg-stone-50 rounded-t-2xl">
                   <span className="text-xs font-black text-stone-900 flex items-center gap-1">
                     <span>📖</span>
-                    <span>공식 파크골프 용구 규격 완벽 가이드 (6컷 만화)</span>
+                    <span>
+                      {isJapanese
+                        ? '公式パークゴルフ用具規格完全ガイド (6コマ漫画)'
+                        : '공식 파크골프 용구 규격 완벽 가이드 (6컷 만화)'}
+                    </span>
                   </span>
                   <button
                     type="button"
@@ -102,7 +127,11 @@ function Ch2Cut1Diagram() {
                 <div className="p-1">
                   <img
                     src="/mascot/master_cuts/ch-2_comic_guide_6cut.jpg"
-                    alt="공식 파크골프 용구 규격 완벽 가이드 확대"
+                    alt={
+                      isJapanese
+                        ? '公式パークゴルフ用具規格完全ガイド拡大'
+                        : '공식 파크골프 용구 규격 완벽 가이드 확대'
+                    }
                     className="w-full h-auto rounded-xl"
                   />
                 </div>
@@ -112,7 +141,7 @@ function Ch2Cut1Diagram() {
                     onClick={() => setIsZoomed(false)}
                     className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black rounded-xl shadow-md transition"
                   >
-                    닫기 (룰북으로 돌아가기)
+                    {isJapanese ? '閉じる (ルールブックへ戻る)' : '닫기 (룰북으로 돌아가기)'}
                   </button>
                 </div>
               </div>
@@ -124,7 +153,7 @@ function Ch2Cut1Diagram() {
         <div className="space-y-1.5">
           <div className="flex items-center justify-end pb-0.5">
             <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
-              미인증 용구 = 즉시 실격(DQ)
+              {isJapanese ? '未公認用具 = 即座に失格(DQ)' : '미인증 용구 = 즉시 실격(DQ)'}
             </span>
           </div>
           <div className="relative w-full aspect-[16/9] bg-stone-950 rounded-xl overflow-hidden border border-stone-800 flex items-center justify-center">
@@ -147,7 +176,7 @@ function Ch2Cut1Diagram() {
               <line x1="50" y1="30" x2="150" y2="160" stroke="#94a3b8" strokeWidth="10" strokeLinecap="round" />
               <line x1="50" y1="30" x2="80" y2="70" stroke="#0f172a" strokeWidth="12" strokeLinecap="round" />
               <text x="50" y="24" fill="#94a3b8" fontSize="8" fontWeight="800">
-                그립부
+                {isJapanese ? 'グリップ部' : '그립부'}
               </text>
 
               <path
@@ -158,55 +187,58 @@ function Ch2Cut1Diagram() {
               />
               <line x1="195" y1="130" x2="195" y2="180" stroke="#f59e0b" strokeWidth="4" />
               <text x="202" y="158" fill="#fbbf24" fontSize="8" fontWeight="900">
-                로프트 0° (직각)
+                {isJapanese ? 'ロフト角 0° (直角)' : '로프트 0° (직각)'}
               </text>
 
               <g transform="translate(115, 120)">
                 <circle cx="10" cy="10" r="12" fill="url(#goldHoloCh2)" stroke="#ffffff" strokeWidth="1.5" />
-                <text x="10" y="9" textAnchor="middle" fill="#713f12" fontSize="6" fontWeight="900">
-                  KPGA
+                <text x="10" y="9" textAnchor="middle" fill="#713f12" fontSize="5.5" fontWeight="900">
+                  {isJapanese ? 'NPGA' : 'KPGA'}
                 </text>
-                <text x="10" y="15" textAnchor="middle" fill="#713f12" fontSize="5" fontWeight="900">
-                  공인합격
+                <text x="10" y="15" textAnchor="middle" fill="#713f12" fontSize="4.5" fontWeight="900">
+                  {isJapanese ? '公認認定' : '공인합격'}
                 </text>
               </g>
               <text x="125" y="148" textAnchor="middle" fill="#fde047" fontSize="8" fontWeight="900">
-                ▲ 공인 검정 스티커
+                {isJapanese ? '▲ 公認認定マーク' : '▲ 공인 검정 스티커'}
               </text>
 
               <rect x="235" y="20" width="170" height="180" rx="10" fill="#292524" stroke="#44403c" strokeWidth="1.5" />
               
               <text x="320" y="42" textAnchor="middle" fill="#38bdf8" fontSize="11" fontWeight="900">
-                협회 공인 규격 기준
+                {isJapanese ? '協会公認規格基準' : '협회 공인 규격 기준'}
               </text>
 
               <g transform="translate(245, 55)">
                 <rect x="0" y="0" width="150" height="26" rx="4" fill="#1c1917" />
                 <text x="8" y="17" fill="#ffffff" fontSize="9" fontWeight="800">
-                  • 클럽 길이: <tspan fill="#4ade80">86cm 이하</tspan>
+                  {isJapanese ? '• クラブ長さ: ' : '• 클럽 길이: '}
+                  <tspan fill="#4ade80">{isJapanese ? '86cm以下' : '86cm 이하'}</tspan>
                 </text>
               </g>
 
               <g transform="translate(245, 87)">
                 <rect x="0" y="0" width="150" height="26" rx="4" fill="#1c1917" />
                 <text x="8" y="17" fill="#ffffff" fontSize="9" fontWeight="800">
-                  • 클럽 무게: <tspan fill="#4ade80">600g 이하</tspan>
+                  {isJapanese ? '• クラブ重量: ' : '• 클럽 무게: '}
+                  <tspan fill="#4ade80">{isJapanese ? '600g以下' : '600g 이하'}</tspan>
                 </text>
               </g>
 
               <g transform="translate(245, 119)">
                 <rect x="0" y="0" width="150" height="26" rx="4" fill="#1c1917" />
                 <text x="8" y="17" fill="#ffffff" fontSize="9" fontWeight="800">
-                  • 공 규격: <tspan fill="#4ade80">직경 6cm (80~95g)</tspan>
+                  {isJapanese ? '• ボール規格: ' : '• 공 규격: '}
+                  <tspan fill="#4ade80">{isJapanese ? '直径6cm (80~95g)' : '직경 6cm (80~95g)'}</tspan>
                 </text>
               </g>
 
               <rect x="245" y="155" width="150" height="32" rx="6" fill="#7f1d1d" stroke="#ef4444" strokeWidth="1" />
               <text x="320" y="170" textAnchor="middle" fill="#fecaca" fontSize="9" fontWeight="900">
-                미인증 용구 사용 시
+                {isJapanese ? '未公認用具使用時' : '미인증 용구 사용 시'}
               </text>
               <text x="320" y="182" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="900">
-                대회 즉시 【실격 (DQ)】
+                {isJapanese ? '即座に【失格 (DQ)】' : '대회 즉시 【실격 (DQ)】'}
               </text>
             </svg>
           </div>
@@ -216,8 +248,10 @@ function Ch2Cut1Diagram() {
   );
 }
 
-export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramProps) {
-  const key = `${chapterId}-${cutNumber}`;
+export function ChapterCutDiagram({ chapterId, cutNumber, isJp }: ChapterCutDiagramProps) {
+  const isJapanese = isJp ?? chapterId.startsWith('npga-');
+  const normalizedChapterId = chapterId.replace('npga-', '');
+  const key = `${normalizedChapterId}-${cutNumber}`;
 
   // ==========================================
   // 제1장 코스 탐험과 기본 규정
@@ -230,10 +264,12 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>⛳</span>
-            <span>공인 규정 제2조 코스 규격 도해</span>
+            <span>
+              {isJapanese ? '公認規程 第2条 コース規格図解' : '공인 규정 제2조 코스 규격 도해'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-            9홀 기준 Par 33 (총 660m 내외)
+            {isJapanese ? '9ホール基準 Par 33 (約500~700m)' : '9홀 기준 Par 33 (총 660m 내외)'}
           </span>
         </div>
 
@@ -274,12 +310,12 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
 
             <ellipse cx="195" cy="85" rx="26" ry="14" fill="#d97706" opacity="0.85" stroke="#fcd34d" strokeWidth="1.5" />
             <text x="195" y="88" textAnchor="middle" fill="#78350f" fontSize="8" fontWeight="900">
-              벙커
+              {isJapanese ? 'バンカー' : '벙커'}
             </text>
 
             <ellipse cx="230" cy="165" rx="32" ry="16" fill="#0284c7" opacity="0.8" stroke="#38bdf8" strokeWidth="1.5" />
             <text x="230" y="168" textAnchor="middle" fill="#e0f2fe" fontSize="8" fontWeight="900">
-              워터 해저드
+              {isJapanese ? 'ウォーターハザード' : '워터 해저드'}
             </text>
 
             <ellipse cx="375" cy="90" rx="30" ry="20" fill="#4ade80" stroke="#86efac" strokeWidth="2" />
@@ -295,36 +331,38 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
             <g transform="translate(35, 23)">
               <rect x="0" y="0" width="105" height="26" rx="4" fill="#1e293b" />
               <text x="52" y="12" textAnchor="middle" fill="#60a5fa" fontSize="8" fontWeight="800">
-                Par 3 (4개홀)
+                {isJapanese ? 'Par 3 (4ホール)' : 'Par 3 (4개홀)'}
               </text>
               <text x="52" y="22" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900">
-                거리: 40~60m
+                {isJapanese ? '距離: 40~60m' : '거리: 40~60m'}
               </text>
             </g>
 
             <g transform="translate(150, 23)">
               <rect x="0" y="0" width="115" height="26" rx="4" fill="#1e293b" />
               <text x="57" y="12" textAnchor="middle" fill="#4ade80" fontSize="8" fontWeight="800">
-                Par 4 (4개홀)
+                {isJapanese ? 'Par 4 (4ホール)' : 'Par 4 (4개홀)'}
               </text>
               <text x="57" y="22" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900">
-                거리: 60~100m
+                {isJapanese ? '距離: 60~100m' : '거리: 60~100m'}
               </text>
             </g>
 
             <g transform="translate(275, 23)">
               <rect x="0" y="0" width="110" height="26" rx="4" fill="#1e293b" />
               <text x="55" y="12" textAnchor="middle" fill="#f59e0b" fontSize="8" fontWeight="800">
-                Par 5 (1개홀)
+                {isJapanese ? 'Par 5 (1ホール)' : 'Par 5 (1개홀)'}
               </text>
               <text x="55" y="22" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900">
-                거리: 100~150m
+                {isJapanese ? '距離: 100~150m' : '거리: 100~150m'}
               </text>
             </g>
 
             <rect x="60" y="192" width="300" height="20" rx="10" fill="#065f46" stroke="#10b981" strokeWidth="1" />
             <text x="210" y="206" textAnchor="middle" fill="#a7f3d0" fontSize="9" fontWeight="900">
-              ★ 9홀 공인 총 거리: 약 660m / 총 기준 타수: Par 33
+              {isJapanese
+                ? '★ 9ホール公認総距離: 約500~700m / 基準打数: Par 33'
+                : '★ 9홀 공인 총 거리: 약 660m / 총 기준 타수: Par 33'}
             </text>
           </svg>
         </div>
@@ -339,10 +377,12 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>🟩</span>
-            <span>제3조 티박스 직사각형 구역 규정</span>
+            <span>
+              {isJapanese ? '第4条 ティーボックス長方形区域の規程' : '제3조 티박스 직사각형 구역 규정'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-amber-500 text-stone-950 px-2 py-0.5 rounded-full">
-            양 발 모두 이탈 시 2벌타
+            {isJapanese ? '両足完全離脱時は2打付加' : '양 발 모두 이탈 시 2벌타'}
           </span>
         </div>
 
@@ -363,22 +403,24 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
               strokeDasharray="6 4"
             />
             <text x="210" y="58" textAnchor="middle" fill="#86efac" fontSize="10" fontWeight="900">
-              티잉그라운드 정규 구역 (후방 2클럽 이내)
+              {isJapanese
+                ? 'ティーグラウンド正規区域 (後方2クラブレングス以内)'
+                : '티잉그라운드 정규 구역 (후방 2클럽 이내)'}
             </text>
 
             <rect x="130" y="70" width="160" height="85" rx="4" fill="#16a34a" stroke="#4ade80" strokeWidth="2" />
             <text x="210" y="112" textAnchor="middle" fill="#f0fdf4" fontSize="12" fontWeight="900">
-              인조잔디 티매트
+              {isJapanese ? '人工芝ティーマット' : '인조잔디 티매트'}
             </text>
 
             <circle cx="110" cy="70" r="8" fill="#ef4444" stroke="#ffffff" strokeWidth="2" />
             <circle cx="310" cy="70" r="8" fill="#ef4444" stroke="#ffffff" strokeWidth="2" />
             <line x1="110" y1="70" x2="310" y2="70" stroke="#f87171" strokeWidth="2" strokeDasharray="3 3" />
             <text x="70" y="74" fill="#fca5a5" fontSize="8" fontWeight="800">
-              좌측 마커
+              {isJapanese ? '左マーカー' : '좌측 마커'}
             </text>
             <text x="325" y="74" fill="#fca5a5" fontSize="8" fontWeight="800">
-              우측 마커
+              {isJapanese ? '右マーカー' : '우측 마커'}
             </text>
 
             <ellipse cx="210" cy="125" rx="6" ry="3" fill="#0f172a" />
@@ -389,7 +431,7 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
               <rect x="0" y="0" width="14" height="24" rx="4" fill="#3b82f6" />
               <rect x="18" y="5" width="14" height="24" rx="4" fill="#3b82f6" />
               <text x="16" y="38" textAnchor="middle" fill="#60a5fa" fontSize="8" fontWeight="900">
-                한발 접촉: OK
+                {isJapanese ? '片足接触: OK' : '한발 접촉: OK'}
               </text>
             </g>
 
@@ -398,12 +440,14 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
               <rect x="0" y="0" width="14" height="24" rx="4" fill="#dc2626" />
               <rect x="18" y="0" width="14" height="24" rx="4" fill="#dc2626" />
               <text x="16" y="38" textAnchor="middle" fill="#f87171" fontSize="8" fontWeight="900">
-                양발 이탈: 2벌타!
+                {isJapanese ? '両足離脱: 2打付加!' : '양발 이탈: 2벌타!'}
               </text>
             </g>
 
             <text x="210" y="32" textAnchor="middle" fill="#fca5a5" fontSize="9" fontWeight="900">
-              ▲ 티마커 전면선 (이 선을 넘어서 티를 꽂으면 2벌타)
+              {isJapanese
+                ? '▲ ティーマーカー前面線 (この線を越えてティーアップすると2打付加)'
+                : '▲ 티마커 전면선 (이 선을 넘어서 티를 꽂으면 2벌타)'}
             </text>
           </svg>
         </div>
@@ -418,10 +462,12 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>🗺️</span>
-            <span>코스 5대 인플레이 구역 및 OB 경계</span>
+            <span>
+              {isJapanese ? 'コース5大インプレー区域及びOB境界' : '코스 5대 인플레이 구역 및 OB 경계'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-sky-600 text-white px-2 py-0.5 rounded-full">
-            인플레이 5구역 + 외곽 OB
+            {isJapanese ? 'インプレー5区域 ＋ 外周OB' : '인플레이 5구역 + 외곽 OB'}
           </span>
         </div>
 
@@ -435,7 +481,7 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
 
             <rect x="340" y="0" width="80" height="220" fill="url(#obStripes)" opacity="0.4" />
             <text x="380" y="115" textAnchor="middle" fill="#f87171" fontSize="11" fontWeight="900" transform="rotate(90 380 115)">
-              OB 구역 (코스 밖)
+              {isJapanese ? 'OB区域 (コース外)' : 'OB 구역 (코스 밖)'}
             </text>
 
             <rect x="0" y="0" width="340" height="220" fill="#15803d" />
@@ -450,26 +496,26 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
 
             <rect x="15" y="80" width="45" height="60" rx="4" fill="#047857" stroke="#34d399" strokeWidth="1.5" />
             <text x="37" y="114" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900">
-              ① 티박스
+              {isJapanese ? '① ティー' : '① 티박스'}
             </text>
 
             <path d="M 65 75 Q 150 60 210 80 Q 150 160 65 145 Z" fill="#22c55e" opacity="0.9" />
             <text x="135" y="112" textAnchor="middle" fill="#052e16" fontSize="10" fontWeight="900">
-              ② 페어웨이
+              {isJapanese ? '② フェアウェイ' : '② 페어웨이'}
             </text>
 
             <text x="135" y="45" textAnchor="middle" fill="#86efac" fontSize="9" fontWeight="800">
-              ③ 러프 (긴 잔디)
+              {isJapanese ? '③ ラフ (長い芝)' : '③ 러프 (긴 잔디)'}
             </text>
 
             <ellipse cx="190" cy="165" rx="28" ry="16" fill="#d97706" stroke="#fde68a" strokeWidth="1.5" />
             <text x="190" y="168" textAnchor="middle" fill="#451a03" fontSize="8" fontWeight="900">
-              ④ 벙커
+              {isJapanese ? '④ バンカー' : '④ 벙커'}
             </text>
 
             <ellipse cx="235" cy="50" rx="30" ry="16" fill="#0284c7" stroke="#7dd3fc" strokeWidth="1.5" />
             <text x="235" y="53" textAnchor="middle" fill="#f0f9ff" fontSize="8" fontWeight="900">
-              ④ 워터해저드
+              {isJapanese ? '④ ハザード' : '④ 워터해저드'}
             </text>
 
             <ellipse cx="290" cy="115" rx="36" ry="26" fill="#86efac" stroke="#ffffff" strokeWidth="2" />
@@ -477,7 +523,7 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
             <line x1="290" y1="115" x2="290" y2="85" stroke="#ffffff" strokeWidth="2" />
             <polygon points="290,85 272,92 290,99" fill="#ef4444" />
             <text x="290" y="132" textAnchor="middle" fill="#14532d" fontSize="9" fontWeight="900">
-              ⑤ 그린
+              {isJapanese ? '⑤ グリーン' : '⑤ 그린'}
             </text>
           </svg>
         </div>
@@ -491,7 +537,7 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
 
   // [ch-2-1] 협회 공인 스티커 미부착 시 실격! (대표님 6컷 만화 연동 + 기존 도해 토글)
   if (key === 'ch-2-1') {
-    return <Ch2Cut1Diagram />;
+    return <Ch2Cut1Diagram isJapanese={isJapanese} />;
   }
 
   // [ch-2-2] 티 높이는 지면에서 딱 2.3cm 이하!
@@ -501,10 +547,12 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>📏</span>
-            <span>제13조 공인 고무티 높이 기준</span>
+            <span>
+              {isJapanese ? '第5条 公認ティー高さ基準 (23mm以下)' : '제13조 공인 고무티 높이 기준'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-amber-500 text-stone-950 px-2 py-0.5 rounded-full">
-            티 높이 2.3cm (23mm) 이하
+            {isJapanese ? 'ティーの高さ 23mm以下' : '티 높이 2.3cm (23mm) 이하'}
           </span>
         </div>
 
@@ -513,7 +561,7 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
             <rect x="0" y="150" width="420" height="70" fill="#15803d" />
             <line x1="0" y1="150" x2="420" y2="150" stroke="#86efac" strokeWidth="3" />
             <text x="30" y="170" fill="#dcfce7" fontSize="9" fontWeight="800">
-              지면 (티매트 표면 레벨)
+              {isJapanese ? '地表面 (マット表面レベル)' : '지면 (티매트 표면 레벨)'}
             </text>
 
             <g transform="translate(100, 70)">
@@ -532,7 +580,7 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
 
               <rect x="15" y="95" width="50" height="18" rx="4" fill="#065f46" stroke="#34d399" strokeWidth="1" />
               <text x="40" y="108" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900">
-                ✓ 합격 (OK)
+                {isJapanese ? '✓ 適合 (OK)' : '✓ 합격 (OK)'}
               </text>
             </g>
 
@@ -546,18 +594,20 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
               <polygon points="72,40 68,46 76,46" fill="#ef4444" />
               <polygon points="72,110 68,104 76,104" fill="#ef4444" />
               <text x="80" y="78" fill="#f87171" fontSize="11" fontWeight="900">
-                초과 (롱티)
+                {isJapanese ? '超過 (ロングティー)' : '초과 (롱티)'}
               </text>
 
               <rect x="10" y="125" width="60" height="18" rx="4" fill="#7f1d1d" stroke="#f87171" strokeWidth="1" />
               <text x="40" y="138" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900">
-                ✕ 2벌타 위반!
+                {isJapanese ? '✕ 2打付加 違反!' : '✕ 2벌타 위반!'}
               </text>
             </g>
 
             <rect x="40" y="12" width="340" height="22" rx="6" fill="#0f172a" fillOpacity="0.9" stroke="#334155" strokeWidth="1" />
             <text x="210" y="27" textAnchor="middle" fill="#fbbf24" fontSize="9" fontWeight="900">
-              규격 23mm 초과 개인 롱티 사용 시 제13조 위반으로 2벌타 부과
+              {isJapanese
+                ? '規定23mmを超えるロングティー使用時は規則違反により2打付加'
+                : '규격 23mm 초과 개인 롱티 사용 시 제13조 위반으로 2벌타 부과'}
             </text>
           </svg>
         </div>
@@ -576,10 +626,14 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>💨</span>
-            <span>제30조 스트로크 정의 (헛스윙 타수 판정)</span>
+            <span>
+              {isJapanese
+                ? '第30条 ストロークの定義（空振りの打数判定）'
+                : '제30조 스트로크 정의 (헛스윙 타수 판정)'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-amber-500 text-stone-950 px-2 py-0.5 rounded-full">
-            다운스윙 개시 = 1타 가산
+            {isJapanese ? 'ダウンスイング開始 ＝ 1打付加' : '다운스윙 개시 = 1타 가산'}
           </span>
         </div>
 
@@ -601,7 +655,7 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
             <line x1="270" y1="160" x2="270" y2="140" stroke="#64748b" strokeWidth="4" />
             <circle cx="270" cy="125" r="16" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
             <text x="270" y="100" textAnchor="middle" fill="#fdba74" fontSize="9" fontWeight="900">
-              공 미접촉 (그대로 정지)
+              {isJapanese ? 'ボール未接触（そのまま停止）' : '공 미접촉 (그대로 정지)'}
             </text>
 
             <g transform="translate(225, 130) rotate(25)">
@@ -611,24 +665,29 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
 
             <rect x="20" y="30" width="160" height="110" rx="8" fill="#1e293b" stroke="#3b82f6" strokeWidth="1.5" />
             <text x="100" y="50" textAnchor="middle" fill="#60a5fa" fontSize="10" fontWeight="900">
-              타격 의사 판정 기준
+              {isJapanese ? '打撃意思の判定基準' : '타격 의사 판정 기준'}
             </text>
             <text x="30" y="70" fill="#e2e8f0" fontSize="8" fontWeight="800">
-              • 다운스윙 개시: <tspan fill="#f59e0b">스트로크 1타 인정</tspan>
+              {isJapanese ? '• ダウンスイング開始: ' : '• 다운스윙 개시: '}
+              <tspan fill="#f59e0b">{isJapanese ? 'ストローク1打と認定' : '스트로크 1타 인정'}</tspan>
             </text>
             <text x="30" y="88" fill="#e2e8f0" fontSize="8" fontWeight="800">
-              • 벌타 여부: <tspan fill="#4ade80">벌타 없음 (무벌)</tspan>
+              {isJapanese ? '• 罰打の有無: ' : '• 벌타 여부: '}
+              <tspan fill="#4ade80">{isJapanese ? '罰打なし（無罰）' : '벌타 없음 (무벌)'}</tspan>
             </text>
             <text x="30" y="106" fill="#e2e8f0" fontSize="8" fontWeight="800">
-              • 다음 샷: <tspan fill="#fbbf24">제2타째가 됨</tspan>
+              {isJapanese ? '• 次のショット: ' : '• 다음 샷: '}
+              <tspan fill="#fbbf24">{isJapanese ? '第2打となる' : '제2타째가 됨'}</tspan>
             </text>
             <text x="30" y="124" fill="#94a3b8" fontSize="7" fontWeight="700">
-              ※ 연습스윙/어드레스 취소는 0타
+              {isJapanese ? '※ 素振り・アドレスのやり直しは0打' : '※ 연습스윙/어드레스 취소는 0타'}
             </text>
 
             <rect x="60" y="180" width="300" height="24" rx="12" fill="#854d0e" stroke="#facc15" strokeWidth="1" />
             <text x="210" y="196" textAnchor="middle" fill="#fef08a" fontSize="10" fontWeight="900">
-              공을 못 맞혀도 타격 의사가 있었다면 정상 1타로 계산!
+              {isJapanese
+                ? 'ボールに当たらなくても打つ意思があれば正規の1打としてカウント！'
+                : '공을 못 맞혀도 타격 의사가 있었다면 정상 1타로 계산!'}
             </text>
           </svg>
         </div>
@@ -643,10 +702,14 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>👟</span>
-            <span>제31조 티매트 스탠스 수칙 (발 위치 규정)</span>
+            <span>
+              {isJapanese
+                ? '第4条 ティーグラウンドスタンス規程 (足の位置)'
+                : '제31조 티매트 스탠스 수칙 (발 위치 규정)'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
-            양 발 모두 이탈 = 2벌타
+            {isJapanese ? '両足完全離脱 ＝ 2打付加' : '양 발 모두 이탈 = 2벌타'}
           </span>
         </div>
 
@@ -654,26 +717,26 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
           <svg viewBox="0 0 420 220" className="w-full h-full">
             <rect x="0" y="0" width="420" height="220" fill="#334155" />
             <text x="210" y="24" textAnchor="middle" fill="#94a3b8" fontSize="9" fontWeight="800">
-              매트 외곽 맨땅 (일반 지면 구역)
+              {isJapanese ? 'マット外周地面 (一般区域)' : '매트 외곽 맨땅 (일반 지면 구역)'}
             </text>
 
             <g transform="translate(30, 40)">
               <rect x="0" y="0" width="165" height="150" rx="8" fill="#1e293b" stroke="#10b981" strokeWidth="2" />
               <rect x="0" y="0" width="165" height="26" rx="8" fill="#065f46" />
               <text x="82" y="17" textAnchor="middle" fill="#a7f3d0" fontSize="10" fontWeight="900">
-                [적법] 한 발 매트 접촉: OK
+                {isJapanese ? '[適法] 片足マット接触: OK' : '[적법] 한 발 매트 접촉: OK'}
               </text>
 
               <rect x="15" y="40" width="85" height="95" rx="4" fill="#15803d" stroke="#4ade80" strokeWidth="1.5" />
               <text x="57" y="55" textAnchor="middle" fill="#dcfce7" fontSize="7" fontWeight="900">
-                티매트
+                {isJapanese ? 'ティーマット' : '티매트'}
               </text>
 
               <rect x="40" y="70" width="14" height="28" rx="4" fill="#3b82f6" stroke="#ffffff" strokeWidth="1" />
               <rect x="115" y="70" width="14" height="28" rx="4" fill="#3b82f6" stroke="#ffffff" strokeWidth="1" />
 
               <text x="82" y="125" textAnchor="middle" fill="#4ade80" fontSize="9" fontWeight="900">
-                한 발의 일부라도 닿으면 무벌!
+                {isJapanese ? '片足の一部でも接触していれば無罰!' : '한 발의 일부라도 닿으면 무벌!'}
               </text>
             </g>
 
@@ -681,19 +744,19 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
               <rect x="0" y="0" width="165" height="150" rx="8" fill="#1e293b" stroke="#ef4444" strokeWidth="2" />
               <rect x="0" y="0" width="165" height="26" rx="8" fill="#991b1b" />
               <text x="82" y="17" textAnchor="middle" fill="#fecaca" fontSize="10" fontWeight="900">
-                [위반] 양 발 매트 완전 이탈
+                {isJapanese ? '[違反] 両足マット完全離脱' : '[위반] 양 발 매트 완전 이탈'}
               </text>
 
               <rect x="15" y="40" width="60" height="95" rx="4" fill="#15803d" stroke="#4ade80" strokeWidth="1.5" />
               <text x="45" y="55" textAnchor="middle" fill="#dcfce7" fontSize="7" fontWeight="900">
-                티매트
+                {isJapanese ? 'ティーマット' : '티매트'}
               </text>
 
               <rect x="95" y="70" width="14" height="28" rx="4" fill="#dc2626" stroke="#ffffff" strokeWidth="1" />
               <rect x="125" y="70" width="14" height="28" rx="4" fill="#dc2626" stroke="#ffffff" strokeWidth="1" />
 
               <text x="82" y="125" textAnchor="middle" fill="#f87171" fontSize="9" fontWeight="900">
-                두 발 모두 나가면 2벌타!
+                {isJapanese ? '両足が完全に出ると2打付加!' : '두 발 모두 나가면 2벌타!'}
               </text>
             </g>
           </svg>
@@ -713,10 +776,14 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>📐</span>
-            <span>제33조 1항 1mm 접촉 세이프 판정 정밀도</span>
+            <span>
+              {isJapanese
+                ? '第12条 1mm接触セーフ判定精密図解'
+                : '제33조 1항 1mm 접촉 세이프 판정 정밀도'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-            1mm라도 닿으면 무벌 세이프!
+            {isJapanese ? '1mmでも接触していれば無罰セーフ!' : '1mm라도 닿으면 무벌 세이프!'}
           </span>
         </div>
 
@@ -731,17 +798,17 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
 
             <rect x="0" y="0" width="180" height="220" fill="#15803d" />
             <text x="90" y="24" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900">
-              코스 안쪽 (인플레이)
+              {isJapanese ? 'コース内 (インプレー)' : '코스 안쪽 (인플레이)'}
             </text>
 
             <rect x="180" y="0" width="30" height="220" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1" />
             <text x="195" y="115" textAnchor="middle" fill="#0f172a" fontSize="10" fontWeight="900" transform="rotate(-90 195 115)">
-              OB 백색 실선
+              {isJapanese ? 'OB白線境界' : 'OB 백색 실선'}
             </text>
 
             <rect x="210" y="0" width="210" height="220" fill="url(#obHatchCh4)" />
             <text x="315" y="24" textAnchor="middle" fill="#f87171" fontSize="11" fontWeight="900">
-              OB 구역 (코스 밖)
+              {isJapanese ? 'OB区域 (コース外)' : 'OB 구역 (코스 밖)'}
             </text>
 
             <circle cx="205" cy="115" r="26" fill="#f97316" stroke="#ffffff" strokeWidth="2.5" />
@@ -750,15 +817,15 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
             <path d="M 188 115 L 120 70" stroke="#38bdf8" strokeWidth="2" strokeDasharray="3 3" />
             <rect x="35" y="45" width="120" height="38" rx="6" fill="#0f172a" fillOpacity="0.95" stroke="#38bdf8" strokeWidth="1.5" />
             <text x="95" y="60" textAnchor="middle" fill="#38bdf8" fontSize="9" fontWeight="900">
-              1mm 접촉 확인!
+              {isJapanese ? '1mm接触確認!' : '1mm 접촉 확인!'}
             </text>
             <text x="95" y="74" textAnchor="middle" fill="#4ade80" fontSize="10" fontWeight="900">
-              ✓ 무벌 세이프 (IN)
+              {isJapanese ? '✓ 無罰セーフ (IN)' : '✓ 무벌 세이프 (IN)'}
             </text>
 
             <circle cx="280" cy="115" r="26" fill="#ef4444" stroke="#ffffff" strokeWidth="2.5" />
             <text x="280" y="160" textAnchor="middle" fill="#f87171" fontSize="10" fontWeight="900">
-              ✕ 완전 이탈 = 2벌타 OB
+              {isJapanese ? '✕ 完全離脱 ＝ 2打付加 OB' : '✕ 완전 이탈 = 2벌타 OB'}
             </text>
           </svg>
         </div>
@@ -773,10 +840,14 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>🔄</span>
-            <span>제33조 2항 최종 정지 위치 기준 원칙</span>
+            <span>
+              {isJapanese
+                ? '第12条 最終静止位置基準の原則'
+                : '제33조 2항 최종 정지 위치 기준 원칙'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-            최종 멈춘 곳이 안쪽이면 세이프!
+            {isJapanese ? '最終静止地点が内側ならセーフ!' : '최종 멈춘 곳이 안쪽이면 세이프!'}
           </span>
         </div>
 
@@ -787,7 +858,7 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
 
             <line x1="280" y1="0" x2="280" y2="220" stroke="#ffffff" strokeWidth="3" strokeDasharray="4 3" />
             <text x="290" y="25" fill="#fde047" fontSize="8" fontWeight="800">
-              외곽 안전망
+              {isJapanese ? '外周防球ネット' : '외곽 안전망'}
             </text>
 
             <g transform="translate(340, 60)">
@@ -812,20 +883,20 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
 
             <polygon points="330,70 334,78 342,80 335,85 336,93 329,88 322,92 324,84 318,79 326,78" fill="#ef4444" />
             <text x="350" y="105" textAnchor="middle" fill="#fca5a5" fontSize="8" fontWeight="900">
-              망/나무 맞고 리바운드!
+              {isJapanese ? 'ネット・樹木跳ね返り!' : '망/나무 맞고 리바운드!'}
             </text>
 
             <circle cx="180" cy="150" r="14" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
             <text x="180" y="180" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="900">
-              최종 정지: 코스 안!
+              {isJapanese ? '最終静止: コース内!' : '최종 정지: 코스 안!'}
             </text>
 
             <rect x="30" y="25" width="200" height="42" rx="6" fill="#0f172a" fillOpacity="0.9" stroke="#10b981" strokeWidth="1.5" />
             <text x="130" y="42" textAnchor="middle" fill="#34d399" fontSize="9" fontWeight="900">
-              공이 잠시 밖으로 나갔더라도
+              {isJapanese ? 'ボールが一度外へ出ても' : '공이 잠시 밖으로 나갔더라도'}
             </text>
             <text x="130" y="56" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900">
-              최종 안쪽에 멈추면 【무벌 세이프】
+              {isJapanese ? '最終的に内側に止まれば【無罰セーフ】' : '최종 안쪽에 멈추면 【무벌 세이프】'}
             </text>
           </svg>
         </div>
@@ -840,10 +911,14 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>⛳</span>
-            <span>제33조 3항 2벌타 가산 및 2클럽 처치</span>
+            <span>
+              {isJapanese
+                ? '第13条 2打付加及び2クラブレングス処置'
+                : '제33조 3항 2벌타 가산 및 2클럽 처치'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
-            무조건 2벌타 (1벌타 없음)
+            {isJapanese ? '必ず2打付加 (1打付加なし)' : '무조건 2벌타 (1벌타 없음)'}
           </span>
         </div>
 
@@ -854,15 +929,15 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
 
             <line x1="250" y1="0" x2="250" y2="220" stroke="#ffffff" strokeWidth="4" />
             <text x="320" y="30" textAnchor="middle" fill="#f87171" fontSize="11" fontWeight="900">
-              OB 구역
+              {isJapanese ? 'OB区域' : 'OB 구역'}
             </text>
             <text x="120" y="30" textAnchor="middle" fill="#dcfce7" fontSize="11" fontWeight="900">
-              코스 인플레이 구역
+              {isJapanese ? 'コース内インプレー区域' : '코스 인플레이 구역'}
             </text>
 
             <circle cx="250" cy="110" r="7" fill="#ef4444" stroke="#ffffff" strokeWidth="2" />
             <text x="280" y="114" fill="#fca5a5" fontSize="9" fontWeight="900">
-              OB 통과 지점 (기준점)
+              {isJapanese ? 'OB境界通過地点 (基準点)' : 'OB 통과 지점 (기준점)'}
             </text>
 
             <path
@@ -874,26 +949,26 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
               strokeDasharray="4 3"
             />
             <text x="210" y="115" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="900">
-              2클럽 이내
+              {isJapanese ? '2クラブ以内' : '2클럽 이내'}
             </text>
 
             <circle cx="205" cy="110" r="12" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
             <text x="205" y="140" textAnchor="middle" fill="#fde047" fontSize="9" fontWeight="900">
-              새 볼 안착
+              {isJapanese ? 'プレース位置' : '새 볼 안착'}
             </text>
 
             <line x1="120" y1="185" x2="50" y2="185" stroke="#fcd34d" strokeWidth="2.5" />
             <polygon points="45,185 55,180 55,190" fill="#fcd34d" />
             <text x="85" y="175" textAnchor="middle" fill="#fcd34d" fontSize="8" fontWeight="800">
-              홀컵 방향 (가깝지 않게)
+              {isJapanese ? 'ピン方向 (近づかない)' : '홀컵 방향 (가깝지 않게)'}
             </text>
 
             <rect x="20" y="60" width="130" height="55" rx="6" fill="#0f172a" fillOpacity="0.9" stroke="#ef4444" strokeWidth="1.5" />
             <text x="85" y="80" textAnchor="middle" fill="#f87171" fontSize="9" fontWeight="900">
-              티샷 OB 발생 시
+              {isJapanese ? 'ティーショットOB時' : '티샷 OB 발생 시'}
             </text>
             <text x="85" y="98" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900">
-              다음 샷 = 【제4타】
+              {isJapanese ? '次のショット ＝ 【第4打】' : '다음 샷 = 【제4타】'}
             </text>
           </svg>
         </div>
@@ -912,10 +987,14 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>💧</span>
-            <span>제34조 워터 해저드 침수 시 2벌타 처치</span>
+            <span>
+              {isJapanese
+                ? '第9条 ウォーターハザード2打付加処置'
+                : '제34조 워터 해저드 침수 시 2벌타 처치'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
-            2벌타 후 2클럽 이내 처치
+            {isJapanese ? '2打付加後 2クラブ以内処置' : '2벌타 후 2클럽 이내 처치'}
           </span>
         </div>
 
@@ -928,29 +1007,29 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
 
             <circle cx="290" cy="110" r="14" fill="#f97316" stroke="#ffffff" strokeWidth="2" opacity="0.9" />
             <text x="290" y="140" textAnchor="middle" fill="#e0f2fe" fontSize="10" fontWeight="900">
-              수중 침수 (플레이 불가)
+              {isJapanese ? '水中沈下 (プレー不能)' : '수중 침수 (플레이 불가)'}
             </text>
 
             <circle cx="200" cy="110" r="6" fill="#ef4444" stroke="#ffffff" strokeWidth="2" />
             <text x="185" y="90" textAnchor="middle" fill="#fecaca" fontSize="9" fontWeight="900">
-              최종 진입점
+              {isJapanese ? '最終入水点' : '최종 진입점'}
             </text>
 
             <ellipse cx="140" cy="110" rx="45" ry="35" fill="#22c55e" fillOpacity="0.4" stroke="#4ade80" strokeWidth="2" strokeDasharray="4 3" />
             <circle cx="140" cy="110" r="12" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
             <text x="140" y="138" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900">
-              2클럽 이내 재개
+              {isJapanese ? '2クラブ以内再開' : '2클럽 이내 재개'}
             </text>
 
             <rect x="20" y="25" width="130" height="60" rx="6" fill="#0f172a" fillOpacity="0.95" stroke="#38bdf8" strokeWidth="1.5" />
             <text x="85" y="44" textAnchor="middle" fill="#38bdf8" fontSize="10" fontWeight="900">
-              워터 해저드 규칙
+              {isJapanese ? 'ウォーターハザード規則' : '워터 해저드 규칙'}
             </text>
             <text x="85" y="60" textAnchor="middle" fill="#f87171" fontSize="10" fontWeight="900">
-              • 2벌타 가산 부과
+              {isJapanese ? '• 2打付加の適用' : '• 2벌타 가산 부과'}
             </text>
             <text x="85" y="74" textAnchor="middle" fill="#e2e8f0" fontSize="8" fontWeight="800">
-              • 진입점 기준 2클럽 안착
+              {isJapanese ? '• 入水点基準 2クラブ以内' : '• 진입점 기준 2클럽 안착'}
             </text>
           </svg>
         </div>
@@ -965,10 +1044,14 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>🛡️</span>
-            <span>제35조 인공 장해물 접촉 시 1클럽 무벌 구제</span>
+            <span>
+              {isJapanese
+                ? '第9条 動かせない障害物接触時 1クラブ無罰救済'
+                : '제35조 인공 장해물 접촉 시 1클럽 무벌 구제'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-            무벌 1클럽 완전 구제
+            {isJapanese ? '無罰 1クラブ完全救済' : '무벌 1클럽 완전 구제'}
           </span>
         </div>
 
@@ -981,12 +1064,12 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
               <line key={x} x1={x + 120} y1="50" x2={x + 120} y2="170" stroke="#1e293b" strokeWidth="4" />
             ))}
             <text x="270" y="75" textAnchor="middle" fill="#cbd5e1" fontSize="10" fontWeight="900">
-              배수구 철망 / 카트 도로
+              {isJapanese ? '排水溝グレーチング / カート道' : '배수구 철망 / 카트 도로'}
             </text>
 
             <circle cx="240" cy="110" r="14" fill="#ef4444" stroke="#ffffff" strokeWidth="2" />
             <text x="240" y="140" textAnchor="middle" fill="#fecaca" fontSize="8" fontWeight="800">
-              장해물 위 정지 (타격 위험)
+              {isJapanese ? '障害物上に静止 (打撃危険)' : '장해물 위 정지 (타격 위험)'}
             </text>
 
             <path
@@ -997,15 +1080,15 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
             />
             <circle cx="95" cy="110" r="14" fill="#22c55e" stroke="#ffffff" strokeWidth="2" />
             <text x="95" y="140" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900">
-              무벌 1클럽 구제 지점
+              {isJapanese ? '無罰1クラブ救済地点' : '무벌 1클럽 구제 지점'}
             </text>
 
             <rect x="30" y="25" width="130" height="46" rx="6" fill="#0f172a" fillOpacity="0.95" stroke="#10b981" strokeWidth="1.5" />
             <text x="95" y="44" textAnchor="middle" fill="#34d399" fontSize="10" fontWeight="900">
-              움직일 수 없는 장해물
+              {isJapanese ? '動かせない障害物' : '움직일 수 없는 장해물'}
             </text>
             <text x="95" y="60" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="900">
-              【벌타 없음 (무벌)】
+              {isJapanese ? '【罰打なし (無罰)】' : '【벌타 없음 (무벌)】'}
             </text>
           </svg>
         </div>
@@ -1024,10 +1107,14 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>🚩</span>
-            <span>제37조 1항 깃대 발거 금지 절대 수칙</span>
+            <span>
+              {isJapanese
+                ? '第15条 ピン抜去禁止の絶対原則'
+                : '제37조 1항 깃대 발거 금지 절대 수칙'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
-            깃대 뽑고 치면 2벌타!
+            {isJapanese ? 'ピンを抜いて打つと2打付加!' : '깃대 뽑고 치면 2벌타!'}
           </span>
         </div>
 
@@ -1044,7 +1131,7 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
 
               <rect x="15" y="130" width="90" height="24" rx="6" fill="#065f46" stroke="#34d399" strokeWidth="1.5" />
               <text x="60" y="146" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900">
-                ✓ 깃대 꽂고 퍼팅 (정상)
+                {isJapanese ? '✓ ピンを立ててパッティング (適法)' : '✓ 깃대 꽂고 퍼팅 (정상)'}
               </text>
             </g>
 
@@ -1060,13 +1147,15 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
 
               <rect x="15" y="140" width="90" height="24" rx="6" fill="#7f1d1d" stroke="#f87171" strokeWidth="1.5" />
               <text x="60" y="156" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900">
-                ✕ 깃대 뽑음: 2벌타!
+                {isJapanese ? '✕ ピン抜去: 2打付加!' : '✕ 깃대 뽑음: 2벌타!'}
               </text>
             </g>
 
             <rect x="50" y="12" width="320" height="22" rx="6" fill="#0f172a" fillOpacity="0.9" stroke="#334155" strokeWidth="1" />
             <text x="210" y="27" textAnchor="middle" fill="#facc15" fontSize="9" fontWeight="900">
-              일반 골프와 다름! 파크골프는 깃대를 절대 뽑을 수 없습니다.
+              {isJapanese
+                ? '一般ゴルフと相違！パークゴルフはピンを絶対に抜けません。'
+                : '일반 골프와 다름! 파크골프는 깃대를 절대 뽑을 수 없습니다.'}
             </text>
           </svg>
         </div>
@@ -1081,10 +1170,14 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>🕳️</span>
-            <span>제37조 3항 컵 림(Rim) 걸침 및 깃대 흔들기 규정</span>
+            <span>
+              {isJapanese
+                ? '第15条 3項 カップ縁挟まり球処置'
+                : '제37조 3항 컵 림(Rim) 걸침 및 깃대 흔들기 규정'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-            바닥에 떨어지면 홀인 인정!
+            {isJapanese ? '底に落ちればカップイン認定!' : '바닥에 떨어지면 홀인 인정!'}
           </span>
         </div>
 
@@ -1096,19 +1189,19 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
             <rect x="160" y="90" width="100" height="100" fill="#0f172a" />
             <line x1="160" y1="190" x2="260" y2="190" stroke="#334155" strokeWidth="3" />
             <text x="210" y="180" textAnchor="middle" fill="#64748b" fontSize="8" fontWeight="800">
-              홀컵 바닥
+              {isJapanese ? 'カップ底部' : '홀컵 바닥'}
             </text>
 
             <line x1="210" y1="190" x2="210" y2="20" stroke="#ffffff" strokeWidth="6" />
 
             <circle cx="186" cy="100" r="16" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
             <text x="135" y="70" textAnchor="middle" fill="#fde047" fontSize="9" fontWeight="900">
-              테두리와 깃대 사이에 낌!
+              {isJapanese ? '縁とピンの間に挟まり!' : '테두리와 깃대 사이에 낌!'}
             </text>
 
             <path d="M 220 50 Q 230 45 220 40" fill="none" stroke="#38bdf8" strokeWidth="2" />
             <text x="245" y="48" fill="#38bdf8" fontSize="8" fontWeight="900">
-              깃대 살짝 흔들기
+              {isJapanese ? 'ピンを軽く揺らす' : '깃대 살짝 흔들기'}
             </text>
 
             <line x1="186" y1="120" x2="195" y2="165" stroke="#4ade80" strokeWidth="3" strokeDasharray="3 3" />
@@ -1116,13 +1209,13 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
 
             <rect x="275" y="30" width="130" height="70" rx="6" fill="#0f172a" fillOpacity="0.95" stroke="#10b981" strokeWidth="1.5" />
             <text x="340" y="50" textAnchor="middle" fill="#34d399" fontSize="10" fontWeight="900">
-              동반자 입회 하에
+              {isJapanese ? '同伴者立ち会いのもと' : '동반자 입회 하에'}
             </text>
             <text x="340" y="66" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="800">
-              깃대를 가볍게 움직여
+              {isJapanese ? 'ピンを慎重に動かし' : '깃대를 가볍게 움직여'}
             </text>
             <text x="340" y="82" textAnchor="middle" fill="#fbbf24" fontSize="10" fontWeight="900">
-              바닥 안착 시 【홀인 인정】
+              {isJapanese ? '底に落ちれば【カップイン認定】' : '바닥 안착 시 【홀인 인정】'}
             </text>
           </svg>
         </div>
@@ -1141,10 +1234,14 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>💥</span>
-            <span>제36조 1항 동반자 정지 공 충돌 판정</span>
+            <span>
+              {isJapanese
+                ? '第14条 同伴者の静止球衝突判定'
+                : '제36조 1항 동반자 정지 공 충돌 판정'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-            친 사람 무벌 / 맞은 공 원위치
+            {isJapanese ? '打者無罰 / 当たった球元位置' : '친 사람 무벌 / 맞은 공 원위치'}
           </span>
         </div>
 
@@ -1157,33 +1254,35 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
             <g transform="translate(195, 110)">
               <circle cx="0" cy="0" r="16" fill="#ef4444" opacity="0.4" />
               <text x="0" y="4" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="900">
-                쿵!
+                {isJapanese ? 'ドカン!' : '쿵!'}
               </text>
             </g>
 
             <circle cx="205" cy="110" r="14" fill="none" stroke="#38bdf8" strokeWidth="2" strokeDasharray="3 3" />
             <text x="205" y="85" textAnchor="middle" fill="#38bdf8" fontSize="8" fontWeight="800">
-              맞기 전 원래 자리
+              {isJapanese ? '衝突前の元位置' : '맞기 전 원래 자리'}
             </text>
 
             <path d="M 310 95 Q 260 70 215 95" fill="none" stroke="#38bdf8" strokeWidth="2" strokeDasharray="3 3" />
             <text x="260" y="65" textAnchor="middle" fill="#67e8f9" fontSize="8" fontWeight="900">
-              원위치로 리플레이스!
+              {isJapanese ? '元位置へリプレース!' : '원위치로 리플레이스!'}
             </text>
 
             <circle cx="320" cy="110" r="14" fill="#3b82f6" stroke="#ffffff" strokeWidth="2" />
             <text x="320" y="135" textAnchor="middle" fill="#bfdbfe" fontSize="8" fontWeight="800">
-              동반자 공
+              {isJapanese ? '同伴者のボール' : '동반자 공'}
             </text>
 
             <circle cx="180" cy="155" r="14" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
             <text x="180" y="185" textAnchor="middle" fill="#fed7aa" fontSize="9" fontWeight="900">
-              친 사람 공 (멈춘 곳에서 무벌 플레이)
+              {isJapanese ? '打者のボール (止まった位置から無罰)' : '친 사람 공 (멈춘 곳에서 무벌 플레이)'}
             </text>
 
             <rect x="50" y="15" width="320" height="28" rx="6" fill="#0f172a" fillOpacity="0.95" stroke="#10b981" strokeWidth="1.5" />
             <text x="210" y="33" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="900">
-              친 사람은 【벌타 없음(무벌)】 · 튕겨나간 동반자 공은 【원위치 복원】
+              {isJapanese
+                ? '打った人は【無罰】・動いた同伴者の球は【元位置へリプレース】'
+                : '친 사람은 【벌타 없음(무벌)】 · 튕겨나간 동반자 공은 【원위치 복원】'}
             </text>
           </svg>
         </div>
@@ -1198,10 +1297,14 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>❌</span>
-            <span>제36조 2항 오구(남의 공) 타격 시 2벌타 부과</span>
+            <span>
+              {isJapanese
+                ? '第6条 2項 誤球(他者のボール)打撃時 2打付加'
+                : '제36조 2항 오구(남의 공) 타격 시 2벌타 부과'}
+            </span>
           </div>
           <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
-            오구 플레이 = 2벌타
+            {isJapanese ? '誤球プレー ＝ 2打付加' : '오구 플레이 = 2벌타'}
           </span>
         </div>
 
@@ -1212,35 +1315,35 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
             <rect x="30" y="30" width="160" height="150" rx="8" fill="#292524" stroke="#ef4444" strokeWidth="2" />
             <rect x="30" y="30" width="160" height="26" rx="8" fill="#7f1d1d" />
             <text x="110" y="47" textAnchor="middle" fill="#fecaca" fontSize="10" fontWeight="900">
-              잘못 친 동반자 공
+              {isJapanese ? '誤打された同伴者球' : '잘못 친 동반자 공'}
             </text>
 
             <circle cx="110" cy="100" r="18" fill="#3b82f6" stroke="#ffffff" strokeWidth="2" />
             <text x="110" y="104" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900">
-              남의 공
+              {isJapanese ? '他者の球' : '남의 공'}
             </text>
             <text x="110" y="140" textAnchor="middle" fill="#f87171" fontSize="11" fontWeight="900">
-              2벌타 가산!
+              {isJapanese ? '2打付加!' : '2벌타 가산!'}
             </text>
             <text x="110" y="160" textAnchor="middle" fill="#94a3b8" fontSize="8" fontWeight="800">
-              (친 공은 즉시 원위치 복원)
+              {isJapanese ? '(誤打球は速やかに元位置へ)' : '(친 공은 즉시 원위치 복원)'}
             </text>
 
             <rect x="230" y="30" width="160" height="150" rx="8" fill="#14532d" stroke="#10b981" strokeWidth="2" />
             <rect x="230" y="30" width="160" height="26" rx="8" fill="#065f46" />
             <text x="310" y="47" textAnchor="middle" fill="#a7f3d0" fontSize="10" fontWeight="900">
-              플레이어 본인의 진짜 공
+              {isJapanese ? '競技者本人の正規球' : '플레이어 본인의 진짜 공'}
             </text>
 
             <circle cx="310" cy="100" r="18" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
             <text x="310" y="104" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900">
-              본인 공
+              {isJapanese ? '自球' : '본인 공'}
             </text>
             <text x="310" y="140" textAnchor="middle" fill="#4ade80" fontSize="11" fontWeight="900">
-              원래 자리에서 재개!
+              {isJapanese ? '元位置から再開!' : '원래 자리에서 재개!'}
             </text>
             <text x="310" y="160" textAnchor="middle" fill="#dcfce7" fontSize="8" fontWeight="800">
-              (2벌타 포함 타수 계산)
+              {isJapanese ? '(2打付加を含む打数計算)' : '(2벌타 포함 타수 계산)'}
             </text>
 
             <line x1="190" y1="105" x2="230" y2="105" stroke="#f59e0b" strokeWidth="3" strokeDasharray="3 3" />
@@ -1261,10 +1364,10 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>🚫</span>
-            <span>제45조 컨시드(OK) 불인정 및 미홀아웃 시 실격</span>
+            <span>{isJapanese ? '第15条 コンシード(OK)不承認・未ホールアウト失格' : '제45조 컨시드(OK) 불인정 및 미홀아웃 시 실격'}</span>
           </div>
           <span className="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">
-            컨시드 절대 금지 (위반 시 실격)
+            {isJapanese ? 'コンシード絶対不可 (違反時失格)' : '컨시드 절대 금지 (위반 시 실격)'}
           </span>
         </div>
 
@@ -1279,30 +1382,30 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
             <circle cx="150" cy="120" r="15" fill="#f97316" stroke="#ffffff" strokeWidth="2" />
             <line x1="165" y1="120" x2="175" y2="120" stroke="#fbbf24" strokeWidth="2" strokeDasharray="2 2" />
             <text x="170" y="110" textAnchor="middle" fill="#fbbf24" fontSize="9" fontWeight="800">
-              10cm 거리
+              {isJapanese ? '10cmの距離' : '10cm 거리'}
             </text>
 
             <rect x="30" y="30" width="105" height="45" rx="6" fill="#7f1d1d" stroke="#ef4444" strokeWidth="1.5" />
             <text x="82" y="48" textAnchor="middle" fill="#fecaca" fontSize="9" fontWeight="900">
-              "OK 줄게 집어!"
+              {isJapanese ? '「OKだから拾って！」' : '"OK 줄게 집어!"'}
             </text>
             <text x="82" y="64" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900">
-              ✕ 절대 불가!
+              {isJapanese ? '✕ 絶対不可！' : '✕ 절대 불가!'}
             </text>
 
             <g transform="translate(290, 100) rotate(12)">
               <rect x="-60" y="-20" width="120" height="40" rx="6" fill="#991b1b" stroke="#fecaca" strokeWidth="2" />
               <text x="0" y="-3" textAnchor="middle" fill="#ffffff" fontSize="11" fontWeight="900">
-                다음 홀 티샷 시
+                {isJapanese ? '次ホール打撃時' : '다음 홀 티샷 시'}
               </text>
               <text x="0" y="13" textAnchor="middle" fill="#fef08a" fontSize="13" fontWeight="900">
-                【실격 (DQ)】
+                {isJapanese ? '【失格 (DQ)】' : '【실격 (DQ)】'}
               </text>
             </g>
 
             <rect x="50" y="175" width="320" height="26" rx="13" fill="#065f46" stroke="#10b981" strokeWidth="1.5" />
             <text x="210" y="192" textAnchor="middle" fill="#a7f3d0" fontSize="10" fontWeight="900">
-              아무리 짧아도 컵 바닥에 땡그랑 떨어질 때까지 퍼팅해야 정규 인정!
+              {isJapanese ? 'どんなに短くてもカップの底に落ちるまでホールアウトして正規認定！' : '아무리 짧아도 컵 바닥에 땡그랑 떨어질 때까지 퍼팅해야 정규 인정!'}
             </text>
           </svg>
         </div>
@@ -1317,10 +1420,10 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
         <div className="flex items-center justify-between border-b border-stone-800 pb-1.5">
           <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
             <span>⚠️</span>
-            <span>제50조 경기 안전 수칙 및 전방 거리 확보 의무</span>
+            <span>{isJapanese ? '第1条・安全規則 前方安全距離確保義務' : '제50조 경기 안전 수칙 및 전방 거리 확보 의무'}</span>
           </div>
           <span className="text-[10px] font-black bg-amber-500 text-stone-950 px-2 py-0.5 rounded-full">
-            안전거리 미확보 시 2벌타
+            {isJapanese ? '安全距離未確保時 2打付加' : '안전거리 미확보 시 2벌타'}
           </span>
         </div>
 
@@ -1332,7 +1435,7 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
             <g transform="translate(30, 80)">
               <rect x="0" y="0" width="40" height="40" rx="6" fill="#047857" stroke="#34d399" strokeWidth="1.5" />
               <text x="20" y="24" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="900">
-                뒷 조
+                {isJapanese ? '後続組' : '뒷 조'}
               </text>
             </g>
 
@@ -1347,20 +1450,20 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
               <line x1="25" y1="20" x2="25" y2="35" stroke="#3b82f6" strokeWidth="3" />
             </g>
             <text x="300" y="145" textAnchor="middle" fill="#fca5a5" fontSize="9" fontWeight="900">
-              앞 조 경기 진행 중 (위험!)
+              {isJapanese ? '前の組プレー中 (危険!)' : '앞 조 경기 진행 중 (위험!)'}
             </text>
 
             <rect x="110" y="30" width="130" height="35" rx="6" fill="#7f1d1d" stroke="#ef4444" strokeWidth="1.5" />
             <text x="175" y="47" textAnchor="middle" fill="#fecaca" fontSize="9" fontWeight="900">
-              앞 조 이동 전 티샷 금지!
+              {isJapanese ? '前の組移動前 ティーショット禁止!' : '앞 조 이동 전 티샷 금지!'}
             </text>
             <text x="175" y="59" textAnchor="middle" fill="#ffffff" fontSize="9" fontWeight="800">
-              위반 시 【2벌타 또는 실격】
+              {isJapanese ? '違反時 【2打付加または失格】' : '위반 시 【2벌타 또는 실격】'}
             </text>
 
             <rect x="40" y="175" width="340" height="24" rx="6" fill="#0f172a" fillOpacity="0.9" stroke="#334155" strokeWidth="1" />
             <text x="210" y="191" textAnchor="middle" fill="#fcd34d" fontSize="9" fontWeight="900">
-              앞 조가 완전히 홀아웃하여 다음 홀 안전지대로 이동한 후 타격해야 합니다.
+              {isJapanese ? '前の組が完全にホールアウトし、次ホールの安全地帯へ移動後に打撃してください。' : '앞 조가 완전히 홀아웃하여 다음 홀 안전지대로 이동한 후 타격해야 합니다.'}
             </text>
           </svg>
         </div>
@@ -1371,12 +1474,86 @@ export function ChapterCutDiagram({ chapterId, cutNumber }: ChapterCutDiagramPro
   // Fallback
   return (
     <div className="w-full bg-stone-900 rounded-2xl overflow-hidden border-2 border-emerald-500/80 shadow-md p-4 text-white text-center">
-      <p className="text-xs text-amber-300 font-bold">공식 룰 규정 정밀 도해 준비 중</p>
+      <p className="text-xs text-amber-300 font-bold">
+        {isJapanese ? '公式規則 精密図解' : '공식 룰 규정 정밀 도해 준비 중'}
+      </p>
     </div>
   );
 }
 
-export function ChapterThumbnail({ chapterId }: { chapterId: string }) {
+export function ChapterThumbnail({ chapterId, isJp }: { chapterId: string; isJp?: boolean }) {
+  const isJapanese = isJp ?? chapterId.startsWith('npga-');
+
+  // NPGA Chapters (Japanese Official)
+  if (chapterId === 'npga-ch-1' || (isJapanese && chapterId === 'ch-1')) {
+    return (
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <rect width="80" height="80" fill="#064e3b" />
+        <line x1="15" y1="20" x2="45" y2="60" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+        <path d="M 40 55 L 65 45 Q 72 55 65 68 L 42 70 Z" fill="#92400e" stroke="#f59e0b" strokeWidth="1" />
+        <circle cx="50" cy="50" r="6" fill="#eab308" stroke="#ffffff" strokeWidth="1" />
+        <text x="50" y="52" textAnchor="middle" fill="#713f12" fontSize="3.5" fontWeight="900">NPGA</text>
+        <circle cx="28" cy="62" r="5" fill="#f97316" stroke="#ffffff" strokeWidth="1" />
+        <rect x="8" y="8" width="40" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
+        <text x="28" y="17.5" textAnchor="middle" fill="#38bdf8" fontSize="6.5" fontWeight="900">NPGA公認</text>
+      </svg>
+    );
+  }
+
+  if (chapterId === 'npga-ch-2' || (isJapanese && chapterId === 'ch-2')) {
+    return (
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <rect width="80" height="80" fill="#0f172a" />
+        <rect x="15" y="30" width="50" height="35" rx="3" fill="#15803d" stroke="#4ade80" strokeWidth="1" />
+        <circle cx="40" cy="40" r="8" fill="#f97316" stroke="#ffffff" strokeWidth="1" />
+        <rect x="8" y="8" width="42" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
+        <text x="29" y="17.5" textAnchor="middle" fill="#fbbf24" fontSize="6.5" fontWeight="900">ティー23mm</text>
+      </svg>
+    );
+  }
+
+  if (chapterId === 'npga-ch-3' || (isJapanese && chapterId === 'ch-3')) {
+    return (
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <rect width="80" height="80" fill="#15803d" />
+        <ellipse cx="50" cy="48" rx="24" ry="18" fill="#0284c7" stroke="#38bdf8" strokeWidth="2" />
+        <circle cx="50" cy="48" r="5" fill="#f97316" stroke="#ffffff" strokeWidth="1" />
+        <rect x="8" y="8" width="38" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
+        <text x="27" y="17.5" textAnchor="middle" fill="#38bdf8" fontSize="6.5" fontWeight="900">無罰救済</text>
+      </svg>
+    );
+  }
+
+  if (chapterId === 'npga-ch-4' || (isJapanese && chapterId === 'ch-4')) {
+    return (
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <rect width="80" height="80" fill="#450a0a" />
+        <rect x="0" y="0" width="40" height="80" fill="#15803d" />
+        <line x1="40" y1="0" x2="40" y2="80" stroke="#ffffff" strokeWidth="4" />
+        <circle cx="42" cy="42" r="10" fill="#f97316" stroke="#ffffff" strokeWidth="1.5" />
+        <rect x="8" y="8" width="38" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
+        <text x="27" y="17.5" textAnchor="middle" fill="#4ade80" fontSize="6.5" fontWeight="900">1mmセーフ</text>
+        <rect x="38" y="60" width="36" height="13" rx="3" fill="#7f1d1d" />
+        <text x="56" y="69.5" textAnchor="middle" fill="#fecaca" fontSize="6" fontWeight="900">OB 2打付加</text>
+      </svg>
+    );
+  }
+
+  if (chapterId === 'npga-ch-5' || (isJapanese && chapterId === 'ch-5')) {
+    return (
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <rect width="80" height="80" fill="#14532d" />
+        <ellipse cx="40" cy="50" rx="28" ry="14" fill="#22c55e" />
+        <ellipse cx="40" cy="50" rx="10" ry="4" fill="#0f172a" />
+        <line x1="40" y1="50" x2="40" y2="20" stroke="#ffffff" strokeWidth="2.5" />
+        <polygon points="40,20 22,27 40,34" fill="#ef4444" />
+        <circle cx="32" cy="48" r="4.5" fill="#f97316" stroke="#ffffff" strokeWidth="1" />
+        <rect x="8" y="8" width="38" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
+        <text x="27" y="17.5" textAnchor="middle" fill="#fbbf24" fontSize="6.5" fontWeight="900">グリーン</text>
+      </svg>
+    );
+  }
+
   if (chapterId === 'ch-1') {
     return (
       <svg viewBox="0 0 80 80" className="w-full h-full">
@@ -1399,10 +1576,10 @@ export function ChapterThumbnail({ chapterId }: { chapterId: string }) {
         <line x1="15" y1="20" x2="45" y2="60" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
         <path d="M 40 55 L 65 45 Q 72 55 65 68 L 42 70 Z" fill="#92400e" stroke="#f59e0b" strokeWidth="1" />
         <circle cx="50" cy="50" r="6" fill="#eab308" stroke="#ffffff" strokeWidth="1" />
-        <text x="50" y="52" textAnchor="middle" fill="#713f12" fontSize="4" fontWeight="900">KPGA</text>
+        <text x="50" y="52" textAnchor="middle" fill="#713f12" fontSize={isJapanese ? "3.5" : "4"} fontWeight="900">{isJapanese ? 'NPGA' : 'KPGA'}</text>
         <circle cx="28" cy="62" r="5" fill="#f97316" stroke="#ffffff" strokeWidth="1" />
         <rect x="8" y="8" width="38" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
-        <text x="27" y="17.5" textAnchor="middle" fill="#38bdf8" fontSize="6.5" fontWeight="900">공인용구</text>
+        <text x="27" y="17.5" textAnchor="middle" fill="#38bdf8" fontSize="6.5" fontWeight="900">{isJapanese ? '公認用具' : '공인용구'}</text>
       </svg>
     );
   }
@@ -1417,7 +1594,7 @@ export function ChapterThumbnail({ chapterId }: { chapterId: string }) {
         <path d="M 15 20 Q 45 10 55 45" fill="none" stroke="#38bdf8" strokeWidth="2" strokeDasharray="3 2" />
         <circle cx="55" cy="40" r="5" fill="#f97316" stroke="#ffffff" strokeWidth="1" />
         <rect x="8" y="8" width="36" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
-        <text x="26" y="17.5" textAnchor="middle" fill="#4ade80" fontSize="6.5" fontWeight="900">스트로크</text>
+        <text x="26" y="17.5" textAnchor="middle" fill="#4ade80" fontSize="6.5" fontWeight="900">{isJapanese ? '打撃' : '스트로크'}</text>
       </svg>
     );
   }
@@ -1430,9 +1607,9 @@ export function ChapterThumbnail({ chapterId }: { chapterId: string }) {
         <line x1="40" y1="0" x2="40" y2="80" stroke="#ffffff" strokeWidth="4" />
         <circle cx="42" cy="42" r="10" fill="#f97316" stroke="#ffffff" strokeWidth="1.5" />
         <rect x="8" y="8" width="36" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
-        <text x="26" y="17.5" textAnchor="middle" fill="#4ade80" fontSize="6.5" fontWeight="900">1mm 세이프</text>
+        <text x="26" y="17.5" textAnchor="middle" fill="#4ade80" fontSize="6.5" fontWeight="900">{isJapanese ? '1mmセーフ' : '1mm 세이프'}</text>
         <rect x="38" y="60" width="34" height="13" rx="3" fill="#7f1d1d" />
-        <text x="55" y="69.5" textAnchor="middle" fill="#fecaca" fontSize="6.5" fontWeight="900">OB 2벌타</text>
+        <text x="55" y="69.5" textAnchor="middle" fill="#fecaca" fontSize="6" fontWeight="900">{isJapanese ? 'OB 2打付加' : 'OB 2벌타'}</text>
       </svg>
     );
   }
@@ -1447,7 +1624,7 @@ export function ChapterThumbnail({ chapterId }: { chapterId: string }) {
         <line x1="15" y1="32" x2="15" y2="50" stroke="#1e293b" strokeWidth="1.5" />
         <line x1="21" y1="32" x2="21" y2="50" stroke="#1e293b" strokeWidth="1.5" />
         <rect x="8" y="8" width="38" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
-        <text x="27" y="17.5" textAnchor="middle" fill="#38bdf8" fontSize="6.5" fontWeight="900">해저드/구제</text>
+        <text x="27" y="17.5" textAnchor="middle" fill="#38bdf8" fontSize="6.5" fontWeight="900">{isJapanese ? 'ハザード救済' : '해저드/구제'}</text>
       </svg>
     );
   }
@@ -1462,7 +1639,7 @@ export function ChapterThumbnail({ chapterId }: { chapterId: string }) {
         <polygon points="40,20 22,27 40,34" fill="#ef4444" />
         <circle cx="32" cy="48" r="4.5" fill="#f97316" stroke="#ffffff" strokeWidth="1" />
         <rect x="8" y="8" width="38" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
-        <text x="27" y="17.5" textAnchor="middle" fill="#fbbf24" fontSize="6.5" fontWeight="900">깃대 필수</text>
+        <text x="27" y="17.5" textAnchor="middle" fill="#fbbf24" fontSize="6.5" fontWeight="900">{isJapanese ? 'ピン必須' : '깃대 필수'}</text>
       </svg>
     );
   }
@@ -1475,9 +1652,9 @@ export function ChapterThumbnail({ chapterId }: { chapterId: string }) {
         <circle cx="50" cy="45" r="9" fill="#3b82f6" stroke="#ffffff" strokeWidth="1.5" />
         <text x="40" y="38" textAnchor="middle" fill="#ef4444" fontSize="11" fontWeight="900">💥</text>
         <rect x="8" y="8" width="38" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
-        <text x="27" y="17.5" textAnchor="middle" fill="#4ade80" fontSize="6.5" fontWeight="900">충돌 무벌</text>
+        <text x="27" y="17.5" textAnchor="middle" fill="#4ade80" fontSize="6.5" fontWeight="900">{isJapanese ? '衝突無罰' : '충돌 무벌'}</text>
         <rect x="36" y="60" width="36" height="13" rx="3" fill="#7f1d1d" />
-        <text x="54" y="69.5" textAnchor="middle" fill="#fecaca" fontSize="6.5" fontWeight="900">오구 2벌타</text>
+        <text x="54" y="69.5" textAnchor="middle" fill="#fecaca" fontSize="6.5" fontWeight="900">{isJapanese ? '誤球2打' : '오구 2벌타'}</text>
       </svg>
     );
   }
@@ -1492,10 +1669,10 @@ export function ChapterThumbnail({ chapterId }: { chapterId: string }) {
         <line x1="24" y1="50" x2="56" y2="50" stroke="#cbd5e1" strokeWidth="2" />
         <g transform="translate(42, 44) rotate(-15)">
           <rect x="-18" y="-7" width="36" height="14" rx="2" fill="#dc2626" stroke="#fecaca" strokeWidth="1" />
-          <text x="0" y="3.5" textAnchor="middle" fill="#ffffff" fontSize="7" fontWeight="900">실격(DQ)</text>
+          <text x="0" y="3.5" textAnchor="middle" fill="#ffffff" fontSize="7" fontWeight="900">{isJapanese ? '失格(DQ)' : '실격(DQ)'}</text>
         </g>
         <rect x="8" y="8" width="40" height="13" rx="3" fill="#0f172a" fillOpacity="0.85" />
-        <text x="28" y="17.5" textAnchor="middle" fill="#f87171" fontSize="6.5" fontWeight="900">컨시드 불가</text>
+        <text x="28" y="17.5" textAnchor="middle" fill="#f87171" fontSize={isJapanese ? "5.5" : "6.5"} fontWeight="900">{isJapanese ? 'OK不可' : '컨시드 불가'}</text>
       </svg>
     );
   }
@@ -1503,7 +1680,9 @@ export function ChapterThumbnail({ chapterId }: { chapterId: string }) {
   return (
     <svg viewBox="0 0 80 80" className="w-full h-full">
       <rect width="80" height="80" fill="#065f46" />
-      <text x="40" y="45" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="900">규정집</text>
+      <text x="40" y="45" textAnchor="middle" fill="#ffffff" fontSize="10" fontWeight="900">
+        {isJapanese ? '規程集' : '규정집'}
+      </text>
     </svg>
   );
 }

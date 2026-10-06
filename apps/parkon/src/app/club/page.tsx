@@ -223,9 +223,9 @@ export default function ClubGatheringHomePage() {
   const [newClubRegion, setNewClubRegion] = useState('경북 구미');
   const [newClubHomeCourseId, setNewClubHomeCourseId] = useState('course-gumi-dongrak');
   const [newClubDesc, setNewClubDesc] = useState('');
-  const [newClubPresident, setNewClubPresident] = useState('박회장');
-  const [newClubManager, setNewClubManager] = useState('김총무(본인)');
-  const [newClubPhone, setNewClubPhone] = useState('010-1234-5678');
+  const [newClubPresident, setNewClubPresident] = useState('');
+  const [newClubManager, setNewClubManager] = useState('');
+  const [newClubPhone, setNewClubPhone] = useState('');
 
   // ========================================================
   // 2. [새 대회 개설 & 실시간 전광판] 상태

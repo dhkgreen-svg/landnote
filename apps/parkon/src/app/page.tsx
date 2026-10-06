@@ -913,6 +913,7 @@ export default function HomePage() {
       <RulesWebtoonModal
         isOpen={showRulesWebtoonModal}
         onClose={() => setShowRulesWebtoonModal(false)}
+        isJp={isJapanese}
       />
 
       {/* -2.3. 파키(PARKY) 앱 3대 채널(카톡, 라인, URL) 추천 공유 모달 */}

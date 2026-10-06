@@ -232,6 +232,7 @@ export function HelpRulesHubModal({ isOpen, onClose }: HelpRulesHubModalProps) {
       <RulesWebtoonModal
         isOpen={showRulesWebtoon}
         onClose={() => setShowRulesWebtoon(false)}
+        isJp={isJapanese}
       />
     </>
   );

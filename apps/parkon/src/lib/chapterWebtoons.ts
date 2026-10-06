@@ -338,75 +338,536 @@ export const CHAPTER_WEBTOONS: Record<string, ChapterWebtoon> = {
 };
 
 /**
- * 🌐 챕터별 웹툰 다국어 반환 함수 (한국어 / 일본어 1:1 완벽 대응)
+ * 🇯🇵 日本パークゴルフ協会 (NPGA) & 日本語モード専用 公式マンガデータ
+ * 韓国語を一切含まない100%自然な日本語公式データ
  */
-const CHAPTER_MAPPING_JP: Record<string, string> = {
-  'npga-ch-1': 'ch-1',
-  'npga-ch-2': 'ch-3',
-  'npga-ch-3': 'ch-4',
-  'npga-ch-4': 'ch-5',
-  'npga-ch-5': 'ch-6',
+export const CHAPTER_WEBTOONS_JA: Record<string, ChapterWebtoon> = {
+  'npga-ch-1': {
+    chapterId: 'npga-ch-1',
+    chapterNumber: '第1章',
+    title: '総則及びコース・用具規程',
+    subtitle: '9ホール33打公認基準と5大コース区域の秘密',
+    coverImage: '/mascot/master_cuts/ch-1_cover.jpg',
+    totalCuts: 3,
+    cuts: [
+      {
+        cutNumber: 1,
+        title: 'パークゴルフの基本！9ホールPar 33の公認規格',
+        image: '/mascot/master_cuts/ch-1_cut1.jpg',
+        badge: '公認規格',
+        badgeType: 'info',
+        situation: 'パークゴルフは一般ゴルフとホール数や規定打数がどう違うのでしょうか？',
+        parkyDialogue: 'こんにちは！パークゴルフ オールインワン公式マスコットのパーキーです！パークゴルフの公認規格は9ホールでPar 33(合計33打)が標準です！Par 3が4つ、Par 4が4つ、Par 5が1つのバランス良い構成になっています！',
+        verdict: '9ホール基準打数 33打 (18ホール 66打)',
+        keyPoint: '全コース長は約500m〜700mで、年齢や性別を問わず誰もが安全に楽しめる健康スポーツです。',
+        article: '第1章 第2条 (コースの構成及び区域)',
+      },
+      {
+        cutNumber: 2,
+        title: 'ティーインググラウンド(マット)区域の秘密',
+        image: '/mascot/master_cuts/ch-1_cut2.jpg',
+        badge: '出発区域',
+        badgeType: 'caution',
+        situation: 'ティーショットを打つマット区域はどこまでが正規範囲でしょうか？',
+        parkyDialogue: 'ティーインググラウンドは各ホールのスタート地点です！ティーマーカーの前方外面を結ぶ線と、後方2クラブレングス以内の長方形区域から打撃します！両足が完全にマットの外に出ると2打付加(2罰打)になりますのでご注意ください！',
+        verdict: 'ティーマーカー前面線 〜 後方2クラブレングスの長方形',
+        penaltyText: '両足完全離脱打撃時は2打付加(2罰打)',
+        keyPoint: 'ティーショット時は少なくとも片足の一部がティー区域内に接地していなければなりません。',
+        article: '第2章 第4条 (ティーインググラウンド区域)',
+      },
+      {
+        cutNumber: 3,
+        title: '5大コース区域とOBラインの見分け方',
+        image: '/mascot/master_cuts/ch-1_cut3.jpg',
+        badge: 'コース区域',
+        badgeType: 'info',
+        situation: 'コースの内側と外側はどのように区分されているのでしょうか？',
+        parkyDialogue: 'コースはティーグラウンド、フェアウェイ、ラフ、バンカー、ウォーターハザード、グリーンの5大インプレー区域と、白杭で示されるOB区域に分かれています！止まった場所によって規則が異なります！',
+        verdict: 'インプレー5区域 ＋ コース外周OB区域',
+        keyPoint: 'ボールが静止した区域に応じて適用される処置や付加打規則が決定されます。',
+        article: '第1章 第2条 第2項',
+      },
+    ],
+  },
+  'npga-ch-2': {
+    chapterId: 'npga-ch-2',
+    chapterNumber: '第2章',
+    title: 'ティーインググラウンド及び打撃',
+    subtitle: 'NPGA公認マーク必須とティーの高さ23mm制限',
+    coverImage: '/mascot/master_cuts/ch-2_cover.jpg',
+    totalCuts: 2,
+    cuts: [
+      {
+        cutNumber: 1,
+        title: 'NPGA公認マークのない用具は即座に競技失格？！',
+        image: '/mascot/master_cuts/ch-2_cut1.jpg',
+        badge: '失格注意',
+        badgeType: 'penalty',
+        situation: '大会出場前にクラブやボールのどのマークを確認すべきでしょうか？',
+        parkyDialogue: '皆さん！クラブとボールに日本パークゴルフ協会(NPGA)公認マーク(刻印またはシール)があるか必ず確認してください！未公認用具で出場すると即座に失格(DQ)となります！',
+        verdict: '未公認クラブ及びボール使用時は【即座に競技失格】',
+        penaltyText: '競技失格 (Disqualified)',
+        keyPoint: '重量600g以下、長さ86cm以下、木製ヘッドなどNPGA公認基準に適合した用具のみ有効です。',
+        article: '第1章 第3条 (公認クラブ及びボール)',
+      },
+      {
+        cutNumber: 2,
+        title: 'ティーの高さは地上から厳格に23mm以下！',
+        image: '/mascot/master_cuts/ch-2_cut2.jpg',
+        badge: '2打付加',
+        badgeType: 'caution',
+        situation: 'ティーを使用する際、高さの制限はあるのでしょうか？',
+        parkyDialogue: 'ティーショット時は必ずティーを使用し、地上からの高さは23mm以下でなければなりません！高すぎるロングティーを使用すると規則違反で2打付加となります！',
+        verdict: 'ティーの高さ23mm以下のみ許容',
+        penaltyText: '規定違反ティー使用時 2打付加(2罰打)',
+        keyPoint: '常備されている公認ゴムティーの使用が推奨されます。',
+        article: '第2章 第5条 (ティーアップとティーの高さ)',
+      },
+    ],
+  },
+  'npga-ch-3': {
+    chapterId: 'npga-ch-3',
+    chapterNumber: '第3章',
+    title: 'プレー通則及び障害物の救済',
+    subtitle: 'ボールはあるがままの原則と動かせない障害物無罰救済',
+    coverImage: '/mascot/master_cuts/ch-5_cover.jpg',
+    totalCuts: 2,
+    cuts: [
+      {
+        cutNumber: 1,
+        title: 'ボールはあるがまま！ライの改善は禁止！',
+        image: '/mascot/master_cuts/ch-5_cut1.jpg',
+        badge: '2打付加',
+        badgeType: 'penalty',
+        situation: '打ちにくいライにある草を足で踏み固めたり枝を折ってスイングしました。',
+        parkyDialogue: 'ボールのライやスイング区域の草木を折ったり踏み固めて打ちやすくする行為は厳禁です！あるがままの状態で打たなければならず、違反すると2打付加となります！',
+        verdict: 'ライ改善違反時は【2打付加 (2罰打)】',
+        penaltyText: 'ライ改善違反 2打付加',
+        keyPoint: 'どうしても打てない場合はアンプレヤブルを宣言して2打付加で処置します。',
+        article: '第3章 第8条 (球はあるがままの状態) & 第11条',
+      },
+      {
+        cutNumber: 2,
+        title: '排水溝・カート道・散水栓は無罰1クラブ救済！',
+        image: '/mascot/master_cuts/ch-5_cut2.jpg',
+        badge: '無罰救済',
+        badgeType: 'safe',
+        situation: '排水溝のグレーチングの上や舗装された作業通路にボールが止まりました。',
+        parkyDialogue: '排水溝の鉄格子やカート道路、水道栓は「動かせない障害物」です！クラブを傷めないよう、ピンに近づかない最も近い救済点から1クラブレングス以内に無罰でプレース(手で置く)できます！',
+        verdict: '動かせない人工障害物接触時は【無罰 1クラブレングス救済】',
+        penaltyText: '罰なし (無罰プレース)',
+        keyPoint: 'ホールに近づかない救済ポイントから1クラブ以内に手で静かにプレースします。',
+        article: '第3章 第9条 (動かない障害物及びカジュアルウォーター)',
+      },
+    ],
+  },
+  'npga-ch-4': {
+    chapterId: 'npga-ch-4',
+    chapterNumber: '第4章',
+    title: 'アウトオブバウンズ (OB) 及び境界',
+    subtitle: '1mmの奇跡インプレー判定と2打付加手によるプレース',
+    coverImage: '/mascot/master_cuts/ch-4_cover.jpg',
+    totalCuts: 2,
+    cuts: [
+      {
+        cutNumber: 1,
+        title: '1mmの奇跡！白線に少しでも触れていればセーフ！',
+        image: '/mascot/master_cuts/ch-4_cut1.jpg',
+        badge: '無罰セーフ',
+        badgeType: 'safe',
+        situation: '打ったボールが転がり、白いOB境界線に少しだけ触れて止まりました。OBでしょうか？',
+        parkyDialogue: '自信を持って同伴者に伝えてください！ボール全体が白線の外側に完全に静止したときだけがOBです！真上から見て1mmでも白線に触れていれば無罰でセーフ(インプレー)です！',
+        verdict: 'ボールの一部が白線に接触していれば【セーフ (インプレー)】',
+        penaltyText: '罰打なし (無罰)',
+        keyPoint: 'ボールの直径のうちわずか1mmでも白線上に触れていれば生きています。',
+        article: '第4章 第12条 (OBの定義及び判定)',
+      },
+      {
+        cutNumber: 2,
+        title: 'OBは必ず2打付加！境界通過地点から2クラブ手でプレース！',
+        image: '/mascot/master_cuts/ch-4_cut3.jpg',
+        badge: '2打付加',
+        badgeType: 'penalty',
+        situation: 'ボールが白線を完全に越えてOBになりました。どこから何打で打つべきでしょうか？',
+        parkyDialogue: 'パークゴルフのOBは必ず2打付加(2罰打)です！ティーグラウンドには戻らず、ボールがOB線を最後に横切った地点から、ホールに近づかないコース内に2クラブレングス以内で手で静かに置いて次を打ちます！',
+        verdict: '【2打付加】の後、境界通過地点から2クラブ以内に手でプレース',
+        penaltyText: 'OB発生時は必ず2打付加 (1打付加のOBはありません)',
+        keyPoint: 'ティーショットがOBの場合も、境界横切地点からのショットが第4打目となります。',
+        article: '第4章 第13条 (OBの救済処置)',
+      },
+    ],
+  },
+  'npga-ch-5': {
+    chapterId: 'npga-ch-5',
+    chapterNumber: '第5章',
+    title: 'パッティンググリーン及びホールアウト',
+    subtitle: 'グリーン上のマーク義務とコンシード(OK)絶対不可',
+    coverImage: '/mascot/master_cuts/ch-6_cover.jpg',
+    totalCuts: 2,
+    cuts: [
+      {
+        cutNumber: 1,
+        title: 'グリーン上でのボールマークとピックアップ義務',
+        image: '/mascot/master_cuts/ch-6_cut1.jpg',
+        badge: 'マーク義務',
+        badgeType: 'info',
+        situation: 'グリーン上で自分のボールが同伴者のパッティングラインの邪魔になっています。',
+        parkyDialogue: '同伴者から要請があった場合はもちろん、カップから2クラブ以内にあるボールは自発的にボールマーカーをボールの真後ろに置いて拾い上げましょう！安全でスムーズな進行のマナーです！',
+        verdict: '要請時は必ずボール直後にマークを設置してピックアップ',
+        penaltyText: 'マーク怠慢で他者の打球が当たっても打者は無罰(当たった球は復元)',
+        keyPoint: 'マーカーはボールの直後(真後ろ)に密着して設置し、打撃後に正確に元の位置に戻します。',
+        article: '第5章 第14条 (マークとピックアップ)',
+      },
+      {
+        cutNumber: 2,
+        title: 'コンシード(OK)は絶対不可！底に落ちるまでホールアウト！',
+        image: '/mascot/master_cuts/ch-8_cut1.jpg',
+        badge: '失格注意',
+        badgeType: 'penalty',
+        situation: 'カップのすぐ縁に止まり、OKと思って拾い上げて次のホールへ向かいました。',
+        parkyDialogue: 'パークゴルフには「OK(コンシード)」は一切ありません！どれほど近くてもカップの底にカランと落ちて静止するまで打ち終えなければなりません！拾ったまま次のホールを打つと競技失格(DQ)になります！',
+        verdict: 'ホールアウト未完了のまま次ホールを打撃した場合は【競技失格】',
+        penaltyText: '競技失格 (Disqualified)',
+        keyPoint: '必ずボールがカップの底に静止するまでストロークを完了させます。',
+        article: '第5章 第15条 (カップインの判定) & 第16条',
+      },
+    ],
+  },
+  // Korean Chapter IDs mapped to Japanese as fallback
+  'ch-1': {
+    chapterId: 'ch-1',
+    chapterNumber: '第1章',
+    title: 'コース探検と基本規程',
+    subtitle: '9ホール33打公認基準と5大コース区域の秘密',
+    coverImage: '/mascot/master_cuts/ch-1_cover.jpg',
+    totalCuts: 3,
+    cuts: [
+      {
+        cutNumber: 1,
+        title: 'パークゴルフの基本！9ホールPar 33の公認規格',
+        image: '/mascot/master_cuts/ch-1_cut1.jpg',
+        badge: '公認規格',
+        badgeType: 'info',
+        situation: 'パークゴルフは一般ゴルフとホール数や規定打数がどう違うのでしょうか？',
+        parkyDialogue: 'こんにちは！パークゴルフ オールインワン公式マスコットのパーキーです！パークゴルフの公認規格は9ホールでPar 33(合計33打)が標準です！Par 3が4つ、Par 4が4つ、Par 5が1つのバランス良い構成になっています！',
+        verdict: '9ホール基準打数 33打 (18ホール 66打)',
+        keyPoint: '全コース長は約500m〜700mで、年齢や性別を問わず誰もが安全に楽しめる健康スポーツです。',
+        article: '第1章 第2条 (コースの構成及び区域)',
+      },
+      {
+        cutNumber: 2,
+        title: 'ティーインググラウンド(マット)区域の秘密',
+        image: '/mascot/master_cuts/ch-1_cut2.jpg',
+        badge: '出発区域',
+        badgeType: 'caution',
+        situation: 'ティーショットを打つマット区域はどこまでが正規範囲でしょうか？',
+        parkyDialogue: 'ティーインググラウンドは各ホールのスタート地点です！ティーマーカーの前方外面を結ぶ線と、後方2クラブレングス以内の長方形区域から打撃します！両足が完全にマットの外に出ると2打付加(2罰打)になりますのでご注意ください！',
+        verdict: 'ティーマーカー前面線 〜 後方2クラブレングスの長方形',
+        penaltyText: '両足完全離脱打撃時は2打付加(2罰打)',
+        keyPoint: 'ティーショット時は少なくとも片足の一部がティー区域内に接地していなければなりません。',
+        article: '第2章 第4条 (ティーインググラウンド区域)',
+      },
+      {
+        cutNumber: 3,
+        title: '5大コース区域とOBラインの見分け方',
+        image: '/mascot/master_cuts/ch-1_cut3.jpg',
+        badge: 'コース区域',
+        badgeType: 'info',
+        situation: 'コースの内側と外側はどのように区分されているのでしょうか？',
+        parkyDialogue: 'コースはティーグラウンド、フェアウェイ、ラフ、バンカー、ウォーターハザード、グリーンの5大インプレー区域と、白杭で示されるOB区域に分かれています！止まった場所によって規則が異なります！',
+        verdict: 'インプレー5区域 ＋ コース外周OB区域',
+        keyPoint: 'ボールが静止した区域に応じて適用される処置や付加打規則が決定されます。',
+        article: '第1章 第2条 第2項',
+      },
+    ],
+  },
+  'ch-2': {
+    chapterId: 'ch-2',
+    chapterNumber: '第2章',
+    title: '用具と服装のマナー',
+    subtitle: '協会公認認証マークとティーの高さ23mmの秘密',
+    coverImage: '/mascot/master_cuts/ch-2_cover.jpg',
+    totalCuts: 2,
+    cuts: [
+      {
+        cutNumber: 1,
+        title: '公認マークのない用具は即座に失格？！',
+        image: '/mascot/master_cuts/ch-2_cut1.jpg',
+        badge: '失格注意',
+        badgeType: 'penalty',
+        situation: '大会出場前にクラブとボールのどのマークを確認すべきでしょうか？',
+        parkyDialogue: '皆さん！クラブとボールに協会公認マークが貼られているか必ず確認してください！未公認用具は正規大会で即座に失格(DQ)となります！',
+        verdict: '未公認用具使用時は【即座に競技失格】',
+        penaltyText: '競技失格 (Disqualified)',
+        keyPoint: 'クラブ長さ86cm以下、重量600g以下、ロフト角0度(直角)の公認クラブのみ認められます。',
+        article: '第2章 第11条(公認クラブ) & 第12条(ボール規格)',
+      },
+      {
+        cutNumber: 2,
+        title: 'ティーの高さは地上から厳格に23mm以下！',
+        image: '/mascot/master_cuts/ch-2_cut2.jpg',
+        badge: '2打付加',
+        badgeType: 'caution',
+        situation: '個人ティーを使用する際、高さ制限はあるのでしょうか？',
+        parkyDialogue: '個人ティーを使用する場合、地上からの高さが23mm(2.3cm)を超えてはいけません！高すぎるロングティーを使用すると規則違反で2打付加となります！',
+        verdict: 'ティーの高さ23mm以下のゴムティーのみ許容',
+        penaltyText: '規定違反ティー使用時 2打付加',
+        keyPoint: '常備されている公認ゴムティーの使用を推奨します。',
+        article: '第2章 第13条 (ティーの高さ及び補助用具)',
+      },
+    ],
+  },
+  'ch-3': {
+    chapterId: 'ch-3',
+    chapterNumber: '第3章',
+    title: 'ティーショットとストローク通則',
+    subtitle: '空振りの打数計算とマットスタンス規則',
+    coverImage: '/mascot/master_cuts/ch-3_cover.jpg',
+    totalCuts: 2,
+    cuts: [
+      {
+        cutNumber: 1,
+        title: '空振りでボールに当たらなかった場合は打数になる？',
+        image: '/mascot/master_cuts/ch-3_cut1.jpg',
+        badge: '1打加算',
+        badgeType: 'caution',
+        situation: '打つ意思を持って強く振りましたが、ボールに当たらず空を切りました。',
+        parkyDialogue: 'ボールを打つ意思を持ってダウンスイングを開始した場合、空振りであっても正規の1打としてカウントされます！罰打ではありませんが1打加算され次は第2打となります！',
+        verdict: 'ダウンスイング開始時は空振りでも【1打加算】',
+        penaltyText: '罰打なし (ストローク1打認定)',
+        keyPoint: '単なる練習スイングやアドレス中断の動作は打数に数えません。',
+        article: '第3章 第30条 (ストロークの定義)',
+      },
+      {
+        cutNumber: 2,
+        title: 'ティーショットで両足がマットの外の地面に出たら？',
+        image: '/mascot/master_cuts/ch-3_cut2.jpg',
+        badge: '2打付加',
+        badgeType: 'penalty',
+        situation: 'スタンスが狭いと感じ、マットの外の地面に両足を置いて打ちました。',
+        parkyDialogue: '打ちやすいからとマットの外の地面に両足を完全に置いて打つと2打付加です！少なくとも片足の一部はティーマット内に接触していなければなりません！',
+        verdict: '両足完全離脱時は【2打付加】',
+        penaltyText: 'ティー区域違反 2打付加',
+        keyPoint: '両足のうち少なくとも一方の足の一部は必ずティーマット内に接触している必要があります。',
+        article: '第3章 第31条 (ティーショット規程及びスタンス)',
+      },
+    ],
+  },
+  'ch-4': {
+    chapterId: 'ch-4',
+    chapterNumber: '第4章',
+    title: 'アウトオブバウンズ (OB) 完全攻略',
+    subtitle: '1mmの奇跡と外周フェンス接触球、2打付加処置',
+    coverImage: '/mascot/master_cuts/ch-4_cover.jpg',
+    totalCuts: 3,
+    cuts: [
+      {
+        cutNumber: 1,
+        title: '1mmの奇跡！白い境界線に触れているボールは？',
+        image: '/mascot/master_cuts/ch-4_cut1.jpg',
+        badge: '無罰セーフ',
+        badgeType: 'safe',
+        situation: '打ったボールが白線にわずかに触れて止まりました。OBでしょうか？',
+        parkyDialogue: '同伴者に自信を持って伝えてください！ボール全体が白線の外側に完全に静止したときだけがOBです！真上から見て1mmでも白線に触れていれば無罰でセーフです！',
+        verdict: 'ボールの一部が白線に接触していれば【セーフ (インプレー)】',
+        penaltyText: '罰打なし (無罰)',
+        keyPoint: 'ボールの直径のうちわずか1mmでも境界線上に触れていればインプレー球です。',
+        article: '第4章 第33条(OB及び処置) 第1項',
+      },
+      {
+        cutNumber: 2,
+        title: '外周防球ネットや木に当たってコース内へ戻った！',
+        image: '/mascot/master_cuts/ch-4_cut2.jpg',
+        badge: '奇跡のセーフ',
+        badgeType: 'safe',
+        situation: '白杭の外へ飛んだボールが安全ネットや立木に跳ね返ってコース内に止まりました。',
+        parkyDialogue: '一度外へ飛んだボールでも、ネットや立木に当たって最終的にコース内に静止した場合は無罰でセーフです！止まった場所からそのまま打ってください！',
+        verdict: '最終静止位置がコース内であれば【無罰セーフ】',
+        penaltyText: '罰打なし (無罰インプレー)',
+        keyPoint: '飛行中の軌跡にかかわらず、ボールが静止した最終位置がコース内であれば有効です。',
+        article: '第4章 第33条 第2項 (最終静止位置の原則)',
+      },
+      {
+        cutNumber: 3,
+        title: 'OBは必ず2打付加！境界通過地点から2クラブ以内処置！',
+        image: '/mascot/master_cuts/ch-4_cut3.jpg',
+        badge: '2打付加',
+        badgeType: 'penalty',
+        situation: 'ボールが白線を完全に越えました。どこから何打で打つべきでしょうか？',
+        parkyDialogue: 'パークゴルフのOBは必ず2打付加です！ティーボックスには戻らず、ボールがOB境界を横切った地点からホールに近づかないコース内に2クラブレングス以内で手で置いて打ちます！',
+        verdict: '【2打付加】後、境界通過地点から2クラブ以内にプレース',
+        penaltyText: 'OB発生時は必ず2打付加 (1打付加のOBはありません)',
+        keyPoint: 'ティーショットがOBの場合も、境界横切地点からの次打が第4打となります。',
+        article: '第4章 第33条 第3項',
+      },
+    ],
+  },
+  'ch-5': {
+    chapterId: 'ch-5',
+    chapterNumber: '第5章',
+    title: 'ウォーターハザードと無罰救済',
+    subtitle: '水没ボール2打付加と排水溝・カート道1クラブ無罰救済',
+    coverImage: '/mascot/master_cuts/ch-5_cover.jpg',
+    totalCuts: 2,
+    cuts: [
+      {
+        cutNumber: 1,
+        title: '池や水路にポチャリ！どう処置する？',
+        image: '/mascot/master_cuts/ch-5_cut1.jpg',
+        badge: '2打付加',
+        badgeType: 'penalty',
+        situation: 'ボールが池や深い水路に入り打つことができません。',
+        parkyDialogue: 'ウォーターハザードに入った場合は2打付加となります！ボールがハザード境界を最後に横切った地点から、ホールに近づかない2クラブレングス以内に置いて次打を打ちます！',
+        verdict: '水没時は【2打付加加算】',
+        penaltyText: '2打付加後 2クラブ以内処置',
+        keyPoint: '入水地点を基準に、ホールに近づかないコース内に2クラブレングス以内で静かにプレースします。',
+        article: '第5章 第34条 (ウォーターハザード及び修理地) 第1項',
+      },
+      {
+        cutNumber: 2,
+        title: '排水溝のグレーチングやカート道は無罰1クラブ救済！',
+        image: '/mascot/master_cuts/ch-5_cut2.jpg',
+        badge: '無罰救済',
+        badgeType: 'safe',
+        situation: 'ボールが排水溝の鉄格子の上やアスファルト作業通路で止まりました。',
+        parkyDialogue: '排水溝の鉄格子やカート道は「動かせない人工障害物」です！クラブを痛めないよう、ピンに近づかない芝生区域へ1クラブレングス以内に無罰で置いて打ってください！',
+        verdict: '動かせない人工障害物接触時は【無罰 1クラブレングス救済】',
+        penaltyText: '罰打なし (無罰救済)',
+        keyPoint: '完全な救済地点からピンに近づかない1クラブレングス以内の芝生にボールを置きます。',
+        article: '第5章 第35条 (障害物) 第1項',
+      },
+    ],
+  },
+  'ch-6': {
+    chapterId: 'ch-6',
+    chapterNumber: '第6章',
+    title: 'グリーンとパッティング規定',
+    subtitle: 'ピン抜きの禁止とカップ縁のボール判定',
+    coverImage: '/mascot/master_cuts/ch-6_cover.jpg',
+    totalCuts: 2,
+    cuts: [
+      {
+        cutNumber: 1,
+        title: 'ピンを抜いてパッティングすると2打付加？！',
+        image: '/mascot/master_cuts/ch-6_cut1.jpg',
+        badge: '2打付加',
+        badgeType: 'penalty',
+        situation: 'ピンが邪魔だとカップから引き抜いて地面に置いて打ちました。',
+        parkyDialogue: '一般ゴルフと最も大きく異なるポイント！パークゴルフでは安全と迅速な進行のためピンを抜くことが固く禁止されています！抜いて打つと2打付加になりますので必ず立てたまま打ってください！',
+        verdict: 'ピン任意抜去後のパッティングは【2打付加】',
+        penaltyText: 'ピン抜去禁止違反 2打付加',
+        keyPoint: 'パークゴルフはピンを立てたままホールアウトすることが絶対の原則です。',
+        article: '第6章 第37条 (ホールアウト及びピン規定) 第1項',
+      },
+      {
+        cutNumber: 2,
+        title: 'ボールがピンとカップ縁の間に挟まった！',
+        image: '/mascot/master_cuts/ch-6_cut2.jpg',
+        badge: 'カップイン',
+        badgeType: 'safe',
+        situation: 'パッティングしたボールがピンのポールとカップの縁の間に挟まり底に落ちていません。',
+        parkyDialogue: '慌てず同伴者の立ち会いのもとでピンをゆっくり軽く揺らしてみてください！ボールがカップの底にカランと落ちれば直前のストロークでカップイン認定です！',
+        verdict: 'ピンを揺らして底に落ちれば【カップイン認定】',
+        penaltyText: '罰打なし (ホールアウト成功)',
+        keyPoint: '同伴者立ち会いのもと慎重に動かし、底に静止すればホールアウト成功です。',
+        article: '第6章 第37条 第3項',
+      },
+    ],
+  },
+  'ch-7': {
+    chapterId: 'ch-7',
+    chapterNumber: '第7章',
+    title: 'ボールの衝突と付加打総覧',
+    subtitle: '同伴者のボールに当たった時の無罰と誤球2打付加',
+    coverImage: '/mascot/master_cuts/ch-7_cover.jpg',
+    totalCuts: 2,
+    cuts: [
+      {
+        cutNumber: 1,
+        title: '打ったボールが同伴者の静止球に当たった！',
+        image: '/mascot/master_cuts/ch-7_cut1.jpg',
+        badge: '打者無罰',
+        badgeType: 'safe',
+        situation: 'セカンドショットやパッティングで前方に静止していた同伴者のボールに直撃しました。',
+        parkyDialogue: '慌てなくて大丈夫です！打った方には一切ペナルティはなく止まった場所からそのまま次を打ちます！当たって動いた同伴者のボールだけを元あった場所に戻せばOKです！',
+        verdict: '打った人は【無罰】 / 当てられた球は【元位置へリプレース】',
+        penaltyText: '罰打なし (無罰)',
+        keyPoint: '衝突で動いた他の競技者のボールのみ元の位置へリプレースします。',
+        article: '第7章 第36条 (球の衝突及び誤球) 第1項',
+      },
+      {
+        cutNumber: 2,
+        title: '他人のボールを自分の球と勘違いして打った (誤球)',
+        image: '/mascot/master_cuts/ch-7_cut2.jpg',
+        badge: '2打付加',
+        badgeType: 'penalty',
+        situation: 'よく似た色の同伴者のボールを自分の球だと思い込みフルスイングしました。',
+        parkyDialogue: '似た色のボールでも油断禁物！他人の球を打つ「誤球プレー」は2打付加です！間違えて打った球は直ちに元の位置へ戻し、自分の球を探して元位置から打ち直してください！',
+        verdict: '誤球プレー違反により【2打付加】',
+        penaltyText: '誤球 2打付加',
+        keyPoint: '間違えた球は速やかに元位置へ戻し、2打付加加算の上で自球で再開します。',
+        article: '第7章 第36条 第2項',
+      },
+    ],
+  },
+  'ch-8': {
+    chapterId: 'ch-8',
+    chapterNumber: '第8章',
+    title: 'スコア記録と競技マナー',
+    subtitle: 'コンシード(OK)絶対不可と安全距離確保',
+    coverImage: '/mascot/master_cuts/ch-8_cover.jpg',
+    totalCuts: 2,
+    cuts: [
+      {
+        cutNumber: 1,
+        title: 'パークゴルフに「OK(コンシード)」は絶対ありません！',
+        image: '/mascot/master_cuts/ch-8_cut1.jpg',
+        badge: '失格注意',
+        badgeType: 'penalty',
+        situation: 'カップ10cm前に止まり、入ると思って拾い上げて次ホールへ向かいました。',
+        parkyDialogue: 'パークゴルフはどんなに短い距離でも「OK(コンシード)」はありません！カップの底にカランと落ちるまで打ち終えなければならず、入れずに次ホールを打つと競技失格(DQ)となります！',
+        verdict: 'ホールアウト未完了で次ホールを打った場合は【競技失格】',
+        penaltyText: '競技失格 (Disqualified)',
+        keyPoint: '必ずボールがカップの底に落ちて静止するまでストロークを完了させます。',
+        article: '第8章 第37条 第4項 & 第45条',
+      },
+      {
+        cutNumber: 2,
+        title: '前の組が移動する前に打つのは絶対禁止！',
+        image: '/mascot/master_cuts/ch-8_cut2.jpg',
+        badge: '安全マナー',
+        badgeType: 'caution',
+        situation: '前の組がまだフェアウェイにいる状態でそのままティーショットを打ちました。',
+        parkyDialogue: 'パークゴルフのボールはとても硬く、当たると大怪我につながります！前の組の皆様が完全に次のホールの安全地帯へ移動したことを確認してから打ってください！違反時は2打付加や退場処分となります！',
+        verdict: '安全距離未確保での打撃は【2打付加または失格】',
+        penaltyText: '安全マナー違反 2打付加',
+        keyPoint: '前方競技者の安全距離が完全に確保された後にのみストロークを行います。',
+        article: '第8章 第50条 (安全規則及びマナー)',
+      },
+    ],
+  },
 };
 
+/**
+ * 🌐 챕터별 웹툰 다국어 반환 함수 (한국어 / 일본어 1:1 완벽 대응)
+ */
 export function getChapterWebtoon(chapterId: string, isJapanese: boolean): ChapterWebtoon | undefined {
-  const targetId = isJapanese && CHAPTER_MAPPING_JP[chapterId] ? CHAPTER_MAPPING_JP[chapterId] : chapterId;
-  const base = CHAPTER_WEBTOONS[targetId];
-  if (!base) return undefined;
-  if (!isJapanese) return base;
+  if (isJapanese) {
+    if (CHAPTER_WEBTOONS_JA[chapterId]) {
+      return CHAPTER_WEBTOONS_JA[chapterId];
+    }
+    // 'ch-1' 형태 등 fallback 대응
+    const normalizedId = chapterId.startsWith('npga-') ? chapterId : `npga-${chapterId}`;
+    if (CHAPTER_WEBTOONS_JA[normalizedId]) {
+      return CHAPTER_WEBTOONS_JA[normalizedId];
+    }
+  }
 
-  return {
-    ...base,
-    title: base.title
-      .replace('코스 탐험과 기본 규정', 'コース探検と基本規程')
-      .replace('스코어 기록과 경기 매너', 'スコア記録と競技マナー')
-      .replace('티잉그라운드와 스윙', 'ティーインググラウンドとスイング')
-      .replace('아웃 오브 바운즈(OB)', 'アウトオブバウンズ (OB)')
-      .replace('퍼팅과 그린 플레이', 'パッティングとグリーンプレー'),
-    subtitle: base.subtitle
-      .replace('9홀 33타 공인 기준과 5대 코스 구역의 비밀', '9ホール33打公認基準と5大コース区域の秘密')
-      .replace('컨시드(OK) 절대 불가와 안전거리 확보', 'コンシード(OK)絶対不可と安全距離確保')
-      .replace('1mm 선상 접촉과 2벌타 구제의 원칙', '1mm線上接触と2打付加救済の原則'),
-    cuts: base.cuts.map((cut) => ({
-      ...cut,
-      badge: cut.badge
-        .replace('공인 규격', '公認規格')
-        .replace('출발 구역', '出発区域')
-        .replace('실격 주의', '失格注意')
-        .replace('안전 에티켓', '安全マナー')
-        .replace('무벌 세이프', '無罰セーフ')
-        .replace('2벌타', '2打付加')
-        .replace('1벌타', '1打付加'),
-      situation: cut.situation
-        .replace('파크골프는 일반 골프와 홀수 및 기준 타수가 어떻게 다를까요?', 'パークゴルフは一般ゴルフとホール数や基準打数がどう違うのでしょうか？')
-        .replace('홀컵 10cm 앞에 멈춰서 당연히 들어갈 줄 알고 집은 뒤 다음 홀로 갔습니다.', 'カップ10cm前に止まり、入ると思って拾い上げて次ホールへ向かいました。')
-        .replace('앞 조가 아직 페어웨이에 서 있는데 뒤에서 그대로 티샷을 날렸습니다.', '前の組がまだフェアウェイにいる状態でそのままティーショットを打ちました。'),
-      parkyDialogue: cut.parkyDialogue
-        .replace(/파크골프 올인원/g, 'パークゴルフ オールインワン')
-        .replace(/파키예요!/g, 'パキです！')
-        .replace(/파키/g, 'パキ')
-        .replace(/안녕하세요!/g, 'こんにちは！')
-        .replace(/2벌타/g, '2打付加')
-        .replace(/1벌타/g, '1打付加')
-        .replace(/실격/g, '失格')
-        .replace(/주의하세요!/g, 'ご注意ください！'),
-      verdict: cut.verdict
-        .replace(/2벌타/g, '2打付加')
-        .replace(/1벌타/g, '1打付加')
-        .replace(/실격/g, '失格')
-        .replace(/무벌/g, '無罰')
-        .replace(/세이프/g, 'セーフ'),
-      keyPoint: cut.keyPoint
-        .replace(/스트로크/g, 'ストローク')
-        .replace(/2벌타/g, '2打付加')
-        .replace(/1벌타/g, '1打付加'),
-      article: cut.article
-        .replace('제1장', '第1章')
-        .replace('제2장', '第2章')
-        .replace('제3장', '第3章')
-        .replace('제4장', '第4章')
-        .replace('제5장', '第5章')
-        .replace('제8장', '第5章')
-        .replace('조', '条'),
-    })),
-  };
+  // Korean default
+  const base = CHAPTER_WEBTOONS[chapterId];
+  if (base) return base;
+
+  // If requested with 'npga-ch-1' in Korean mode, strip prefix
+  const strippedId = chapterId.replace('npga-', '');
+  return CHAPTER_WEBTOONS[strippedId];
 }

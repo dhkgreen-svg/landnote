@@ -158,7 +158,9 @@ export interface RuleComparisonItem {
   topicKo: string;
   topicJa: string;
   koreaKpga: string;
+  koreaKpgaJa?: string;
   japanNpga: string;
+  japanNpgaJa?: string;
   differenceSummaryKo: string;
   differenceSummaryJa: string;
   cautionBadgeKo: string;
@@ -171,7 +173,9 @@ export const KOREA_JAPAN_RULE_COMPARISONS: RuleComparisonItem[] = [
     topicKo: 'OB 판정 및 구제 절차',
     topicJa: 'OB判定と救済処置',
     koreaKpga: '백색 말뚝/선 기준. 나간 지점 직각 2클럽 이내에서 홀에 가깝지 않게 볼 설치 후 2벌타 (일부 구장 로컬룰로 1벌타 남발)',
+    koreaKpgaJa: '白杭または白線基準。越境地点から直角2クラブ以内にホールへ近づかないよう球を設置し2罰打 (一部コースで1打付加のローカルルール慣行あり)',
     japanNpga: '백색 선에 1mm라도 걸치면 무조건 세이프. OB 시 경계를 넘은 지점에서 홀에 가깝지 않은 방향 2클럽 이내 손으로 정밀 플레이스(Place) 후 2打付加(2벌타)',
+    japanNpgaJa: '白線に1mmでも触れていれば無条件セーフ。OB時は境界線を越えた地点からホールに近づかない方向へ2クラブ以内に手で精密プレース後、厳格に2打付加(2罰打)',
     differenceSummaryKo: '일본은 1mm 접촉 판정이 매우 엄격하며, 드롭이 아닌 손으로 지면에 올려놓는(Place) 방식을 정확히 준수해야 합니다.',
     differenceSummaryJa: '韓国では一部ローカルルールで1打付加の慣行が見られますが、日本NPGA公認ルールでは厳格に2打付加及び手によるプレースが義務付けられます。',
     cautionBadgeKo: '1mm 접촉 시 무조건 세이프!',
@@ -182,7 +186,9 @@ export const KOREA_JAPAN_RULE_COMPARISONS: RuleComparisonItem[] = [
     topicKo: '티박스 및 티 높이 규정',
     topicJa: 'ティーボックス及びティーの高さ',
     koreaKpga: '인조잔디 매트 사용. 고무티 높이 보통 2.3cm~3cm 이하 사용. 매트 구역 이탈 시 2벌타.',
+    koreaKpgaJa: '人工芝マット使用。ゴムティーの高さは通常2.3cm〜3cm以下を使用。マット区域逸脱時は2打付加。',
     japanNpga: '공식 티 높이 【23mm (2.3cm) 이하】 엄격 계측. 23mm 초과 고무티 사용 시 즉시 2벌타(2打付加).',
+    japanNpgaJa: '公式ティーの高さ【地上高23mm(2.3cm)以下】を厳格計測。23mm超過のティー使用時は即座に2打付加(2罰打)。',
     differenceSummaryKo: '한국 골퍼가 3cm 높은 티를 일본 공인 구장에 가져갔다가 현장 계측에 적발되는 사례 빈번. 반드시 23mm 이하 티 준비 필수!',
     differenceSummaryJa: '日本の公認競技では地上高23mm以下の規格ティーが厳格に適用され、超過時は2打付加の罰則となります。',
     cautionBadgeKo: '일본 원정 시 티 23mm 이하 필수!',
@@ -193,7 +199,9 @@ export const KOREA_JAPAN_RULE_COMPARISONS: RuleComparisonItem[] = [
     topicKo: '클럽 및 볼 용구 공인 마크',
     topicJa: '用具の公認マーク基準',
     koreaKpga: '대한파크골프협회(KPGA) 공인 스티커 부착 클럽 및 공 권장.',
+    koreaKpgaJa: '大韓パークゴルフ協会(KPGA)公認シール貼付のクラブ及びボールを推奨。',
     japanNpga: '日本パークゴルフ協会(NPGA)公認マーク(シールまたは刻印) 필수. 미인증 용구 사용 시 공식 대회 출전 불가(失格).',
+    japanNpgaJa: '日本パークゴルフ協会(NPGA)公認マーク(シールまたは刻印)必須。未公認用具での公認大会出場は失格(DQ)。',
     differenceSummaryKo: '일본 공식 대회 및 일부 홋카이도 명문 공인 구장에서는 NPGA 마크가 없는 한국산 클럽의 시합 사용이 제한될 수 있습니다.',
     differenceSummaryJa: '日本国内の公認大会ではNPGA公認マークのない用具での出場は失格となります。',
     cautionBadgeKo: 'NPGA 인증 각인 확인 권장',
@@ -204,7 +212,9 @@ export const KOREA_JAPAN_RULE_COMPARISONS: RuleComparisonItem[] = [
     topicKo: '자연 장애물 및 수로 구제',
     topicJa: '障害物・排水路の無罰救済',
     koreaKpga: '강변 둔치 구장이 많아 펜스 그물망, 보호망 위주의 2클럽 무벌타 구제가 발달.',
+    koreaKpgaJa: '河川敷コースが多く、防球ネット・保護網中心の2クラブ無罰救済が定着。',
     japanNpga: '자연 삼림/하천형 코스가 많아 배수로, 散水栓(스프링클러), 수목 보호목 등 ニアレストポイント(가장 가까운 구제점) 1클럽 무벌타 구제 정밀화.',
+    japanNpgaJa: '自然林・河川型コースが多く、側溝、散水栓(スプリンクラー)、保護樹木等のニアレストポイントからホールに近づかない1クラブ無罰救済を精密適用。',
     differenceSummaryKo: '일본 구장은 지형지물을 살린 자연 장애물이 많으므로 인공 시설물 접촉 시 1클럽 무벌타 구제점을 정확히 찾아야 합니다.',
     differenceSummaryJa: '人工障害物や一時的な水たまりからの救済はホールに近づかない1クラブレングス以内にプレースします。',
     cautionBadgeKo: '인공 시설물 무벌타 1클럽 구제',

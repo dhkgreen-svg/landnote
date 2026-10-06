@@ -10,7 +10,19 @@ import Script from 'next/script';
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.parkgolfallinone.com'),
   title: '파크골프 올인원 (ParkGolf All-in-One) - 전국 400개 구장 포털 & 1초 스코어보드',
-  description: '50~70대 시니어를 위한 전국 400개 구장 날씨·1초 스코어보드·길안내 올인원',
+  description: '50~70대 시니어를 위한 전국 400개 구장 날씨·1초 스코어보드·길안내·공인 룰북·전문 가이드 올인원',
+  alternates: {
+    canonical: 'https://www.parkgolfallinone.com',
+  },
+  keywords: [
+    '파크골프',
+    '파크골프 올인원',
+    '파크골프장',
+    '파크골프 스코어보드',
+    '파크골프 룰',
+    '파크골프 클럽',
+    '파크골프 가이드',
+  ],
   manifest: '/manifest.json',
   icons: {
     icon: '/icon.png',
@@ -24,6 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: '파크골프 올인원 (ParkGolf All-in-One)',
     description: '전국 400개 구장 실시간 날씨 · 1초 스코어링 · 길안내 · 전국 랭킹 올인원',
+    url: 'https://www.parkgolfallinone.com',
     siteName: '파크골프 올인원',
     images: [
       {
@@ -64,6 +77,7 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/icon.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="canonical" href="https://www.parkgolfallinone.com" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -71,7 +85,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="파크골프 올인원" />
         <meta name="application-name" content="파크골프 올인원" />
         <meta property="og:title" content="파크골프 올인원 (ParkGolf All-in-One) - 모바일 스코어보드" />
-        <meta property="og:description" content="1초 스코어링 · 전국 5스타 랭킹 · 룰 솔로몬 AI" />
+        <meta property="og:description" content="1초 스코어링 · 전국 5스타 랭킹 · 룰 솔로몬 AI · 전문 가이드" />
+        <meta property="og:url" content="https://www.parkgolfallinone.com" />
         <meta property="og:image" content="/og-image.jpg" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
@@ -85,6 +100,12 @@ export default function RootLayout({
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8564518885257853"
           strategy="afterInteractive"
           crossOrigin="anonymous"
+        />
+        {/* PortOne V2 Official Browser SDK */}
+        <Script
+          id="portone-v2-sdk"
+          src="https://cdn.portone.io/v2/browser-sdk.js"
+          strategy="afterInteractive"
         />
         {/* PWA Service Worker Registration */}
         <Script id="pwa-sw" strategy="afterInteractive">

@@ -373,10 +373,31 @@ export default function RulesPage() {
     window.speechSynthesis.speak(utterance);
   };
 
-  const currentCategoryRules = CATEGORIZED_RULES.filter(
+  const currentCategoryRules = activeAllRules.filter(
     (r) => r.category === selectedCategory
   );
-  const selectedCategoryMeta = RULE_CATEGORIES.find((c) => c.id === selectedCategory);
+  const rawCategoryMeta = RULE_CATEGORIES.find((c) => c.id === selectedCategory);
+  const selectedCategoryMeta = rawCategoryMeta
+    ? {
+        ...rawCategoryMeta,
+        label: isJp
+          ? rawCategoryMeta.id === 'ob'
+            ? 'OB (コース外)'
+            : rawCategoryMeta.id === 'hazard_relief'
+            ? 'ウォーターハザード・救済'
+            : rawCategoryMeta.id === 'putting_green'
+            ? 'パッティンググリーン・ピン'
+            : rawCategoryMeta.id === 'tee_swing'
+            ? 'ティーショット・スイング・打数'
+            : rawCategoryMeta.id === 'touch_penalty'
+            ? 'ボール接触・球の処置'
+            : 'スコア・マナー・エチケット'
+          : rawCategoryMeta.label,
+        badge: isJp
+          ? `${activeAllRules.filter((r) => r.category === rawCategoryMeta.id).length}項目`
+          : rawCategoryMeta.badge,
+      }
+    : undefined;
 
   return (
     <div className="p-4 max-w-md mx-auto space-y-4 pb-16">
@@ -426,7 +447,7 @@ export default function RulesPage() {
             }
           }}
           className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition cursor-pointer"
-          title={isJapanese ? '閉じる (前の画面へ)' : '닫기 (이전 화면으로)'}
+          title={isJp ? '閉じる (前の画面へ)' : '닫기 (이전 화면으로)'}
         >
           <X className="w-5 h-5" />
         </button>
@@ -436,7 +457,7 @@ export default function RulesPage() {
       <div className="bg-stone-100 border border-stone-300/80 rounded-2xl p-2 px-3 flex items-center justify-between shadow-2xs">
         <div className="flex items-center gap-1.5 text-stone-700 font-black text-xs">
           <span>🔍</span>
-          <span>{isJapanese || ruleSet === 'npga' ? '文字サイズ' : '글자 크기'}</span>
+          <span>{isJp ? '文字サイズ' : '글자 크기'}</span>
         </div>
         <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-stone-200 shadow-2xs">
           <button
@@ -448,7 +469,7 @@ export default function RulesPage() {
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            {isJapanese || ruleSet === 'npga' ? '標準' : '보통'}
+            {isJp ? '標準' : '보통'}
           </button>
           <button
             type="button"
@@ -459,11 +480,11 @@ export default function RulesPage() {
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            <span>{isJapanese || ruleSet === 'npga' ? '大' : '크게'}</span>
+            <span>{isJp ? '大' : '크게'}</span>
             <span className={`text-[9px] px-1 py-0.2 rounded-full font-black ${
               fontSizeMode === 'large' ? 'bg-amber-400 text-emerald-950' : 'bg-emerald-100 text-emerald-800'
             }`}>
-              {isJapanese || ruleSet === 'npga' ? 'おすすめ' : '추천'}
+              {isJp ? 'おすすめ' : '추천'}
             </span>
           </button>
           <button
@@ -475,7 +496,7 @@ export default function RulesPage() {
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            {isJapanese || ruleSet === 'npga' ? '特大' : '아주크게'}
+            {isJp ? '特大' : '아주크게'}
           </button>
         </div>
       </div>
@@ -493,7 +514,7 @@ export default function RulesPage() {
             }`}
           >
             <span>🇰🇷</span>
-            <span>{isJapanese ? '韓国 (KPGA公認規程)' : '대한파크골프협회 (KPGA)'}</span>
+            <span>{isJp ? '韓国 (KPGA公認規程)' : '대한파크골프협회 (KPGA)'}</span>
           </button>
           <button
             type="button"
@@ -505,7 +526,7 @@ export default function RulesPage() {
             }`}
           >
             <span>🇯🇵</span>
-            <span>{isJapanese ? '日本 (NPGA公式規則)' : '일본파크골프협회 (NPGA)'}</span>
+            <span>{isJp ? '日本 (NPGA公式規則)' : '일본파크골프협회 (NPGA)'}</span>
           </button>
         </div>
 
@@ -519,15 +540,15 @@ export default function RulesPage() {
             <span className="text-base">⚡</span>
             <div className="text-left">
               <span className="text-xs font-black">
-                {isJapanese ? '日韓公認ルール 4大重要比較表' : '한·일 파크골프 공인 룰 4대 핵심 비교표'}
+                {isJp ? '日韓パークゴルフ公認ルール 4大ポイント比較' : '한·일 파크골프 공인 룰 4대 핵심 비교표'}
               </span>
               <p className="text-[10px] text-amber-900 font-bold">
-                {isJapanese ? '1mmセーフ・ティー23mm・公認マーク・救済の違い' : 'OB 1mm 판정 · 티 23mm 제한 · NPGA 공인마크 · 수로 구제'}
+                {isJp ? '1mmセーフ・ティー23mm・公認マーク・救済の違い' : 'OB 1mm 판정 · 티 23mm 제한 · NPGA 공인마크 · 수로 구제'}
               </p>
             </div>
           </div>
           <span className="text-xs bg-stone-900 text-amber-300 px-2 py-0.5 rounded-full font-black shrink-0">
-            {isJapanese ? '比較を見る >' : '비교 보기 >'}
+            {isJp ? '比較を見る >' : '비교 보기 >'}
           </span>
         </button>
       </div>
@@ -536,7 +557,7 @@ export default function RulesPage() {
       <div className="bg-emerald-800 text-white rounded-3xl p-4 shadow-md flex items-center gap-3.5 border border-amber-400/60">
         <img
           src="/parky.jpg"
-          alt="마스코트 파키"
+          alt={isJp ? 'マスコット・パーキー' : '마스코트 파키'}
           className="w-16 h-16 rounded-2xl object-cover shrink-0 border-2 border-amber-300 shadow-md"
         />
         <div>
@@ -545,12 +566,12 @@ export default function RulesPage() {
               {ruleSet === 'npga' ? 'NPGA公式' : '공식 경기위원'}
             </span>
             <h3 className="font-extrabold text-sm text-amber-300">
-              {isJapanese ? 'パキが公式判定をお手伝い！' : '파키(Parky)가 1초 판정해 드려요!'}
+              {isJp ? 'パーキーが1秒で判定します！' : '파키(Parky)가 1초 판정해 드려요!'}
             </h3>
           </div>
           <p className="text-xs text-emerald-100 mt-1 leading-relaxed break-keep font-medium">
-            {isJapanese
-              ? '同伴競技者と判定が分かれた際、公認規則の項目や質問をタップすると、明快な公式判定を即座に確認できます！'
+            {isJp
+              ? '同伴者とルールの見解が分かれた時、公式ルールや分野別質問をタップするとポップアップで分かりやすい詳細判定を即座に確認できます！'
               : '동반자와 룰이 엇갈릴 때 공식 룰북 항목이나 분야별 질문 문항을 누르시면 팝업창에서 명쾌한 세부 판정을 즉시 보실 수 있습니다!'}
           </p>
         </div>
@@ -623,7 +644,7 @@ export default function RulesPage() {
         {rulebookViewMode === 'webtoon' && (
           <div className="space-y-2.5 pt-0.5">
             {activeChapters.map((ch) => {
-              const webtoon = getChapterWebtoon(ch.id, isJapanese || ruleSet === 'npga');
+              const webtoon = getChapterWebtoon(ch.id, isJp);
               return (
                 <div
                   key={ch.id}
@@ -635,9 +656,9 @@ export default function RulesPage() {
                 >
                   {/* Situation Webtoon Thumbnail */}
                   <div className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-emerald-300 shadow-sm shrink-0 bg-stone-900 group-hover:border-amber-400 transition">
-                    <ChapterThumbnail chapterId={ch.id} />
+                    <ChapterThumbnail chapterId={ch.id} isJp={isJp} />
                     <span className="absolute bottom-0 inset-x-0 bg-emerald-950/85 text-[9px] text-amber-300 font-black text-center py-0.5">
-                      {ch.chapterNumber}
+                      {isJp ? `規程集 ${ch.chapterNumber}` : ch.chapterNumber}
                     </span>
                   </div>
 
@@ -645,7 +666,7 @@ export default function RulesPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-black bg-amber-400 text-emerald-950 px-1.5 py-0.5 rounded-md shrink-0">
-                        {webtoon ? (isJapanese ? `全${webtoon.totalCuts}コマ` : `총 ${webtoon.totalCuts}컷 만화`) : (isJapanese ? 'マンガ' : '만화')}
+                        {webtoon ? (isJp ? `全${webtoon.totalCuts}コマ漫画` : `총 ${webtoon.totalCuts}컷 만화`) : (isJp ? 'マンガ' : '만화')}
                       </span>
                       <h4 className="font-extrabold text-xs text-stone-900 truncate">
                         {ch.title}
@@ -659,8 +680,7 @@ export default function RulesPage() {
                   {/* Read Button */}
                   <div className="shrink-0 flex items-center gap-1">
                     <span className="text-[11px] font-black text-emerald-900 bg-white group-hover:bg-emerald-600 group-hover:text-white px-2.5 py-1.5 rounded-xl transition border border-emerald-300 shadow-sm flex items-center gap-1">
-                      <span>{isJapanese ? 'マンガを見る' : '만화 보기'}</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <span>{isJp ? '漫画を見る >' : '만화 보기 >'}</span>
                     </span>
                   </div>
                 </div>
@@ -684,7 +704,7 @@ export default function RulesPage() {
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className="w-10 h-10 rounded-xl bg-emerald-700 group-hover:bg-emerald-600 text-white font-black text-xs flex flex-col items-center justify-center shrink-0 shadow-sm transition">
-                    <span className="text-[9px] text-amber-300 font-black">{isJapanese ? '公認' : '공인'}</span>
+                    <span className="text-[9px] text-amber-300 font-black">{isJp ? '公認' : '공인'}</span>
                     <span>{ch.chapterNumber}</span>
                   </span>
                   <div className="min-w-0">
@@ -699,7 +719,7 @@ export default function RulesPage() {
 
                 <div className="shrink-0 flex items-center gap-1">
                   <span className="text-[11px] font-black text-emerald-800 bg-white group-hover:bg-emerald-600 group-hover:text-white px-2 py-1 rounded-lg transition border border-emerald-200 shadow-sm">
-                    {isJapanese ? '条文全文' : '조항 전문'}
+                    {isJp ? '条文全文' : '조항 전문'}
                   </span>
                   <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-emerald-700 transition" />
                 </div>
@@ -1140,7 +1160,7 @@ export default function RulesPage() {
                     <div className="shrink-0 flex items-center gap-1">
                       <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white px-2.5 py-1 rounded-xl transition border border-emerald-200 shadow-2xs flex items-center gap-1">
                         <span>🎨</span>
-                        <span>웹툰 보기</span>
+                        <span>{isJp ? 'マンガを見る' : '웹툰 보기'}</span>
                       </span>
                       <ChevronRight className="w-4 h-4 text-stone-400 group-hover:text-emerald-700 transition" />
                     </div>
@@ -1152,14 +1172,14 @@ export default function RulesPage() {
             {/* Modal Bottom Footer */}
             <div className="p-3 bg-white border-t border-stone-200 flex items-center justify-between gap-2 shrink-0">
               <span className="text-[11px] text-stone-500 font-bold">
-                (사)대한파크골프협회 공식 판정 기준
+                {isJp ? '(公社)日本パークゴルフ協会 公式判定基準' : '(사)대한파크골프협회 공식 판정 기준'}
               </span>
               <button
                 type="button"
                 onClick={() => setIsCategoryModalOpen(false)}
                 className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-black rounded-xl text-xs transition"
               >
-                닫기
+                {isJp ? '閉じる' : '닫기'}
               </button>
             </div>
           </div>
@@ -1195,7 +1215,7 @@ export default function RulesPage() {
                     </h3>
                   </div>
                   <p className="text-[11px] text-emerald-200 font-bold mt-0.5">
-                    (사)대한파크골프협회 공인 경기규칙 전문
+                    {isJp ? '(公社)日本パークゴルフ協会 公式競技規則' : '(사)대한파크골프협회 공인 경기규칙 전문'}
                   </p>
                 </div>
               </div>
@@ -1345,6 +1365,7 @@ export default function RulesPage() {
                               <ChapterCutDiagram
                                 chapterId={selectedChapter.id}
                                 cutNumber={cut.cutNumber}
+                                isJp={isJp}
                               />
                             </div>
 
@@ -1803,6 +1824,7 @@ export default function RulesPage() {
                   <RuleSituationDiagram
                     ruleId={activeVerdict.id}
                     category={activeVerdict.category}
+                    isJp={isJp}
                   />
 
                   {/* Parky Speech Bubble */}
@@ -2151,7 +2173,7 @@ export default function RulesPage() {
 
       {/* ⚡ Han-Il Rule Comparison Modal */}
       {showComparisonModal && (
-        <RuleComparisonModal onClose={() => setShowComparisonModal(false)} />
+        <RuleComparisonModal onClose={() => setShowComparisonModal(false)} isJp={isJp} />
       )}
     </div>
   );
