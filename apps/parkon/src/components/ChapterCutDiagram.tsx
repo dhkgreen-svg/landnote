@@ -24,36 +24,34 @@ function Ch2Cut1Diagram({ isJapanese }: { isJapanese?: boolean }) {
           </span>
         </div>
 
-        {/* 언제든지 이전 도해로 되돌리거나 만화로 볼 수 있는 토글 스위치 (일본어 모드에서는 다이어그램 기본) */}
-        {!isJapanese && (
-          <div className="flex items-center bg-stone-800 p-0.5 rounded-xl border border-stone-700 text-[11px] font-black shrink-0">
-            <button
-              type="button"
-              onClick={() => setViewMode('comic')}
-              className={`px-2 py-0.5 rounded-lg transition ${
-                viewMode === 'comic'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-stone-400 hover:text-white'
-              }`}
-            >
-              🎨 6컷 만화
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('diagram')}
-              className={`px-2 py-0.5 rounded-lg transition ${
-                viewMode === 'diagram'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-stone-400 hover:text-white'
-              }`}
-            >
-              📐 기존 도해
-            </button>
-          </div>
-        )}
+        {/* 언제든지 이전 도해로 되돌리거나 만화로 볼 수 있는 토글 스위치 */}
+        <div className="flex items-center bg-stone-800 p-0.5 rounded-xl border border-stone-700 text-[11px] font-black shrink-0">
+          <button
+            type="button"
+            onClick={() => setViewMode('comic')}
+            className={`px-2 py-0.5 rounded-lg transition ${
+              viewMode === 'comic'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-stone-400 hover:text-white'
+            }`}
+          >
+            {isJapanese ? '🎨 6コマ漫画' : '🎨 6컷 만화'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('diagram')}
+            className={`px-2 py-0.5 rounded-lg transition ${
+              viewMode === 'diagram'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-stone-400 hover:text-white'
+            }`}
+          >
+            {isJapanese ? '📐 公式図解' : '📐 기존 도해'}
+          </button>
+        </div>
       </div>
 
-      {viewMode === 'comic' && !isJapanese ? (
+      {viewMode === 'comic' ? (
         <div className="space-y-2">
           {/* 대표님 제작 6컷 만화 */}
           <div

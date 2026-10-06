@@ -69,6 +69,19 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = language;
+      if (language === 'ja') {
+        document.title = 'パークゴルフ オールインワン (ParkGolf All-in-One) | 日本全国公認コース・リアルタイム天気・スマートスコア';
+      } else if (language === 'en') {
+        document.title = 'ParkGolf All-in-One | National Courses, Realtime Weather & Smart Scorecard';
+      } else {
+        document.title = '파크골프 올인원 (ParkGolf All-in-One) | 전국 400여 개 파크골프장 실시간 날씨·코스·스마트스코어';
+      }
+    }
+  }, [language]);
+
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     try {

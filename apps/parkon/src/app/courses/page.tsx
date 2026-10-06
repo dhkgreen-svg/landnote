@@ -601,13 +601,16 @@ export default function CoursesPage() {
   useEffect(() => {
     refreshCourses();
     try {
-      const savedRest = localStorage.getItem('parkon_user_restaurants_v1');
+      ['parkon_user_restaurants_v1', 'parkon_user_practice_ranges_v1', 'parkon_user_shops_v1', 'parkon_market_items_v1'].forEach((k) => {
+        try { localStorage.removeItem(k); } catch {}
+      });
+      const savedRest = localStorage.getItem('parkon_user_restaurants_v2');
       if (savedRest) setRestaurants(JSON.parse(savedRest));
-      const savedPrac = localStorage.getItem('parkon_user_practice_ranges_v1');
+      const savedPrac = localStorage.getItem('parkon_user_practice_ranges_v2');
       if (savedPrac) setPracticeRanges(JSON.parse(savedPrac));
-      const savedShops = localStorage.getItem('parkon_user_shops_v1');
+      const savedShops = localStorage.getItem('parkon_user_shops_v2');
       if (savedShops) setShops(JSON.parse(savedShops));
-      const savedMkt = localStorage.getItem('parkon_market_items_v1');
+      const savedMkt = localStorage.getItem('parkon_market_items_v2');
       if (savedMkt) setMarketItems(JSON.parse(savedMkt));
     } catch (err) {
       console.error(err);
@@ -683,7 +686,11 @@ export default function CoursesPage() {
   const handleClearSearch = () => {
     setInputQuery('');
     setAppliedQuery('');
-    setCountryFilter('ALL');
+    if (isJapanese) {
+      setCountryFilter('JP');
+    } else {
+      setCountryFilter('ALL');
+    }
   };
 
   const handleCreateCourse = (e: React.FormEvent) => {
@@ -740,7 +747,7 @@ export default function CoursesPage() {
     const updated = [newItem, ...marketItems];
     setMarketItems(updated);
     try {
-      localStorage.setItem('parkon_market_items_v1', JSON.stringify(updated));
+      localStorage.setItem('parkon_market_items_v2', JSON.stringify(updated));
     } catch (err) {
       console.error(err);
     }
@@ -784,7 +791,7 @@ export default function CoursesPage() {
     const updated = [newRest, ...restaurants];
     setRestaurants(updated);
     try {
-      localStorage.setItem('parkon_user_restaurants_v1', JSON.stringify(updated));
+      localStorage.setItem('parkon_user_restaurants_v2', JSON.stringify(updated));
     } catch (err) {
       console.error(err);
     }
@@ -803,7 +810,7 @@ export default function CoursesPage() {
     const updated = restaurants.filter((r) => r.id !== id);
     setRestaurants(updated);
     try {
-      localStorage.setItem('parkon_user_restaurants_v1', JSON.stringify(updated));
+      localStorage.setItem('parkon_user_restaurants_v2', JSON.stringify(updated));
     } catch (err) {
       console.error(err);
     }
@@ -843,7 +850,7 @@ export default function CoursesPage() {
     const updated = [newCoach, ...practiceRanges];
     setPracticeRanges(updated);
     try {
-      localStorage.setItem('parkon_user_practice_ranges_v1', JSON.stringify(updated));
+      localStorage.setItem('parkon_user_practice_ranges_v2', JSON.stringify(updated));
     } catch (err) {
       console.error(err);
     }
@@ -864,7 +871,7 @@ export default function CoursesPage() {
     const updated = practiceRanges.filter((p) => p.id !== id);
     setPracticeRanges(updated);
     try {
-      localStorage.setItem('parkon_user_practice_ranges_v1', JSON.stringify(updated));
+      localStorage.setItem('parkon_user_practice_ranges_v2', JSON.stringify(updated));
     } catch (err) {
       console.error(err);
     }
@@ -900,7 +907,7 @@ export default function CoursesPage() {
     const updated = [newRange, ...practiceRanges];
     setPracticeRanges(updated);
     try {
-      localStorage.setItem('parkon_user_practice_ranges_v1', JSON.stringify(updated));
+      localStorage.setItem('parkon_user_practice_ranges_v2', JSON.stringify(updated));
     } catch (err) {
       console.error(err);
     }
@@ -920,7 +927,7 @@ export default function CoursesPage() {
     const updated = practiceRanges.filter((p) => p.id !== id);
     setPracticeRanges(updated);
     try {
-      localStorage.setItem('parkon_user_practice_ranges_v1', JSON.stringify(updated));
+      localStorage.setItem('parkon_user_practice_ranges_v2', JSON.stringify(updated));
     } catch (err) {
       console.error(err);
     }
@@ -949,7 +956,7 @@ export default function CoursesPage() {
     const updated = [newShop, ...shops];
     setShops(updated);
     try {
-      localStorage.setItem('parkon_user_shops_v1', JSON.stringify(updated));
+      localStorage.setItem('parkon_user_shops_v2', JSON.stringify(updated));
     } catch (err) {
       console.error(err);
     }
@@ -965,7 +972,7 @@ export default function CoursesPage() {
     const updated = shops.filter((s) => s.id !== id);
     setShops(updated);
     try {
-      localStorage.setItem('parkon_user_shops_v1', JSON.stringify(updated));
+      localStorage.setItem('parkon_user_shops_v2', JSON.stringify(updated));
     } catch (err) {
       console.error(err);
     }
@@ -976,7 +983,7 @@ export default function CoursesPage() {
     const updated = marketItems.filter((m) => m.id !== id);
     setMarketItems(updated);
     try {
-      localStorage.setItem('parkon_market_items_v1', JSON.stringify(updated));
+      localStorage.setItem('parkon_market_items_v2', JSON.stringify(updated));
     } catch (err) {
       console.error(err);
     }
@@ -991,8 +998,7 @@ export default function CoursesPage() {
     activeSearchTerm !== '全国';
   const isSearchActive = activeSearchTerm.length > 0 || countryFilter !== 'ALL';
 
-  const filteredCourses = isSearchActive
-    ? courses.filter((c) => {
+  const filteredCourses = courses.filter((c) => {
         // Country filter check
         if (countryFilter === 'KR' && c.country === 'JP') return false;
         if (countryFilter === 'JP' && c.country !== 'JP') return false;
@@ -1073,8 +1079,7 @@ export default function CoursesPage() {
           matchKoDesc ||
           matchNoSpace
         );
-      })
-    : [];
+      });
 
   // Filtered Restaurants (User entered only, NO dummy info)
   const isRestaurantFilterActive = Boolean(restaurantCategory || restaurantSearchText.trim());
@@ -1524,50 +1529,177 @@ export default function CoursesPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODE A: GOLF COURSE SEARCH RESULTS (돋보기/검색 실행 시에만 표시) */}
+      {/* 8 Main Action Category Tiles (2x4 Grid) - 상시 노출 */}
+      {/* 어르신 시인성 고려 큼직한 아이콘과 직관적 텍스트, 운영자용 단어(유료/옥션 등) 완전 배제 */}
       {/* ========================================================================= */}
-      {isSearchActive ? (
-        <div className="space-y-3 animate-fadeIn">
-          {/* Search Result Status & Close Button */}
-          <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs">
-            <div className="flex items-center gap-1.5 text-emerald-950 font-black">
-              <Search className="w-4 h-4 text-emerald-700" />
-              <span>
-                {isTextSearchActive && appliedQuery ? (
-                  <>
-                    &apos;{appliedQuery}&apos; {isJapanese ? '検索結果:' : '검색 결과:'}{' '}
-                    <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>
-                    {isJapanese ? '件' : '개 구장'}
-                  </>
-                ) : countryFilter === 'JP' ? (
-                  <>
-                    🇯🇵 {isJapanese ? '日本全国公認コース一覧:' : '일본 전국 공인 구장 목록:'}{' '}
-                    <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>
-                    {isJapanese ? '件' : '개 구장'}
-                  </>
-                ) : countryFilter === 'KR' ? (
-                  <>
-                    🇰🇷 {isJapanese ? '韓国公認コース一覧:' : '대한민국 공인 구장 목록:'}{' '}
-                    <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>
-                    {isJapanese ? '件' : '개 구장'}
-                  </>
-                ) : (
-                  <>
-                    🌐 {isJapanese ? '全コース一覧:' : '전체 등록 구장:'}{' '}
-                    <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>
-                    {isJapanese ? '件' : '개 구장'}
-                  </>
-                )}
-              </span>
-            </div>
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5">
+        {/* Row 1, Col 1: 식당 & 카페 */}
+        <button
+          type="button"
+          onClick={() => setActiveServiceTab('RESTAURANT')}
+          className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
+        >
+          <span className="text-2xl sm:text-3xl">🍽️</span>
+          <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
+            {isJapanese ? 'グルメ・カフェ' : '식당 & 카페'}
+          </span>
+          <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
+            {isJapanese ? '[特典] ドリンク' : '[쿠폰] 음료·서비스'}
+          </span>
+        </button>
+
+        {/* Row 1, Col 2: 스크린골프 */}
+        <button
+          type="button"
+          onClick={() => setActiveServiceTab('SCREEN')}
+          className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
+        >
+          <span className="text-2xl sm:text-3xl">🖥️</span>
+          <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
+            {isJapanese ? 'スクリーン' : '스크린골프'}
+          </span>
+          <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
+            {isJapanese ? '全国店舗・予約' : '전국 매장·예약'}
+          </span>
+        </button>
+
+        {/* Row 1, Col 3: 투어 & 여행사 */}
+        <button
+          type="button"
+          onClick={() => setActiveServiceTab('TOUR')}
+          className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
+        >
+          <span className="text-2xl sm:text-3xl">🚌</span>
+          <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
+            {isJapanese ? 'ツアー・旅行' : '투어 & 여행사'}
+          </span>
+          <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
+            {isJapanese ? '国内外ツアー' : '파크골프 국내·외투어'}
+          </span>
+        </button>
+
+        {/* Row 1, Col 4: 클럽 & 모임 */}
+        <button
+          type="button"
+          onClick={() => setActiveServiceTab('CLUB')}
+          className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
+        >
+          <span className="text-2xl sm:text-3xl">👥</span>
+          <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
+            {isJapanese ? 'クラブ・同好会' : '클럽 & 모임'}
+          </span>
+          <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
+            {isJapanese ? '全国サークル探し' : '전국 동호회·모임찾기'}
+          </span>
+        </button>
+
+        {/* Row 2, Col 1: 연습장 & 레슨 */}
+        <button
+          type="button"
+          onClick={() => setActiveServiceTab('RANGE_LESSON')}
+          className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
+        >
+          <span className="text-2xl sm:text-3xl">👨‍🏫</span>
+          <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
+            {isJapanese ? '練習場＆レッスン' : '연습장 & 레슨'}
+          </span>
+          <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
+            {isJapanese ? '打席・プロコーチ' : '타석·프로 코치'}
+          </span>
+        </button>
+
+        {/* Row 2, Col 2: 골프 매장 */}
+        <button
+          type="button"
+          onClick={() => setActiveServiceTab('SHOP')}
+          className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
+        >
+          <span className="text-2xl sm:text-3xl">🛍️</span>
+          <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
+            {isJapanese ? 'ショップ・工房' : '골프 매장'}
+          </span>
+          <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
+            {isJapanese ? 'フィッティング用品' : '피팅·용품점'}
+          </span>
+        </button>
+
+        {/* Row 2, Col 3: 중고 장터 */}
+        <button
+          type="button"
+          onClick={() => setActiveServiceTab('MARKET')}
+          className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
+        >
+          <span className="text-2xl sm:text-3xl">🤝</span>
+          <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
+            {isJapanese ? '中古フリマ' : '중고 장터'}
+          </span>
+          <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
+            {isJapanese ? '個人無料直取引' : '개인 무료 직거래'}
+          </span>
+        </button>
+
+        {/* Row 2, Col 4: 구장 탐방후기 */}
+        <button
+          type="button"
+          onClick={() => setActiveServiceTab('REVIEW')}
+          className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
+        >
+          <span className="text-2xl sm:text-3xl">⭐</span>
+          <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
+            {isJapanese ? 'コース探訪記' : '구장 탐방후기'}
+          </span>
+          <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
+            {isJapanese ? 'レビュー・評価★' : '생생 리뷰·별점★'}
+          </span>
+        </button>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* GOLF COURSE LIST (전국 구장 검색 & 공인 구장 목록 상시 노출) */}
+      {/* ========================================================================= */}
+      <div className="space-y-3 animate-fadeIn">
+        {/* Search Result Status & Clear Button */}
+        <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs">
+          <div className="flex items-center gap-1.5 text-emerald-950 font-black">
+            <Search className="w-4 h-4 text-emerald-700" />
+            <span>
+              {isTextSearchActive && appliedQuery ? (
+                <>
+                  &apos;{appliedQuery}&apos; {isJapanese ? '検索結果:' : '검색 결과:'}{' '}
+                  <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>
+                  {isJapanese ? '件' : '개 구장'}
+                </>
+              ) : countryFilter === 'JP' ? (
+                <>
+                  🇯🇵 {isJapanese ? '日本全国公認コース一覧:' : '일본 전국 공인 구장 목록:'}{' '}
+                  <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>
+                  {isJapanese ? '件' : '개 구장'}
+                </>
+              ) : countryFilter === 'KR' ? (
+                <>
+                  🇰🇷 {isJapanese ? '韓国公認コース一覧:' : '대한민국 공인 구장 목록:'}{' '}
+                  <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>
+                  {isJapanese ? '件' : '개 구장'}
+                </>
+              ) : (
+                <>
+                  🌐 {isJapanese ? '全コース一覧:' : '전체 등록 구장:'}{' '}
+                  <strong className="text-emerald-800 text-sm">{filteredCourses.length}</strong>
+                  {isJapanese ? '件' : '개 구장'}
+                </>
+              )}
+            </span>
+          </div>
+          {isTextSearchActive && appliedQuery ? (
             <button
               type="button"
               onClick={handleClearSearch}
               className="bg-white hover:bg-stone-100 text-stone-700 font-extrabold px-3 py-1.5 rounded-xl border border-stone-300 text-[11px] shadow-2xs transition active:scale-95 cursor-pointer"
             >
-              {isJapanese ? '✕ 検索を閉じる' : '✕ 검색 닫기 (주변 식당·연습장·중고)'}
+              {isJapanese ? '✕ 検索クリア' : '✕ 검색 초기화'}
             </button>
-          </div>
+          ) : null}
+        </div>
 
           {/* Courses List */}
           <div className="space-y-3">
@@ -1827,162 +1959,7 @@ export default function CoursesPage() {
             )}
           </div>
         </div>
-      ) : (
-        /* ========================================================================= */
-        /* MODE B: 3 AUXILIARY SERVICE BUTTONS & ACTIVATED PANELS (기본 화면) */
-        /* ========================================================================= */
-        <div className="space-y-4 animate-fadeIn">
-          {/* Guidance Banner */}
-          <div className="bg-stone-100/90 border border-stone-300/80 rounded-2xl p-3 text-xs text-stone-700 flex items-start gap-2">
-            <span className="text-base shrink-0">💡</span>
-            <div className="leading-relaxed">
-              {isJapanese ? (
-                <>
-                  <strong className="text-stone-900 font-bold">コース検索の案内:</strong> 上の検索バーに{' '}
-                  <span className="text-emerald-800 font-extrabold">&apos;幕別&apos;</span>,{' '}
-                  <span className="text-emerald-800 font-extrabold">&apos;十勝&apos;</span>,{' '}
-                  <span className="text-emerald-800 font-extrabold">&apos;札幌&apos;</span> などの都市名を入力して{' '}
-                  <strong className="text-emerald-900 font-black">[検索]</strong> を押すと該当コースがすぐに表示されます。
-                </>
-              ) : (
-                <>
-                  <strong className="text-stone-900 font-bold">골프장 찾기 안내:</strong> 상단 검색창에{' '}
-                  <span className="text-emerald-800 font-extrabold">&apos;구미&apos;</span>,{' '}
-                  <span className="text-emerald-800 font-extrabold">&apos;밀양&apos;</span>,{' '}
-                  <span className="text-emerald-800 font-extrabold">&apos;청송&apos;</span> 등 도시명을 넣고{' '}
-                  <strong className="text-emerald-900 font-black">[검색]</strong>을 누르시면 해당 구장이 바로 나열됩니다.
-                </>
-              )}
-            </div>
-          </div>
 
-          {/* ========================================================================= */}
-          {/* 8 Main Action Category Tiles (2x4 Grid) */}
-          {/* 어르신 시인성 고려 큼직한 아이콘과 직관적 텍스트, 운영자용 단어(유료/옥션 등) 완전 배제 */}
-          {/* ========================================================================= */}
-          <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5">
-            {/* Row 1, Col 1: 식당 & 카페 */}
-            <button
-              type="button"
-              onClick={() => setActiveServiceTab('RESTAURANT')}
-              className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
-            >
-              <span className="text-2xl sm:text-3xl">🍽️</span>
-              <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
-                {isJapanese ? 'グルメ・カフェ' : '식당 & 카페'}
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
-                {isJapanese ? '[特典] ドリンク' : '[쿠폰] 음료·서비스'}
-              </span>
-            </button>
-
-            {/* Row 1, Col 2: 스크린골프 */}
-            <button
-              type="button"
-              onClick={() => setActiveServiceTab('SCREEN')}
-              className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
-            >
-              <span className="text-2xl sm:text-3xl">🖥️</span>
-              <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
-                {isJapanese ? 'スクリーン' : '스크린골프'}
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
-                {isJapanese ? '全国店舗・予約' : '전국 매장·예약'}
-              </span>
-            </button>
-
-            {/* Row 1, Col 3: 투어 & 여행사 */}
-            <button
-              type="button"
-              onClick={() => setActiveServiceTab('TOUR')}
-              className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
-            >
-              <span className="text-2xl sm:text-3xl">🚌</span>
-              <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
-                {isJapanese ? 'ツアー・旅行' : '투어 & 여행사'}
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
-                {isJapanese ? '国内・海外ツアー' : '파크골프 국내·외투어'}
-              </span>
-            </button>
-
-            {/* Row 1, Col 4: 클럽 & 모임 (무료 커뮤니티) */}
-            <button
-              type="button"
-              onClick={() => setActiveServiceTab('CLUB')}
-              className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
-            >
-              <span className="text-2xl sm:text-3xl">👥</span>
-              <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
-                {isJapanese ? 'クラブ・同好会' : '클럽 & 모임'}
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
-                {isJapanese ? '全国サークル探し' : '전국 동호회·모임찾기'}
-              </span>
-            </button>
-
-            {/* Row 2, Col 1: 레슨 & 연습장 */}
-            <button
-              type="button"
-              onClick={() => setActiveServiceTab('RANGE_LESSON')}
-              className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
-            >
-              <span className="text-2xl sm:text-3xl">👨‍🏫</span>
-              <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
-                {isJapanese ? 'レッスン・練習場' : '레슨 & 연습장'}
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
-                {isJapanese ? '専門コーチ・練習場' : '전문 코치·연습장'}
-              </span>
-            </button>
-
-            {/* Row 2, Col 2: 골프 매장 */}
-            <button
-              type="button"
-              onClick={() => setActiveServiceTab('SHOP')}
-              className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
-            >
-              <span className="text-2xl sm:text-3xl">🛍️</span>
-              <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
-                {isJapanese ? 'ショップ・工房' : '골프 매장'}
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
-                {isJapanese ? 'フィッティング用品' : '피팅·용품점'}
-              </span>
-            </button>
-
-            {/* Row 2, Col 3: 중고 장터 (무료 커뮤니티) */}
-            <button
-              type="button"
-              onClick={() => setActiveServiceTab('MARKET')}
-              className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
-            >
-              <span className="text-2xl sm:text-3xl">🤝</span>
-              <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
-                {isJapanese ? '中古フリマ' : '중고 장터'}
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
-                {isJapanese ? '個人安心取引' : '개인 직거래'}
-              </span>
-            </button>
-
-            {/* Row 2, Col 4: 구장 탐방후기 (무료 커뮤니티 - 5점 별점+사진+한줄평 간이 폼 연동) */}
-            <button
-              type="button"
-              onClick={() => setActiveServiceTab('REVIEW')}
-              className="py-2.5 sm:py-3 px-1 sm:px-2 rounded-2xl border-2 border-stone-200 bg-white hover:border-emerald-500 hover:bg-emerald-50/40 text-stone-800 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer active:scale-95 shadow-xs"
-            >
-              <span className="text-2xl sm:text-3xl">⭐</span>
-              <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
-                {isJapanese ? 'コース探訪記' : '구장 탐방후기'}
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
-                {isJapanese ? 'レビュー・評価★' : '생생 리뷰·별점★'}
-              </span>
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* 8대 카테고리 전용 팝업 모달창 (새로운 팝업창으로 표출 & 닫기 시 즉시 원래 구장 검색 화면 복귀) */}
@@ -2465,30 +2442,21 @@ export default function CoursesPage() {
                   <span className="text-3xl block">🖥️</span>
                   <div className="space-y-1">
                     <h4 className="font-black text-stone-900 text-sm">
-                      등록된 공식 스크린 매장이 없습니다
+                      {isJapanese ? '登録されたスクリーンパークゴルフ場がありません。1号として登録してみましょう！' : '등록된 스크린골프 매장이 없습니다. 1호로 등록해 보세요!'}
                     </h4>
                     <p className="text-xs text-stone-600 leading-relaxed max-w-sm mx-auto">
-                      자주 가시는 실내 스크린골프 매장을 직접 등록하시거나, 네이버 지도에서 실시간으로 찾아보실 수 있습니다.
+                      {isJapanese ? 'よく行く屋内スクリーン店舗を直接登録してみましょう。' : '자주 가시는 실내 스크린골프 매장을 직접 1호로 등록해 보세요.'}
                     </p>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-2 pt-2 justify-center max-w-sm mx-auto">
+                  <div className="pt-2 max-w-xs mx-auto">
                     <button
                       type="button"
                       onClick={() => setShowRangeModal(true)}
-                      className="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs py-2.5 px-3 rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
+                      className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs py-2.5 px-3 rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>+ 스크린 매장 직접 등록하기</span>
+                      <span>{isJapanese ? '+ スクリーン店舗を登録する' : '+ 스크린 매장 직접 등록하기'}</span>
                     </button>
-                    <a
-                      href={`https://map.naver.com/v5/search/${encodeURIComponent((appliedQuery ? appliedQuery + ' ' : '') + '파크골프 스크린')}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex-1 bg-white hover:bg-stone-100 text-stone-800 font-black text-xs py-2.5 px-3 rounded-xl border border-stone-300 flex items-center justify-center gap-1 shadow-xs transition text-center"
-                    >
-                      <ExternalLink className="w-3 h-3 text-emerald-700 shrink-0" />
-                      <span>네이버 지도 실시간 검색 ↗</span>
-                    </a>
                   </div>
                 </div>
               ) : (
@@ -2600,33 +2568,22 @@ export default function CoursesPage() {
 
                     <div className="space-y-1.5 max-w-sm mx-auto">
                       <h4 className="font-black text-stone-900 text-base">
-                        &apos;국내 & 해외 파크골프 투어&apos; 제휴 여행사 모집 중!
+                        {isJapanese ? '登録されたツアー商品がありません。1号として登録してみましょう！' : '등록된 투어 여행 상품이 없습니다. 1호로 등록해 보세요!'}
                       </h4>
                       <p className="text-xs text-stone-600 leading-relaxed font-medium">
-                        아직 등록된 공식 단체 투어 상품이 없습니다.<br />
-                        여행사 대표님이시거나 투어 기획자이신가요? 지금 바로 1호 명품 투어로 무료 등록해 보세요!
+                        {isJapanese ? '国内外のパークゴルフツアー商品を無料で登録してツアー客を募集しましょう！' : '여행사 대표님이시거나 투어 기획자이신가요? 지금 바로 1호 명품 투어로 무료 등록해 보세요!'}
                       </p>
                     </div>
 
-                    <div className="pt-1 max-w-sm mx-auto space-y-2">
+                    <div className="pt-1 max-w-sm mx-auto">
                       <button
                         type="button"
                         onClick={() => setShowTourRegisterModal(true)}
                         className="w-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-stone-950 font-black text-xs sm:text-sm py-3.5 px-4 rounded-2xl shadow-lg border-2 border-amber-500 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
                       >
                         <Sparkles className="w-4 h-4 text-stone-950 shrink-0" />
-                        <span>투어 패키지 무료 등록하기 (100% 무료)</span>
+                        <span>{isJapanese ? 'ツアー商品を無料登録する (100%無料)' : '투어 패키지 무료 등록하기 (100% 무료)'}</span>
                       </button>
-
-                      <a
-                        href={`https://search.naver.com/search.naver?query=${encodeURIComponent('파크골프 투어 여행')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="w-full bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs py-2 px-3 rounded-xl flex items-center justify-center gap-1 transition"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span>네이버 파크골프 투어 검색 ↗</span>
-                      </a>
                     </div>
                   </div>
                 ) : sortedTours.all.length === 0 ? (
@@ -3297,10 +3254,10 @@ export default function CoursesPage() {
                   <span className="text-3xl block">👨‍🏫</span>
                   <div className="space-y-1">
                     <h4 className="font-black text-stone-900 text-sm">
-                      등록된 골프 레슨 코치가 없습니다
+                      {isJapanese ? '登録されたレッスンコーチがいません。1号として登録してみましょう！' : '등록된 레슨 코치가 없습니다. 1호로 등록해 보세요!'}
                     </h4>
                     <p className="text-xs text-stone-600 leading-relaxed">
-                      활동 중이신 레슨 코치님을 직접 등록하고 회원을 모집해 보세요.
+                      {isJapanese ? '活動中のレッスンコーチを直接登録して会員を募集してみましょう。' : '활동 중이신 레슨 코치님을 직접 등록하고 회원을 모집해 보세요.'}
                     </p>
                   </div>
                   <div className="pt-2 max-w-xs mx-auto">
@@ -3310,7 +3267,7 @@ export default function CoursesPage() {
                       className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs py-2.5 px-3 rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>레슨 코치 등록하기</span>
+                      <span>{isJapanese ? '+ レッスンコーチを登録する' : '+ 레슨 코치 등록하기'}</span>
                     </button>
                   </div>
                 </div>
@@ -3389,22 +3346,13 @@ export default function CoursesPage() {
                       )}
 
                       {/* Action buttons */}
-                      <div className="grid grid-cols-2 gap-2 pt-0.5">
+                      <div className="pt-0.5">
                         <a
                           href={`tel:${coach.phone}`}
-                          className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-black py-2 px-3 rounded-xl flex items-center justify-center gap-1 shadow-2xs transition active:scale-95"
+                          className="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-black py-2.5 px-3 rounded-xl flex items-center justify-center gap-1 shadow-2xs transition active:scale-95"
                         >
                           <Phone className="w-3.5 h-3.5" />
-                          <span>전화 상담 ({coach.phone})</span>
-                        </a>
-                        <a
-                          href={`https://map.naver.com/v5/search/${encodeURIComponent(coach.name)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="bg-white hover:bg-stone-100 text-stone-800 text-xs font-black py-2 px-3 rounded-xl border border-stone-300 flex items-center justify-center gap-1 shadow-2xs transition active:scale-95"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5 text-emerald-700" />
-                          <span>위치 및 지도보기</span>
+                          <span>{isJapanese ? `電話相談 (${coach.phone})` : `전화 상담 (${coach.phone})`}</span>
                         </a>
                       </div>
                     </div>
@@ -3478,10 +3426,10 @@ export default function CoursesPage() {
                   <span className="text-3xl block">⛳</span>
                   <div className="space-y-1">
                     <h4 className="font-black text-stone-900 text-sm">
-                      등록된 실내·외 연습장이 없습니다
+                      {isJapanese ? '登録された練習場がありません。1号として登録してみましょう！' : '등록된 실내·외 연습장이 없습니다. 1호로 등록해 보세요!'}
                     </h4>
                     <p className="text-xs text-stone-600 leading-relaxed">
-                      자주 가시는 실내·실외 연습장을 직접 등록해 보세요.
+                      {isJapanese ? 'よく行く屋内・屋外練習場を直接登録してみましょう。' : '자주 가시는 실내·실외 연습장을 직접 1호로 등록해 보세요.'}
                     </p>
                   </div>
                   <div className="pt-2 max-w-xs mx-auto">
@@ -3491,7 +3439,7 @@ export default function CoursesPage() {
                       className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs py-2.5 px-3 rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>연습장 등록하기</span>
+                      <span>{isJapanese ? '+ 練習場を登録する' : '+ 연습장 등록하기'}</span>
                     </button>
                   </div>
                 </div>
@@ -3554,22 +3502,13 @@ export default function CoursesPage() {
                       )}
 
                       {/* Action buttons */}
-                      <div className="grid grid-cols-2 gap-2 pt-0.5">
+                      <div className="pt-0.5">
                         <a
                           href={`tel:${range.phone}`}
-                          className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-black py-2 px-3 rounded-xl flex items-center justify-center gap-1 shadow-2xs transition active:scale-95"
+                          className="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-black py-2.5 px-3 rounded-xl flex items-center justify-center gap-1 shadow-2xs transition active:scale-95"
                         >
                           <Phone className="w-3.5 h-3.5" />
-                          <span>전화 문의 ({range.phone})</span>
-                        </a>
-                        <a
-                          href={`https://map.naver.com/v5/search/${encodeURIComponent(range.name)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="bg-white hover:bg-stone-100 text-stone-800 text-xs font-black py-2 px-3 rounded-xl border border-stone-300 flex items-center justify-center gap-1 shadow-2xs transition active:scale-95"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5 text-emerald-700" />
-                          <span>위치 및 지도보기</span>
+                          <span>{isJapanese ? `電話問合せ (${range.phone})` : `전화 문의 (${range.phone})`}</span>
                         </a>
                       </div>
                     </div>
@@ -3647,31 +3586,21 @@ export default function CoursesPage() {
                   <span className="text-3xl block">🛍️</span>
                   <div className="space-y-1">
                     <h4 className="font-black text-stone-900 text-sm">
-                      등록된 주변 골프 매장이 없습니다
+                      {isJapanese ? '登録されたゴルフショップがありません。1号として登録してみましょう！' : '등록된 골프 매장이 없습니다. 1호로 등록해 보세요!'}
                     </h4>
                     <p className="text-xs text-stone-600 leading-relaxed">
-                      자주 가시는 파크골프 용품점·피팅샵을 직접 등록하시거나,<br />
-                      네이버 지도에서 실시간으로 인근 용품 매장을 찾아보실 수 있습니다.
+                      {isJapanese ? 'よく行くパークゴルフ用品店・工房を直接1号として登録してみましょう。' : '자주 가시는 파크골프 용품점·피팅샵을 직접 1호로 등록해 보세요.'}
                     </p>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-2 pt-2 justify-center max-w-xs mx-auto">
+                  <div className="pt-2 max-w-xs mx-auto">
                     <button
                       type="button"
                       onClick={() => setShowShopModal(true)}
                       className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs py-2.5 px-3 rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>+ 골프 매장 직접 등록하기</span>
+                      <span>{isJapanese ? '+ ゴルフショップを登録する' : '+ 골프 매장 직접 등록하기'}</span>
                     </button>
-                    <a
-                      href="https://map.naver.com/v5/search/파크골프+용품점"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="w-full bg-white hover:bg-stone-100 text-stone-800 font-extrabold text-xs py-2.5 px-3 rounded-xl border border-stone-300 flex items-center justify-center gap-1.5 shadow-xs transition"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>네이버 지도 실시간 검색 ↗</span>
-                    </a>
                   </div>
                 </div>
               ) : (
@@ -3722,22 +3651,13 @@ export default function CoursesPage() {
                       </div>
 
                       {/* Action buttons */}
-                      <div className="grid grid-cols-2 gap-2 pt-0.5">
+                      <div className="pt-0.5">
                         <a
                           href={`tel:${shop.phone}`}
-                          className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-black py-2 px-3 rounded-xl flex items-center justify-center gap-1 shadow-2xs transition active:scale-95"
+                          className="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-black py-2.5 px-3 rounded-xl flex items-center justify-center gap-1 shadow-2xs transition active:scale-95"
                         >
                           <Phone className="w-3.5 h-3.5" />
-                          <span>전화 문의 ({shop.phone})</span>
-                        </a>
-                        <a
-                          href={`https://map.naver.com/v5/search/${encodeURIComponent(shop.name)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="bg-white hover:bg-stone-100 text-stone-800 text-xs font-black py-2 px-3 rounded-xl border border-stone-300 flex items-center justify-center gap-1 shadow-2xs transition active:scale-95"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5 text-emerald-700" />
-                          <span>위치 및 지도보기</span>
+                          <span>{isJapanese ? `電話問合せ (${shop.phone})` : `전화 문의 (${shop.phone})`}</span>
                         </a>
                       </div>
                     </div>
