@@ -411,7 +411,7 @@ export function StoreRegisterModal({
                       {isJapanese ? '基本無料出店 (推奨)' : '100% 무료 입점 (기본)'}
                     </span>
                     <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded">
-                      0원
+                      {isJapanese ? '0円' : '0원'}
                     </span>
                   </div>
                   <p className="text-[10px] text-stone-600 mt-1 leading-tight font-medium">
@@ -574,19 +574,19 @@ export function StoreRegisterModal({
             {/* 8. [핵심] 실시간 합산 금액 알림판 */}
             <div className="bg-stone-900 text-white p-3.5 rounded-2xl space-y-1 shadow-md">
               <div className="flex items-center justify-between text-xs font-medium text-stone-300">
-                <span>과금 합산 내역:</span>
+                <span>{isJapanese ? '請求内訳:' : '과금 합산 내역:'}</span>
                 <span>
                   {planType === 'FREE'
-                    ? `선택 ${selectedCourseIds.length}개 구장 × 0원`
-                    : `선택 ${selectedCourseIds.length}개 구장 × 월 ${bidAmount.toLocaleString()}${isJapanese ? '円' : '원'}`}
+                    ? (isJapanese ? `選択 ${selectedCourseIds.length}コース × 0円` : `선택 ${selectedCourseIds.length}개 구장 × 0원`)
+                    : (isJapanese ? `選択 ${selectedCourseIds.length}コース × 月 ${bidAmount.toLocaleString()}円` : `선택 ${selectedCourseIds.length}개 구장 × 월 ${bidAmount.toLocaleString()}원`)}
                 </span>
               </div>
               <div className="flex items-center justify-between pt-1 border-t border-stone-700">
                 <span className="text-xs font-black text-amber-400">
-                  최종 결제 예상 합산:
+                  {isJapanese ? '最終決済予定合計:' : '최종 결제 예상 합산:'}
                 </span>
                 <span className="text-base font-black text-amber-400">
-                  {planType === 'FREE' ? '0원 (전액 무료)' : `월 ${currentTotal.toLocaleString()}${isJapanese ? '円' : '원'}`}
+                  {planType === 'FREE' ? (isJapanese ? '0円 (全額無料)' : '0원 (전액 무료)') : (isJapanese ? `月 ${currentTotal.toLocaleString()}円` : `월 ${currentTotal.toLocaleString()}원`)}
                 </span>
               </div>
             </div>
