@@ -142,9 +142,10 @@ export function WatermarkPhotoCardModal({
       }
 
       // 5. Bottom Metadata Card
-      const cardY = 880;
-      const cardH = 390;
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.75)'; // dark glass
+      // 5. Bottom Metadata Card (Group Round Certificate Layout)
+      const cardY = 800;
+      const cardH = 480;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.82)'; // dark glass
       ctx.beginPath();
       ctx.roundRect(50, cardY, 980, cardH, 36);
       ctx.fill();
@@ -156,61 +157,124 @@ export function WatermarkPhotoCardModal({
       if (mascotImg.complete && mascotImg.naturalWidth > 0) {
         ctx.save();
         ctx.beginPath();
-        ctx.arc(930, cardY + 90, 65, 0, Math.PI * 2);
+        ctx.arc(930, cardY + 75, 55, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
-        ctx.drawImage(mascotImg, 930 - 65, cardY + 90 - 65, 130, 130);
+        ctx.drawImage(mascotImg, 930 - 55, cardY + 75 - 55, 110, 110);
         ctx.restore();
 
         ctx.beginPath();
-        ctx.arc(930, cardY + 90, 65, 0, Math.PI * 2);
+        ctx.arc(930, cardY + 75, 55, 0, Math.PI * 2);
         ctx.strokeStyle = '#FBBF24'; // gold border
-        ctx.lineWidth = 5;
+        ctx.lineWidth = 4;
         ctx.stroke();
       }
 
       // Course Name & Date
       ctx.fillStyle = '#FBBF24'; // Gold
-      ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+      ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
       const dateText = clubTag.trim()
         ? `📅 ${dateStr} · 👥 ${clubTag.trim()}`
         : `📅 ${dateStr} · ${totalHoles}${isJapanese ? 'ホール完走' : '홀 완주'}`;
-      ctx.fillText(dateText, 90, cardY + 60);
+      ctx.fillText(dateText, 85, cardY + 50);
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 44px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-      ctx.fillText(courseName, 90, cardY + 120);
+      ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+      ctx.fillText(courseName, 85, cardY + 98);
 
       // Divider
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(90, cardY + 150);
-      ctx.lineTo(840, cardY + 150);
+      ctx.moveTo(85, cardY + 120);
+      ctx.lineTo(840, cardY + 120);
       ctx.stroke();
 
-      // Score Highlight
-      ctx.fillStyle = '#34D399'; // Emerald-400
-      ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-      ctx.fillText(isJapanese ? '🏆 ラウンド最終成績' : '🏆 라운드 최종 성적', 90, cardY + 195);
+      // Players Scores Grid (Group Round Certificate Layout)
+      const allPlayers = session?.players && session.players.length > 0
+        ? session.players
+        : [{ id: 'p1', name: myName, totalStrokes: myStrokes, totalParDiff: parDiff, isSelf: true }];
 
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = '900 60px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-      ctx.fillText(`${myStrokes}${isJapanese ? '打' : '타'}`, 90, cardY + 265);
+      const pCount = Math.min(4, allPlayers.length);
 
-      ctx.fillStyle = '#FDE047';
-      ctx.font = 'bold 30px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-      ctx.fillText(`(${parDiffStr})`, 270, cardY + 258);
+      if (pCount > 1) {
+        // Multi-player grid layout (2 columns x 2 rows)
+        const gridX = 85;
+        const gridY = cardY + 140;
+        const colW = 430;
+        const rowH = 115;
 
-      // Companions list
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-      ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-      ctx.fillText(`${isJapanese ? '🤝 同伴者: ' : '🤝 동반 1촌: '}${companionNames}`, 90, cardY + 325);
+        allPlayers.slice(0, 4).forEach((pl, idx) => {
+          const col = idx % 2;
+          const row = Math.floor(idx / 2);
+          const px = gridX + col * (colW + 20);
+          const py = gridY + row * (rowH + 15);
 
-      // Footer Watermark
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.font = 'normal 18px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-      ctx.fillText(isJapanese ? 'No.1 パークゴルフ スマートスコアボード · parkongolf.com' : '대한민국 1등 파크골프 스마트 스코어보드 · parkongolf.com', 90, cardY + 360);
+          // Card tile background
+          ctx.fillStyle = pl.isSelf || pl.name === myName
+            ? 'rgba(245, 158, 11, 0.18)'
+            : 'rgba(255, 255, 255, 0.08)';
+          ctx.beginPath();
+          ctx.roundRect(px, py, colW, rowH, 18);
+          ctx.fill();
+          ctx.strokeStyle = pl.isSelf || pl.name === myName ? '#FBBF24' : 'rgba(255, 255, 255, 0.2)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Player Name
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+          const pLabel = pl.isSelf || pl.name === myName
+            ? `👑 ${pl.name || myName} (나)`
+            : `🏌️ ${pl.name}`;
+          ctx.fillText(pLabel, px + 20, py + 45);
+
+          // Score / Status
+          if (pl.totalStrokes && pl.totalStrokes > 0) {
+            ctx.fillStyle = '#34D399'; // Emerald
+            ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+            ctx.fillText(`${pl.totalStrokes}${isJapanese ? '打' : '타'}`, px + 20, py + 88);
+
+            const pDiff = pl.totalParDiff ?? 0;
+            const pDiffStr = pDiff === 0 ? 'E' : pDiff > 0 ? `+${pDiff}` : `${pDiff}`;
+            ctx.fillStyle = '#FDE047'; // Yellow
+            ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+            ctx.fillText(`(${pDiffStr})`, px + 120, py + 86);
+          } else {
+            ctx.fillStyle = '#94A3B8';
+            ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+            ctx.fillText(isJapanese ? '完走 参加' : '완주 참가', px + 20, py + 86);
+          }
+        });
+      } else {
+        // Single player layout
+        ctx.fillStyle = '#34D399'; // Emerald-400
+        ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+        ctx.fillText(isJapanese ? '🏆 ラウンド最終成績' : '🏆 라운드 최종 성적', 85, cardY + 175);
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '900 64px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+        ctx.fillText(`${myStrokes}${isJapanese ? '打' : '타'}`, 85, cardY + 255);
+
+        ctx.fillStyle = '#FDE047';
+        ctx.font = 'bold 30px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+        ctx.fillText(`(${parDiffStr})`, 270, cardY + 248);
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+        ctx.fillText(`${isJapanese ? '🤝 同伴者: ' : '🤝 동반자: '}${companionNames}`, 85, cardY + 330);
+      }
+
+      // Footer Watermark (대표님 절대 원칙 지침: 파크온 금지 -> 파크골프 올인원 공식 명칭 적용)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+      ctx.fillText(
+        isJapanese
+          ? '⛳ パークゴルフ オールインワン(ParkGolf All-in-One) 公式認定ラウンド · parkgolfallinone.com'
+          : '⛳ 파크골프 올인원(ParkGolf All-in-One)에서 기록된 공식 라운드 · parkgolfallinone.com',
+        85,
+        cardY + 440
+      );
 
       const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
       setCardDataUrl(dataUrl);
@@ -238,7 +302,7 @@ export function WatermarkPhotoCardModal({
         renderLayers(null);
       }
     };
-  }, [courseName, dateStr, totalHoles, myStrokes, parDiffStr, companionNames, clubTag]);
+  }, [courseName, dateStr, totalHoles, myStrokes, parDiffStr, companionNames, clubTag, session, myName, isJapanese]);
 
   useEffect(() => {
     if (isOpen) {
@@ -432,7 +496,7 @@ export function WatermarkPhotoCardModal({
               className="w-full min-h-[50px] bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition cursor-pointer"
             >
               <Share2 className="w-4 h-4 text-[#191919]" />
-              <span>{isJapanese ? 'LINE/SNS共有' : '💬 카톡 1초 공유'}</span>
+              <span>{isJapanese ? '💬 LINE / SNS共有' : '💬 카톡 / 밴드 1초 공유'}</span>
             </button>
 
             {/* 3. 사진첩 다운로드 저장 버튼 */}

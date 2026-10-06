@@ -10,6 +10,7 @@ import { CompanionStorage } from '@/lib/companionStorage';
 import { BusinessCardStorage } from '@/lib/businessCardStorage';
 import { BusinessCardModal } from '@/components/BusinessCardModal';
 import { WatermarkPhotoCardModal } from '@/components/WatermarkPhotoCardModal';
+import { ChroniclePhotoUploadModal } from '@/components/ChroniclePhotoUploadModal';
 import { PRESCRIPTIONS } from '@/lib/defaultCourses';
 import { AdSenseSlot } from '@/components/AdSenseSlot';
 import { HoleScoreBadge, ScoreBadgeLegend } from '@/components/HoleScoreBadge';
@@ -67,6 +68,8 @@ function ResultContent() {
   const [copied, setCopied] = useState<boolean>(false);
   const [savedPlayerId, setSavedPlayerId] = useState<string | null>(null);
   const [showPhotoCardModal, setShowPhotoCardModal] = useState<boolean>(false);
+  const [showPostRoundPhotoPrompt, setShowPostRoundPhotoPrompt] = useState<boolean>(false);
+  const [showPhotoUploadModal, setShowPhotoUploadModal] = useState<boolean>(false);
   const [showBusinessCardModal, setShowBusinessCardModal] = useState<boolean>(false);
   const [exchangeCardToast, setExchangeCardToast] = useState<string | null>(null);
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
@@ -188,11 +191,18 @@ function ResultContent() {
         if (badgeResult.isNewProvinceUnlocked && badgeResult.unlockedProvince) {
           setNewlyUnlockedProvince(badgeResult.unlockedProvince);
         }
-        // 첫 진입 시 자동 팝업
-        const seenKey = `parkon_badge_seen_${session.id}`;
-        if (!sessionStorage.getItem(seenKey)) {
-          setShowBadgeModal(true);
-          sessionStorage.setItem(seenKey, 'true');
+        // 1. 라운드 종료 기념사진 등록 유도 팝업
+        const photoPromptKey = `parkon_photo_prompt_seen_${session.id}`;
+        if (!sessionStorage.getItem(photoPromptKey)) {
+          setShowPostRoundPhotoPrompt(true);
+          sessionStorage.setItem(photoPromptKey, 'true');
+        } else {
+          // 첫 진입 시 완주 뱃지 자동 팝업
+          const seenKey = `parkon_badge_seen_${session.id}`;
+          if (!sessionStorage.getItem(seenKey)) {
+            setShowBadgeModal(true);
+            sessionStorage.setItem(seenKey, 'true');
+          }
         }
       } else {
         const existing = BadgeStorage.getBadge(found.id);
@@ -396,8 +406,8 @@ function ResultContent() {
   const winner = validRankedPlayers[0] || rankedPlayers[0];
   const mostOBPlayer = [...session.players].sort(
     (a, b) =>
-      Object.values(b.obCount).reduce((x, y) => x + y, 0) -
-      Object.values(a.obCount).reduce((x, y) => x + y, 0)
+      Object.values(b.obCount || {}).reduce((x, y) => x + y, 0) -
+      Object.values(a.obCount || {}).reduce((x, y) => x + y, 0)
   )[0];
   const totalObs = Object.values(mostOBPlayer?.obCount || {}).reduce((x, y) => x + y, 0);
 
@@ -604,7 +614,7 @@ function ResultContent() {
       <div className="bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-500 p-1 rounded-2xl shadow-md">
         <button
           type="button"
-          onClick={() => setShowPhotoCardModal(true)}
+          onClick={() => setShowPhotoUploadModal(true)}
           className="w-full bg-stone-950 hover:bg-stone-900 text-white font-black px-4 py-3 rounded-[14px] flex items-center justify-center gap-2.5 shadow-inner transition active:scale-[0.99] cursor-pointer"
         >
           <div className="w-8 h-8 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center font-black shrink-0 shadow-xs">
@@ -1061,6 +1071,16 @@ function ResultContent() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+          {/* 🖼️ 단체 라운드 인증서 / 워터마크 포토카드 버튼 */}
+          <button
+            type="button"
+            onClick={() => setShowPhotoCardModal(true)}
+            className="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-stone-950 font-black text-sm rounded-xl shadow-md transition active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer border border-amber-300 col-span-full"
+          >
+            <Camera className="w-4 h-4 text-stone-950" />
+            <span>{isJapanese ? '🖼️ 記念フォトカード作成・LINE共有' : '🖼️ 단체 기념 포토카드 만들기 & 카톡/밴드 공유'}</span>
+          </button>
+
           {/* 🟢 LINE 결과 공유 버튼 (초록색 #06C755 고유 브랜드 컬러) */}
           <button
             type="button"
@@ -1198,6 +1218,110 @@ function ResultContent() {
       <NationalTourMapModal
         isOpen={showNationalTourModal}
         onClose={() => setShowNationalTourModal(false)}
+      />
+
+      {/* 🏆 [연대기 포토 시스템] 라운드 완주 직후 기념사진 등록 유도 팝업 */}
+      {showPostRoundPhotoPrompt && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl border-2 border-amber-300 text-center space-y-4 animate-scaleUp relative overflow-hidden">
+            <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-amber-400 to-yellow-300 text-stone-950 flex items-center justify-center text-3xl mx-auto shadow-lg animate-bounce">
+              🏆
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-black bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full inline-block">
+                {isJapanese ? '🎉 ラウンド完走記念' : '🎉 라운드 완주 기념'}
+              </span>
+              <h3 className="text-lg font-black text-stone-900 leading-snug">
+                {isJapanese ? '🏆 18ホール完走をお祝いします！' : '🏆 18홀 라운드 완주를 축하합니다!'}
+              </h3>
+              <p className="text-xs text-stone-600 font-semibold leading-relaxed pt-0.5">
+                {isJapanese
+                  ? '本日一緒に汗を流した同伴者の皆様と現場記念写真を残してみましょう！'
+                  : '오늘 함께 땀 흘린 동반자들과 현장 기념사진을 남겨보세요!'}
+              </p>
+            </div>
+
+            {/* 함께한 분 명단 칩 */}
+            {session.players && session.players.length > 0 && (
+              <div className="bg-stone-50 rounded-2xl p-2.5 border border-stone-200/80 text-left space-y-1">
+                <div className="text-[10px] font-black text-stone-500 flex items-center gap-1">
+                  <span>🤝</span>
+                  <span>{isJapanese ? '一緒にプレーした方:' : '함께한 분:'}</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {session.players.map((p, idx) => {
+                    const displayName = p.isSelf ? `${p.name || (isJapanese ? '本人' : '나')}(나)` : p.name;
+                    return (
+                      <span
+                        key={idx}
+                        className={`text-xs font-bold px-2 py-0.5 rounded-lg border shadow-2xs ${
+                          p.isSelf
+                            ? 'bg-amber-100 text-amber-950 border-amber-300 font-black'
+                            : 'bg-white text-stone-800 border-stone-200'
+                        }`}
+                      >
+                        {displayName}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPostRoundPhotoPrompt(false);
+                  setShowPhotoUploadModal(true);
+                }}
+                className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black py-3.5 px-4 rounded-2xl text-sm shadow-md flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
+              >
+                <Camera className="w-4 h-4 text-emerald-200" />
+                <span>{isJapanese ? '📷 団体・記念写真を登録する' : '📷 단체/기념사진 등록하기'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPostRoundPhotoPrompt(false);
+                  const seenKey = `parkon_badge_seen_${session.id}`;
+                  if (!sessionStorage.getItem(seenKey) && isFull18Completed) {
+                    setShowBadgeModal(true);
+                    sessionStorage.setItem(seenKey, 'true');
+                  }
+                }}
+                className="w-full py-2.5 text-stone-500 hover:text-stone-800 font-bold text-xs rounded-xl hover:bg-stone-100 transition cursor-pointer"
+              >
+                {isJapanese ? '次にする' : '다음에 하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📷 라운드 현장 사진 업로드 모달 */}
+      <ChroniclePhotoUploadModal
+        isOpen={showPhotoUploadModal}
+        onClose={() => {
+          setShowPhotoUploadModal(false);
+          const seenKey = `parkon_badge_seen_${session.id}`;
+          if (!sessionStorage.getItem(seenKey) && isFull18Completed) {
+            setShowBadgeModal(true);
+            sessionStorage.setItem(seenKey, 'true');
+          }
+        }}
+        targetSession={session}
+        completedSessions={session ? [session] : []}
+        onPhotoUploaded={(newPhoto) => {
+          setSaveSuccessToast(
+            isJapanese
+              ? '📸 思い出の写真が年代記アルバムに保存されました！'
+              : '📸 오늘의 기념사진이 연대기 앨범에 안전하게 등록되었습니다!'
+          );
+          setTimeout(() => setSaveSuccessToast(null), 3500);
+        }}
       />
     </div>
   );

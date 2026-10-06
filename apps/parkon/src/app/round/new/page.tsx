@@ -55,6 +55,50 @@ function NewRoundForm() {
   const [isUnlimitedRound, setIsUnlimitedRound] = useState<boolean>(true);
   const [targetHolesCount, setTargetHolesCount] = useState<number>(18);
   const [showRoundModeSelector, setShowRoundModeSelector] = useState<boolean>(false);
+  const [recentPartners, setRecentPartners] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('parkon_recent_partners');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setRecentPartners(parsed.filter((n) => typeof n === 'string' && n.trim().length > 0));
+        }
+      }
+    } catch (e) {}
+  }, []);
+
+  const handleSelectRecentPartner = (name: string) => {
+    const cleanName = name.trim();
+    if (!cleanName) return;
+
+    setPlayersList((prev) => {
+      const next = [...prev];
+      // 1. 이미 등록되어 있는지 확인
+      const alreadyIdx = next.findIndex((p, i) => i < playerCount && p.name.trim() === cleanName);
+      if (alreadyIdx !== -1) {
+        return prev;
+      }
+
+      // 2. 비어있는 슬롯 찾기 (본인 제외, idx >= 1)
+      let targetIdx = next.findIndex((p, i) => i >= 1 && i < playerCount && (!p.name || isDefaultCompanionName(p.name)));
+      
+      // 만약 현재 playerCount 내에 빈 슬롯이 없는데 playerCount < 4라면 인원 증가
+      if (targetIdx === -1 && playerCount < 4) {
+        targetIdx = playerCount;
+        setPlayerCount((prevCount) => Math.min(4, prevCount + 1));
+      } else if (targetIdx === -1) {
+        // 이미 4명이 꽉 차있으면 마지막 슬롯(또는 첫 번째 동반자 슬롯) 대체
+        targetIdx = next.length - 1;
+      }
+
+      if (targetIdx >= 1 && targetIdx < next.length) {
+        next[targetIdx] = { ...next[targetIdx], name: cleanName };
+      }
+      return next;
+    });
+  };
 
   const leaderParam = searchParams.get('leader') || searchParams.get('member') || searchParams.get('user');
 
@@ -629,6 +673,20 @@ function NewRoundForm() {
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('parkon_counting_mode', 'PAR_BASE');
+      try {
+        const guestNames = sortedPlayers
+          .filter((p) => !p.isLeader && !p.isSelf && p.name && !isDefaultCompanionName(p.name))
+          .map((p) => p.name.trim());
+        if (guestNames.length > 0) {
+          const currentPartners = recentPartners || [];
+          const filtered = currentPartners.filter((n) => !guestNames.includes(n));
+          const updatedPartners = [...guestNames, ...filtered].slice(0, 10);
+          localStorage.setItem('parkon_recent_partners', JSON.stringify(updatedPartners));
+          setRecentPartners(updatedPartners);
+        }
+      } catch (e) {
+        console.warn('Failed to cache recent partners:', e);
+      }
     }
 
     // 3. 서버 룸(Room)에 라운드 시작 알림 및 Supabase Realtime Broadcast 전송 -> 대기실의 동반자들도 즉시 스코어카드로 50ms 내 자동 이동!
@@ -871,7 +929,7 @@ function NewRoundForm() {
                   placeholder={
                     player.isSelf
                       ? (isJapanese ? '代表のお名前 (例: 山田)' : '성명을 적어주세요 (조장/본인)')
-                      : (isJapanese ? `お名前を入力 (同伴者 ${idx + 1})` : `성명을 적어주세요 (동반자 ${idx + 1})`)
+                      : (isJapanese ? `お名前を入力 (例: 田中)` : `동반자 ${idx + 1} (예: 이총무, 박회장)`)
                   }
                   className="w-full bg-white border border-stone-300 rounded-lg pl-3 pr-8 py-1.5 text-sm font-bold text-stone-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none placeholder:text-stone-400"
                 />
@@ -911,6 +969,42 @@ function NewRoundForm() {
             </div>
           ))}
         </div>
+
+        {/* ⚡ 최근 함께한 동반자 칩 목록 (단골/게스트 원터치 자동 완성) */}
+        {recentPartners.length > 0 && (
+          <div className="bg-stone-50 border border-stone-200/90 rounded-xl p-2.5 space-y-1.5 animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-black text-stone-700 flex items-center gap-1">
+                <span>⚡</span>
+                <span>{isJapanese ? '最近の同伴者 (ワンタップ入力)' : '최근 함께한 동반자 (터치 시 자동 입력)'}</span>
+              </span>
+              <span className="text-[10px] text-stone-500 font-semibold">
+                {isJapanese ? `${recentPartners.length}名 保存中` : `${recentPartners.length}명 기억됨`}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar">
+              {recentPartners.map((pName) => {
+                const isAlreadyAdded = playersList.slice(0, playerCount).some((p) => p.name.trim() === pName.trim());
+                return (
+                  <button
+                    key={pName}
+                    type="button"
+                    onClick={() => handleSelectRecentPartner(pName)}
+                    className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition shrink-0 active:scale-95 flex items-center gap-1 cursor-pointer ${
+                      isAlreadyAdded
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300 ring-1 ring-emerald-400/40'
+                        : 'bg-white text-stone-700 border-stone-300 hover:border-emerald-500 hover:text-emerald-700 shadow-2xs'
+                    }`}
+                    title={isAlreadyAdded ? (isJapanese ? '既に追加済み' : '이미 추가됨') : (isJapanese ? 'タップして追加' : '터치하여 동반자에 추가')}
+                  >
+                    <span className="text-[10px]">{isAlreadyAdded ? '✓' : '+'}</span>
+                    <span>{pName}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* 동반자 초대 배너 */}
         <button

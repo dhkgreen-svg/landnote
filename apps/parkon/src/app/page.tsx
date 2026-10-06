@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Play, MapPin, History, Award, Flame, Trophy, X, ArrowRight, ChevronDown, ChevronRight, Check, Plus, Star, Search, Trash2, Share2, Download, Heart, Smartphone, Target, Sparkles } from 'lucide-react';
+import { Play, MapPin, History, Award, Flame, Trophy, X, ArrowRight, ChevronDown, ChevronRight, Check, Plus, Star, Search, Trash2, Share2, Download, Heart, Smartphone, Target, Sparkles, Camera } from 'lucide-react';
 import { Course, RoundSession, formatCourseHolesText } from '@/types/parkon';
 import { ParkOnStorage, UserGolfProfile, DEFAULT_USER_PROFILE, ALL_BASE_COURSES } from '@/lib/storage';
 import { ClubStorage } from '@/lib/clubStorage';
@@ -22,6 +22,12 @@ import { QuickGuideModal } from '@/components/QuickGuideModal';
 import { RoundScoreboardModal } from '@/components/RoundScoreboardModal';
 import { BadgeStorage } from '@/lib/badgeStorage';
 import { AppShareModal } from '@/components/AppShareModal';
+import { WatermarkPhotoCardModal } from '@/components/WatermarkPhotoCardModal';
+import { ChroniclePhotoViewerModal } from '@/components/ChroniclePhotoViewerModal';
+import { ChroniclePhotoUploadModal } from '@/components/ChroniclePhotoUploadModal';
+import { ChronicleBackupModal } from '@/components/ChronicleBackupModal';
+import { NationalRankingDetailModal } from '@/components/NationalRankingDetailModal';
+import { ChroniclePhotoStorage, ChroniclePhotoItem } from '@/lib/chroniclePhotoStorage';
 import { KakaoAuthUser } from '@/lib/storage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName, stripParkGolfSuffix } from '@/lib/courseLocalization';
@@ -42,7 +48,18 @@ export default function HomePage() {
   const [completedRounds, setCompletedRounds] = useState<RoundSession[]>([]);
   const [userProfile, setUserProfile] = useState<UserGolfProfile>(DEFAULT_USER_PROFILE);
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
-  const [statsSubTab, setStatsSubTab] = useState<'TIMELINE_RANK' | 'MEDALS_COURSES'>('TIMELINE_RANK');
+  const [statsSubTab, setStatsSubTab] = useState<'TIMELINE_RANK' | 'PHOTO_ALBUM' | 'MEDALS_COURSES'>('TIMELINE_RANK');
+  const [chroniclePhotos, setChroniclePhotos] = useState<ChroniclePhotoItem[]>([]);
+  const [photoAlbumFilterCourse, setPhotoAlbumFilterCourse] = useState<string>('ALL');
+  const [photoAlbumFilterCompanion, setPhotoAlbumFilterCompanion] = useState<string>('ALL');
+  const [showChronicleBackupModal, setShowChronicleBackupModal] = useState<boolean>(false);
+  const [selectedPhotoForViewer, setSelectedPhotoForViewer] = useState<ChroniclePhotoItem | null>(null);
+  const [showPhotoViewerModal, setShowPhotoViewerModal] = useState<boolean>(false);
+  const [showPhotoUploadModal, setShowPhotoUploadModal] = useState<boolean>(false);
+  const [uploadTargetSession, setUploadTargetSession] = useState<RoundSession | null>(null);
+  const [showWatermarkCardModal, setShowWatermarkCardModal] = useState<boolean>(false);
+  const [watermarkCardSession, setWatermarkCardSession] = useState<RoundSession | null>(null);
+  const [watermarkCardInitialImage, setWatermarkCardInitialImage] = useState<string | null>(null);
   const [showGradePopup, setShowGradePopup] = useState<boolean>(false);
   const [selectedRoundForPopup, setSelectedRoundForPopup] = useState<RoundSession | null>(null);
   const [medalsViewSubTab, setMedalsViewSubTab] = useState<'COURSES_TOUR' | 'MEDALS_RANK'>('COURSES_TOUR');
@@ -53,6 +70,10 @@ export default function HomePage() {
   const [leaderboardTab, setLeaderboardTab] = useState<'FIRST_PLACE' | 'TOP4'>('FIRST_PLACE');
   const [rankingMainTab, setRankingMainTab] = useState<'SKILL_100' | 'ACTIVITY_100'>('SKILL_100');
   const [showLeaderboard100Popup, setShowLeaderboard100Popup] = useState<boolean>(false);
+  const [showRankingDetailPopup, setShowRankingDetailPopup] = useState<'SKILL' | 'ACTIVITY' | null>(null);
+  const [timelineSort, setTimelineSort] = useState<'LATEST' | 'BEST_SCORE'>('LATEST');
+  const [timelineCourseFilter, setTimelineCourseFilter] = useState<string>('ALL');
+  const [selectedHistogramScore, setSelectedHistogramScore] = useState<number | string | null>(null);
   const [statsCourseId, setStatsCourseId] = useState<string>('');
   const [showStatsSearchModal, setShowStatsSearchModal] = useState<boolean>(false);
   const [statsSearchQuery, setStatsSearchQuery] = useState<string>('');
@@ -284,6 +305,10 @@ export default function HomePage() {
       const kUser = ParkOnStorage.getKakaoUser();
       setKakaoUser(kUser);
 
+      ChroniclePhotoStorage.getAllPhotos().then((photos) => {
+        setChroniclePhotos(photos);
+      }).catch(() => {});
+
       // 클럽 앤 번개 대회 실제 상태 연동 및 신규 공지/번개 알림 체크
       const clubRooms = ClubStorage.getAllRooms();
       const activeRoom = clubRooms.find((r) => r.status === 'PLAYING') || clubRooms.find((r) => r.status === 'RECRUITING');
@@ -408,12 +433,52 @@ export default function HomePage() {
 
   const openStatsModalWithCourse = (
     courseId?: string,
-    defaultTab: 'TIMELINE_RANK' | 'MEDALS_COURSES' = 'TIMELINE_RANK'
+    defaultTab: 'TIMELINE_RANK' | 'PHOTO_ALBUM' | 'MEDALS_COURSES' = 'TIMELINE_RANK'
   ) => {
     const currentActive = getCurrentActiveCourse();
     setStatsCourseId(courseId || currentActive?.id || courses[0]?.id || '');
     setStatsSubTab(defaultTab);
     setShowStatsModal(true);
+  };
+
+  const handleOpenWatermarkCardFromPhoto = (photo: ChroniclePhotoItem) => {
+    let matched = completedRounds.find((r) => r.id === photo.sessionId) || null;
+    if (!matched) {
+      matched = {
+        id: photo.id,
+        courseId: photo.courseId || 'custom',
+        courseName: photo.courseName,
+        startedAt: photo.date,
+        completedAt: photo.date,
+        currentHole: 18,
+        totalHoles: 18,
+        players: [
+          {
+            id: 'me',
+            name: ParkOnStorage.getUserDisplayName(),
+            isSelf: true,
+            scores: {},
+            obCount: {},
+            totalStrokes: photo.scoreSummary ? parseInt(photo.scoreSummary) || 58 : 58,
+            totalParDiff: -2,
+          },
+          ...photo.companions
+            .filter((c) => c !== ParkOnStorage.getUserDisplayName())
+            .map((c, i) => ({
+              id: `comp_${i}`,
+              name: c,
+              scores: {},
+              obCount: {},
+              totalStrokes: 60,
+              totalParDiff: 0,
+            })),
+        ],
+        status: 'COMPLETED',
+      };
+    }
+    setWatermarkCardSession(matched);
+    setWatermarkCardInitialImage(photo.imageUrl);
+    setShowWatermarkCardModal(true);
   };
 
   // 내 홈 구장 목록: 사용자가 지정/등록한 모든 홈구장 목록 (구미, 동락, 양포 등 절대 소실 방지)
@@ -1424,46 +1489,74 @@ export default function HomePage() {
                   </h3>
                   <p className="text-[11px] text-stone-500 font-medium">
                     {isJapanese
-                      ? '競技タイムライン・公認等級・獲得メダル・訪問コース'
-                      : '경기 타임라인 · 공인 등급 · 기념 메달 · 방문 구장'}
+                      ? '競技タイムライン・フォトアルバム・獲得メダル・訪問コース'
+                      : '경기 타임라인 · 포토 앨범 · 기념 메달 · 방문 구장'}
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowStatsModal(false)}
-                className="w-8 h-8 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 hover:text-stone-800 flex items-center justify-center font-bold text-sm cursor-pointer shrink-0 transition"
-                aria-label={isJapanese ? '閉じる' : '닫기'}
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowChronicleBackupModal(true)}
+                  className="px-2.5 py-1.5 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 flex items-center gap-1 text-xs font-bold transition cursor-pointer border border-stone-200 shadow-2xs"
+                  title={isJapanese ? 'バックアップ / 復元' : '백업 / 복원'}
+                >
+                  <span className="text-xs">💾</span>
+                  <span className="text-[11px] font-bold">{isJapanese ? 'バックアップ' : '백업/복원'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowStatsModal(false)}
+                  className="w-8 h-8 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 hover:text-stone-800 flex items-center justify-center font-bold text-sm cursor-pointer shrink-0 transition"
+                  aria-label={isJapanese ? '閉じる' : '닫기'}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            {/* 고대비 2대 서브 탭 바 */}
-            <div className="flex items-center bg-stone-100 p-1.5 border-b border-stone-200 shrink-0 gap-1.5">
+            {/* 고대비 3대 서브 탭 바 */}
+            <div className="flex items-center bg-stone-100 p-1.5 border-b border-stone-200 shrink-0 gap-1 sm:gap-1.5">
               <button
                 type="button"
                 onClick={() => setStatsSubTab('TIMELINE_RANK')}
-                className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`flex-1 py-2 px-1 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
                   statsSubTab === 'TIMELINE_RANK'
                     ? 'bg-white text-emerald-950 shadow-xs border border-emerald-500/40'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
                 }`}
               >
                 <span className="text-sm">⏱️</span>
-                <span>{isJapanese ? '競技タイムライン＆順位' : '경기 타임라인 & 랭킹'}</span>
+                <span>{isJapanese ? 'タイムライン' : '타임라인'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatsSubTab('PHOTO_ALBUM')}
+                className={`flex-1 py-2 px-1 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
+                  statsSubTab === 'PHOTO_ALBUM'
+                    ? 'bg-white text-emerald-950 shadow-xs border border-emerald-500/40'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
+                }`}
+              >
+                <span className="text-sm">📷</span>
+                <span>{isJapanese ? 'アルバム' : '포토 앨범'}</span>
+                {chroniclePhotos.length > 0 && (
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full">
+                    {chroniclePhotos.length}
+                  </span>
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => setStatsSubTab('MEDALS_COURSES')}
-                className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`flex-1 py-2 px-1 rounded-xl text-xs font-black transition flex items-center justify-center gap-1 cursor-pointer ${
                   statsSubTab === 'MEDALS_COURSES'
                     ? 'bg-white text-amber-950 shadow-xs border border-amber-500/40'
                     : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
                 }`}
               >
                 <span className="text-sm">🏅</span>
-                <span>{isJapanese ? '訪問コース＆記念メダル' : '방문 구장 & 기념 메달'}</span>
+                <span>{isJapanese ? 'コース＆メダル' : '구장 & 메달'}</span>
               </button>
             </div>
 
@@ -1503,143 +1596,654 @@ export default function HomePage() {
                     </button>
                   </div>
 
-                  {/* 2. 날짜별 한 줄 카드 목록 (중복 헤더 제거하여 곧바로 1줄 타임라인 직행) */}
-                  {completedRounds.length > 0 ? (
-                    <div className="space-y-2">
-                      {completedRounds.map((r, rIdx) => {
-                        const me = (r.players && r.players.length > 0)
-                          ? (r.players.find((p) => p.isSelf) || r.players[0])
-                          : ({ id: 'me', name: '나', totalStrokes: (r as any).totalScore || 54, totalParDiff: 0, scores: {}, obCount: {} } as any);
-                        const sortedPlayers = [...(r.players || [])].sort((a, b) => (a.totalStrokes || 0) - (b.totalStrokes || 0));
-                        const myRank = sortedPlayers.findIndex((p) => p.id === me?.id || p.name === me?.name) + 1 || 1;
-                        const is18Holes = (r.totalHoles && r.totalHoles >= 18) || Object.keys(me?.scores || {}).length >= 18 || (r as any).holes >= 18;
-                        const isOfficial = r.isOfficial !== false;
-                        const hasPhotos = Boolean(r.photos && r.photos.length > 0);
+                  {/* 2. 타수별 달성 횟수 히스토그램 (내 타수 분포 실록) */}
+                  {completedRounds.length > 0 && (() => {
+                    const meOf = (r: RoundSession) => {
+                      return (r.players && r.players.length > 0)
+                        ? (r.players.find((p) => p.isSelf) || r.players[0])
+                        : ({ id: 'me', name: '나', totalStrokes: (r as any).totalScore || 54, totalParDiff: 0, scores: {}, obCount: {} } as any);
+                    };
 
-                        // 날짜 포맷 (한 줄에 최적화: 2026.10.02 (금))
-                        const dObj = r.completedAt ? new Date(r.completedAt) : new Date();
+                    const buckets = [
+                      { id: '40s', name: isJapanese ? '40台 (奇跡)' : '45~49타 (기적)', range: '45~49', min: 40, max: 49, color: 'bg-amber-500' },
+                      { id: '54', name: isJapanese ? '54打 (不滅ラベ)' : '54타 (라베)', range: '54', min: 54, max: 54, color: 'bg-emerald-600' },
+                      { id: '55', name: isJapanese ? '55打' : '55타', range: '55', min: 55, max: 55, color: 'bg-emerald-500' },
+                      { id: '56', name: isJapanese ? '56打' : '56타', range: '56', min: 56, max: 56, color: 'bg-teal-500' },
+                      { id: '57', name: isJapanese ? '57打' : '57타', range: '57', min: 57, max: 57, color: 'bg-teal-600' },
+                      { id: '58', name: isJapanese ? '58打' : '58타', range: '58', min: 58, max: 58, color: 'bg-blue-500' },
+                      { id: '59', name: isJapanese ? '59打' : '59타', range: '59', min: 59, max: 59, color: 'bg-indigo-500' },
+                      { id: '60_62', name: isJapanese ? '60~62打 (主力)' : '60~62타 (주력)', range: '60~62', min: 60, max: 62, color: 'bg-stone-500' },
+                      { id: '63_65', name: isJapanese ? '63~65打' : '63~65타', range: '63~65', min: 63, max: 65, color: 'bg-stone-400' },
+                      { id: '66_plus', name: isJapanese ? '66打〜' : '66타 이상', range: '66+', min: 66, max: 999, color: 'bg-stone-300' },
+                    ].map((b) => {
+                      const matches = completedRounds.filter((r) => {
+                        const s = meOf(r).totalStrokes || 0;
+                        return s >= b.min && s <= b.max;
+                      });
+                      return {
+                        ...b,
+                        count: matches.length,
+                        rounds: matches,
+                      };
+                    });
 
-                        // 코스별 점수 요약 문자열 (A 35 · B 35)
-                        const pScores = me?.scores || {};
-                        let aSum = 0; let aCnt = 0;
-                        let bSum = 0; let bCnt = 0;
-                        for (const [kStr, v] of Object.entries(pScores)) {
-                          const baseH = ((Number(kStr) - 1) % 1000) + 1;
-                          if (baseH >= 1 && baseH <= 9 && Number(v) > 0) { aSum += Number(v); aCnt++; }
-                          if (baseH >= 10 && baseH <= 18 && Number(v) > 0) { bSum += Number(v); bCnt++; }
-                        }
-                        const courseSummary = (aCnt > 0 && bCnt > 0)
-                          ? `A ${aSum} · B ${bSum}`
-                          : `${me.totalStrokes}타 완주`;
+                    const maxCount = Math.max(...buckets.map((b) => b.count), 1);
+                    const selectedBucket = buckets.find((b) => b.id === selectedHistogramScore);
 
-                        // Par 기준 타수 차이 계산 (+undefined 버그 완벽 방어)
-                        const basePar = is18Holes ? 66 : (r.totalHoles && r.totalHoles <= 9 ? 33 : 66);
-                        const computedParDiff = me.totalParDiff !== undefined && !isNaN(Number(me.totalParDiff))
-                          ? Number(me.totalParDiff)
-                          : (me.totalStrokes - basePar);
-                        const parDiffText = computedParDiff === 0 ? '+0' : computedParDiff > 0 ? `+${computedParDiff}` : `${computedParDiff}`;
+                    return (
+                      <div className="bg-white border border-stone-200/90 rounded-2xl p-3 shadow-2xs space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm">📊</span>
+                            <span className="text-xs font-black text-stone-900">
+                              {isJapanese ? '打数別 達成回数ヒストグラム (分布実録)' : '타수별 달성 횟수 히스토그램 (내 타수 실록)'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-stone-400 font-bold">
+                            {isJapanese ? '棒タップで記録展開' : '막대 터치 시 해당 경기 펼침'}
+                          </span>
+                        </div>
 
-                        return (
-                          <button
-                            key={r.id || rIdx}
-                            type="button"
-                            onClick={() => setSelectedRoundForPopup(r)}
-                            className="w-full bg-white hover:bg-emerald-50/50 active:bg-emerald-100/60 p-3 rounded-2xl border border-stone-200/90 shadow-2xs hover:border-emerald-400 transition flex items-center justify-between gap-2.5 cursor-pointer text-left select-none"
+                        {/* 막대 그래프 수평/수직 스크롤 뷰 */}
+                        <div className="flex items-end gap-1.5 h-24 pt-4 px-1 overflow-x-auto">
+                          {buckets.map((b) => {
+                            const isSelected = selectedHistogramScore === b.id;
+                            const heightPercent = Math.max(12, Math.round((b.count / maxCount) * 100));
+                            return (
+                              <button
+                                key={b.id}
+                                type="button"
+                                onClick={() => setSelectedHistogramScore(isSelected ? null : b.id)}
+                                className={`flex-1 min-w-[28px] max-w-[42px] flex flex-col items-center justify-end h-full group cursor-pointer transition select-none ${
+                                  isSelected ? 'scale-105' : 'hover:opacity-90'
+                                }`}
+                                title={`${b.name}: ${b.count}회`}
+                              >
+                                <span className={`text-[9.5px] font-black mb-1 leading-none ${
+                                  isSelected ? 'text-amber-600 scale-110 font-black' : b.count > 0 ? 'text-stone-700' : 'text-stone-300'
+                                }`}>
+                                  {b.count}
+                                </span>
+                                <div
+                                  className={`w-full rounded-t-lg transition-all duration-300 ${b.color} ${
+                                    isSelected
+                                      ? 'ring-2 ring-amber-400 shadow-md brightness-110'
+                                      : b.count === 0 ? 'opacity-25' : 'shadow-2xs'
+                                  }`}
+                                  style={{ height: `${heightPercent}%` }}
+                                />
+                                <span className={`text-[8.5px] font-bold mt-1 leading-none truncate w-full text-center ${
+                                  isSelected ? 'text-amber-900 font-black' : 'text-stone-500'
+                                }`}>
+                                  {b.range}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* 선택된 타수대의 라운드 목록 펼침 아코디언 */}
+                        {selectedBucket && (
+                          <div className="pt-2 border-t border-stone-100 animate-in fade-in space-y-1.5">
+                            <div className="flex items-center justify-between text-xs font-black text-stone-800">
+                              <span className="flex items-center gap-1 text-emerald-800">
+                                <span>🎯</span>
+                                <span>{selectedBucket.name} ({selectedBucket.count}회 기록)</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedHistogramScore(null)}
+                                className="text-[10px] text-stone-400 hover:text-stone-600 font-bold"
+                              >
+                                ✕ {isJapanese ? '閉じる' : '접기'}
+                              </button>
+                            </div>
+                            {selectedBucket.rounds.length > 0 ? (
+                              <div className="max-h-40 overflow-y-auto space-y-1.5 pr-0.5">
+                                {selectedBucket.rounds.map((r, idx) => {
+                                  const me = meOf(r);
+                                  const dStr = r.completedAt ? r.completedAt.slice(0, 10) : '';
+                                  return (
+                                    <div
+                                      key={r.id || idx}
+                                      onClick={() => setSelectedRoundForPopup(r)}
+                                      className="p-2 bg-stone-50 hover:bg-emerald-50 rounded-xl border border-stone-200/80 flex items-center justify-between cursor-pointer transition text-xs shadow-2xs"
+                                    >
+                                      <div className="min-w-0">
+                                        <div className="font-black text-stone-900 truncate">
+                                          ⛳ {r.courseName}
+                                        </div>
+                                        <div className="text-[10.5px] text-stone-500 font-medium">
+                                          {dStr} · {r.totalHoles || 18}H
+                                        </div>
+                                      </div>
+                                      <div className="text-right shrink-0">
+                                        <div className="font-black text-emerald-700">
+                                          {me.totalStrokes}타
+                                        </div>
+                                        <div className="text-[9.5px] text-stone-400 font-bold">
+                                          {isJapanese ? 'スコア詳細 ❯' : '스코어카드 ❯'}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="text-[11px] text-stone-400 text-center py-2">
+                                {isJapanese ? '該当する打数の競技がありません' : '해당 타수의 경기 기록이 없습니다'}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* 3. 타임라인 정렬 칩 [최신순 vs 라베순] & 구장 필터 드롭다운 */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex bg-stone-100 p-0.5 rounded-xl border border-stone-200 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setTimelineSort('LATEST')}
+                        className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer flex items-center gap-1 ${
+                          timelineSort === 'LATEST'
+                            ? 'bg-white text-stone-900 shadow-2xs border border-stone-300'
+                            : 'text-stone-500 hover:text-stone-800'
+                        }`}
+                      >
+                        <span>⏱️</span>
+                        <span>{isJapanese ? '最新順' : '최신 경기순'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTimelineSort('BEST_SCORE')}
+                        className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer flex items-center gap-1 ${
+                          timelineSort === 'BEST_SCORE'
+                            ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-stone-950 shadow-2xs font-black'
+                            : 'text-stone-500 hover:text-stone-800'
+                        }`}
+                      >
+                        <span>🏆</span>
+                        <span>{isJapanese ? '生涯ベスト(ラベ)順' : '역대 최저타수순 (라베순)'}</span>
+                      </button>
+                    </div>
+
+                    {/* 구장 필터 드롭다운 */}
+                    {completedRounds.length > 0 && (() => {
+                      const uniqueCourses = Array.from(new Set(completedRounds.map((r) => r.courseName).filter(Boolean)));
+                      return (
+                        <div className="relative">
+                          <select
+                            value={timelineCourseFilter}
+                            onChange={(e) => setTimelineCourseFilter(e.target.value)}
+                            className="text-[11px] font-bold bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 pr-6 text-stone-800 shadow-2xs focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer truncate max-w-[140px]"
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              {/* 📸 [대표님 핵심 지시]: 사진이 있으면 실제 현장 사진 썸네일, 없으면 기본 날짜 박스 */}
-                              {hasPhotos ? (
-                                <div className="w-12 h-12 rounded-2xl border-2 border-amber-400 overflow-hidden relative shrink-0 shadow-xs bg-gradient-to-br from-emerald-700 to-teal-800 flex items-center justify-center">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={r.photos![0]}
-                                    alt="인증샷"
-                                    className="w-full h-full object-cover absolute inset-0"
-                                    onError={(e) => {
-                                      (e.currentTarget as HTMLElement).style.display = 'none';
-                                    }}
-                                  />
-                                  <span className="text-lg select-none">📸</span>
-                                  <div className="absolute top-0.5 right-0.5 bg-black/70 text-white text-[8px] font-black px-1 rounded-sm z-10">
-                                    📸
-                                  </div>
-                                  <div className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-2xs text-white text-[8px] font-black text-center py-0.2 z-10">
-                                    {String(dObj.getMonth() + 1).padStart(2, '0')}.{String(dObj.getDate()).padStart(2, '0')}
-                                  </div>
+                            <option value="ALL">
+                              {isJapanese ? '⛳ 全コース' : '⛳ 전체 구장'}
+                            </option>
+                            {uniqueCourses.map((cName) => (
+                              <option key={cName} value={cName}>
+                                ⛳ {cName}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-3 h-3 text-stone-400 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* 4. 날짜별 한 줄 카드 목록 */}
+                  {(() => {
+                    const meOf = (r: RoundSession) => {
+                      return (r.players && r.players.length > 0)
+                        ? (r.players.find((p) => p.isSelf) || r.players[0])
+                        : ({ id: 'me', name: '나', totalStrokes: (r as any).totalScore || 54, totalParDiff: 0, scores: {}, obCount: {} } as any);
+                    };
+
+                    let displayedRounds = [...completedRounds];
+                    if (timelineCourseFilter !== 'ALL') {
+                      displayedRounds = displayedRounds.filter((r) => r.courseName === timelineCourseFilter);
+                    }
+
+                    if (timelineSort === 'BEST_SCORE') {
+                      displayedRounds.sort((a, b) => {
+                        const aScore = meOf(a).totalStrokes || 999;
+                        const bScore = meOf(b).totalStrokes || 999;
+                        if (aScore !== bScore) return aScore - bScore;
+                        return new Date(b.completedAt || 0).getTime() - new Date(a.completedAt || 0).getTime();
+                      });
+                    } else {
+                      displayedRounds.sort((a, b) => new Date(b.completedAt || 0).getTime() - new Date(a.completedAt || 0).getTime());
+                    }
+
+                    if (displayedRounds.length === 0) {
+                      return (
+                        <div className="bg-stone-50 rounded-2xl p-6 text-center border border-stone-200 space-y-2">
+                          <div className="text-3xl">⛳</div>
+                          <div className="font-black text-sm text-stone-800">
+                            {completedRounds.length > 0
+                              ? (isJapanese ? '該当するコースの記録がありません' : '해당 구장의 경기 타임라인이 없습니다')
+                              : (isJapanese ? 'まだ完了した競技記録がありません' : '아직 기록된 경기 타임라인이 없습니다')}
+                          </div>
+                          <p className="text-xs text-stone-500 leading-relaxed">
+                            {isJapanese
+                              ? 'ラウンドを完了すると、あなたの全競技記録がタイムライン順に1行ずつ自動保存されます。'
+                              : '라운드를 완료하시면 내가 플레이한 경기 기록이 시간 순서대로 한 줄씩 타임라인에 안전하게 보관됩니다.'}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2">
+                        {displayedRounds.map((r, rIdx) => {
+                          const me = (r.players && r.players.length > 0)
+                            ? (r.players.find((p) => p.isSelf) || r.players[0])
+                            : ({ id: 'me', name: '나', totalStrokes: (r as any).totalScore || 54, totalParDiff: 0, scores: {}, obCount: {} } as any);
+                          const sortedPlayers = [...(r.players || [])].sort((a, b) => (a.totalStrokes || 0) - (b.totalStrokes || 0));
+                          const myRank = sortedPlayers.findIndex((p) => p.id === me?.id || p.name === me?.name) + 1 || 1;
+                          const is18Holes = (r.totalHoles && r.totalHoles >= 18) || Object.keys(me?.scores || {}).length >= 18 || (r as any).holes >= 18;
+                          const isOfficial = r.isOfficial !== false;
+                          const sessionPhotos = chroniclePhotos.filter((p) => p.sessionId === r.id);
+                          const combinedPhotosCount = Math.max(sessionPhotos.length, r.photos?.length || 0);
+                          const hasPhotos = combinedPhotosCount > 0;
+
+                          // 날짜 포맷 (한 줄에 최적화: 2026.10.02 (금))
+                          const dObj = r.completedAt ? new Date(r.completedAt) : new Date();
+
+                          // 코스별 점수 요약 문자열 (A 35 · B 35)
+                          const pScores = me?.scores || {};
+                          let aSum = 0; let aCnt = 0;
+                          let bSum = 0; let bCnt = 0;
+                          for (const [kStr, v] of Object.entries(pScores)) {
+                            const baseH = ((Number(kStr) - 1) % 1000) + 1;
+                            if (baseH >= 1 && baseH <= 9 && Number(v) > 0) { aSum += Number(v); aCnt++; }
+                            if (baseH >= 10 && baseH <= 18 && Number(v) > 0) { bSum += Number(v); bCnt++; }
+                          }
+                          const courseSummary = (aCnt > 0 && bCnt > 0)
+                            ? `A ${aSum} · B ${bSum}`
+                            : `${me.totalStrokes}타 완주`;
+
+                          // Par 기준 타수 차이 계산 (+undefined 버그 완벽 방어)
+                          const basePar = is18Holes ? 66 : (r.totalHoles && r.totalHoles <= 9 ? 33 : 66);
+                          const computedParDiff = me.totalParDiff !== undefined && !isNaN(Number(me.totalParDiff))
+                            ? Number(me.totalParDiff)
+                            : (me.totalStrokes - basePar);
+                          const parDiffText = computedParDiff === 0 ? '+0' : computedParDiff > 0 ? `+${computedParDiff}` : `${computedParDiff}`;
+
+                          // 라베순 정렬 시 상위 3위 특별 시각화
+                          const isBestScoreMode = timelineSort === 'BEST_SCORE';
+                          const isFirstBest = isBestScoreMode && rIdx === 0;
+                          const isSecondBest = isBestScoreMode && rIdx === 1;
+                          const isThirdBest = isBestScoreMode && rIdx === 2;
+
+                          return (
+                            <div
+                              key={r.id || rIdx}
+                              className={`w-full bg-white hover:bg-stone-50/70 p-3 rounded-2xl border transition select-none ${
+                                isFirstBest
+                                  ? 'border-2 border-amber-400 bg-gradient-to-br from-amber-50/60 via-white to-amber-100/30 shadow-sm ring-1 ring-amber-300/50'
+                                  : isSecondBest
+                                  ? 'border-slate-300 shadow-2xs'
+                                  : isThirdBest
+                                  ? 'border-amber-700/30 shadow-2xs'
+                                  : 'border-stone-200/90 shadow-2xs'
+                              }`}
+                            >
+                              {/* 라베 순위 뱃지 */}
+                              {isFirstBest && (
+                                <div className="mb-2 py-0.5 px-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-stone-950 font-black text-[10px] rounded-lg inline-flex items-center gap-1 shadow-2xs">
+                                  <span>👑</span>
+                                  <span>{isJapanese ? '生涯不滅のラベ 1位' : '👑 평생 불멸의 라베 1위'}</span>
                                 </div>
-                              ) : (
-                                <div className="w-12 h-12 rounded-2xl bg-stone-100 border border-stone-200 flex flex-col items-center justify-center shrink-0">
-                                  <span className="text-[10px] text-stone-500 font-bold leading-tight">
-                                    {String(dObj.getMonth() + 1).padStart(2, '0')}.{String(dObj.getDate()).padStart(2, '0')}
-                                  </span>
-                                  <span className="text-xs font-black text-stone-800 leading-tight">
-                                    {['일', '월', '화', '수', '목', '금', '토'][dObj.getDay()]}
-                                  </span>
+                              )}
+                              {isSecondBest && (
+                                <div className="mb-2 py-0.5 px-2 bg-slate-200 text-slate-800 font-black text-[10px] rounded-lg inline-flex items-center gap-1">
+                                  <span>🥈</span>
+                                  <span>{isJapanese ? '歴代 2位 記録' : '🥈 역대 2위 기록'}</span>
+                                </div>
+                              )}
+                              {isThirdBest && (
+                                <div className="mb-2 py-0.5 px-2 bg-amber-100 text-amber-900 font-black text-[10px] rounded-lg inline-flex items-center gap-1">
+                                  <span>🥉</span>
+                                  <span>{isJapanese ? '歴代 3位 記録' : '🥉 역대 3위 기록'}</span>
                                 </div>
                               )}
 
-                              {/* 경기 제원 및 코스 요약 */}
-                              <div className="text-left min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className="text-xs font-black text-stone-900 truncate">
-                                    ⛳ {r.courseName}
-                                  </span>
-                                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-black shrink-0 ${isOfficial ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'}`}>
-                                    {is18Holes ? '18H' : `${r.totalHoles || 9}H`}
-                                  </span>
-                                </div>
-                                {/* [대표님 핵심 지시]: 불필요한 OB N회 자리에 [📸 사진 N장] 마크 표출 */}
-                                <div className="text-[10.5px] text-stone-500 font-medium mt-0.5 flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-stone-700 font-bold">{courseSummary}</span>
-                                  {hasPhotos && (
-                                    <span className="text-[9.5px] bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full shadow-2xs flex items-center gap-0.5 border border-amber-300">
-                                      <span>📸</span>
-                                      <span>사진 {r.photos!.length}장</span>
-                                    </span>
+                              {/* 상단: 경기 제원 및 스코어 (클릭 시 스코어보드 팝업) */}
+                              <div
+                                onClick={() => setSelectedRoundForPopup(r)}
+                                className="flex items-center justify-between gap-2.5 cursor-pointer"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  {/* 대표 사진 또는 날짜 박스 */}
+                                  {hasPhotos ? (
+                                    <div className="w-12 h-12 rounded-2xl border-2 border-amber-400 overflow-hidden relative shrink-0 shadow-xs bg-gradient-to-br from-emerald-700 to-teal-800 flex items-center justify-center">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={sessionPhotos[0]?.thumbnailUrl || sessionPhotos[0]?.imageUrl || r.photos![0]}
+                                        alt="인증샷"
+                                        className="w-full h-full object-cover absolute inset-0"
+                                        onError={(e) => {
+                                          (e.currentTarget as HTMLElement).style.display = 'none';
+                                        }}
+                                      />
+                                      <span className="text-lg select-none">📸</span>
+                                      <div className="absolute top-0.5 right-0.5 bg-black/70 text-white text-[8px] font-black px-1 rounded-sm z-10">
+                                        📸
+                                      </div>
+                                      <div className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-2xs text-white text-[8px] font-black text-center py-0.2 z-10">
+                                        {String(dObj.getMonth() + 1).padStart(2, '0')}.{String(dObj.getDate()).padStart(2, '0')}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="w-12 h-12 rounded-2xl bg-stone-100 border border-stone-200 flex flex-col items-center justify-center shrink-0">
+                                      <span className="text-[10px] text-stone-500 font-bold leading-tight">
+                                        {String(dObj.getMonth() + 1).padStart(2, '0')}.{String(dObj.getDate()).padStart(2, '0')}
+                                      </span>
+                                      <span className="text-xs font-black text-stone-800 leading-tight">
+                                        {['일', '월', '화', '수', '목', '금', '토'][dObj.getDay()]}
+                                      </span>
+                                    </div>
                                   )}
-                                  {sortedPlayers.length > 1 && (
-                                    <span>· 👥 {sortedPlayers.length}명</span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
 
-                            {/* 우측 순위 & 최종 타수 & 이동 화살표 */}
-                            <div className="flex items-center gap-2 shrink-0">
-                              <div className="text-right">
-                                <div className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded inline-block">
-                                  {myRank === 1 ? '🥇 1위' : `${myRank}위`}
+                                  {/* 경기 제원 및 코스 요약 */}
+                                  <div className="text-left min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className="text-xs font-black text-stone-900 truncate">
+                                        ⛳ {r.courseName}
+                                      </span>
+                                      <span className={`text-[9px] px-1.5 py-0.2 rounded font-black shrink-0 ${isOfficial ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'}`}>
+                                        {is18Holes ? '18H' : `${r.totalHoles || 9}H`}
+                                      </span>
+                                    </div>
+                                    <div className="text-[10.5px] text-stone-500 font-medium mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-stone-700 font-bold">{courseSummary}</span>
+                                      {hasPhotos && (
+                                        <span className="text-[9.5px] bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full shadow-2xs flex items-center gap-0.5 border border-amber-300">
+                                          <span>📸</span>
+                                          <span>사진 {combinedPhotosCount}장</span>
+                                        </span>
+                                      )}
+                                      {sortedPlayers.length > 1 && (
+                                        <span>· 👥 {sortedPlayers.length}명</span>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="text-sm font-black text-stone-950 leading-tight mt-0.5">
-                                  {me.totalStrokes}타
-                                  <span className="text-[10px] text-stone-500 font-medium ml-0.5">
-                                    ({parDiffText})
-                                  </span>
+
+                                {/* 우측 순위 & 최종 타수 & 이동 화살표 */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <div className="text-right">
+                                    <div className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded inline-block">
+                                      {myRank === 1 ? '🥇 1위' : `${myRank}위`}
+                                    </div>
+                                    <div className="text-sm font-black text-stone-950 leading-tight mt-0.5">
+                                      {me.totalStrokes}타
+                                      <span className="text-[10px] text-stone-500 font-medium ml-0.5">
+                                        ({parDiffText})
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />
                                 </div>
                               </div>
-                              <ChevronRight className="w-4 h-4 text-stone-400 shrink-0" />
+
+                              {/* 라베 1위 전용 풀스크린 뷰어 호출 버튼 */}
+                              {isFirstBest && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setWatermarkCardSession(r);
+                                    setWatermarkCardInitialImage(sessionPhotos[0]?.imageUrl || r.photos?.[0] || null);
+                                    setShowWatermarkCardModal(true);
+                                  }}
+                                  className="w-full mt-2.5 py-2 px-3 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 border border-amber-300"
+                                >
+                                  <span>🏆</span>
+                                  <span>{isJapanese ? '生涯ベスト 殿堂カードを見る (共有)' : '인생 라베 명예 전당 카드 보기 (카톡/밴드 공유)'}</span>
+                                  <ArrowRight className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              {/* 하단 미니 포토 영역 (누가·언제·어디서 연계) */}
+                              <div className="mt-2.5 pt-2 border-t border-stone-100 flex items-center justify-between gap-2">
+                                {sessionPhotos.length > 0 ? (
+                                  <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 flex-1 min-w-0">
+                                    {sessionPhotos.slice(0, 4).map((p) => (
+                                      <button
+                                        key={p.id}
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedPhotoForViewer(p);
+                                          setShowPhotoViewerModal(true);
+                                        }}
+                                        className="w-10 h-10 rounded-xl overflow-hidden border border-amber-300 shrink-0 hover:scale-105 transition cursor-pointer relative shadow-2xs group"
+                                        title={p.holeInfo || '사진 보기'}
+                                      >
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                          src={p.thumbnailUrl || p.imageUrl}
+                                          alt=""
+                                          className="w-full h-full object-cover"
+                                        />
+                                      </button>
+                                    ))}
+                                    {sessionPhotos.length > 4 && (
+                                      <span className="text-[10px] font-bold text-stone-500 shrink-0">
+                                        +{sessionPhotos.length - 4}
+                                      </span>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setUploadTargetSession(r);
+                                        setShowPhotoUploadModal(true);
+                                      }}
+                                      className="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center text-xs font-bold transition shrink-0 cursor-pointer"
+                                      title={isJapanese ? '写真追加' : '사진 추가'}
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setUploadTargetSession(r);
+                                      setShowPhotoUploadModal(true);
+                                    }}
+                                    className="text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-xl flex items-center gap-1 transition cursor-pointer border border-emerald-200/60"
+                                  >
+                                    <span>📷</span>
+                                    <span>{isJapanese ? '+ 写真を登録' : '+ 사진 등록'}</span>
+                                  </button>
+                                )}
+                                <span className="text-[10px] text-stone-400 font-medium shrink-0">
+                                  {isJapanese ? 'スコア詳細 ➔' : '상세 스코어 ➔'}
+                                </span>
+                              </div>
                             </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="bg-stone-50 rounded-2xl p-6 text-center border border-stone-200 space-y-2">
-                      <div className="text-3xl">⛳</div>
-                      <div className="font-black text-sm text-stone-800">
-                        {isJapanese ? 'まだ完了した競技記録がありません' : '아직 기록된 경기 타임라인이 없습니다'}
+                          );
+                        })}
                       </div>
-                      <p className="text-xs text-stone-500 leading-relaxed">
-                        {isJapanese
-                          ? 'ラウンドを完了すると、あなたの全競技記録がタイムライン順に1行ずつ自動保存されます。'
-                          : '라운드를 완료하시면 내가 플레이한 경기 기록이 시간 순서대로 한 줄씩 타임라인에 안전하게 보관됩니다.'}
-                      </p>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
 
-              {/* ======================= [탭 2: 🏅 방문 구장 & 기념 메달] ======================= */}
+              {/* ======================= [탭 2: 📷 포토 앨범 (추억의 갤러리)] ======================= */}
+              {statsSubTab === 'PHOTO_ALBUM' && (() => {
+                const uniqueCourseNames = Array.from(
+                  new Set([
+                    ...chroniclePhotos.map((p) => p.courseName).filter(Boolean),
+                    ...completedRounds.map((r) => r.courseName).filter(Boolean),
+                  ])
+                );
+
+                const uniqueCompanions = Array.from(
+                  new Set([
+                    ...chroniclePhotos.flatMap((p) => p.companions || []),
+                    ...completedRounds.flatMap((r) => (r.players || []).map((pl) => pl.name).filter(Boolean)),
+                  ])
+                ).map((c) => c.trim()).filter((c) => Boolean(c) && c !== '나' && c !== '본인' && c !== '私');
+
+                const matchCompanion = (photo: ChroniclePhotoItem, targetCompanion: string) => {
+                  if (photo.companions && photo.companions.some((c) => c.trim().toLowerCase() === targetCompanion.trim().toLowerCase())) {
+                    return true;
+                  }
+                  if (photo.sessionId) {
+                    const round = completedRounds.find((r) => r.id === photo.sessionId);
+                    if (round && round.players && round.players.some((pl) => pl.name.trim().toLowerCase() === targetCompanion.trim().toLowerCase())) {
+                      return true;
+                    }
+                  }
+                  return false;
+                };
+
+                let filteredPhotos = chroniclePhotos;
+                if (photoAlbumFilterCourse !== 'ALL') {
+                  filteredPhotos = filteredPhotos.filter((p) => p.courseName === photoAlbumFilterCourse);
+                }
+                if (photoAlbumFilterCompanion !== 'ALL') {
+                  filteredPhotos = filteredPhotos.filter((p) => matchCompanion(p, photoAlbumFilterCompanion));
+                }
+
+                return (
+                  <div className="space-y-3.5">
+                    {/* 상단 컨트롤 바: [구장 필터 ▼] + [동반자별 보기 ▼] + [+ 사진 올리기] */}
+                    <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+                      {/* 1. 구장 필터 */}
+                      <div className="relative flex-1 min-w-[125px]">
+                        <select
+                          value={photoAlbumFilterCourse}
+                          onChange={(e) => setPhotoAlbumFilterCourse(e.target.value)}
+                          className="w-full text-xs font-bold bg-white border border-stone-200 rounded-xl px-2.5 py-2 pr-6 text-stone-800 shadow-2xs focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer truncate"
+                        >
+                          <option value="ALL">
+                            {isJapanese ? '⚡ 全コース写真' : '⚡ 전체 구장 보기'} ({chroniclePhotos.length})
+                          </option>
+                          {uniqueCourseNames.map((cName) => {
+                            const count = chroniclePhotos.filter((p) => p.courseName === cName).length;
+                            return (
+                              <option key={cName} value={cName}>
+                                ⛳ {cName} ({count})
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <ChevronDown className="w-3.5 h-3.5 text-stone-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+
+                      {/* 2. 동반자 필터 */}
+                      <div className="relative flex-1 min-w-[115px]">
+                        <select
+                          value={photoAlbumFilterCompanion}
+                          onChange={(e) => setPhotoAlbumFilterCompanion(e.target.value)}
+                          className="w-full text-xs font-bold bg-white border border-stone-200 rounded-xl px-2.5 py-2 pr-6 text-stone-800 shadow-2xs focus:outline-none focus:border-emerald-500 appearance-none cursor-pointer truncate"
+                        >
+                          <option value="ALL">
+                            {isJapanese ? '👥 同伴者別' : '👥 동반자별 보기'}
+                          </option>
+                          {uniqueCompanions.map((comp) => {
+                            const count = chroniclePhotos.filter((p) => matchCompanion(p, comp)).length;
+                            return (
+                              <option key={comp} value={comp}>
+                                👤 {comp} ({count})
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <ChevronDown className="w-3.5 h-3.5 text-stone-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+
+                      {/* 3. 사진 올리기 버튼 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUploadTargetSession(null);
+                          setShowPhotoUploadModal(true);
+                        }}
+                        className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-2xs flex items-center gap-1 transition cursor-pointer shrink-0 active:scale-98"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>{isJapanese ? '写真追加' : '사진 올리기'}</span>
+                      </button>
+                    </div>
+
+                    {/* 3열 바둑판 그리드 갤러리 */}
+                    {filteredPhotos.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        {filteredPhotos.map((photo) => (
+                          <div
+                            key={photo.id}
+                            onClick={() => {
+                              setSelectedPhotoForViewer(photo);
+                              setShowPhotoViewerModal(true);
+                            }}
+                            className="aspect-square rounded-2xl overflow-hidden relative cursor-pointer group shadow-2xs border border-stone-200/90 hover:border-emerald-400 hover:shadow-md transition bg-stone-900"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={photo.thumbnailUrl || photo.imageUrl}
+                              alt={photo.courseName}
+                              className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                              loading="lazy"
+                            />
+
+                            {/* 상단 타수/순위 배지 */}
+                            {photo.scoreSummary && (
+                              <div className="absolute top-1 left-1 bg-black/70 backdrop-blur-2xs text-amber-300 font-black text-[9px] px-1.5 py-0.2 rounded-md shadow-xs">
+                                🏆 {photo.scoreSummary}
+                              </div>
+                            )}
+
+                            {/* 하단 구장명 미니 배지 */}
+                            <div className="absolute bottom-1 right-1 max-w-[90%] bg-black/65 backdrop-blur-2xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded truncate select-none">
+                              {photo.courseName}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-stone-50 rounded-2xl p-6 text-center border border-dashed border-stone-300 space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 text-2xl mx-auto flex items-center justify-center font-bold shadow-inner">
+                          📷
+                        </div>
+                        <div>
+                          <div className="font-black text-sm text-stone-800">
+                            {isJapanese ? 'まだ登録された写真がありません' : '아직 등록된 사진이 없습니다'}
+                          </div>
+                          <p className="text-xs text-stone-500 leading-relaxed mt-1">
+                            {isJapanese
+                              ? '全国コースでの素敵な瞬間や同伴者との認証ショットをアルバムに残してみましょう！'
+                              : '전국 구장에서 찍은 멋진 라운드 인증샷이나 동반자와의 추억을 앨범에 보관해 보세요!'}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUploadTargetSession(null);
+                            setShowPhotoUploadModal(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md cursor-pointer transition active:scale-98"
+                        >
+                          <Camera className="w-4 h-4" />
+                          <span>{isJapanese ? '最初の写真を登録する' : '첫 사진 올리기'}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* ======================= [탭 3: 🏅 방문 구장 & 기념 메달] ======================= */}
               {statsSubTab === 'MEDALS_COURSES' && (() => {
                 // 1. 방문 구장 집계 (국내 vs 일본/해외 투어 구분)
                 const visitedCoursesMap: Record<string, {
@@ -1731,78 +2335,181 @@ export default function HomePage() {
                 const koreaCourses = visitedCoursesList.filter((c) => !c.isOverseas);
                 const overseasCourses = visitedCoursesList.filter((c) => c.isOverseas);
 
-                // 2. 기념 메달 8종 판별
+                // 2. 기념 메달 19종 실전형 판별 (파크골프 규격 반영)
+                const meOf = (r: RoundSession) => {
+                  return (r.players && r.players.length > 0)
+                    ? (r.players.find((p) => p.isSelf) || r.players[0])
+                    : ({ id: 'me', name: '나', totalStrokes: (r as any).totalScore || 54, totalParDiff: 0, scores: {}, obCount: {} } as any);
+                };
+
+                const total9Holes = completedRounds.reduce((acc, r) => {
+                  const me = meOf(r);
+                  const is18 = (r.totalHoles && r.totalHoles >= 18) || Object.keys(me?.scores || {}).length >= 18 || (r as any).holes >= 18;
+                  return acc + (is18 ? 2 : 1);
+                }, 0);
+
+                const totalOb = completedRounds.reduce((acc, r) => {
+                  const me = meOf(r);
+                  return acc + Object.values(me?.obCount || {}).reduce<number>((s, c) => s + (Number(c) || 0), 0);
+                }, 0);
+                const avgObPer9Holes = total9Holes > 0 ? (totalOb / total9Holes) : 0;
+
+                const best18Score = Math.min(
+                  ...completedRounds.map((r) => {
+                    const me = meOf(r);
+                    const is18 = (r.totalHoles && r.totalHoles >= 18) || Object.keys(me?.scores || {}).length >= 18 || (r as any).holes >= 18;
+                    const s = me?.totalStrokes || (r as any).totalScore || 0;
+                    return (is18 && s > 0) ? s : 999;
+                  }),
+                  999
+                );
+
                 const medals = [
+                  // 1) 50대 타수 (1타 단위 계단식 칭호)
                   {
-                    id: 'first_finish',
+                    id: 'stroke_59',
+                    icon: '🦅',
+                    title: isJapanese ? '50台突入！アンダーパー名人' : '5자 영접! 언더파 명인',
+                    desc: isJapanese ? '18H 59打以下 (-7)' : '18홀 59타 이하 (-7)',
+                    unlocked: best18Score <= 59,
+                  },
+                  {
+                    id: 'stroke_58',
+                    icon: '🎯',
+                    title: isJapanese ? 'フィールドの勝負師' : '필드의 승부사',
+                    desc: isJapanese ? '18H 58打以下 (-8)' : '18홀 58타 이하 (-8)',
+                    unlocked: best18Score <= 58,
+                  },
+                  {
+                    id: 'stroke_57',
+                    icon: '⚡',
+                    title: isJapanese ? '絶対感覚の支配者' : '절대 감각의 지배자',
+                    desc: isJapanese ? '18H 57打以下 (-9)' : '18홀 57타 이하 (-9)',
+                    unlocked: best18Score <= 57,
+                  },
+                  {
+                    id: 'stroke_56',
+                    icon: '🏹',
+                    title: isJapanese ? '神弓の境地' : '신궁(神弓)의 경지',
+                    desc: isJapanese ? '18H 56打以下 (-10)' : '18홀 56타 이하 (-10)',
+                    unlocked: best18Score <= 56,
+                  },
+                  {
+                    id: 'stroke_55',
                     icon: '🥇',
-                    title: isJapanese ? '初18H完走' : '첫 18홀 완주',
-                    desc: isJapanese ? '公式18ホール初完走' : '첫 공식 18홀 완주 달성',
-                    unlocked: completedRounds.length >= 1,
+                    title: isJapanese ? '全国区チャンピオン級' : '전국구 챔피언급',
+                    desc: isJapanese ? '18H 55打以下 (-11)' : '18홀 55타 이하 (-11)',
+                    unlocked: best18Score <= 55,
                   },
                   {
-                    id: 'champion',
+                    id: 'stroke_54',
                     icon: '👑',
-                    title: isJapanese ? '同伴制覇 1位' : '동반자 제패 1위',
-                    desc: isJapanese ? '同伴競技で堂々の1位' : '동반 라운드 당당히 1위 우승',
-                    unlocked: completedRounds.some((r) => {
-                      const sorted = [...(r.players || [])].sort((a, b) => (a.totalStrokes || 0) - (b.totalStrokes || 0));
-                      const me = r.players?.find((p) => p.isSelf) || r.players?.[0];
-                      return (sorted[0]?.id === me?.id || sorted[0]?.name === me?.name) && sorted.length > 1;
-                    }),
+                    title: isJapanese ? '不滅のラベ' : '불멸의 라베',
+                    desc: isJapanese ? '18H 54打以下 (-12)' : '18홀 54타 이하 (-12)',
+                    unlocked: best18Score <= 54,
                   },
                   {
-                    id: 'clean_round',
+                    id: 'stroke_50_53',
+                    icon: '✨',
+                    title: isJapanese ? '名将・ハーフバック伝説' : '명장 & 하프 백 전설',
+                    desc: isJapanese ? '18H 53打以下神域' : '18홀 53타 이하 신화의 영역',
+                    unlocked: best18Score <= 53,
+                  },
+
+                  // 2) 40대 타수 (기적과 신화의 영역)
+                  {
+                    id: 'stroke_49',
+                    icon: '🌌',
+                    title: isJapanese ? '奇跡の40台突入' : '기적의 40대 입성',
+                    desc: isJapanese ? '18H 49打以下超人的大記録' : '18홀 49타 이하 기적의 기록',
+                    unlocked: best18Score <= 49,
+                  },
+                  {
+                    id: 'stroke_48_below',
                     icon: '🌟',
-                    title: isJapanese ? 'ノーOB 完走' : '무결점 노(No) OB',
+                    title: isJapanese ? 'パークゴルフの神 (神域)' : '파크골프의 신(神)',
+                    desc: isJapanese ? '18H 48打以下不滅の神話' : '18홀 48타 이하 전설의 신화',
+                    unlocked: best18Score <= 48,
+                  },
+
+                  // 3) 9홀 누적 완주제 (마일리지 훈장)
+                  {
+                    id: 'milestone_9h_10',
+                    icon: '🌱',
+                    title: isJapanese ? 'フィールドの新芽 (10回)' : '필드의 새싹',
+                    desc: isJapanese ? '累計9ホール10回完走' : '누적 9홀 10회 완주',
+                    unlocked: total9Holes >= 10,
+                  },
+                  {
+                    id: 'milestone_9h_50',
+                    icon: '🏃',
+                    title: isJapanese ? '情熱ゴルファー (50回)' : '열정 골퍼',
+                    desc: isJapanese ? '累計9ホール50回完走' : '누적 9홀 50회 완주',
+                    unlocked: total9Holes >= 50,
+                  },
+                  {
+                    id: 'milestone_9h_100',
+                    icon: '🎖️',
+                    title: isJapanese ? '百戦錬磨の巨匠 (100回)' : '백전노장',
+                    desc: isJapanese ? '累計9ホール100回完走' : '누적 9홀 100회 완주 달성',
+                    unlocked: total9Holes >= 100,
+                  },
+                  {
+                    id: 'milestone_9h_500',
+                    icon: '🏰',
+                    title: isJapanese ? 'フィールドの主 (500回)' : '필드의 터줏대감',
+                    desc: isJapanese ? '累計9ホール500回完走' : '누적 9홀 500회 완주 달성',
+                    unlocked: total9Holes >= 500,
+                  },
+                  {
+                    id: 'milestone_9h_1000',
+                    icon: '🗽',
+                    title: isJapanese ? '不滅の伝説 (1000回)' : '불멸의 전설',
+                    desc: isJapanese ? '累計9ホール1,000回完走' : '누적 9홀 1,000회 대기록',
+                    unlocked: total9Holes >= 1000,
+                  },
+
+                  // 4) OB 지수 관리 훈장
+                  {
+                    id: 'ob_clean',
+                    icon: '🛡️',
+                    title: isJapanese ? 'ノーOB 無欠点完走' : '무결점 노(No) OB',
                     desc: isJapanese ? '18HノーOB完走' : '18홀 무결점 0 OB 완주',
                     unlocked: completedRounds.some((r) => {
-                      const me = r.players?.find((p) => p.isSelf) || r.players?.[0];
+                      const me = meOf(r);
                       const obTotal = Object.values(me?.obCount || {}).reduce<number>((acc, cur) => acc + (Number(cur) || 0), 0);
                       return obTotal === 0 && Boolean(r.completedAt || (me?.scores && Object.keys(me.scores).length >= 9));
                     }),
                   },
                   {
-                    id: 'under_par',
-                    icon: '🦅',
-                    title: isJapanese ? 'アンダーパー' : '명품 싱글/언더파',
-                    desc: isJapanese ? '72打以下の名手' : '18홀 72타 이하 명품 타수',
-                    unlocked: completedRounds.some((r) => {
-                      const me = r.players?.find((p) => p.isSelf) || r.players?.[0];
-                      const s = me?.totalStrokes || (r as any).totalScore || 999;
-                      return s > 0 && s <= 72;
-                    }),
+                    id: 'ob_stability',
+                    icon: '💎',
+                    title: isJapanese ? 'ショット安定マスター' : '샷 안정도 골드 훈장',
+                    desc: isJapanese ? '9H平均OB 0.5個以下の安定度' : '9홀당 평균 OB 0.5개 이하 안정 샷',
+                    unlocked: completedRounds.length >= 2 && avgObPer9Holes <= 0.5,
                   },
+
+                  // 5) 타지역 원정 순례 훈장
                   {
-                    id: 'tour_explorer',
+                    id: 'tour_3',
                     icon: '🗺️',
-                    title: isJapanese ? '全国ツアー開拓' : '전국 구장 원정',
-                    desc: isJapanese ? '2箇所以上のコース遠征' : '2곳 이상 서로 다른 구장 완주',
-                    unlocked: visitedCoursesList.length >= 2,
+                    title: isJapanese ? '三道巡礼者 (3コース)' : '삼도 순례자 (3개 구장)',
+                    desc: isJapanese ? '異なる3箇所のコース完走' : '서로 다른 3곳 구장 완주',
+                    unlocked: visitedCoursesList.length >= 3,
                   },
                   {
-                    id: 'field_passion',
-                    icon: '🔥',
-                    title: isJapanese ? '情熱マニア' : '필드 열정 마니아',
-                    desc: isJapanese ? '累計3回以上の完走' : '누적 3회 이상 완주 달성',
-                    unlocked: completedRounds.length >= 3 || userExpStats.activityPercent >= 20,
+                    id: 'tour_10',
+                    icon: '🧭',
+                    title: isJapanese ? '全国遠征隊長 (10コース)' : '전국 원정대장 (10개 구장)',
+                    desc: isJapanese ? '異なる10箇所のコース完走' : '서로 다른 10곳 구장 완주',
+                    unlocked: visitedCoursesList.length >= 10,
                   },
                   {
-                    id: 'team_friendship',
-                    icon: '🤝',
-                    title: isJapanese ? 'ワンチーム同伴' : '원팀 동반자 우정',
-                    desc: isJapanese ? '仲間との同伴ラウンド' : '동반자와 함께 호흡 맞춘 완주',
-                    unlocked: completedRounds.some((r) => (r.players?.length || 1) >= 2),
-                  },
-                  {
-                    id: 'hole_in_one',
-                    icon: '🎯',
-                    title: isJapanese ? 'ホールインワン' : '기적의 홀인원',
-                    desc: isJapanese ? '奇跡の神の一打' : '평생 잊지 못할 기적의 샷',
-                    unlocked: completedRounds.some((r) => {
-                      const me = r.players?.find((p) => p.isSelf) || r.players?.[0];
-                      return Object.values(me?.scores || {}).some((s) => Number(s) === 1);
-                    }),
+                    id: 'tour_30',
+                    icon: '🌏',
+                    title: isJapanese ? '生ける羅針盤 (30コース)' : '살아있는 나침반 (30개 구장)',
+                    desc: isJapanese ? '異なる30箇所のコース完走' : '서로 다른 30곳 구장 정복',
+                    unlocked: visitedCoursesList.length >= 30,
                   },
                 ];
 
@@ -2046,9 +2753,39 @@ export default function HomePage() {
                                           )}
                                         </div>
                                       </div>
-                                      <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center text-sm font-black shrink-0 shadow-2xs">
-                                        💮
-                                      </div>
+                                      {/* 구장 방문 스탬프 or 대표 인증샷 */}
+                                      {(() => {
+                                        const coursePhotos = chroniclePhotos.filter((p) => p.courseName === vc.courseName);
+                                        if (coursePhotos.length > 0) {
+                                          const heroPhoto = coursePhotos[0];
+                                          return (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setSelectedPhotoForViewer(heroPhoto);
+                                                setShowPhotoViewerModal(true);
+                                              }}
+                                              className="w-10 h-10 rounded-xl overflow-hidden border-2 border-emerald-400 relative shrink-0 shadow-2xs hover:scale-105 transition cursor-pointer"
+                                              title={isJapanese ? '代表写真を見る' : '구장 대표 인증샷 보기'}
+                                            >
+                                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                                              <img
+                                                src={heroPhoto.thumbnailUrl || heroPhoto.imageUrl}
+                                                alt=""
+                                                className="w-full h-full object-cover"
+                                              />
+                                              <div className="absolute bottom-0 right-0 bg-black/70 text-[8px] text-white px-0.5 rounded-tl font-bold">
+                                                📸
+                                              </div>
+                                            </button>
+                                          );
+                                        }
+                                        return (
+                                          <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center text-sm font-black shrink-0 shadow-2xs">
+                                            💮
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   );
                                 })}
@@ -2063,49 +2800,67 @@ export default function HomePage() {
                     {medalsViewSubTab === 'MEDALS_RANK' && (
                       <div className="space-y-3">
                         {/* 구장별 1~100위 랭킹 센터 */}
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setRankingMainTab('SKILL_100');
-                              setShowLeaderboard100Popup(true);
-                            }}
-                            className="p-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 font-black rounded-xl shadow-xs transition flex items-center justify-between cursor-pointer border border-amber-400/80 active:scale-[0.98]"
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="text-sm">🏆</span>
-                              <div className="text-left min-w-0">
-                                <div className="text-[11px] font-black text-stone-950 truncate">
-                                  {isJapanese ? '公認実力 1〜100位' : '공인 실력 1~100위'}
-                                </div>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-black text-stone-950 bg-white/70 px-1.5 py-0.5 rounded shrink-0">
-                              ❯
-                            </span>
-                          </button>
+                        {/* 전국 랭킹 상세 팝업 진입 버튼 2종 (내 순위 기반) */}
+                        {(() => {
+                          const TOTAL_GOLFERS = 150000;
+                          const rawSkillPercent = userExpStats.rankPercent ?? 8.6;
+                          const skillRank = Math.max(1, Math.round(TOTAL_GOLFERS * (rawSkillPercent / 100)));
+                          const skillPercentStr = rawSkillPercent.toFixed(1);
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setRankingMainTab('ACTIVITY_100');
-                              setShowLeaderboard100Popup(true);
-                            }}
-                            className="p-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black rounded-xl shadow-xs transition flex items-center justify-between cursor-pointer border border-emerald-500/80 active:scale-[0.98]"
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="text-sm">🔥</span>
-                              <div className="text-left min-w-0">
-                                <div className="text-[11px] font-black text-white truncate">
-                                  {isJapanese ? 'フィールド活動 1〜100位' : '필드 활동 1~100위'}
+                          const rawActivityPercent = Math.max(0.8, Number((100 - userExpStats.activityPercent).toFixed(1)));
+                          const activityRank = Math.max(1, Math.round(TOTAL_GOLFERS * (rawActivityPercent / 100)));
+                          const activityPercentStr = rawActivityPercent.toFixed(1);
+
+                          return (
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setShowRankingDetailPopup('SKILL')}
+                                className="p-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 font-black rounded-xl shadow-xs transition flex items-center justify-between cursor-pointer border border-amber-400/80 active:scale-[0.98]"
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="text-sm shrink-0">🏆</span>
+                                  <div className="text-left min-w-0">
+                                    <div className="text-[11px] font-black text-stone-950 truncate">
+                                      {isJapanese
+                                        ? `公認実力: 全国 ${skillRank.toLocaleString()}位`
+                                        : `공인 실력: 전국 ${skillRank.toLocaleString()}등`}
+                                    </div>
+                                    <div className="text-[9.5px] text-amber-950/80 font-bold leading-none mt-0.5 truncate">
+                                      {isJapanese ? `上位 ${skillPercentStr}%` : `상위 ${skillPercentStr}%`}
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
+                                <span className="text-[10px] font-black text-stone-950 bg-white/70 px-1.5 py-0.5 rounded shrink-0 ml-1">
+                                  ❯
+                                </span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setShowRankingDetailPopup('ACTIVITY')}
+                                className="p-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black rounded-xl shadow-xs transition flex items-center justify-between cursor-pointer border border-emerald-500/80 active:scale-[0.98]"
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="text-sm shrink-0">🔥</span>
+                                  <div className="text-left min-w-0">
+                                    <div className="text-[11px] font-black text-white truncate">
+                                      {isJapanese
+                                        ? `活動: 全国 ${activityRank.toLocaleString()}位`
+                                        : `필드 활동: 전국 ${activityRank.toLocaleString()}등`}
+                                    </div>
+                                    <div className="text-[9.5px] text-emerald-100 font-bold leading-none mt-0.5 truncate">
+                                      {isJapanese ? `上位 ${activityPercentStr}%` : `상위 ${activityPercentStr}% 열정파`}
+                                    </div>
+                                  </div>
+                                </div>
+                                <span className="text-[10px] font-black text-emerald-950 bg-white/90 px-1.5 py-0.5 rounded shrink-0 ml-1">
+                                  ❯
+                                </span>
+                              </button>
                             </div>
-                            <span className="text-[10px] font-black text-emerald-950 bg-white/90 px-1.5 py-0.5 rounded shrink-0">
-                              ❯
-                            </span>
-                          </button>
-                        </div>
+                          );
+                        })()}
 
                         {/* 나의 기념 메달 & 업적 컬렉션 */}
                         <div className="space-y-2">
@@ -3080,6 +3835,59 @@ export default function HomePage() {
         isOpen={showQuickGuideModal}
         onClose={() => setShowQuickGuideModal(false)}
         homeCourseId={homeCourse?.id}
+      />
+
+      {/* 📸 나의 파크골프 연대기 포토 상세 뷰어 모달 (누가·언제·어디서 + 메모 + 카톡 자랑 카드) */}
+      <ChroniclePhotoViewerModal
+        isOpen={showPhotoViewerModal}
+        onClose={() => setShowPhotoViewerModal(false)}
+        photo={selectedPhotoForViewer}
+        onPhotoDeleted={(delId) => {
+          setChroniclePhotos((prev) => prev.filter((p) => p.id !== delId));
+        }}
+        onOpenWatermarkCard={(p) => handleOpenWatermarkCardFromPhoto(p)}
+      />
+
+      {/* 📷 라운드 현장 사진 올리기 / 업로드 모달 (Canvas 자동 리사이징 & WebP 압축 탑재) */}
+      <ChroniclePhotoUploadModal
+        isOpen={showPhotoUploadModal}
+        onClose={() => setShowPhotoUploadModal(false)}
+        targetSession={uploadTargetSession}
+        completedSessions={completedRounds}
+        onPhotoUploaded={(newPhoto) => {
+          setChroniclePhotos((prev) => [newPhoto, ...prev]);
+          setCompletedRounds(ParkOnStorage.getCompletedRounds());
+        }}
+      />
+
+      {/* 💾 사진·연대기 안전 로컬 백업 & 복원 모달 */}
+      <ChronicleBackupModal
+        isOpen={showChronicleBackupModal}
+        onClose={() => setShowChronicleBackupModal(false)}
+        onDataRestored={() => {
+          ChroniclePhotoStorage.getAllPhotos().then((photos) => setChroniclePhotos(photos)).catch(() => {});
+          setCompletedRounds(ParkOnStorage.getCompletedRounds());
+        }}
+      />
+
+      {/* 📤 카톡/밴드 워터마크 자랑 카드 생성 모달 */}
+      <WatermarkPhotoCardModal
+        isOpen={showWatermarkCardModal}
+        onClose={() => setShowWatermarkCardModal(false)}
+        session={watermarkCardSession}
+        initialImage={watermarkCardInitialImage}
+      />
+
+      {/* 🏆 전국 랭킹 상세 팝업 (내 순위 기반 3개 탭 팝업: 내 순위&분석, 주변 라이벌, 전국 1~100위) */}
+      <NationalRankingDetailModal
+        isOpen={showRankingDetailPopup !== null}
+        onClose={() => setShowRankingDetailPopup(null)}
+        mode={showRankingDetailPopup || 'SKILL'}
+        userExpStats={userExpStats}
+        completedRounds={completedRounds}
+        userName={userProfile?.userName || (isJapanese ? 'パークゴルファー' : '파크골퍼')}
+        activeStatsCourse={activeStatsCourse}
+        activeLeaderboard100={activeLeaderboard100}
       />
 
       {/* 파크골프 올인원 소개 URL 복사 완료 토스트 */}
