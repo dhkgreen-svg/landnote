@@ -464,10 +464,14 @@ export function StoreRegisterModal({
               <div className="bg-amber-100/70 border border-amber-300 rounded-2xl p-3 space-y-2 animate-fadeIn">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-black text-amber-950">
-                    구장당 월 입찰 희망가 (최저 {minBid.toLocaleString()}{isJapanese ? '円' : '원'}부터)
+                    {isJapanese
+                      ? `コース別 月間希望入札額 (最低 ${minBid.toLocaleString()}円から)`
+                      : `구장당 월 입찰 희망가 (최저 ${minBid.toLocaleString()}원부터)`}
                   </span>
                   <span className="text-[10px] text-amber-800 font-bold">
-                    호가단위: +{bidStep.toLocaleString()}{isJapanese ? '円' : '원'}
+                    {isJapanese
+                      ? `入札単位: +${bidStep.toLocaleString()}円`
+                      : `호가단위: +${bidStep.toLocaleString()}원`}
                   </span>
                 </div>
 
@@ -483,7 +487,7 @@ export function StoreRegisterModal({
 
                   <div className="flex-1 bg-white border-2 border-amber-400 rounded-xl py-2 px-3 text-center">
                     <span className="text-base font-black text-amber-950">
-                      월 {bidAmount.toLocaleString()}
+                      {isJapanese ? '月' : '월'} {bidAmount.toLocaleString()}
                     </span>
                     <span className="text-xs font-bold text-amber-900 ml-1">
                       {isJapanese ? '円' : '원'}
@@ -507,7 +511,7 @@ export function StoreRegisterModal({
                       onClick={() => setBidAmount(isJapanese ? Math.round(preset / 10) : preset)}
                       className="text-[10px] bg-white border border-amber-300 px-2 py-1 rounded-lg font-black text-amber-950 hover:bg-amber-200 transition cursor-pointer"
                     >
-                      월 {(isJapanese ? Math.round(preset / 10) : preset).toLocaleString()}{isJapanese ? '円' : '원'}
+                      {isJapanese ? '月' : '월'} {(isJapanese ? Math.round(preset / 10) : preset).toLocaleString()}{isJapanese ? '円' : '원'}
                     </button>
                   ))}
                 </div>
