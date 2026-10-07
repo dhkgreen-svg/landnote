@@ -375,9 +375,7 @@ function NewRoundForm() {
   const currentLeader = playersList.find((p) => p.isLeader) || playersList[0];
   const leaderName = currentLeader?.name || '조장';
   const currentOrigin = typeof window !== 'undefined'
-    ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? `http://192.168.0.4:${window.location.port || '3008'}`
-        : window.location.origin)
+    ? window.location.origin
     : 'https://www.parkgolfallinone.com';
 
   const inviteUrl = useMemo(() => {
