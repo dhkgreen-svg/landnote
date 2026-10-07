@@ -291,11 +291,11 @@ export function getCourseDualName(
     : translateKoreanCourseNameToJapanese(cleanKo);
 
   if (isJapanese) {
-    // [Case 2] 일본 사람이 한국 구장에 왔을 때: 한글 1줄(현장 간판 원문) + 밑에 일본어 번역/음독 2줄
+    // [Case 2] 일본 모드: 일본 사용자 기준에 맞추어 일본어 표기(한자/가나)를 최우선 1순위(primary)로 표출
     return {
-      primary: cleanKo,
-      secondary: `(${translatedJa})`,
-      showSecondary: true,
+      primary: translatedJa,
+      secondary: cleanKo !== translatedJa ? `(${cleanKo})` : '',
+      showSecondary: cleanKo !== translatedJa,
       flag: '🇰🇷',
       cleanKo,
       cleanJa: translatedJa,

@@ -177,18 +177,18 @@ export function InstallPrompt() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/parky.jpg"
-                alt="파크골프 올인원 마스코트 파키"
+                alt={isJapanese ? 'パークゴルフ オールインワン マスコット パーキー' : '파크골프 올인원 마스코트 파키'}
                 className="w-16 h-16 rounded-2xl shadow-xl border-2 border-amber-300 bg-emerald-950 object-cover"
               />
               <span className="absolute -bottom-1 -right-1 bg-amber-400 text-emerald-950 rounded-full px-1.5 py-0.2 text-[9px] font-black shadow-xs">
-                파키
+                {isJapanese ? 'パーキー' : '파키'}
               </span>
             </div>
 
             {/* 2. 대문 타이틀 */}
             <div className="flex items-center justify-center gap-2">
               <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-sm">
-                파크골프 올인원
+                {isJapanese ? 'パークゴルフ オールインワン' : '파크골프 올인원'}
               </h2>
               <span className="bg-gradient-to-r from-amber-400 to-yellow-300 text-emerald-950 text-xs font-black px-2 py-0.5 rounded-md shadow-xs">
                 ParkGolf All-in-One
@@ -197,19 +197,21 @@ export function InstallPrompt() {
 
             {/* 스마트 부제 */}
             <p className="text-xs text-emerald-200/90 font-medium mt-1">
-              스마트 1초 스코어링 · 전국 400개 구장 실시간 날씨 · 룰 솔로몬 AI
+              {isJapanese
+                ? 'スマート1秒スコアリング・リアルタイム天気・公認ルールAI'
+                : '스마트 1초 스코어링 · 전국 400개 구장 실시간 날씨 · 룰 솔로몬 AI'}
             </p>
 
             {/* 3대 스마트 특징 뱃지 */}
             <div className="flex items-center justify-center gap-1.5 mt-3 flex-wrap">
               <span className="bg-emerald-950/80 border border-emerald-600/60 text-emerald-200 text-[11px] font-bold px-2.5 py-1 rounded-full">
-                ⚡ 1초 스코어
+                {isJapanese ? '⚡ 1秒スコア' : '⚡ 1초 스코어'}
               </span>
               <span className="bg-emerald-950/80 border border-amber-400/60 text-amber-300 text-[11px] font-bold px-2.5 py-1 rounded-full">
-                ⭐ 전국 5스타
+                {isJapanese ? '⭐ 全国5スター' : '⭐ 전국 5스타'}
               </span>
               <span className="bg-emerald-950/80 border border-emerald-600/60 text-emerald-200 text-[11px] font-bold px-2.5 py-1 rounded-full">
-                🧠 AI 솔로몬
+                {isJapanese ? '🧠 ルールAI' : '🧠 AI 솔로몬'}
               </span>
             </div>
 
@@ -223,16 +225,18 @@ export function InstallPrompt() {
                 <Smartphone className="w-4 h-4 text-emerald-950" />
                 <span>
                   {deferredPrompt
-                    ? '📲 스마트폰 바탕화면에 1초 만에 깔기'
+                    ? (isJapanese ? '📲 スマホのホーム画面に1秒で追加' : '📲 스마트폰 바탕화면에 1초 만에 깔기')
                     : isIosDevice
-                    ? '📲 아이폰 바탕화면에 앱 추가하기'
-                    : '스마트폰 홈 화면에 앱 추가'}
+                    ? (isJapanese ? '📲 iPhoneのホーム画面に追加' : '📲 아이폰 바탕화면에 앱 추가하기')
+                    : (isJapanese ? 'スマホのホーム画面に1秒で追加' : '스마트폰 홈 화면에 앱 추가')}
                 </span>
               </button>
             ) : (
               <div className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-amber-300 font-bold bg-emerald-950/70 px-3 py-1 rounded-full border border-amber-400/30">
                 <CheckCircle className="w-3.5 h-3.5 text-amber-400" />
-                <span>파크골프 올인원 공식 앱 모드 실행 중</span>
+                <span>
+                  {isJapanese ? 'パークゴルフ オールインワン公式アプリ実行中' : '파크골프 올인원 공식 앱 모드 실행 중'}
+                </span>
               </div>
             )}
           </div>

@@ -30,7 +30,7 @@ import { NationalRankingDetailModal } from '@/components/NationalRankingDetailMo
 import { ChroniclePhotoStorage, ChroniclePhotoItem } from '@/lib/chroniclePhotoStorage';
 import { KakaoAuthUser } from '@/lib/storage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
-import { getCourseDualName, stripParkGolfSuffix } from '@/lib/courseLocalization';
+import { getCourseDualName, stripParkGolfSuffix, translateKoreanAddressToJapanese } from '@/lib/courseLocalization';
 import { getSavedMemberCode, syncMemberDataToCloud, fetchAndRestoreMemberData, normalizeMemberCode, MEMBER_CODE_STORAGE_KEY } from '@/lib/memberCodeUtils';
 
 export default function HomePage() {
@@ -107,16 +107,16 @@ export default function HomePage() {
     const rawUser = ParkOnStorage.getUserDisplayName();
     const cleanUser = rawUser && rawUser !== '파크골퍼' && rawUser !== 'パークゴルファー' ? rawUser : '';
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkgolfallinone.com';
-    const shareUrl = cleanUser
-      ? `${origin}/install?by=${encodeURIComponent(cleanUser)}`
-      : `${origin}/install`;
+    const shareUrl = isJapanese
+      ? `${origin}/?lang=ja&ref=share`
+      : `${origin}/?lang=ko&ref=share`;
 
     const shareTitle = isJapanese
-      ? '[PARKY パキ] パークゴルフ オールインワン アプリ推薦'
-      : '[파키 PARKY] 파크골프 올인원 공식 앱 추천';
+      ? 'パークゴルフ・オールインワン (ParkGolf All-in-One)'
+      : '파크골프 올인원 (ParkGolf All-in-One)';
     const shareText = isJapanese
-      ? `[PARKY パキ] ${cleanUser ? `${cleanUser}様が推薦する` : ''}パークゴルフ必須アプリ！\n⛳ リアルタイム モバイルスコアボード · マイ年代記(コース巡礼記)\nスマホのホーム画面にすぐ登録して使えます:\n${shareUrl}`
-      : `[파키 PARKY] ${cleanUser ? `${cleanUser} 님이 추천하는 ` : ''}대한민국 1등 파크골프 필수 앱!\n⛳ 실시간 모바일 스코어보드 · 나의 연대기 (구장 순례기)\n폰 바탕화면에 바로 설치하고 편하게 쓰세요:\n${shareUrl}`;
+      ? `全国のパークゴルフ場案内、リアルタイム天気、1秒スコア記録、公認ルールAIまで！パークゴルフ・オールインワンで一緒にプレーしましょう。\n\n${shareUrl}`
+      : `전국 400개 파크골프장 실시간 날씨, 1초 스코어카드, 공인 룰 AI까지! 파크골프 올인원에서 함께 라운드해요.\n\n${shareUrl}`;
 
     // 1. 클립보드에 우선 복사 (문자, 밴드, 카톡 등 어디서든 바로 붙여넣기 가능)
     try {
@@ -132,8 +132,8 @@ export default function HomePage() {
       }
       setShareToastMessage(
         isJapanese
-          ? '✓ 推薦リンクとメッセージがコピーされました！LINEやメッセージに貼り付けてください。'
-          : '✓ 앱 추천 링크와 안내 문구가 복사되었습니다! 카카오톡이나 문자에 붙여넣으세요.'
+          ? '招待リンクがコピーされました！'
+          : '초대 링크가 복사되었습니다!'
       );
       setShowShareToast(true);
       setTimeout(() => setShowShareToast(false), 3000);
@@ -618,32 +618,32 @@ export default function HomePage() {
 
     let rankPercent = 45;
     let skillPercent = 20;
-    let skillStarTitle = '1스타 (초급)';
+    let skillStarTitle = isJapanese ? '1スター (初級)' : '1스타 (초급)';
 
     if (avgScore <= 54) {
       rankPercent = 1;
       skillPercent = 100;
-      skillStarTitle = '5스타 (마스터)';
+      skillStarTitle = isJapanese ? '5スター (マスター)' : '5스타 (마스터)';
     } else if (avgScore <= 58.5) {
       rankPercent = 5;
       skillPercent = 80;
-      skillStarTitle = '4스타 (상급)';
+      skillStarTitle = isJapanese ? '4スター (上級)' : '4스타 (상급)';
     } else if (avgScore <= 62.5) {
       rankPercent = 10;
       skillPercent = 60;
-      skillStarTitle = '3스타 (중급)';
+      skillStarTitle = isJapanese ? '3スター (中級)' : '3스타 (중급)';
     } else if (avgScore <= 66.5) {
       rankPercent = 25;
       skillPercent = 40;
-      skillStarTitle = '2스타 (중초급)';
+      skillStarTitle = isJapanese ? '2スター (中初級)' : '2스타 (중초급)';
     } else if (avgScore <= 72.5) {
       rankPercent = 45;
       skillPercent = 20;
-      skillStarTitle = '1스타 (초급)';
+      skillStarTitle = isJapanese ? '1スター (初級)' : '1스타 (초급)';
     } else {
       rankPercent = 60;
       skillPercent = 10;
-      skillStarTitle = '0.5스타 (입문)';
+      skillStarTitle = isJapanese ? '0.5スター (入門)' : '0.5스타 (입문)';
     }
 
     const recent30Days = officialRounds.filter((r) => {
@@ -692,12 +692,12 @@ export default function HomePage() {
   const userExpPercent = userExpStats.skillPercent;
 
   const getStarLevelName = (percent: number, hasCompleted = true) => {
-    if (!hasCompleted || percent <= 0) return '미반영';
-    if (percent >= 100) return '5스타 (마스터)';
-    if (percent >= 80) return '4스타 (상급)';
-    if (percent >= 60) return '3스타 (중급)';
-    if (percent >= 40) return '2스타 (중초급)';
-    return '1스타 (초급)';
+    if (!hasCompleted || percent <= 0) return isJapanese ? '未反映' : '미반영';
+    if (percent >= 100) return isJapanese ? '5スター (マスター)' : '5스타 (마스터)';
+    if (percent >= 80) return isJapanese ? '4スター (上級)' : '4스타 (상급)';
+    if (percent >= 60) return isJapanese ? '3スター (中級)' : '3스타 (중급)';
+    if (percent >= 40) return isJapanese ? '2スター (中初級)' : '2스타 (중초급)';
+    return isJapanese ? '1スター (初級)' : '1스타 (초급)';
   };
 
   // 별 5개 연속 채움 게이지 (5% = 반 개, 20% = 1개, 50% = 2.5개, 80% = 4개, 100% = 5개)
@@ -794,13 +794,13 @@ export default function HomePage() {
       const avg18 = Number((strokeSum18 / round18List.length).toFixed(1));
       const best18 = minScore18 === 999 ? avg18 : minScore18;
 
-      let star = '★★★★ 4스타 (상급)';
-      if (avg18 <= 54) star = '★★★★★ 5스타 (마스터)';
-      else if (avg18 <= 58) star = '★★★★ 4스타 (상급)';
-      else if (avg18 <= 62) star = '★★★ 3스타 (중급)';
-      else if (avg18 <= 66) star = '★★ 2스타 (중초급)';
-      else if (avg18 <= 72) star = '★ 1스타 (초급)';
-      else star = '☆ 일반 (루키)';
+      let star = isJapanese ? '★★★★ 4スター (上級)' : '★★★★ 4스타 (상급)';
+      if (avg18 <= 54) star = isJapanese ? '★★★★★ 5スター (マスター)' : '★★★★★ 5스타 (마스터)';
+      else if (avg18 <= 58) star = isJapanese ? '★★★★ 4スター (上級)' : '★★★★ 4스타 (상급)';
+      else if (avg18 <= 62) star = isJapanese ? '★★★ 3スター (中級)' : '★★★ 3스타 (중급)';
+      else if (avg18 <= 66) star = isJapanese ? '★★ 2スター (中初級)' : '★★ 2스타 (중초급)';
+      else if (avg18 <= 72) star = isJapanese ? '★ 1スター (初級)' : '★ 1스타 (초급)';
+      else star = isJapanese ? '☆ 一般 (ルーキー)' : '☆ 일반 (루키)';
 
       return {
         courseId: c.id,
@@ -2705,14 +2705,17 @@ export default function HomePage() {
                               <div className="space-y-2">
                                 {displayedCourses.map((vc) => {
                                   const tierBadge = vc.visitCount >= 100
-                                    ? { title: '터줏대감 👑', color: 'bg-purple-100 text-purple-900 border-purple-300' }
+                                    ? { title: isJapanese ? '主の風格 👑' : '터줏대감 👑', color: 'bg-purple-100 text-purple-900 border-purple-300' }
                                     : vc.visitCount >= 30
-                                    ? { title: '명예 마스터 🥇', color: 'bg-amber-100 text-amber-900 border-amber-300' }
+                                    ? { title: isJapanese ? '名誉マスター 🥇' : '명예 마스터 🥇', color: 'bg-amber-100 text-amber-900 border-amber-300' }
                                     : vc.visitCount >= 10
-                                    ? { title: '지역 에이스 🥈', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' }
+                                    ? { title: isJapanese ? '地域エース 🥈' : '지역 에이스 🥈', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' }
                                     : vc.visitCount >= 5
-                                    ? { title: '단골 골퍼 🥉', color: 'bg-blue-100 text-blue-900 border-blue-300' }
-                                    : { title: '공식 정복자 ⛳', color: 'bg-stone-100 text-stone-800 border-stone-300' };
+                                    ? { title: isJapanese ? '常連ゴルファー 🥉' : '단골 골퍼 🥉', color: 'bg-blue-100 text-blue-900 border-blue-300' }
+                                    : { title: isJapanese ? '公認征服者 ⛳' : '공식 정복자 ⛳', color: 'bg-stone-100 text-stone-800 border-stone-300' };
+
+                                  const localizedCourseTitle = getCourseDualName(vc.courseName, isJapanese).primary;
+                                  const localizedRegionTitle = isJapanese ? translateKoreanAddressToJapanese(vc.region) : vc.region;
 
                                   return (
                                     <div
@@ -2722,19 +2725,19 @@ export default function HomePage() {
                                       <div className="min-w-0">
                                         <div className="flex items-center gap-1.5 flex-wrap">
                                           <span className="text-xs font-black text-stone-900 truncate">
-                                            {vc.isOverseas ? '✈️' : '⛳'} {vc.courseName}
+                                            {vc.isOverseas ? '✈️' : '⛳'} {localizedCourseTitle}
                                           </span>
                                           <span className={`text-[9px] px-1.5 py-0.2 rounded font-black border ${
                                             vc.isOverseas ? 'bg-rose-100 text-rose-900 border-rose-300' : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                           }`}>
-                                            {vc.isOverseas ? '🇯🇵 해외' : '🇰🇷 국내'}
+                                            {vc.isOverseas ? (isJapanese ? '🇯🇵 海外' : '🇯🇵 해외') : (isJapanese ? '🇰🇷 韓国' : '🇰🇷 국내')}
                                           </span>
                                           <span className={`text-[9px] px-1.5 py-0.2 rounded font-black border ${tierBadge.color}`}>
                                             {tierBadge.title}
                                           </span>
                                         </div>
                                         <div className="text-[10.5px] text-stone-500 font-medium mt-1 flex items-center gap-1.5 flex-wrap">
-                                          <span className="text-stone-400 font-bold whitespace-nowrap">{vc.region}</span>
+                                          <span className="text-stone-400 font-bold whitespace-nowrap">{localizedRegionTitle}</span>
                                           <span className="text-stone-300">·</span>
                                           <span className="font-bold text-stone-700 whitespace-nowrap">{isJapanese ? `累計 ${vc.visitCount}回` : `총 ${vc.visitCount}회 완주`}</span>
                                           {vc.bestScore < 999 && (

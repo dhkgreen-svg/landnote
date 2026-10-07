@@ -19,21 +19,21 @@ export function AppShareModal({ isOpen, onClose }: AppShareModalProps) {
   const rawUser = ParkOnStorage.getUserDisplayName();
   const cleanUser = rawUser && rawUser !== '파크골퍼' && rawUser !== 'パークゴルファー' ? rawUser : '';
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkgolfallinone.com';
-  const shareUrl = cleanUser
-    ? `${origin}/install?by=${encodeURIComponent(cleanUser)}`
-    : `${origin}/install`;
+  const shareUrl = isJapanese
+    ? `${origin}/?lang=ja&ref=share`
+    : `${origin}/?lang=ko&ref=share`;
 
   const shareTitle = isJapanese
-    ? '[PARKY パキ] パークゴルフ オールインワン アプリ推薦'
+    ? 'パークゴルフ・オールインワン (ParkGolf All-in-One)'
     : isEnglish
-    ? '[PARKY] ParkGolf All-in-One App'
-    : '[파키 PARKY] 파크골프 올인원 공식 앱 추천';
+    ? 'ParkGolf All-in-One'
+    : '파크골프 올인원 (ParkGolf All-in-One)';
 
   const shareText = isJapanese
-    ? `[PARKY パキ] ${cleanUser ? `${cleanUser}様が推薦する` : ''}パークゴルフ必須アプリ！\n⛳ リアルタイム モバイルスコアボード · 全国コース情報\nスマホのホーム画面にすぐ登録して使えます:\n${shareUrl}`
+    ? `全国のパークゴルフ場案内、リアルタイム天気、1秒スコア記録、公認ルールAIまで！パークゴルフ・オールインワンで一緒にプレーしましょう。\n\n${shareUrl}`
     : isEnglish
-    ? `[PARKY] ${cleanUser ? `Recommended by ${cleanUser}: ` : ''}Essential ParkGolf App!\n⛳ Real-time Mobile Scoreboard & Course Info\n${shareUrl}`
-    : `[파키 PARKY] ${cleanUser ? `${cleanUser} 님이 추천하는 ` : ''}대한민국 1등 파크골프 필수 앱!\n⛳ 실시간 모바일 스코어보드 · 전국 400개 구장 날씨/제원\n폰 바탕화면에 바로 설치하고 편하게 쓰세요:\n${shareUrl}`;
+    ? `Live weather for park golf courses, 1-sec scorecard, and official rules AI! Let's play together on ParkGolf All-in-One.\n\n${shareUrl}`
+    : `전국 400개 파크골프장 실시간 날씨, 1초 스코어카드, 공인 룰 AI까지! 파크골프 올인원에서 함께 라운드해요.\n\n${shareUrl}`;
 
   const copyToClipboard = async (customToastMsg?: string) => {
     try {
@@ -141,70 +141,95 @@ export function AppShareModal({ isOpen, onClose }: AppShareModalProps) {
               <Check className="w-4 h-4 stroke-[3]" />
               <span>
                 {isJapanese
-                  ? '推薦リンクがコピーされました！'
-                  : '추천 링크와 메시지가 복사되었습니다!'}
+                  ? '招待リンクがコピーされました！'
+                  : '초대 링크가 복사되었습니다!'}
               </span>
             </div>
           )}
 
-          {/* 3대 추천 방식 선택 버튼들 */}
+          {/* 언어별 맞춤 추천 버튼 분기 */}
           <div className="space-y-2.5">
-            {/* 1. 카카오톡으로 추천하기 */}
-            <button
-              type="button"
-              onClick={handleKakaoShare}
-              className="w-full py-3.5 px-4 bg-[#FEE500] hover:bg-[#FADA0A] active:scale-[0.98] text-[#191919] rounded-2xl font-black text-sm shadow-md border border-[#E6CF00] flex items-center justify-between transition cursor-pointer group"
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="w-7 h-7 rounded-xl bg-[#191919] text-[#FEE500] flex items-center justify-center text-xs font-black shadow-2xs">
-                  💬
-                </span>
-                <span className="text-sm font-black">
-                  {isJapanese ? 'カカオトークで推薦する' : '카카오톡으로 추천하기'}
-                </span>
-              </div>
-              <span className="text-xs font-black text-[#381E1F] bg-white/60 group-hover:bg-white px-2.5 py-1 rounded-xl transition">
-                {isJapanese ? '共有 ▶' : '바로가기 ▶'}
-              </span>
-            </button>
+            {isJapanese ? (
+              <>
+                {/* 1. LINE(라인)으로 친구에게 알리기 */}
+                <button
+                  type="button"
+                  onClick={handleLineShare}
+                  className="w-full py-3.5 px-4 bg-[#06C755] hover:bg-[#05b34c] active:scale-[0.98] text-white rounded-2xl font-black text-sm shadow-md border border-[#04a044] flex items-center justify-between transition cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-7 h-7 rounded-xl bg-white text-[#06C755] flex items-center justify-center text-xs font-black shadow-2xs">
+                      LINE
+                    </span>
+                    <span className="text-sm font-black">
+                      LINE(ライン)で友達に教える
+                    </span>
+                  </div>
+                  <span className="text-xs font-black text-emerald-950 bg-white/90 group-hover:bg-white px-2.5 py-1 rounded-xl transition">
+                    送信 ▶
+                  </span>
+                </button>
 
-            {/* 2. 라인(LINE)으로 추천하기 */}
-            <button
-              type="button"
-              onClick={handleLineShare}
-              className="w-full py-3.5 px-4 bg-[#06C755] hover:bg-[#05b34c] active:scale-[0.98] text-white rounded-2xl font-black text-sm shadow-md border border-[#04a044] flex items-center justify-between transition cursor-pointer group"
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="w-7 h-7 rounded-xl bg-white text-[#06C755] flex items-center justify-center text-xs font-black shadow-2xs">
-                  LINE
-                </span>
-                <span className="text-sm font-black">
-                  {isJapanese ? 'LINEで推薦する' : '라인(LINE)으로 추천하기'}
-                </span>
-              </div>
-              <span className="text-xs font-black text-emerald-950 bg-white/90 group-hover:bg-white px-2.5 py-1 rounded-xl transition">
-                {isJapanese ? '送信 ▶' : '바로가기 ▶'}
-              </span>
-            </button>
+                {/* 2. 초대 링크 복사 */}
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="w-full py-3.5 px-4 bg-stone-100 hover:bg-stone-200 active:scale-[0.98] text-stone-900 rounded-2xl font-black text-sm shadow-sm border-2 border-stone-300 flex items-center justify-between transition cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-7 h-7 rounded-xl bg-stone-800 text-white flex items-center justify-center text-xs font-black shadow-2xs">
+                      📋
+                    </span>
+                    <span className="text-sm font-black">
+                      招待リンクをコピー
+                    </span>
+                  </div>
+                  <span className="text-xs font-black text-stone-700 bg-white group-hover:bg-white px-2.5 py-1 rounded-xl border border-stone-200 transition">
+                    {copied ? 'コピー完了 ✓' : 'コピー ▶'}
+                  </span>
+                </button>
+              </>
+            ) : (
+              <>
+                {/* 1. 카카오톡으로 추천하기 */}
+                <button
+                  type="button"
+                  onClick={handleKakaoShare}
+                  className="w-full py-3.5 px-4 bg-[#FEE500] hover:bg-[#FADA0A] active:scale-[0.98] text-[#191919] rounded-2xl font-black text-sm shadow-md border border-[#E6CF00] flex items-center justify-between transition cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-7 h-7 rounded-xl bg-[#191919] text-[#FEE500] flex items-center justify-center text-xs font-black shadow-2xs">
+                      💬
+                    </span>
+                    <span className="text-sm font-black">
+                      카카오톡으로 추천하기
+                    </span>
+                  </div>
+                  <span className="text-xs font-black text-[#381E1F] bg-white/60 group-hover:bg-white px-2.5 py-1 rounded-xl transition">
+                    바로가기 ▶
+                  </span>
+                </button>
 
-            {/* 3. URL 복사하기 */}
-            <button
-              type="button"
-              onClick={handleCopyLink}
-              className="w-full py-3.5 px-4 bg-stone-100 hover:bg-stone-200 active:scale-[0.98] text-stone-900 rounded-2xl font-black text-sm shadow-sm border-2 border-stone-300 flex items-center justify-between transition cursor-pointer group"
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="w-7 h-7 rounded-xl bg-stone-800 text-white flex items-center justify-center text-xs font-black shadow-2xs">
-                  🔗
-                </span>
-                <span className="text-sm font-black">
-                  {isJapanese ? '推薦リンク(URL)をコピー' : '추천 링크(URL) 복사하기'}
-                </span>
-              </div>
-              <span className="text-xs font-black text-stone-700 bg-white group-hover:bg-white px-2.5 py-1 rounded-xl border border-stone-200 transition">
-                {copied ? '복사됨 ✓' : '복사 ▶'}
-              </span>
-            </button>
+                {/* 2. 초대 링크 복사 */}
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="w-full py-3.5 px-4 bg-stone-100 hover:bg-stone-200 active:scale-[0.98] text-stone-900 rounded-2xl font-black text-sm shadow-sm border-2 border-stone-300 flex items-center justify-between transition cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-7 h-7 rounded-xl bg-stone-800 text-white flex items-center justify-center text-xs font-black shadow-2xs">
+                      📋
+                    </span>
+                    <span className="text-sm font-black">
+                      초대 링크 복사
+                    </span>
+                  </div>
+                  <span className="text-xs font-black text-stone-700 bg-white group-hover:bg-white px-2.5 py-1 rounded-xl border border-stone-200 transition">
+                    {copied ? '복사됨 ✓' : '복사 ▶'}
+                  </span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* 추천 메시지 미리보기 박스 */}
