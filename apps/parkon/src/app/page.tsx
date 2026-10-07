@@ -2954,7 +2954,7 @@ export default function HomePage() {
                 onClick={() => setShowStatsModal(false)}
                 className="w-full py-3 bg-stone-100 hover:bg-stone-200 text-stone-800 font-black rounded-xl text-sm transition cursor-pointer"
               >
-                닫기
+                {isJapanese ? '閉じる' : '닫기'}
               </button>
             </div>
           </div>
@@ -3282,7 +3282,7 @@ export default function HomePage() {
                 }}
                 className="w-full py-2.5 bg-stone-900 hover:bg-black text-white font-black rounded-xl text-xs transition cursor-pointer"
               >
-                닫기
+                {isJapanese ? '閉じる' : '닫기'}
               </button>
             </div>
           </div>
@@ -3591,7 +3591,7 @@ export default function HomePage() {
                 onClick={() => setShowLeaderboard100Popup(false)}
                 className="w-full py-2.5 bg-stone-900 hover:bg-black text-white font-black rounded-xl text-xs transition cursor-pointer"
               >
-                닫기
+                {isJapanese ? '閉じる' : '닫기'}
               </button>
             </div>
           </div>
