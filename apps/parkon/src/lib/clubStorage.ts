@@ -1375,7 +1375,7 @@ export const ClubStorage = {
   // 11. 카카오톡 / LINE 공유 링크 및 초대 메시지 생성
   generateKakaoShareText(room: ClubEventRoom, isJapanese?: boolean): string {
     const totalCurrentPlayers = room.groups.reduce((sum, g) => sum + g.players.length, 0);
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3008';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkgolfallinone.com';
     const link = `${origin}/club/${room.id}`;
     const modeInfo = this.getGameModeInfo(room.gameMode);
 
