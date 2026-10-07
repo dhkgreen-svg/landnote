@@ -8,7 +8,6 @@ import { ParkOnStorage, KakaoAuthUser } from '@/lib/storage';
 import { getSavedMemberCode, isPlaceholderName } from '@/lib/memberCodeUtils';
 import { KakaoLoginModal } from './KakaoLoginModal';
 import { HelpRulesHubModal } from './HelpRulesHubModal';
-import { ParkGolfPaymentModal } from './ParkGolfPaymentModal';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { calculateTier, getUserCompleted9Holes } from '@/lib/courseBlockTier';
 
@@ -29,7 +28,6 @@ export function Header() {
   const [mounted, setMounted] = useState(false);
   const [showKakaoModal, setShowKakaoModal] = useState(false);
   const [showHelpRulesModal, setShowHelpRulesModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [modalMode, setModalMode] = useState<'login' | 'profile'>('login');
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);

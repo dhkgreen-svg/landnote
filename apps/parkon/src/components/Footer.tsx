@@ -4,11 +4,9 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { ShieldCheck, Info, FileText, Key, BookOpen, Scale, Mail, ExternalLink, Sparkles } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
-import { ParkGolfPaymentModal } from './ParkGolfPaymentModal';
 
 export function Footer() {
   const { isJapanese, isEnglish } = useTranslation();
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   return (
     <footer className="mt-auto border-t border-stone-200 bg-white/95 text-stone-600 text-xs py-8 px-4">
