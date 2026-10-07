@@ -223,7 +223,9 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
           <div className="bg-stone-50 border-2 border-emerald-200 rounded-2xl p-3 text-left space-y-1.5">
             <label className="text-xs font-black text-stone-900 block flex items-center justify-between">
               <span>{isJapanese ? '🏌️ お名前 (またはニックネーム)' : '🏌️ 성명 (또는 닉네임)'}</span>
-              <span className="text-[10px] text-emerald-700 font-extrabold bg-emerald-100 px-1.5 py-0.2 rounded">1초 자동가입</span>
+              <span className="text-[10px] text-emerald-700 font-extrabold bg-emerald-100 px-1.5 py-0.2 rounded">
+                {isJapanese ? '1秒 自動登録' : '1초 자동가입'}
+              </span>
             </label>
             <input
               type="text"

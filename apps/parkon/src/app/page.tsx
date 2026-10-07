@@ -1450,7 +1450,7 @@ export default function HomePage() {
               }`}
             >
               <span>🇰🇷</span>
-              <span>한국</span>
+              <span>{isJapanese ? '韓国' : '한국'}</span>
             </button>
             <button
               type="button"
