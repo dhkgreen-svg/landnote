@@ -9,22 +9,33 @@ import Script from 'next/script';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.parkgolfallinone.com'),
-  title: '파크골프 올인원 (ParkGolf All-in-One) - 전국 400개 구장 포털',
-  description: '50~70대 시니어 파크골프 동호인을 위한 전국 400개 구장 실시간 날씨, 1초 스코어보드, 공인 룰북, 연대기 무료 서비스',
+  title: {
+    default: '파크골프 올인원 (ParkGolf All-in-One) - 한·일 파크골프 공식 포털',
+    template: '%s | 파크골프 올인원 (ParkGolf All-in-One)',
+  },
+  description: '한·일 파크골프 공식 포털: 한국 400+ 구장 및 일본 코스 안내, 실시간 날씨, 1초 스코어보드, 공인 룰북 AI, 연대기 훈장 (100% 무료)',
   alternates: {
     canonical: 'https://www.parkgolfallinone.com',
+    languages: {
+      'ko-KR': 'https://www.parkgolfallinone.com/?lang=ko',
+      'ja-JP': 'https://www.parkgolfallinone.com/?lang=ja',
+      'x-default': 'https://www.parkgolfallinone.com',
+    },
   },
   keywords: [
     '파크골프',
     '파크골프 올인원',
     'ParkGolf All-in-One',
+    'パークゴルフ',
+    'パークゴルフ オールインワン',
     '파크골프장',
     '파크골프 스코어보드',
     '파크골프 룰',
     '파크골프 클럽',
     '파크골프 가이드',
     '파크골프 날씨',
-    'パークゴルフ',
+    '일본 파크골프',
+    'Park Golf Korea Japan',
   ],
   manifest: '/manifest.json',
   icons: {
@@ -37,10 +48,12 @@ export const metadata: Metadata = {
     title: '파크골프 올인원',
   },
   openGraph: {
-    title: '파크골프 올인원 (ParkGolf All-in-One) - 전국 400개 구장 포털',
-    description: '50~70대 시니어 파크골프 동호인을 위한 전국 400개 구장 실시간 날씨, 1초 스코어보드, 공인 룰북, 연대기 무료 서비스',
+    title: '파크골프 올인원 (ParkGolf All-in-One) | 日韓パークゴルフ',
+    description: '한국 전국 400개 구장 & 일본 파크골프 코스 안내, 1초 스코어링, 실시간 날씨, 룰북 AI 무료 포털',
     url: 'https://www.parkgolfallinone.com',
-    siteName: '파크골프 올인원',
+    siteName: 'ParkGolf All-in-One',
+    locale: 'ko_KR',
+    alternateLocale: ['ja_JP'],
     images: [
       {
         url: '/og-image.jpg',
@@ -49,13 +62,12 @@ export const metadata: Metadata = {
         alt: '파크골프 올인원 (ParkGolf All-in-One)',
       },
     ],
-    locale: 'ko_KR',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: '파크골프 올인원 (ParkGolf All-in-One) - 전국 400개 구장 포털',
-    description: '50~70대 시니어 파크골프 동호인을 위한 전국 400개 구장 실시간 날씨, 1초 스코어보드, 공인 룰북, 연대기 무료 서비스',
+    title: '파크골프 올인원 (ParkGolf All-in-One) | 日韓パークゴルフ',
+    description: '한국 전국 400개 구장 & 일본 파크골프 코스 안내, 1초 스코어링, 실시간 날씨, 룰북 AI 무료 포털',
     images: ['/og-image.jpg'],
   },
 };
@@ -81,15 +93,19 @@ export default function RootLayout({
         <link rel="icon" href="/icon.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="canonical" href="https://www.parkgolfallinone.com" />
+        <link rel="alternate" hrefLang="ko-KR" href="https://www.parkgolfallinone.com/?lang=ko" />
+        <link rel="alternate" hrefLang="ja-JP" href="https://www.parkgolfallinone.com/?lang=ja" />
+        <link rel="alternate" hrefLang="x-default" href="https://www.parkgolfallinone.com" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="파크골프 올인원" />
         <meta name="application-name" content="파크골프 올인원" />
-        <meta property="og:title" content="파크골프 올인원 (ParkGolf All-in-One) - 모바일 스코어보드" />
-        <meta property="og:description" content="1초 스코어링 · 전국 5스타 랭킹 · 룰 솔로몬 AI · 전문 가이드" />
+        <meta property="og:title" content="파크골프 올인원 (ParkGolf All-in-One) | 日韓パークゴルフ" />
+        <meta property="og:description" content="한국 전국 400개 구장 & 일본 파크골프 코스 안내, 1초 스코어링, 실시간 날씨, 룰북 AI 무료 포털" />
         <meta property="og:url" content="https://www.parkgolfallinone.com" />
+        <meta property="og:site_name" content="ParkGolf All-in-One" />
         <meta property="og:image" content="/og-image.jpg" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
@@ -107,8 +123,8 @@ export default function RootLayout({
                   '@id': 'https://www.parkgolfallinone.com/#website',
                   'url': 'https://www.parkgolfallinone.com',
                   'name': '파크골프 올인원 (ParkGolf All-in-One)',
-                  'alternateName': ['ParkGolf All-in-One', '파크골프올인원', 'パークゴルフ オールインワン'],
-                  'description': '50~70대 시니어 파크골프 동호인을 위한 전국 400개 구장 실시간 날씨, 1초 스코어보드, 공인 룰북, 연대기 무료 서비스',
+                  'alternateName': ['ParkGolf All-in-One', 'パークゴルフ オールインワン', '파크골프올인원'],
+                  'description': '한·일 파크골프 공식 포털: 한국 400+ 구장 및 일본 코스 안내, 실시간 날씨, 1초 스코어보드, 공인 룰북 AI, 연대기 훈장 (100% 무료)',
                   'inLanguage': ['ko-KR', 'ja-JP'],
                   'publisher': {
                     '@type': 'Organization',
@@ -117,17 +133,17 @@ export default function RootLayout({
                   }
                 },
                 {
-                  '@type': 'SoftwareApplication',
+                  '@type': 'SportsApplication',
                   '@id': 'https://www.parkgolfallinone.com/#app',
                   'name': '파크골프 올인원 (ParkGolf All-in-One)',
-                  'operatingSystem': 'All',
+                  'operatingSystem': 'All (Web, PWA)',
                   'applicationCategory': 'SportsApplication',
                   'offers': {
                     '@type': 'Offer',
                     'price': '0',
                     'priceCurrency': 'KRW'
                   },
-                  'description': '전국 400개 파크골프장 실시간 날씨, 1초 스코어보드, 공인 룰북 및 개인 라운드 연대기 관리 웹 서비스',
+                  'description': '한일 양국 파크골프 동호인을 위한 코스 안내, 날씨, 스코어보드, 공인 룰 AI 포털',
                   'url': 'https://www.parkgolfallinone.com'
                 }
               ]
@@ -148,7 +164,7 @@ export default function RootLayout({
           {`
             (function() {
               if (typeof window === 'undefined') return;
-              var TARGET_BUILD_VER = '20261007_06';
+              var TARGET_BUILD_VER = '20261007_07';
               var currentVer = localStorage.getItem('parkon_build_ver');
               if (currentVer !== TARGET_BUILD_VER) {
                 localStorage.setItem('parkon_build_ver', TARGET_BUILD_VER);
@@ -174,7 +190,7 @@ export default function RootLayout({
           {`
             if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
               window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=20261007_06')
+                navigator.serviceWorker.register('/sw.js?v=20261007_07')
                   .then(function(reg) {
                     reg.update();
                   })
