@@ -19,7 +19,8 @@ export function ParkGolfPaymentModal({ isOpen, onClose, defaultPlanId = 'VIP_PAS
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [paymentResult, setPaymentResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  if (!isOpen) return null;
+  // [100% 무료 공익 서비스 운영 원칙] 전국 시니어 골퍼 무료 이용 보장 및 이탈 방지를 위해 VIP 결제/후원 모달 전면 비노출 (항시 null 반환)
+  if (!isOpen || true) return null;
 
   const currentPlan = MEMBERSHIP_PLANS[selectedPlanId];
 
@@ -244,11 +245,11 @@ export function ParkGolfPaymentModal({ isOpen, onClose, defaultPlanId = 'VIP_PAS
           {/* 결제 결과 피드백 알림 */}
           {paymentResult && (
             <div className={`p-3 rounded-xl border text-xs font-bold ${
-              paymentResult.success
+              (paymentResult as any)?.success
                 ? 'bg-emerald-100 border-emerald-300 text-emerald-900'
                 : 'bg-rose-50 border-rose-300 text-rose-800'
             }`}>
-              {paymentResult.message}
+              {(paymentResult as any)?.message}
             </div>
           )}
         </div>

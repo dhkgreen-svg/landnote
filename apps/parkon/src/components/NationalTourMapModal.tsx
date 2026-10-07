@@ -172,14 +172,14 @@ export function NationalTourMapModal({ isOpen, onClose }: NationalTourMapModalPr
             </div>
           </div>
 
-          {/* VIP 제휴 혜택 쿠폰북 바로가기 버튼 */}
+          {/* 공식 제휴 혜택 쿠폰북 바로가기 버튼 */}
           <button
             type="button"
             onClick={() => setShowCouponModal(true)}
             className="w-full py-2 bg-gradient-to-r from-amber-500/20 via-yellow-400/20 to-amber-500/20 hover:from-amber-500/30 hover:to-yellow-400/30 border border-amber-400/50 rounded-xl text-amber-300 text-xs font-black flex items-center justify-center gap-2 transition active:scale-98 cursor-pointer"
           >
             <Gift className="w-3.5 h-3.5" />
-            <span>🎁 전국 도장 깨기 VIP 제휴 혜택 쿠폰북 ({unlockedCouponsCount}/4개 해금)</span>
+            <span>🎁 전국 도장 깨기 완주 제휴 혜택 쿠폰북 ({unlockedCouponsCount}/4개 해금)</span>
           </button>
         </div>
 
@@ -442,7 +442,7 @@ export function NationalTourMapModal({ isOpen, onClose }: NationalTourMapModalPr
               <div className="flex items-center justify-between border-b border-stone-800 pb-2">
                 <div className="flex items-center gap-2 text-amber-300">
                   <Gift className="w-5 h-5" />
-                  <h3 className="font-black text-base text-white">전국 도장 깨기 VIP 제휴 혜택</h3>
+                  <h3 className="font-black text-base text-white">전국 도장 깨기 완주 제휴 혜택</h3>
                 </div>
                 <button
                   type="button"
@@ -454,7 +454,7 @@ export function NationalTourMapModal({ isOpen, onClose }: NationalTourMapModalPr
               </div>
 
               <p className="text-xs text-stone-300 leading-relaxed">
-                전국 시·도 파크골프장을 완주하고 해금된 트로피로 공식 제휴처에서 VIP 혜택을 받으세요!
+                전국 시·도 파크골프장을 완주하고 해금된 트로피로 공식 제휴처에서 특별 할인 혜택을 받으세요!
               </p>
 
               <div className="space-y-2.5">

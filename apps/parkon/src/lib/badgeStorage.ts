@@ -158,7 +158,7 @@ export const VIP_COUPONS: VipCoupon[] = [
     milestoneTitle: '원정의 시작 🎒',
     badge: '🎒',
     requiredProvinces: 3,
-    couponName: '파크골프 명품 카본 클럽 & 용품 10% VIP 할인권',
+    couponName: '파크골프 명품 카본 클럽 & 용품 10% 특별 제휴 할인권',
     sponsor: '전국 공식 파크골프 용품 연합',
     benefit: '온·오프라인 10% 즉시 할인',
     code: 'PARKON-TOUR-3PROV',

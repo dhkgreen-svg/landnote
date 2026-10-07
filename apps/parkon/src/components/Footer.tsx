@@ -54,14 +54,6 @@ export function Footer() {
             <Info className="w-3.5 h-3.5 text-stone-500" />
             <span>{isJapanese ? 'サービス紹介・お問い合わせ' : '서비스 소개 & 제휴'}</span>
           </Link>
-          <button
-            type="button"
-            onClick={() => setShowPaymentModal(true)}
-            className="hover:text-amber-900 transition flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg text-amber-950 font-bold border border-amber-300 cursor-pointer shadow-2xs"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-300" />
-            <span>{isJapanese ? 'VIP応援決済' : 'VIP 후원 결제'}</span>
-          </button>
         </div>
 
         {/* 필수 법적 정책 링크 (구글 애드센스 심사 필수 항목) */}
@@ -148,12 +140,6 @@ export function Footer() {
           </p>
         </div>
       </div>
-
-      {/* 포트원 V2 VIP 후원 결제 모달 */}
-      <ParkGolfPaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-      />
     </footer>
   );
 }

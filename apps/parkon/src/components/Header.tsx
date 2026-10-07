@@ -242,16 +242,6 @@ export function Header() {
               <HelpCircle className="w-4 h-4 stroke-[2.5]" />
             </button>
 
-            {/* 1.5. VIP 후원 & 멤버십 결제 버튼 (포트원 연동) */}
-            <button
-              type="button"
-              onClick={() => setShowPaymentModal(true)}
-              className="w-8 h-8 rounded-full bg-amber-400 hover:bg-amber-300 text-stone-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer"
-              title={isJapanese ? 'VIPメンバーシップ＆応援決済' : 'VIP 멤버십 & 후원 결제 (포트원)'}
-            >
-              <Sparkles className="w-4 h-4 text-emerald-950" />
-            </button>
-
             {/* 2. 전국 구장 (장소 찾기) 버튼 */}
             <Link
               href="/courses"
@@ -372,12 +362,6 @@ export function Header() {
       <HelpRulesHubModal
         isOpen={showHelpRulesModal}
         onClose={() => setShowHelpRulesModal(false)}
-      />
-
-      {/* 포트원 V2 파크골프 공식 VIP 멤버십 & 후원 결제 모달 */}
-      <ParkGolfPaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
       />
 
       {/* 카카오 로그인 모달 */}
