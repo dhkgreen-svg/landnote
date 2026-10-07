@@ -1,15 +1,27 @@
-// Service Worker for ParkGolf All-in-One (파크골프 올인원) PWA
+// Service Worker for ParkGolf All-in-One (파크골프 올인원) PWA - v2026.10.07.05
+const CACHE_NAME = 'parkon-v20261007-05';
+
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', (event) => {
-  // Network-first pass-through handler satisfying Android Chromium PWA install criteria
+  // Always fetch latest network first, bypass disk cache
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(event.request, { cache: 'no-cache' }).catch(() => caches.match(event.request))
   );
 });

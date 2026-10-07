@@ -101,18 +101,42 @@ export default function RootLayout({
           strategy="afterInteractive"
           crossOrigin="anonymous"
         />
-        {/* PortOne V2 Official Browser SDK */}
-        <Script
-          id="portone-v2-sdk"
-          src="https://cdn.portone.io/v2/browser-sdk.js"
-          strategy="afterInteractive"
-        />
-        {/* PWA Service Worker Registration */}
+        {/* PWA Service Worker Registration & Stale Cache Auto-Purge */}
+        <Script id="cache-buster-auto-reload" strategy="beforeInteractive">
+          {`
+            (function() {
+              if (typeof window === 'undefined') return;
+              var TARGET_BUILD_VER = '20261007_05';
+              var currentVer = localStorage.getItem('parkon_build_ver');
+              if (currentVer !== TARGET_BUILD_VER) {
+                localStorage.setItem('parkon_build_ver', TARGET_BUILD_VER);
+                if ('caches' in window) {
+                  caches.keys().then(function(names) {
+                    names.forEach(function(name) { caches.delete(name); });
+                  });
+                }
+                if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.getRegistrations().then(function(regs) {
+                    for (var reg of regs) { reg.update(); }
+                  });
+                }
+                if (currentVer) {
+                  // Returning user who has stale cached bundle -> hard reload once
+                  window.location.reload();
+                }
+              }
+            })();
+          `}
+        </Script>
         <Script id="pwa-sw" strategy="afterInteractive">
           {`
             if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
               window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js').catch(function() {});
+                navigator.serviceWorker.register('/sw.js?v=20261007_05')
+                  .then(function(reg) {
+                    reg.update();
+                  })
+                  .catch(function() {});
               });
             }
           `}
