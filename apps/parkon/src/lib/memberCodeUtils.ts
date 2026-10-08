@@ -8,9 +8,9 @@ import { RoundSession } from '@/types/parkon';
 export const MEMBER_CODE_STORAGE_KEY = 'parkon_member_code_v1';
 
 /**
- * 7자리 고유 회원번호 규격:
- * 기본: PKY-XXXX (예: PKY-7788)
- * 사용자 지정 가능: 영문 3자리 + 숫자 4자리 (예: ABC1234)
+ * 8자리 고유 회원번호 규격:
+ * 기본 표준: 영문 4자리 + 숫자 4자리 (예: PKYA-7788, PKYB-1234)
+ * 하위 호환: 기존 7자리(PKY-XXXX)는 'A'를 자동 부여하여 PKYA-XXXX로 100% 자동 승격 (데이터 유실 0%)
  */
 export function normalizeMemberCode(input: string): string {
   if (!input) return '';
@@ -19,14 +19,54 @@ export function normalizeMemberCode(input: string): string {
     .trim()
     .replace(/[！-～]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
     .replace(/　/g, ' ');
-  const clean = half.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (clean.length === 7) {
-    // 3자리 영문 + 4자리 숫자 형태이면 표준 하이픈 포맷 적용
-    const prefix = clean.slice(0, 3);
-    const suffix = clean.slice(3);
+  let clean = half.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+  // 1. 하위 호환 마이그레이션: 기존 7자리(영문 3자리 + 숫자 4자리, 예: PKY7788)는 'A'를 붙여 8자리로 자동 승격
+  if (clean.length === 7 && /^[A-Z]{3}[0-9]{4}$/.test(clean)) {
+    clean = `${clean.slice(0, 3)}A${clean.slice(3)}`;
+  }
+
+  // 2. 표준 8자리 포맷: 4자리 영문 + 4자리 숫자 (예: PKYA-7788, PKYB-1234)
+  if (clean.length === 8 && /^[A-Z]{4}[0-9]{4}$/.test(clean)) {
+    const prefix = clean.slice(0, 4);
+    const suffix = clean.slice(4);
     return `${prefix}-${suffix}`;
   }
+
   return clean;
+}
+
+/**
+ * 8자리 고유번호에서 구 7자리 코드 추출 (클라우드/DB 하위 호환 듀얼 조회용)
+ */
+export function getLegacyMemberCode(code: string): string {
+  if (!code) return '';
+  const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (clean.length === 8 && clean.startsWith('PKYA')) {
+    return `PKY-${clean.slice(4)}`;
+  }
+  if (clean.length === 8 && /^[A-Z]{3}A[0-9]{4}$/.test(clean)) {
+    return `${clean.slice(0, 3)}-${clean.slice(4)}`;
+  }
+  return code;
+}
+
+/**
+ * 휴대폰 번호 마스킹 포맷터 (010-****-5678)
+ */
+export function maskPhoneNumber(phone?: string | null): string {
+  if (!phone) return '';
+  const clean = phone.replace(/\D/g, '');
+  if (clean.length === 11) {
+    return `${clean.slice(0, 3)}-****-${clean.slice(7)}`;
+  }
+  if (clean.length === 10) {
+    return `${clean.slice(0, 3)}-***-${clean.slice(6)}`;
+  }
+  if (clean.length === 4) {
+    return `010-****-${clean}`;
+  }
+  return phone;
 }
 
 export function isPlaceholderName(name?: string | null): boolean {
@@ -75,8 +115,12 @@ export function getSavedMemberCode(): string {
 
     if (existing && existing.trim()) {
       const norm = normalizeMemberCode(existing.trim());
-      // 만약 기존 코드가 PKY-7788인데 이름이 김대희가 아닌 경우(예: '1', '홍길동'), 과거 로컬 기본값 버그이므로 자동 재발급
-      if (norm === 'PKY-7788' && !isMasterDaehee && rawName && !isPlaceholderName(rawName)) {
+      // 7자리에서 8자리로 자동 승격되었거나 포맷이 바뀌었으면 로컬스토리지 즉시 동기화
+      if (norm && norm !== existing) {
+        localStorage.setItem(MEMBER_CODE_STORAGE_KEY, norm);
+      }
+      // 만약 기존 코드가 PKYA-7788 또는 PKY-7788인데 이름이 김대희가 아닌 경우(예: '1', '홍길동'), 과거 로컬 기본값 버그이므로 자동 재발급
+      if ((norm === 'PKYA-7788' || norm === 'PKY-7788') && !isMasterDaehee && rawName && !isPlaceholderName(rawName)) {
         return getOrGenerateMemberCode(true);
       }
       return norm;
@@ -90,9 +134,9 @@ export function getSavedMemberCode(): string {
 }
 
 /**
- * 현재 기기의 7자리 고유 회원번호 조회
+ * 현재 기기의 8자리 고유 회원번호 조회 및 자동 발급
  * 등록된 회원(실명 입력자, 카카오 연동자, 번호 로그인자)만 발급받으며,
- * 새 컴퓨터/미등록 방문자에게는 임의로 번호를 부여하지 않고 빈 문자열을 유지합니다.
+ * 신규 회원은 PKYB-XXXX, PKYC-XXXX 등 8자리 체계로 무한 자동 생성됩니다.
  */
 export function getOrGenerateMemberCode(forceGenerate = false): string {
   if (typeof window === 'undefined') return '';
@@ -107,8 +151,11 @@ export function getOrGenerateMemberCode(forceGenerate = false): string {
     const existing = localStorage.getItem(MEMBER_CODE_STORAGE_KEY);
     if (existing && existing.trim()) {
       const norm = normalizeMemberCode(existing.trim());
-      // 버그 수정: 기존 코드가 PKY-7788인데 이름이 김대희가 아닌 경우(예: '1', '홍길동'), 과거 로컬 기본값 버그이므로 자동 재발급
-      if (norm === 'PKY-7788' && !isMasterDaehee && cleanName) {
+      // 7자리에서 8자리로 자동 승격
+      if (norm && norm !== existing) {
+        localStorage.setItem(MEMBER_CODE_STORAGE_KEY, norm);
+      }
+      if ((norm === 'PKYA-7788' || norm === 'PKY-7788') && !isMasterDaehee && cleanName) {
         // Fall through to regenerate proper code for this user!
       } else {
         return norm;
@@ -127,45 +174,50 @@ export function getOrGenerateMemberCode(forceGenerate = false): string {
       return '';
     }
 
-    // 이름 및 사용자 맞춤형 고유번호 배정
+    let prefix = 'PKYB';
     let codeSuffix = '';
+
     if (isMasterDaehee) {
-      codeSuffix = '7788'; // 김대희 대표님 전용 골드 넘버
+      prefix = 'PKYA';
+      codeSuffix = '7788'; // 김대희 대표님 전용 8자리 골드 넘버 (PKYA-7788)
     } else if (cleanName && !isPlaceholderName(cleanName)) {
-      // 1. 숫자로 된 이름인 경우 (예: '1', '2', '3' 등)
-      // 대표님 원칙: "이 사람이 이름이 1이잖아, 그러면 이 사람에 맞게 번호를 줘야 된다고"
+      const prefixes = ['PKYB', 'PKYC', 'PKYD', 'PKYE', 'PKYF', 'PKYG', 'PKYH'];
       if (/^\d+$/.test(cleanName)) {
         const numVal = parseInt(cleanName, 10);
+        prefix = prefixes[numVal % prefixes.length];
         if (numVal >= 1 && numVal <= 999) {
-          codeSuffix = String(1000 + numVal); // 1 -> 1001, 2 -> 1002, 3 -> 1003
+          codeSuffix = String(1000 + numVal);
         } else {
           codeSuffix = String(numVal).slice(-4).padStart(4, '0');
         }
       } else {
-        // 2. 일반 이름인 경우: 이름 텍스트의 유니코드 해시 기반 결정론적 4자리 번호
         let hash = 0;
         for (let i = 0; i < cleanName.length; i++) {
           hash = ((hash << 5) - hash) + cleanName.charCodeAt(i);
           hash |= 0;
         }
+        const pIdx = Math.abs(hash) % prefixes.length;
+        prefix = prefixes[pIdx];
         const num = 1000 + (Math.abs(hash) % 8900);
         codeSuffix = String(num);
       }
     } else if (kakaoUser?.id) {
-      // 카카오 ID 기반 안정적 고유 숫자 도출
+      const prefixes = ['PKYB', 'PKYC', 'PKYD', 'PKYE'];
       const numStr = kakaoUser.id.replace(/\D/g, '');
+      const hash = Math.abs(kakaoUser.id.split('').reduce((acc, c) => acc * 31 + c.charCodeAt(0), 0));
+      prefix = prefixes[hash % prefixes.length];
       if (numStr.length >= 4) {
         codeSuffix = numStr.slice(-4);
       } else {
-        const hash = Math.abs(kakaoUser.id.split('').reduce((acc, c) => acc * 31 + c.charCodeAt(0), 0));
         codeSuffix = String(1000 + (hash % 9000));
       }
     } else {
-      // 신규/게스트 유저: 1000 ~ 9999 난수 배정
+      const prefixes = ['PKYB', 'PKYC', 'PKYD', 'PKYE', 'PKYF'];
+      prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
       codeSuffix = String(Math.floor(1000 + Math.random() * 9000));
     }
 
-    const newCode = `PKY-${codeSuffix}`;
+    const newCode = `${prefix}-${codeSuffix}`;
     localStorage.setItem(MEMBER_CODE_STORAGE_KEY, newCode);
 
     // 자동 발급 즉시 클라우드에 1차 동기화 시도 (백그라운드)
@@ -248,7 +300,7 @@ export async function syncMemberDataToCloud(): Promise<{ success: boolean; membe
 }
 
 /**
- * 회원번호 7자리만으로 클라우드에서 모든 경기 기록, 연대기, 프로필을 가져와 자동 로그인
+ * 회원번호 8자리(또는 기존 7자리)로 클라우드에서 모든 경기 기록, 연대기, 프로필을 가져와 자동 로그인
  */
 export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
   success: boolean;
@@ -270,7 +322,7 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
   const cleanCode = normalizeMemberCode(inputCode);
   if (!cleanCode || cleanCode.replace('-', '').length < 6) {
     isRestoringMemberData = false;
-    return { success: false, memberCode: inputCode, message: '올바른 7자리 고유 회원번호를 입력해 주세요. (예: PKY-7788)' };
+    return { success: false, memberCode: inputCode, message: '올바른 8자리 고유 회원번호를 입력해 주세요. (예: PKYA-7788)' };
   }
 
   try {

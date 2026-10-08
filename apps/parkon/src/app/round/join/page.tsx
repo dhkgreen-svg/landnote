@@ -270,7 +270,7 @@ function RoundJoinContent() {
     setJoinedMemberName(trimmedName);
     setJoinedIsGuest(isGuest);
     const code = getSavedMemberCode();
-    setJoinedMemberCode(code || 'PKY-1003');
+    setJoinedMemberCode(code || 'PKYA-1003');
     setShowInstallModal(true);
   };
 

@@ -148,12 +148,21 @@ export async function GET(req: NextRequest) {
     if (matches.length > 0) {
       return NextResponse.json({
         success: true,
-        matches: matches.map((m) => ({
-          memberCode: m.memberCode,
-          userName: m.userName || m.profile?.userName || '골퍼',
-          clubName: m.profile?.clubName || '',
-          roundCount: m.completedRounds?.length || 0,
-        })),
+        matches: matches.map((m) => {
+          let code = m.memberCode || '';
+          const c = code.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if (c.length === 7 && /^[A-Z]{3}[0-9]{4}$/.test(c)) {
+            code = `${c.slice(0, 3)}A-${c.slice(3)}`;
+          } else if (c.length === 8 && /^[A-Z]{4}[0-9]{4}$/.test(c)) {
+            code = `${c.slice(0, 4)}-${c.slice(4)}`;
+          }
+          return {
+            memberCode: code,
+            userName: m.userName || m.profile?.userName || '골퍼',
+            clubName: m.profile?.clubName || '',
+            roundCount: m.completedRounds?.length || 0,
+          };
+        }),
       });
     }
 
@@ -166,7 +175,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // 2. 7자리 고유번호로 데이터 단건 조회 (일본어 전각 지원)
+  // 2. 8자리 고유번호로 데이터 단건 조회 (기존 7자리 하위 호환 듀얼 검색 지원)
   const rawCode = searchParams.get('code') || '';
   const cleanCode = toHalfWidth(rawCode).toUpperCase().replace(/[^A-Z0-9]/g, '');
 
@@ -174,56 +183,73 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, message: '회원번호가 누락되었습니다.' }, { status: 400 });
   }
 
-  const map = getMembersMap();
-  let record = map.get(cleanCode);
-  // If in-memory record has corrupted/mock rounds, discard it so fresh Supabase fetch occurs
-  if (record && record.completedRounds && record.completedRounds.some((r) => isMockOrCorruptedRound(r))) {
-    record = undefined;
-    map.delete(cleanCode);
+  // 8자리 및 기존 7자리 후보 키 도출 (듀얼 호환)
+  let candidateKeys = [cleanCode];
+  if (cleanCode.length === 7 && /^[A-Z]{3}[0-9]{4}$/.test(cleanCode)) {
+    const upgraded = `${cleanCode.slice(0, 3)}A${cleanCode.slice(3)}`;
+    candidateKeys = [upgraded, cleanCode];
+  } else if (cleanCode.length === 8 && /^[A-Z]{3}A[0-9]{4}$/.test(cleanCode)) {
+    const legacy = `${cleanCode.slice(0, 3)}${cleanCode.slice(4)}`;
+    candidateKeys = [cleanCode, legacy];
   }
 
-  // Fallback to disk re-check
+  const map = getMembersMap();
+  let record: MemberSyncRecord | undefined = undefined;
+
+  // 1) In-memory map 검색
+  for (const k of candidateKeys) {
+    const r = map.get(k);
+    if (r && (!r.completedRounds || !r.completedRounds.some((x) => isMockOrCorruptedRound(x)))) {
+      record = r;
+      break;
+    }
+  }
+
+  // 2) Fallback to disk re-check
   if (!record && fs.existsSync(MEMBER_SYNC_CACHE_FILE)) {
     try {
       const diskObj = JSON.parse(fs.readFileSync(MEMBER_SYNC_CACHE_FILE, 'utf-8'));
       for (const [k, v] of Object.entries(diskObj)) {
         const normK = k.toUpperCase().replace(/[^A-Z0-9]/g, '');
-        if (normK === cleanCode) {
+        if (candidateKeys.includes(normK)) {
           const diskRec = v as MemberSyncRecord;
           if (diskRec && diskRec.completedRounds) {
-            diskRec.completedRounds = diskRec.completedRounds.filter((r) => !isMockOrCorruptedRound(r));
+            diskRec.completedRounds = diskRec.completedRounds.filter((x) => !isMockOrCorruptedRound(x));
           }
           record = diskRec;
-          map.set(cleanCode, record);
+          map.set(candidateKeys[0], record);
           break;
         }
       }
     } catch {}
   }
 
-  // Fallback to Supabase (parkon_analytics_logs)
+  // 3) Fallback to Supabase (parkon_analytics_logs)
   if (!record) {
     const supabase = getSupabaseClient();
     if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('parkon_analytics_logs')
-          .select('*')
-          .eq('path', `member_sync:${cleanCode}`)
-          .order('timestamp', { ascending: false })
-          .limit(1);
+      for (const k of candidateKeys) {
+        try {
+          const { data, error } = await supabase
+            .from('parkon_analytics_logs')
+            .select('*')
+            .eq('path', `member_sync:${k}`)
+            .order('timestamp', { ascending: false })
+            .limit(1);
 
-        if (!error && Array.isArray(data) && data.length > 0 && data[0].referrer) {
-          try {
-            const parsed = JSON.parse(data[0].referrer) as MemberSyncRecord;
-            if (parsed && parsed.completedRounds) {
-              parsed.completedRounds = parsed.completedRounds.filter((r) => !isMockOrCorruptedRound(r));
-            }
-            record = parsed;
-            map.set(cleanCode, record);
-          } catch {}
-        }
-      } catch {}
+          if (!error && Array.isArray(data) && data.length > 0 && data[0].referrer) {
+            try {
+              const parsed = JSON.parse(data[0].referrer) as MemberSyncRecord;
+              if (parsed && parsed.completedRounds) {
+                parsed.completedRounds = parsed.completedRounds.filter((x) => !isMockOrCorruptedRound(x));
+              }
+              record = parsed;
+              map.set(candidateKeys[0], record);
+              break;
+            } catch {}
+          }
+        } catch {}
+      }
     }
   }
 
@@ -232,6 +258,13 @@ export async function GET(req: NextRequest) {
       { success: false, message: `회원번호(${rawCode})에 해당하는 저장된 데이터를 찾을 수 없습니다.` },
       { status: 404 }
     );
+  }
+
+  // 8자리 표준 포맷으로 승격 반영
+  if (candidateKeys[0].length === 8 && /^[A-Z]{4}[0-9]{4}$/.test(candidateKeys[0])) {
+    const primaryKey = candidateKeys[0];
+    record.memberCode = `${primaryKey.slice(0, 4)}-${primaryKey.slice(4)}`;
+    map.set(primaryKey, record);
   }
 
   if (record.completedRounds) {
@@ -246,18 +279,27 @@ export async function POST(req: NextRequest) {
   try {
     const body: MemberSyncRecord = await req.json();
     const rawCode = body.memberCode || '';
-    const cleanCode = toHalfWidth(rawCode).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    let cleanCode = toHalfWidth(rawCode).toUpperCase().replace(/[^A-Z0-9]/g, '');
 
     if (!cleanCode) {
       return NextResponse.json({ success: false, message: '유효한 회원번호가 필요합니다.' }, { status: 400 });
     }
 
+    // 7자리 번호는 8자리로 자동 승격
+    if (cleanCode.length === 7 && /^[A-Z]{3}[0-9]{4}$/.test(cleanCode)) {
+      cleanCode = `${cleanCode.slice(0, 3)}A${cleanCode.slice(3)}`;
+    }
+
+    const legacyKey = cleanCode.length === 8 && /^[A-Z]{3}A[0-9]{4}$/.test(cleanCode)
+      ? `${cleanCode.slice(0, 3)}${cleanCode.slice(4)}`
+      : '';
+
     const map = getMembersMap();
-    let existing = map.get(cleanCode);
+    let existing = map.get(cleanCode) || (legacyKey ? map.get(legacyKey) : undefined);
     if (!existing && fs.existsSync(MEMBER_SYNC_CACHE_FILE)) {
       try {
         const diskObj = JSON.parse(fs.readFileSync(MEMBER_SYNC_CACHE_FILE, 'utf-8'));
-        existing = diskObj[cleanCode];
+        existing = diskObj[cleanCode] || (legacyKey ? diskObj[legacyKey] : undefined);
       } catch {}
     }
 
@@ -285,15 +327,20 @@ export async function POST(req: NextRequest) {
       return tB - tA;
     });
 
+    const formattedCode = cleanCode.length === 8 ? `${cleanCode.slice(0, 4)}-${cleanCode.slice(4)}` : rawCode;
+
     const record: MemberSyncRecord = {
       ...body,
       completedRounds: mergedRounds,
-      memberCode: rawCode.includes('-') ? rawCode : (cleanCode.length === 7 ? `${cleanCode.slice(0, 3)}-${cleanCode.slice(3)}` : rawCode),
+      memberCode: formattedCode,
       phoneNumber: body.phoneNumber || (body as any).userPhone || body.profile?.phoneNumber || body.profile?.phone || existing?.phoneNumber || '',
       updatedAt: body.updatedAt || new Date().toISOString(),
     };
 
     map.set(cleanCode, record);
+    if (legacyKey) {
+      map.set(legacyKey, record);
+    }
     persistMembers(map);
 
     // Supabase parkon_analytics_logs 에 영구 클라우드 보관

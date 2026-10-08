@@ -124,13 +124,13 @@ export const INITIAL_MOCK_RESTAURANTS: RestaurantRecommendation[] = [
     tags: ['🅿️ 주차편함', '⚡ 초스피드', '🍚 밥/반찬리필'],
     rating: 4.9,
     ratingsCount: 28,
-    recommendedBy: 'PKY-7788 김대표',
-    memberCode: 'PKY-7788',
+    recommendedBy: 'PKYA-7788 김대표',
+    memberCode: 'PKYA-7788',
     reviewComment: '운동 끝나고 뜨끈한 국밥에 잘 익은 깍두기 얹어 먹으면 18홀 피로가 싹 풀립니다! 주차장도 광활해서 단체 버스도 넉넉합니다.',
     reviews: [
       {
         id: 'rev-dr-1',
-        author: 'PKY-7788 김대표',
+        author: 'PKYA-7788 김대표',
         rating: 5,
         comment: '운동 끝나고 뜨끈한 국밥에 잘 익은 깍두기 얹어 먹으면 18홀 피로가 싹 풀립니다! 주차장 광활합니다.',
         createdAt: '2026-09-15',
@@ -176,7 +176,7 @@ export const INITIAL_MOCK_RESTAURANTS: RestaurantRecommendation[] = [
     rating: 4.8,
     ratingsCount: 19,
     recommendedBy: '구미 동락사랑회 총무',
-    memberCode: 'PKY-5522',
+    memberCode: 'PKYA-5522',
     reviewComment: '월례회나 4개 조 단체 회식할 때 무조건 여기로 갑니다. 찰밥 국물에 말아 먹으면 보약이 따로 없습니다.',
     reviews: [
       {
@@ -333,7 +333,7 @@ export const INITIAL_MOCK_RESTAURANTS: RestaurantRecommendation[] = [
     rating: 4.9,
     ratingsCount: 20,
     recommendedBy: '동락 힐링조 조장',
-    memberCode: 'PKY-7788',
+    memberCode: 'PKYA-7788',
     reviewComment: '라운딩 끝나고 시원한 팥빙수나 따뜻한 단팥죽 한 그릇 나누기에 최고입니다. 강변 뷰가 탁 트여서 대화 나누기 아주 좋습니다.',
     reviews: [
       {
@@ -364,7 +364,7 @@ export const INITIAL_MOCK_RESTAURANTS: RestaurantRecommendation[] = [
     rating: 4.8,
     ratingsCount: 15,
     recommendedBy: '수성 시니어클럽',
-    memberCode: 'PKY-3311',
+    memberCode: 'PKYA-3311',
     reviewComment: '어르신들 모시고 운동 끝나고 쌍화차 한잔 마시면 기운이 펄펄 납니다. 가래떡 조청에 찍어먹는 맛이 일품입니다.',
     reviews: [
       {

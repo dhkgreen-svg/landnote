@@ -453,7 +453,7 @@ function ChronicleContent() {
             <div className="flex items-center gap-2">
               <KeyRound className="w-4 h-4 text-amber-300 shrink-0" />
               <span className="text-lg sm:text-xl font-black text-amber-300 tracking-wider font-mono">
-                {memberCode || 'PKY-7788'}
+                {memberCode || 'PKYA-7788'}
               </span>
             </div>
             <div className="flex items-center gap-1.5">

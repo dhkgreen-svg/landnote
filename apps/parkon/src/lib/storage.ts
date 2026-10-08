@@ -61,6 +61,8 @@ export interface UserGolfProfile {
   clubName: string;
   phoneNumber?: string; // 회원번호 분실 시 1초 조회용 연락처
   kakaoUser?: KakaoAuthUser | null;
+  nicknames?: string[]; // 멀티 닉네임 리스트 (예: ['김대희', '나이스버디'])
+  activeNickname?: string; // 현재 라운드 활성 닉네임
 }
 
 export const DEFAULT_USER_PROFILE: UserGolfProfile = {
@@ -69,6 +71,8 @@ export const DEFAULT_USER_PROFILE: UserGolfProfile = {
   clubName: '',
   phoneNumber: '',
   kakaoUser: null,
+  nicknames: [],
+  activeNickname: '',
 };
 
 export interface CrowdSpecProposal {
@@ -153,6 +157,128 @@ export const ParkOnStorage = {
     }
   },
 
+  // 멀티 닉네임 목록 조회
+  getNicknames(): string[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const profile = this.getUserProfile();
+      const kakao = this.getKakaoUser();
+      const currentName = this.getUserDisplayName();
+
+      const rawList: string[] = [];
+      if (Array.isArray(profile.nicknames)) {
+        rawList.push(...profile.nicknames);
+      }
+      if (kakao?.realName) rawList.push(kakao.realName);
+      if (kakao?.aliasName) rawList.push(kakao.aliasName);
+      if (currentName) rawList.push(currentName);
+
+      const isPlaceholder = (n: string) => {
+        const c = n.trim();
+        return !c || c === '홍길동' || c === '플레이어' || c === '조장' || c === '본인' || c === '파크골퍼' || c === '골퍼' || c === '손오공' || c === '게스트' || c === '山田太郎' || c === 'ゲスト';
+      };
+
+      const unique = Array.from(new Set(rawList.map((n) => n.trim()).filter((n) => !isPlaceholder(n))));
+      if (unique.length === 0 && currentName && !isPlaceholder(currentName)) {
+        unique.push(currentName.trim());
+      }
+      return unique;
+    } catch {
+      return [];
+    }
+  },
+
+  // 활성 닉네임 변경 (오늘 라운드에 사용할 이름)
+  setActiveNickname(newName: string): void {
+    if (typeof window === 'undefined' || !newName?.trim()) return;
+    try {
+      const trimmed = newName.trim();
+      const profile = this.getUserProfile();
+      const currentList = this.getNicknames();
+      if (!currentList.includes(trimmed)) {
+        currentList.push(trimmed);
+      }
+
+      const updatedProfile: UserGolfProfile = {
+        ...profile,
+        userName: trimmed,
+        activeNickname: trimmed,
+        nicknames: currentList,
+      };
+      this.saveUserProfile(updatedProfile);
+
+      localStorage.setItem('parkon_player_name', trimmed);
+
+      // 카카오/라인 연동 유저라면 선호 활동명도 동기화
+      const kakao = this.getKakaoUser();
+      if (kakao) {
+        const isReal = kakao.realName === trimmed;
+        this.setKakaoUser({
+          ...kakao,
+          nickname: trimmed,
+          preferredDisplay: isReal ? 'REAL' : 'ALIAS',
+          aliasName: isReal ? (kakao.aliasName || '') : trimmed,
+        });
+      }
+
+      // 라운드 진행 중이면 본인 플레이어명 즉시 동기화
+      try {
+        import('./playerUtils').then((m) => m.syncSelfPlayerNameToActiveRound(trimmed)).catch(() => {});
+      } catch {}
+
+      // 전역 반응형 이벤트 전파
+      window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: trimmed } }));
+    } catch (e) {
+      console.error('Failed to set active nickname:', e);
+    }
+  },
+
+  // 신규 닉네임 등록 및 즉시 활성화
+  addNickname(name: string): string[] {
+    if (typeof window === 'undefined' || !name?.trim()) return this.getNicknames();
+    try {
+      const trimmed = name.trim();
+      const list = this.getNicknames();
+      if (!list.includes(trimmed)) {
+        list.push(trimmed);
+      }
+      this.setActiveNickname(trimmed);
+      return list;
+    } catch {
+      return this.getNicknames();
+    }
+  },
+
+  // 닉네임 삭제
+  removeNickname(nameToRemove: string): string[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const trimmed = nameToRemove.trim();
+      const currentList = this.getNicknames();
+      const filtered = currentList.filter((n) => n !== trimmed);
+
+      const profile = this.getUserProfile();
+      let nextActive = profile.activeNickname || profile.userName;
+      if (nextActive === trimmed) {
+        nextActive = filtered[0] || '골퍼';
+      }
+
+      const updatedProfile: UserGolfProfile = {
+        ...profile,
+        userName: nextActive,
+        activeNickname: nextActive,
+        nicknames: filtered,
+      };
+      this.saveUserProfile(updatedProfile);
+      localStorage.setItem('parkon_player_name', nextActive);
+
+      window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: nextActive } }));
+      return filtered;
+    } catch {
+      return [];
+    }
+  },
+
   getKakaoUser(): KakaoAuthUser | null {
     if (typeof window === 'undefined') return null;
     try {
@@ -233,8 +359,9 @@ export const ParkOnStorage = {
     const user = this.getKakaoUser();
     if (!user) {
       const profile = this.getUserProfile();
-      if (profile && profile.userName && !isSample(profile.userName)) {
-        return profile.userName;
+      const eff = (profile.activeNickname || profile.userName || '').trim();
+      if (eff && !isSample(eff)) {
+        return eff;
       }
       return defaultFallback;
     }

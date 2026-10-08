@@ -202,52 +202,33 @@ export function Header() {
               </button>
             </div>
 
-            {/* ✍️ 2줄 프로필/로그인 버튼: [성명 + 고유번호] 또는 [성명 입력 + 로그인] */}
-            <div
-              className={`flex items-center gap-1 sm:gap-1.5 px-2 py-1 rounded-2xl text-xs font-black shadow-xs transition shrink-0 border ${
-                hasRegisteredName
-                  ? 'bg-emerald-800/90 hover:bg-emerald-900 text-amber-300 border-amber-300/60'
-                  : 'bg-amber-400 hover:bg-amber-300 text-stone-950 border-amber-500 shadow-sm'
-              }`}
-            >
+            {/* 👑 헤더 로그인/프로필 버튼 (미로그인 vs 로그인 원터치 심플화) */}
+            {!hasRegisteredName ? (
               <button
                 type="button"
-                onClick={() => handleOpenModal(hasRegisteredName ? 'profile' : 'login')}
-                className="text-[12px] leading-none shrink-0 cursor-pointer hover:scale-110 transition active:scale-95"
-                title={hasRegisteredName ? `${currentDisplayName} 님 프로필 확인` : (isJapanese ? 'お名前入力 ＆ ログイン' : isEnglish ? 'Name & Login' : '성명 입력 및 로그인')}
+                onClick={() => handleOpenModal('login')}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-black bg-amber-400 hover:bg-amber-300 text-stone-950 shadow-sm border border-amber-500 transition active:scale-95 shrink-0 cursor-pointer"
+                title={isJapanese ? '会員番号または電話番号でログイン' : isEnglish ? 'Login / Find Records' : '8자리 고유번호 또는 전화번호로 1초 로그인'}
               >
-                {hasRegisteredName ? '👤' : '✍️'}
+                <span className="text-xs leading-none">👤</span>
+                <span className="font-black text-[11px] sm:text-xs tracking-tight">
+                  {isJapanese ? 'ログイン / 記録検索' : isEnglish ? 'Login / Find Records' : '로그인 / 내 기록 찾기'}
+                </span>
               </button>
-              <div className="flex flex-col items-start leading-tight text-left">
-                {/* 1행: 이름 + 다이아몬드 티어 아이콘 */}
-                {(() => {
-                  const user9H = getUserCompleted9Holes(currentDisplayName);
-                  const userTier = calculateTier(user9H);
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenModal(hasRegisteredName ? 'profile' : 'login')}
-                      className="text-[11px] font-black tracking-tight truncate max-w-[65px] sm:max-w-[85px] cursor-pointer hover:underline text-left py-0.5 leading-none flex items-center gap-0.5"
-                      title={`${userTier.nameKo} (누적 ${user9H}회 완주)`}
-                    >
-                      {hasRegisteredName && <span className="text-xs leading-none drop-shadow-xs">{userTier.icon}</span>}
-                      <span>{hasRegisteredName ? currentDisplayName : (isJapanese ? 'お名前' : isEnglish ? 'Name' : '성명 입력')}</span>
-                    </button>
-                  );
-                })()}
-                {/* 2행: 로그인/고유번호 */}
-                <button
-                  type="button"
-                  onClick={() => handleOpenModal('login')}
-                  className={`text-[8.5px] font-extrabold tracking-tight cursor-pointer hover:underline text-left py-0.5 leading-none ${
-                    hasRegisteredName ? 'text-emerald-200 hover:text-amber-200' : 'text-amber-950 hover:text-black font-black'
-                  }`}
-                  title={isJapanese ? '7桁会員番号で1秒ログイン' : isEnglish ? 'Login with 7-digit code' : '스마트폰 7자리 회원번호로 1초 로그인하기'}
-                >
-                  {hasRegisteredName && memberCode ? memberCode : (isJapanese ? 'ログイン 🔑' : isEnglish ? 'Login 🔑' : '로그인 🔑')}
-                </button>
-              </div>
-            </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleOpenModal('profile')}
+                className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-black bg-emerald-800/90 hover:bg-emerald-900 text-amber-300 border border-amber-300/60 shadow-sm transition active:scale-95 shrink-0 cursor-pointer"
+                title={isJapanese ? `${currentDisplayName} 様 プロフィール・活動名切替` : isEnglish ? `${currentDisplayName} Profile & Name Switch` : `${currentDisplayName} 님 프로필 & 활동명 전환`}
+              >
+                <span className="text-xs leading-none">👑</span>
+                <span className="font-black text-[11px] sm:text-xs tracking-tight truncate max-w-[85px] sm:max-w-[125px]">
+                  {currentDisplayName} {isJapanese ? '様' : isEnglish ? '' : '님'}
+                </span>
+                <span className="text-xs leading-none">⛳</span>
+              </button>
+            )}
 
             {/* 0. 나의 파크골프 연대기 & 1촌 */}
             <Link

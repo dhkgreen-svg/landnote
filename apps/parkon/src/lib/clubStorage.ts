@@ -2223,7 +2223,7 @@ ${link}`;
       id: `pm_${Date.now()}`,
       name: cleanName,
       phone: applicant.phone || '',
-      memberCode: cleanCode || `PKY-${Math.floor(1000 + Math.random() * 9000)}`,
+      memberCode: cleanCode || `PKYB-${Math.floor(1000 + Math.random() * 9000)}`,
       diamondTier: tier.code,
       totalCompleted9Holes: completed,
       requestedAt: '방금 전',
@@ -2270,7 +2270,7 @@ ${link}`;
       joinedAtDate = archived.joinedAt; // 최초 가입일 원상 복구!
     }
 
-    const cleanCode = pending.memberCode || (typeof window !== 'undefined' ? localStorage.getItem('parkon_member_code_v1') || localStorage.getItem('parkon_member_code') || '' : '') || `PKY-${Math.floor(1000 + Math.random() * 9000)}`;
+    const cleanCode = pending.memberCode || (typeof window !== 'undefined' ? localStorage.getItem('parkon_member_code_v1') || localStorage.getItem('parkon_member_code') || '' : '') || `PKYB-${Math.floor(1000 + Math.random() * 9000)}`;
     const comp9H = typeof window !== 'undefined' ? getUserCompleted9Holes(pending.name) : 0;
     const tier = calculateTier(comp9H);
 
@@ -2918,7 +2918,7 @@ ${shareUrl}`;
       return {
         memberId: m.id,
         memberName: m.name,
-        memberCode: m.memberCode || 'PKY-0000',
+        memberCode: m.memberCode || 'PKYA-0000',
         role: m.role,
         customRoleName: m.customRoleName,
         tier: tierObj,

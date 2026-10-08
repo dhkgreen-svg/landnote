@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, ShieldCheck, Sparkles, LogOut, User, UserCheck, Edit3, Copy, Check, RefreshCw, KeyRound, Smartphone, Cloud, Search, HelpCircle, MessageSquare, Trash2 } from 'lucide-react';
+import { X, CheckCircle, ShieldCheck, Sparkles, LogOut, User, UserCheck, Edit3, Copy, Check, RefreshCw, KeyRound, Smartphone, Cloud, Search, HelpCircle, MessageSquare, Trash2, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { KakaoAuthUser, ParkOnStorage } from '@/lib/storage';
 import { loginWithKakao, logoutKakao } from '@/lib/kakaoAuth';
 import { syncSelfPlayerNameToActiveRound } from '@/lib/playerUtils';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
-import { getOrGenerateMemberCode, getSavedMemberCode, fetchAndRestoreMemberData, syncMemberDataToCloud, normalizeMemberCode, findMemberCodeByNameAndPhone, isPlaceholderName, MEMBER_CODE_STORAGE_KEY } from '@/lib/memberCodeUtils';
+import { getOrGenerateMemberCode, getSavedMemberCode, fetchAndRestoreMemberData, syncMemberDataToCloud, normalizeMemberCode, findMemberCodeByNameAndPhone, isPlaceholderName, isMockOrCorruptedRound, maskPhoneNumber, MEMBER_CODE_STORAGE_KEY } from '@/lib/memberCodeUtils';
+import { BadgeStorage } from '@/lib/badgeStorage';
 import { DEFAULT_USER_PROFILE } from '@/lib/storage';
 
 interface KakaoLoginModalProps {
@@ -32,7 +33,7 @@ export function KakaoLoginModal({
   initialName,
   isJoinFlow = false,
 }: KakaoLoginModalProps) {
-  const { isJapanese } = useTranslation();
+  const { isJapanese, isEnglish } = useTranslation();
   const [currentUser, setCurrentUser] = useState<KakaoAuthUser | null>(null);
   const [memberCode, setMemberCode] = useState('');
   const [realName, setRealName] = useState('');
@@ -42,7 +43,7 @@ export function KakaoLoginModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isSavedNotice, setIsSavedNotice] = useState(false);
 
-  // 7자리 회원번호 로그인 관련 상태
+  // 8자리 회원번호 로그인 관련 상태
   const [inputCode, setInputCode] = useState('');
   const [isRestoring, setIsRestoring] = useState(false);
   const [syncStatus, setSyncStatus] = useState<{ success?: boolean; message?: string } | null>(null);
@@ -50,6 +51,15 @@ export function KakaoLoginModal({
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [showSwitchLogin, setShowSwitchLogin] = useState(false);
   const [activeTab, setActiveTab] = useState<'CODE_LOGIN' | 'NEW_USER'>('CODE_LOGIN');
+
+  // 연대기 요약 및 멀티 닉네임 상태
+  const [roundCount, setRoundCount] = useState(0);
+  const [medalCount, setMedalCount] = useState(0);
+  const [nicknames, setNicknames] = useState<string[]>([]);
+  const [activeNickname, setActiveNicknameState] = useState('');
+  const [newNicknameInput, setNewNicknameInput] = useState('');
+  const [showAddNickname, setShowAddNickname] = useState(false);
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
   // 고유번호 분실 시 찾기 모달/상태
   const [showFindModal, setShowFindModal] = useState(false);
@@ -76,6 +86,22 @@ export function KakaoLoginModal({
       setFoundMatches(null);
       setFindError('');
       setSentToKakaoNotice(false);
+
+      // 연대기 요약 및 닉네임 목록 로딩
+      const rounds = ParkOnStorage.getCompletedRounds().filter((r) => !r.isVirtual && !isMockOrCorruptedRound(r));
+      setRoundCount(rounds.length);
+      try {
+        const b = BadgeStorage.getAllBadges();
+        const earned = Object.values(b || {}).filter((x: any) => x && x.earnedAt).length;
+        setMedalCount(earned);
+      } catch {
+        setMedalCount(0);
+      }
+
+      const nicks = ParkOnStorage.getNicknames();
+      setNicknames(nicks);
+      const curDisplay = ParkOnStorage.getUserDisplayName();
+      setActiveNicknameState(curDisplay);
 
       // 모드 결정: initialMode가 'login'이거나 아직 미등록 기기이면 무조건 로그인 입력창으로 직행!
       if (initialMode === 'find') {
@@ -185,13 +211,43 @@ export function KakaoLoginModal({
   // 3-1. 폰 변경 대비: 내 카톡 / 클립보드로 번호 전송 보관
   const handleSendToKakao = () => {
     const displayName = realName || ParkOnStorage.getUserDisplayName();
-    const backupText = `[파크골프 올인원 평생 고유회원번호]\n👤 회원 성명: ${displayName}\n🔑 고유번호: ${memberCode}\n\n💡 스마트폰을 교체하시거나 컴퓨터(PC)에서 로그인하실 때 이 번호 7자리만 입력하시면 비밀번호 없이 모든 경기 기록과 연대기가 1초 만에 그대로 복원됩니다!\nhttps://www.parkgolfallinone.com`;
+    const backupText = `[파크골프 올인원 평생 고유회원번호]\n👤 회원 성명: ${displayName}\n🔑 고유번호: ${memberCode}\n\n💡 스마트폰을 교체하시거나 컴퓨터(PC)에서 로그인하실 때 이 번호 8자리만 입력하시면 비밀번호 없이 모든 경기 기록과 연대기가 1초 만에 그대로 복원됩니다!\nhttps://www.parkgolfallinone.com`;
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(backupText);
     }
     setSentToKakaoNotice(true);
     setTimeout(() => setSentToKakaoNotice(false), 4000);
+  };
+
+  // 3-2. 멀티 닉네임 전환 및 관리
+  const handleSelectNickname = (nick: string) => {
+    ParkOnStorage.setActiveNickname(nick);
+    setActiveNicknameState(nick);
+    setIsSavedNotice(true);
+    setTimeout(() => setIsSavedNotice(false), 2000);
+  };
+
+  const handleAddNewNickname = () => {
+    const clean = newNicknameInput.trim();
+    if (!clean) return;
+    const updated = ParkOnStorage.addNickname(clean);
+    setNicknames(updated);
+    setActiveNicknameState(clean);
+    setNewNicknameInput('');
+    setShowAddNickname(false);
+    setIsSavedNotice(true);
+    setTimeout(() => setIsSavedNotice(false), 2000);
+  };
+
+  const handleRemoveNickname = (nick: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (nicknames.length <= 1) return;
+    const updated = ParkOnStorage.removeNickname(nick);
+    setNicknames(updated);
+    const next = ParkOnStorage.getUserDisplayName();
+    setActiveNicknameState(next);
+    setRealName(next);
   };
 
   // 3-2. 고유번호 분실 시: 성함 + 휴대폰 번호(뒤 4자리)로 번호 찾기
@@ -332,7 +388,7 @@ export function KakaoLoginModal({
   const handleResetToZeroBase = () => {
     if (window.confirm(isJapanese
       ? '保存された一時プロフィールと会員番号を完全に消去し、ゼロベース（初期白紙状態）にリセットしますか？\n\nスマホの会員番号で新しくログインできます。'
-      : '브라우저에 저장된 임시 프로필(손오공 등)과 고유번호를 완전히 비우고 [깨끗한 제로 베이스(백지 상태)]로 리셋하시겠습니까?\n\n휴대폰의 7자리 고유번호로 새로 로그인하실 수 있습니다.')) {
+      : '브라우저에 저장된 임시 프로필과 고유번호를 완전히 비우고 [깨끗한 제로 베이스(백지 상태)]로 리셋하시겠습니까?\n\n휴대폰의 8자리(또는 기존 7자리) 고유번호로 새로 로그인하실 수 있습니다.')) {
       try {
         localStorage.removeItem(MEMBER_CODE_STORAGE_KEY);
       } catch {}
@@ -353,7 +409,7 @@ export function KakaoLoginModal({
       setActiveTab('CODE_LOGIN');
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('parkon_profile_updated'));
-      alert(isJapanese ? 'ゼロベースに初期化されました。スマホの会員番号を入力してください。' : '✓ 제로 베이스로 깨끗하게 초기화되었습니다. 휴대폰의 7자리 고유번호를 입력해 주세요!');
+      alert(isJapanese ? 'ゼロベースに初期化されました。スマホの会員番号を入力してください。' : '✓ 제로 베이스로 깨끗하게 초기화되었습니다. 휴대폰의 8자리 고유번호를 입력해 주세요!');
     }
   };
 
@@ -372,8 +428,8 @@ export function KakaoLoginModal({
               </h3>
               <p className="text-[10px] text-emerald-100 font-medium">
                 {isJapanese
-                  ? 'パスワード不要・7桁番号でどこでもすぐ利用'
-                  : '비밀번호 없이 7자리 번호로 어디서든 즉시 이용'}
+                  ? 'パスワード不要・8桁(または7桁)番号でどこでもすぐ利用'
+                  : '비밀번호 없이 8자리(또는 7자리) 고유번호로 어디서든 즉시 이용'}
               </p>
             </div>
           </div>
@@ -381,6 +437,7 @@ export function KakaoLoginModal({
             type="button"
             onClick={onClose}
             className="text-white/80 hover:text-white p-1 rounded-lg cursor-pointer transition"
+            aria-label="닫기"
           >
             <X className="w-5 h-5" />
           </button>
@@ -491,26 +548,32 @@ export function KakaoLoginModal({
               )}
             </div>
           ) : hasRegisteredUser && !showSwitchLogin ? (
-            /* ================= [이미 로그인된 상태] ================= */
+            /* ================= [이미 로그인된 상태: 8자리 계정 + 멀티 닉네임 선택] ================= */
             <div className="space-y-3.5 text-xs">
-              {/* 👑 VIP 황금빛 회원번호 카드 (대표님 지침: 비밀번호 없이 7자리로 PC 연동) */}
-              <div className="bg-gradient-to-br from-amber-50 via-amber-100/60 to-emerald-50 border-2 border-amber-300 rounded-2xl p-3.5 shadow-sm space-y-2.5">
+              {/* 1. 내 계정 기본 정보 (안심 확인용) */}
+              <div className="bg-gradient-to-br from-amber-50 via-amber-100/50 to-emerald-50 border-2 border-amber-300 rounded-2xl p-3.5 shadow-sm space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 font-black text-amber-950 text-xs">
+                  <div className="flex items-center gap-1.5 font-black text-amber-950 text-xs sm:text-sm">
                     <span className="text-base">👑</span>
-                    <span>나의 평생 고유번호 (비밀번호 없음)</span>
+                    <span>{isJapanese ? 'マイ公式アカウント情報' : isEnglish ? 'Official Account' : '내 계정 기본 정보'}</span>
                   </div>
-                  <span className="text-[9px] bg-amber-400/80 text-amber-950 font-black px-2 py-0.5 rounded-full">
-                    영구 보관
+                  <span className="text-[10px] bg-amber-400 text-amber-950 font-black px-2 py-0.5 rounded-full">
+                    {isJapanese ? '永久安心保管' : isEnglish ? 'Permanent' : '안심 영구 보관'}
                   </span>
                 </div>
 
+                {/* 고유번호 8자리 표시 & 복사 */}
                 <div className="flex items-center justify-between bg-white rounded-xl p-2.5 border border-amber-200 shadow-inner">
                   <div className="flex items-center gap-2">
                     <KeyRound className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span className="text-lg font-black text-stone-900 tracking-wider font-mono">
-                      {memberCode || 'PKY-7788'}
-                    </span>
+                    <div>
+                      <div className="text-[9.5px] text-stone-500 font-bold leading-none mb-0.5">
+                        {isJapanese ? '8桁会員番号 (パスワード不要)' : isEnglish ? '8-digit Member Code' : '8자리 평생 고유번호 (비밀번호 없음)'}
+                      </div>
+                      <span className="text-base sm:text-lg font-black text-stone-900 tracking-wider font-mono">
+                        {memberCode || 'PKYA-7788'}
+                      </span>
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -522,190 +585,271 @@ export function KakaoLoginModal({
                     }`}
                   >
                     {codeCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{codeCopied ? (isJapanese ? 'コピー済' : '복사됨!') : (isJapanese ? '番号コピー' : '번호 복사')}</span>
+                    <span>{codeCopied ? (isJapanese ? 'コピー済' : '복사됨!') : (isJapanese ? '번호 복사' : '번호 복사')}</span>
                   </button>
                 </div>
 
-                <p className="text-[11px] text-stone-700 font-bold leading-relaxed bg-white/70 p-2 rounded-xl border border-amber-100">
+                {/* 연결된 휴대폰 & 나의 연대기 요약 한눈에 */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {/* 연결된 휴대폰 */}
+                  <div className="bg-white/90 p-2.5 rounded-xl border border-amber-200">
+                    <div className="text-[10px] text-stone-500 font-bold flex items-center gap-1">
+                      <Smartphone className="w-3 h-3 text-amber-600" />
+                      <span>{isJapanese ? '連携電話番号' : isEnglish ? 'Phone' : '연결된 휴대폰'}</span>
+                    </div>
+                    <div className="font-mono font-black text-[11px] sm:text-[12px] text-stone-800 mt-1 truncate">
+                      {phoneNumber ? maskPhoneNumber(phoneNumber) : (prof?.phoneNumber ? maskPhoneNumber(prof.phoneNumber) : '010-****-5678')}
+                    </div>
+                  </div>
+
+                  {/* 나의 연대기 요약 (완주 OO회 | 메달 OO개) */}
+                  <div className="bg-white/90 p-2.5 rounded-xl border border-amber-200">
+                    <div className="text-[10px] text-stone-500 font-bold flex items-center gap-1">
+                      <span className="text-xs">🏆</span>
+                      <span>{isJapanese ? '年代記要約' : isEnglish ? 'Chronicle' : '나의 연대기 요약'}</span>
+                    </div>
+                    <div className="font-black text-[11px] sm:text-[12px] text-emerald-800 mt-1 truncate">
+                      {isJapanese ? (
+                        <>完走 <span className="text-amber-600 font-mono font-black">{roundCount}</span>回 | メダル <span className="text-amber-600 font-mono font-black">{medalCount}</span>個</>
+                      ) : isEnglish ? (
+                        <><span className="text-amber-600 font-mono font-black">{roundCount}</span> Rounds | <span className="text-amber-600 font-mono font-black">{medalCount}</span> Medals</>
+                      ) : (
+                        <>완주 <span className="text-amber-600 font-mono font-black">{roundCount}</span>회 | 메달 <span className="text-amber-600 font-mono font-black">{medalCount}</span>개</>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. "오늘 라운드에 사용할 이름 선택" (멀티 프로필) */}
+              <div className="space-y-2 bg-gradient-to-br from-emerald-50/80 to-amber-50/80 p-3.5 rounded-2xl border-2 border-emerald-300/80">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-black text-emerald-950 text-xs sm:text-sm">
+                    <span className="text-base">🏌️</span>
+                    <span>{isJapanese ? '今日ラウンドで使用するお名前' : isEnglish ? 'Select Name for Today\'s Round' : '오늘 라운드에 사용할 이름 선택'}</span>
+                  </div>
+                  <span className="text-[10px] text-emerald-800 font-black bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                    {isJapanese ? '即時同期' : isEnglish ? 'Instant Sync' : '즉시 반영'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-600 font-medium">
                   {isJapanese
-                    ? '💡 パソコンや別のスマホでこの7桁の番号を入れるだけで、パスワード不要で過去の全スコアと年代記がそのまま復元されます！'
-                    : '💡 PC(컴퓨터)나 다른 휴대폰에서 이 번호 7자리만 넣으시면, 비밀번호 없이 내 모든 경기 기록과 연대기가 1초 만에 그대로 복원됩니다!'}
+                    ? '希望のお名前をタップすると、スコアカードや仲間名簿に即時反映されます。'
+                    : isEnglish
+                    ? 'Tap a name below to immediately apply it to your scorecard and friend list.'
+                    : '원하는 이름을 터치하시면 헤더, 스코어보드와 1촌 기록에 즉시 반영됩니다.'}
                 </p>
 
-                {/* 📲 폰 변경 대비: 번호 전송 보관 */}
-                <div className="space-y-1">
-                  <button
-                    type="button"
-                    onClick={handleSendToKakao}
-                    className="w-full py-2.5 px-3 bg-[#FEE500] hover:bg-[#FDD835] active:scale-95 text-[#191919] font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-[#E6CF00]"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5 text-[#191919]" />
-                    <span>{isJapanese ? '📲 機種変更に備えて番号をコピーしてメモ' : '📲 폰 바꿀 때 대비: 내 카톡으로 번호 보내두기'}</span>
-                  </button>
-                  {sentToKakaoNotice && (
-                    <div className="p-2 bg-amber-100 text-amber-950 font-bold text-[10.5px] rounded-xl text-center animate-fadeIn">
-                      {isJapanese
-                        ? '✓ 会員番号案内文が安全にコピーされました！メモ帳やLINEに貼り付けて保管してください。'
-                        : '✓ 회원번호 안내문이 안전하게 복사되었습니다! 카톡 \'나와의 채팅\'에 붙여넣어 평생 보관하세요.'}
+                {/* 칩 / 라디오 리스트 */}
+                <div className="space-y-1.5 pt-1">
+                  {nicknames.map((nick) => {
+                    const isSelected = activeNickname === nick;
+                    const isReal = Boolean(
+                      (currentUser?.realName && currentUser.realName === nick) ||
+                      (realName && realName === nick) ||
+                      nick.includes('김대희')
+                    );
+                    const label = isReal && !nick.includes('본명') ? `${nick} (본명)` : nick;
+
+                    return (
+                      <div
+                        key={nick}
+                        onClick={() => handleSelectNickname(nick)}
+                        className={`flex items-center justify-between p-2.5 rounded-xl border-2 transition cursor-pointer active:scale-98 ${
+                          isSelected
+                            ? 'bg-emerald-700 text-white border-emerald-800 shadow-sm'
+                            : 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-base leading-none shrink-0">
+                            {isSelected ? '🔘' : '⚪'}
+                          </span>
+                          <span className={`text-xs font-black tracking-tight truncate ${isSelected ? 'text-white' : 'text-stone-900'}`}>
+                            {label}
+                          </span>
+                          {isSelected && (
+                            <span className="text-[9.5px] bg-amber-400 text-emerald-950 font-black px-1.5 py-0.2 rounded-full shrink-0">
+                              {isJapanese ? '適用中' : isEnglish ? 'Active' : '현재 적용 중'}
+                            </span>
+                          )}
+                        </div>
+                        {nicknames.length > 1 && !isReal && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleRemoveNickname(nick, e)}
+                            className={`p-1 rounded-lg hover:bg-rose-100 hover:text-rose-700 transition cursor-pointer shrink-0 ${
+                              isSelected ? 'text-emerald-200 hover:text-rose-200' : 'text-stone-400'
+                            }`}
+                            title="닉네임 삭제"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* + 새 닉네임 추가하기 버튼 또는 인풋 */}
+                  {!showAddNickname ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowAddNickname(true)}
+                      className="w-full py-2.5 px-3 border-2 border-dashed border-emerald-400/80 hover:border-emerald-600 bg-white/70 hover:bg-white text-emerald-800 font-black text-xs rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{isJapanese ? '+ 新しいニックネームを追加' : isEnglish ? '+ Add New Nickname' : '+ 새 닉네임 추가하기 (예: 나이스버디, 파크도사)'}</span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1.5 bg-white p-2 rounded-xl border-2 border-emerald-500 shadow-xs animate-fadeIn">
+                      <input
+                        type="text"
+                        value={newNicknameInput}
+                        onChange={(e) => setNewNicknameInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleAddNewNickname();
+                        }}
+                        placeholder="새 닉네임 입력 (예: 파크도사)"
+                        className="flex-1 px-2.5 py-2 bg-stone-50 border border-stone-300 rounded-lg text-xs font-bold outline-none focus:border-emerald-600"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddNewNickname}
+                        className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-lg transition active:scale-95 cursor-pointer shrink-0"
+                      >
+                        {isJapanese ? '追加' : isEnglish ? 'Add' : '추가'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAddNickname(false);
+                          setNewNicknameInput('');
+                        }}
+                        className="px-2 py-2 text-stone-400 hover:text-stone-700 text-xs font-bold cursor-pointer shrink-0"
+                      >
+                        ✕
+                      </button>
                     </div>
                   )}
-                </div>
-
-                <div className="flex gap-2 pt-0.5">
-                  <button
-                    type="button"
-                    disabled={isBackingUp}
-                    onClick={handleManualBackup}
-                    className="flex-1 py-2 px-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-[11px] rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
-                  >
-                    <Cloud className="w-3.5 h-3.5" />
-                    <span>{isBackingUp ? (isJapanese ? '保存中...' : '클라우드 저장 중...') : (isJapanese ? '☁️ クラウドへバックアップ' : '☁️ 지금 클라우드 백업')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowSwitchLogin(true)}
-                    className="py-2 px-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-[10.5px] rounded-xl flex items-center justify-center gap-1 border border-stone-200 transition cursor-pointer"
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                    <span>{isJapanese ? '別の番号でログイン' : '다른 번호로 로그인'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* 내 현재 활동명 프로필 확인 */}
-              <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-700 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
-                  {currentUser?.realName ? currentUser.realName.slice(0, 1) : (realName ? realName.slice(0, 1) : '골')}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-extrabold text-sm text-stone-900 truncate">
-                      {ParkOnStorage.getUserDisplayName()}
-                    </span>
-                    <span className="text-[10px] bg-emerald-600 text-white font-black px-1.5 py-0.2 rounded-full flex items-center gap-0.5">
-                      <CheckCircle className="w-2.5 h-2.5" /> {isJapanese ? '連携完了' : '연동 완료'}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-stone-500 font-medium mt-0.5">
-                    {isJapanese ? '表示中の名前' : '현재 표시 활동명'}: {ParkOnStorage.getUserDisplayName()}
-                  </div>
-                </div>
-              </div>
-
-              {/* 실명 & 가명 & 연락처 수정 폼 */}
-              <div className="space-y-2.5 bg-stone-50 p-3 rounded-2xl border border-stone-200">
-                <div className="space-y-1">
-                  <label className="font-black text-stone-800 flex items-center justify-between">
-                    <span>성함 (실제 이름) *</span>
-                    <span className="text-[10px] text-emerald-700 font-bold">공식 기록·대회용</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={realName}
-                    onChange={(e) => setRealName(e.target.value)}
-                    placeholder="성함을 입력하세요 (예: 김대희)"
-                    className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs focus:border-emerald-600 outline-none"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-black text-stone-800 flex items-center justify-between">
-                    <span>휴대폰 번호 (고유번호 분실 시 1초 조회용)</span>
-                    <span className="text-[10px] text-amber-700 font-bold">안심 보관</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="예: 010-1234-7788 또는 끝 4자리"
-                    className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs focus:border-emerald-600 outline-none"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="font-black text-stone-800 flex items-center justify-between">
-                    <span>가명 / 닉네임 (별명)</span>
-                    <span className="text-[10px] text-purple-700 font-bold">친선·오픈 번개용</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={aliasName}
-                    onChange={(e) => setAliasName(e.target.value)}
-                    placeholder="예: 나이스샷, 홀인원"
-                    className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs focus:border-purple-600 outline-none"
-                  />
-                </div>
-
-                {/* 기본 활동명 라디오 선택 */}
-                <div className="space-y-1 pt-0.5">
-                  <span className="font-black text-stone-800 text-[10.5px]">기본 활동명 선택</span>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setPreferredDisplay('REAL')}
-                      className={`py-1.5 px-2 rounded-xl font-black text-xs border transition flex items-center justify-center gap-1 ${
-                        preferredDisplay === 'REAL'
-                          ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
-                          : 'bg-white text-stone-700 border-stone-200'
-                      }`}
-                    >
-                      <UserCheck className="w-3.5 h-3.5" />
-                      <span>실명 ({realName || '실명'})</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPreferredDisplay('ALIAS')}
-                      className={`py-1.5 px-2 rounded-xl font-black text-xs border transition flex items-center justify-center gap-1 ${
-                        preferredDisplay === 'ALIAS'
-                          ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
-                          : 'bg-white text-stone-700 border-stone-200'
-                      }`}
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>가명 ({aliasName || '가명'})</span>
-                    </button>
-                  </div>
                 </div>
               </div>
 
               {isSavedNotice && (
-                <div className="p-2.5 bg-emerald-100 text-emerald-800 font-black rounded-xl text-center text-xs animate-fadeIn">
-                  ✓ 프로필 활동명이 성공적으로 저장되었습니다!
+                <div className="p-2.5 bg-emerald-100 text-emerald-800 font-black rounded-xl text-center text-xs animate-fadeIn border border-emerald-300">
+                  ✓ {isJapanese ? '活動名が正常に変更されました！' : '프로필 활동명이 즉시 적용되었습니다!'}
                 </div>
               )}
 
               {syncStatus && (
                 <div className={`p-2.5 rounded-xl font-bold text-xs text-center animate-fadeIn ${
-                  syncStatus.success ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                  syncStatus.success ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
                 }`}>
                   {syncStatus.message}
                 </div>
               )}
 
-              <div className="flex gap-2 pt-1">
+              {/* 보조 설정 (접이식): 성함/휴대폰 관리 및 클라우드 즉시 백업 */}
+              <div className="bg-stone-50 rounded-2xl border border-stone-200 overflow-hidden">
                 <button
                   type="button"
-                  onClick={handleSaveProfile}
-                  className="flex-1 py-3 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-black text-xs rounded-xl shadow transition cursor-pointer"
+                  onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                  className="w-full p-3 flex items-center justify-between font-black text-stone-700 hover:bg-stone-100 text-xs transition cursor-pointer"
                 >
-                  프로필 저장 완료
+                  <span className="flex items-center gap-1.5">
+                    <span>⚙️</span>
+                    <span>{isJapanese ? '詳細情報設定 ＆ クラウド同期' : isEnglish ? 'Settings & Cloud Backup' : '연락처 수정 및 클라우드 백업'}</span>
+                  </span>
+                  {showAdvancedSettings ? <ChevronUp className="w-4 h-4 text-stone-400" /> : <ChevronDown className="w-4 h-4 text-stone-400" />}
+                </button>
+
+                {showAdvancedSettings && (
+                  <div className="p-3 pt-0 space-y-2.5 border-t border-stone-200 animate-fadeIn">
+                    <div className="space-y-1">
+                      <label className="font-black text-stone-800 flex items-center justify-between">
+                        <span>성함 (실제 이름)</span>
+                        <span className="text-[10px] text-emerald-700 font-bold">공식 기록·대회용</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={realName}
+                        onChange={(e) => setRealName(e.target.value)}
+                        placeholder="성함을 입력하세요 (예: 김대희)"
+                        className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs focus:border-emerald-600 outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-black text-stone-800 flex items-center justify-between">
+                        <span>휴대폰 번호 (고유번호 분실 시 1초 조회용)</span>
+                        <span className="text-[10px] text-amber-700 font-bold">안심 보관</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="예: 010-1234-7788 또는 끝 4자리"
+                        className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs focus:border-emerald-600 outline-none"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSaveProfile}
+                      className="w-full py-2 bg-stone-800 hover:bg-stone-900 text-white font-black text-xs rounded-xl transition cursor-pointer"
+                    >
+                      연락처 / 실명 저장
+                    </button>
+
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                      <button
+                        type="button"
+                        disabled={isBackingUp}
+                        onClick={handleManualBackup}
+                        className="py-2 px-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-[11px] rounded-xl flex items-center justify-center gap-1 shadow-xs transition active:scale-95 cursor-pointer"
+                      >
+                        <Cloud className="w-3.5 h-3.5" />
+                        <span>{isBackingUp ? '저장 중...' : '☁️ 지금 백업'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSendToKakao}
+                        className="py-2 px-2 bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] font-black text-[11px] rounded-xl flex items-center justify-center gap-1 shadow-xs transition active:scale-95 cursor-pointer border border-[#E6CF00]"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>📲 카톡에 번호 복사</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 3. 하단 액션: [ 다른 계정으로 전환 / 로그아웃 ] */}
+              <div className="pt-2 border-t border-stone-200 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSwitchLogin(true)}
+                  className="flex-1 py-2.5 px-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-black text-xs rounded-xl flex items-center justify-center gap-1.5 border border-stone-300 transition cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-stone-600" />
+                  <span>{isJapanese ? '他の番号に切替' : isEnglish ? 'Switch Account' : '다른 번호로 계정 전환'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="py-3 px-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer border border-stone-200"
+                  className="py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 font-black text-xs rounded-xl transition flex items-center gap-1 cursor-pointer border border-rose-200"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span>로그아웃</span>
+                  <span>{isJapanese ? 'ログアウト' : isEnglish ? 'Logout' : '로그아웃'}</span>
                 </button>
               </div>
 
               {/* 제로 베이스 초기화 (손오공/더미 데이터 청소) */}
-              <div className="pt-1 text-center">
+              <div className="pt-0.5 text-center">
                 <button
                   type="button"
                   onClick={handleResetToZeroBase}
-                  className="text-[11px] text-stone-400 hover:text-rose-600 font-bold underline transition cursor-pointer inline-flex items-center gap-1"
+                  className="text-[10.5px] text-stone-400 hover:text-rose-600 font-bold underline transition cursor-pointer inline-flex items-center gap-1"
                 >
                   <Trash2 className="w-3 h-3" />
                   <span>기기 데이터 초기화 (제로 베이스 백지 상태로 리셋)</span>
@@ -744,23 +888,23 @@ export function KakaoLoginModal({
               </div>
 
               {activeTab === 'CODE_LOGIN' ? (
-                /* --- TAB A: 7자리 고유번호로 비밀번호 없이 자동 로그인 --- */
+                /* --- TAB A: 8자리 고유번호로 비밀번호 없이 자동 로그인 (기존 7자리 자동 호환) --- */
                 <div className="space-y-3 bg-gradient-to-br from-amber-50/70 to-emerald-50/70 p-3.5 rounded-2xl border-2 border-emerald-300/80">
                   <div className="space-y-1">
                     <div className="flex items-center gap-1.5 font-black text-emerald-950 text-xs">
                       <KeyRound className="w-4 h-4 text-emerald-700" />
-                      <span>{isJapanese ? '7桁会員番号で1秒自動ログイン' : '회원번호 7자리로 1초 자동 로그인'}</span>
+                      <span>{isJapanese ? '8桁会員番号で1秒自動ログイン (旧7桁も自動対応)' : '8자리 고유번호로 1초 자동 로그인 (기존 7자리도 호환)'}</span>
                     </div>
                     <p className="text-[11px] text-stone-600 font-bold leading-relaxed">
                       {isJapanese
-                        ? 'スマートフォンで確認した7桁の会員番号を入力すると、パスワード不要でスマホのすべてのスコア記録と年代記がPCにそのまま復元されます！'
-                        : '스마트폰에서 확인하신 7자리 고유번호를 입력하시면, 비밀번호 없이 휴대폰의 모든 경기 기록과 연대기가 PC로 그대로 복원됩니다!'}
+                        ? 'スマートフォンで確認した8桁の会員番号(旧7桁も自動対応)を入力すると、パスワード不要でスマホのすべてのスコア記録と年代記がPCにそのまま復元されます！'
+                        : '스마트폰에서 확인하신 8자리 고유번호(기존 7자리 번호도 100% 자동 호환)를 입력하시면, 비밀번호 없이 휴대폰의 모든 경기 기록과 연대기가 PC로 그대로 복원됩니다!'}
                     </p>
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="font-black text-stone-800 text-[11px] flex items-center justify-between">
-                      <span>{isJapanese ? '7桁会員番号を入力' : '7자리 고유번호 입력'}</span>
+                      <span>{isJapanese ? '8桁会員番号を入力 (旧7桁も可)' : '8자리 고유번호 입력 (기존 7자리도 가능)'}</span>
                       <span className="text-[10px] text-emerald-700 font-bold">{isJapanese ? 'パスワード不要' : '비밀번호 불필요'}</span>
                     </label>
                     <div className="relative">
@@ -776,7 +920,7 @@ export function KakaoLoginModal({
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleRestoreByMemberCode();
                         }}
-                        placeholder={isJapanese ? '例: PKY-7788 または ABC1234' : '예: PKY-7788 또는 ABC1234'}
+                        placeholder={isJapanese ? '例: PKYA-7788 または PKYB-1234' : '예: PKYA-7788 또는 PKYB-1234'}
                         className="w-full px-3.5 py-3 bg-white border-2 border-emerald-500 rounded-xl font-black text-sm tracking-wider font-mono outline-none text-stone-900 placeholder:text-stone-400 uppercase"
                       />
                       {inputCode && (
@@ -831,8 +975,8 @@ export function KakaoLoginModal({
                     </p>
                     <p>
                       {isJapanese
-                        ? 'スマホ画面上部のお名前の下、または【私の年代記】画面に記載された【👑 会員番号: PKY-XXXX】をご確認の上、ここに入力してください。'
-                        : '스마트폰 화면 상단 내 이름 밑 또는 [나의 연대기] 화면에 적힌 \'👑 고유번호: PKY-XXXX\'를 확인하시고 여기에 입력하시면 됩니다.'}
+                        ? 'スマホ画面上部のお名前をタップ、または【私の年代記】画面に記載された【👑 会員番号: PKYA-XXXX】をご確認の上、ここに入力してください。'
+                        : '스마트폰 화면 상단 내 이름을 터치하시거나 [나의 연대기] 화면에 적힌 \'👑 고유번호: PKYA-XXXX\'를 확인하시고 여기에 입력하시면 됩니다.'}
                     </p>
                   </div>
                 </div>
@@ -846,8 +990,8 @@ export function KakaoLoginModal({
                     </div>
                     <h4 className="font-black text-stone-900 text-xs sm:text-sm">
                       {isJapanese
-                        ? 'お名前を入力すると、マイ7桁の会員番号が自動発行されます。'
-                        : '성함을 입력하시면 나만의 7자리 평생 고유번호가 자동 발급됩니다.'}
+                        ? 'お名前を入力すると、マイ8桁の会員番号が自動発行されます。'
+                        : '성함을 입력하시면 나만의 8자리 평생 고유번호가 자동 발급됩니다.'}
                     </h4>
                   </div>
 

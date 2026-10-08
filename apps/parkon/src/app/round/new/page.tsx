@@ -116,7 +116,7 @@ function NewRoundForm() {
           clubName: '구미 파크골프 클럽',
         });
         if (effectiveLeader.includes('김대희')) {
-          localStorage.setItem('parkon_member_code_v1', 'PKY-7788');
+          localStorage.setItem('parkon_member_code_v1', 'PKYA-7788');
         }
       } catch (e) {}
     }

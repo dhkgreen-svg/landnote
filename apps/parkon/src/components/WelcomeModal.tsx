@@ -259,7 +259,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
                 : '※ 터치 시 바탕화면에 1초 앱이 생성되며 즉시 시작됩니다.'}
             </p>
 
-            {/* 3. 기존 회원의 7자리 회원번호 로그인 안내 */}
+            {/* 3. 기존 회원의 8자리 회원번호 로그인 안내 */}
             <div className="text-center pt-2">
               <button
                 type="button"
@@ -269,7 +269,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
                 }}
                 className="text-[11px] text-emerald-800 hover:text-emerald-950 font-black underline underline-offset-2 cursor-pointer transition flex items-center justify-center gap-1 mx-auto"
               >
-                <span>{isJapanese ? '🔑 7桁会員番号でログイン' : '🔑 폰에서 쓰던 7자리 회원번호로 로그인하기'}</span>
+                <span>{isJapanese ? '🔑 8桁会員番号でログイン' : '🔑 폰에서 쓰던 8자리 회원번호로 로그인하기'}</span>
               </button>
             </div>
           </div>

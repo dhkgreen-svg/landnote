@@ -69,8 +69,8 @@ export function RestaurantDetailModal({
     const savedUser = ParkOnStorage.getUserDisplayName();
     const memberCode =
       typeof localStorage !== 'undefined'
-        ? localStorage.getItem('parkon_member_code') || 'PKY-7788'
-        : 'PKY-7788';
+        ? localStorage.getItem('parkon_member_code_v1') || localStorage.getItem('parkon_member_code') || 'PKYA-7788'
+        : 'PKYA-7788';
     const cleanName = savedUser && savedUser !== '파크골퍼' && savedUser !== '플레이어' ? savedUser : (isJapanese ? '愛好者' : '동호인');
     const author = `${memberCode} ${cleanName}`.trim();
 
