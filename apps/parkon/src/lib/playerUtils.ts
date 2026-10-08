@@ -167,11 +167,11 @@ export function sortPlayersByLeaderAndAlphabetical(players: RoundPlayer[]): Roun
         isLeader: false,
       }));
 
-    // 2. 나머지 활성 인원 가나다순 정렬 (이름 기준)
+    // 2. 나머지 활성 인원 가나다순/다국어순 정렬 (이름 기준)
     others.sort((a, b) => {
       const nameA = a.name || '';
       const nameB = b.name || '';
-      return nameA.localeCompare(nameB, 'ko');
+      return nameA.localeCompare(nameB, ['ko', 'ja', 'en']);
     });
 
     sortedActive = [{ ...leader, isLeader: true }, ...others];

@@ -47,6 +47,7 @@ const CompanionSlotRow = React.memo(function CompanionSlotRow({
   const [localName, setLocalName] = useState(name);
   const localNameRef = useRef(name);
   const isFocusedRef = useRef(false);
+  const isComposingRef = useRef(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 부모(서버 폴링/QR 동반자 입장 등)에서 전달된 name 동기화 (단, 현재 포커스 중인 경우 타이핑 보호)
@@ -70,6 +71,26 @@ const CompanionSlotRow = React.memo(function CompanionSlotRow({
     [slotIndex, onCommit]
   );
 
+  const handleCompositionStart = () => {
+    isComposingRef.current = true;
+  };
+
+  const handleCompositionEnd = (e: React.CompositionEvent<HTMLInputElement>) => {
+    isComposingRef.current = false;
+    const val = e.currentTarget.value;
+    setLocalName(val);
+    localNameRef.current = val;
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    // 일본어 한자 변환 등 IME 조합 확정 즉시 디바운스 커밋 예약
+    debounceTimerRef.current = setTimeout(() => {
+      debounceTimerRef.current = null;
+      onCommit(slotIndex, val);
+    }, 350);
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setLocalName(val);
@@ -78,6 +99,11 @@ const CompanionSlotRow = React.memo(function CompanionSlotRow({
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
+    // 일본어 IME 조합/변환 중(히라가나/가타카나 입력 중, 한자 변환 목록 선택 중)에는
+    // 미완성 문자열이 서버나 부모 상태로 전송되어 입력 포커스를 흔드는 현상을 방어
+    if (isComposingRef.current) {
+      return;
+    }
     // 350ms 후 부모/서버 동기화 디바운스
     debounceTimerRef.current = setTimeout(() => {
       debounceTimerRef.current = null;
@@ -85,19 +111,34 @@ const CompanionSlotRow = React.memo(function CompanionSlotRow({
     }, 350);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // 일본어 한자 변환 선택 엔터 키인 경우 이벤트 간섭 방지
+    if (e.key === 'Enter') {
+      if (e.nativeEvent.isComposing || isComposingRef.current || e.keyCode === 229) {
+        return;
+      }
+      // 변환 완료 후 일반 엔터 입력 시 즉시 확정 플러시
+      flushCommit(localNameRef.current);
+    }
+  };
+
   const handleFocus = () => {
     isFocusedRef.current = true;
     onFocusChange?.(slotIndex, true);
   };
 
-  const handleBlur = () => {
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     isFocusedRef.current = false;
+    isComposingRef.current = false;
     onFocusChange?.(slotIndex, false);
-    // 포커스 벗어날 때 대기 중인 디바운스를 즉시 플러시하여 값 확정
-    flushCommit(localNameRef.current);
+    // 포커스 벗어날 때 DOM의 최신값(변환 완료된 텍스트)으로 즉시 확정 플러시
+    const finalVal = e.target.value;
+    setLocalName(finalVal);
+    flushCommit(finalVal);
   };
 
   const handleClear = () => {
+    isComposingRef.current = false;
     setLocalName('');
     flushCommit('');
   };
@@ -136,6 +177,9 @@ const CompanionSlotRow = React.memo(function CompanionSlotRow({
           type="text"
           value={localName}
           onChange={handleChange}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
+          onKeyDown={handleKeyDown}
           onFocus={handleFocus}
           onBlur={handleBlur}
           placeholder={
