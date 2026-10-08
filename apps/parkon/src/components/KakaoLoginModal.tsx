@@ -181,8 +181,7 @@ export function KakaoLoginModal({
       if (res.userName) {
         setRealName(res.userName);
       }
-      setShowSwitchLogin(false);
-      setShowFindModal(false);
+      setViewMode('PROFILE');
 
       if (onLoginSuccess && u) {
         onLoginSuccess(u);
@@ -572,8 +571,7 @@ export function KakaoLoginModal({
       setPhoneNumber('');
       setAliasName('');
       setInputCode('');
-      setShowSwitchLogin(true);
-      setActiveTab('CODE_LOGIN');
+      setViewMode('NEW_USER');
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('parkon_profile_updated'));
       alert(isJapanese ? 'ゼロベースに初期化されました。スマホの会員番号を入力してください。' : '✓ 제로 베이스로 깨끗하게 초기화되었습니다. 휴대폰의 8자리 고유번호를 입력해 주세요!');
