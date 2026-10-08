@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Users, Flag, Play, Plus, Trash2, ArrowLeft, MapPin, Edit3, Settings, QrCode, Copy, Check, Sparkles, Share2, X } from 'lucide-react';
 import Link from 'next/link';
@@ -22,6 +22,165 @@ interface SetupPlayer {
   isLeader: boolean;
   isSelf: boolean;
 }
+
+interface CompanionSlotRowProps {
+  slotIndex: number;
+  name: string;
+  isLeader: boolean;
+  isSelf: boolean;
+  isJapanese: boolean;
+  onCommit: (slotIndex: number, newName: string) => void;
+  onSetLeader: (slotIndex: number) => void;
+  onFocusChange?: (slotIndex: number, focused: boolean) => void;
+}
+
+const CompanionSlotRow = React.memo(function CompanionSlotRow({
+  slotIndex,
+  name,
+  isLeader,
+  isSelf,
+  isJapanese,
+  onCommit,
+  onSetLeader,
+  onFocusChange,
+}: CompanionSlotRowProps) {
+  const [localName, setLocalName] = useState(name);
+  const localNameRef = useRef(name);
+  const isFocusedRef = useRef(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 부모(서버 폴링/QR 동반자 입장 등)에서 전달된 name 동기화 (단, 현재 포커스 중인 경우 타이핑 보호)
+  useEffect(() => {
+    if (!isFocusedRef.current && name !== localNameRef.current) {
+      setLocalName(name);
+      localNameRef.current = name;
+    }
+  }, [name]);
+
+  // 즉시 부모로 확정 저장(Flush)하는 헬퍼
+  const flushCommit = useCallback(
+    (valueToCommit: string) => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      localNameRef.current = valueToCommit;
+      onCommit(slotIndex, valueToCommit);
+    },
+    [slotIndex, onCommit]
+  );
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setLocalName(val);
+    localNameRef.current = val;
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    // 350ms 후 부모/서버 동기화 디바운스
+    debounceTimerRef.current = setTimeout(() => {
+      debounceTimerRef.current = null;
+      onCommit(slotIndex, val);
+    }, 350);
+  };
+
+  const handleFocus = () => {
+    isFocusedRef.current = true;
+    onFocusChange?.(slotIndex, true);
+  };
+
+  const handleBlur = () => {
+    isFocusedRef.current = false;
+    onFocusChange?.(slotIndex, false);
+    // 포커스 벗어날 때 대기 중인 디바운스를 즉시 플러시하여 값 확정
+    flushCommit(localNameRef.current);
+  };
+
+  const handleClear = () => {
+    setLocalName('');
+    flushCommit('');
+  };
+
+  // 언마운트 시 잔여 타이머 클린업
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  return (
+    <div
+      key={`slot-companion-${slotIndex}`}
+      className={`p-2.5 rounded-xl border-2 transition flex items-center gap-2.5 ${
+        isLeader
+          ? 'bg-amber-50/90 border-amber-400 shadow-xs'
+          : 'bg-stone-50 border-stone-200 hover:bg-stone-100/50'
+      }`}
+    >
+      <span
+        className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0 ${
+          isLeader
+            ? 'bg-amber-400 text-amber-950 shadow-xs'
+            : 'bg-stone-200 text-stone-700'
+        }`}
+      >
+        {slotIndex + 1}
+      </span>
+
+      <div className="flex-1 relative flex items-center">
+        <input
+          type="text"
+          value={localName}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          placeholder={
+            isSelf
+              ? (isJapanese ? '代表のお名前 (例: 山田)' : '성명을 적어주세요 (조장/본인)')
+              : (isJapanese ? 'お名前を入力 (例: 田中)' : `동반자 ${slotIndex + 1} (예: 이총무, 박회장)`)
+          }
+          className="w-full bg-white border border-stone-300 rounded-lg pl-3 pr-8 py-1.5 text-sm font-bold text-stone-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none placeholder:text-stone-400"
+        />
+        {localName ? (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2 w-5 h-5 flex items-center justify-center rounded-full bg-stone-200 hover:bg-stone-300 text-stone-600 hover:text-stone-900 text-xs transition cursor-pointer"
+            title={isJapanese ? 'クリア' : '지우기'}
+          >
+            ✕
+          </button>
+        ) : isSelf ? (
+          <span className="absolute right-2 text-[10px] font-black text-blue-700 bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded pointer-events-none">
+            {isJapanese ? '本人' : '본인'}
+          </span>
+        ) : null}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onSetLeader(slotIndex)}
+        className={`px-3 py-1.5 rounded-lg text-xs font-black shrink-0 transition flex items-center gap-1 active:scale-95 cursor-pointer ${
+          isLeader
+            ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-300'
+            : 'bg-white text-stone-600 border border-stone-300 hover:bg-stone-100 hover:text-stone-900'
+        }`}
+        title={isLeader ? (isJapanese ? '代表に指定中' : '현재 조장으로 지정됨') : (isJapanese ? '代表に指定' : '이 선수를 조장으로 지정')}
+      >
+        <span>👑</span>
+        <span>
+          {isLeader
+            ? (isJapanese ? '代表' : '조장')
+            : (isJapanese ? '代表選択' : '조장 선택')}
+        </span>
+      </button>
+    </div>
+  );
+});
 
 function NewRoundForm() {
   const router = useRouter();
@@ -312,50 +471,36 @@ function NewRoundForm() {
     }
   };
 
-  const handleSlotFocus = (index: number) => {
-    // 슬롯 전환 시 이전 슬롯에서 대기 중이던 디바운스 타이머 즉시 취소/정리 (Race Condition 차단)
-    if (syncDebounceTimerRef.current) {
-      clearTimeout(syncDebounceTimerRef.current);
-      syncDebounceTimerRef.current = null;
-    }
-    activeFocusIdxRef.current = index;
-  };
+  // 슬롯별 확정 저장 콜백 (클로저 기반의 고정 인덱스 바인딩)
+  const handleSlotCommit = useCallback((targetSlotIndex: number, newName: string) => {
+    userEditedSlotsRef.current.add(targetSlotIndex);
+    setPlayersList((prev) => {
+      const next = [...prev];
+      if (next[targetSlotIndex]) {
+        next[targetSlotIndex] = { ...next[targetSlotIndex], name: newName };
+      }
+      return next;
+    });
+    // 서버에 최신 명단 동기화
+    syncRoomToServer();
+  }, [syncRoomToServer]);
 
-  const handleSlotBlur = (index: number) => {
-    if (activeFocusIdxRef.current === index) {
+  const handleSlotFocusChange = useCallback((slotIndex: number, focused: boolean) => {
+    if (focused) {
+      activeFocusIdxRef.current = slotIndex;
+    } else if (activeFocusIdxRef.current === slotIndex) {
       activeFocusIdxRef.current = null;
     }
-    // 슬롯에서 포커스가 벗어날 때 최신 명단을 즉시 서버에 동기화
-    syncRoomToServer();
-  };
+  }, []);
 
-  const handlePlayerNameChange = (index: number, val: string) => {
-    userEditedSlotsRef.current.add(index);
-    setPlayersList((prev) => {
-      const updated = [...prev];
-      if (updated[index]) {
-        updated[index] = { ...updated[index], name: val };
-      }
-      return updated;
-    });
-
-    // 슬롯별 독립 디바운스 타이머 설정 (400ms)
-    if (syncDebounceTimerRef.current) {
-      clearTimeout(syncDebounceTimerRef.current);
-    }
-    syncDebounceTimerRef.current = setTimeout(() => {
-      syncRoomToServer();
-    }, 400);
-  };
-
-  const handleSetLeader = (index: number) => {
+  const handleSetLeader = useCallback((index: number) => {
     setPlayersList((prev) =>
       prev.map((p, i) => ({
         ...p,
         isLeader: i === index,
       }))
     );
-  };
+  }, []);
 
   // 플레이어 수 선택 변경 (1명 ~ 6명)
   const handlePlayerCountChange = (count: number) => {
@@ -949,75 +1094,17 @@ function NewRoundForm() {
         {/* Dynamic Player Rows */}
         <div className="space-y-2 pt-0.5">
           {playersList.slice(0, playerCount).map((player, idx) => (
-            <div
+            <CompanionSlotRow
               key={`slot-companion-${idx}`}
-              className={`p-2.5 rounded-xl border-2 transition flex items-center gap-2.5 ${
-                player.isLeader
-                  ? 'bg-amber-50/90 border-amber-400 shadow-xs'
-                  : 'bg-stone-50 border-stone-200 hover:bg-stone-100/50'
-              }`}
-            >
-              <span
-                className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0 ${
-                  player.isLeader
-                    ? 'bg-amber-400 text-amber-950 shadow-xs'
-                    : 'bg-stone-200 text-stone-700'
-                }`}
-              >
-                {idx + 1}
-              </span>
-
-              <div className="flex-1 relative flex items-center">
-                <input
-                  type="text"
-                  value={player.name}
-                  onChange={(e) => handlePlayerNameChange(idx, e.target.value)}
-                  onFocus={() => handleSlotFocus(idx)}
-                  onBlur={() => handleSlotBlur(idx)}
-                  placeholder={
-                    player.isSelf
-                      ? (isJapanese ? '代表のお名前 (例: 山田)' : '성명을 적어주세요 (조장/본인)')
-                      : (isJapanese ? `お名前を入力 (例: 田中)` : `동반자 ${idx + 1} (예: 이총무, 박회장)`)
-                  }
-                  className="w-full bg-white border border-stone-300 rounded-lg pl-3 pr-8 py-1.5 text-sm font-bold text-stone-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none placeholder:text-stone-400"
-                />
-                {player.name ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleSlotFocus(idx);
-                      handlePlayerNameChange(idx, '');
-                    }}
-                    className="absolute right-2 w-5 h-5 flex items-center justify-center rounded-full bg-stone-200 hover:bg-stone-300 text-stone-600 hover:text-stone-900 text-xs transition cursor-pointer"
-                    title={isJapanese ? 'クリア' : '지우기'}
-                  >
-                    ✕
-                  </button>
-                ) : player.isSelf ? (
-                  <span className="absolute right-2 text-[10px] font-black text-blue-700 bg-blue-100 border border-blue-200 px-1.5 py-0.5 rounded pointer-events-none">
-                    {isJapanese ? '本人' : '본인'}
-                  </span>
-                ) : null}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => handleSetLeader(idx)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black shrink-0 transition flex items-center gap-1 active:scale-95 cursor-pointer ${
-                  player.isLeader
-                    ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-300'
-                    : 'bg-white text-stone-600 border border-stone-300 hover:bg-stone-100 hover:text-stone-900'
-                }`}
-                title={player.isLeader ? (isJapanese ? '代表に指定中' : '현재 조장으로 지정됨') : (isJapanese ? '代表に指定' : '이 선수를 조장으로 지정')}
-              >
-                <span>👑</span>
-                <span>
-                  {player.isLeader
-                    ? (isJapanese ? '代表' : '조장')
-                    : (isJapanese ? '代表選択' : '조장 선택')}
-                </span>
-              </button>
-            </div>
+              slotIndex={idx}
+              name={player.name}
+              isLeader={player.isLeader}
+              isSelf={player.isSelf}
+              isJapanese={isJapanese}
+              onCommit={handleSlotCommit}
+              onSetLeader={handleSetLeader}
+              onFocusChange={handleSlotFocusChange}
+            />
           ))}
         </div>
 
