@@ -5,6 +5,7 @@ import { Footer } from '@/components/Footer';
 import { VisitorTracker } from '@/components/VisitorTracker';
 import { MainWrapper } from '@/components/MainWrapper';
 import { LanguageProvider } from '@/lib/i18n/LanguageContext';
+import { InAppBrowserGuideModal } from '@/components/InAppBrowserGuideModal';
 import Script from 'next/script';
 
 export const metadata: Metadata = {
@@ -152,6 +153,71 @@ export default function RootLayout({
             })
           }}
         />
+        {/* 모바일 카카오톡, 라인, 네이버 등 인앱 브라우저 자동 탈출 (외부 브라우저 호출) */}
+        <script
+          id="inapp-browser-escape"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                if (typeof window === 'undefined') return;
+                var ua = (navigator.userAgent || navigator.vendor || window.opera || '').toLowerCase();
+
+                // PWA Standalone 모드로 이미 실행 중인 경우 탈출 불필요
+                if (window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
+                  return;
+                }
+
+                var isKakao = ua.indexOf('kakaotalk') !== -1;
+                var isNaver = ua.indexOf('naver') !== -1;
+                var isLine = ua.indexOf('line') !== -1;
+                var isOtherInApp = /fb_iab|fb4a|fban|fbios|fbss|instagram|daum|everytimeapp/i.test(ua);
+                var isInApp = isKakao || isNaver || isLine || isOtherInApp;
+
+                if (!isInApp) return;
+
+                var isAndroid = ua.indexOf('android') !== -1;
+                var isIOS = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+                // 현재 주소 및 프로토콜 제거 주소 (실제 접속 URL 보존)
+                var currentUrl = window.location.href;
+                var cleanUrl = currentUrl.replace(/^https?:\\/\\//i, '');
+
+                // 1. Android 환경: 크롬 강제 실행 또는 기본 브라우저 인텐트 호출
+                if (isAndroid) {
+                  try {
+                    if (sessionStorage.getItem('parkon_inapp_escaped') !== '1') {
+                      sessionStorage.setItem('parkon_inapp_escaped', '1');
+                      var chromeIntent = 'intent://' + cleanUrl + '#Intent;scheme=https;package=com.android.chrome;end;';
+                      window.location.href = chromeIntent;
+                      return;
+                    }
+                  } catch (e) {}
+                }
+
+                // 2. iOS 환경: 카카오톡 openExternal 또는 라인 openExternalBrowser 공식 스킴 적용
+                if (isIOS) {
+                  if (isKakao) {
+                    try {
+                      if (sessionStorage.getItem('parkon_inapp_escaped') !== '1') {
+                        sessionStorage.setItem('parkon_inapp_escaped', '1');
+                        window.location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(currentUrl);
+                        return;
+                      }
+                    } catch (e) {}
+                  } else if (isLine) {
+                    try {
+                      if (currentUrl.indexOf('openExternalBrowser=1') === -1) {
+                        var sep = currentUrl.indexOf('?') !== -1 ? '&' : '?';
+                        window.location.href = currentUrl + sep + 'openExternalBrowser=1';
+                        return;
+                      }
+                    } catch (e) {}
+                  }
+                }
+              })();
+            `,
+          }}
+        />
       </head>
       <body className="min-h-screen flex flex-col antialiased bg-stone-100 text-stone-900" suppressHydrationWarning>
         {/* Google AdSense Official Script */}
@@ -208,6 +274,7 @@ export default function RootLayout({
             {children}
           </MainWrapper>
           <Footer />
+          <InAppBrowserGuideModal />
         </LanguageProvider>
       </body>
     </html>

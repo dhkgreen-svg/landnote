@@ -28,6 +28,15 @@ export function isLineWebView(): boolean {
 }
 
 /**
+ * 네이버(NAVER) 인앱 브라우저 여부 검사
+ */
+export function isNaverWebView(): boolean {
+  if (typeof window === 'undefined') return false;
+  const ua = window.navigator.userAgent.toLowerCase();
+  return ua.includes('naver');
+}
+
+/**
  * 광범위 인앱 브라우저(카카오톡, 라인, 네이버, 인스타그램, 페이스북 등) 여부 검사
  */
 export function isInAppBrowser(): boolean {
@@ -163,13 +172,25 @@ export function escapeKakaoTalk(targetUrl?: string): KakaoEscapeResult {
 }
 
 /**
- * 카카오톡 또는 LINE 접속 시 최초 1회 자동 탈출 시도 (세션 스토리지 기반 무한 루프 차단)
+ * 카카오톡, 네이버, LINE 등 인앱 브라우저 접속 시 최초 1회 자동 외부 브라우저 탈출 시도
  */
-export function autoEscapeIfKakao(targetUrl?: string): boolean {
+export function autoEscapeInAppBrowser(targetUrl?: string): boolean {
   if (typeof window === 'undefined') return false;
+
+  // PWA Standalone 모드로 이미 실행 중인 경우 탈출 불필요
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+  if (isStandalone) return false;
+
   const isKakao = isKakaoTalkWebView();
   const isLine = isLineWebView();
-  if (!isKakao && !isLine) return false;
+  const isNaver = isNaverWebView();
+  const inApp = isInAppBrowser();
+  const android = isAndroid();
+  const ios = isIOS();
+
+  if (!inApp) return false;
 
   try {
     const alreadyEscaped = sessionStorage.getItem('parkon_inapp_auto_escaped');
@@ -177,17 +198,34 @@ export function autoEscapeIfKakao(targetUrl?: string): boolean {
       return false;
     }
     sessionStorage.setItem('parkon_inapp_auto_escaped', 'true');
-    if (isLine) {
-      escapeLineWebView(targetUrl);
-    } else {
-      escapeKakaoTalk(targetUrl);
+
+    // 1. Android: 크롬 강제 실행 또는 기본 브라우저 인텐트 호출
+    if (android) {
+      const chromeIntent = getAndroidIntentUrl(targetUrl, 'chrome');
+      window.location.href = chromeIntent;
+      return true;
     }
-    return true;
+
+    // 2. iOS: 카카오톡 openExternal 또는 라인 openExternalBrowser
+    if (ios) {
+      if (isKakao) {
+        escapeKakaoTalk(targetUrl);
+        return true;
+      }
+      if (isLine) {
+        escapeLineWebView(targetUrl);
+        return true;
+      }
+    }
+
+    return false;
   } catch {
     // sessionStorage 비활성화 환경 대비
     return false;
   }
 }
+
+export const autoEscapeIfKakao = autoEscapeInAppBrowser;
 
 /**
  * 현재 페이지 URL 클립보드 복사 헬퍼
