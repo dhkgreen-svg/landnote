@@ -87,7 +87,10 @@ export const CompanionStorage = {
           c.companionId !== 'user_lee_yh' &&
           c.companionId !== 'user_park_cs' &&
           c.companionId !== 'user_jung_sj' &&
-          !c.id.startsWith('comp_')
+          c.id !== 'comp_1' &&
+          c.id !== 'comp_2' &&
+          c.id !== 'comp_3' &&
+          !c.id.startsWith('mock_comp_')
       );
     } catch {
       return [];
@@ -116,9 +119,12 @@ export const CompanionStorage = {
     const cleanName = companionName.trim();
     const targetId = companionId || `comp_${cleanName}_${Date.now()}`;
 
-    const existingIdx = list.findIndex(
-      (c) => c.companionName === cleanName || (companionId && c.companionId === companionId)
-    );
+    // 고유번호(companionId)가 있으면 고유번호 우선 매칭 (닉네임 변경 시에도 1명으로 정확 집계)
+    const existingIdx = list.findIndex((c) => {
+      if (companionId && c.companionId === companionId) return true;
+      if (!companionId && c.companionName === cleanName) return true;
+      return false;
+    });
 
     let result: Companionship;
 

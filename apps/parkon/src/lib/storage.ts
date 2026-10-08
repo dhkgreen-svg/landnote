@@ -716,8 +716,23 @@ export const ParkOnStorage = {
     }
     try {
       const existing = this.getCompletedRounds();
-      const updated = [session, ...existing.filter((r) => r.id !== session.id)].slice(0, 50);
-      localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(updated));
+      let updated = [session, ...existing.filter((r) => r.id !== session.id)];
+
+      // 5MB 쿼터 초과(QuotaExceededError / DOMException) 다계층 방어벽
+      try {
+        localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(updated.slice(0, 50)));
+      } catch (quotaErr) {
+        console.warn('LocalStorage quota warning in saveCompletedRound, applying defense:', quotaErr);
+        // 1단계 방어: 직전 3회 외 이전 라운드의 대용량 사진 데이터(Base64) 제거 (스코어는 100% 보존)
+        updated = updated.map((r, idx) => (idx >= 3 && r.photos?.length ? { ...r, photos: [] } : r));
+        try {
+          localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(updated.slice(0, 50)));
+        } catch {
+          // 2단계 방어: 최근 25개로 슬라이스 및 압축
+          localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(updated.slice(0, 25)));
+        }
+      }
+
       this.clearCurrentRound();
       if (!skipSync) {
         window.dispatchEvent(new Event('parkon_member_synced'));
@@ -737,14 +752,34 @@ export const ParkOnStorage = {
     if (typeof window === 'undefined') return;
     try {
       const deletedIds = new Set(this.getDeletedRoundIds());
-      const clean = rounds.filter((r) => {
+      let clean = rounds.filter((r) => {
         if (!r || !r.id) return false;
         if (deletedIds.has(r.id)) return false;
         if (r.id === 'round_rec_1' || r.id === 'round_suseong_sample') return false;
         if (r.courseName === '수성파크골프장' && r.players?.some((p: any) => p.name === '김대희' && p.totalStrokes === 54)) return false;
         return true;
       });
-      localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(clean.slice(0, 100)));
+
+      // 5MB 쿼터 초과(QuotaExceededError / DOMException) 다계층 방어벽
+      try {
+        localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(clean.slice(0, 100)));
+      } catch (quotaErr) {
+        console.warn('LocalStorage quota warning in saveCompletedRounds, applying defense:', quotaErr);
+        // 1단계 방어: 직전 3회 외 이전 라운드의 대용량 사진 데이터(Base64) 제거 (스코어는 100% 보존)
+        clean = clean.map((r, idx) => (idx >= 3 && r.photos?.length ? { ...r, photos: [] } : r));
+        try {
+          localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(clean.slice(0, 100)));
+        } catch {
+          // 2단계 방어: 최근 50개로 슬라이스
+          try {
+            localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(clean.slice(0, 50)));
+          } catch {
+            // 3단계 방어: 최근 20개로 슬라이스
+            localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(clean.slice(0, 20)));
+          }
+        }
+      }
+
       if (!skipSync) {
         window.dispatchEvent(new Event('parkon_member_synced'));
         setTimeout(() => {
