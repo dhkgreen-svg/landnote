@@ -268,21 +268,17 @@ function NewRoundForm() {
 
   useEffect(() => {
     const selfName = getDefaultSelfName(isJapanese);
-    const effectiveLeader = leaderParam?.trim() || (selfName && !isSampleOrPlaceholder(selfName) ? selfName : (isJapanese ? '' : '김대희'));
+    // [Zero-Base 원칙] 본인이 직접 등록한 이름이나 URL 파라미터가 없으면 깨끗한 빈칸('') 유지
+    const effectiveLeader = leaderParam?.trim() || (selfName && !isSampleOrPlaceholder(selfName) ? selfName : '');
     const hasCustomSelf = Boolean(effectiveLeader && !isSampleOrPlaceholder(effectiveLeader));
 
-    if (effectiveLeader && !isJapanese) {
+    if (leaderParam?.trim() && !isJapanese) {
       try {
         const currentProf = ParkOnStorage.getUserProfile() || {};
         ParkOnStorage.saveUserProfile({
           ...currentProf,
-          userName: effectiveLeader,
-          nationalGrade: effectiveLeader.includes('김대희') ? '공인 싱글 1급' : '정회원',
-          clubName: '구미 파크골프 클럽',
+          userName: leaderParam.trim(),
         });
-        if (effectiveLeader.includes('김대희')) {
-          localStorage.setItem('parkon_member_code_v1', 'PKYA-7788');
-        }
       } catch (e) {}
     }
 

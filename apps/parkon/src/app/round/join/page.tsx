@@ -88,8 +88,7 @@ function RoundJoinContent() {
         ParkOnStorage.saveUserProfile({
           ...existingProf,
           userName: memberParam,
-          nationalGrade: memberParam.includes('김대희') ? '공인 싱글 1급' : '정회원',
-          clubName: '구미 파크골프 클럽',
+          nationalGrade: existingProf.nationalGrade || '정회원',
         });
         if (codeParam) {
           localStorage.setItem(MEMBER_CODE_STORAGE_KEY, normalizeMemberCode(codeParam));
@@ -331,7 +330,7 @@ function RoundJoinContent() {
             {isJapanese ? 'ラウンドに合流しましょう！ ⛳' : '라운딩 바로 합류하기 ⛳'}
           </h1>
           <p className="text-xs text-emerald-200 mt-1">
-            👑 <span className="font-bold text-yellow-300">{leaderParam}</span> {isJapanese ? '様のチームに招待されました' : '님의 팀에 초대되셨습니다'}
+            👑 <span className="font-bold text-yellow-300">{leaderParam}</span> {isJapanese ? '様からのラウンド招待です' : '님이 보낸 라운드 초대장입니다'}
           </p>
         </div>
 
@@ -422,9 +421,14 @@ function RoundJoinContent() {
             /* 🏌️ 신규/미가입자: 성명 입력 + 단일 [⛳ 합류하기] 버튼 */
             <div className="space-y-4">
               <div className="p-4.5 rounded-3xl bg-white border-2 border-emerald-500 shadow-md space-y-3.5">
-                <label className="block text-xs font-black text-stone-800">
-                  {isJapanese ? 'お名前を入力してください' : '성함을 입력해주세요'}
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-black text-stone-800">
+                    {isJapanese ? '参加者のお名前 (ご自身)' : '참여하실 본인 성함 (또는 닉네임)'}
+                  </label>
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    {isJapanese ? '1秒簡単参加' : '1초 간편 참여'}
+                  </span>
+                </div>
                 <div className="relative flex items-center">
                   <input
                     type="text"
@@ -433,7 +437,7 @@ function RoundJoinContent() {
                     placeholder={
                       isJapanese
                         ? 'お名前を入力 (例: 山田)'
-                        : '성명을 적어주세요 (예: 오송)'
+                        : '성명을 적어주세요 (예: 오송, 박회장)'
                     }
                     className="w-full pl-3.5 pr-10 py-3.5 text-base bg-stone-50 text-stone-900 border-2 border-stone-200 rounded-xl font-bold focus:outline-hidden focus:border-emerald-600 focus:bg-white transition placeholder:text-stone-400"
                   />
@@ -450,12 +454,29 @@ function RoundJoinContent() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => executeJoin(userName.trim() || (isJapanese ? '同伴者' : '동반자'), false)}
+                  onClick={() => {
+                    const trimmed = userName.trim();
+                    if (!trimmed) {
+                      setJoinedToast(isJapanese ? 'お名前を入力してください' : '참여하시는 회원님의 성함을 적어주세요! (예: 오송)');
+                      return;
+                    }
+                    executeJoin(trimmed, false);
+                  }}
                   className="w-full py-4.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 text-white font-black text-lg rounded-2xl shadow-lg transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer border border-emerald-400"
                 >
                   <span>⛳ 합류하기</span>
                   <ArrowRight className="w-5 h-5" />
                 </button>
+
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => executeJoin(isJapanese ? 'ゲスト' : '게스트', true)}
+                    className="text-xs text-stone-500 hover:text-stone-700 underline cursor-pointer"
+                  >
+                    {isJapanese ? '名前を入れずにゲストとして参加' : '이름 입력 없이 게스트로 바로 참가'}
+                  </button>
+                </div>
               </div>
             </div>
           )}

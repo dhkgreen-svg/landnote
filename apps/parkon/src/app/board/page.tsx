@@ -40,7 +40,7 @@ export default function CommunityBoardPage() {
   const router = useRouter();
   const { isJapanese } = useTranslation();
   const [activeTab, setActiveTab] = useState<'NOTICES' | 'NEWS' | 'VOICE' | 'TALK'>('NOTICES');
-  const [userName, setUserName] = useState<string>('김대희');
+  const [userName, setUserName] = useState<string>(() => (typeof window !== 'undefined' ? ParkOnStorage.getUserDisplayName() || '' : ''));
   const [toastMsg, setToastMsg] = useState<string>('');
 
   // 1. 국가 필터 (전체 / 한국 / 일본)

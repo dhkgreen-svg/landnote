@@ -1897,7 +1897,8 @@ ${shareUrl}`;
             <div className="space-y-3 animate-fadeIn">
               {/* ⛳ [NEW] 실시간 기동된 내 대회 조 4인 대기실 원터치 입장 배너 */}
               {(() => {
-                const selfName = (ParkOnStorage.getUserDisplayName() || '김대희').trim();
+                const selfName = (ParkOnStorage.getUserDisplayName() || '').trim();
+                if (!selfName) return null;
                 for (const r of rooms) {
                   if (r.status === 'PLAYING') {
                     for (const g of r.groups) {

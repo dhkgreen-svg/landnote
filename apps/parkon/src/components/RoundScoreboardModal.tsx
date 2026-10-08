@@ -1048,7 +1048,7 @@ export function RoundScoreboardModal({
                       <div className="text-base font-black text-stone-900 flex items-center gap-1.5 flex-wrap">
                         {(() => {
                           const selfPlayer = currentRound.players?.find((p) => p.isSelf) || currentRound.players?.[0];
-                          const pName = selfPlayer?.name || '김대희';
+                          const pName = selfPlayer?.name || (isJapanese ? 'プレイヤー' : '골퍼');
                           const comp9H = getUserCompleted9Holes(pName);
                           const pTier = calculateTier(comp9H);
                           return (

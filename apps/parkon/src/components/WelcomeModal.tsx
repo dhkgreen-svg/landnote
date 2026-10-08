@@ -72,8 +72,8 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
       ParkOnStorage.saveUserProfile({
         ...profile,
         userName: effectiveName,
-        nationalGrade: effectiveName.includes('김대희') ? '공인 싱글 1급' : '정회원',
-        clubName: '구미 파크골프 클럽',
+        nationalGrade: profile.nationalGrade && profile.nationalGrade !== '기록 준비중' ? profile.nationalGrade : '정회원',
+        clubName: profile.clubName || '',
       });
 
       const guestUser: KakaoAuthUser = {

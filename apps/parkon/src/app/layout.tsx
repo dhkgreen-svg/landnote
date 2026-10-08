@@ -218,6 +218,60 @@ export default function RootLayout({
             `,
           }}
         />
+        {/* 일반 사용자 기기 '김대희' 오염 자동 정화 및 클린업 엔진 */}
+        <script
+          id="identity-auto-purge"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                if (typeof window === 'undefined') return;
+                try {
+                  // 로컬 개발 환경(localhost)은 대표님 4인 테스트를 위해 초기화 제외
+                  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                    return;
+                  }
+
+                  if (localStorage.getItem('parkon_identity_purged_v2') !== 'true') {
+                    localStorage.setItem('parkon_identity_purged_v2', 'true');
+
+                    var profStr = localStorage.getItem('parkon_user_profile_v1');
+                    var kakaoStr = localStorage.getItem('parkon_kakao_auth_v1');
+                    var memberCode = localStorage.getItem('parkon_member_code_v1');
+
+                    var isKakaoLoggedIn = false;
+                    if (kakaoStr) {
+                      try {
+                        var k = JSON.parse(kakaoStr);
+                        if (k && k.id && !k.id.toString().startsWith('guest_')) {
+                          isKakaoLoggedIn = true;
+                        }
+                      } catch(e) {}
+                    }
+
+                    var isProfileDaehee = false;
+                    if (profStr) {
+                      try {
+                        var p = JSON.parse(profStr);
+                        if (p && p.userName === '김대희') {
+                          isProfileDaehee = true;
+                        }
+                      } catch(e) {}
+                    }
+
+                    // 카카오 정식 로그인 없이 기본값 버그로 '김대희'나 'PKYA-7788'이 박힌 일반 기기 정화
+                    if (!isKakaoLoggedIn && (isProfileDaehee || memberCode === 'PKYA-7788')) {
+                      localStorage.removeItem('parkon_user_profile_v1');
+                      localStorage.removeItem('parkon_member_code_v1');
+                      localStorage.removeItem('parkon_player_name');
+                      localStorage.removeItem('parkon_welcomed');
+                      localStorage.removeItem('parkon_welcome_dismissed');
+                    }
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
       </head>
       <body className="min-h-screen flex flex-col antialiased bg-stone-100 text-stone-900" suppressHydrationWarning>
         {/* Google AdSense Official Script */}
