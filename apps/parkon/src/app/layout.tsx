@@ -19,6 +19,7 @@ export const metadata: Metadata = {
     languages: {
       'ko-KR': 'https://www.parkgolfallinone.com/?lang=ko',
       'ja-JP': 'https://www.parkgolfallinone.com/?lang=ja',
+      'en-US': 'https://www.parkgolfallinone.com/?lang=en',
       'x-default': 'https://www.parkgolfallinone.com',
     },
   },
@@ -36,6 +37,7 @@ export const metadata: Metadata = {
     '파크골프 날씨',
     '일본 파크골프',
     'Park Golf Korea Japan',
+    'Park Golf Scorecard',
   ],
   manifest: '/manifest.json',
   icons: {
@@ -48,12 +50,12 @@ export const metadata: Metadata = {
     title: '파크골프 올인원',
   },
   openGraph: {
-    title: '파크골프 올인원 (ParkGolf All-in-One) | 日韓パークゴルフ',
+    title: '파크골프 올인원 (ParkGolf All-in-One) | Korea & Japan Official Portal',
     description: '한·일 파크골프 공식 포털: 전국 400+ 구장 및 일본 코스 안내, 실시간 날씨, 1초 스코어보드, 공인 룰북 AI (100% 무료)',
     url: 'https://www.parkgolfallinone.com',
     siteName: 'ParkGolf All-in-One',
     locale: 'ko_KR',
-    alternateLocale: ['ja_JP'],
+    alternateLocale: ['ja_JP', 'en_US'],
     images: [
       {
         url: '/og-image.jpg',

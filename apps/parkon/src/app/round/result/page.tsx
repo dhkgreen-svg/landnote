@@ -494,7 +494,7 @@ function ResultContent() {
           </div>
         </div>
 
-        <h2 className="text-2xl font-black tracking-tight">{isJapanese ? 'ラウンド最終成績表' : '라운드 최종 성적표'}</h2>
+        <h2 className="text-2xl font-black tracking-tight">{isEnglish ? 'Final Round Scorecard' : isJapanese ? 'ラウンド最終成績表' : '라운드 최종 성적표'}</h2>
         {(() => {
           const dual = getCourseDualName(course || session.courseName, isJapanese);
           return (
@@ -504,7 +504,7 @@ function ResultContent() {
                 <span>{dual.primary}</span>
               </span>
               <span className="text-xs text-emerald-200 font-bold mt-0.5">
-                {dual.showSecondary && dual.secondary ? `${dual.secondary} · ` : ''}{coursesPlayedStr} ({totalHolesCount}{isJapanese ? 'ホール進行 · 基準 Par ' : '홀 진행 · 기준 Par '}{totalCoursePar})
+                {dual.showSecondary && dual.secondary ? `${dual.secondary} · ` : ''}{coursesPlayedStr} ({totalHolesCount}{isEnglish ? ' Holes · Par ' : isJapanese ? 'ホール進行 · 基準 Par ' : '홀 진행 · 기준 Par '}{totalCoursePar})
               </span>
             </div>
           );
@@ -631,8 +631,8 @@ function ResultContent() {
       {/* 2. Leaderboard Table */}
       <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm space-y-3">
         <h3 className="font-extrabold text-base text-stone-900 flex items-center justify-between">
-          <span>{isJapanese ? '同伴者 総合順位表' : '동반자 종합 순위표'}</span>
-          <span className="text-xs text-stone-600 font-medium">{isJapanese ? `計 ${session.players.length}名 (${totalHolesCount}ホール基準)` : `총 ${session.players.length}명 (${totalHolesCount}홀 기준)`}</span>
+          <span>{isEnglish ? 'Overall Leaderboard' : isJapanese ? '同伴者 総合順位表' : '동반자 종합 순위표'}</span>
+          <span className="text-xs text-stone-600 font-medium">{isEnglish ? `Total ${session.players.length} Players (${totalHolesCount}H)` : isJapanese ? `計 ${session.players.length}名 (${totalHolesCount}ホール基準)` : `총 ${session.players.length}명 (${totalHolesCount}홀 기준)`}</span>
         </h3>
 
         <div className="space-y-2">
@@ -646,7 +646,7 @@ function ResultContent() {
               .filter((c) => c.playedInCourse.length > 0)
               .map((c) => {
                 const subScore = c.playedInCourse.reduce((sum, h) => sum + (player.scores?.[h] || 0), 0);
-                return `${c.letter}${isJapanese ? 'コース ' : '코스 '}${subScore}${isJapanese ? '打' : '타'}`;
+                return `${c.letter}${isEnglish ? ' Course ' : isJapanese ? 'コース ' : '코스 '}${subScore}${isEnglish ? ' ' : isJapanese ? '打' : '타'}`;
               })
               .join(' · ');
 
@@ -675,18 +675,18 @@ function ResultContent() {
                     <div className="font-extrabold text-base text-stone-900 flex items-center gap-1.5 flex-wrap">
                       {player.isLeader && session.players.length > 1 && (
                         <span className="text-[10px] px-1.5 py-0.2 rounded font-black bg-amber-500 text-white">
-                          {isJapanese ? '👑 代表' : '👑 조장'}
+                          {isEnglish ? '👑 Leader' : isJapanese ? '👑 代表' : '👑 조장'}
                         </span>
                       )}
                       <span>{formatPlayerDisplayName(player.name, player.isSelf, isJapanese)}</span>
                       {player.isSelf && (
                         <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-blue-100 text-blue-700">
-                          {isJapanese ? '本人' : '본인'}
+                          {isEnglish ? 'Self' : isJapanese ? '本人' : '본인'}
                         </span>
                       )}
                     </div>
                     <div className="text-[11px] text-stone-500 font-medium flex items-center gap-2 flex-wrap">
-                      <span>OB {Object.values(player.obCount || {}).reduce((a, b) => a + b, 0)}{isJapanese ? '回' : '회'}</span>
+                      <span>OB {Object.values(player.obCount || {}).reduce((a, b) => a + b, 0)}{isEnglish ? '' : isJapanese ? '回' : '회'}</span>
                       {courseSubScores && (
                         <>
                           <span className="text-stone-300">|</span>
@@ -701,7 +701,7 @@ function ResultContent() {
                   <div className="text-right">
                     <div className="text-xl font-black text-stone-900">
                       {player.realTotalStrokes}
-                      <span className="text-xs text-stone-600 font-bold ml-0.5">{isJapanese ? '打' : '타'}</span>
+                      <span className="text-xs text-stone-600 font-bold ml-0.5">{isEnglish ? '' : isJapanese ? '打' : '타'}</span>
                     </div>
                     <div
                       className={`text-xs font-black ${
@@ -724,16 +724,16 @@ function ResultContent() {
                         ? 'bg-emerald-600 text-white'
                         : 'bg-white border border-stone-300 text-stone-700 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-500'
                     }`}
-                    title={isJapanese ? 'マイスマホに保存' : '내 폰에 소장하기'}
+                    title={isEnglish ? 'Save to my phone' : isJapanese ? 'マイスマホに保存' : '내 폰에 소장하기'}
                   >
                     {isSaved ? (
                       <>
                         <BookmarkCheck className="w-3.5 h-3.5" />
-                        <span>{isJapanese ? '保存済み' : '소장됨'}</span>
+                        <span>{isEnglish ? 'Saved' : isJapanese ? '保存済み' : '소장됨'}</span>
                       </>
                     ) : (
                       <>
-                        <span>{isJapanese ? 'マイスコア保存 📌' : '내 기록 저장 📌'}</span>
+                        <span>{isEnglish ? 'Save to Chronicle 📌' : isJapanese ? 'マイスコア保存 📌' : '내 기록 저장 📌'}</span>
                       </>
                     )}
                   </button>
@@ -1154,14 +1154,14 @@ function ResultContent() {
           className="w-full bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-800 hover:to-teal-800 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-base shadow-md active:scale-98 transition"
         >
           <Trophy className="w-5 h-5 text-amber-300" />
-          <span>{isJapanese ? '📖 マイ年代記へ移動' : '📖 나의 파크골프 연대기 & 1촌 명부로 이동'}</span>
+          <span>{isEnglish ? '📖 View My Chronicle' : isJapanese ? '📖 マイ年代記へ移動' : '📖 나의 파크골프 연대기 & 1촌 명부로 이동'}</span>
         </Link>
         <Link
           href="/"
           className="w-full bg-stone-800 hover:bg-stone-700 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 text-base shadow active:scale-98 transition"
         >
           <Home className="w-5 h-5" />
-          <span>{isJapanese ? 'ホーム画面へ移動' : '홈 화면으로 이동'}</span>
+          <span>{isEnglish ? 'Return to Home' : isJapanese ? 'ホーム画面へ移動' : '홈 화면으로 이동'}</span>
         </Link>
         {/* 개별 라운드 기록 삭제 버튼 (안전한 1건 전용 삭제) */}
         <button

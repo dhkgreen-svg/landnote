@@ -403,34 +403,34 @@ function ChronicleContent() {
         <div className="grid grid-cols-4 gap-2 pt-2 border-t border-emerald-700/60 text-center">
           <div className="bg-emerald-950/40 rounded-xl p-2 border border-emerald-600/30">
             <div className="text-[10px] text-emerald-200 font-medium">
-              {isJapanese ? '通算ラウンド' : '통산 라운드'}
+              {isEnglish ? 'Total Rounds' : isJapanese ? '通算ラウンド' : '통산 라운드'}
             </div>
             <div className="text-lg font-black text-white mt-0.5">
-              {totalRoundsCount}{isJapanese ? '回' : '회'}
+              {totalRoundsCount}{isEnglish ? ' R' : isJapanese ? '回' : '회'}
             </div>
           </div>
           <div className="bg-emerald-950/40 rounded-xl p-2 border border-emerald-600/30">
             <div className="text-[10px] text-emerald-200 font-medium">
-              {isJapanese ? '累計ホール数' : '누적 홀수'}
+              {isEnglish ? 'Total Holes' : isJapanese ? '累計ホール数' : '누적 홀수'}
             </div>
             <div className="text-lg font-black text-white mt-0.5">
-              {totalHolesCount}{isJapanese ? 'ホール' : '홀'}
+              {totalHolesCount}{isEnglish ? ' H' : isJapanese ? 'ホール' : '홀'}
             </div>
           </div>
           <div className="bg-emerald-950/40 rounded-xl p-2 border border-emerald-600/30">
             <div className="text-[10px] text-amber-300 font-bold">
-              {isJapanese ? 'ベストスコア' : '인생 최저타'}
+              {isEnglish ? 'Life-Best' : isJapanese ? 'ベストスコア' : '인생 최저타'}
             </div>
             <div className="text-lg font-black text-amber-300 mt-0.5">
-              {bestScore !== null ? `${bestScore}${isJapanese ? '打' : '타'}` : (isJapanese ? '-打' : '-타')}
+              {bestScore !== null ? `${bestScore}${isEnglish ? '' : isJapanese ? '打' : '타'}` : '-'}
             </div>
           </div>
           <div className="bg-emerald-950/40 rounded-xl p-2 border border-emerald-600/30">
             <div className="text-[10px] text-emerald-200 font-medium">
-              {isJapanese ? '平均打数' : '평균 타수'}
+              {isEnglish ? 'Avg Strokes' : isJapanese ? '平均打数' : '평균 타수'}
             </div>
             <div className="text-lg font-black text-white mt-0.5">
-              {avgStrokes !== null ? `${avgStrokes}${isJapanese ? '打' : '타'}` : (isJapanese ? '-打' : '-타')}
+              {avgStrokes !== null ? `${avgStrokes}${isEnglish ? '' : isJapanese ? '打' : '타'}` : '-'}
             </div>
           </div>
         </div>
@@ -442,10 +442,10 @@ function ChronicleContent() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 font-black text-amber-300 text-xs sm:text-sm">
               <span className="text-base">👑</span>
-              <span>나의 평생 고유회원번호 (비밀번호 불필요)</span>
+              <span>{isEnglish ? 'My Lifetime Member ID (No Password)' : isJapanese ? '生涯固有会員番号 (パスワード不要)' : '나의 평생 고유회원번호 (비밀번호 불필요)'}</span>
             </div>
             <span className="text-[9.5px] bg-amber-400 text-emerald-950 font-black px-2 py-0.5 rounded-full shadow-xs">
-              자동 발급
+              {isEnglish ? 'Auto-Issued' : isJapanese ? '自動発行' : '자동 발급'}
             </span>
           </div>
 
@@ -465,7 +465,7 @@ function ChronicleContent() {
                 }`}
               >
                 {codeCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{codeCopied ? '복사됨!' : '번호 복사'}</span>
+                <span>{isEnglish ? (codeCopied ? 'Copied!' : 'Copy ID') : isJapanese ? (codeCopied ? 'コピー完了!' : '番号コピー') : (codeCopied ? '복사됨!' : '번호 복사')}</span>
               </button>
               <button
                 type="button"
@@ -474,15 +474,21 @@ function ChronicleContent() {
                   setShowLoginModal(true);
                 }}
                 className="py-1.5 px-2.5 rounded-xl text-xs font-black bg-white/20 hover:bg-white/30 text-white border border-white/30 transition active:scale-95 cursor-pointer"
-                title="다른 기기/번호로 로그인"
+                title={isEnglish ? 'Login / Switch ID' : isJapanese ? '他の端末/番号でログイン' : '다른 기기/번호로 로그인'}
               >
-                <span>🔑 로그인/변경</span>
+                <span>{isEnglish ? '🔑 Switch ID' : isJapanese ? '🔑 ログイン/切替' : '🔑 로그인/변경'}</span>
               </button>
             </div>
           </div>
 
           <p className="text-[11px] text-emerald-100 font-medium leading-relaxed">
-            💡 <strong>PC(컴퓨터)나 다른 휴대폰</strong>에서 이 번호 <strong>7자리</strong>만 넣으시면, 비밀번호 없이 <strong>내 모든 연대기와 경기 기록이 1초 만에 그대로 복원</strong>됩니다!
+            {isEnglish ? (
+              <>💡 <strong>On any PC or other phone</strong>, simply enter this <strong>7-digit ID</strong> to <strong>instantly restore all your chronicle and match records</strong> without a password!</>
+            ) : isJapanese ? (
+              <>💡 <strong>パソコンや他のスマホ</strong>でこの<strong>7桁の番号</strong>を入力するだけで、パスワードなしで<strong>すべての年代記と記録が1秒で復元</strong>されます！</>
+            ) : (
+              <>💡 <strong>PC(컴퓨터)나 다른 휴대폰</strong>에서 이 번호 <strong>7자리</strong>만 넣으시면, 비밀번호 없이 <strong>내 모든 연대기와 경기 기록이 1초 만에 그대로 복원</strong>됩니다!</>
+            )}
           </p>
         </div>
       </div>
@@ -499,7 +505,7 @@ function ChronicleContent() {
           }`}
         >
           <Trophy className="w-4 h-4 text-emerald-600" />
-          <span>{isJapanese ? 'キャリア' : '커리어'}</span>
+          <span>{isEnglish ? 'Career' : isJapanese ? 'キャリア' : '커리어'}</span>
         </button>
 
         <button
@@ -512,7 +518,7 @@ function ChronicleContent() {
           }`}
         >
           <Swords className="w-4 h-4 text-purple-600" />
-          <span>{isJapanese ? 'クラブ対抗戦' : '대항전 실록'}</span>
+          <span>{isEnglish ? 'Club Matches' : isJapanese ? 'クラブ対抗戦' : '대항전 실록'}</span>
         </button>
 
         <button
@@ -525,7 +531,7 @@ function ChronicleContent() {
           }`}
         >
           <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
-          <span>{isJapanese ? 'ゴルフ仲間' : '1촌 명부'}</span>
+          <span>{isEnglish ? 'Buddies' : isJapanese ? 'ゴルフ仲間' : '1촌 명부'}</span>
         </button>
 
         <button
@@ -538,7 +544,7 @@ function ChronicleContent() {
           }`}
         >
           <Compass className="w-4 h-4 text-blue-600" />
-          <span>{isJapanese ? '聖地・全国制覇' : '성지순례·도장깨기'}</span>
+          <span>{isEnglish ? 'Stamp Map' : isJapanese ? '聖地・全国制覇' : '성지순례·도장깨기'}</span>
         </button>
       </div>
 
@@ -621,14 +627,14 @@ function ChronicleContent() {
                 <div>
                   <div className="flex items-center gap-1.5">
                     <h3 className="text-sm font-black text-amber-200">
-                      {isJapanese ? '日韓 聖地巡礼パスポート' : '한·일 공식 성지순례 여권'}
+                      {isEnglish ? 'Official Pilgrimage Passport' : isJapanese ? '日韓 聖地巡礼パスポート' : '한·일 공식 성지순례 여권'}
                     </h3>
                     <span className="text-[9px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full">
                       NEW
                     </span>
                   </div>
                   <p className="text-[10px] text-stone-300 font-medium">
-                    {isJapanese ? '歴史の4大聖地から全国5大名門コース巡礼実録' : '역사 4대 성지부터 전국 5대 명품 구장 완주 실록'}
+                    {isEnglish ? 'Historic birthplaces & prestige courses pilgrimage records' : isJapanese ? '歴史の4大聖地から全国5大名門コース巡礼実録' : '역사 4대 성지부터 전국 5대 명품 구장 완주 실록'}
                   </p>
                 </div>
               </div>
@@ -637,7 +643,7 @@ function ChronicleContent() {
                 onClick={() => setActiveTab('STAMP_MAP')}
                 className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1 cursor-pointer"
               >
-                <span>{isJapanese ? 'パスポートを見る' : '여권 펼치기'}</span>
+                <span>{isEnglish ? 'Open Passport' : isJapanese ? 'パスポートを見る' : '여권 펼치기'}</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -645,27 +651,27 @@ function ChronicleContent() {
             {/* 4대 여권 스탬프 요약 지표 */}
             <div className="grid grid-cols-4 gap-2 text-center text-xs">
               <div className="p-2.5 bg-white/10 rounded-2xl border border-white/10">
-                <div className="text-[10px] text-amber-300 font-bold">{isJapanese ? '歴史聖地' : '역사 성지'}</div>
+                <div className="text-[10px] text-amber-300 font-bold">{isEnglish ? 'Historic' : isJapanese ? '歴史聖地' : '역사 성지'}</div>
                 <div className="text-sm font-black text-white mt-0.5">
                   {pilgrimStatus.visitedHeritageCount}/{pilgrimStatus.totalHeritageCount}
                 </div>
               </div>
               <div className="p-2.5 bg-white/10 rounded-2xl border border-white/10">
-                <div className="text-[10px] text-emerald-300 font-bold">{isJapanese ? '韓国5大' : '한국 5대'}</div>
+                <div className="text-[10px] text-emerald-300 font-bold">{isEnglish ? 'Korea Top 5' : isJapanese ? '韓国5大' : '한국 5대'}</div>
                 <div className="text-sm font-black text-white mt-0.5">
                   {pilgrimStatus.visitedKoreaMasterpieceCount}/{pilgrimStatus.totalKoreaMasterpieceCount}
                 </div>
               </div>
               <div className="p-2.5 bg-white/10 rounded-2xl border border-white/10">
-                <div className="text-[10px] text-rose-300 font-bold">{isJapanese ? '日本5大' : '일본 5대'}</div>
+                <div className="text-[10px] text-rose-300 font-bold">{isEnglish ? 'Japan Top 5' : isJapanese ? '日本5大' : '일본 5대'}</div>
                 <div className="text-sm font-black text-white mt-0.5">
                   {pilgrimStatus.visitedJapanMasterpieceCount}/{pilgrimStatus.totalJapanMasterpieceCount}
                 </div>
               </div>
               <div className="p-2.5 bg-white/10 rounded-2xl border border-white/10">
-                <div className="text-[10px] text-cyan-300 font-bold">{isJapanese ? '開拓者' : '개척자'}</div>
+                <div className="text-[10px] text-cyan-300 font-bold">{isEnglish ? 'Pioneer' : isJapanese ? '開拓者' : '개척자'}</div>
                 <div className="text-sm font-black text-white mt-0.5">
-                  {pilgrimStatus.hasGlobalPioneer ? '🏆 달성' : '도전'}
+                  {pilgrimStatus.hasGlobalPioneer ? (isEnglish ? '🏆 Done' : isJapanese ? '🏆 達成' : '🏆 달성') : (isEnglish ? 'Challenge' : isJapanese ? '挑戦' : '도전')}
                 </div>
               </div>
             </div>
@@ -677,11 +683,11 @@ function ChronicleContent() {
               <div className="flex items-center gap-1.5">
                 <Sparkles className="w-5 h-5 text-emerald-600" />
                 <h3 className="text-sm font-black text-stone-900">
-                  {isJapanese ? '殿堂入り特別メダル' : '명예의 전당 특별 훈장'}
+                  {isEnglish ? 'Hall of Fame Special Medals' : isJapanese ? '殿堂入り特別メダル' : '명예의 전당 특별 훈장'}
                 </h3>
               </div>
               <span className="text-[10px] text-stone-400 font-bold bg-stone-100 px-2 py-0.5 rounded-full">
-                {isJapanese ? 'タップで詳細記録 🔍' : '훈장 터치 시 상세 실록 🔍'}
+                {isEnglish ? 'Tap for Details 🔍' : isJapanese ? 'タップで詳細記録 🔍' : '훈장 터치 시 상세 실록 🔍'}
               </span>
             </div>
 
@@ -695,11 +701,11 @@ function ChronicleContent() {
                 <div className="space-y-0.5">
                   <span className="text-2xl group-hover:scale-110 transition inline-block">⛳</span>
                   <div className="text-xs font-black text-amber-950 flex items-center justify-center gap-0.5">
-                    <span>{isJapanese ? 'ホールインワン' : '홀인원'}</span>
+                    <span>{isEnglish ? 'Hole-in-One' : isJapanese ? 'ホールインワン' : '홀인원'}</span>
                     <span className="text-[10px] text-amber-600">🔍</span>
                   </div>
                   <div className="text-base font-black text-amber-800">
-                    {totalHoleInOnes}{isJapanese ? '回 達成' : '회 달성'}
+                    {totalHoleInOnes}{isEnglish ? ' achieved' : isJapanese ? '回 達成' : '회 달성'}
                   </div>
                 </div>
 
@@ -709,8 +715,8 @@ function ChronicleContent() {
                   </div>
                   <div className="text-[10px] text-stone-400 font-semibold">
                     {totalHoleInOnes > 0
-                      ? (isJapanese ? '詳細記録を見る' : '상세 실록 보기')
-                      : (isJapanese ? '記録待ち' : '기록 대기')}
+                      ? (isEnglish ? 'View Details' : isJapanese ? '詳細記録を見る' : '상세 실록 보기')
+                      : (isEnglish ? 'Waiting' : isJapanese ? '記録待ち' : '기록 대기')}
                   </div>
                 </div>
               </button>
@@ -724,22 +730,22 @@ function ChronicleContent() {
                 <div className="space-y-0.5">
                   <span className="text-2xl group-hover:scale-110 transition inline-block">🦅</span>
                   <div className="text-xs font-black text-emerald-950 flex items-center justify-center gap-0.5">
-                    <span>{isJapanese ? 'イーグル' : '이글 훈장'}</span>
+                    <span>{isEnglish ? 'Eagle Medal' : isJapanese ? 'イーグル' : '이글 훈장'}</span>
                     <span className="text-[10px] text-emerald-600">🔍</span>
                   </div>
                   <div className="text-base font-black text-emerald-800">
-                    {totalEagles}{isJapanese ? '回 達成' : '회 달성'}
+                    {totalEagles}{isEnglish ? ' achieved' : isJapanese ? '回 達成' : '회 달성'}
                   </div>
                 </div>
 
                 <div className="w-full space-y-0.5 pt-0.5">
                   <div className="text-[9px] font-black text-emerald-800 bg-emerald-100/80 px-1 py-0.5 rounded-md truncate w-full">
-                    P4:{eagleListPar4.length}{isJapanese ? '回' : '회'} · P5:{eagleListPar5.length}{isJapanese ? '回' : '회'}
+                    P4:{eagleListPar4.length}{isEnglish ? '' : isJapanese ? '回' : '회'} · P5:{eagleListPar5.length}{isEnglish ? '' : isJapanese ? '回' : '회'}
                   </div>
                   <div className="text-[10px] text-stone-400 font-semibold">
                     {totalEagles > 0
-                      ? (isJapanese ? '詳細記録を見る' : '상세 실록 보기')
-                      : (isJapanese ? '記録待ち' : '기록 대기')}
+                      ? (isEnglish ? 'View Details' : isJapanese ? '詳細記録を見る' : '상세 실록 보기')
+                      : (isEnglish ? 'Waiting' : isJapanese ? '記録待ち' : '기록 대기')}
                   </div>
                 </div>
               </button>
@@ -753,22 +759,22 @@ function ChronicleContent() {
                 <div className="space-y-0.5">
                   <span className="text-2xl group-hover:scale-110 transition inline-block">🦢</span>
                   <div className="text-xs font-black text-indigo-950 flex items-center justify-center gap-0.5">
-                    <span>{isJapanese ? 'アルバトロス' : '알바트로스'}</span>
+                    <span>{isEnglish ? 'Albatross' : isJapanese ? 'アルバトロス' : '알바트로스'}</span>
                     <span className="text-[10px] text-indigo-600">🔍</span>
                   </div>
                   <div className="text-base font-black text-indigo-800">
-                    {totalAlbatross}{isJapanese ? '回 達成' : '회 달성'}
+                    {totalAlbatross}{isEnglish ? ' achieved' : isJapanese ? '回 達成' : '회 달성'}
                   </div>
                 </div>
 
                 <div className="w-full space-y-0.5 pt-0.5">
                   <div className="text-[9px] font-black text-indigo-800 bg-indigo-100/80 px-1 py-0.5 rounded-md truncate w-full">
-                    {isJapanese ? 'Par5 ロングホール 2打完走' : '파5 롱홀 2타 완주'}
+                    {isEnglish ? 'Par 5 Long Hole 2-Shot Finish' : isJapanese ? 'Par5 ロングホール 2打完走' : '파5 롱홀 2타 완주'}
                   </div>
                   <div className="text-[10px] text-stone-400 font-semibold">
                     {totalAlbatross > 0
-                      ? (isJapanese ? '詳細記録を見る' : '상세 실록 보기')
-                      : (isJapanese ? '記録待ち' : '기록 대기')}
+                      ? (isEnglish ? 'View Details' : isJapanese ? '詳細記録を見る' : '상세 실록 보기')
+                      : (isEnglish ? 'Waiting' : isJapanese ? '記録待ち' : '기록 대기')}
                   </div>
                 </div>
               </button>
@@ -784,22 +790,22 @@ function ChronicleContent() {
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-black text-amber-950">
-                      {isJapanese ? 'フィールドの美食家メダル' : '필드의 미식가 훈장'}
+                      {isEnglish ? 'Field Gourmet Medal' : isJapanese ? 'フィールドの美食家メダル' : '필드의 미식가 훈장'}
                     </span>
                     <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full">
-                      {isJapanese ? '反省会・グルメ' : '뒤풀이 미식'}
+                      {isEnglish ? 'Dining' : isJapanese ? '反省会・グルメ' : '뒤풀이 미식'}
                     </span>
                   </div>
                   <p className="text-[11px] text-stone-600 font-medium mt-0.5">
                     {gourmetBadgeCount > 0
-                      ? (isJapanese ? `${gourmetBadgeCount}軒の行きつけ店を推薦済み` : `내가 발굴한 찐 단골 맛집 ${gourmetBadgeCount}곳 추천 완료`)
-                      : (isJapanese ? 'ラウンド後の行きつけ店を推薦してメダルを獲得！' : '라운드 후 단골 맛집을 추천하고 미식가 훈장을 획득하세요!')}
+                      ? (isEnglish ? `${gourmetBadgeCount} recommended dining spots` : isJapanese ? `${gourmetBadgeCount}軒の行きつけ店を推薦済み` : `내가 발굴한 찐 단골 맛집 ${gourmetBadgeCount}곳 추천 완료`)
+                      : (isEnglish ? 'Recommend your favorite spot after a round to earn medals!' : isJapanese ? 'ラウンド後の行きつけ店を推薦してメダルを獲得！' : '라운드 후 단골 맛집을 추천하고 미식가 훈장을 획득하세요!')}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <span className="text-sm font-black text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-lg border border-amber-300">
-                  {gourmetBadgeCount}{isJapanese ? '個' : '개'}
+                  {gourmetBadgeCount}{isEnglish ? '' : isJapanese ? '個' : '개'}
                 </span>
                 <ChevronRight className="w-4 h-4 text-amber-700" />
               </div>

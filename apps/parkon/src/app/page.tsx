@@ -362,10 +362,13 @@ export default function HomePage() {
   const handleCountryToggle = (newCountry: 'KR' | 'JP') => {
     ParkOnStorage.setServiceCountry(newCountry);
     setServiceCountryState(newCountry);
-    if (newCountry === 'JP') {
-      setLanguage('ja');
-    } else {
-      setLanguage('ko');
+    // 사용자가 영어를 선택한 상태라면 언어는 영어로 그대로 유지 (데이터와 언어의 독립성 보장)
+    if (language !== 'en') {
+      if (newCountry === 'JP') {
+        setLanguage('ja');
+      } else {
+        setLanguage('ko');
+      }
     }
   };
 
@@ -1439,21 +1442,44 @@ export default function HomePage() {
           </span>
         </button>
 
-        {/* ② 언어 선택창 (한국어 / 日本語 / English) */}
-        <div className="relative w-full">
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value as any)}
-            className="w-full py-2.5 pl-3 pr-7 bg-white hover:bg-stone-50 border-2 border-stone-800 text-stone-900 font-black text-xs rounded-xl shadow-xs appearance-none cursor-pointer transition focus:outline-none focus:ring-2 focus:ring-emerald-500 text-center"
-            title={isJapanese ? '言語選択 (한국어 / 日本語 / English)' : '언어 선택 (한국어 / 日本語 / English)'}
+        {/* ② 글로벌 언어 선택 바 (한국어 / 日本語 / English) */}
+        <div className="w-full bg-stone-100 p-1 rounded-2xl border-2 border-stone-800 grid grid-cols-3 gap-1 shadow-xs">
+          <button
+            type="button"
+            onClick={() => setLanguage('ko')}
+            className={`py-2 px-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 ${
+              language === 'ko'
+                ? 'bg-stone-900 text-amber-300 shadow-md scale-[1.02]'
+                : 'bg-white/80 hover:bg-white text-stone-700'
+            }`}
           >
-            <option value="ko">🇰🇷 한국어 (KO)</option>
-            <option value="ja">🇯🇵 日本語 (JA)</option>
-            <option value="en">🇺🇸 English (EN)</option>
-          </select>
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-stone-500 text-[10px] font-bold">
-            ▼
-          </div>
+            <span>🇰🇷</span>
+            <span>한국어</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setLanguage('ja')}
+            className={`py-2 px-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 ${
+              language === 'ja'
+                ? 'bg-stone-900 text-amber-300 shadow-md scale-[1.02]'
+                : 'bg-white/80 hover:bg-white text-stone-700'
+            }`}
+          >
+            <span>🇯🇵</span>
+            <span>日本語</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setLanguage('en')}
+            className={`py-2 px-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 ${
+              language === 'en'
+                ? 'bg-stone-900 text-amber-300 shadow-md scale-[1.02]'
+                : 'bg-white/80 hover:bg-white text-stone-700'
+            }`}
+          >
+            <span>🇺🇸</span>
+            <span>English</span>
+          </button>
         </div>
 
         {/* 서비스 대상 지역 / 구장 모드 선택 (🇰🇷 한국 구장 vs 🇯🇵 日本 コース & 仮想GPS) */}
@@ -1921,13 +1947,13 @@ export default function HomePage() {
                               {isFirstBest && (
                                 <div className="mb-2 py-0.5 px-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-stone-950 font-black text-[10px] rounded-lg inline-flex items-center gap-1 shadow-2xs">
                                   <span>👑</span>
-                                  <span>{isJapanese ? '生涯不滅のラベ 1位' : '👑 평생 불멸의 라베 1위'}</span>
+                                  <span>{isEnglish ? 'Life-Best Legend #1' : isJapanese ? '生涯不滅のラベ 1位' : '👑 평생 불멸의 라베 1위'}</span>
                                 </div>
                               )}
                               {isSecondBest && (
                                 <div className="mb-2 py-0.5 px-2 bg-slate-200 text-slate-800 font-black text-[10px] rounded-lg inline-flex items-center gap-1">
                                   <span>🥈</span>
-                                  <span>{isJapanese ? '歴代 2位 記録' : '🥈 역대 2위 기록'}</span>
+                                  <span>{isEnglish ? 'All-Time 2nd Best' : isJapanese ? '歴代 2位 記録' : '🥈 역대 2위 기록'}</span>
                                 </div>
                               )}
                               {isThirdBest && (
@@ -2394,50 +2420,50 @@ export default function HomePage() {
                   {
                     id: 'stroke_59',
                     icon: '🦅',
-                    title: isJapanese ? '50台突入！アンダーパー名人' : '5자 영접! 언더파 명인',
-                    desc: isJapanese ? '18H 59打以下 (-7)' : '18홀 59타 이하 (-7)',
+                    title: isEnglish ? 'Under-Par Master (50s)' : isJapanese ? '50台突入！アンダーパー名人' : '5자 영접! 언더파 명인',
+                    desc: isEnglish ? '18H 59 strokes or below (-7)' : isJapanese ? '18H 59打以下 (-7)' : '18홀 59타 이하 (-7)',
                     unlocked: best18Score <= 59,
                   },
                   {
                     id: 'stroke_58',
                     icon: '🎯',
-                    title: isJapanese ? 'フィールドの勝負師' : '필드의 승부사',
-                    desc: isJapanese ? '18H 58打以下 (-8)' : '18홀 58타 이하 (-8)',
+                    title: isEnglish ? 'Field Strategist' : isJapanese ? 'フィールドの勝負師' : '필드의 승부사',
+                    desc: isEnglish ? '18H 58 strokes or below (-8)' : isJapanese ? '18H 58打以下 (-8)' : '18홀 58타 이하 (-8)',
                     unlocked: best18Score <= 58,
                   },
                   {
                     id: 'stroke_57',
                     icon: '⚡',
-                    title: isJapanese ? '絶対感覚の支配者' : '절대 감각의 지배자',
-                    desc: isJapanese ? '18H 57打以下 (-9)' : '18홀 57타 이하 (-9)',
+                    title: isEnglish ? 'Master of Sense' : isJapanese ? '絶対感覚の支配者' : '절대 감각의 지배자',
+                    desc: isEnglish ? '18H 57 strokes or below (-9)' : isJapanese ? '18H 57打以下 (-9)' : '18홀 57타 이하 (-9)',
                     unlocked: best18Score <= 57,
                   },
                   {
                     id: 'stroke_56',
                     icon: '🏹',
-                    title: isJapanese ? '神弓の境地' : '신궁(神弓)의 경지',
-                    desc: isJapanese ? '18H 56打以下 (-10)' : '18홀 56타 이하 (-10)',
+                    title: isEnglish ? 'Divine Archer' : isJapanese ? '神弓の境地' : '신궁(神弓)의 경지',
+                    desc: isEnglish ? '18H 56 strokes or below (-10)' : isJapanese ? '18H 56打以下 (-10)' : '18홀 56타 이하 (-10)',
                     unlocked: best18Score <= 56,
                   },
                   {
                     id: 'stroke_55',
                     icon: '🥇',
-                    title: isJapanese ? '全国区チャンピオン級' : '전국구 챔피언급',
-                    desc: isJapanese ? '18H 55打以下 (-11)' : '18홀 55타 이하 (-11)',
+                    title: isEnglish ? 'National Champion Grade' : isJapanese ? '全国区チャンピオン級' : '전국구 챔피언급',
+                    desc: isEnglish ? '18H 55 strokes or below (-11)' : isJapanese ? '18H 55打以下 (-11)' : '18홀 55타 이하 (-11)',
                     unlocked: best18Score <= 55,
                   },
                   {
                     id: 'stroke_54',
                     icon: '👑',
-                    title: isJapanese ? '不滅のラベ' : '불멸의 라베',
-                    desc: isJapanese ? '18H 54打以下 (-12)' : '18홀 54타 이하 (-12)',
+                    title: isEnglish ? 'Life-Best Legend #1' : isJapanese ? '不滅のラベ' : '불멸의 라베',
+                    desc: isEnglish ? '18H 54 strokes or below (-12)' : isJapanese ? '18H 54打以下 (-12)' : '18홀 54타 이하 (-12)',
                     unlocked: best18Score <= 54,
                   },
                   {
                     id: 'stroke_50_53',
                     icon: '✨',
-                    title: isJapanese ? '名将・ハーフバック伝説' : '명장 & 하프 백 전설',
-                    desc: isJapanese ? '18H 53打以下神域' : '18홀 53타 이하 신화의 영역',
+                    title: isEnglish ? 'Legendary Master' : isJapanese ? '名将・ハーフバック伝説' : '명장 & 하프 백 전설',
+                    desc: isEnglish ? '18H 53 strokes or below' : isJapanese ? '18H 53打以下神域' : '18홀 53타 이하 신화의 영역',
                     unlocked: best18Score <= 53,
                   },
 
@@ -2445,15 +2471,15 @@ export default function HomePage() {
                   {
                     id: 'stroke_49',
                     icon: '🌌',
-                    title: isJapanese ? '奇跡の40台突入' : '기적의 40대 입성',
-                    desc: isJapanese ? '18H 49打以下超人的大記録' : '18홀 49타 이하 기적의 기록',
+                    title: isEnglish ? 'Miraculous 40s Realm' : isJapanese ? '奇跡の40台突入' : '기적의 40대 입성',
+                    desc: isEnglish ? '18H 49 strokes or below' : isJapanese ? '18H 49打以下超人的大記録' : '18홀 49타 이하 기적의 기록',
                     unlocked: best18Score <= 49,
                   },
                   {
                     id: 'stroke_48_below',
                     icon: '🌟',
-                    title: isJapanese ? 'パークゴルフの神 (神域)' : '파크골프의 신(神)',
-                    desc: isJapanese ? '18H 48打以下不滅の神話' : '18홀 48타 이하 전설의 신화',
+                    title: isEnglish ? 'God of Park Golf' : isJapanese ? 'パークゴルフの神 (神域)' : '파크골프의 신(神)',
+                    desc: isEnglish ? '18H 48 strokes or below immortal myth' : isJapanese ? '18H 48打以下不滅の神話' : '18홀 48타 이하 전설의 신화',
                     unlocked: best18Score <= 48,
                   },
 
@@ -2461,36 +2487,36 @@ export default function HomePage() {
                   {
                     id: 'milestone_9h_10',
                     icon: '🌱',
-                    title: isJapanese ? 'フィールドの新芽 (10回)' : '필드의 새싹',
-                    desc: isJapanese ? '累計9ホール10回完走' : '누적 9홀 10회 완주',
+                    title: isEnglish ? 'Field Sprout (10 Rounds)' : isJapanese ? 'フィールドの新芽 (10回)' : '필드의 새싹',
+                    desc: isEnglish ? 'Completed 10 cumulative 9-hole rounds' : isJapanese ? '累計9ホール10回完走' : '누적 9홀 10회 완주',
                     unlocked: total9Holes >= 10,
                   },
                   {
                     id: 'milestone_9h_50',
                     icon: '🏃',
-                    title: isJapanese ? '情熱ゴルファー (50回)' : '열정 골퍼',
-                    desc: isJapanese ? '累計9ホール50回完走' : '누적 9홀 50회 완주',
+                    title: isEnglish ? 'Passionate Golfer (50 Rounds)' : isJapanese ? '情熱ゴルファー (50回)' : '열정 골퍼',
+                    desc: isEnglish ? 'Completed 50 cumulative 9-hole rounds' : isJapanese ? '累計9ホール50回完走' : '누적 9홀 50회 완주',
                     unlocked: total9Holes >= 50,
                   },
                   {
                     id: 'milestone_9h_100',
                     icon: '🎖️',
-                    title: isJapanese ? '百戦錬磨の巨匠 (100回)' : '백전노장',
-                    desc: isJapanese ? '累計9ホール100回完走' : '누적 9홀 100회 완주 달성',
+                    title: isEnglish ? 'Veteran of 100 Rounds' : isJapanese ? '百戦錬磨の巨匠 (100回)' : '백전노장',
+                    desc: isEnglish ? 'Completed 100 cumulative 9-hole rounds' : isJapanese ? '累計9ホール100回完走' : '누적 9홀 100회 완주 달성',
                     unlocked: total9Holes >= 100,
                   },
                   {
                     id: 'milestone_9h_500',
                     icon: '🏰',
-                    title: isJapanese ? 'フィールドの主 (500回)' : '필드의 터줏대감',
-                    desc: isJapanese ? '累計9ホール500回完走' : '누적 9홀 500회 완주 달성',
+                    title: isEnglish ? 'Guardian of the Green (500 Rounds)' : isJapanese ? 'フィールドの主 (500回)' : '필드의 터줏대감',
+                    desc: isEnglish ? 'Completed 500 cumulative 9-hole rounds' : isJapanese ? '累計9ホール500回完走' : '누적 9홀 500회 완주 달성',
                     unlocked: total9Holes >= 500,
                   },
                   {
                     id: 'milestone_9h_1000',
                     icon: '🗽',
-                    title: isJapanese ? '不滅の伝説 (1000回)' : '불멸의 전설',
-                    desc: isJapanese ? '累計9ホール1,000回完走' : '누적 9홀 1,000회 대기록',
+                    title: isEnglish ? 'Immortal Living Legend (1,000 Rounds)' : isJapanese ? '不滅の伝説 (1000回)' : '불멸의 전설',
+                    desc: isEnglish ? 'Completed 1,000 cumulative 9-hole rounds' : isJapanese ? '累計9ホール1,000回完走' : '누적 9홀 1,000회 대기록',
                     unlocked: total9Holes >= 1000,
                   },
 
@@ -2498,8 +2524,8 @@ export default function HomePage() {
                   {
                     id: 'ob_clean',
                     icon: '🛡️',
-                    title: isJapanese ? 'ノーOB 無欠点完走' : '무결점 노(No) OB',
-                    desc: isJapanese ? '18HノーOB完走' : '18홀 무결점 0 OB 완주',
+                    title: isEnglish ? 'Flawless Zero-OB Shield' : isJapanese ? 'ノーOB 無欠点完走' : '무결점 노(No) OB',
+                    desc: isEnglish ? '18-hole zero-OB round completed' : isJapanese ? '18HノーOB完走' : '18홀 무결점 0 OB 완주',
                     unlocked: completedRounds.some((r) => {
                       const me = meOf(r);
                       const obTotal = Object.values(me?.obCount || {}).reduce<number>((acc, cur) => acc + (Number(cur) || 0), 0);
@@ -2509,8 +2535,8 @@ export default function HomePage() {
                   {
                     id: 'ob_stability',
                     icon: '💎',
-                    title: isJapanese ? 'ショット安定マスター' : '샷 안정도 골드 훈장',
-                    desc: isJapanese ? '9H平均OB 0.5個以下の安定度' : '9홀당 평균 OB 0.5개 이하 안정 샷',
+                    title: isEnglish ? 'Shot Precision Gold' : isJapanese ? 'ショット安定マスター' : '샷 안정도 골드 훈장',
+                    desc: isEnglish ? 'Under 0.5 avg OB per 9-holes' : isJapanese ? '9H平均OB 0.5個以下の安定度' : '9홀당 평균 OB 0.5개 이하 안정 샷',
                     unlocked: completedRounds.length >= 2 && avgObPer9Holes <= 0.5,
                   },
 
@@ -2518,22 +2544,22 @@ export default function HomePage() {
                   {
                     id: 'tour_3',
                     icon: '🗺️',
-                    title: isJapanese ? '三道巡礼者 (3コース)' : '삼도 순례자 (3개 구장)',
-                    desc: isJapanese ? '異なる3箇所のコース完走' : '서로 다른 3곳 구장 완주',
+                    title: isEnglish ? 'Regional Pilgrim (3 Courses)' : isJapanese ? '三道巡礼者 (3コース)' : '삼도 순례자 (3개 구장)',
+                    desc: isEnglish ? 'Completed rounds at 3 different courses' : isJapanese ? '異なる3箇所のコース完走' : '서로 다른 3곳 구장 완주',
                     unlocked: visitedCoursesList.length >= 3,
                   },
                   {
                     id: 'tour_10',
                     icon: '🧭',
-                    title: isJapanese ? '全国遠征隊長 (10コース)' : '전국 원정대장 (10개 구장)',
-                    desc: isJapanese ? '異なる10箇所のコース完走' : '서로 다른 10곳 구장 완주',
+                    title: isEnglish ? 'National Expedition Leader (10 Courses)' : isJapanese ? '全国遠征隊長 (10コース)' : '전국 원정대장 (10개 구장)',
+                    desc: isEnglish ? 'Completed rounds at 10 different courses' : isJapanese ? '異なる10箇所のコース完走' : '서로 다른 10곳 구장 완주',
                     unlocked: visitedCoursesList.length >= 10,
                   },
                   {
                     id: 'tour_30',
                     icon: '🌏',
-                    title: isJapanese ? '生ける羅針盤 (30コース)' : '살아있는 나침반 (30개 구장)',
-                    desc: isJapanese ? '異なる30箇所のコース完走' : '서로 다른 30곳 구장 정복',
+                    title: isEnglish ? 'National Course Pioneer (30 Courses)' : isJapanese ? '生ける羅針盤 (30コース)' : '살아있는 나침반 (30개 구장)',
+                    desc: isEnglish ? 'Completed rounds at 30 different courses' : isJapanese ? '異なる30箇所のコース完走' : '서로 다른 30곳 구장 정복',
                     unlocked: visitedCoursesList.length >= 30,
                   },
                 ];

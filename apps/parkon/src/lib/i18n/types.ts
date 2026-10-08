@@ -15,6 +15,9 @@ export interface TranslationDictionary {
     rules: string;
     chronicle: string;
     club: string;
+    dining: string;
+    market: string;
+    weather: string;
   };
   pwa: {
     add_to_home: string;
@@ -53,12 +56,34 @@ export interface TranslationDictionary {
     local_rule_warning: string;
     best_guide: string;
     player_resting: string;
+    strokes: string;
+    putts: string;
+    hole_in_one: string;
+    total_score: string;
+    under_par: string;
+    over_par: string;
+    finish_round: string;
+    save_to_chronicle: string;
+    guest_golfer: string;
   };
   rules: {
     title: string;
     safe_1mm: string;
     search_placeholder: string;
     official_rules: string;
+  };
+  medals: {
+    chronicle_title: string;
+    life_best_1: string;
+    veteran_100: string;
+    under_par_master: string;
+    zero_ob_shield: string;
+    national_pioneer: string;
+    global_ambassador: string;
+    hole_in_one: string;
+    eagle: string;
+    albatross: string;
+    gourmet: string;
   };
   common: {
     confirm: string;
@@ -67,5 +92,7 @@ export interface TranslationDictionary {
     edit: string;
     close: string;
     loading: string;
+    free_market: string;
+    all: string;
   };
 }

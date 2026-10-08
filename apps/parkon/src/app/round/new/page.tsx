@@ -762,19 +762,19 @@ function NewRoundForm() {
             <h2 className="text-lg font-black text-stone-900 leading-tight flex items-center gap-1.5">
               <span>
                 {isTrialMode
-                  ? (isJapanese ? '🎯 バーチャル体験・チーム作成' : '🎯 프로그램 체험 연습 (팀 만들기)')
-                  : (isJapanese ? 'ラウンド開始設定' : '새 라운드 시작 설정')}
+                  ? (isEnglish ? '🎯 Practice Round Setup' : isJapanese ? '🎯 バーチャル体験・チーム作成' : '🎯 프로그램 체험 연습 (팀 만들기)')
+                  : (isEnglish ? 'New Round Setup' : isJapanese ? 'ラウンド開始設定' : '새 라운드 시작 설정')}
               </span>
               {isTrialMode && (
                 <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
-                  {isJapanese ? '体験モード' : '체험 모드'}
+                  {isEnglish ? 'Practice' : isJapanese ? '体験モード' : '체험 모드'}
                 </span>
               )}
             </h2>
             <p className="text-[11px] text-stone-600 font-semibold">
               {isTrialMode
-                ? (isJapanese ? '実戦と同じように同伴者招待やチーム編成をお試しいただけます' : '동반자 초대 및 팀 구성을 실전과 똑같이 체험해 보세요 (기록 미저장)')
-                : (isJapanese ? 'プレーするコースを自由に選択してください' : '플레이할 구장과 코스를 자유롭게 선택하세요')}
+                ? (isEnglish ? 'Experience team setup and companion invites (records not saved)' : isJapanese ? '実戦と同じように同伴者招待やチーム編成をお試しいただけます' : '동반자 초대 및 팀 구성을 실전과 똑같이 체험해 보세요 (기록 미저장)')
+                : (isEnglish ? 'Select course and setup players to start' : isJapanese ? 'プレーするコースを自由に選択してください' : '플레이할 구장과 코스를 자유롭게 선택하세요')}
             </p>
           </div>
         </div>
@@ -841,7 +841,7 @@ function NewRoundForm() {
                     href="/courses"
                     className="bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 font-bold py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px]"
                   >
-                    <span>{isJapanese ? 'コース変更' : '구장 변경'}</span>
+                    <span>{isEnglish ? 'Change Course' : isJapanese ? 'コース変更' : '구장 변경'}</span>
                   </Link>
                 </div>
               </div>
@@ -857,17 +857,17 @@ function NewRoundForm() {
           <div className="flex items-center justify-between">
             <label className="text-xs font-black text-stone-900 flex items-center gap-1.5">
               <Users className="w-4 h-4 text-emerald-700" />
-              <span>{isJapanese ? '同伴者名簿' : '동반자 명단'}</span>
+              <span>{isEnglish ? 'Player Roster' : isJapanese ? '同伴者名簿' : '동반자 명단'}</span>
             </label>
             <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
               {playerCount === 1
-                ? (isJapanese ? '👤 個人・ソロプレー' : '👤 1인 혼자 플레이')
-                : (isJapanese ? '👑 代表1番・整列' : '👑 조장 1번 · 나머지 가나다순 정렬')}
+                ? (isEnglish ? '👤 Solo Play' : isJapanese ? '👤 個人・ソロプレー' : '👤 1인 혼자 플레이')
+                : (isEnglish ? '👑 Leader #1' : isJapanese ? '👑 代表1番・整列' : '👑 조장 1번 · 나머지 가나다순 정렬')}
             </span>
           </div>
 
           <div className="flex items-center justify-between bg-stone-50 p-2 rounded-xl border border-stone-200/80">
-            <span className="text-xs font-bold text-stone-700">{isJapanese ? 'プレー人数:' : '플레이어 수:'}</span>
+            <span className="text-xs font-bold text-stone-700">{isEnglish ? 'Players:' : isJapanese ? 'プレー人数:' : '플레이어 수:'}</span>
             <div className="flex items-center gap-1">
               {[1, 2, 3, 4, 5, 6].map((num) => (
                 <button
@@ -880,7 +880,7 @@ function NewRoundForm() {
                       : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-100 hover:text-stone-900'
                   }`}
                 >
-                  {num}{isJapanese ? '人' : '명'}
+                  {num}{isEnglish ? 'P' : isJapanese ? '人' : '명'}
                 </button>
               ))}
             </div>
@@ -1130,11 +1130,11 @@ function NewRoundForm() {
         <Play className="w-4 h-4 fill-current" />
         <span>
           {isTrialMode ? '🎯 ' : ''}
-          {selectedCourseLetter}{isJapanese ? 'コース ' : '코스 '}
-          {startHoleIndex}{isJapanese ? '番ホール ' : '번 홀 '}
+          {selectedCourseLetter}{isEnglish ? ' Course ' : isJapanese ? 'コース ' : '코스 '}
+          {startHoleIndex}{isEnglish ? ' Hole ' : isJapanese ? '番ホール ' : '번 홀 '}
           {isTrialMode
-            ? (isJapanese ? '体験ティーショット開始' : '체험 티샷 시작')
-            : (isJapanese ? 'ティーショット開始 ⛳' : '티샷 시작 ⛳')}
+            ? (isEnglish ? 'Start Practice Round' : isJapanese ? '体験ティーショット開始' : '체험 티샷 시작')
+            : (isEnglish ? 'Start Tee Shot ⛳' : isJapanese ? 'ティーショット開始 ⛳' : '티샷 시작 ⛳')}
         </span>
       </button>
 

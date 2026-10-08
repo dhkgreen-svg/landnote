@@ -23,7 +23,7 @@ interface NavGuardInfo {
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { language, setLanguage, t, isJapanese } = useTranslation();
+  const { language, setLanguage, t, isJapanese, isEnglish } = useTranslation();
 
   const [mounted, setMounted] = useState(false);
   const [showKakaoModal, setShowKakaoModal] = useState(false);
@@ -97,33 +97,39 @@ export function Header() {
           url: '/',
           type: 'HOME',
           icon: '🏠',
-          title: isJapanese ? 'ホーム画面に戻りますか？' : '홈(바탕화면)으로 돌아가시겠습니까?',
+          title: isJapanese ? 'ホーム画面に戻りますか？' : isEnglish ? 'Return to Home Screen?' : '홈(바탕화면)으로 돌아가시겠습니까?',
           desc: isJapanese
             ? '現在ラウンド進行中です。ポケットの中での誤タップや誤操作の場合、[ラウンドを続ける]を押すと現在の画面がそのまま維持されます。\n\n移動してもスコアは安全に自動保存され、ホーム画面上部のバナーからいつでも続きを再開できます。'
+            : isEnglish
+            ? 'A round is currently in progress. If you tapped by accident, tap [Continue Round] to stay on this screen.\n\nYour score is automatically saved, and you can resume anytime from the top banner.'
             : '현재 게임 진행 중입니다. 주머니 터치나 실수로 잘못 누르신 경우 [계속 라운딩하기]를 누르면 경기 화면이 그대로 유지됩니다.\n\n나가시더라도 스코어는 안전하게 자동 보존되며, 홈 상단 배너를 통해 언제든 그대로 이어하실 수 있습니다.',
-          confirmText: isJapanese ? '確認 (ホームへ移動)' : '확인 (홈으로 나가기)',
+          confirmText: isJapanese ? '確認 (ホームへ移動)' : isEnglish ? 'Confirm (Go Home)' : '확인 (홈으로 나가기)',
         });
       } else if (type === 'RULES') {
         setPendingGuard({
           url: '/rules',
           type: 'RULES',
           icon: '❓',
-          title: isJapanese ? 'ラウンド中にルールを確認しますか？' : '지금 라운드 중에 룰 질문을 하시겠습니까?',
+          title: isJapanese ? 'ラウンド中にルールを確認しますか？' : isEnglish ? 'Check Rules During Round?' : '지금 라운드 중에 룰 질문을 하시겠습니까?',
           desc: isJapanese
             ? '現在進行中のスコア記録は安全に自動保存されます。\n\nパークゴルフ公式ルールとAIルール案内で疑問を確認した後、いつでもラウンドに復帰できます。'
+            : isEnglish
+            ? 'Your ongoing score is safely saved. Check the official rules with our AI guide, and resume your round anytime.'
             : '현재 진행 중인 경기 기록은 안전하게 자동 보존됩니다.\n\n파크골프 규정집 및 AI 룰 솔로몬에서 궁금한 점을 질문하고 확인하신 후, 언제든 라운드로 복귀하실 수 있습니다.',
-          confirmText: isJapanese ? '確認 (ルール確認へ)' : '확인 (룰 질문하기)',
+          confirmText: isJapanese ? '確認 (ルール確認へ)' : isEnglish ? 'Confirm (Check Rules)' : '확인 (룰 질문하기)',
         });
       } else if (type === 'COURSES') {
         setPendingGuard({
           url: '/courses',
           type: 'COURSES',
           icon: '📍',
-          title: isJapanese ? '全国コース検索へ移動しますか？' : '전국 구장 찾기로 이동하시겠습니까?',
+          title: isJapanese ? '全国コース検索へ移動しますか？' : isEnglish ? 'Search National Courses?' : '전국 구장 찾기로 이동하시겠습니까?',
           desc: isJapanese
             ? '現在ラウンド進行中です。誤操作の場合は[ラウンドを続ける]を押して現在の画面を維持してください。\n\nコース確認後、いつでも上部バナーから現在のラウンドに復帰できます。'
+            : isEnglish
+            ? 'A round is in progress. Tap [Continue Round] to maintain current screen. You can return anytime via the top banner.'
             : '현재 게임 진행 중입니다. 주머니에 넣거나 실수로 잘못 누르셨다면 [계속 라운딩하기]를 눌러 경기 화면을 유지하세요.\n\n구장 검색 후 언제든 상단 배너로 현재 라운드에 복귀하실 수 있습니다.',
-          confirmText: isJapanese ? '確認 (コース検索へ)' : '확인 (구장 찾기)',
+          confirmText: isJapanese ? '確認 (コース検索へ)' : isEnglish ? 'Confirm (Find Courses)' : '확인 (구장 찾기)',
         });
       }
     }
@@ -161,10 +167,44 @@ export function Header() {
             </div>
           </Link>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            {/* 3개 국어 글로벌 언어 스위처 [ KR | JP | EN ] */}
+            <div className="flex items-center bg-emerald-950/70 p-0.5 rounded-xl border border-amber-300/40 text-[9px] sm:text-[10px] font-black shrink-0 shadow-inner">
+              <button
+                type="button"
+                onClick={() => setLanguage('ko')}
+                className={`px-1.5 py-0.5 rounded-lg transition cursor-pointer ${
+                  language === 'ko' ? 'bg-amber-400 text-stone-950 shadow-xs' : 'text-emerald-200 hover:text-white'
+                }`}
+                title="한국어 (KO)"
+              >
+                KR
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('ja')}
+                className={`px-1.5 py-0.5 rounded-lg transition cursor-pointer ${
+                  language === 'ja' ? 'bg-amber-400 text-stone-950 shadow-xs' : 'text-emerald-200 hover:text-white'
+                }`}
+                title="日本語 (JA)"
+              >
+                JP
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('en')}
+                className={`px-1.5 py-0.5 rounded-lg transition cursor-pointer ${
+                  language === 'en' ? 'bg-amber-400 text-stone-950 shadow-xs' : 'text-emerald-200 hover:text-white'
+                }`}
+                title="English (EN)"
+              >
+                EN
+              </button>
+            </div>
+
             {/* ✍️ 2줄 프로필/로그인 버튼: [성명 + 고유번호] 또는 [성명 입력 + 로그인] */}
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl text-xs font-black shadow-xs transition shrink-0 border ${
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 py-1 rounded-2xl text-xs font-black shadow-xs transition shrink-0 border ${
                 hasRegisteredName
                   ? 'bg-emerald-800/90 hover:bg-emerald-900 text-amber-300 border-amber-300/60'
                   : 'bg-amber-400 hover:bg-amber-300 text-stone-950 border-amber-500 shadow-sm'
@@ -173,8 +213,8 @@ export function Header() {
               <button
                 type="button"
                 onClick={() => handleOpenModal(hasRegisteredName ? 'profile' : 'login')}
-                className="text-[13px] leading-none shrink-0 cursor-pointer hover:scale-110 transition active:scale-95"
-                title={hasRegisteredName ? `${currentDisplayName} 님 프로필 확인` : (isJapanese ? 'お名前入力 ＆ ログイン' : '성명 입력 및 로그인')}
+                className="text-[12px] leading-none shrink-0 cursor-pointer hover:scale-110 transition active:scale-95"
+                title={hasRegisteredName ? `${currentDisplayName} 님 프로필 확인` : (isJapanese ? 'お名前入力 ＆ ログイン' : isEnglish ? 'Name & Login' : '성명 입력 및 로그인')}
               >
                 {hasRegisteredName ? '👤' : '✍️'}
               </button>
@@ -187,24 +227,24 @@ export function Header() {
                     <button
                       type="button"
                       onClick={() => handleOpenModal(hasRegisteredName ? 'profile' : 'login')}
-                      className="text-[11.5px] font-black tracking-tight truncate max-w-[85px] sm:max-w-[110px] cursor-pointer hover:underline text-left py-0.5 leading-none flex items-center gap-1"
+                      className="text-[11px] font-black tracking-tight truncate max-w-[65px] sm:max-w-[85px] cursor-pointer hover:underline text-left py-0.5 leading-none flex items-center gap-0.5"
                       title={`${userTier.nameKo} (누적 ${user9H}회 완주)`}
                     >
                       {hasRegisteredName && <span className="text-xs leading-none drop-shadow-xs">{userTier.icon}</span>}
-                      <span>{hasRegisteredName ? currentDisplayName : (isJapanese ? 'お名前入力' : '성명 입력')}</span>
+                      <span>{hasRegisteredName ? currentDisplayName : (isJapanese ? 'お名前' : isEnglish ? 'Name' : '성명 입력')}</span>
                     </button>
                   );
                 })()}
-                {/* 2행: 로그인/고유번호 (누르면 무조건 7자리 고유번호 입력 로그인 창으로 직행!) */}
+                {/* 2행: 로그인/고유번호 */}
                 <button
                   type="button"
                   onClick={() => handleOpenModal('login')}
-                  className={`text-[9px] font-extrabold tracking-tight cursor-pointer hover:underline text-left py-0.5 leading-none ${
+                  className={`text-[8.5px] font-extrabold tracking-tight cursor-pointer hover:underline text-left py-0.5 leading-none ${
                     hasRegisteredName ? 'text-emerald-200 hover:text-amber-200' : 'text-amber-950 hover:text-black font-black'
                   }`}
-                  title={isJapanese ? '7桁会員番号で1秒ログイン' : '스마트폰 7자리 회원번호로 1초 로그인하기'}
+                  title={isJapanese ? '7桁会員番号で1秒ログイン' : isEnglish ? 'Login with 7-digit code' : '스마트폰 7자리 회원번호로 1초 로그인하기'}
                 >
-                  {hasRegisteredName && memberCode ? memberCode : (isJapanese ? 'ログイン 🔑' : '로그인 🔑')}
+                  {hasRegisteredName && memberCode ? memberCode : (isJapanese ? 'ログイン 🔑' : isEnglish ? 'Login 🔑' : '로그인 🔑')}
                 </button>
               </div>
             </div>
@@ -212,20 +252,20 @@ export function Header() {
             {/* 0. 나의 파크골프 연대기 & 1촌 */}
             <Link
               href="/chronicle"
-              className="w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
-              title={isJapanese ? '私のパークゴルフ年代記 ＆ 仲間名簿' : '나의 파크골프 연대기 & 1촌 명부'}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
+              title={isJapanese ? '私のパークゴルフ年代記 ＆ 仲間名簿' : isEnglish ? 'Chronicle & Friends' : '나의 파크골프 연대기 & 1촌 명부'}
             >
-              <Trophy className="w-4 h-4 text-amber-600 stroke-[2.5]" />
+              <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 stroke-[2.5]" />
             </Link>
 
             {/* 0.5. 게시판 & 파크골프 뉴스 */}
             <Link
               href="/board"
-              className="relative w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
-              title={isJapanese ? '掲示板 ＆ パークゴルフニュース' : '게시판 & 파크골프 뉴스 (전국 시합 공고·열린 신문고)'}
+              className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
+              title={isJapanese ? '掲示板 ＆ パークゴルフニュース' : isEnglish ? 'Board & News' : '게시판 & 파크골프 뉴스 (전국 시합 공고·열린 신문고)'}
             >
-              <Newspaper className="w-4 h-4 text-purple-700 stroke-[2.5]" />
-              <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-black px-1 rounded-full animate-pulse shadow-xs">
+              <Newspaper className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-700 stroke-[2.5]" />
+              <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[7px] font-black px-1 rounded-full animate-pulse shadow-xs">
                 N
               </span>
             </Link>
@@ -234,20 +274,20 @@ export function Header() {
             <button
               type="button"
               onClick={() => setShowHelpRulesModal(true)}
-              className="w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer"
-              title={isJapanese ? 'ガイド ＆ ルールセンター' : '가이드 & 룰 센터 (초간단 설명서 · 공식 룰북 · Q&A)'}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer"
+              title={isJapanese ? 'ガイド ＆ ルールセンター' : isEnglish ? 'Rules & Guide Hub' : '가이드 & 룰 센터 (초간단 설명서 · 공식 룰북 · Q&A)'}
             >
-              <HelpCircle className="w-4 h-4 stroke-[2.5]" />
+              <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
             </button>
 
             {/* 2. 전국 구장 (장소 찾기) 버튼 */}
             <Link
               href="/courses"
               onClick={(e) => handleNavClick(e, '/courses', 'COURSES')}
-              className="w-8 h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border-2 border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
-              title={isJapanese ? '全国パークゴルフ場検索' : '전국 파크골프장 찾기'}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
+              title={isJapanese ? '全国パークゴルフ場検索' : isEnglish ? 'Find Courses' : '전국 파크골프장 찾기'}
             >
-              <MapPin className="w-4 h-4 stroke-[2.5]" />
+              <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
             </Link>
           </div>
         </div>

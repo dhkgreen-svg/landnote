@@ -6,11 +6,51 @@ import { ShieldCheck, Info, FileText, Key, BookOpen, Scale, Mail, ExternalLink, 
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 export function Footer() {
-  const { isJapanese, isEnglish } = useTranslation();
+  const { language, setLanguage, isJapanese, isEnglish } = useTranslation();
 
   return (
     <footer className="mt-auto border-t border-stone-200 bg-white/95 text-stone-600 text-xs py-8 px-4">
       <div className="max-w-xl mx-auto space-y-4 text-center">
+        {/* 🌐 3개 국어 글로벌 언어 선택 바 [ 🇰🇷 한국어 | 🇯🇵 日本語 | 🇺🇸 English ] */}
+        <div className="inline-flex items-center justify-center p-1 bg-stone-100 rounded-2xl border border-stone-200 text-xs font-black shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setLanguage('ko')}
+            className={`px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1 ${
+              language === 'ko'
+                ? 'bg-white text-stone-900 shadow-xs border border-stone-200 font-black'
+                : 'text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <span>🇰🇷</span>
+            <span>한국어</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setLanguage('ja')}
+            className={`px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1 ${
+              language === 'ja'
+                ? 'bg-white text-stone-900 shadow-xs border border-stone-200 font-black'
+                : 'text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <span>🇯🇵</span>
+            <span>日本語</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setLanguage('en')}
+            className={`px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1 ${
+              language === 'en'
+                ? 'bg-white text-stone-900 shadow-xs border border-stone-200 font-black'
+                : 'text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <span>🇺🇸</span>
+            <span>English</span>
+          </button>
+        </div>
+
         {/* 브랜드 & 슬로건 */}
         <div className="flex flex-col items-center gap-1">
           <div className="flex items-center gap-1.5 font-black text-sm text-stone-900">

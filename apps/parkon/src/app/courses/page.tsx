@@ -1334,7 +1334,7 @@ export default function CoursesPage() {
                 }`}
               >
                 <span>🌐</span>
-                <span>{isJapanese ? '全体' : '전체'}</span>
+                <span>{isEnglish ? 'All' : isJapanese ? '全体' : '전체'}</span>
                 <span className="text-[10px] opacity-80">({courses.length})</span>
               </button>
 
@@ -1352,7 +1352,7 @@ export default function CoursesPage() {
                 }`}
               >
                 <span>🇰🇷</span>
-                <span>{isJapanese ? '韓国' : '대한민국'}</span>
+                <span>{isEnglish ? 'Korea' : isJapanese ? '韓国' : '대한민국'}</span>
                 <span className="text-[10px] opacity-80">({courses.filter((c) => c.country !== 'JP').length})</span>
               </button>
 
@@ -1370,7 +1370,7 @@ export default function CoursesPage() {
                 }`}
               >
                 <span>🇯🇵</span>
-                <span>{isJapanese ? '日本公認' : '일본 공인'}</span>
+                <span>{isEnglish ? 'Japan' : isJapanese ? '日本公認' : '일본 공인'}</span>
                 <span className="text-[10px] opacity-80">({courses.filter((c) => c.country === 'JP').length})</span>
               </button>
             </div>

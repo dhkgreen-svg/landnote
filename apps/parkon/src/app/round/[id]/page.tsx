@@ -2716,7 +2716,7 @@ export default function RoundPlayPage() {
                     >
                       <span className="text-xs font-black leading-tight">OB</span>
                       <span className="text-xs font-black leading-tight">
-                        {isJapanese ? '2打罰' : '+2타'}{obCount > 0 && <span className={`text-[10px] ml-0.5 font-black ${sunlightMode ? 'text-yellow-300' : 'text-rose-600'}`}>({obCount})</span>}
+                        {isEnglish ? '+2 OB' : isJapanese ? '2打罰' : '+2타'}{obCount > 0 && <span className={`text-[10px] ml-0.5 font-black ${sunlightMode ? 'text-yellow-300' : 'text-rose-600'}`}>({obCount})</span>}
                       </span>
                     </button>
                   </div>
@@ -2741,7 +2741,7 @@ export default function RoundPlayPage() {
               }`}
             >
               <ChevronLeft className="w-5 h-5" />
-              <span>{isJapanese ? '前のホール' : '이전 홀'}</span>
+              <span>{isEnglish ? 'Prev Hole' : isJapanese ? '前のホール' : '이전 홀'}</span>
             </button>
 
             {/* 중앙: [✔️ 확인 (저장)] 버튼 (타수 확정 + 드르륵 진동 + 띵똥 차임벨 - 그자리 그대로 즉시 색상 전환) */}
@@ -2757,7 +2757,7 @@ export default function RoundPlayPage() {
               }`}
             >
               <CheckCircle2 className={`w-5 h-5 ${confirmedFeedback ? 'text-stone-950' : 'text-yellow-300'}`} />
-              <span>{confirmedFeedback ? (isJapanese ? '✅ 保存完了！' : '✅ 저장 완료!') : (isJapanese ? '確認 (保存)' : '확인 (저장)')}</span>
+              <span>{confirmedFeedback ? (isEnglish ? '✅ Saved!' : isJapanese ? '✅ 保存完了！' : '✅ 저장 완료!') : (isEnglish ? 'Save & Done' : isJapanese ? '確認 (保存)' : '확인 (저장)')}</span>
             </button>
 
             {/* 우측: [다음 홀 이동 >] 버튼 */}
@@ -2772,7 +2772,7 @@ export default function RoundPlayPage() {
                 }`}
               >
                 <span>✍️</span>
-                <span>{isJapanese ? '選手確認' : '선수 확인'}</span>
+                <span>{isEnglish ? 'Confirm Strokes' : isJapanese ? '選手確認' : '선수 확인'}</span>
                 <ChevronRight className="w-5 h-5" />
               </button>
             ) : (
@@ -2803,7 +2803,7 @@ export default function RoundPlayPage() {
               }`}
             >
               <BarChart2 className="w-3.5 h-3.5 text-amber-400" />
-              <span>📋 {isJapanese ? `現在のスコアボードを見る (${confirmedHoles.length}ホール累積)` : `현재 실시간 스코어판 보기 (${confirmedHoles.length}홀 누적)`}</span>
+              <span>📋 {isEnglish ? `View Current Scorecard (${confirmedHoles.length}H)` : isJapanese ? `現在のスコアボードを見る (${confirmedHoles.length}ホール累積)` : `현재 실시간 스코어판 보기 (${confirmedHoles.length}홀 누적)`}</span>
             </button>
           </div>
 
@@ -2820,7 +2820,7 @@ export default function RoundPlayPage() {
               }`}
             >
               <span className="text-base">🔄</span>
-              <span className="truncate">{isJapanese ? '他のコース' : '다른 코스 이동'}</span>
+              <span className="truncate">{isEnglish ? 'Switch Course' : isJapanese ? '他のコース' : '다른 코스 이동'}</span>
             </button>
 
             {/* 2. 잠시 빠지기 */}
@@ -2834,7 +2834,7 @@ export default function RoundPlayPage() {
               }`}
             >
               <span className="text-base">☕</span>
-              <span className="truncate">{isJapanese ? '一時退出' : '잠시 빠지기'}</span>
+              <span className="truncate">{isEnglish ? 'Take Break' : isJapanese ? '一時退出' : '잠시 빠지기'}</span>
             </button>
 
             {/* 3. 🚨 언제든 경기 종료 (선명한 빨간색 고대비 대형 버튼!) */}
@@ -2848,7 +2848,7 @@ export default function RoundPlayPage() {
               }`}
             >
               <span className="text-base">🛑</span>
-              <span className="truncate font-black">{isJapanese ? 'ラウンド終了' : '경기 종료'}</span>
+              <span className="truncate font-black">{isEnglish ? 'Finish Round' : isJapanese ? 'ラウンド終了' : '경기 종료'}</span>
             </button>
           </div>
 
