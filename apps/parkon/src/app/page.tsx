@@ -232,6 +232,11 @@ export default function HomePage() {
       }
     }
 
+    const isNewUserMode = urlParams?.get('mode') === 'new' || urlParams?.get('join') === 'true' || urlParams?.get('auth') === '1';
+    if (isNewUserMode) {
+      setShowKakaoModal(true);
+    }
+
     const savedCode = getSavedMemberCode();
     const activeCode = savedCode;
 

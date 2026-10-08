@@ -43,9 +43,10 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
     const isDismissed = localStorage.getItem('parkon_welcome_dismissed') === 'true';
     const isWelcomed = localStorage.getItem('parkon_welcomed') === 'true';
     const hasKakao = Boolean(ParkOnStorage.getKakaoUser());
+    const isNewUserQuery = urlParams.get('mode') === 'new' || urlParams.get('join') === 'true' || urlParams.get('auth') === '1' || urlParams.get('welcome') === 'false';
 
     let timer: NodeJS.Timeout | null = null;
-    if (forceWelcome || shouldReset || (!isDismissed && !isWelcomed && !hasKakao)) {
+    if (!isNewUserQuery && (forceWelcome || shouldReset || (!isDismissed && !isWelcomed && !hasKakao))) {
       timer = setTimeout(() => {
         setIsOpen(true);
       }, 300);
@@ -151,7 +152,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
               ⛳
             </span>
             <span className="text-xs font-black tracking-tight text-white">
-              {isJapanese ? 'パークゴルフ オールインワン' : '종이 없는 파크골프, 파크골프 올인원'}
+              {isJapanese ? 'PARKY APP (パークゴルフ)' : '파키 앱 (PARKY APP) - 스마트 파크골프'}
             </span>
           </div>
           <button
@@ -187,11 +188,11 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
             <h2 className="text-base sm:text-lg font-black text-stone-900 leading-snug">
               {isJapanese ? (
                 <>
-                  ようこそ！ <span className="text-emerald-700">パークゴルフ オールインワン</span>へ！
+                  ようこそ！ <span className="text-emerald-700">PARKY APP</span>へ！
                 </>
               ) : (
                 <>
-                  반갑습니다! <span className="text-emerald-700">파크골프 올인원</span>에 오신 것을 환영합니다!
+                  반갑습니다! <span className="text-emerald-700">파키 앱 (PARKY APP)</span>에 오신 것을 환영합니다!
                 </>
               )}
             </h2>
@@ -269,7 +270,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
                 }}
                 className="text-[11px] text-emerald-800 hover:text-emerald-950 font-black underline underline-offset-2 cursor-pointer transition flex items-center justify-center gap-1 mx-auto"
               >
-                <span>{isJapanese ? '📱 携帯電話番号で1秒記録検索・ログイン' : '📱 휴대폰 번호로 1초 내 기록 찾기 & 로그인'}</span>
+                <span>{isJapanese ? '📱 携帯番号で1秒簡単スタート・ログイン ▶' : '📱 8자리 고유번호 발급 및 1초 기록 찾기 ▶'}</span>
               </button>
             </div>
           </div>
