@@ -55,8 +55,12 @@ function NewRoundForm() {
   const [isUnlimitedRound, setIsUnlimitedRound] = useState<boolean>(true);
   const [targetHolesCount, setTargetHolesCount] = useState<number>(18);
   const [recentPartners, setRecentPartners] = useState<string[]>([]);
-  // 현재 조장이 직접 터치하여 입력 중인 인풋 슬롯 번호 (백그라운드 동기화 덮어쓰기 방지)
+  // 슬롯별 독립 포커스 및 디바운스 관리
   const activeFocusIdxRef = useRef<number | null>(null);
+  const syncDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const userEditedSlotsRef = useRef<Set<number>>(new Set());
+  const playersListRef = useRef<SetupPlayer[]>(playersList);
+  playersListRef.current = playersList;
 
   useEffect(() => {
     try {
@@ -279,12 +283,69 @@ function NewRoundForm() {
     setShowEditModal(false);
   };
 
+  // 서버 룸(Room) 동기화 함수
+  const syncRoomToServer = (overridePlayers?: SetupPlayer[]) => {
+    if (!roomId) return;
+    try {
+      const listToSync = overridePlayers || playersListRef.current;
+      fetch('/api/round/room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'sync',
+          roomId,
+          leaderName,
+          courseId: selectedCourseId || 'course_1',
+          courseName: currentCourse?.name || '구미 동락 파크골프장',
+          courseLetter: selectedCourseLetter,
+          startHoleIndex,
+          playerCount,
+          players: listToSync.slice(0, playerCount).map((p) => ({
+            id: p.id,
+            name: p.name,
+            isLeader: p.isLeader,
+          })),
+        }),
+      }).catch((e) => console.error('Failed to sync room:', e));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSlotFocus = (index: number) => {
+    // 슬롯 전환 시 이전 슬롯에서 대기 중이던 디바운스 타이머 즉시 취소/정리 (Race Condition 차단)
+    if (syncDebounceTimerRef.current) {
+      clearTimeout(syncDebounceTimerRef.current);
+      syncDebounceTimerRef.current = null;
+    }
+    activeFocusIdxRef.current = index;
+  };
+
+  const handleSlotBlur = (index: number) => {
+    if (activeFocusIdxRef.current === index) {
+      activeFocusIdxRef.current = null;
+    }
+    // 슬롯에서 포커스가 벗어날 때 최신 명단을 즉시 서버에 동기화
+    syncRoomToServer();
+  };
+
   const handlePlayerNameChange = (index: number, val: string) => {
+    userEditedSlotsRef.current.add(index);
     setPlayersList((prev) => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], name: val };
+      if (updated[index]) {
+        updated[index] = { ...updated[index], name: val };
+      }
       return updated;
     });
+
+    // 슬롯별 독립 디바운스 타이머 설정 (400ms)
+    if (syncDebounceTimerRef.current) {
+      clearTimeout(syncDebounceTimerRef.current);
+    }
+    syncDebounceTimerRef.current = setTimeout(() => {
+      syncRoomToServer();
+    }, 400);
   };
 
   const handleSetLeader = (index: number) => {
@@ -339,9 +400,9 @@ function NewRoundForm() {
       if (prev.some((p, idx) => idx > 0 && p.name && p.name.trim() === cleanGuestName)) {
         return prev;
       }
-      // 사용자가 현재 포커스하여 직접 타이핑 중인 슬롯은 건너뛰고 빈 슬롯 찾기
+      // 사용자가 현재 포커스하여 직접 타이핑 중인 슬롯 및 조장이 수동 편집한 슬롯은 건너뛰고 빈 슬롯 찾기
       const targetIdx = prev.findIndex(
-        (p, idx) => idx > 0 && idx !== activeFocusIdxRef.current && (!p.name || !p.name.trim() || isDefaultCompanionName(p.name))
+        (p, idx) => idx > 0 && idx !== activeFocusIdxRef.current && !userEditedSlotsRef.current.has(idx) && (!p.name || !p.name.trim() || isDefaultCompanionName(p.name))
       );
       let nextList = [...prev];
       if (targetIdx !== -1) {
@@ -416,38 +477,19 @@ function NewRoundForm() {
     };
   }, [showQrModal, inviteUrl, qrDataUrl]);
 
-  // 1. 조장의 셋업 변경사항을 서버 룸(Room)에 지속 동기화 (sync) 및 Supabase Realtime Broadcast 전송
-  // 타이핑 도중 실시간 한글 IME 조합 깨짐 방지 및 불필요한 네트워크 트래픽 완화를 위해 500ms 디바운스 적용
+  // 1. 조장 화면 설정(구장, 코스, 시작홀, 인원) 변경 시 서버 룸 동기화
   useEffect(() => {
-    if (!roomId) return;
-    const timer = setTimeout(() => {
-      try {
-        fetch('/api/round/room', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'sync',
-            roomId,
-            leaderName,
-            courseId: selectedCourseId || 'course_1',
-            courseName: currentCourse?.name || '구미 동락 파크골프장',
-            courseLetter: selectedCourseLetter,
-            startHoleIndex,
-            playerCount,
-            players: playersList.slice(0, playerCount).map((p) => ({
-              id: p.id,
-              name: p.name,
-              isLeader: p.isLeader,
-            })),
-          }),
-        }).catch((e) => console.error('Failed to sync room:', e));
-      } catch (e) {
-        console.error(e);
-      }
-    }, 500);
+    syncRoomToServer();
+  }, [selectedCourseId, currentCourse?.name, selectedCourseLetter, startHoleIndex, playerCount]);
 
-    return () => clearTimeout(timer);
-  }, [roomId, selectedCourseId, currentCourse?.name, selectedCourseLetter, startHoleIndex, playerCount, playersList, leaderName]);
+  // 언마운트 시 디바운스 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (syncDebounceTimerRef.current) {
+        clearTimeout(syncDebounceTimerRef.current);
+      }
+    };
+  }, []);
 
   // 2. 동반자 입장 실시간 감지 (Supabase Realtime Presence & Broadcast 양방향 연동)
   useEffect(() => {
@@ -501,6 +543,9 @@ function NewRoundForm() {
 
     // DB / API fallback 1초 폴링
     const pollJoinedCompanions = async () => {
+      // 1) 조장이 현재 포커스하여 타이핑 중인 상태에서는 전체 덮어쓰기 중단
+      if (activeFocusIdxRef.current !== null) return;
+
       try {
         const res = await fetch(`/api/round/room?roomId=${encodeURIComponent(roomId)}`);
         if (res.ok) {
@@ -514,8 +559,9 @@ function NewRoundForm() {
 
               serverPlayers.forEach((sp, idx) => {
                 if (idx > 0) {
-                  // [핵심 해결] 조장이 현재 키보드로 타이핑 중인 슬롯은 백그라운드 폴링이 절대 덮어쓰지 않음!
+                  // 조장이 입력 중인 슬롯 또는 조장이 직접 편집/삭제한 슬롯은 절대 덮어쓰지 않음!
                   if (activeFocusIdxRef.current === idx) return;
+                  if (userEditedSlotsRef.current.has(idx)) return;
 
                   const targetName = (sp.name || '').trim();
                   if (targetName && !isDefaultCompanionName(targetName)) {
@@ -523,7 +569,7 @@ function NewRoundForm() {
                       next[idx] = { ...next[idx], name: targetName };
                       updated = true;
                     } else if (!next[idx] && next.length < 6) {
-                      next.push({ id: sp.id || `p_${Date.now()}`, name: targetName, isLeader: false, isSelf: false });
+                      next.push({ id: `slot-p-${idx + 1}`, name: targetName, isLeader: false, isSelf: false });
                       updated = true;
                     }
                   }
@@ -532,7 +578,7 @@ function NewRoundForm() {
 
               if (updated) {
                 const latestGuest = serverPlayers.find(
-                  (sp, idx) => idx > 0 && idx !== activeFocusIdxRef.current && sp.name && !isDefaultCompanionName(sp.name) && prev[idx]?.name !== sp.name
+                  (sp, idx) => idx > 0 && idx !== activeFocusIdxRef.current && !userEditedSlotsRef.current.has(idx) && sp.name && !isDefaultCompanionName(sp.name) && prev[idx]?.name !== sp.name
                 );
                 if (latestGuest) {
                   setJoinSimulationToast(`🎉 '${latestGuest.name}' 님이 라운드에 자동 입장하였습니다!`);
@@ -904,7 +950,7 @@ function NewRoundForm() {
         <div className="space-y-2 pt-0.5">
           {playersList.slice(0, playerCount).map((player, idx) => (
             <div
-              key={player.id}
+              key={`slot-companion-${idx}`}
               className={`p-2.5 rounded-xl border-2 transition flex items-center gap-2.5 ${
                 player.isLeader
                   ? 'bg-amber-50/90 border-amber-400 shadow-xs'
@@ -926,14 +972,8 @@ function NewRoundForm() {
                   type="text"
                   value={player.name}
                   onChange={(e) => handlePlayerNameChange(idx, e.target.value)}
-                  onFocus={() => {
-                    activeFocusIdxRef.current = idx;
-                  }}
-                  onBlur={() => {
-                    if (activeFocusIdxRef.current === idx) {
-                      activeFocusIdxRef.current = null;
-                    }
-                  }}
+                  onFocus={() => handleSlotFocus(idx)}
+                  onBlur={() => handleSlotBlur(idx)}
                   placeholder={
                     player.isSelf
                       ? (isJapanese ? '代表のお名前 (例: 山田)' : '성명을 적어주세요 (조장/본인)')
@@ -944,7 +984,10 @@ function NewRoundForm() {
                 {player.name ? (
                   <button
                     type="button"
-                    onClick={() => handlePlayerNameChange(idx, '')}
+                    onClick={() => {
+                      handleSlotFocus(idx);
+                      handlePlayerNameChange(idx, '');
+                    }}
                     className="absolute right-2 w-5 h-5 flex items-center justify-center rounded-full bg-stone-200 hover:bg-stone-300 text-stone-600 hover:text-stone-900 text-xs transition cursor-pointer"
                     title={isJapanese ? 'クリア' : '지우기'}
                   >
