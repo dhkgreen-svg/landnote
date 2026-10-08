@@ -229,20 +229,20 @@ export async function POST(req: NextRequest) {
           status: 'WAITING',
           updatedAt: Date.now(),
         };
-      } else {
-        // 기존 방 업데이트: 실제 입장한 동반자 이름('오송' 등)은 조장이 빈칸을 전송하더라도 절대 지우지 않고 영구 보존!
+        // 기존 방 업데이트: 조장 화면에서 보낸 players 명단이 있으면 해당 입력을 그대로 존중
         const baseList = players || room.players;
         const mergedPlayers: RoomPlayer[] = baseList.slice(0, targetCount).map((p: RoomPlayer, idx: number) => {
           if (idx === 0) {
             return { ...p, isLeader: true, name: leaderName || p.name || '조장' };
           }
+          if (players) {
+            return {
+              id: p.id || `p_${idx + 1}`,
+              name: p.name || '',
+              isLeader: Boolean(p.isLeader),
+            };
+          }
           const existing = room!.players[idx];
-          if (existing && !isPlaceholder(existing.name) && isPlaceholder(p.name)) {
-            return existing;
-          }
-          if (p.name && !isPlaceholder(p.name)) {
-            return p;
-          }
           return existing || p;
         });
 

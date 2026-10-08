@@ -55,6 +55,8 @@ function NewRoundForm() {
   const [isUnlimitedRound, setIsUnlimitedRound] = useState<boolean>(true);
   const [targetHolesCount, setTargetHolesCount] = useState<number>(18);
   const [recentPartners, setRecentPartners] = useState<string[]>([]);
+  // 현재 조장이 직접 터치하여 입력 중인 인풋 슬롯 번호 (백그라운드 동기화 덮어쓰기 방지)
+  const activeFocusIdxRef = useRef<number | null>(null);
 
   useEffect(() => {
     try {
@@ -337,7 +339,10 @@ function NewRoundForm() {
       if (prev.some((p, idx) => idx > 0 && p.name && p.name.trim() === cleanGuestName)) {
         return prev;
       }
-      const targetIdx = prev.findIndex((p, idx) => idx > 0 && (!p.name || !p.name.trim() || isDefaultCompanionName(p.name)));
+      // 사용자가 현재 포커스하여 직접 타이핑 중인 슬롯은 건너뛰고 빈 슬롯 찾기
+      const targetIdx = prev.findIndex(
+        (p, idx) => idx > 0 && idx !== activeFocusIdxRef.current && (!p.name || !p.name.trim() || isDefaultCompanionName(p.name))
+      );
       let nextList = [...prev];
       if (targetIdx !== -1) {
         nextList[targetIdx] = { ...nextList[targetIdx], name: cleanGuestName };
@@ -412,31 +417,36 @@ function NewRoundForm() {
   }, [showQrModal, inviteUrl, qrDataUrl]);
 
   // 1. 조장의 셋업 변경사항을 서버 룸(Room)에 지속 동기화 (sync) 및 Supabase Realtime Broadcast 전송
+  // 타이핑 도중 실시간 한글 IME 조합 깨짐 방지 및 불필요한 네트워크 트래픽 완화를 위해 500ms 디바운스 적용
   useEffect(() => {
     if (!roomId) return;
-    try {
-      fetch('/api/round/room', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'sync',
-          roomId,
-          leaderName,
-          courseId: selectedCourseId || 'course_1',
-          courseName: currentCourse?.name || '구미 동락 파크골프장',
-          courseLetter: selectedCourseLetter,
-          startHoleIndex,
-          playerCount,
-          players: playersList.slice(0, playerCount).map((p) => ({
-            id: p.id,
-            name: p.name,
-            isLeader: p.isLeader,
-          })),
-        }),
-      }).catch((e) => console.error('Failed to sync room:', e));
-    } catch (e) {
-      console.error(e);
-    }
+    const timer = setTimeout(() => {
+      try {
+        fetch('/api/round/room', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'sync',
+            roomId,
+            leaderName,
+            courseId: selectedCourseId || 'course_1',
+            courseName: currentCourse?.name || '구미 동락 파크골프장',
+            courseLetter: selectedCourseLetter,
+            startHoleIndex,
+            playerCount,
+            players: playersList.slice(0, playerCount).map((p) => ({
+              id: p.id,
+              name: p.name,
+              isLeader: p.isLeader,
+            })),
+          }),
+        }).catch((e) => console.error('Failed to sync room:', e));
+      } catch (e) {
+        console.error(e);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [roomId, selectedCourseId, currentCourse?.name, selectedCourseLetter, startHoleIndex, playerCount, playersList, leaderName]);
 
   // 2. 동반자 입장 실시간 감지 (Supabase Realtime Presence & Broadcast 양방향 연동)
@@ -504,6 +514,9 @@ function NewRoundForm() {
 
               serverPlayers.forEach((sp, idx) => {
                 if (idx > 0) {
+                  // [핵심 해결] 조장이 현재 키보드로 타이핑 중인 슬롯은 백그라운드 폴링이 절대 덮어쓰지 않음!
+                  if (activeFocusIdxRef.current === idx) return;
+
                   const targetName = (sp.name || '').trim();
                   if (targetName && !isDefaultCompanionName(targetName)) {
                     if (next[idx] && next[idx].name !== targetName) {
@@ -519,7 +532,7 @@ function NewRoundForm() {
 
               if (updated) {
                 const latestGuest = serverPlayers.find(
-                  (sp, idx) => idx > 0 && sp.name && !isDefaultCompanionName(sp.name) && prev[idx]?.name !== sp.name
+                  (sp, idx) => idx > 0 && idx !== activeFocusIdxRef.current && sp.name && !isDefaultCompanionName(sp.name) && prev[idx]?.name !== sp.name
                 );
                 if (latestGuest) {
                   setJoinSimulationToast(`🎉 '${latestGuest.name}' 님이 라운드에 자동 입장하였습니다!`);
@@ -913,11 +926,12 @@ function NewRoundForm() {
                   type="text"
                   value={player.name}
                   onChange={(e) => handlePlayerNameChange(idx, e.target.value)}
-                  onFocus={(e) => {
-                    if (isDefaultCompanionName(e.target.value)) {
-                      handlePlayerNameChange(idx, '');
-                    } else {
-                      e.target.select();
+                  onFocus={() => {
+                    activeFocusIdxRef.current = idx;
+                  }}
+                  onBlur={() => {
+                    if (activeFocusIdxRef.current === idx) {
+                      activeFocusIdxRef.current = null;
                     }
                   }}
                   placeholder={
