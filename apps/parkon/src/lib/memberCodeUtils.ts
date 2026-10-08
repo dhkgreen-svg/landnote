@@ -72,6 +72,7 @@ export function maskPhoneNumber(phone?: string | null): string {
 export function isPlaceholderName(name?: string | null): boolean {
   if (!name) return true;
   const clean = name.trim();
+  if (!clean || clean.length < 2 || /[ㄱ-ㅎㅏ-ㅣ]/.test(clean)) return true;
   return (
     !clean ||
     clean === '홍길동' ||

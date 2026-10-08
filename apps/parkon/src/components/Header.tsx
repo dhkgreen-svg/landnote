@@ -51,7 +51,12 @@ export function Header() {
         : (userProfile?.userName || '')) || ''
     : '';
 
-  const hasRegisteredName = mounted && Boolean(rawDisplayName && !isPlaceholderName(rawDisplayName));
+  const hasRegisteredName = mounted && Boolean(
+    rawDisplayName &&
+    !isPlaceholderName(rawDisplayName) &&
+    !/[ㄱ-ㅎㅏ-ㅣ]/.test(rawDisplayName) &&
+    rawDisplayName.trim().length >= 2
+  );
   const currentDisplayName = hasRegisteredName ? rawDisplayName.trim() : '';
 
   const handleOpenModal = (mode: 'login' | 'profile') => {
@@ -168,40 +173,6 @@ export function Header() {
           </Link>
 
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            {/* 3개 국어 글로벌 언어 스위처 [ KR | JP | EN ] */}
-            <div className="flex items-center bg-emerald-950/70 p-0.5 rounded-xl border border-amber-300/40 text-[9px] sm:text-[10px] font-black shrink-0 shadow-inner">
-              <button
-                type="button"
-                onClick={() => setLanguage('ko')}
-                className={`px-1.5 py-0.5 rounded-lg transition cursor-pointer ${
-                  language === 'ko' ? 'bg-amber-400 text-stone-950 shadow-xs' : 'text-emerald-200 hover:text-white'
-                }`}
-                title="한국어 (KO)"
-              >
-                KR
-              </button>
-              <button
-                type="button"
-                onClick={() => setLanguage('ja')}
-                className={`px-1.5 py-0.5 rounded-lg transition cursor-pointer ${
-                  language === 'ja' ? 'bg-amber-400 text-stone-950 shadow-xs' : 'text-emerald-200 hover:text-white'
-                }`}
-                title="日本語 (JA)"
-              >
-                JP
-              </button>
-              <button
-                type="button"
-                onClick={() => setLanguage('en')}
-                className={`px-1.5 py-0.5 rounded-lg transition cursor-pointer ${
-                  language === 'en' ? 'bg-amber-400 text-stone-950 shadow-xs' : 'text-emerald-200 hover:text-white'
-                }`}
-                title="English (EN)"
-              >
-                EN
-              </button>
-            </div>
-
             {/* 👑 헤더 로그인/프로필 버튼 (미로그인 vs 로그인 원터치 심플화) */}
             {!hasRegisteredName ? (
               <button

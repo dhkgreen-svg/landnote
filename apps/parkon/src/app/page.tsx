@@ -1322,40 +1322,6 @@ export default function HomePage() {
         </Link>
       </section>
 
-      {/* 🍲 [대표님 신규 기능]: 전국 400개 구장 동호인 찐 맛집 총람 섹션 */}
-      <Link
-        href="/restaurants"
-        className="block bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white rounded-3xl p-4 shadow-md border-2 border-amber-300 hover:border-yellow-200 transition active:scale-[0.99] cursor-pointer group"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="w-12 h-12 rounded-2xl bg-white text-stone-950 flex items-center justify-center text-2xl shadow-md shrink-0 group-hover:scale-105 transition-transform">
-              🍲
-            </span>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-black bg-stone-950 text-amber-300 px-2 py-0.5 rounded-full">
-                  동호인 검증 100%
-                </span>
-                <span className="text-xs text-amber-100 font-bold">뒤풀이 · 반주</span>
-              </div>
-              <h3 className="font-black text-base sm:text-lg text-white leading-tight mt-0.5">
-                {isJapanese ? '全国パークゴルフ場 厳選グルメ' : '전국 400개 구장 동호인 찐 맛집 총람'}
-              </h3>
-              <p className="text-[11.5px] text-amber-100 font-semibold mt-0.5">
-                {isJapanese
-                  ? '大型駐車場・個室・スピード提供・マッコリ反省会グルメ'
-                  : '대형주차 · 단체룸 · 5분컷 · 막걸리 반주 맛집 모아보기'}
-              </p>
-            </div>
-          </div>
-          <span className="shrink-0 bg-stone-950 text-amber-300 px-3 py-1.5 rounded-xl text-xs font-black shadow-sm group-hover:bg-stone-900 transition flex items-center gap-1">
-            <span>{isJapanese ? '一覧' : '피드 보기'}</span>
-            <span>▶</span>
-          </span>
-        </div>
-      </Link>
-
       {/* 4-1. 배너 1: 천기성 사주 오늘의 무료 사주 보러 가기 제휴 배너 */}
       <a
         href={isJapanese ? "https://cheongiseong.com?lang=ja" : "https://cheongiseong.com"}
