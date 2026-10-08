@@ -277,11 +277,16 @@ export async function syncMemberDataToCloud(): Promise<{ success: boolean; membe
 
     const customCourses = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_custom_courses_v1') || '[]') : [];
     const crowdSpecs = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_crowd_hole_specs_v1') || '{}') : {};
+    const userPhone = profile?.phoneNumber || (typeof window !== 'undefined' ? localStorage.getItem('parkon_user_phone') || '' : '');
 
     const payload = {
       memberCode,
       userName,
-      profile,
+      phoneNumber: userPhone,
+      profile: {
+        ...profile,
+        phoneNumber: userPhone,
+      },
       kakaoUser,
       completedRounds,
       companions,
@@ -517,27 +522,30 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
 }
 
 /**
- * 7자리 고유번호 분실 시: 성함 + 휴대폰 번호(또는 끝 4자리)로 번호 1초 조회
+ * 8자리/7자리 고유번호 분실 시: 휴대폰 번호(또는 성함)로 번호 1초 조회
  */
 export async function findMemberCodeByNameAndPhone(
-  name: string,
+  name?: string,
   phone?: string
 ): Promise<{
   success: boolean;
-  matches?: { memberCode: string; userName: string; clubName?: string; roundCount?: number }[];
+  matches?: { memberCode: string; userName: string; clubName?: string; roundCount?: number; medalCount?: number; phoneNumber?: string }[];
   message: string;
 }> {
-  if (!name || !name.trim()) {
-    return { success: false, message: '성함을 입력해 주세요.' };
+  const cleanName = (name || '').trim();
+  const cleanPhone = (phone || '').trim();
+
+  if (!cleanName && !cleanPhone) {
+    return { success: false, message: '휴대폰 번호 또는 성함을 입력해 주세요.' };
   }
 
   try {
-    const params = new URLSearchParams({
-      find: 'true',
-      name: name.trim(),
-    });
-    if (phone && phone.trim()) {
-      params.append('phone', phone.trim());
+    const params = new URLSearchParams({ find: 'true' });
+    if (cleanName) {
+      params.append('name', cleanName);
+    }
+    if (cleanPhone) {
+      params.append('phone', cleanPhone);
     }
 
     const res = await fetch(`/api/sync/member?${params.toString()}`);
@@ -561,5 +569,12 @@ export async function findMemberCodeByNameAndPhone(
       message: `조회 중 오류가 발생했습니다: ${e?.message || e}`,
     };
   }
+}
+
+/**
+ * 휴대폰 번호 단일 1초 고유번호 및 기록 조회
+ */
+export async function findMemberCodeByPhone(phone: string) {
+  return findMemberCodeByNameAndPhone(undefined, phone);
 }
 

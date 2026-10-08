@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, ShieldCheck, Sparkles, LogOut, User, UserCheck, Edit3, Copy, Check, RefreshCw, KeyRound, Smartphone, Cloud, Search, HelpCircle, MessageSquare, Trash2, ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { X, CheckCircle, ShieldCheck, Sparkles, LogOut, User, UserCheck, Edit3, Copy, Check, RefreshCw, KeyRound, Smartphone, Cloud, Search, HelpCircle, MessageSquare, Trash2, ChevronDown, ChevronUp, Plus, Rocket } from 'lucide-react';
 import { KakaoAuthUser, ParkOnStorage } from '@/lib/storage';
 import { loginWithKakao, logoutKakao } from '@/lib/kakaoAuth';
 import { syncSelfPlayerNameToActiveRound } from '@/lib/playerUtils';
@@ -43,7 +43,7 @@ export function KakaoLoginModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isSavedNotice, setIsSavedNotice] = useState(false);
 
-  // 8자리 회원번호 로그인 관련 상태
+  // 8자리 회원번호 직접 입력/복원 관련 상태
   const [inputCode, setInputCode] = useState('');
   const [isRestoring, setIsRestoring] = useState(false);
   const [syncStatus, setSyncStatus] = useState<{ success?: boolean; message?: string } | null>(null);
@@ -51,6 +51,18 @@ export function KakaoLoginModal({
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [showSwitchLogin, setShowSwitchLogin] = useState(false);
   const [activeTab, setActiveTab] = useState<'CODE_LOGIN' | 'NEW_USER'>('CODE_LOGIN');
+
+  // 📱 휴대폰 번호 1초 조회 및 즉시 로그인 전용 상태
+  const [inputPhone, setInputPhone] = useState('');
+  const [isLookingUp, setIsLookingUp] = useState(false);
+  const [lookupResult, setLookupResult] = useState<{
+    status: 'FOUND' | 'NOT_FOUND';
+    matches?: { memberCode: string; userName: string; clubName?: string; roundCount?: number; medalCount?: number; phoneNumber?: string }[];
+    searchedPhone?: string;
+  } | null>(null);
+  const [lookupError, setLookupError] = useState('');
+  const [isRegisteringNew, setIsRegisteringNew] = useState(false);
+  const [showDirectCodeInput, setShowDirectCodeInput] = useState(false);
 
   // 연대기 요약 및 멀티 닉네임 상태
   const [roundCount, setRoundCount] = useState(0);
@@ -86,6 +98,8 @@ export function KakaoLoginModal({
       setFoundMatches(null);
       setFindError('');
       setSentToKakaoNotice(false);
+      setLookupResult(null);
+      setLookupError('');
 
       // 연대기 요약 및 닉네임 목록 로딩
       const rounds = ParkOnStorage.getCompletedRounds().filter((r) => !r.isVirtual && !isMockOrCorruptedRound(r));
@@ -104,14 +118,7 @@ export function KakaoLoginModal({
       setActiveNicknameState(curDisplay);
 
       // 모드 결정: initialMode가 'login'이거나 아직 미등록 기기이면 무조건 로그인 입력창으로 직행!
-      if (initialMode === 'find') {
-        setShowFindModal(true);
-        setShowSwitchLogin(true);
-      } else if (initialTab) {
-        setShowSwitchLogin(true);
-        setShowFindModal(false);
-        setActiveTab(initialTab);
-      } else if (initialMode === 'login' || !hasRegisteredUser) {
+      if (initialMode === 'find' || initialMode === 'login' || !hasRegisteredUser) {
         setShowSwitchLogin(true);
         setShowFindModal(false);
         setActiveTab('CODE_LOGIN');
@@ -248,6 +255,105 @@ export function KakaoLoginModal({
     const next = ParkOnStorage.getUserDisplayName();
     setActiveNicknameState(next);
     setRealName(next);
+  };
+
+  // 📱 휴대폰 번호 자동 하이픈 포맷터 (010-XXXX-XXXX)
+  const formatPhoneWithHyphen = (val: string) => {
+    const raw = val.replace(/\D/g, '').slice(0, 11);
+    if (raw.length <= 3) return raw;
+    if (raw.length <= 7) return `${raw.slice(0, 3)}-${raw.slice(3)}`;
+    return `${raw.slice(0, 3)}-${raw.slice(3, 7)}-${raw.slice(7)}`;
+  };
+
+  // 📱 휴대폰 번호 1초 조회
+  const handleLookupPhone = async () => {
+    const cleanDigits = inputPhone.replace(/\D/g, '');
+    if (cleanDigits.length < 4) {
+      setLookupError(isJapanese ? '携帯番号を4桁以上入力してください。' : '휴대폰 번호를 4자리 이상 입력해 주세요.');
+      return;
+    }
+
+    setIsLookingUp(true);
+    setLookupError('');
+    setLookupResult(null);
+
+    try {
+      const res = await findMemberCodeByNameAndPhone(undefined, cleanDigits);
+      setIsLookingUp(false);
+
+      if (res.success && res.matches && res.matches.length > 0) {
+        setLookupResult({
+          status: 'FOUND',
+          matches: res.matches,
+          searchedPhone: inputPhone,
+        });
+      } else {
+        setLookupResult({
+          status: 'NOT_FOUND',
+          searchedPhone: inputPhone,
+        });
+      }
+    } catch (e: any) {
+      setIsLookingUp(false);
+      setLookupError(e?.message || (isJapanese ? '照会中にエラーが発生しました。' : '조회 중 오류가 발생했습니다.'));
+    }
+  };
+
+  // 📱 미등록 번호: 새 평생 고유번호 즉시 발급받고 시작
+  const handleRegisterNewWithPhone = async () => {
+    setIsRegisteringNew(true);
+    const cleanDigits = inputPhone.replace(/\D/g, '');
+    const formattedPhone = formatPhoneWithHyphen(inputPhone);
+    const effectiveName = (initialName && !isPlaceholderName(initialName)) ? initialName.trim() : (isJapanese ? 'パークゴルファー' : '파크골퍼');
+
+    try {
+      const profile = ParkOnStorage.getUserProfile() || {};
+      ParkOnStorage.saveUserProfile({
+        ...profile,
+        userName: effectiveName,
+        phoneNumber: formattedPhone,
+        nationalGrade: profile.nationalGrade && profile.nationalGrade !== '기록 준비중' ? profile.nationalGrade : '정회원',
+        clubName: profile.clubName || '',
+      });
+
+      const guestUser: KakaoAuthUser = {
+        id: 'phone_' + (cleanDigits || Date.now()),
+        nickname: effectiveName,
+        realName: effectiveName,
+        aliasName: effectiveName,
+        preferredDisplay: 'REAL',
+        connectedAt: new Date().toISOString(),
+      };
+      ParkOnStorage.setKakaoUser(guestUser);
+      setCurrentUser(guestUser);
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('parkon_user_phone', formattedPhone);
+      }
+
+      // 8자리 회원번호 즉석 신규 발급
+      const newCode = getOrGenerateMemberCode(true);
+      setMemberCode(newCode);
+
+      // 클라우드 및 Supabase에 즉시 영구 백업
+      await syncMemberDataToCloud();
+
+      syncSelfPlayerNameToActiveRound(effectiveName);
+
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: effectiveName } }));
+
+      if (onLoginSuccess) {
+        onLoginSuccess(guestUser);
+      }
+
+      setIsRegisteringNew(false);
+      onClose();
+    } catch (e) {
+      console.error('Failed to register new member with phone:', e);
+      setIsRegisteringNew(false);
+      onClose();
+    }
   };
 
   // 3-2. 고유번호 분실 시: 성함 + 휴대폰 번호(뒤 4자리)로 번호 찾기
@@ -419,17 +525,23 @@ export function KakaoLoginModal({
         {/* Header */}
         <div className={isJapanese ? 'bg-[#06C755] p-3.5 sm:p-4 flex items-center justify-between text-white shadow-xs shrink-0' : 'bg-emerald-700 p-3.5 sm:p-4 flex items-center justify-between text-white shadow-xs shrink-0'}>
           <div className="flex items-center gap-2">
-            <span className="text-xl">👑</span>
+            <span className="text-xl">
+              {hasRegisteredUser && !showSwitchLogin ? '👑' : '📱'}
+            </span>
             <div>
               <h3 className="font-black text-sm sm:text-base leading-tight tracking-tight">
-                {hasRegisteredUser && !showSwitchLogin && !showFindModal
+                {hasRegisteredUser && !showSwitchLogin
                   ? (isJapanese ? '会員情報 ＆ 高速同期' : '내 회원정보 & 1초 자동로그인')
-                  : (isJapanese ? '会員ログイン ＆ クラウド同期' : '회원번호 1초 로그인 & 동기화')}
+                  : (isJapanese ? '📱 携帯番号で1秒記録検索' : '📱 휴대폰 번호로 1초 내 기록 찾기')}
               </h3>
               <p className="text-[10px] text-emerald-100 font-medium">
-                {isJapanese
-                  ? 'パスワード不要・8桁(または7桁)番号でどこでもすぐ利用'
-                  : '비밀번호 없이 8자리(또는 7자리) 고유번호로 어디서든 즉시 이용'}
+                {hasRegisteredUser && !showSwitchLogin
+                  ? (isJapanese
+                      ? 'パスワード不要・8桁番号でどこでもすぐ利用'
+                      : '비밀번호 없이 8자리 고유번호로 어디서든 즉시 이용')
+                  : (isJapanese
+                      ? '電話番号だけでマイ8桁会員番号と年代記を呼び出します'
+                      : '비밀번호 없이 휴대폰 번호 하나로 내 고유번호와 기록을 바로 찾습니다.')}
               </p>
             </div>
           </div>
@@ -445,109 +557,7 @@ export function KakaoLoginModal({
 
         {/* Content */}
         <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto">
-          {showFindModal ? (
-            /* ================= [🔍 고유번호 분실 시 1초 찾기 화면] ================= */
-            <div className="space-y-3 bg-amber-50/90 p-4 rounded-2xl border-2 border-amber-300 animate-fadeIn">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 font-black text-amber-950 text-xs sm:text-sm">
-                  <Search className="w-4 h-4 text-amber-600" />
-                  <span>{isJapanese ? '🔍 会員番号を1秒検索' : '🔍 내 고유번호 1초 찾기'}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowFindModal(false);
-                    setFoundMatches(null);
-                    setFindError('');
-                  }}
-                  className="text-stone-400 hover:text-stone-700 text-xs font-bold p-1 cursor-pointer"
-                >
-                  {isJapanese ? '✕ 閉じる' : '✕ 닫기'}
-                </button>
-              </div>
-
-              <p className="text-[11px] text-stone-700 font-bold leading-relaxed bg-white/70 p-2 rounded-xl border border-amber-200">
-                {isJapanese
-                  ? '💡 スマホを機種変更してお忘れですか？ お名前と電話番号を入力するだけで、マイ会員番号をすぐにお探しします！'
-                  : '💡 폰을 바꾸어 고유번호를 잊으셨나요? 성함과 휴대폰 번호만 입력하시면 나만의 평생 고유번호를 즉시 찾아드립니다!'}
-              </p>
-
-              <div className="space-y-2">
-                <div>
-                  <label className="font-black text-stone-800 text-[10.5px] block mb-0.5">
-                    {isJapanese ? 'お名前 (本名) *' : '성함 (실제 이름) *'}
-                  </label>
-                  <input
-                    type="text"
-                    value={findName}
-                    onChange={(e) => setFindName(e.target.value)}
-                    placeholder={isJapanese ? '例: 佐藤' : '예: 김대희'}
-                    className="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl font-bold text-xs outline-none focus:border-amber-500"
-                  />
-                </div>
-                <div>
-                  <label className="font-black text-stone-800 text-[10.5px] block mb-0.5">
-                    {isJapanese ? '電話番号 (または下4桁)' : '휴대폰 번호 (또는 뒷 4자리)'}
-                  </label>
-                  <input
-                    type="text"
-                    value={findPhone}
-                    onChange={(e) => setFindPhone(e.target.value)}
-                    placeholder={isJapanese ? '例: 7788 または 090-1234-7788' : '예: 7788 또는 010-1234-7788'}
-                    className="w-full px-3 py-2 bg-white border border-amber-300 rounded-xl font-bold text-xs outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  disabled={isFinding}
-                  onClick={handleFindMemberCode}
-                  className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-amber-950 font-black text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <Search className="w-3.5 h-3.5" />
-                  <span>
-                    {isFinding
-                      ? (isJapanese ? '検索中...' : '조회 중...')
-                      : (isJapanese ? '🔍 会員番号を検索する' : '🔍 내 회원번호 조회하기')}
-                  </span>
-                </button>
-              </div>
-
-              {findError && (
-                <div className="p-2.5 bg-rose-100 text-rose-800 font-bold text-xs rounded-xl text-center">
-                  {findError}
-                </div>
-              )}
-
-              {foundMatches && foundMatches.length > 0 && (
-                <div className="space-y-2 pt-1 border-t border-amber-200">
-                  <p className="text-[11px] font-black text-emerald-800">
-                    {isJapanese ? '🎉 見つかりました！以下の番号ですぐログイン:' : '🎉 찾았습니다! 아래 번호로 즉시 로그인하세요:'}
-                  </p>
-                  {foundMatches.map((m, idx) => (
-                    <div key={idx} className="bg-white p-3 rounded-xl border border-amber-200 shadow-sm flex items-center justify-between gap-2">
-                      <div>
-                        <div className="font-black text-xs text-stone-900">{m.userName} {isJapanese ? '様' : '님'}</div>
-                        <div className="text-[10px] text-stone-500">{m.clubName || (isJapanese ? 'クラブ' : '클럽')} · {isJapanese ? `ラウンド ${m.roundCount}回` : `경기 ${m.roundCount}회`}</div>
-                        <div className="text-sm font-black text-amber-600 font-mono tracking-wider">{m.memberCode}</div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setInputCode(m.memberCode);
-                          setShowFindModal(false);
-                          handleRestoreByMemberCodeWith(m.memberCode);
-                        }}
-                        className="py-2 px-3 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-[11px] rounded-xl shadow-xs transition active:scale-95 cursor-pointer shrink-0"
-                      >
-                        {isJapanese ? '🚀 即時ログイン' : '🚀 즉시 로그인'}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : hasRegisteredUser && !showSwitchLogin ? (
+          {hasRegisteredUser && !showSwitchLogin ? (
             /* ================= [이미 로그인된 상태: 8자리 계정 + 멀티 닉네임 선택] ================= */
             <div className="space-y-3.5 text-xs">
               {/* 1. 내 계정 기본 정보 (안심 확인용) */}
@@ -857,224 +867,198 @@ export function KakaoLoginModal({
               </div>
             </div>
           ) : (
-            /* ================= [신규 / PC 최초 접속 / 번호 로그인 모드] ================= */
+            /* ================= [📱 초극단 단순화: 휴대폰 번호 단일 1초 조회 및 즉시 로그인] ================= */
             <div className="space-y-3.5 text-xs text-stone-800">
-              {/* 상단 탭 전환: [🔑 고유번호로 내 기록 불러오기] vs [✍️ 새로 성명 등록] */}
-              <div className="grid grid-cols-2 gap-1 p-1 bg-stone-100 rounded-2xl border border-stone-200">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('CODE_LOGIN')}
-                  className={`py-2 px-1 rounded-xl font-black text-xs transition flex items-center justify-center gap-1 ${
-                    activeTab === 'CODE_LOGIN'
-                      ? 'bg-white text-emerald-800 shadow-sm border border-emerald-300'
-                      : 'text-stone-500 hover:text-stone-800'
-                  }`}
-                >
-                  <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{isJapanese ? 'スマホの記録読込' : '내 폰 기록 불러오기'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('NEW_USER')}
-                  className={`py-2 px-1 rounded-xl font-black text-xs transition flex items-center justify-center gap-1 ${
-                    activeTab === 'NEW_USER'
-                      ? 'bg-white text-emerald-800 shadow-sm border border-emerald-300'
-                      : 'text-stone-500 hover:text-stone-800'
-                  }`}
-                >
-                  <User className="w-3.5 h-3.5 text-amber-600" />
-                  <span>{isJapanese ? '新規お名前登録' : '새 성명 입력하기'}</span>
-                </button>
+              {/* 안내 문구 */}
+              <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-3 text-center space-y-1">
+                <div className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-900">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{isJapanese ? 'お名前・パスワード不要！1秒照会' : '성함이나 비밀번호 없이 휴대폰 번호로 1초 조회!'}</span>
+                </div>
+                <p className="text-[10.5px] text-stone-600 font-bold leading-relaxed">
+                  {isJapanese
+                    ? '携帯番号を入力すると、マイ8桁会員番号とこれまでの全ラウンド記録を呼び出します。'
+                    : '휴대폰 번호를 입력하시면 본인의 8자리 고유번호와 누적 완주·메달 기록을 즉시 불러옵니다.'}
+                </p>
               </div>
 
-              {activeTab === 'CODE_LOGIN' ? (
-                /* --- TAB A: 8자리 고유번호로 비밀번호 없이 자동 로그인 (기존 7자리 자동 호환) --- */
-                <div className="space-y-3 bg-gradient-to-br from-amber-50/70 to-emerald-50/70 p-3.5 rounded-2xl border-2 border-emerald-300/80">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 font-black text-emerald-950 text-xs">
-                      <KeyRound className="w-4 h-4 text-emerald-700" />
-                      <span>{isJapanese ? '8桁会員番号で1秒自動ログイン (旧7桁も自動対応)' : '8자리 고유번호로 1초 자동 로그인 (기존 7자리도 호환)'}</span>
-                    </div>
-                    <p className="text-[11px] text-stone-600 font-bold leading-relaxed">
-                      {isJapanese
-                        ? 'スマートフォンで確認した8桁の会員番号(旧7桁も自動対応)を入力すると、パスワード不要でスマホのすべてのスコア記録と年代記がPCにそのまま復元されます！'
-                        : '스마트폰에서 확인하신 8자리 고유번호(기존 7자리 번호도 100% 자동 호환)를 입력하시면, 비밀번호 없이 휴대폰의 모든 경기 기록과 연대기가 PC로 그대로 복원됩니다!'}
-                    </p>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="font-black text-stone-800 text-[11px] flex items-center justify-between">
-                      <span>{isJapanese ? '8桁会員番号を入力 (旧7桁も可)' : '8자리 고유번호 입력 (기존 7자리도 가능)'}</span>
-                      <span className="text-[10px] text-emerald-700 font-bold">{isJapanese ? 'パスワード不要' : '비밀번호 불필요'}</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={inputCode}
-                        onChange={(e) => {
-                          const val = e.target.value
-                            .replace(/[！-～]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
-                            .replace(/　/g, ' ');
-                          setInputCode(val.toUpperCase());
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleRestoreByMemberCode();
-                        }}
-                        placeholder={isJapanese ? '例: PKYA-7788 または PKYB-1234' : '예: PKYA-7788 또는 PKYB-1234'}
-                        className="w-full px-3.5 py-3 bg-white border-2 border-emerald-500 rounded-xl font-black text-sm tracking-wider font-mono outline-none text-stone-900 placeholder:text-stone-400 uppercase"
-                      />
-                      {inputCode && (
-                        <button
-                          type="button"
-                          onClick={() => setInputCode('')}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 font-bold p-1 cursor-pointer"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-
-                    {/* ❓ 고유번호를 잊으셨나요? 바로 찾기 버튼 */}
-                    <div className="flex items-center justify-end pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setShowFindModal(true)}
-                        className="text-[11px] text-emerald-800 hover:text-emerald-950 font-black underline underline-offset-2 flex items-center gap-1 cursor-pointer"
-                      >
-                        <HelpCircle className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>{isJapanese ? '会員番号をお忘れですか？ (お名前/電話番号で検索)' : '고유번호를 잊으셨나요? (성함/전화번호로 찾기)'}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {syncStatus && (
-                    <div className={`p-3 rounded-xl font-black text-xs leading-relaxed text-center animate-fadeIn ${
-                      syncStatus.success ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-rose-100 text-rose-900 border border-rose-300'
-                    }`}>
-                      {syncStatus.message}
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    disabled={isRestoring}
-                    onClick={handleRestoreByMemberCode}
-                    className="w-full py-3.5 px-4 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer border border-emerald-800 disabled:opacity-50"
-                  >
-                    <KeyRound className="w-4 h-4 text-amber-300" />
-                    <span>
-                      {isRestoring
-                        ? (isJapanese ? '記録読込中...' : '내 기록 불러오는 중...')
-                        : (isJapanese ? '🚀 記録を呼び出す (パスワード不要で即時ログイン)' : '🚀 내 기록 불러오기 (비밀번호 없이 즉시 로그인)')}
+              {/* 1. 단일 입력 필드 & 메인 액션 버튼 */}
+              <div className="bg-white border-2 border-emerald-500 rounded-2xl p-3.5 shadow-sm space-y-3">
+                <div className="space-y-1.5">
+                  <label className="font-black text-stone-800 text-xs flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Smartphone className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>{isJapanese ? '携帯電話番号' : '휴대폰 번호'}</span>
                     </span>
-                  </button>
-
-                  <div className="bg-white/80 p-2.5 rounded-xl border border-stone-200 text-[10.5px] text-stone-600 space-y-1">
-                    <p className="font-extrabold text-stone-800">
-                      {isJapanese ? '💡 会員番号はどこで確認できますか？' : '💡 내 고유번호는 어디서 확인하나요?'}
-                    </p>
-                    <p>
-                      {isJapanese
-                        ? 'スマホ画面上部のお名前をタップ、または【私の年代記】画面に記載された【👑 会員番号: PKYA-XXXX】をご確認の上、ここに入力してください。'
-                        : '스마트폰 화면 상단 내 이름을 터치하시거나 [나의 연대기] 화면에 적힌 \'👑 고유번호: PKYA-XXXX\'를 확인하시고 여기에 입력하시면 됩니다.'}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                /* --- TAB B: 신규 성명 입력 & 카카오 간편 연동 --- */
-                <div className="space-y-3">
-                  <div className="text-center space-y-1">
-                    <div className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-100 text-amber-900 rounded-full text-[10px] font-extrabold">
-                      <Sparkles className="w-3 h-3 text-amber-600" />
-                      <span>{isJapanese ? 'パスワード不要・お名前入力だけで完了！' : '비밀번호 없이 성명만 입력하면 끝!'}</span>
-                    </div>
-                    <h4 className="font-black text-stone-900 text-xs sm:text-sm">
-                      {isJapanese
-                        ? 'お名前を入力すると、マイ8桁の会員番号が自動発行されます。'
-                        : '성함을 입력하시면 나만의 8자리 평생 고유번호가 자동 발급됩니다.'}
-                    </h4>
-                  </div>
-
-                  <div className="space-y-2 bg-stone-50 p-3 rounded-2xl border border-stone-200">
-                    <div className="space-y-1">
-                      <label className="font-black text-stone-800 flex items-center justify-between">
-                        <span>{isJapanese ? 'お名前 (本名) *' : '성함 (실제 이름) *'}</span>
-                        <span className="text-[10px] text-emerald-700 font-bold">{isJapanese ? '公式大会用' : '공식 대회 출전용'}</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={realName}
-                        onChange={(e) => setRealName(e.target.value)}
-                        placeholder={isJapanese ? 'お名前を入力 (例: 佐藤 健一)' : '성함을 입력하세요 (예: 김대희)'}
-                        className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="font-black text-stone-800 flex items-center justify-between">
-                        <span>{isJapanese ? '電話番号 (番号紛失時の照会用)' : '휴대폰 번호 (고유번호 분실 시 1초 조회용)'}</span>
-                        <span className="text-[10px] text-amber-700 font-bold">{isJapanese ? '安全保管' : '안심 보관'}</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        placeholder={isJapanese ? '例: 090-1234-7788 または下4桁' : '예: 010-1234-7788 또는 끝 4자리'}
-                        className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="font-black text-stone-800 flex items-center justify-between">
-                        <span>{isJapanese ? 'ニックネーム (呼称)' : '가명 / 닉네임 (별명)'}</span>
-                        <span className="text-[10px] text-purple-700 font-bold">{isJapanese ? '親善・フレンド用' : '친선 번개용'}</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={aliasName}
-                        onChange={(e) => setAliasName(e.target.value)}
-                        placeholder={isJapanese ? '例: ナイスショット, 名人' : '예: 나이스샷, 홀인원'}
-                        className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl font-bold text-xs outline-none"
-                      />
-                    </div>
-
-                    {!isJoinFlow && (
+                    <span className="text-[10px] text-emerald-700 font-extrabold bg-emerald-100 px-1.5 py-0.5 rounded">
+                      {isJapanese ? '自動ハイフン' : '자동 하이픈'}
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      value={inputPhone}
+                      onChange={(e) => {
+                        const formatted = formatPhoneWithHyphen(e.target.value);
+                        setInputPhone(formatted);
+                        setLookupResult(null);
+                        setLookupError('');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleLookupPhone();
+                      }}
+                      placeholder="010-0000-0000 (휴대폰 번호 입력)"
+                      maxLength={13}
+                      className="w-full px-4 py-3.5 bg-stone-50 border-2 border-stone-200 rounded-xl font-black text-base sm:text-lg tracking-wider font-mono outline-none text-stone-900 focus:border-emerald-600 focus:bg-white transition placeholder:text-stone-400 placeholder:text-xs placeholder:font-sans shadow-inner"
+                      autoFocus
+                    />
+                    {inputPhone && (
                       <button
                         type="button"
-                        onClick={handleSaveProfile}
-                        className="w-full mt-1 py-2.5 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition cursor-pointer"
+                        onClick={() => {
+                          setInputPhone('');
+                          setLookupResult(null);
+                          setLookupError('');
+                        }}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 font-bold p-1 cursor-pointer"
                       >
-                        {isJapanese ? '✓ このお名前ですぐ始める' : '✓ 이 성명으로 즉시 시작하기'}
+                        ✕
                       </button>
                     )}
                   </div>
+                </div>
 
-                  {/* 카카오톡/LINE 1초 간편 연동 */}
-                  <div className="pt-0.5">
+                {/* 메인 액션 버튼 */}
+                <button
+                  type="button"
+                  disabled={isLookingUp || inputPhone.replace(/\D/g, '').length < 4}
+                  onClick={handleLookupPhone}
+                  className="w-full py-3.5 px-4 bg-emerald-700 hover:bg-emerald-800 active:scale-95 disabled:opacity-50 text-white font-black text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer border border-emerald-800"
+                >
+                  <Search className="w-4 h-4 text-amber-300" />
+                  <span>
+                    {isLookingUp
+                      ? (isJapanese ? '記録照会中...' : '조회 중...')
+                      : (isJapanese ? '🔍 会員番号確認 ＆ 記録呼出' : '🔍 내 고유번호 확인 & 기록 불러오기')}
+                  </span>
+                </button>
+              </div>
+
+              {/* 에러 문구 */}
+              {lookupError && (
+                <div className="p-3 bg-rose-100 text-rose-800 font-bold text-xs rounded-xl text-center animate-fadeIn border border-rose-200">
+                  {lookupError}
+                </div>
+              )}
+
+              {/* 2. 번호 조회 후 즉시 표출 결과창 (인라인 카드) */}
+              {lookupResult?.status === 'FOUND' && lookupResult.matches && lookupResult.matches.length > 0 && (
+                <div className="space-y-2.5 animate-scaleUp">
+                  {lookupResult.matches.map((m, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-gradient-to-br from-emerald-50 via-emerald-100/50 to-amber-50 border-2 border-emerald-500 rounded-2xl p-4 text-center shadow-lg space-y-2.5"
+                    >
+                      <div className="text-sm font-black text-stone-900 leading-snug">
+                        <span className="text-emerald-800 text-base">{m.userName}</span> 님의 고유번호는
+                      </div>
+                      <div className="bg-white border-2 border-emerald-600 rounded-xl py-2 px-3 inline-block shadow-inner">
+                        <span className="text-xl sm:text-2xl font-black font-mono tracking-wider text-emerald-950">
+                          [ {m.memberCode} ]
+                        </span>
+                        <span className="text-xs font-bold text-stone-500 ml-1.5">입니다.</span>
+                      </div>
+                      <div className="text-xs font-bold text-stone-700 bg-white/80 py-1.5 px-3 rounded-xl border border-emerald-200 flex items-center justify-center gap-2">
+                        <span>누적 완주: <strong className="text-emerald-900 font-black">{m.roundCount || 0}회</strong></span>
+                        <span className="text-stone-300">|</span>
+                        <span>메달: <strong className="text-amber-700 font-black">{m.medalCount || 0}개</strong></span>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={isRestoring}
+                        onClick={() => handleRestoreByMemberCodeWith(m.memberCode)}
+                        className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-sm rounded-xl shadow-lg transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 border border-emerald-700"
+                      >
+                        <Sparkles className="w-4 h-4 text-amber-300" />
+                        <span>{isRestoring ? '기록 복원 및 로그인 중...' : '🚀 이 기록으로 바로 시작하기'}</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {lookupResult?.status === 'NOT_FOUND' && (
+                <div className="bg-gradient-to-br from-amber-50 via-amber-100/60 to-emerald-50 border-2 border-amber-400 rounded-2xl p-4 text-center shadow-sm space-y-3 animate-scaleUp">
+                  <div className="text-amber-950 font-bold text-xs sm:text-sm leading-relaxed">
+                    등록된 기록이 없습니다.<br />
+                    이 휴대폰 번호로 <strong className="text-amber-900 font-black underline underline-offset-2">새 평생 고유번호</strong>를 즉시 발급받으시겠습니까?
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isRegisteringNew}
+                    onClick={handleRegisterNewWithPhone}
+                    className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-emerald-600 to-emerald-700 hover:from-amber-400 hover:to-emerald-600 text-white font-black text-sm rounded-xl shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 border border-emerald-600"
+                  >
+                    <span className="text-base">⛳</span>
+                    <span>{isRegisteringNew ? '발급 처리 중...' : '⛳ 새 고유번호 발급받고 시작'}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* 8자리 고유번호 직접 입력 보조 토글 (선택 옵션) */}
+              <div className="pt-1 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowDirectCodeInput(!showDirectCodeInput)}
+                  className="text-[11px] text-stone-500 hover:text-emerald-800 font-bold underline underline-offset-2 cursor-pointer transition inline-flex items-center gap-1"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-stone-400" />
+                  <span>
+                    {showDirectCodeInput
+                      ? (isJapanese ? '📱 携帯番号入力に戻る' : '📱 휴대폰 번호 입력으로 돌아가기')
+                      : (isJapanese ? '🔑 8桁の会員番号(PKYA-XXXX)を直接入力しますか？' : '🔑 혹시 8자리 고유번호(PKYA-XXXX)를 직접 입력하시겠습니까?')}
+                  </span>
+                </button>
+              </div>
+
+              {showDirectCodeInput && (
+                <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl space-y-2 animate-fadeIn">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={inputCode}
+                      onChange={(e) => setInputCode(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleRestoreByMemberCode();
+                      }}
+                      placeholder="예: PKYA-7788 또는 PKYB-1234"
+                      className="flex-1 px-3 py-2 bg-white border border-stone-300 rounded-lg font-black text-xs uppercase font-mono outline-none focus:border-emerald-600"
+                    />
                     <button
                       type="button"
-                      disabled={isLoading}
-                      onClick={handleLogin}
-                      className={
-                        isJapanese
-                          ? 'w-full py-3.5 px-3 bg-[#06C755] hover:bg-[#05b34c] active:scale-95 text-white font-black text-xs sm:text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer border border-[#05a044]'
-                          : 'w-full py-3.5 px-3 bg-[#FEE500] hover:bg-[#FDD835] active:scale-95 text-[#191919] font-black text-xs sm:text-sm rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer border border-[#E6CF00]'
-                      }
+                      disabled={isRestoring}
+                      onClick={handleRestoreByMemberCode}
+                      className="py-2 px-3 bg-stone-800 hover:bg-stone-900 text-white font-black text-xs rounded-lg transition cursor-pointer shrink-0"
                     >
-                      <span className="text-base leading-none">💬</span>
-                      <span>
-                        {isLoading
-                          ? (isJapanese ? '自動連携中...' : '자동 가입 처리 중...')
-                          : isJoinFlow
-                          ? (isJapanese ? '💬 LINE連携で1秒自動登録 ＆ ゲーム合流 ⛳' : '💬 카카오톡 [확인] 누르고 1초 자동 가입 & 게임 합류 ⛳')
-                          : (isJapanese ? '💬 LINE連携で1秒簡単ログイン' : '💬 카카오톡 [확인] 누르고 1초 자동 가입')}
-                      </span>
+                      {isRestoring ? '불러오는 중...' : '로그인'}
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* 둘러보기 & 가상 연습 라운딩 (초대 합류 모드일 때는 불필요하므로 숨김) */}
+              {syncStatus && (
+                <div
+                  className={`p-3 rounded-xl font-black text-xs leading-relaxed text-center animate-fadeIn ${
+                    syncStatus.success
+                      ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                      : 'bg-rose-100 text-rose-900 border border-rose-300'
+                  }`}
+                >
+                  {syncStatus.message}
+                </div>
+              )}
+
+              {/* 하단 보조 액션 */}
               {!isJoinFlow && (
                 <div className="pt-2 border-t border-stone-200/80 space-y-1.5">
                   <div className="grid grid-cols-2 gap-2">
@@ -1105,7 +1089,7 @@ export function KakaoLoginModal({
                       className="text-[10.5px] text-stone-400 hover:text-rose-600 font-bold underline transition cursor-pointer inline-flex items-center gap-1"
                     >
                       <Trash2 className="w-3 h-3" />
-                      <span>{isJapanese ? '端末データ初期化 (ゲスト情報削除 / リセット)' : '기기 데이터 초기화 (손오공 등 임시정보 삭제 / 백지 리셋)'}</span>
+                      <span>{isJapanese ? '端末データ初期化 (リセット)' : '기기 데이터 초기화 (백지 리셋)'}</span>
                     </button>
                   </div>
                 </div>
