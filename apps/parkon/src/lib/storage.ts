@@ -63,10 +63,12 @@ export interface UserGolfProfile {
   kakaoUser?: KakaoAuthUser | null;
   nicknames?: string[]; // 멀티 닉네임 리스트 (예: ['김대희', '나이스버디'])
   activeNickname?: string; // 현재 라운드 활성 닉네임
+  realName?: string; // 실명 (성함)
 }
 
 export const DEFAULT_USER_PROFILE: UserGolfProfile = {
   userName: '',
+  realName: '',
   nationalGrade: '기록 준비중',
   clubName: '',
   phoneNumber: '',
