@@ -54,6 +54,7 @@ import { formatPlayerDisplayName } from '@/lib/playerUtils';
 import { PILGRIMAGE_COURSES, PilgrimageStorage, PilgrimageCourse } from '@/lib/pilgrimageStorage';
 import { PilgrimageDetailModal } from '@/components/PilgrimageDetailModal';
 import { RoundScoreboardModal } from '@/components/RoundScoreboardModal';
+import { RestaurantStorage } from '@/lib/restaurantStorage';
 
 function ChronicleContent() {
   const router = useRouter();
@@ -79,6 +80,11 @@ function ChronicleContent() {
   const [selectedPilgrimCourse, setSelectedPilgrimCourse] = useState<PilgrimageCourse | null>(null);
   const [selectedRoundForPopup, setSelectedRoundForPopup] = useState<RoundSession | null>(null);
   const [timelineFilter, setTimelineFilter] = useState<'OFFICIAL' | 'ALL'>('OFFICIAL');
+  const [gourmetBadgeCount, setGourmetBadgeCount] = useState<number>(0);
+
+  useEffect(() => {
+    setGourmetBadgeCount(RestaurantStorage.getGourmetBadgeCount());
+  }, []);
 
   // Handle incoming addFriend query param from QR scan
   useEffect(() => {
@@ -767,6 +773,37 @@ function ChronicleContent() {
                 </div>
               </button>
             </div>
+
+            {/* 4. [대표님 신규 기능]: 필드의 미식가 훈장 (동호인 단골 맛집 추천 훈장) */}
+            <Link
+              href="/restaurants"
+              className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 border border-amber-300 rounded-2xl transition active:scale-[0.99] flex items-center justify-between cursor-pointer shadow-2xs group"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl group-hover:scale-110 transition inline-block">🍽️</span>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-amber-950">
+                      {isJapanese ? 'フィールドの美食家メダル' : '필드의 미식가 훈장'}
+                    </span>
+                    <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full">
+                      {isJapanese ? '反省会・グルメ' : '뒤풀이 미식'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-600 font-medium mt-0.5">
+                    {gourmetBadgeCount > 0
+                      ? (isJapanese ? `${gourmetBadgeCount}軒の行きつけ店を推薦済み` : `내가 발굴한 찐 단골 맛집 ${gourmetBadgeCount}곳 추천 완료`)
+                      : (isJapanese ? 'ラウンド後の行きつけ店を推薦してメダルを獲得！' : '라운드 후 단골 맛집을 추천하고 미식가 훈장을 획득하세요!')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="text-sm font-black text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-lg border border-amber-300">
+                  {gourmetBadgeCount}{isJapanese ? '個' : '개'}
+                </span>
+                <ChevronRight className="w-4 h-4 text-amber-700" />
+              </div>
+            </Link>
           </div>
 
           {/* 타임라인 히스토리 */}

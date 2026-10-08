@@ -3,1225 +3,1008 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>구글 통합 사령탑 올인원 멀티미디어 & 영상 스튜디오 - 김대희 대표님 전용</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Pretendard -->
-  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <title>파키 앱(PARKY APP) 공식 6단 만화 원클릭 & 실시간 제작 스튜디오</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800;900&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
   <style>
-    body { font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
-    .speech-bubble {
+    :root {
+      --primary: #1B4D3E;
+      --primary-hover: #14382D;
+      --accent-gold: #FFE033;
+      --accent-pink: #FF3366;
+      --bg-dark: #0F172A;
+      --bg-card: #1E293B;
+      --bg-light: #F8FAFC;
+      --border-color: #334155;
+      --text-main: #0F172A;
+      --text-white: #FFFFFF;
+      --text-muted: #64748B;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      background-color: #0B1120;
+      color: #F8FAFC;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation Header */
+    header {
+      background: linear-gradient(135deg, #0F172A 0%, #1B4D3E 100%);
+      border-bottom: 2px solid #22C55E;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      font-size: 32px;
+      background: #FFE033;
+      border-radius: 12px;
+      padding: 6px 10px;
+      box-shadow: 0 2px 8px rgba(255, 224, 51, 0.4);
+    }
+
+    .brand-title h1 {
+      font-size: 20px;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-title p {
+      font-size: 13px;
+      color: #94A3B8;
+      margin-top: 2px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .lang-switcher {
+      display: flex;
+      background: #1E293B;
+      border-radius: 8px;
+      padding: 3px;
+      border: 1px solid #334155;
+    }
+
+    .lang-btn {
+      padding: 8px 14px;
+      border: none;
+      background: transparent;
+      color: #94A3B8;
+      font-weight: 700;
+      font-size: 13px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .lang-btn.active {
+      background: #22C55E;
+      color: #FFFFFF;
+      box-shadow: 0 2px 6px rgba(34, 197, 94, 0.4);
+    }
+
+    .btn-folder {
+      background: #334155;
+      color: #F8FAFC;
+      border: 1px solid #475569;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-folder:hover {
+      background: #475569;
+      color: #FFE033;
+    }
+
+    /* Episode Selector Bar */
+    .ep-bar {
+      background: #1E293B;
+      border-bottom: 1px solid #334155;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow-x: auto;
+    }
+
+    .ep-label {
+      font-size: 13px;
+      font-weight: 800;
+      color: #FFE033;
+      white-space: nowrap;
+      margin-right: 6px;
+    }
+
+    .ep-pill {
+      background: #0F172A;
+      color: #94A3B8;
+      border: 1px solid #334155;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .ep-pill:hover {
+      color: #FFFFFF;
+      border-color: #22C55E;
+    }
+
+    .ep-pill.active {
+      background: linear-gradient(135deg, #1B4D3E 0%, #22C55E 100%);
+      color: #FFFFFF;
+      border-color: #22C55E;
+      box-shadow: 0 2px 10px rgba(34, 197, 94, 0.3);
+    }
+
+    /* Main Container Grid */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 24px;
+      padding: 24px;
+      max-width: 1720px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @media (max-width: 1200px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Cards & Panels */
+    .panel {
+      background: #1E293B;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .panel-header {
+      padding: 16px 20px;
+      background: #0F172A;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-header h2 {
+      font-size: 16px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #F8FAFC;
+    }
+
+    .badge-status {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ADE80;
+      border: 1px solid #22C55E;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* Left: Live Visual Preview */
+    .preview-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .master-view-container {
+      width: 100%;
+      max-width: 680px;
+      background: #0B1120;
+      border-radius: 12px;
+      border: 2px solid #334155;
+      padding: 12px;
+      display: flex;
+      justify-content: center;
       position: relative;
-      background: #ffffff;
-      border-radius: 1.25rem;
-      border: 2px solid #10b981;
     }
-    .speech-bubble:after {
-      content: '';
-      position: absolute;
+
+    .master-view-container img {
+      width: 100%;
+      height: auto;
+      border-radius: 6px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      cursor: zoom-in;
+      transition: transform 0.2s;
+    }
+
+    .master-view-container img:hover {
+      transform: scale(1.01);
+    }
+
+    .view-actions {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      max-width: 680px;
+    }
+
+    .btn-action-primary {
+      flex: 1;
+      background: linear-gradient(135deg, #1B4D3E 0%, #22C55E 100%);
+      color: #FFFFFF;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+      transition: all 0.2s;
+    }
+
+    .btn-action-primary:hover {
+      opacity: 0.95;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(34, 197, 94, 0.5);
+    }
+
+    /* Sliced Cards Section */
+    .cards-section {
+      width: 100%;
+      border-top: 1px solid #334155;
+      padding-top: 20px;
+    }
+
+    .cards-section-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #FFE033;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .card-item {
+      background: #0B1120;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .card-item img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+    }
+
+    .card-item-footer {
+      padding: 6px 10px;
+      background: #0F172A;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #94A3B8;
+    }
+
+    /* Right: Fine-Tuning Editor */
+    .editor-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+
+    .info-card {
+      background: linear-gradient(135deg, rgba(27, 77, 62, 0.3) 0%, rgba(30, 41, 59, 0.6) 100%);
+      border: 1px solid #22C55E;
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .info-card-header {
+      font-size: 12px;
+      color: #4ADE80;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .info-card-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #FFE033;
+      margin-bottom: 4px;
+    }
+
+    .info-card-medal {
+      font-size: 13px;
+      color: #E2E8F0;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #94A3B8;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .form-input {
+      background: #0F172A;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #FFFFFF;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #22C55E;
+      box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+    }
+
+    /* 6 Cuts Accordion list */
+    .cuts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .cut-edit-box {
+      background: #0F172A;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .cut-edit-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 800;
+      color: #FFE033;
+    }
+
+    .cut-desc-badge {
+      font-size: 11px;
+      color: #94A3B8;
+      font-weight: 500;
+    }
+
+    .cut-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .cut-inputs .form-input {
+      font-size: 12px;
+      padding: 8px 10px;
+    }
+
+    .editor-buttons {
+      display: flex;
+      gap: 10px;
+      position: sticky;
       bottom: 0;
-      left: 2.5rem;
-      width: 0;
-      height: 0;
-      border: 14px solid transparent;
-      border-top-color: #10b981;
-      border-bottom: 0;
-      border-left: 0;
-      margin-left: -7px;
-      margin-bottom: -14px;
+      background: #1E293B;
+      padding-top: 10px;
+      border-top: 1px solid #334155;
     }
-    .speech-bubble-inner:after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 2.5rem;
-      width: 0;
-      height: 0;
-      border: 12px solid transparent;
-      border-top-color: #ffffff;
-      border-bottom: 0;
-      border-left: 0;
-      margin-left: -5px;
-      margin-bottom: -11px;
+
+    .btn-editor-apply {
+      flex: 1;
+      background: #22C55E;
+      color: #FFFFFF;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
     }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #0f172a; }
-    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    .btn-editor-apply:hover {
+      background: #16A34A;
+    }
+
+    .btn-editor-reset {
+      background: #334155;
+      color: #CBD5E1;
+      border: none;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .btn-editor-reset:hover {
+      background: #475569;
+      color: #FFFFFF;
+    }
+
+    /* Modal for zoom */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: #22C55E;
+      color: #FFFFFF;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 14px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+      display: none;
+      z-index: 2000;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased select-none">
+<body>
 
-  <!-- ======================================================== -->
-  <!-- 1. 최상단 네비게이션 헤더 & 4대 통합 모드 탭             -->
-  <!-- ======================================================== -->
-  <header class="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-6 py-3 sticky top-0 z-40 shadow-xl">
-    <div class="flex items-center justify-between mb-2.5">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-500 flex items-center justify-center text-xl shadow-lg shadow-emerald-500/20 shrink-0">
-          🎬
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="font-black text-base sm:text-lg text-white tracking-tight">올인원 멀티미디어 & 영상 스튜디오</h1>
-            <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
-              사령탑 통합
-            </span>
-            <span class="px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-300 text-xs font-bold">
-              Gemini 3.5 AI
-            </span>
-          </div>
-          <p class="text-xs text-slate-400">김대희 대표님 전용: 웹툰 ➔ 15초 쇼츠 ➔ 홍보 배너 ➔ 캐릭터 보관함 단일 관제실</p>
-        </div>
-      </div>
-
-      <!-- 상단 액션 버튼군 -->
-      <div class="flex items-center gap-2.5">
-        <button onclick="openWizardModal()" 
-                class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-1.5 cursor-pointer active:scale-95 animate-pulse">
-          <span>🪄</span>
-          <span>새 만화 제작 (마법사)</span>
-        </button>
-
-        <button onclick="openToolAdvisoryModal()" 
-                class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-purple-500/40 text-purple-300 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95">
-          <span>🧠</span>
-          <span>구글 AI 도구 & 비용 상의</span>
-        </button>
-
-        <button onclick="saveAllChapters()" 
-                class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95">
-          <span>💾</span>
-          <span>파크온 앱 정식 등록</span>
-        </button>
+  <!-- Header -->
+  <header>
+    <div class="header-brand">
+      <div class="brand-icon">🏌️</div>
+      <div class="brand-title">
+        <h1>파키 앱(PARKY APP) 공식 6단 만화 원클릭 & 실시간 제작 스튜디오</h1>
+        <p>캐릭터 왜곡 0% 마스코트 원형 보존 · 100% 무결점 한/일 타이포그래피 · 원클릭 렌더링 & 실시간 비주얼 정밀 편집 통합 시스템</p>
       </div>
     </div>
-
-    <!-- 4대 통합 스튜디오 탭 바 (만화 / 쇼츠 / 배너 / 캐릭터 보관함) -->
-    <nav class="flex items-center gap-2 border-t border-slate-800/80 pt-2">
-      <button onclick="switchTab('toon')" id="tabBtn_toon"
-              class="px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 bg-emerald-600 text-white shadow-md shadow-emerald-600/30">
-        <span>🎨</span>
-        <span>4컷·6컷 웹툰 스튜디오</span>
+    <div class="header-actions">
+      <div class="lang-switcher">
+        <button class="lang-btn active" id="btnLangKo" onclick="setLanguage('ko')">🇰🇷 한국어</button>
+        <button class="lang-btn" id="btnLangJa" onclick="setLanguage('ja')">🇯🇵 日本語</button>
+      </div>
+      <button class="btn-folder" onclick="openOutputFolder()">
+        📁 공식 만화 모음 폴더 열기
       </button>
-
-      <button onclick="switchTab('shorts')" id="tabBtn_shorts"
-              class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
-        <span>🎬</span>
-        <span>15초 쇼츠/릴스 영상 스튜디오</span>
-      </button>
-
-      <button onclick="switchTab('banner')" id="tabBtn_banner"
-              class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
-        <span>🖼️</span>
-        <span>마케팅 배너 & 카드뉴스</span>
-      </button>
-
-      <button onclick="switchTab('vault')" id="tabBtn_vault"
-              class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
-        <span>👥</span>
-        <span>공용 캐릭터/인물 보관함 (Character Vault)</span>
-      </button>
-    </nav>
+    </div>
   </header>
 
-  <!-- ======================================================== -->
-  <!-- [MODE 1] 웹툰/만화 스튜디오 패널                         -->
-  <!-- ======================================================== -->
-  <main id="panel_toon" class="flex-1 grid grid-cols-12 gap-0 overflow-hidden">
-    <!-- 좌측 에피소드 목록 -->
-    <aside class="col-span-3 bg-slate-950 border-r border-slate-800 p-4 flex flex-col h-[calc(100vh-118px)] overflow-y-auto">
-      <div class="flex items-center justify-between mb-3 px-1">
-        <h2 class="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-          <span>📚</span> 에피소드 & 컷 목록
-        </h2>
-        <span id="chapterCountBadge" class="text-xs font-bold text-emerald-400">3개 챕터</span>
-      </div>
-      <div id="chapterListContainer" class="space-y-3 flex-1"></div>
-    </aside>
+  <!-- Episode Selector Bar -->
+  <div class="ep-bar" id="episodesBar">
+    <div class="ep-label">✨ 공식 연대기 에피소드:</div>
+    <!-- Dynamically loaded pills -->
+  </div>
 
-    <!-- 중앙 실시간 모바일 뷰어 -->
-    <section class="col-span-5 bg-slate-900/60 p-6 flex flex-col items-center justify-start h-[calc(100vh-118px)] overflow-y-auto border-r border-slate-800">
-      <div class="w-full max-w-md flex flex-col gap-3">
-        <div class="flex items-center justify-between px-1">
-          <span class="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-            <span>📱</span> 파크온 모바일 실제 화면 뷰어
-          </span>
-          <div class="flex items-center gap-2">
-            <button onclick="navCut(-1)" class="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold flex items-center justify-center cursor-pointer">◀</button>
-            <span id="previewCutIndicator" class="px-2.5 py-0.5 rounded-full bg-slate-800 text-amber-300 text-xs font-bold border border-slate-700">
-              제1장 · 1번째 컷
-            </span>
-            <button onclick="navCut(1)" class="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold flex items-center justify-center cursor-pointer">▶</button>
-          </div>
-        </div>
-
-        <!-- 만화 카드 프레임 -->
-        <div id="webtoonCard" class="bg-slate-950 rounded-3xl p-5 shadow-2xl border-2 border-emerald-500/40 flex flex-col gap-4 text-slate-900">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <span id="cardBadge" class="inline-block px-3 py-1 rounded-full text-xs font-black mb-1.5 bg-blue-100 text-blue-800 border border-blue-200">
-                공인 규격
-              </span>
-              <h3 id="cardTitle" class="text-base sm:text-lg font-black text-white leading-tight">
-                파크골프의 정석! 9홀 Par 33 공인 규격
-              </h3>
-            </div>
-            <span id="cardPoseEmoji" class="text-3xl shrink-0 p-2 rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-md">
-              🐥
-            </span>
-          </div>
-
-          <div class="bg-slate-900/90 rounded-2xl p-3.5 border border-slate-800">
-            <span class="text-[11px] font-bold text-amber-400 block mb-1">📢 라운드 실제 상황</span>
-            <p id="cardSituation" class="text-xs text-slate-300 font-medium leading-relaxed">
-              파크골프는 일반 골프와 홀수 및 기준 타수가 어떻게 다를까요?
-            </p>
-          </div>
-
-          <div class="bg-gradient-to-b from-emerald-950/40 to-slate-900 rounded-2xl p-4 border border-emerald-500/20 flex flex-col gap-3">
-            <div class="flex items-center gap-3">
-              <div id="pakiAvatar" class="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 flex items-center justify-center text-2xl shadow-md border-2 border-white shrink-0">
-                🐥
-              </div>
-              <div>
-                <strong id="pakiNameBadge" class="text-sm font-black text-emerald-300 block">마스코트 파키</strong>
-                <span id="pakiPoseText" class="text-[10px] text-slate-400">친절한 규정 요정</span>
-              </div>
-            </div>
-
-            <div class="speech-bubble speech-bubble-inner p-3.5 text-slate-800">
-              <p id="cardDialogue" class="text-xs sm:text-sm font-bold leading-relaxed text-slate-900">
-                안녕하세요! 파크골프 올인원 마스코트 파키예요! 파크골프 공인 규격은 9홀 기준 총 33타(Par 33)가 표준이랍니다!
-              </p>
-            </div>
-          </div>
-
-          <div class="bg-slate-900 rounded-2xl p-3.5 border border-slate-800 flex flex-col gap-2">
-            <div class="flex items-center justify-between">
-              <span class="text-[11px] font-black text-emerald-400">⚖️ 최종 판정 수칙</span>
-              <span id="cardPenalty" class="text-[10px] font-black px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                규정 준수
-              </span>
-            </div>
-            <p id="cardVerdict" class="text-xs font-black text-white">
-              9홀 기준 기준타수 33타 (18홀 66타)
-            </p>
-            <div class="pt-2 border-t border-slate-800">
-              <span class="text-[10px] font-bold text-slate-400 block mb-0.5">💡 꼭 기억할 핵심 팁</span>
-              <p id="cardKeyPoint" class="text-[11px] text-slate-300 leading-normal">
-                전체 거리는 9홀 약 660m 내외로 남녀노소 누구나 걷기 좋은 도심 속 친환경 코스입니다.
-              </p>
-            </div>
-            <div class="text-right">
-              <span id="cardArticle" class="text-[10px] text-slate-500 font-bold">
-                제1장 제2조 (코스의 구성 및 구역)
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 🚀 원소스 멀티유즈 크로스 생성 버튼군! -->
-        <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 flex flex-col gap-2">
-          <span class="text-[11px] font-black text-amber-400 flex items-center gap-1">
-            <span>✨</span> 원클릭 연동: 이 만화로 다른 미디어 즉시 만들기
-          </span>
-          <div class="grid grid-cols-2 gap-2">
-            <button onclick="convertCurrentToonToShorts()" class="py-2.5 rounded-xl bg-purple-600/30 hover:bg-purple-600 border border-purple-500/40 text-purple-200 hover:text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer">
-              <span>🎬</span>
-              <span>15초 쇼츠 대본 변환</span>
-            </button>
-            <button onclick="convertCurrentToonToBanner()" class="py-2.5 rounded-xl bg-blue-600/30 hover:bg-blue-600 border border-blue-500/40 text-blue-200 hover:text-white font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer">
-              <span>🖼️</span>
-              <span>16:9 썸네일 배너 변환</span>
-            </button>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- 우측 컷 편집 폼 -->
-    <aside class="col-span-4 bg-slate-950 p-6 flex flex-col h-[calc(100vh-118px)] overflow-y-auto">
-      <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
-        <div>
-          <h3 class="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-            <span>✏️</span> 만화 컷 내용 실시간 수정
-          </h3>
-          <p class="text-[11px] text-slate-400">대사를 수정하면 왼쪽 화면에 즉각 반영됩니다.</p>
-        </div>
-        <span class="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">실시간 연동</span>
+  <!-- Workspace -->
+  <main>
+    <!-- Left Column: Master & Cards Live Preview -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2>🎨 마스터 6단 만화 & SNS 카드 라이브 뷰</h2>
+        <span class="badge-status" id="renderStatus">✅ 렌더링 완료 (1024x1024 마스터)</span>
       </div>
 
-      <div class="flex-1 flex flex-col gap-3">
-        <div>
-          <label class="block text-[11px] font-bold text-slate-400 mb-1">컷 제목</label>
-          <input id="editTitle" type="text" oninput="updateCurrentCutFromInputs()"
-                 class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+      <div class="preview-body">
+        <div class="master-view-container">
+          <img id="masterPreview" src="/outputs/ep_01_ko_master.jpg" alt="6단 만화 마스터" onclick="openModal(this.src)">
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-[11px] font-bold text-slate-400 mb-1">주의 배지 명칭</label>
-            <input id="editBadge" type="text" oninput="updateCurrentCutFromInputs()"
-                   class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
-          </div>
-          <div>
-            <label class="block text-[11px] font-bold text-slate-400 mb-1">배지 색상</label>
-            <select id="editBadgeType" onchange="updateCurrentCutFromInputs()"
-                    class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
-              <option value="info">파랑 (안내/공인규격)</option>
-              <option value="caution">주황 (주의/1타가산)</option>
-              <option value="penalty">빨강 (벌타/실격주의)</option>
-              <option value="safe">초록 (무벌타/정상)</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-[11px] font-bold text-slate-400 mb-1">상황 설명 (동호인이 겪는 상황)</label>
-          <textarea id="editSituation" rows="2" oninput="updateCurrentCutFromInputs()"
-                    class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 resize-none"></textarea>
-        </div>
-
-        <div>
-          <label class="block text-[11px] font-bold text-emerald-400 mb-1">마스코트 파키 대사 (어르신 맞춤 해설)</label>
-          <textarea id="editDialogue" rows="3" oninput="updateCurrentCutFromInputs()"
-                    class="w-full bg-slate-900 border border-emerald-500/40 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400 resize-none"></textarea>
-        </div>
-
-        <div>
-          <label class="block text-[11px] font-bold text-slate-400 mb-1">공식 최종 판정</label>
-          <input id="editVerdict" type="text" oninput="updateCurrentCutFromInputs()"
-                 class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
-        </div>
-
-        <div>
-          <label class="block text-[11px] font-bold text-slate-400 mb-1">핵심 요약 포인트</label>
-          <input id="editKeyPoint" type="text" oninput="updateCurrentCutFromInputs()"
-                 class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
-        </div>
-
-        <div>
-          <label class="block text-[11px] font-bold text-slate-400 mb-1">관련 규정 조항</label>
-          <input id="editArticle" type="text" oninput="updateCurrentCutFromInputs()"
-                 class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
-        </div>
-
-        <div class="pt-2 flex gap-2">
-          <button onclick="addNewCutToCurrentChapter()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all border border-slate-700 cursor-pointer">
-            ➕ 현재 챕터에 1컷 더 추가
+        <div class="view-actions">
+          <button class="btn-action-primary" id="btnOneClick" onclick="executeRender()">
+            🚀 1초 만화 원클릭 자동 렌더링
+          </button>
+          <button class="btn-folder" onclick="copyPromoText()">
+            📋 밴드/SNS 홍보문구 복사
           </button>
         </div>
-      </div>
-    </aside>
-  </main>
 
-  <!-- ======================================================== -->
-  <!-- [MODE 2] 쇼츠/릴스 영상 스튜디오 패널                     -->
-  <!-- ======================================================== -->
-  <main id="panel_shorts" class="flex-1 grid grid-cols-12 gap-0 overflow-hidden hidden">
-    <!-- 좌측 쇼츠 생성 설정 -->
-    <aside class="col-span-5 bg-slate-950 border-r border-slate-800 p-6 flex flex-col h-[calc(100vh-118px)] overflow-y-auto">
-      <div class="mb-4">
-        <h2 class="text-sm font-black text-white flex items-center gap-2">
-          <span>🎬</span> 15초 바이럴 숏폼 영상 기획기
-        </h2>
-        <p class="text-xs text-slate-400 mt-1">유튜브 쇼츠 & 인스타 릴스 100만 뷰용 콘티와 초단위 대본을 생성합니다.</p>
-      </div>
-
-      <div class="space-y-4 flex-1">
-        <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">영상 길이 선택</label>
-          <div class="grid grid-cols-3 gap-2">
-            <button onclick="setShortsDuration(15)" id="btnDur_15" class="py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs border border-purple-500">15초 (릴스 초강추)</button>
-            <button onclick="setShortsDuration(30)" id="btnDur_30" class="py-2.5 rounded-xl bg-slate-900 text-slate-400 font-bold text-xs border border-slate-800">30초 (상세설명)</button>
-            <button onclick="setShortsDuration(60)" id="btnDur_60" class="py-2.5 rounded-xl bg-slate-900 text-slate-400 font-bold text-xs border border-slate-800">60초 (완전정복)</button>
+        <!-- 6 Sliced Cards -->
+        <div class="cards-section">
+          <div class="cards-section-title">
+            <span>📲 1080x1080 SNS 개별 카드 6장 (네이버 밴드 / 페이스북 / 인스타그램 전용)</span>
+            <span style="font-size: 12px; color: #94A3B8;">원클릭 자동 분할 생성</span>
+          </div>
+          <div class="cards-grid" id="cardsGrid">
+            <!-- Dynamic 6 cards -->
           </div>
         </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">영상 연출 스타일</label>
-          <select id="shortsStyleSelect" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-400">
-            <option value="코믹/유머">코믹/유머 (어르신 공감 실수 ➔ 파키의 호루라기)</option>
-            <option value="1타레슨">1타 레슨 (족집게 룰 특강)</option>
-            <option value="팩트체크">팩트체크 (잘못 알고 있는 상식 파헤치기)</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">쇼츠 주제 입력</label>
-          <input id="shortsTopicInput" type="text" placeholder="예: 티샷 매트 두 발 이탈 2벌타 주의"
-                 class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-400">
-        </div>
-
-        <button onclick="generateShortsScript()" id="btnGenShorts"
-                class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white font-black text-sm transition-all shadow-lg shadow-purple-600/30 cursor-pointer active:scale-95 flex items-center justify-center gap-2">
-          <span>✨</span>
-          <span>1초 만에 쇼츠 영상 콘티 자동 생성</span>
-        </button>
-
-        <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-xs space-y-2">
-          <strong class="text-purple-300 block font-bold">🎵 AI 추천 오디오 & 톤앤매너</strong>
-          <p id="shortsBgmText" class="text-slate-400">BGM: 경쾌한 컨트리 파크골프 음악</p>
-          <p id="shortsVoiceText" class="text-slate-400">보이스: 싹싹하고 똑 부러지는 파키 캐릭터 목소리</p>
-        </div>
-      </div>
-    </aside>
-
-    <!-- 우측 9:16 모바일 쇼츠 뷰어 -->
-    <section class="col-span-7 bg-slate-900/40 p-6 flex flex-col items-center justify-start h-[calc(100vh-118px)] overflow-y-auto">
-      <div class="w-full max-w-sm flex flex-col gap-3">
-        <div class="flex items-center justify-between px-1">
-          <span class="text-xs font-bold text-purple-400 flex items-center gap-1.5">
-            <span>📱</span> 9:16 세로형 숏폼 실제 타임라인 프리뷰
-          </span>
-          <span id="shortsDurationBadge" class="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-500/30">15초 영상</span>
-        </div>
-
-        <!-- 9:16 쇼츠 시뮬레이터 카드 -->
-        <div class="w-full aspect-[9/16] bg-slate-950 rounded-3xl border-2 border-purple-500/40 p-5 flex flex-col justify-between shadow-2xl relative overflow-hidden">
-          
-          <!-- 상단 헤더 & 후킹 자막 -->
-          <div class="z-10 flex flex-col gap-2">
-            <div class="flex items-center justify-between">
-              <span class="px-2.5 py-1 rounded-full bg-red-600 text-white font-black text-[10px] animate-pulse">● LIVE SHORTS</span>
-              <span class="text-xs text-slate-400 font-bold">@parkgolfallinone</span>
-            </div>
-            <div class="bg-red-950/80 border border-red-500/40 p-2.5 rounded-xl mt-1">
-              <span class="text-[10px] font-bold text-red-300 block mb-0.5">🚨 0~3초 이탈 방지 후킹</span>
-              <p id="shortsHookText" class="text-xs font-black text-white leading-tight">
-                "선배님들! 이 실수 하나로 2벌타 날아갑니다!"
-              </p>
-            </div>
-          </div>
-
-          <!-- 중앙 파키 캐릭터 모션 프리뷰 -->
-          <div class="z-10 flex flex-col items-center justify-center gap-2 my-auto">
-            <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 flex items-center justify-center text-5xl shadow-2xl border-4 border-white animate-bounce">
-              🐥
-            </div>
-            <span class="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-amber-300 text-xs font-black border border-white/20">
-              마스코트 파키 룰 설명 중
-            </span>
-          </div>
-
-          <!-- 하단 타임코드 자막 스크립트 -->
-          <div class="z-10 flex flex-col gap-2">
-            <div id="shortsSceneContainer" class="space-y-1.5 max-h-48 overflow-y-auto">
-              <!-- 타임코드별 씬이 렌더링됩니다 -->
-            </div>
-          </div>
-
-          <!-- 배경 은은한 그라데이션 -->
-          <div class="absolute inset-0 bg-gradient-to-b from-purple-950/30 via-slate-950 to-slate-950 pointer-events-none"></div>
-        </div>
-
-        <!-- 하단 액션 버튼 -->
-        <button onclick="convertShortsToBanner()" class="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs transition-all shadow-lg shadow-blue-600/30 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5">
-          <span>🖼️</span>
-          <span>이 쇼츠의 유튜브 16:9 썸네일 배너 생성</span>
-        </button>
-      </div>
-    </section>
-  </main>
-
-  <!-- ======================================================== -->
-  <!-- [MODE 3] 마케팅 배너/카드뉴스 스튜디오 패널              -->
-  <!-- ======================================================== -->
-  <main id="panel_banner" class="flex-1 grid grid-cols-12 gap-0 overflow-hidden hidden">
-    <!-- 좌측 배너 설정 -->
-    <aside class="col-span-5 bg-slate-950 border-r border-slate-800 p-6 flex flex-col h-[calc(100vh-118px)] overflow-y-auto">
-      <div class="mb-4">
-        <h2 class="text-sm font-black text-white flex items-center gap-2">
-          <span>🖼️</span> 구글 Imagen 3 마케팅 배너 제작기
-        </h2>
-        <p class="text-xs text-slate-400 mt-1">유튜브 썸네일(16:9), 카톡/인스타 카드뉴스(1:1)를 고화질로 생성합니다.</p>
-      </div>
-
-      <div class="space-y-4 flex-1">
-        <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">배너 규격 / 비율 선택</label>
-          <div class="grid grid-cols-3 gap-2">
-            <button onclick="setBannerRatio('16:9')" id="btnRatio_16_9" class="py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs border border-blue-500">16:9 (유튜브)</button>
-            <button onclick="setBannerRatio('1:1')" id="btnRatio_1_1" class="py-2.5 rounded-xl bg-slate-900 text-slate-400 font-bold text-xs border border-slate-800">1:1 (카톡/인스타)</button>
-            <button onclick="setBannerRatio('9:16')" id="btnRatio_9_16" class="py-2.5 rounded-xl bg-slate-900 text-slate-400 font-bold text-xs border border-slate-800">9:16 (스토리)</button>
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">배너 홍보 주제 입력</label>
-          <input id="bannerTopicInput" type="text" placeholder="예: 파크골프 OB 2벌타 완전 정복"
-                 class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-400">
-        </div>
-
-        <button onclick="generateBannerConcept()" id="btnGenBanner"
-                class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:brightness-110 text-white font-black text-sm transition-all shadow-lg shadow-blue-600/30 cursor-pointer active:scale-95 flex items-center justify-center gap-2">
-          <span>✨</span>
-          <span>고화질 마케팅 배너 카피 & 이미지 생성</span>
-        </button>
-
-        <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 text-xs space-y-2">
-          <strong class="text-blue-300 block font-bold">🎨 Google Imagen 3 프롬프트</strong>
-          <p id="bannerPromptText" class="text-slate-400 font-mono text-[11px] leading-relaxed break-all">
-            A vibrant 3D mascot park golf illustration of a cute yellow birdie wearing a green golf cap on a sunny golf course.
-          </p>
-        </div>
-      </div>
-    </aside>
-
-    <!-- 우측 실시간 배너 뷰어 -->
-    <section class="col-span-7 bg-slate-900/40 p-6 flex flex-col items-center justify-start h-[calc(100vh-118px)] overflow-y-auto">
-      <div class="w-full max-w-xl flex flex-col gap-4">
-        <div class="flex items-center justify-between px-1">
-          <span class="text-xs font-bold text-blue-400 flex items-center gap-1.5">
-            <span>👁️</span> 실시간 배너 렌더링 미리보기
-          </span>
-          <span id="bannerRatioBadge" class="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold border border-blue-500/30">16:9 유튜브 썸네일</span>
-        </div>
-
-        <!-- 16:9 배너 목업 캔버스 -->
-        <div id="bannerMockupCard" class="w-full aspect-video bg-gradient-to-r from-emerald-900 via-slate-900 to-slate-950 rounded-3xl p-8 border-2 border-blue-500/40 shadow-2xl flex flex-col justify-between relative overflow-hidden">
-          
-          <div class="z-10">
-            <span class="px-3 py-1 rounded-full bg-amber-400 text-slate-950 font-black text-xs shadow-md">파크골프 올인원 공식 특강</span>
-            <h2 id="bannerHeadlineText" class="text-2xl sm:text-3xl font-black text-white mt-3 leading-tight drop-shadow-md">
-              아는 사람만 아는 티샷 매트의 비밀!
-            </h2>
-            <p id="bannerSubheadText" class="text-sm text-slate-300 font-bold mt-2 drop-shadow">
-              대한파크골프협회 공인 규정 완벽 해설
-            </p>
-          </div>
-
-          <div class="z-10 flex items-center justify-between">
-            <button id="bannerCtaBtn" class="px-5 py-2.5 rounded-2xl bg-white text-slate-950 font-black text-xs shadow-lg hover:bg-slate-100 cursor-pointer">
-              지금 무료로 확인하기 ➔
-            </button>
-            <span class="text-xs font-bold text-slate-400">www.parkgolfallinone.com</span>
-          </div>
-
-          <!-- 우측 파키 마스코트 3D 그래픽 배치 -->
-          <div class="absolute right-6 bottom-4 z-10 flex flex-col items-center">
-            <span class="text-7xl drop-shadow-2xl">🐥</span>
-          </div>
-
-          <!-- 배경 데코 -->
-          <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
-        </div>
-
-        <button onclick="alert('💾 outputs/ 폴더에 배너 이미지가 저장되었습니다!')" class="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all shadow-lg shadow-emerald-600/20 cursor-pointer active:scale-95 flex items-center justify-center gap-1.5">
-          <span>📥</span>
-          <span>이 배너 이미지 고화질 다운로드</span>
-        </button>
-      </div>
-    </section>
-  </main>
-
-  <!-- ======================================================== -->
-  <!-- [MODE 4] 공용 캐릭터/인물 보관함 (Character Vault)       -->
-  <!-- ======================================================== -->
-  <main id="panel_vault" class="flex-1 bg-slate-900/60 p-8 h-[calc(100vh-118px)] overflow-y-auto hidden">
-    <div class="max-w-5xl mx-auto">
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <h2 class="text-lg font-black text-white flex items-center gap-2">
-            <span>👥</span> 공용 캐릭터 & 인물 보관함 (Character Vault)
-          </h2>
-          <p class="text-xs text-slate-400 mt-1">얼굴과 옷이 왜곡되지 않는 기준 인물 마스터 에셋. 만화, 쇼츠, 배너에서 공용으로 사용됩니다.</p>
-        </div>
-        <button onclick="openAddCharacterModal()" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-lg shadow-purple-600/20">
-          <span>➕</span>
-          <span>새 캐릭터 등록 / 킵(Keep)</span>
-        </button>
-      </div>
-
-      <!-- 캐릭터 카드 그리드 -->
-      <div id="characterVaultGrid" class="grid grid-cols-4 gap-4">
-        <!-- JS로 동적 렌더링 -->
       </div>
     </div>
-  </main>
 
-  <!-- ======================================================== -->
-  <!-- 팝업 모달군 (마법사 / 도구 상의 / 캐릭터 추가)           -->
-  <!-- ======================================================== -->
-  
-  <!-- [팝업 1] 직관적 만화 제작 마법사 모달 -->
-  <div id="wizardModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border-2 border-emerald-500/40 overflow-hidden flex flex-col max-h-[92vh]">
-      <div class="bg-slate-950 px-6 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
-        <div class="flex items-center gap-2.5">
-          <span class="text-2xl">🪄</span>
-          <div>
-            <h3 class="text-base font-black text-white">파크온 만화 제작 4단계 마법사</h3>
-            <p class="text-xs text-slate-400">형식 ➔ 상황 ➔ 등장인물(캐스팅) ➔ AI 콘티 확인 ➔ 생성</p>
-          </div>
-        </div>
-        <button onclick="closeWizardModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-sm font-bold cursor-pointer">✕</button>
+    <!-- Right Column: Live Fine-Tuning Editor -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2>✏️ 실시간 비주얼 정밀 편집기 (Fine-Tuning Editor)</h2>
+        <span style="font-size: 12px; color: #94A3B8;">텍스트 즉시 수정 & 재렌더링</span>
       </div>
 
-      <div class="p-6 space-y-5 overflow-y-auto flex-1">
-        <!-- 1단계: 만화 형식 -->
-        <div>
-          <span class="text-xs font-black text-emerald-400 block mb-2">1단계: 만화 형식 (컷 스타일) 선택</span>
-          <div class="grid grid-cols-3 gap-3">
-            <label class="p-3.5 rounded-2xl bg-slate-950 border-2 border-emerald-500 text-left cursor-pointer transition-all block" id="cutStyle_4">
-              <input type="radio" name="wizardCutCount" value="4" checked class="hidden" onchange="selectCutStyle(4)">
-              <div class="flex items-center justify-between mb-1">
-                <strong class="text-sm font-black text-white">4컷 만화</strong>
-                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950">추천</span>
-              </div>
-              <p class="text-[11px] text-slate-400">기승전결 완결형 스토리</p>
-            </label>
-            <label class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-left cursor-pointer transition-all block" id="cutStyle_6">
-              <input type="radio" name="wizardCutCount" value="6" class="hidden" onchange="selectCutStyle(6)">
-              <div class="flex items-center justify-between mb-1">
-                <strong class="text-sm font-black text-white">6컷 정밀 만화</strong>
-                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">상세 규정</span>
-              </div>
-              <p class="text-[11px] text-slate-400">단계별 상세 규정 만화</p>
-            </label>
-            <label class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-left cursor-pointer transition-all block" id="cutStyle_1">
-              <input type="radio" name="wizardCutCount" value="1" class="hidden" onchange="selectCutStyle(1)">
-              <div class="flex items-center justify-between mb-1">
-                <strong class="text-sm font-black text-white">1컷 룰 카드</strong>
-                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">핵심 요약</span>
-              </div>
-              <p class="text-[11px] text-slate-400">빠른 룰 카드뉴스</p>
-            </label>
+      <div class="editor-body">
+        <!-- Gemini 6-Cut Conti Paste Importer -->
+        <div class="conti-box" style="background: #0B1120; border: 2px dashed #22C55E; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 13px; font-weight: 800; color: #FFE033;">📋 제미나이(AI) 6단 콘티 붙여넣기</span>
+            <span style="font-size: 11px; color: #4ADE80; font-weight: 700;">1초 자동 분석 & 제작</span>
           </div>
-        </div>
-
-        <!-- 2단계: 상황 선택 -->
-        <div>
-          <span class="text-xs font-black text-emerald-400 block mb-2">2단계: 골프장 코스 상황 선택</span>
-          <div class="grid grid-cols-3 gap-2 mb-2">
-            <button type="button" onclick="setWizardTopic('티샷 매트 두 발 이탈 2벌타 규정')" class="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-xs font-bold text-slate-300">⛳ 티샷 매트 이탈</button>
-            <button type="button" onclick="setWizardTopic('벙커 모래를 손으로 만졌을 때 벌타 규정')" class="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-xs font-bold text-slate-300">🏖️ 벙커 모래 터치</button>
-            <button type="button" onclick="setWizardTopic('백색 OB 말뚝 밖으로 나갔을 때 2클럽 구제')" class="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-xs font-bold text-slate-300">🚨 OB 2클럽 구제</button>
-            <button type="button" onclick="setWizardTopic('그린에서 퍼팅 마크 에티켓')" class="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-xs font-bold text-slate-300">🎯 그린 퍼팅 마크</button>
-            <button type="button" onclick="setWizardTopic('공인 스티커가 없는 클럽 사용 시 실격')" class="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-xs font-bold text-slate-300">🏷️ 공인 스티커 실격</button>
-            <button type="button" onclick="setWizardTopic('남의 공을 내 공으로 잘못 쳤을 때 오구 플레이')" class="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-left text-xs font-bold text-slate-300">⚡ 오구(남의 공) 플레이</button>
-          </div>
-          <input id="wizardTopicInput" type="text" placeholder="또는 원하시는 주제 직접 입력"
-                 class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
-        </div>
-
-        <!-- 3단계: 등장인물 멀티 캐스팅 (대표님 요청 핵심!) -->
-        <div>
-          <span class="text-xs font-black text-emerald-400 block mb-2">3단계: 등장인물 멀티 캐스팅 (인물 보관함 연동)</span>
-          <div class="grid grid-cols-4 gap-2" id="castSelectorContainer">
-            <!-- JS 동적 생성 -->
-          </div>
-        </div>
-
-        <!-- 4단계: 콘티 확인 -->
-        <div class="bg-slate-950 rounded-2xl p-4 border border-slate-800">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-black text-purple-400">🧠 4단계: AI 콘티 사전 확인</span>
-            <button type="button" onclick="previewContiWithAI()" id="btnGenerateConti"
-                    class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs cursor-pointer">
-              ✨ AI 콘티 짜기 (클릭)
+          <textarea id="inputContiText" rows="4" class="form-input" style="font-size: 12px; line-height: 1.5; resize: vertical;" placeholder="제미나이 대화창에서 생성한 6단 콘티를 여기에 그대로 복사해 넣으세요!&#10;&#10;[예시]&#10;제목: 세대공감! 온 가족이 즐기는 핫한 파크골프&#10;1컷: [젊어지는 파크골프] 주말은 내 시간! 파크골프장으로 출발~!&#10;2컷: [세련된 필드 패션] 다 같이 모이니 너무 좋다! 어때요, 우리 패션?&#10;3컷: [누구나 치기 쉬운 손맛] 와, 가볍게 휘둘러도 멀리 나가네! (팡!)&#10;4컷: [3대 가족 화기애애] 다 같이 걸으니까 너무 상쾌하구나!&#10;5컷: [홀컵 땡그랑 버디] 나이스 버디! 엄마 실력 아직 녹슬지 않았어!&#10;6컷: [파키 앱과 함께하는 행복] 40대부터 즐기는 국민 스포츠, 파키 앱!"></textarea>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-action-primary" style="flex: 1; padding: 10px; font-size: 13px;" onclick="importConti()">
+              ✨ 콘티 자동 분석 & 한국어 만화 완성
+            </button>
+            <button class="btn-folder" style="padding: 10px 14px; font-size: 12px;" onclick="clearConti()">
+              지우기
             </button>
           </div>
-          <div id="contiPreviewBox" class="text-xs text-slate-400 p-3 rounded-xl bg-slate-900 border border-slate-800 min-h-[50px]">
-            형식과 등장인물을 고르신 후 [AI 콘티 짜기]를 누르시면 줄거리가 먼저 출력됩니다.
-          </div>
         </div>
-      </div>
 
-      <div class="bg-slate-950 px-6 py-4 border-t border-slate-800 flex items-center justify-between shrink-0">
-        <span class="text-xs text-slate-400">생성 후 화면에서 바로 확인하고 채택할 수 있습니다.</span>
-        <div class="flex items-center gap-2">
-          <button onclick="closeWizardModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold text-xs cursor-pointer">취소</button>
-          <button onclick="executeWizardGeneration()" id="btnExecuteWizard"
-                  class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs cursor-pointer shadow-lg active:scale-95">
-            ✨ 만화 컷 최종 생성하기
+        <!-- Episode Info Card -->
+        <div class="info-card">
+          <div class="info-card-header" id="infoTheme">홈그라운드 완주 (구미 동락)</div>
+          <div class="info-card-title" id="infoTitle">구미 낙동강 바람을 뚫고 딴 첫 메달!</div>
+          <div class="info-card-medal" id="infoMedal">🏆 낙동강의 맹호: 구미 동락구장 홈마스터 훈장</div>
+        </div>
+
+        <!-- Master Title Edit -->
+        <div class="form-group">
+          <label class="form-label">
+            <span>상단 메인 헤더 제목 (Title)</span>
+            <span style="color: #4ADE80;">100% 무결점 벡터 렌더링</span>
+          </label>
+          <input type="text" class="form-input" id="inputTitle" placeholder="메인 헤더 제목을 입력하세요">
+        </div>
+
+        <!-- 6 Cuts Edit List -->
+        <div class="cuts-list" id="cutsList">
+          <!-- Dynamic 6 Cuts inputs -->
+        </div>
+
+        <!-- Editor Sticky Bottom Buttons -->
+        <div class="editor-buttons" style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-editor-apply" style="flex: 1;" onclick="applyCustomEdits()">
+              💾 수정사항 즉시 반영 렌더링
+            </button>
+            <button class="btn-editor-reset" onclick="resetToDefaults()">
+              🔄 기본값 복원
+            </button>
+          </div>
+          <button id="btnTranslateJa" style="background: linear-gradient(135deg, #2563EB 0%, #EC4899 100%); color: #FFFFFF; border: none; padding: 12px; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);" onclick="translateAndRenderJapanese()">
+            🇯🇵 클릭 한 번으로 일본어판 자동 변환 & 렌더링 완성!
           </button>
         </div>
       </div>
     </div>
+  </main>
+
+  <!-- Image Zoom Modal -->
+  <div class="modal" id="imageModal" onclick="closeModal()">
+    <img id="modalImg" src="">
   </div>
 
-  <!-- [팝업 2] 구글 AI 도구 & 가성비 상의실 -->
-  <div id="toolAdvisoryModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border-2 border-purple-500/40 overflow-hidden flex flex-col max-h-[90vh]">
-      <div class="bg-slate-950 px-6 py-4 border-b border-slate-800 flex items-center justify-between shrink-0">
-        <div class="flex items-center gap-2.5">
-          <span class="text-2xl">🧠</span>
-          <div>
-            <h3 class="text-base font-black text-white">구글 AI 도구 투명 공개 & 유료 업그레이드 상의실</h3>
-            <p class="text-xs text-slate-400">현재 사용 중인 AI 스펙 및 유료 도구 가성비 비교</p>
-          </div>
-        </div>
-        <button onclick="closeToolAdvisoryModal()" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-sm font-bold cursor-pointer">✕</button>
-      </div>
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
 
-      <div class="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
-        <div class="bg-emerald-950/30 border border-emerald-500/40 rounded-2xl p-4">
-          <div class="flex items-center justify-between mb-2">
-            <strong class="text-sm font-black text-emerald-300">🟢 현재 가동 중: 구글 Gemini 3.5 Flash (100% 무료)</strong>
-            <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[10px]">비용 0원</span>
-          </div>
-          <p class="text-slate-300 leading-relaxed">• 1초 만에 4컷/6컷 만화 대본 및 15초 쇼츠 콘티 완성. 일일 1,500회 무료.</p>
-        </div>
-
-        <div class="space-y-2">
-          <h4 class="font-black text-slate-200">⚖️ 유료 업그레이드 대안 비교</h4>
-          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
-            <div>
-              <strong class="text-white font-bold block">Gemini 1.5 Pro (스토리/유머 극대화)</strong>
-              <span class="text-purple-400 text-[10px]">만화 1편당 약 1~2원</span>
-            </div>
-            <span class="text-slate-400 text-[10px]">선택 검토</span>
-          </div>
-          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
-            <div>
-              <strong class="text-white font-bold block">Midjourney v6 (극화체 웹툰)</strong>
-              <span class="text-amber-400 text-[10px]">월 1.5만~4만원</span>
-            </div>
-            <span class="text-slate-400 text-[10px]">선택 검토</span>
-          </div>
-          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
-            <div>
-              <strong class="text-white font-bold block">ElevenLabs (파키 목소리 AI 더빙)</strong>
-              <span class="text-teal-400 text-[10px]">월 약 7,000원 (쇼츠 음성 더빙용 강추)</span>
-            </div>
-            <span class="text-slate-400 text-[10px]">선택 검토</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-slate-950 px-6 py-4 border-t border-slate-800 flex justify-end">
-        <button onclick="closeToolAdvisoryModal()" class="px-5 py-2 rounded-xl bg-purple-600 text-white font-bold text-xs cursor-pointer">확인 완료</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- [팝업 3] 새 캐릭터 등록 모달 -->
-  <div id="addCharModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border-2 border-purple-500/40 p-6 flex flex-col gap-3">
-      <div class="flex items-center justify-between pb-2 border-b border-slate-800">
-        <h3 class="text-sm font-black text-white">➕ 새 캐릭터 인물 보관함 등록</h3>
-        <button onclick="closeAddCharacterModal()" class="text-slate-400 hover:text-white">✕</button>
-      </div>
-      <div>
-        <label class="block text-[11px] font-bold text-slate-400 mb-1">캐릭터 이름</label>
-        <input id="newCharName" type="text" placeholder="예: 박회장님" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
-      </div>
-      <div>
-        <label class="block text-[11px] font-bold text-slate-400 mb-1">역할 / 성격</label>
-        <input id="newCharRole" type="text" placeholder="예: 구력 20년 자칭 파크골프 달인" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
-      </div>
-      <div>
-        <label class="block text-[11px] font-bold text-slate-400 mb-1">대표 이모지</label>
-        <input id="newCharEmoji" type="text" value="👴" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
-      </div>
-      <button onclick="submitNewCharacter()" class="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs mt-2 cursor-pointer">
-        인물 보관함에 킵(Keep) 등록
-      </button>
-    </div>
-  </div>
-
-  <!-- ======================================================== -->
-  <!-- 6. 전역 자바스크립트 로직                                 -->
-  <!-- ======================================================== -->
   <script>
-    let currentData = {};
-    let characterVault = [];
-    let selectedChapterId = 'ch-1';
-    let selectedCutIndex = 0;
+    let currentEpisodeId = 1;
+    let currentLang = 'ko';
+    let episodesData = [];
+    let currentEpisodeConfig = null;
 
-    let wizardCutCount = 4;
-    let wizardPose = 'default';
-    let wizardSelectedCast = ['파키 (Parky)'];
-    let generatedWizardResult = null;
-
-    let shortsDuration = 15;
-    let bannerRatio = '16:9';
-
-    // 1. 탭 전환기
-    function switchTab(mode) {
-      ['toon', 'shorts', 'banner', 'vault'].forEach(m => {
-        const panel = document.getElementById(`panel_${m}`);
-        const btn = document.getElementById(`tabBtn_${m}`);
-        if (m === mode) {
-          panel.classList.remove('hidden');
-          btn.className = 'px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 bg-emerald-600 text-white shadow-md shadow-emerald-600/30';
-        } else {
-          panel.classList.add('hidden');
-          btn.className = 'px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800';
-        }
-      });
-    }
-
-    // 2. 초기 로드
-    async function initStudio() {
-      await loadCharacters();
-      await loadChapters();
-    }
-
-    async function loadCharacters() {
+    // Load initial episodes
+    async function init() {
       try {
-        const res = await fetch('/api/characters');
-        characterVault = await res.json();
-        renderCharacterVault();
-        renderCastSelector();
-      } catch (e) {
-        console.error('캐릭터 로드 오류:', e);
+        const res = await fetch('/api/episodes');
+        episodesData = await res.json();
+        renderEpisodeSelector();
+        selectEpisode(1);
+      } catch (err) {
+        console.error("Failed to load episodes:", err);
       }
     }
 
-    function renderCharacterVault() {
-      const container = document.getElementById('characterVaultGrid');
-      container.innerHTML = '';
-      characterVault.forEach(c => {
-        const card = document.createElement('div');
-        card.className = 'bg-slate-950 rounded-2xl p-4 border border-slate-800 flex flex-col justify-between shadow-lg';
-        card.innerHTML = `
-          <div>
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-3xl">${c.emoji}</span>
-              <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold border border-slate-700">${c.role}</span>
+    function renderEpisodeSelector() {
+      const bar = document.getElementById('episodesBar');
+      let html = '<div class="ep-label">✨ 공식 연대기 에피소드:</div>';
+      episodesData.forEach(ep => {
+        const title = currentLang === 'ja' ? ep.title_ja : ep.title_ko;
+        html += `<button class="ep-pill ${ep.id === currentEpisodeId ? 'active' : ''}" onclick="selectEpisode(${ep.id})">
+          제${ep.id}화 ${ep.theme}
+        </button>`;
+      });
+      bar.innerHTML = html;
+    }
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      document.getElementById('btnLangKo').classList.toggle('active', lang === 'ko');
+      document.getElementById('btnLangJa').classList.toggle('active', lang === 'ja');
+      renderEpisodeSelector();
+      loadEpisodeDetails();
+      executeRender();
+    }
+
+    function selectEpisode(epId) {
+      currentEpisodeId = epId;
+      document.querySelectorAll('.ep-pill').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx === epId - 1);
+      });
+      loadEpisodeDetails();
+      executeRender();
+    }
+
+    function loadEpisodeDetails() {
+      currentEpisodeConfig = episodesData.find(e => e.id === currentEpisodeId);
+      if (!currentEpisodeConfig) return;
+
+      const title = currentLang === 'ja' ? currentEpisodeConfig.title_ja : currentEpisodeConfig.title_ko;
+      const medal = currentLang === 'ja' ? currentEpisodeConfig.medal_ja : currentEpisodeConfig.medal_ko;
+      const cuts = currentLang === 'ja' ? currentEpisodeConfig.cuts_ja : currentEpisodeConfig.cuts_ko;
+
+      document.getElementById('infoTheme').textContent = currentEpisodeConfig.theme;
+      document.getElementById('infoTitle').textContent = title;
+      document.getElementById('infoMedal').textContent = medal;
+      document.getElementById('inputTitle').value = title;
+
+      // Render 6 cuts inputs
+      const cutsList = document.getElementById('cutsList');
+      let html = '';
+      cuts.forEach((c, idx) => {
+        const cutNum = idx + 1;
+        html += `
+          <div class="cut-edit-box">
+            <div class="cut-edit-header">
+              <span>[CUT ${cutNum}] ${c.badge}</span>
+              <span class="cut-desc-badge">${c.desc || ''}</span>
             </div>
-            <strong class="text-sm font-black text-white block">${c.name}</strong>
-            <p class="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">${c.desc}</p>
-          </div>
-          <div class="pt-3 border-t border-slate-800/80 mt-3 flex items-center justify-between">
-            <span class="text-[10px] text-emerald-400 font-bold">● 마스터 보관 중</span>
-            <button onclick="alert('${c.name} 캐릭터가 만화 캐스팅에 기본 등록되었습니다!')" class="text-[10px] px-2 py-1 rounded bg-slate-800 text-slate-200 hover:bg-slate-700">선택</button>
+            <div class="cut-inputs">
+              <div class="form-group">
+                <label class="form-label">노란색 안내 뱃지</label>
+                <input type="text" class="form-input" id="cut_badge_${cutNum}" value="${c.badge}">
+              </div>
+              <div class="form-group">
+                <label class="form-label">말풍선 대사 (선택)</label>
+                <input type="text" class="form-input" id="cut_bubble_${cutNum}" value="${c.bubble || ''}" placeholder="대사 없으면 비움">
+              </div>
+            </div>
           </div>
         `;
-        container.appendChild(card);
       });
+      cutsList.innerHTML = html;
     }
 
-    function renderCastSelector() {
-      const container = document.getElementById('castSelectorContainer');
-      container.innerHTML = '';
-      characterVault.forEach((c, idx) => {
-        const isChecked = (idx === 0) ? 'checked' : '';
-        const item = document.createElement('label');
-        item.className = 'p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center gap-2 cursor-pointer hover:border-slate-700';
-        item.innerHTML = `
-          <input type="checkbox" value="${c.name}" ${isChecked} onchange="updateSelectedCast()" class="rounded border-slate-700 text-emerald-500 focus:ring-0">
-          <span class="text-lg">${c.emoji}</span>
-          <span class="text-xs font-bold text-slate-200 truncate">${c.name.split(' ')[0]}</span>
-        `;
-        container.appendChild(item);
-      });
-    }
-
-    function updateSelectedCast() {
-      const checkboxes = document.querySelectorAll('#castSelectorContainer input[type="checkbox"]:checked');
-      wizardSelectedCast = Array.from(checkboxes).map(cb => cb.value);
-    }
-
-    // 3. 만화 챕터 로드
-    async function loadChapters() {
-      try {
-        const res = await fetch('/api/chapters');
-        currentData = await res.json();
-        renderChapterList();
-        selectCut(selectedChapterId, 0);
-      } catch (err) {
-        console.error('만화 로드 실패:', err);
-      }
-    }
-
-    function renderChapterList() {
-      const container = document.getElementById('chapterListContainer');
-      container.innerHTML = '';
-      const chapterIds = Object.keys(currentData);
-      document.getElementById('chapterCountBadge').textContent = `${chapterIds.length}개 챕터`;
-
-      chapterIds.forEach(chId => {
-        const ch = currentData[chId];
-        const isSelectedCh = (chId === selectedChapterId);
-
-        const chCard = document.createElement('div');
-        chCard.className = `rounded-2xl p-3 border transition-all ${isSelectedCh ? 'bg-slate-900 border-emerald-500/50 shadow-lg' : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'}`;
-
-        let cutsHtml = '';
-        ch.cuts.forEach((cut, idx) => {
-          const isSelectedCut = (isSelectedCh && idx === selectedCutIndex);
-          cutsHtml += `
-            <button onclick="selectCut('${chId}', ${idx})" 
-                    class="w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer ${isSelectedCut ? 'bg-emerald-600 text-white font-bold shadow-md' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}">
-              <span class="truncate pr-2">${cut.cutNumber}. ${cut.title}</span>
-              <span class="text-[10px] opacity-75 shrink-0">${cut.badge || '규정'}</span>
-            </button>
-          `;
-        });
-
-        chCard.innerHTML = `
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center gap-1.5">
-              <span class="text-xs font-black text-amber-400">${ch.chapterNumber}</span>
-              <strong class="text-xs text-white font-bold truncate max-w-[140px]">${ch.title}</strong>
-            </div>
-            <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold border border-slate-700">${ch.cuts.length}컷</span>
-          </div>
-          <div class="space-y-1">${cutsHtml}</div>
-        `;
-        container.appendChild(chCard);
-      });
-    }
-
-    function selectCut(chId, cutIdx) {
-      selectedChapterId = chId;
-      selectedCutIndex = cutIdx;
-      const ch = currentData[chId];
-      if (!ch || !ch.cuts[cutIdx]) return;
-      const cut = ch.cuts[cutIdx];
-
-      document.getElementById('previewCutIndicator').textContent = `${ch.chapterNumber} · ${cut.cutNumber}번째 컷`;
-      document.getElementById('cardBadge').textContent = cut.badge || '규정';
-      document.getElementById('cardTitle').textContent = cut.title;
-      document.getElementById('cardSituation').textContent = cut.situation;
-      document.getElementById('cardDialogue').textContent = cut.parkyDialogue;
-      document.getElementById('cardVerdict').textContent = cut.verdict;
-      document.getElementById('cardPenalty').textContent = cut.penaltyText || '규정 적용';
-      document.getElementById('cardKeyPoint').textContent = cut.keyPoint;
-      document.getElementById('cardArticle').textContent = cut.article;
-
-      // 폼 갱신
-      document.getElementById('editTitle').value = cut.title;
-      document.getElementById('editBadge').value = cut.badge;
-      document.getElementById('editBadgeType').value = cut.badgeType || 'info';
-      document.getElementById('editSituation').value = cut.situation;
-      document.getElementById('editDialogue').value = cut.parkyDialogue;
-      document.getElementById('editVerdict').value = cut.verdict;
-      document.getElementById('editKeyPoint').value = cut.keyPoint;
-      document.getElementById('editArticle').value = cut.article;
-
-      renderChapterList();
-    }
-
-    function updateCurrentCutFromInputs() {
-      const ch = currentData[selectedChapterId];
-      if (!ch || !ch.cuts[selectedCutIndex]) return;
-      const cut = ch.cuts[selectedCutIndex];
-      cut.title = document.getElementById('editTitle').value;
-      cut.badge = document.getElementById('editBadge').value;
-      cut.badgeType = document.getElementById('editBadgeType').value;
-      cut.situation = document.getElementById('editSituation').value;
-      cut.parkyDialogue = document.getElementById('editDialogue').value;
-      cut.verdict = document.getElementById('editVerdict').value;
-      cut.keyPoint = document.getElementById('editKeyPoint').value;
-      cut.article = document.getElementById('editArticle').value;
-
-      document.getElementById('cardBadge').textContent = cut.badge;
-      document.getElementById('cardTitle').textContent = cut.title;
-      document.getElementById('cardSituation').textContent = cut.situation;
-      document.getElementById('cardDialogue').textContent = cut.parkyDialogue;
-      document.getElementById('cardVerdict').textContent = cut.verdict;
-      document.getElementById('cardKeyPoint').textContent = cut.keyPoint;
-      document.getElementById('cardArticle').textContent = cut.article;
-    }
-
-    function navCut(offset) {
-      const ch = currentData[selectedChapterId];
-      if (!ch) return;
-      let newIdx = selectedCutIndex + offset;
-      if (newIdx < 0) newIdx = 0;
-      if (newIdx >= ch.cuts.length) newIdx = ch.cuts.length - 1;
-      selectCut(selectedChapterId, newIdx);
-    }
-
-    // 4. 쇼츠 & 배너 크로스 전환 연동!
-    function convertCurrentToonToShorts() {
-      const ch = currentData[selectedChapterId];
-      const cut = ch.cuts[selectedCutIndex];
-      document.getElementById('shortsTopicInput').value = `${cut.title} (${cut.verdict})`;
-      switchTab('shorts');
-      generateShortsScript();
-    }
-
-    function convertCurrentToonToBanner() {
-      const ch = currentData[selectedChapterId];
-      const cut = ch.cuts[selectedCutIndex];
-      document.getElementById('bannerTopicInput').value = cut.title;
-      switchTab('banner');
-      generateBannerConcept();
-    }
-
-    function convertShortsToBanner() {
-      const topic = document.getElementById('shortsTopicInput').value;
-      document.getElementById('bannerTopicInput').value = topic;
-      switchTab('banner');
-      generateBannerConcept();
-    }
-
-    // 5. 쇼츠 생성 로직
-    function setShortsDuration(dur) {
-      shortsDuration = dur;
-      [15, 30, 60].forEach(d => {
-        const btn = document.getElementById(`btnDur_${d}`);
-        if (d === dur) {
-          btn.className = 'py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs border border-purple-500';
-        } else {
-          btn.className = 'py-2.5 rounded-xl bg-slate-900 text-slate-400 font-bold text-xs border border-slate-800';
-        }
-      });
-      document.getElementById('shortsDurationBadge').textContent = `${dur}초 영상`;
-    }
-
-    async function generateShortsScript() {
-      const topic = document.getElementById('shortsTopicInput').value.trim() || '티샷 매트 이탈 2벌타 주의';
-      const style = document.getElementById('shortsStyleSelect').value;
-      const btn = document.getElementById('btnGenShorts');
-      btn.innerHTML = '<span>⏳</span><span>구글 AI가 쇼츠 기획 중..</span>';
+    async function executeRender() {
+      const btn = document.getElementById('btnOneClick');
+      btn.textContent = '⏳ 1초 렌더링 중...';
       btn.disabled = true;
 
       try {
-        const res = await fetch('/api/generate_shorts', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ topic, duration: shortsDuration, style })
-        });
-        const data = await res.json();
-
-        document.getElementById('shortsHookText').textContent = data.hook || '선배님들! 이 실수 하나로 2벌타 날아갑니다!';
-        document.getElementById('shortsBgmText').textContent = `BGM: ${data.bgm || '경쾌한 음악'}`;
-        document.getElementById('shortsVoiceText').textContent = `보이스: ${data.voiceTone || '밝은 파키 목소리'}`;
-
-        const container = document.getElementById('shortsSceneContainer');
-        container.innerHTML = '';
-        (data.scenes || []).forEach(sc => {
-          const sdiv = document.createElement('div');
-          sdiv.className = 'p-2 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px]';
-          sdiv.innerHTML = `
-            <div class="flex items-center justify-between text-amber-400 font-black mb-0.5">
-              <span>⏱️ ${sc.time}</span>
-              <span class="text-[10px] text-purple-300">${sc.caption}</span>
-            </div>
-            <p class="text-white font-bold">${sc.audio}</p>
-          `;
-          container.appendChild(sdiv);
-        });
-
-      } catch (err) {
-        alert('쇼츠 생성 오류: ' + err);
-      } finally {
-        btn.innerHTML = '<span>✨</span><span>1초 만에 쇼츠 영상 콘티 자동 생성</span>';
-        btn.disabled = false;
-      }
-    }
-
-    // 6. 배너 생성 로직
-    function setBannerRatio(r) {
-      bannerRatio = r;
-      ['16:9', '1:1', '9:16'].forEach(rt => {
-        const id = rt.replace(':', '_');
-        const btn = document.getElementById(`btnRatio_${id}`);
-        if (rt === r) {
-          btn.className = 'py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs border border-blue-500';
-        } else {
-          btn.className = 'py-2.5 rounded-xl bg-slate-900 text-slate-400 font-bold text-xs border border-slate-800';
-        }
-      });
-      document.getElementById('bannerRatioBadge').textContent = `${r} 배너`;
-
-      const card = document.getElementById('bannerMockupCard');
-      card.className = `w-full ${r === '16:9' ? 'aspect-video' : (r === '1:1' ? 'aspect-square max-w-sm' : 'aspect-[9/16] max-w-xs')} bg-gradient-to-r from-emerald-900 via-slate-900 to-slate-950 rounded-3xl p-6 border-2 border-blue-500/40 shadow-2xl flex flex-col justify-between relative overflow-hidden`;
-    }
-
-    async function generateBannerConcept() {
-      const topic = document.getElementById('bannerTopicInput').value.trim() || '파크골프 규정 마스터';
-      const btn = document.getElementById('btnGenBanner');
-      btn.innerHTML = '<span>⏳</span><span>Imagen 3 프롬프트 생성 중..</span>';
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/generate_banner', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ topic, ratio: bannerRatio, target: '유튜브 썸네일' })
-        });
-        const data = await res.json();
-
-        document.getElementById('bannerHeadlineText').textContent = data.headline || topic;
-        document.getElementById('bannerSubheadText').textContent = data.subhead || '공인 규정 완벽 해설';
-        document.getElementById('bannerCtaBtn').textContent = data.ctaText || '지금 무료로 확인하기 ➔';
-        document.getElementById('bannerPromptText').textContent = data.imagePrompt || 'Illustration of park golf';
-
-      } catch (err) {
-        alert('배너 생성 오류: ' + err);
-      } finally {
-        btn.innerHTML = '<span>✨</span><span>고화질 마케팅 배너 카피 & 이미지 생성</span>';
-        btn.disabled = false;
-      }
-    }
-
-    // 7. 마법사 팝업 로직
-    function openWizardModal() { document.getElementById('wizardModal').classList.remove('hidden'); }
-    function closeWizardModal() { document.getElementById('wizardModal').classList.add('hidden'); }
-    function openToolAdvisoryModal() { document.getElementById('toolAdvisoryModal').classList.remove('hidden'); }
-    function closeToolAdvisoryModal() { document.getElementById('toolAdvisoryModal').classList.add('hidden'); }
-    function openAddCharacterModal() { document.getElementById('addCharModal').classList.remove('hidden'); }
-    function closeAddCharacterModal() { document.getElementById('addCharModal').classList.add('hidden'); }
-
-    function selectCutStyle(c) {
-      wizardCutCount = c;
-      [1, 4, 6].forEach(cnt => {
-        const el = document.getElementById(`cutStyle_${cnt}`);
-        if (cnt === c) {
-          el.className = 'p-3.5 rounded-2xl bg-slate-950 border-2 border-emerald-500 text-left cursor-pointer transition-all block';
-        } else {
-          el.className = 'p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-left cursor-pointer transition-all block';
-        }
-      });
-    }
-
-    function setWizardTopic(t) { document.getElementById('wizardTopicInput').value = t; }
-
-    async function previewContiWithAI() {
-      const topic = document.getElementById('wizardTopicInput').value.trim();
-      if (!topic) { alert('코스 상황이나 주제를 선택해 주세요!'); return; }
-
-      const btn = document.getElementById('btnGenerateConti');
-      const box = document.getElementById('contiPreviewBox');
-      btn.innerHTML = '<span>⏳</span><span>AI 연출중..</span>';
-      btn.disabled = true;
-
-      try {
-        const res = await fetch('/api/generate_multi_cut', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            topic,
-            cutCount: wizardCutCount,
-            pose: 'default',
-            cast: wizardSelectedCast,
-            chapterNumber: Object.keys(currentData).length + 1
-          })
-        });
-        generatedWizardResult = await res.json();
-
-        let previewHtml = `<strong class="text-sm font-black text-amber-300 block mb-2">🎬 콘티 제목: ${generatedWizardResult.chapterTitle}</strong>`;
-        previewHtml += `<div class="space-y-1.5">`;
-        generatedWizardResult.cuts.forEach(cut => {
-          previewHtml += `
-            <div class="p-2 rounded-lg bg-slate-950 border border-slate-800 text-[11px]">
-              <strong class="text-emerald-400 font-bold">[${cut.cutNumber}컷] ${cut.title}</strong>
-              <p class="text-slate-300 mt-0.5">· 상황: ${cut.situation}</p>
-              <p class="text-slate-400 mt-0.5">· 대사: "${cut.parkyDialogue}"</p>
-            </div>
-          `;
-        });
-        previewHtml += `</div>`;
-        box.innerHTML = previewHtml;
-
-      } catch (err) {
-        box.innerHTML = `<span class="text-rose-400">콘티 오류: ${err}</span>`;
-      } finally {
-        btn.innerHTML = '<span>✨</span><span>AI 콘티 짜기 (클릭)</span>';
-        btn.disabled = false;
-      }
-    }
-
-    async function executeWizardGeneration() {
-      const topic = document.getElementById('wizardTopicInput').value.trim();
-      if (!topic) { alert('주제를 입력해 주세요!'); return; }
-
-      const btn = document.getElementById('btnExecuteWizard');
-      btn.innerHTML = '<span>⏳</span><span>만화 완성 중..</span>';
-      btn.disabled = true;
-
-      try {
-        if (!generatedWizardResult) {
-          const res = await fetch('/api/generate_multi_cut', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-              topic,
-              cutCount: wizardCutCount,
-              pose: 'default',
-              cast: wizardSelectedCast,
-              chapterNumber: Object.keys(currentData).length + 1
-            })
-          });
-          generatedWizardResult = await res.json();
-        }
-
-        const newChNum = Object.keys(currentData).length + 1;
-        const newChId = `ch-${newChNum}`;
-        const newChapter = {
-          chapterId: newChId,
-          chapterNumber: `제${newChNum}장`,
-          title: generatedWizardResult.chapterTitle || `${topic} 완전정복`,
-          subtitle: `${wizardCutCount}컷 완결 웹툰 에피소드`,
-          coverImage: '/mascot/master_cuts/ch-1_cover.jpg',
-          totalCuts: generatedWizardResult.cuts.length,
-          cuts: generatedWizardResult.cuts
+        const payload = {
+          episode_id: currentEpisodeId,
+          lang: currentLang,
+          overrides: collectOverrides(),
+          save_desktop: true
         };
 
-        currentData[newChId] = newChapter;
-        renderChapterList();
-        selectCut(newChId, 0);
+        const res = await fetch('/api/render', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-        closeWizardModal();
-        alert(`🎉 [${newChapter.title}] 만화가 완성되었습니다!`);
-        generatedWizardResult = null;
+        const data = await res.json();
+        if (data.status === 'success') {
+          // Update Master Image
+          const masterImg = document.getElementById('masterPreview');
+          const cb = data.master_web_url.includes('?') ? '&cb=' : '?cb=';
+          masterImg.src = data.master_web_url + cb + Date.now();
 
-      } catch (e) {
-        alert('생성 실패: ' + e);
+          // Render Sliced Cards
+          renderSlicedCards(data.cards);
+          showToast(`제${currentEpisodeId}화 6단 만화 및 카드 6장 완성!`);
+        } else {
+          alert('렌더링 오류: ' + data.message);
+        }
+      } catch (err) {
+        console.error(err);
+        alert('서버 통신 실패');
       } finally {
-        btn.innerHTML = '<span>✨</span><span>만화 컷 최종 생성하기</span>';
+        btn.textContent = '🚀 1초 만화 원클릭 자동 렌더링';
         btn.disabled = false;
       }
     }
 
-    async function submitNewCharacter() {
-      const name = document.getElementById('newCharName').value.trim();
-      const role = document.getElementById('newCharRole').value.trim();
-      const emoji = document.getElementById('newCharEmoji').value.trim() || '👴';
-
-      if (!name) { alert('캐릭터 이름을 입력해 주세요!'); return; }
-
-      const newChar = {
-        id: `char_${Date.now()}`,
-        name: name,
-        role: role || '동호인 동반자',
-        emoji: emoji,
-        avatar: '',
-        desc: `${role} - 파크온 라운드 동반 캐릭터`
-      };
-
-      try {
-        const res = await fetch('/api/save_character', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ character: newChar })
+    function collectOverrides() {
+      const title = document.getElementById('inputTitle').value;
+      const cuts = [];
+      for (let i = 1; i <= 6; i++) {
+        const b = document.getElementById(`cut_badge_${i}`);
+        const bb = document.getElementById(`cut_bubble_${i}`);
+        cuts.push({
+          cut: i,
+          badge: b ? b.value : '',
+          bubble: bb ? bb.value : ''
         });
-        await res.json();
-        alert(`🎉 [${name}] 캐릭터가 인물 보관함에 성공적으로 등록되었습니다!`);
-        closeAddCharacterModal();
-        await loadCharacters();
+      }
+      return { title, cuts };
+    }
+
+    function applyCustomEdits() {
+      executeRender();
+    }
+
+    function resetToDefaults() {
+      loadEpisodeDetails();
+      executeRender();
+      showToast('기본 원본 내용으로 복원되었습니다.');
+    }
+
+    function renderSlicedCards(cards) {
+      const container = document.getElementById('cardsGrid');
+      if (!cards || cards.length === 0) {
+        container.innerHTML = '<p style="color: #94A3B8;">카드 생성 대기 중...</p>';
+        return;
+      }
+
+      let html = '';
+      cards.forEach(card => {
+        html += `
+          <div class="card-item">
+            <img src="${card.web_url}?t=${Date.now()}" alt="CUT ${card.cut}" onclick="openModal(this.src)">
+            <div class="card-item-footer">
+              <span>CUT ${card.cut}</span>
+              <a href="${card.web_url}" download="${card.filename}" style="color: #22C55E; text-decoration: none;">다운로드</a>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    async function openOutputFolder() {
+      try {
+        const res = await fetch('/api/open_folder', { method: 'POST' });
+        const d = await res.json();
+        if (d.status === 'success') {
+          showToast('📁 공식 만화 모음 폴더를 열었습니다!');
+        }
       } catch (err) {
-        alert('캐릭터 등록 실패: ' + err);
+        console.error(err);
       }
     }
 
-    async function saveAllChapters() {
+    function copyPromoText() {
+      if (!currentEpisodeConfig) return;
+      const title = currentLang === 'ja' ? currentEpisodeConfig.title_ja : currentEpisodeConfig.title_ko;
+      const medal = currentLang === 'ja' ? currentEpisodeConfig.medal_ja : currentEpisodeConfig.medal_ko;
+      
+      let text = `⛳ [파키 앱(PARKY APP) 공식 6단 만화 제${currentEpisodeId}화]\n`;
+      text += `"${title}"\n\n`;
+      text += `✨ 이번 화 획득 공식 훈장: ${medal}\n`;
+      text += `대한민국 No.1 스마트 파크골프 공식 포털 — 파키 앱(PARKY APP)과 함께 전국 400여 개 구장 순회 투어에 도전하세요!\n\n`;
+      text += `👉 파키 앱 무료 다운로드 및 전국 코스 확인: https://parkgolfallinone.com`;
+
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('📋 네이버 밴드 / 페이스북 홍보 문구가 복사되었습니다!');
+      });
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      setTimeout(() => {
+        t.style.display = 'none';
+      }, 3000);
+    }
+
+    function openModal(src) {
+      document.getElementById('modalImg').src = src;
+      document.getElementById('imageModal').style.display = 'flex';
+    }
+
+    async function importConti() {
+      const text = document.getElementById('inputContiText').value.trim();
+      if (!text) {
+        alert('제미나이에서 복사한 6단 콘티 텍스트를 먼저 붙여넣어 주세요!');
+        return;
+      }
+      showToast('⏳ 제미나이 콘티 분석 중...');
       try {
-        const res = await fetch('/api/save_chapter', {
+        const res = await fetch('/api/parse_conti', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            chapterId: selectedChapterId,
-            chapter: currentData[selectedChapterId]
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw_text: text })
         });
-        await res.json();
-        alert('✅ 파크온 앱 데이터베이스에 성공적으로 채택 및 정식 등록되었습니다!');
+        const d = await res.json();
+        if (d.status === 'success' && d.data) {
+          const data = d.data;
+
+          // 1. Auto-switch to the detected episode!
+          if (data.episode_id && data.episode_id >= 1 && data.episode_id <= 10) {
+            currentEpisodeId = data.episode_id;
+            // update episode pill active state
+            document.querySelectorAll('.ep-pill').forEach((btn, idx) => {
+              btn.classList.toggle('active', idx === currentEpisodeId - 1);
+            });
+            // Re-render inputs for the detected episode
+            loadEpisodeDetails();
+          }
+
+          // 2. Set title
+          document.getElementById('inputTitle').value = data.title;
+          document.getElementById('infoTitle').textContent = data.title;
+
+          // 3. Set 6 cuts badges and bubbles
+          data.cuts.forEach(c => {
+            const b = document.getElementById(`cut_badge_${c.cut}`);
+            const bb = document.getElementById(`cut_bubble_${c.cut}`);
+            if (b) b.value = c.badge;
+            if (bb) bb.value = c.bubble;
+          });
+
+          // 4. Force Korean language active
+          currentLang = 'ko';
+          document.getElementById('btnLangKo').classList.add('active');
+          document.getElementById('btnLangJa').classList.remove('active');
+
+          // 5. Render immediately!
+          await executeRender();
+          showToast(`🎉 제${currentEpisodeId}화 콘티로 왼쪽 만화가 완벽하게 연동되었습니다!`);
+        } else {
+          alert('콘티 분석 실패: ' + (d.message || ''));
+        }
       } catch (err) {
-        alert('저장 실패: ' + err);
+        console.error(err);
+        alert('콘티 통신 오류: ' + err);
       }
     }
 
-    window.onload = initStudio;
+    function clearConti() {
+      document.getElementById('inputContiText').value = '';
+      showToast('콘티 입력창을 비웠습니다.');
+    }
+
+    async function translateAndRenderJapanese() {
+      const btn = document.getElementById('btnTranslateJa');
+      const originalText = btn.textContent;
+      btn.textContent = '⏳ 일본어 전문 번역 & 렌더링 중...';
+      btn.disabled = true;
+
+      try {
+        const currentPayload = collectOverrides();
+        showToast('⏳ 파크골프 전문 용어로 일본어 변환 중...');
+        const res = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentPayload)
+        });
+        const d = await res.json();
+        if (d.status === 'success' && d.data) {
+          const jaData = d.data;
+          // Populate inputs with Japanese
+          document.getElementById('inputTitle').value = jaData.title;
+          jaData.cuts.forEach(c => {
+            const b = document.getElementById(`cut_badge_${c.cut}`);
+            const bb = document.getElementById(`cut_bubble_${c.cut}`);
+            if (b) b.value = c.badge;
+            if (bb) bb.value = c.bubble;
+          });
+          // Switch language to JA and render
+          currentLang = 'ja';
+          document.getElementById('btnLangKo').classList.remove('active');
+          document.getElementById('btnLangJa').classList.add('active');
+          await executeRender();
+          showToast('🇯🇵 일본어판 6단 만화 및 카드뉴스 6장 완성!');
+        } else {
+          alert('일본어 변환 실패: ' + (d.message || ''));
+        }
+      } catch (err) {
+        console.error(err);
+        alert('일본어 변환 오류: ' + err);
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    window.onload = init;
   </script>
 </body>
 </html>

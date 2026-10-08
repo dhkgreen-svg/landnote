@@ -654,8 +654,8 @@ export default function RoundPlayPage() {
       if (!autoPromptedHolesRef.current[actualHole]) {
         autoPromptedHolesRef.current[actualHole] = true;
         setEditingPar(0);
-        setEditingDistance('');
-        setSignboardChecked(false);
+        setEditingDistance('50');
+        setSignboardChecked(true);
         setShowSpecConfirmStep(false);
         setShowHoleSpecModal(true);
       }
@@ -1710,15 +1710,15 @@ export default function RoundPlayPage() {
   };
 
   const openHoleSpecModal = () => {
-    // 대표님 지침: 미확인 구장은 Par와 거리가 공란으로 시작!
+    // 대표님 지침: 미확인 구장은 50m로 시작하여 좌우 증감 버튼으로 손쉽게 조절!
     if (!isHoleVerified) {
-      setEditingPar(0); // 0 = 미선택 / 공란
-      setEditingDistance(''); // 빈 칸 = 공란
+      setEditingPar(0); // 0 = 미선택 / 공란 (버튼 선택 유도)
+      setEditingDistance('50'); // 기본 50m 표출
     } else {
       setEditingPar(Number(holeMetadata.par) || 3);
-      setEditingDistance(String(Number(holeMetadata.distanceMeter) || ''));
+      setEditingDistance(String(Number(holeMetadata.distanceMeter) || 50));
     }
-    setSignboardChecked(false);
+    setSignboardChecked(true);
     setShowSpecConfirmStep(false);
     setShowHoleSpecModal(true);
   };
@@ -2155,13 +2155,6 @@ export default function RoundPlayPage() {
 
           {/* 3. [최상단 배치] 단일 대형 버튼: [ 🏌️ 확인 완료 (티샷 시작) ] */}
           <div className="pt-2 space-y-2.5">
-            {!isCurrentUserLeader && (
-              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-1.5 text-xs text-amber-900 dark:text-amber-200 font-bold mb-1 shadow-xs">
-                <span className="text-base">👑</span>
-                <span>{isJapanese ? `代表(${currentLeaderPlayer?.name || '代表'})がティーショットを開始するとスコア入力画面に自動切替されます。` : `조장(${currentLeaderPlayer?.name || '조장'})님이 티샷을 진행하면 전원 스코어 입력창으로 자동 전환됩니다.`}</span>
-              </div>
-            )}
-
             <button
               type="button"
               onClick={() => {
@@ -2187,6 +2180,32 @@ export default function RoundPlayPage() {
 
             {/* 코스 공략 제공 (확인 완료 버튼 밑으로 배치) */}
             <TipCard hole={actualHoleNumber} tip={holeMetadata.tip} />
+
+            {/* [대표님 지침]: 상시 스코어보드 보기 버튼 (코스공략 바로 밑 배치 + 고대비 녹색 테두리 & 시인성 대폭 강화) */}
+            <button
+              type="button"
+              onClick={() => setShowTotalScoreModal(true)}
+              className={`w-full py-3 px-3.5 rounded-2xl font-black text-sm flex items-center justify-between transition border-2 shadow-sm active:scale-[0.98] cursor-pointer ${
+                sunlightMode
+                  ? 'bg-zinc-900 text-yellow-300 border-yellow-400 ring-2 ring-yellow-400/30 hover:bg-zinc-800'
+                  : 'bg-white hover:bg-emerald-50/80 text-emerald-950 border-emerald-600 ring-2 ring-emerald-500/15 shadow-emerald-900/5'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shadow-2xs">
+                  <BarChart2 className="w-4 h-4 text-emerald-700" />
+                </span>
+                <span className="font-black text-sm">
+                  {isJapanese ? '現在のスコアボードを見る' : isEnglish ? 'View Scoreboard' : '현재 스코어보드판 보기'}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="bg-emerald-600 text-white font-black text-[11px] px-2.5 py-0.5 rounded-full shadow-2xs">
+                  {confirmedHoles.length}{isJapanese ? 'ホール累積' : '홀 누적 현황'}
+                </span>
+                <ChevronRight className="w-4 h-4 text-emerald-700 shrink-0" />
+              </div>
+            </button>
 
             {/* 4. 하단 보조 3대 액션 버튼: [ 🔄 코스/홀 이동 ] [ ☕ 잠시 빠지기 ] [ 🛑 경기 종료 (빨간색) ] */}
             <div className="grid grid-cols-3 gap-2 pt-1">
@@ -2230,20 +2249,6 @@ export default function RoundPlayPage() {
               </button>
             </div>
 
-            {/* 상시 스코어보드 보기 버튼 (1단계에서도 조회 가능) */}
-            <button
-              type="button"
-              onClick={() => setShowTotalScoreModal(true)}
-              className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition border active:scale-95 cursor-pointer ${
-                sunlightMode
-                  ? 'bg-black text-stone-300 border-stone-800 hover:text-white'
-                  : 'bg-stone-100 text-stone-700 border-stone-200 hover:bg-stone-200'
-              }`}
-            >
-              <BarChart2 className="w-4 h-4 text-emerald-600" />
-              <span>{isJapanese ? `現在のスコアボードを見る (${confirmedHoles.length}ホール累積)` : isEnglish ? `View Scoreboard (${confirmedHoles.length} holes)` : `현재 스코어보드판 보기 (${confirmedHoles.length}홀 누적 현황)`}</span>
-            </button>
-
             {/* [대표님 요청]: 하단 2분할 버튼 [ 🌱 잔디 상태 1초 제보 ] + [ ☀️ 햇빛모드 ] */}
             <div className="grid grid-cols-2 gap-2 pt-1 border-t border-stone-200/40">
               <button
@@ -2281,6 +2286,18 @@ export default function RoundPlayPage() {
                 <span className="tracking-tight truncate">{sunlightMode ? (isJapanese ? '日差しモード ON' : '햇빛모드 ON') : (isJapanese ? '日差しモード' : '햇빛모드')}</span>
               </button>
             </div>
+
+            {/* [대표님 지침]: 조장 진행 안내 바 - 제일 밑으로 배치 */}
+            {!isCurrentUserLeader && (
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center gap-1.5 text-xs text-amber-900 dark:text-amber-200 font-bold shadow-xs text-center">
+                <span className="text-base">👑</span>
+                <span>
+                  {isJapanese
+                    ? `代表(${currentLeaderPlayer?.name || '代表'})がティーショットを開始するとスコア入力画面に自動切替されます。`
+                    : `조장(${currentLeaderPlayer?.name || '조장'})님이 티샷을 진행하면 전원 스코어 입력창으로 자동 전환됩니다.`}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -3133,11 +3150,11 @@ export default function RoundPlayPage() {
                         </span>
                       )}
                     </span>
-                    <span className={`font-bold text-[11px] ${editingPar > 0 ? 'text-emerald-700 font-black' : 'text-amber-700 font-black'}`}>
-                      {editingPar > 0
-                        ? (isJapanese ? `現在選択: Par ${editingPar}` : `현재 선택: Par ${editingPar}`)
-                        : (isJapanese ? 'Par 3, 4, 5からタッチ' : '팻말 보고 Par 3, 4, 5 중 터치')}
-                    </span>
+                    {editingPar > 0 && (
+                      <span className="font-bold text-[11px] text-emerald-700 font-black">
+                        {isJapanese ? `現在選択: Par ${editingPar}` : `현재 선택: Par ${editingPar}`}
+                      </span>
+                    )}
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     {[3, 4, 5].map((p) => {
@@ -3176,11 +3193,11 @@ export default function RoundPlayPage() {
                         </span>
                       )}
                     </span>
-                    <span className={`font-bold text-[11px] ${editingDistance ? 'text-emerald-700 font-black' : 'text-amber-700 font-black'}`}>
-                      {editingDistance
-                        ? (isJapanese ? `現在設定: ${editingDistance}m` : `현재 설정: ${editingDistance}m`)
-                        : (isJapanese ? '看板の数値を直接入力' : '팻말 거리 직접 입력')}
-                    </span>
+                    {editingDistance && (
+                      <span className="font-bold text-[11px] text-emerald-700 font-black">
+                        {isJapanese ? `現在設定: ${editingDistance}m` : `현재 설정: ${editingDistance}m`}
+                      </span>
+                    )}
                   </label>
 
                   <div className="flex items-center gap-2">
@@ -3202,7 +3219,7 @@ export default function RoundPlayPage() {
                           const clean = raw.replace(/^0+/, '');
                           setEditingDistance(clean);
                         }}
-                        placeholder={isJapanese ? '看板の距離を入力 (例: 65)' : '팻말 거리 입력 (예: 65)'}
+                        placeholder="50"
                         className="w-full h-12 text-center text-2xl font-black rounded-xl border-2 border-stone-300 focus:border-emerald-600 focus:bg-white focus:outline-none bg-stone-50 text-stone-800 pr-9 pl-3 placeholder:text-stone-400 placeholder:text-base placeholder:font-normal"
                       />
                       {editingDistance ? (
@@ -3238,27 +3255,14 @@ export default function RoundPlayPage() {
                   </div>
                 </div>
 
-                {/* [5대 마스터 아키텍처 4]: 현장 안내판(팻말) 확인 필수 체크박스 */}
-                <label className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-50 border-2 border-amber-300 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={signboardChecked}
-                    onChange={(e) => setSignboardChecked(e.target.checked)}
-                    className="w-5 h-5 accent-emerald-600 rounded cursor-pointer shrink-0"
-                  />
-                  <span className="text-xs font-black text-stone-900">
-                    {isJapanese ? '現地の案内看板を確認しました (必須)' : '현장 안내판(팻말)을 확인했습니다 (필수)'}
-                  </span>
-                </label>
-
                 {/* Modal Actions: 미확인 구장 1-Touch 즉시 등록 vs 기존 제원 2단계 확인 */}
-                <div className="pt-1 space-y-1.5">
+                <div className="pt-1">
                   {!isHoleVerified ? (
                     <button
                       type="button"
                       onClick={() => {
                         if (!editingPar || editingPar < 3 || editingPar > 5) {
-                          alert(isJapanese ? '⚠️ ティー看板を確認し、基準打数 (Par 3, 4, 5) を選択してください。' : '⚠️ 현장 팻말을 확인하시고 기준 타수 (Par 3, 4, 5 중 하나) 를 선택해 주십시오.');
+                          alert(isJapanese ? '⚠️ 現地公式看板の基準打数 (Par 3, 4, 5) を選択してください。' : '⚠️ 현장 공식 안내판(팻말)에 적힌 기준 타수 (Par 3, 4, 5 중 하나) 를 선택해 주십시오.');
                           return;
                         }
                         const numDist = Number(editingDistance);
@@ -3266,30 +3270,19 @@ export default function RoundPlayPage() {
                           alert(isJapanese ? '⚠️ ティー看板を確認し、有効なホール距離 (10m〜300m) を入力してください。' : '⚠️ 현장 팻말을 확인하시고 올바른 홀 거리 (10m ~ 300m) 를 입력해 주십시오.');
                           return;
                         }
-                        if (!signboardChecked) {
-                          alert(isJapanese ? '⚠️ 現地の案内看板確認チェックボックスにチェックを入れてください。' : '⚠️ 현장 안내판(팻말) 확인 체크박스에 체크해 주셔야 등록하실 수 있습니다.');
-                          return;
-                        }
                         handleSaveHoleSpec(editingPar, numDist, true);
                       }}
-                      className={`w-full font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border cursor-pointer ${
-                        signboardChecked && editingPar && editingDistance
-                          ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-emerald-400 animate-pulse'
-                          : 'bg-amber-500 hover:bg-amber-600 text-white border-amber-400'
-                      }`}
+                      className="w-full font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-emerald-400"
                     >
-                      <CheckCircle2 className="w-5 h-5" />
+                      <CheckCircle2 className="w-5 h-5 shrink-0" />
                       <span>
-                        {signboardChecked && editingPar && editingDistance
-                          ? (isJapanese ? `✍️ 諸元を登録してティーショット開始 (Par ${editingPar}, ${editingDistance}m)` : `✍️ 팻말 제원 등록하고 티샷 시작하기 (Par ${editingPar}, ${editingDistance}m)`)
-                          : (!editingPar
-                              ? (isJapanese ? '⚠️ 基準打数 (Par 3·4·5) を選択してください' : '⚠️ 기준 타수 (Par 3·4·5) 를 선택해 주세요')
-                              : (!editingDistance
-                                  ? (isJapanese ? '⚠️ ホール距離 (m) を入力してください' : '⚠️ 홀 거리 (m) 를 입력해 주세요')
-                                  : (isJapanese ? '⚠️ 現地看板確認チェックボックスをチェックしてください' : '⚠️ 안내판(팻말) 확인 체크박스를 체크해 주세요')
-                                )
-                            )
-                        }
+                        {editingPar && editingDistance
+                          ? (isJapanese
+                              ? `✍️ 現地公式看板の諸元で登録・確認 (Par ${editingPar}, ${editingDistance}m)`
+                              : `✍️ 현장 공식 안내판 제원으로 등록 및 확인 (Par ${editingPar}, ${editingDistance}m)`)
+                          : (isJapanese
+                              ? '✍️ 現地公式案内看板に書かれた諸元で登録および確認'
+                              : '✍️ 현장 공식 안내판에 적힌 제원으로 등록 및 확인')}
                       </span>
                     </button>
                   ) : (
@@ -3297,7 +3290,7 @@ export default function RoundPlayPage() {
                       type="button"
                       onClick={() => {
                         if (!editingPar || editingPar < 3 || editingPar > 5) {
-                          alert(isJapanese ? '⚠️ ティー看板を確認し、基準打数 (Par 3, 4, 5) を選択してください。' : '⚠️ 현장 팻말을 확인하시고 기준 타수 (Par 3, 4, 5) 를 선택해 주십시오.');
+                          alert(isJapanese ? '⚠️ 現地公式看板の基準打数 (Par 3, 4, 5) を選択してください。' : '⚠️ 현장 공식 안내판(팻말)에 적힌 기준 타수 (Par 3, 4, 5 중 하나) 를 선택해 주십시오.');
                           return;
                         }
                         const numDist = Number(editingDistance);
@@ -3305,27 +3298,24 @@ export default function RoundPlayPage() {
                           alert(isJapanese ? '⚠️ ティー看板を確認し、有効なホール距離 (10m〜300m) を入力してください。' : '⚠️ 현장 팻말을 확인하시고 올바른 홀 거리 (10m ~ 300m) 를 입력해 주십시오.');
                           return;
                         }
-                        if (!signboardChecked) {
-                          alert(isJapanese ? '⚠️ 現地の案内看板確認チェックボックスにチェックを入れてください。' : '⚠️ 현장 안내판(팻말) 확인 체크박스에 체크해 주셔야 저장 단계로 진행하실 수 있습니다.');
-                          return;
-                        }
                         setShowSpecConfirmStep(true);
                       }}
-                      className={`w-full font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border cursor-pointer ${
-                        signboardChecked && editingPar && editingDistance
-                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400'
-                          : 'bg-amber-500 hover:bg-amber-600 text-white border-amber-400'
-                      }`}
+                      className="w-full font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400"
                     >
-                      <CheckCircle2 className="w-5 h-5" />
+                      <CheckCircle2 className="w-5 h-5 shrink-0" />
                       <span>
-                        {signboardChecked && editingPar && editingDistance
-                          ? (isJapanese ? `入力内容確認へ進む (Par ${editingPar}, ${editingDistance}m)` : `입력 내용 확인 단계로 이동 (Par ${editingPar}, ${editingDistance}m)`)
-                          : (isJapanese ? '⚠️ 諸元入力・看板確認を完了してください' : '⚠️ 팻말 제원 입력 및 확인 체크를 완료해 주세요')
-                        }
+                        {editingPar && editingDistance
+                          ? (isJapanese
+                              ? `✍️ 現地公式看板の諸元で登録・確認へ (Par ${editingPar}, ${editingDistance}m)`
+                              : `✍️ 현장 공식 안내판 제원으로 등록 및 확인 (Par ${editingPar}, ${editingDistance}m)`)
+                          : (isJapanese
+                              ? '✍️ 現地公式案内看板に書かれた諸元で登録および確認'
+                              : '✍️ 현장 공식 안내판에 적힌 제원으로 등록 및 확인')}
                       </span>
                     </button>
                   )}
+
+
 
                   {/* [대표님 테스트 안심 원복 기능]: 테스트로 등록한 제원을 언제든 0.1초 만에 미확인 상태로 되돌리기 */}
                   {isHoleVerified && (

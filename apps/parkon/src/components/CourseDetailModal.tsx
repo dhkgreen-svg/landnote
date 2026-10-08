@@ -7,6 +7,8 @@ import { Course, HoleMetadata, CourseContribution } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
 import { generateStandardHoles } from '@/lib/defaultCourses';
 import { CourseHallOfFameModal } from '@/components/CourseHallOfFameModal';
+import { CourseRestaurantList } from '@/components/CourseRestaurantList';
+import { RestaurantStorage } from '@/lib/restaurantStorage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import {
   getCourseDualName,
@@ -56,6 +58,9 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
   const [showPhotoSection, setShowPhotoSection] = useState<boolean>(false);
   const [showHallOfFameModal, setShowHallOfFameModal] = useState<boolean>(false);
+  const [activeDetailTab, setActiveDetailTab] = useState<'COURSES' | 'RESTAURANTS'>('COURSES');
+
+  const courseRestaurants = RestaurantStorage.getRestaurantsByCourse(course.name || course.id);
 
   const currentCourseLetter = availableCourses[currentCourseIdx] || 'A';
   const startHoleNum = currentCourseIdx * 9 + 1;
@@ -197,57 +202,98 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
           </div>
         </div>
 
-        {/* 대표님 원칙 2단계: 최다 완주 명예의 전당 바로가기 */}
-        <div className="px-3 pt-2.5 bg-stone-100 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setShowHallOfFameModal(true)}
-            className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black text-xs shadow-xs flex items-center justify-center gap-1.5 transition active:scale-98 cursor-pointer"
-          >
-            <Trophy className="w-4 h-4 fill-current text-stone-950" />
-            <span>🏆 이 구장 최다 완주 명예의 전당 (TOP 10 랭킹) 보기</span>
-          </button>
+        {/* [대표님 신규 기능]: ⛳ 코스/홀 제원 vs 🍲 동호인 단골 맛집 탭 전환 */}
+        <div className="px-3 pt-2.5 bg-stone-100 border-b border-stone-200 shrink-0">
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-200/90 rounded-2xl">
+            <button
+              type="button"
+              onClick={() => setActiveDetailTab('COURSES')}
+              className={`py-2 px-3 rounded-xl font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeDetailTab === 'COURSES'
+                  ? 'bg-emerald-800 text-amber-300 shadow-sm'
+                  : 'text-stone-700 hover:text-stone-950 font-bold'
+              }`}
+            >
+              <span>⛳ 코스/홀 제원</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveDetailTab('RESTAURANTS')}
+              className={`py-2 px-3 rounded-xl font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeDetailTab === 'RESTAURANTS'
+                  ? 'bg-emerald-800 text-amber-300 shadow-sm'
+                  : 'text-stone-700 hover:text-stone-950 font-bold'
+              }`}
+            >
+              <span>🍲 동호인 단골 맛집</span>
+              {courseRestaurants.length > 0 && (
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  activeDetailTab === 'RESTAURANTS' ? 'bg-amber-400 text-stone-950' : 'bg-emerald-600 text-white'
+                }`}>
+                  {courseRestaurants.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* 2. [핵심] A, B, C, D 코스 대형 탭 버튼 (상단 고정 노출) */}
-        <div className="p-3 bg-stone-100 border-b border-stone-200 shrink-0 space-y-2">
-          <div className="grid grid-cols-4 gap-1.5">
-            {availableCourses.map((letter, idx) => {
-              const isActive = currentCourseIdx === idx;
-
-              return (
-                <button
-                  key={letter}
-                  type="button"
-                  onClick={() => setCurrentCourseIdx(idx)}
-                  className={`py-2 px-1 rounded-2xl text-center transition cursor-pointer active:scale-97 border ${
-                    isActive
-                      ? 'bg-emerald-800 text-white border-emerald-900 shadow-md ring-2 ring-emerald-500'
-                      : 'bg-white text-stone-700 hover:bg-stone-50 border-stone-200/80 shadow-2xs'
-                  }`}
-                >
-                  <div className={`text-sm sm:text-base font-black leading-tight ${isActive ? 'text-amber-300' : 'text-stone-900'}`}>
-                    {letter} 코스
-                  </div>
-                  <div className={`text-[10px] font-bold mt-0.5 ${isActive ? 'text-emerald-200' : 'text-stone-500'}`}>
-                    1~9홀 (9홀)
-                  </div>
-                </button>
-              );
-            })}
+        {activeDetailTab === 'RESTAURANTS' ? (
+          <div className="flex-1 overflow-y-auto p-3.5">
+            <CourseRestaurantList courseId={course.id} courseName={course.name} />
           </div>
-
-          {/* 현재 코스 요약 띠 */}
-          <div className="flex items-center justify-between px-1 text-xs">
-            <span className="font-black text-stone-800 flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-              <span>{currentCourseLetter}코스 상세 제원 (1~9번 홀)</span>
-            </span>
-            <div className="font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-lg border border-emerald-200">
-              Par {totalParCurrent} · 총 {totalDistCurrent}m
+        ) : (
+          <>
+            {/* 대표님 원칙 2단계: 최다 완주 명예의 전당 바로가기 */}
+            <div className="px-3 pt-2.5 bg-stone-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setShowHallOfFameModal(true)}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black text-xs shadow-xs flex items-center justify-center gap-1.5 transition active:scale-98 cursor-pointer"
+              >
+                <Trophy className="w-4 h-4 fill-current text-stone-950" />
+                <span>🏆 이 구장 최다 완주 명예의 전당 (TOP 10 랭킹) 보기</span>
+              </button>
             </div>
-          </div>
-        </div>
+
+            {/* 2. [핵심] A, B, C, D 코스 대형 탭 버튼 (상단 고정 노출) */}
+            <div className="p-3 bg-stone-100 border-b border-stone-200 shrink-0 space-y-2">
+              <div className="grid grid-cols-4 gap-1.5">
+                {availableCourses.map((letter, idx) => {
+                  const isActive = currentCourseIdx === idx;
+
+                  return (
+                    <button
+                      key={letter}
+                      type="button"
+                      onClick={() => setCurrentCourseIdx(idx)}
+                      className={`py-2 px-1 rounded-2xl text-center transition cursor-pointer active:scale-97 border ${
+                        isActive
+                          ? 'bg-emerald-800 text-white border-emerald-900 shadow-md ring-2 ring-emerald-500'
+                          : 'bg-white text-stone-700 hover:bg-stone-50 border-stone-200/80 shadow-2xs'
+                      }`}
+                    >
+                      <div className={`text-sm sm:text-base font-black leading-tight ${isActive ? 'text-amber-300' : 'text-stone-900'}`}>
+                        {letter} 코스
+                      </div>
+                      <div className={`text-[10px] font-bold mt-0.5 ${isActive ? 'text-emerald-200' : 'text-stone-500'}`}>
+                        1~9홀 (9홀)
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 현재 코스 요약 띠 */}
+              <div className="flex items-center justify-between px-1 text-xs">
+                <span className="font-black text-stone-800 flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+                  <span>{currentCourseLetter}코스 상세 제원 (1~9번 홀)</span>
+                </span>
+                <div className="font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-lg border border-emerald-200">
+                  Par {totalParCurrent} · 총 {totalDistCurrent}m
+                </div>
+              </div>
+            </div>
 
         {/* 3. 본문 스크롤: 9개 홀 카드 리스트 */}
         <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5">
@@ -450,6 +496,8 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
             )}
           </div>
         </div>
+      </>
+    )}
 
         {/* 4. Footer */}
         <div className="p-3 bg-stone-50 border-t border-stone-200 flex items-center gap-2 shrink-0">

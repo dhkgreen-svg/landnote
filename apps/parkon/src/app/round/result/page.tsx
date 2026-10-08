@@ -25,6 +25,7 @@ import { getCourseDualName } from '@/lib/courseLocalization';
 import { formatPlayerDisplayName } from '@/lib/playerUtils';
 import { DiamondTierBadge } from '@/components/DiamondTierBadge';
 import { calculateTier, getUserCompleted9Holes } from '@/lib/courseBlockTier';
+import { RestaurantSubmitModal } from '@/components/RestaurantSubmitModal';
 
 const JA_PRESCRIPTIONS = [
   {
@@ -81,6 +82,7 @@ function ResultContent() {
   const [showNationalTourModal, setShowNationalTourModal] = useState<boolean>(false);
   const [newlyUnlockedProvince, setNewlyUnlockedProvince] = useState<ProvinceInfo | null>(null);
   const [isFull18Completed, setIsFull18Completed] = useState<boolean>(false);
+  const [showRestaurantModal, setShowRestaurantModal] = useState<boolean>(false);
 
   const handleExchangeCards = () => {
     if (!session) return;
@@ -1103,6 +1105,39 @@ function ResultContent() {
         </div>
       </div>
 
+      {/* 🍲 [대표님 신규 기능]: 라운드 완주 후 뒤풀이 맛집 추천 유도 배너 */}
+      <div className="bg-gradient-to-r from-amber-500 via-orange-400 to-amber-400 rounded-3xl p-4 shadow-lg border-2 border-amber-300 text-stone-950 space-y-2.5 animate-fadeIn">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🍲</span>
+            <div>
+              <span className="text-[10px] font-black bg-stone-950 text-amber-300 px-2 py-0.5 rounded-full inline-block">
+                {isJapanese ? 'ラウンド後の反省会・食事' : '오늘 라운드 뒤풀이 & 식사'}
+              </span>
+              <h4 className="font-black text-sm text-stone-950 leading-tight mt-0.5">
+                {isJapanese ? '今日ラウンド後、どこで食事されましたか？' : '오늘 라운드 후 어디서 식사하셨나요?'}
+              </h4>
+            </div>
+          </div>
+          <span className="text-[11px] font-black text-amber-950 bg-white/80 px-2 py-0.5 rounded-xl shadow-2xs">
+            {isJapanese ? '1秒推薦' : '1초 추천'}
+          </span>
+        </div>
+        <p className="text-xs text-stone-900 font-semibold leading-snug">
+          {isJapanese
+            ? '同伴者の皆様と訪れた美味しい行きつけのお店を全国のゴルファーにお知らせください！'
+            : '동반자들과 함께 간 맛있는 찐 단골집을 동호인들에게 알려주시고 [🍽️ 미식가 훈장]을 받으세요!'}
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowRestaurantModal(true)}
+          className="w-full py-3 bg-stone-950 hover:bg-stone-900 active:scale-98 text-amber-300 font-black rounded-2xl text-xs sm:text-sm transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+        >
+          <span>🍲</span>
+          <span>{isJapanese ? '私たちの組の行きつけ店を1秒推薦する ▶' : '우리 조 단골집 1초 추천하기 ▶'}</span>
+        </button>
+      </div>
+
       {/* 5. Navigation Buttons */}
       <div className="pt-2 space-y-2">
         {session.clubRoomId && (
@@ -1321,6 +1356,22 @@ function ResultContent() {
               : '📸 오늘의 기념사진이 연대기 앨범에 안전하게 등록되었습니다!'
           );
           setTimeout(() => setSaveSuccessToast(null), 3500);
+        }}
+      />
+
+      {/* 🍲 [대표님 신규 기능]: 라운드 완주 후 뒤풀이 맛집 추천 등록 모달 */}
+      <RestaurantSubmitModal
+        isOpen={showRestaurantModal}
+        onClose={() => setShowRestaurantModal(false)}
+        defaultCourseName={course?.name || session?.courseName || '구미 동락 파크골프장'}
+        defaultCourseId={course?.id || session?.courseId || '1'}
+        onSuccess={() => {
+          setSaveSuccessToast(
+            isJapanese
+              ? '🍲 おすすめのお店が登録され、年代記に美食家バッジが追加されました！'
+              : '🍲 단골 맛집이 등록되어 나의 연대기에 [🍽️ 필드의 미식가 훈장]이 적립되었습니다!'
+          );
+          setTimeout(() => setSaveSuccessToast(null), 4000);
         }}
       />
     </div>

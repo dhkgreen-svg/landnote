@@ -1199,36 +1199,27 @@ export default function HomePage() {
               })()}
 
               {/* 오른쪽: 라운딩 바로 시작하기 (실전 정식 기록) */}
-              {homeCourse ? (
-                <Link
-                  href={`/round/new?courseId=${homeCourse.id}`}
-                  className="bg-gradient-to-br from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 text-emerald-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition active:scale-[0.97] border-2 border-emerald-300 group"
-                >
-                  <div className="flex items-center gap-1 text-sm sm:text-base font-black leading-tight">
-                    <Play className="w-4 h-4 sm:w-4.5 sm:h-4.5 fill-current text-emerald-950" />
-                    <span className="truncate">{isJapanese ? 'スコア記録スタート' : isEnglish ? 'Start Score Record' : '스코어 기록 시작하기'}</span>
-                  </div>
-                  <span className="text-[10px] sm:text-[10.5px] font-extrabold text-emerald-950 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-                    {isJapanese ? '公式スコアボード保存' : isEnglish ? 'Official Scoreboard' : '공식 스코어보드 저장'}
-                  </span>
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowHomeModal(true);
-                  }}
-                  className="bg-gradient-to-br from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 text-emerald-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition active:scale-[0.97] border-2 border-emerald-300 group cursor-pointer"
-                >
-                  <div className="flex items-center gap-1 text-sm sm:text-base font-black leading-tight">
-                    <Play className="w-4 h-4 sm:w-4.5 sm:h-4.5 fill-current text-emerald-950" />
-                    <span className="truncate">{isJapanese ? 'スコア記録スタート' : isEnglish ? 'Start Score Record' : '스코어 기록 시작하기'}</span>
-                  </div>
-                  <span className="text-[10px] sm:text-[10.5px] font-extrabold text-emerald-950 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-                    {isJapanese ? 'コースを先に選択' : '구장 먼저 선택하기'}
-                  </span>
-                </button>
-              )}
+              {(() => {
+                const targetCourse = homeCourse || getCurrentActiveCourse() || courses[0];
+                const courseId = targetCourse?.id || 'course_1';
+                const courseShortName = (targetCourse?.name || '구미 동락').replace('파크골프장', '').replace('파크골프', '').trim();
+                return (
+                  <Link
+                    href={`/round/new?courseId=${courseId}`}
+                    className="bg-gradient-to-br from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 text-emerald-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition active:scale-[0.97] border-2 border-emerald-300 group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-1 text-sm sm:text-base font-black leading-tight">
+                      <Play className="w-4 h-4 sm:w-4.5 sm:h-4.5 fill-current text-emerald-950" />
+                      <span className="truncate">{isJapanese ? 'スコア記録スタート' : isEnglish ? 'Start Score Record' : '스코어 기록 시작하기'}</span>
+                    </div>
+                    <span className="text-[10px] sm:text-[10.5px] font-extrabold text-emerald-950 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
+                      {homeCourse
+                        ? (isJapanese ? '公式スコアボード保存' : isEnglish ? 'Official Scoreboard' : '공식 스코어보드 저장')
+                        : (isJapanese ? `${courseShortName} で即開始` : `${courseShortName} 바로 시작`)}
+                    </span>
+                  </Link>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -1327,6 +1318,40 @@ export default function HomePage() {
           </div>
         </Link>
       </section>
+
+      {/* 🍲 [대표님 신규 기능]: 전국 400개 구장 동호인 찐 맛집 총람 섹션 */}
+      <Link
+        href="/restaurants"
+        className="block bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white rounded-3xl p-4 shadow-md border-2 border-amber-300 hover:border-yellow-200 transition active:scale-[0.99] cursor-pointer group"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="w-12 h-12 rounded-2xl bg-white text-stone-950 flex items-center justify-center text-2xl shadow-md shrink-0 group-hover:scale-105 transition-transform">
+              🍲
+            </span>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black bg-stone-950 text-amber-300 px-2 py-0.5 rounded-full">
+                  동호인 검증 100%
+                </span>
+                <span className="text-xs text-amber-100 font-bold">뒤풀이 · 반주</span>
+              </div>
+              <h3 className="font-black text-base sm:text-lg text-white leading-tight mt-0.5">
+                {isJapanese ? '全国パークゴルフ場 厳選グルメ' : '전국 400개 구장 동호인 찐 맛집 총람'}
+              </h3>
+              <p className="text-[11.5px] text-amber-100 font-semibold mt-0.5">
+                {isJapanese
+                  ? '大型駐車場・個室・スピード提供・マッコリ反省会グルメ'
+                  : '대형주차 · 단체룸 · 5분컷 · 막걸리 반주 맛집 모아보기'}
+              </p>
+            </div>
+          </div>
+          <span className="shrink-0 bg-stone-950 text-amber-300 px-3 py-1.5 rounded-xl text-xs font-black shadow-sm group-hover:bg-stone-900 transition flex items-center gap-1">
+            <span>{isJapanese ? '一覧' : '피드 보기'}</span>
+            <span>▶</span>
+          </span>
+        </div>
+      </Link>
 
       {/* 4-1. 배너 1: 천기성 사주 오늘의 무료 사주 보러 가기 제휴 배너 */}
       <a
@@ -3746,6 +3771,7 @@ export default function HomePage() {
                           handleSelectHomeCourse(sc.id);
                           setShowHomeModal(false);
                           setHomeModalSearch('');
+                          router.push(`/round/new?courseId=${sc.id}`);
                         }}
                         className="p-3 rounded-2xl border-2 border-stone-200 hover:border-emerald-500 hover:bg-emerald-50/50 flex items-center justify-between transition cursor-pointer active:scale-[0.99] group bg-white shadow-2xs"
                       >

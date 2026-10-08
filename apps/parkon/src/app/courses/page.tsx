@@ -39,6 +39,9 @@ import { TourRegisterModal } from '@/components/TourRegisterModal';
 import { ClubRegisterModal } from '@/components/ClubRegisterModal';
 import { ClubJoinModal } from '@/components/ClubJoinModal';
 import { CourseReviewFormModal } from '@/components/CourseReviewFormModal';
+import { RestaurantSubmitModal } from '@/components/RestaurantSubmitModal';
+import { RestaurantDetailModal } from '@/components/RestaurantDetailModal';
+import { RestaurantStorage, RestaurantRecommendation, getKakaoMapUrl } from '@/lib/restaurantStorage';
 import { TourStorage, TourPackage, TourType } from '@/lib/tourStorage';
 import { ClubStorage } from '@/lib/clubStorage';
 import { ParkGolfClub, ClubRecruitStatus } from '@/types/club';
@@ -317,6 +320,21 @@ export default function CoursesPage() {
   const [storeSubCategoryFilter, setStoreSubCategoryFilter] = useState<string>('전체');
   const [storeSortMode, setStoreSortMode] = useState<'RECOMMENDED' | 'DISTANCE' | 'LATEST'>('RECOMMENDED');
   const [showStoreRegisterModal, setShowStoreRegisterModal] = useState<boolean>(false);
+  const [storeMainTab, setStoreMainTab] = useState<'RESTAURANT' | 'CAFE'>('RESTAURANT');
+  const [showRestaurantSubmitModal, setShowRestaurantSubmitModal] = useState<boolean>(false);
+  const [showAllRestaurants, setShowAllRestaurants] = useState<boolean>(false);
+  const [selectedDetailRestaurant, setSelectedDetailRestaurant] = useState<RestaurantRecommendation | null>(null);
+  const [userRecommendedStores, setUserRecommendedStores] = useState<RestaurantRecommendation[]>(() =>
+    RestaurantStorage.getAllRestaurants()
+  );
+
+  useEffect(() => {
+    const handleRestaurantsUpdated = () => {
+      setUserRecommendedStores(RestaurantStorage.getAllRestaurants());
+    };
+    window.addEventListener('parkon_restaurants_updated', handleRestaurantsUpdated);
+    return () => window.removeEventListener('parkon_restaurants_updated', handleRestaurantsUpdated);
+  }, []);
 
   // 등록된 매장의 상단 옥션 신청/수정 모달 상태 (무료 입점 후 필요 시 언제든 옥션 참여)
   const [auctionTargetStore, setAuctionTargetStore] = useState<AffiliatedStore | null>(null);
@@ -757,7 +775,7 @@ export default function CoursesPage() {
     setNewMarketSpecs('');
     setNewMarketDesc('');
     setShowMarketModal(false);
-    alert('중고 매물이 성공적으로 등록되었습니다!');
+    alert('무료 직거래 매물이 성공적으로 등록되었습니다!');
   };
 
   // Handle New Restaurant Registration
@@ -1316,7 +1334,7 @@ export default function CoursesPage() {
                 }`}
               >
                 <span>🌐</span>
-                <span>{isJapanese ? '全体' : '전국·전체'}</span>
+                <span>{isJapanese ? '全体' : '전체'}</span>
                 <span className="text-[10px] opacity-80">({courses.length})</span>
               </button>
 
@@ -1377,7 +1395,7 @@ export default function CoursesPage() {
                     : `全体 (${courses.length})`
                   : countryFilter === 'KR'
                   ? `전국 전체 (${courses.filter((c) => c.country !== 'JP').length})`
-                  : `전국·전체 (${courses.length})`
+                  : `전체 (${courses.length})`
                 }
               </button>
               {((isJapanese || countryFilter === 'JP')
@@ -1533,7 +1551,7 @@ export default function CoursesPage() {
       {/* 어르신 시인성 고려 큼직한 아이콘과 직관적 텍스트, 운영자용 단어(유료/옥션 등) 완전 배제 */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5">
-        {/* Row 1, Col 1: 식당 & 카페 */}
+        {/* Row 1, Col 1: 인근 식당 & 카페 */}
         <button
           type="button"
           onClick={() => setActiveServiceTab('RESTAURANT')}
@@ -1541,10 +1559,10 @@ export default function CoursesPage() {
         >
           <span className="text-2xl sm:text-3xl">🍽️</span>
           <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
-            {isJapanese ? 'グルメ・カフェ' : '식당 & 카페'}
+            {isJapanese ? '周辺グルメ・カフェ' : '인근 식당 & 카페'}
           </span>
           <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
-            {isJapanese ? '[特典] ドリンク' : '[쿠폰] 음료·서비스'}
+            {isJapanese ? 'おすすめ名店' : '동호인 찐 맛집'}
           </span>
         </button>
 
@@ -1623,7 +1641,7 @@ export default function CoursesPage() {
           </span>
         </button>
 
-        {/* Row 2, Col 3: 중고 장터 */}
+        {/* Row 2, Col 3: 무료 장터 (구 중고 장터) */}
         <button
           type="button"
           onClick={() => setActiveServiceTab('MARKET')}
@@ -1631,10 +1649,10 @@ export default function CoursesPage() {
         >
           <span className="text-2xl sm:text-3xl">🤝</span>
           <span className="text-[11px] sm:text-xs font-black whitespace-nowrap tracking-tight">
-            {isJapanese ? '中古フリマ' : '중고 장터'}
+            {isJapanese ? '無料フリマ' : '무료 장터'}
           </span>
           <span className="text-[9px] sm:text-[10px] font-bold whitespace-nowrap tracking-tighter truncate max-w-full text-stone-500">
-            {isJapanese ? '個人無料直取引' : '개인 무료 직거래'}
+            {isJapanese ? '個人・店舗無料直取引' : '개인·상점 무료 등록'}
           </span>
         </button>
 
@@ -1988,25 +2006,26 @@ export default function CoursesPage() {
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-base sm:text-lg font-black tracking-tight text-white truncate">
-                    {activeServiceTab === 'RESTAURANT' && (isJapanese ? 'コース提携グルメ・カフェ' : '구장 제휴 식당 & 카페')}
+                    {activeServiceTab === 'RESTAURANT' && (isJapanese ? 'コース周辺グルメ・カフェ' : '구장 인근 식당 & 카페')}
                     {activeServiceTab === 'SCREEN' && (isJapanese ? '全国スクリーンパークゴルフ場' : '전국 스크린 파크골프장 매장 및 예약')}
                     {activeServiceTab === 'TOUR' && (isJapanese ? 'パークゴルフ国内外ツアー旅行社' : '파크골프 국내 & 해외 투어 여행사')}
                     {activeServiceTab === 'CLUB' && (isJapanese ? '全国パークゴルフ同好会・サークル' : '전국 클럽 & 동호회 모임 찾기')}
-                    {activeServiceTab === 'RANGE_LESSON' && (isJapanese ? 'レッスン・練習場探し' : '레슨 & 연습장 찾기')}
+                    {activeServiceTab === 'RANGE_LESSON' && (isJapanese ? '専門コーチのレッスン及び屋内外練習場案内' : '전문 코치 레슨 및 실내·외 연습장 안내')}
                     {activeServiceTab === 'SHOP' && (isJapanese ? 'パークゴルフフィッティング・用品店' : '파크골프 피팅 & 골프 매장')}
-                    {activeServiceTab === 'MARKET' && (isJapanese ? 'パークゴルフ中古安心直取引フリーマーケット' : '파크골프 중고 매매 및 맞교환 장터')}
+                    {activeServiceTab === 'MARKET' && (isJapanese ? 'パークゴルフ無料直取引フリーマーケット' : '파크골프 무료 직거래 장터')}
                     {activeServiceTab === 'REVIEW' && (isJapanese ? 'リアルコース探訪記・評価' : '생생 구장 탐방후기 & 별점')}
                   </h2>
-                  <p className="text-[11px] sm:text-xs text-emerald-100 font-medium truncate">
-                    {activeServiceTab === 'RESTAURANT' && '[쿠폰] 음료·서비스 혜택 & 동반자 단체 예약 명소'}
-                    {activeServiceTab === 'SCREEN' && '궂은 날씨에도 실내에서 즐기는 전국 스크린 매장'}
-                    {activeServiceTab === 'TOUR' && '국내·외 명문 파크골프장 투어 여행 및 원정 라운드'}
-                    {activeServiceTab === 'CLUB' && '내 주변 동호회 가입, 정기 월례회 및 실시간 번개 모임'}
-                    {activeServiceTab === 'RANGE_LESSON' && (isJapanese ? '専門コーチのレッスン及び屋内外練習場案内' : '전문 코치 레슨 및 실내·외 연습장 안내')}
-                    {activeServiceTab === 'SHOP' && '정품 클럽, 용품점 및 즉시 그립 교체 전문점'}
-                    {activeServiceTab === 'MARKET' && '수수료 0원! 파크골프채·용품 회원간 직거래 장터'}
-                    {activeServiceTab === 'REVIEW' && '실제 방문 골퍼들의 잔디 상태 및 솔직 한줄평'}
-                  </p>
+                  {activeServiceTab !== 'RESTAURANT' && (
+                    <p className="text-[11px] sm:text-xs text-emerald-100 font-medium truncate">
+                      {activeServiceTab === 'SCREEN' && '궂은 날씨에도 실내에서 즐기는 전국 스크린 매장'}
+                      {activeServiceTab === 'TOUR' && '국내·외 명문 파크골프장 투어 여행 및 원정 라운드'}
+                      {activeServiceTab === 'CLUB' && '내 주변 동호회 가입, 정기 월례회 및 실시간 번개 모임'}
+                      {activeServiceTab === 'RANGE_LESSON' && (isJapanese ? '専門コーチのレッスン及び屋内外練習場案内' : '전문 코치 레슨 및 실내·외 연습장 안내')}
+                      {activeServiceTab === 'SHOP' && '정품 클럽, 용품점 및 즉시 그립 교체 전문점'}
+                      {activeServiceTab === 'MARKET' && (isJapanese ? '手数料0円！個人愛好者・店舗どなたでも自由に出品＆直取引' : '수수료 0원! 개인·상점 누구나 자유롭게 무료 등록 & 직거래')}
+                      {activeServiceTab === 'REVIEW' && '실제 방문 골퍼들의 잔디 상태 및 솔직 한줄평'}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -2026,54 +2045,53 @@ export default function CoursesPage() {
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
 
           {/* ========================================================================= */}
-          {/* PANEL 1: 식당 & 카페 (구장별 상권 입점, 옥션 엔진 및 2단계 계층 정렬) */}
+          {/* PANEL 1: 구장 인근 식당 & 카페 (2개 카테고리 탭 + 유저 단골 식당 추천 탭) */}
           {/* ========================================================================= */}
           {activeServiceTab === 'RESTAURANT' && (() => {
-            const courseScopedStores = AuctionStorage.getStoresForCourse(selectedStoreCourseId);
-            const { tier1: auctionStores, tier2: freeStores, all: currentAllStores } = AuctionStorage.sortStores(
-              courseScopedStores,
-              storeSortMode,
-              storeSubCategoryFilter,
-              isJapanese
-            );
             const currentSelectedCourse = courses.find((c) => c.id === selectedStoreCourseId);
-            const currentCourseName = currentSelectedCourse?.name || (selectedStoreCourseId === 'ALL' ? '전국 전체 구장' : '선택 구장');
+            const currentCourseName = currentSelectedCourse?.name || (selectedStoreCourseId === 'ALL' ? '전국 전체 구장' : '구미 동락 파크골프장');
+
+            const isCafeCategory = (cat?: string) => {
+              if (!cat) return false;
+              return cat === '카페/다과' || cat === '카페·간식' || cat === '분식·기타' || cat.includes('카페') || cat.includes('다과') || cat.includes('다원');
+            };
+
+            // 선택된 구장에 매칭되는 식당/카페 목록
+            const categoryStores = userRecommendedStores.filter((s) => {
+              const isCafe = isCafeCategory(s.category);
+              const matchCategory = storeMainTab === 'CAFE' ? isCafe : !isCafe;
+
+              if (selectedStoreCourseId === 'ALL') return matchCategory;
+
+              const cName = (s.courseName || '').toLowerCase();
+              const targetCourseShortName = (currentCourseName || '').toLowerCase().replace('파크골프장', '').trim();
+
+              const matchCourse =
+                s.courseId === selectedStoreCourseId ||
+                (selectedStoreCourseId.includes('dongrak') && (s.courseId === '1' || cName.includes('동락'))) ||
+                (selectedStoreCourseId.includes('suseong') && (s.courseId === '3' || cName.includes('수성'))) ||
+                (targetCourseShortName && cName.includes(targetCourseShortName));
+
+              return matchCategory && matchCourse;
+            });
+
+            // 대표님 지침: 참여수(60%) + 별점(40%) 가중치 6:4 종합 랭킹 및 옥션 1위 정렬
+            const scoredStores = RestaurantStorage.sortRestaurants(
+              categoryStores.length > 0
+                ? categoryStores
+                : userRecommendedStores.filter((s) => (storeMainTab === 'CAFE' ? isCafeCategory(s.category) : !isCafeCategory(s.category)))
+            );
+
+            // 초기 서너 개(4개) 노출 및 전체보기 토글
+            const visibleStores = showAllRestaurants ? scoredStores : scoredStores.slice(0, 4);
 
             return (
-              <div className="bg-white rounded-3xl p-4 sm:p-5 border-2 border-emerald-500/50 shadow-md space-y-4 animate-fadeIn">
-                {/* 패널 헤더 */}
-                <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-2xl bg-amber-100 flex items-center justify-center text-xl">
-                      🍽️
-                    </div>
-                    <div>
-                      <h3 className="text-base font-black text-stone-900 flex items-center gap-1.5">
-                        <span>{isJapanese ? 'コース提携グルメ・カフェ' : '구장 제휴 식당 & 카페'}</span>
-                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-black">
-                          {currentAllStores.length}곳 입점
-                        </span>
-                      </h3>
-                      <p className="text-[11px] text-stone-600 font-semibold">
-                        [쿠폰] 음료·서비스 혜택 & 파크골프 동반자 조별 단체 예약 명소
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowStoreRegisterModal(true)}
-                    className="bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs px-3 py-2 rounded-xl flex items-center gap-1 shadow-xs cursor-pointer active:scale-95 transition shrink-0"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{isJapanese ? '無料出店' : '무료 입점'}</span>
-                  </button>
-                </div>
-
-                {/* 1. 상권 구장 선택 바 (거리 제한 없는 생활권 매칭) */}
+              <div className="bg-white rounded-3xl p-3.5 sm:p-4.5 border-2 border-emerald-500/50 shadow-md space-y-3.5 animate-fadeIn">
+                {/* 1. 상권 구장 선택 바 */}
                 <div className="bg-stone-50 border border-stone-200 rounded-2xl p-2.5 flex items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-1.5 min-w-0 font-bold text-stone-700">
                     <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
-                    <span className="shrink-0 text-stone-500">현재 상권 구장:</span>
+                    <span className="shrink-0 text-stone-500">{isJapanese ? '周辺コース:' : '현재 상권 구장:'}</span>
                     <span className="font-black text-emerald-950 truncate">
                       {currentCourseName}
                     </span>
@@ -2087,324 +2105,171 @@ export default function CoursesPage() {
                     className="bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer shrink-0"
                   >
                     <Search className="w-3.5 h-3.5" />
-                    <span>해당 구장 선택하기</span>
+                    <span>{isJapanese ? 'コース選択' : '해당 구장 선택하기'}</span>
                   </button>
                 </div>
 
-                {/* 2. 식당 구분 칩 버튼 ([전체], [한식·탕], [고기·구이], [국수·면류], [카페·간식], [단체·회식]) */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
-                  {RESTAURANT_SUB_CATEGORIES.map((cat) => {
-                    const isSelected = storeSubCategoryFilter === cat.id;
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setStoreSubCategoryFilter(cat.id)}
-                        className={`px-3 py-2 rounded-xl font-black whitespace-nowrap transition cursor-pointer flex items-center gap-1 shrink-0 ${
-                          isSelected
-                            ? 'bg-emerald-700 text-white shadow-xs'
-                            : 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200'
-                        }`}
-                      >
-                        <span>{cat.icon}</span>
-                        <span>{cat.label}</span>
-                      </button>
-                    );
-                  })}
+                {/* 2. 대분류 2개 탭: [ 🍲 식당 ] vs [ ☕ 카페·간식 ] */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStoreMainTab('RESTAURANT')}
+                    className={`py-2.5 px-3 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-98 shadow-xs border-2 ${
+                      storeMainTab === 'RESTAURANT'
+                        ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm'
+                        : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    <span className="text-base">🍲</span>
+                    <span>{isJapanese ? 'グルメ' : '식당'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStoreMainTab('CAFE')}
+                    className={`py-2.5 px-3 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-98 shadow-xs border-2 ${
+                      storeMainTab === 'CAFE'
+                        ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm'
+                        : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                    }`}
+                  >
+                    <span className="text-base">☕</span>
+                    <span>{isJapanese ? 'カフェ・軽食' : '카페·간식'}</span>
+                  </button>
                 </div>
 
-                {/* 3. 정렬 옵션: [추천순 (기본값)], [거리순], [최신순] */}
-                <div className="flex items-center justify-between text-xs pt-1 border-t border-stone-100">
-                  <span className="text-[11px] text-stone-500 font-bold">
-                    정렬 기준:
-                  </span>
-                  <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl">
-                    <button
-                      type="button"
-                      onClick={() => setStoreSortMode('RECOMMENDED')}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer ${
-                        storeSortMode === 'RECOMMENDED'
-                          ? 'bg-white text-emerald-800 shadow-2xs'
-                          : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      추천순 (기본값)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStoreSortMode('DISTANCE')}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer ${
-                        storeSortMode === 'DISTANCE'
-                          ? 'bg-white text-emerald-800 shadow-2xs'
-                          : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      거리순
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStoreSortMode('LATEST')}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition cursor-pointer ${
-                        storeSortMode === 'LATEST'
-                          ? 'bg-white text-emerald-800 shadow-2xs'
-                          : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      최신순
-                    </button>
+                {/* 3. 대표님 지침: 6:4 가중치 랭킹 헤더 안내 띠 */}
+                <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl px-3 py-2 flex items-center justify-between text-[11px] font-black text-emerald-950">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="text-amber-500">🏆</span>
+                    <span className="truncate">{isJapanese ? '愛好者参加数(60%)＋評価(40%)加重ランキング順' : '동호인 참여수(60%) + 별점(40%) 가중치 랭킹 순'}</span>
                   </div>
+                  <span className="text-emerald-800 font-bold shrink-0">
+                    {isJapanese ? `計 ${scoredStores.length}件` : `총 ${scoredStores.length}곳`}
+                  </span>
                 </div>
 
-                {/* 4. 공실 뷰(Empty View) OR 2단계 계층 리스트 */}
-                {currentAllStores.length === 0 ? (
-                  /* [공실 뷰: Empty View with PARKY mascot] */
-                  <div className="text-center py-8 px-4 bg-emerald-50/50 rounded-3xl border-2 border-dashed border-emerald-300 space-y-4 animate-fadeIn">
-                    <div className="relative inline-block">
-                      <img
-                        src="/parky.jpg"
-                        alt="마스코트 파키 PARKY"
-                        className="w-20 h-20 rounded-full border-4 border-emerald-500 shadow-md mx-auto object-cover"
-                      />
-                      <span className="absolute -bottom-1 -right-1 bg-amber-400 text-stone-950 text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-xs">
-                        1호 모집
-                      </span>
-                    </div>
-
-                    <div className="space-y-1.5 max-w-sm mx-auto">
-                      <h4 className="font-black text-stone-900 text-base">
-                        &apos;{currentCourseName}&apos; 제휴 매장 모집 중!
-                      </h4>
-                      <p className="text-xs text-stone-600 leading-relaxed font-medium">
-                        아직 이 구장에 등록된 제휴 매장이 없습니다.<br />
-                        단골 식당 사장님께 알려주시거나, 직접 1호 제휴 매장으로 입점 신청해 보세요!
-                      </p>
-                    </div>
-
-                    <div className="pt-1 max-w-sm mx-auto">
-                      <button
-                        type="button"
-                        onClick={() => setShowStoreRegisterModal(true)}
-                        className="w-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-stone-950 font-black text-xs sm:text-sm py-3.5 px-4 rounded-2xl shadow-lg border-2 border-amber-500 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
-                      >
-                        <Sparkles className="w-4 h-4 text-stone-950 shrink-0" />
-                        <span>{isJapanese ? '提携店舗 無料出店申請' : '제휴매장 무료 입점 신청하기'}</span>
-                      </button>
-                    </div>
+                {/* 4. 대표님 지침: 한 화면에 쏙 들어오는 한 줄 테이블 (서너 개 기본 노출 ➔ 클릭 시 전체보기) */}
+                {scoredStores.length === 0 ? (
+                  <div className="text-center py-6 px-4 bg-stone-50 rounded-2xl border border-dashed border-stone-300 text-xs text-stone-600 space-y-1.5">
+                    <p className="font-bold">
+                      {isJapanese
+                        ? `&apos;${currentCourseName}&apos; 周辺に登録されたおすすめの${storeMainTab === 'RESTAURANT' ? 'グルメ' : 'カフェ'}がまだありません。`
+                        : `&apos;${currentCourseName}&apos; 인근에 등록된 추천 ${storeMainTab === 'RESTAURANT' ? '식당' : '카페'}이 아직 없습니다.`}
+                    </p>
+                    <p className="text-[11px] text-stone-500">
+                      {isJapanese
+                        ? '下部の「行きつけのお店を推薦する」から最初のおすすめを登録してみましょう！'
+                        : '하단 [✍️ 나의 단골 식당 추천하기]를 눌러 첫 번째 단골집을 등록해 보세요!'}
+                    </p>
                   </div>
                 ) : (
-                  /* [2단계 계층 정렬 리스트] */
-                  <div className="space-y-3 pt-1">
-                    {/* 1계층: 유료 옥션 그룹 (무제한) */}
-                    {auctionStores.length > 0 && (
-                      <div className="space-y-2.5">
-                        <div className="flex items-center justify-between text-xs font-black text-amber-950 px-1">
-                          <span className="flex items-center gap-1.5">
-                            <span className="text-sm">👑</span>
-                            <span>파키 추천 프리미엄 제휴 매장 ({auctionStores.length}곳)</span>
-                          </span>
-                          <span className="text-[10px] text-amber-800 font-bold">
-                            상단 우선 노출
-                          </span>
-                        </div>
-
-                        {auctionStores.map((store) => (
+                  <div className="space-y-2">
+                    {visibleStores.map((store) => (
+                      <div
+                        key={store.id}
+                        onClick={() => setSelectedDetailRestaurant(store)}
+                        className={`bg-white hover:bg-emerald-50/70 border rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2 transition cursor-pointer active:scale-[0.99] shadow-2xs ${
+                          store.rank === 1
+                            ? 'border-amber-400 bg-gradient-to-r from-amber-50/80 via-white to-amber-50/40 ring-1 ring-amber-300'
+                            : 'border-stone-200 hover:border-emerald-400'
+                        }`}
+                      >
+                        {/* 좌측: 순위 뱃지 + 상호명 + 별점 & 참여자 수 + 태그 */}
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
                           <div
-                            key={store.id}
-                            className="border-2 border-amber-400 bg-gradient-to-b from-amber-50/60 via-white to-amber-50/30 rounded-2xl p-3.5 sm:p-4 shadow-md ring-1 ring-amber-400/40 space-y-2.5 transition hover:shadow-lg"
+                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-black text-[11px] sm:text-xs shrink-0 shadow-2xs ${
+                              store.rank === 1
+                                ? 'bg-amber-400 text-stone-950 font-black'
+                                : store.rank === 2
+                                ? 'bg-stone-200 text-stone-800'
+                                : store.rank === 3
+                                ? 'bg-amber-700/85 text-white'
+                                : 'bg-stone-100 text-stone-600'
+                            }`}
                           >
-                            {/* 상단 배지 라인 */}
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <div className="flex items-center gap-1.5">
-                                <span className="bg-amber-400 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded-lg flex items-center gap-1 shadow-2xs">
-                                  <span>👑</span>
-                                  <span>파키 추천</span>
-                                </span>
-                                <span className="bg-emerald-100 text-emerald-900 font-black text-[10px] px-1.5 py-0.5 rounded">
-                                  {store.subCategory}
-                                </span>
-                                {store.distanceMinutesText && (
-                                  <span className="bg-stone-100 text-stone-700 font-bold text-[10px] px-1.5 py-0.5 rounded">
-                                    🚗 {store.distanceMinutesText}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                            {store.rank === 1
+                              ? (isJapanese ? '🥇1位' : '🥇1위')
+                              : store.rank === 2
+                              ? (isJapanese ? '🥈2位' : '🥈2위')
+                              : store.rank === 3
+                              ? (isJapanese ? '🥉3位' : '🥉3위')
+                              : `${store.rank}${isJapanese ? '位' : '위'}`}
+                          </div>
 
-                            {/* 메인 정보: 사진 + 상호명 + 메뉴 */}
-                            <div className="flex items-start gap-3">
-                              {store.imageUrl && (
-                                <img
-                                  src={store.imageUrl}
-                                  alt={store.name}
-                                  className="w-20 h-20 rounded-xl object-cover shrink-0 border border-stone-200 shadow-2xs"
-                                />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-black text-sm text-stone-900 truncate">
+                                {store.name}
+                              </span>
+                              {store.isAuctionWinner && (
+                                <span className="bg-amber-400 text-stone-950 font-black text-[9px] px-1.5 py-0.2 rounded shrink-0">
+                                  {isJapanese ? '👑公認1位' : '👑구장1위'}
+                                </span>
                               )}
-                              <div className="min-w-0 flex-1 space-y-1">
-                                <h4 className="font-black text-base text-stone-900 tracking-tight leading-tight">
-                                  {store.name}
-                                </h4>
-                                {store.signatureMenu && (
-                                  <p className="text-xs font-bold text-emerald-900 truncate">
-                                    대표: {store.signatureMenu}
-                                  </p>
-                                )}
-                                <p className="text-[11px] text-stone-500 font-medium truncate flex items-center gap-1">
-                                  <MapPin className="w-3 h-3 text-stone-400 shrink-0" />
-                                  <span>{store.address}</span>
-                                </p>
-                              </div>
+                              <span className="bg-emerald-100/70 text-emerald-900 font-bold text-[10px] px-1.5 py-0.2 rounded shrink-0">
+                                {store.category}
+                              </span>
                             </div>
-
-                            {/* [핵심] 제공 쿠폰 배지 (강조!) */}
-                            {store.couponBenefit && (
-                              <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-xs">
-                                <div className="flex items-center gap-1.5 min-w-0 text-xs font-black">
-                                  <Gift className="w-4 h-4 text-amber-300 shrink-0" />
-                                  <span className="truncate">
-                                    [골퍼 혜택] {store.couponBenefit}
-                                  </span>
-                                </div>
-                                <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full shrink-0">
-                                  쿠폰 제공
-                                </span>
-                              </div>
-                            )}
-
-                            {/* 전화 예약 & 옥션 입찰가 관리 버튼 */}
-                            <div className="pt-0.5 flex items-center gap-1.5">
-                              <a
-                                href={`tel:${store.phone}`}
-                                className="flex-1 bg-stone-950 hover:bg-stone-800 text-amber-300 font-black text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition active:scale-98"
-                              >
-                                <Phone className="w-3.5 h-3.5" />
-                                <span>전화 예약 / 쿠폰 문의 ({store.phone}) 📞</span>
-                              </a>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenAuctionUpgrade(store)}
-                                className="bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs py-2.5 px-2.5 rounded-xl flex items-center gap-1 shrink-0 transition cursor-pointer shadow-xs"
-                                title="상단 옥션 입찰가 관리"
-                              >
-                                <Crown className="w-3.5 h-3.5 text-amber-900" />
-                                <span>월 {store.bidAmount.toLocaleString()}{isJapanese ? '円' : '원'}</span>
-                              </button>
+                            <div className="flex items-center gap-1.5 text-[11px] text-stone-600 mt-0.5">
+                              <span className="text-amber-500 font-black">★ {(store.rating || 5).toFixed(1)}</span>
+                              <span className="font-bold text-stone-500">
+                                ({store.ratingsCount || store.reviews?.length || 1}{isJapanese ? '名参加' : '명 참여'})
+                              </span>
+                              <span className="text-stone-300">·</span>
+                              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-1 rounded shrink-0">
+                                {isJapanese ? 'スコア' : '점수'} {store.compositeScore}{isJapanese ? '点' : '점'}
+                              </span>
+                              {store.tags?.[0] && (
+                                <>
+                                  <span className="text-stone-300 hidden xs:inline">·</span>
+                                  <span className="text-stone-500 truncate hidden xs:inline">{store.tags[0]}</span>
+                                </>
+                              )}
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* 2계층: 무료 기본 등록 그룹 (무제한, 완전 무작위 롤링 셔플) */}
-                    {freeStores.length > 0 && (
-                      <div className="space-y-2.5 pt-2">
-                        <div className="flex items-center justify-between text-xs font-black text-stone-700 px-1 border-t border-stone-200/80 pt-3">
-                          <span className="flex items-center gap-1.5">
-                            <span>🍽️</span>
-                            <span>등록된 일반 제휴 매장 ({freeStores.length}곳)</span>
-                          </span>
-                          <span className="text-[10px] text-stone-500 font-bold">
-                            무작위 롤링 노출
-                          </span>
                         </div>
 
-                        {freeStores.map((store) => (
-                          <div
-                            key={store.id}
-                            className="border border-stone-200 bg-white rounded-2xl p-3 sm:p-3.5 hover:border-emerald-400 shadow-2xs space-y-2 transition"
+                        {/* 우측: 카카오맵 바로가기 버튼 (100% 공식 검색 연동) */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <a
+                            href={getKakaoMapUrl(store)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black text-[11px] px-2.5 py-1.5 rounded-xl flex items-center gap-1 border border-[#E6CF00] shadow-2xs transition active:scale-95 shrink-0"
+                            title={isJapanese ? 'マップで詳細および道案内を見る' : '카카오맵에서 매장 및 길찾기 보기'}
                           >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5">
-                                <span className="bg-stone-100 text-stone-800 font-black text-[10px] px-1.5 py-0.5 rounded">
-                                  {store.subCategory}
-                                </span>
-                                {store.distanceMinutesText && (
-                                  <span className="bg-stone-100 text-stone-600 font-bold text-[10px] px-1.5 py-0.5 rounded">
-                                    🚗 {store.distanceMinutesText}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex items-start gap-2.5">
-                              {store.imageUrl && (
-                                <img
-                                  src={store.imageUrl}
-                                  alt={store.name}
-                                  className="w-16 h-16 rounded-xl object-cover shrink-0 border border-stone-200"
-                                />
-                              )}
-                              <div className="min-w-0 flex-1 space-y-0.5">
-                                <h4 className="font-black text-sm text-stone-900 truncate">
-                                  {store.name}
-                                </h4>
-                                {store.signatureMenu && (
-                                  <p className="text-xs font-bold text-emerald-800 truncate">
-                                    {store.signatureMenu}
-                                  </p>
-                                )}
-                                <p className="text-[11px] text-stone-500 font-medium truncate">
-                                  {store.address}
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* 쿠폰 배지 */}
-                            {store.couponBenefit && (
-                              <div className="bg-emerald-50 border border-emerald-200 text-emerald-950 rounded-xl px-2.5 py-1.5 flex items-center justify-between text-xs font-bold">
-                                <span className="truncate">🎁 [쿠폰] {store.couponBenefit}</span>
-                                <span className="text-[10px] bg-emerald-700 text-white px-1.5 py-0.2 rounded font-black shrink-0">
-                                  쿠폰
-                                </span>
-                              </div>
-                            )}
-
-                            {/* 전화 버튼 & 상단 옥션 신청 버튼 */}
-                            <div className="pt-1 flex items-center gap-1.5">
-                              <a
-                                href={`tel:${store.phone}`}
-                                className="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-2xs transition"
-                              >
-                                <Phone className="w-3.5 h-3.5" />
-                                <span>전화 문의 ({store.phone})</span>
-                              </a>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenAuctionUpgrade(store)}
-                                className="bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-950 font-black text-xs py-2 px-2.5 rounded-xl flex items-center gap-1 shrink-0 transition cursor-pointer shadow-2xs"
-                                title="상단 최우선 노출 옥션 참여"
-                              >
-                                <Crown className="w-3.5 h-3.5 text-amber-600" />
-                                <span>상단 옥션 신청</span>
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                            <span className="text-xs">🗺️</span>
+                            <span className="font-black">{isJapanese ? '地図' : '카카오맵'}</span>
+                          </a>
+                        </div>
                       </div>
+                    ))}
+
+                    {/* 대표님 지침: 4개 초과 시 전체보기 / 접기 토글 */}
+                    {scoredStores.length > 4 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllRestaurants(!showAllRestaurants)}
+                        className="w-full py-2.5 px-3 bg-stone-100 hover:bg-stone-200 active:bg-stone-300 rounded-xl text-stone-800 font-black text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-stone-200 mt-1"
+                      >
+                        {showAllRestaurants ? (
+                          <>
+                            <span>{isJapanese ? '▲ 閉じる (TOP 4のみ表示)' : '▲ 접기 (TOP 4만 간략히 보기)'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>
+                              {isJapanese
+                                ? `▼ おすすめをすべて見る (計 ${scoredStores.length}件の順位を展開)`
+                                : `▼ 추천 맛집 전체보기 (총 ${scoredStores.length}곳 전체 순위 펼치기)`}
+                            </span>
+                          </>
+                        )}
+                      </button>
                     )}
                   </div>
                 )}
-
-                {/* 하단 고정 배너 (목록 최하단 상시 노출) */}
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowStoreRegisterModal(true)}
-                    className="w-full p-4 rounded-2xl bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs sm:text-sm flex items-center justify-between shadow-lg transition active:scale-[0.99] cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-2xl">🏪</span>
-                      <div className="text-left">
-                        <div className="text-sm font-black">{isJapanese ? '提携店舗 無料出店申請 ▶' : '제휴매장 무료 입점 신청 ▶'}</div>
-                        <div className="text-[11px] text-emerald-100 font-medium">
-                          {isJapanese ? '全国ゴルファー集客＆クーポン宣伝（距離制限なし）' : '전국 골퍼 손님 유치 & 쿠폰 홍보 (거리 제한 없음)'}
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-xs bg-amber-400 text-stone-950 px-3 py-1.5 rounded-xl font-black shrink-0 shadow-xs">
-                      {isJapanese ? '無料出店' : '100% 무료'}
-                    </span>
-                  </button>
-                </div>
               </div>
             );
           })()}
@@ -3680,10 +3545,10 @@ export default function CoursesPage() {
                   </div>
                   <div>
                     <h3 className="text-base font-black text-stone-900">
-                      파크골프 중고 매매 및 교환 장터
+                      {isJapanese ? 'パークゴルフ無料直取引フリマ' : '파크골프 무료 직거래 장터'}
                     </h3>
                     <p className="text-[11px] text-stone-600 font-semibold">
-                      수수료 0원! 파크골프채·용품 회원간 직거래 매매 및 맞교환
+                      {isJapanese ? '手数料0円！個人愛好者・店舗どなたでも自由に出品＆直取引' : '수수료 0원! 개인 골퍼 및 일반 상점 누구나 자유로운 무료 등록 & 직거래'}
                     </p>
                   </div>
                 </div>
@@ -3691,32 +3556,64 @@ export default function CoursesPage() {
                 <button
                   type="button"
                   onClick={() => setShowMarketModal(true)}
-                  className="bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition"
+                  className="bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>내 매물 등록</span>
+                  <span>{isJapanese ? '無料出品' : '무료 매물 등록'}</span>
                 </button>
               </div>
 
-              {/* Legal Disclaimer & Caution Banner */}
-              <div className="bg-rose-50 border border-rose-200 rounded-2xl p-3 text-xs text-rose-900 space-y-1">
-                <div className="font-black flex items-center gap-1 text-rose-800">
-                  <span className="text-sm">⚠️</span>
-                  <span>[법적 면책 공시] 회원 간 100% 현장 직거래 안내</span>
+              {/* Legal Disclaimer & Caution Banner (대표님 지침: 직거래 안전 주의 및 사기 피해 예방 수칙) */}
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-3.5 text-xs text-amber-950 space-y-2 shadow-xs">
+                <div className="font-black flex items-center justify-between text-amber-900 flex-wrap gap-1">
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <span>⚠️</span>
+                    <span>{isJapanese ? '[必読] 安全な直接取引および詐欺防止ルール' : '[필독] 안전 직거래 및 사기 피해 예방 수칙'}</span>
+                  </div>
+                  <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
+                    {isJapanese ? '100%現地直接取引推奨' : '100% 현장 대면 직거래 권장'}
+                  </span>
                 </div>
-                <p className="text-[11px] leading-relaxed text-rose-800 break-keep">
-                  파크골프 올인원은 통신판매중개 정보 제공자로서 거래 당사자가 아닙니다. 물품의 상태, 결제, 사기 피해 등 일체의 거래 사고에 대해 법적 책임을 지지 않습니다. <strong>선입금이나 택배 거래를 절대 피하시고, 운동장 현장에서 물건을 직접 확인 후 거래하세요!</strong>
-                </p>
+                <div className="text-[11px] leading-relaxed text-stone-700 space-y-1 font-medium">
+                  <p className="flex items-start gap-1">
+                    <span className="text-amber-600 font-bold shrink-0">①</span>
+                    <span>
+                      <strong>{isJapanese ? 'PARKY APPは純粋な無料情報仲介プラットフォーム' : '파키 앱(PARKY APP)은 순수 무료 정보 중개 플랫폼'}</strong>
+                      {isJapanese ? 'であり、取引当事者ではなく一切の取引事故に対する法的責任を負いません。' : '으로, 거래 당사자가 아니며 일체의 거래 사고에 대해 법적 책임을 지지 않습니다.'}
+                    </span>
+                  </p>
+                  <p className="flex items-start gap-1">
+                    <span className="text-rose-600 font-bold shrink-0">②</span>
+                    <span className="text-rose-900 font-bold bg-rose-100/80 px-1 rounded">
+                      {isJapanese ? '宅配取引や事前振込は詐欺リスクが非常に高いため絶対にお避けください！' : '택배 거래나 선입금은 사기 위험이 매우 높으니 절대 피하세요!'}
+                    </span>
+                  </p>
+                  <p className="flex items-start gap-1">
+                    <span className="text-emerald-700 font-bold shrink-0">③</span>
+                    <span>
+                      <strong>{isJapanese ? '必ずパークゴルフ場やクラブハウス等の対面現場で品物の状態を直接確認してから' : '반드시 파크골프장 필드나 클럽하우스 등 대면 현장에서 물품 상태를 직접 꼼꼼히 확인한 후'}</strong>
+                      {isJapanese ? ' 代金をお支払いください。' : ' 대금을 지급하시기 바랍니다.'}
+                    </span>
+                  </p>
+                  <p className="flex items-start gap-1">
+                    <span className="text-blue-700 font-bold shrink-0">④</span>
+                    <span>
+                      {isJapanese ? '個人愛好者だけでなく ' : '개인 동호인뿐만 아니라 '}
+                      <strong>{isJapanese ? '一般ゴルフショップ・用品店様もどなたでも無料で出品' : '일반 골프숍/용품점 사장님도 누구나 무료로 매물을 등록'}</strong>
+                      {isJapanese ? 'してPRできます。' : '하여 홍보하실 수 있습니다.'}
+                    </span>
+                  </p>
+                </div>
               </div>
 
               {/* Category Filter Tabs */}
               <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar text-xs">
                 {[
-                  { id: 'ALL', label: '전체 매물' },
-                  { id: '클럽(채)', label: '파크골프채(클럽)' },
-                  { id: '파우치/가방', label: '파우치·가방' },
-                  { id: '볼/공', label: '볼·공 세트' },
-                  { id: '기타용품', label: '기타 용품' },
+                  { id: 'ALL', label: isJapanese ? 'すべての出品' : '전체 매물' },
+                  { id: '클럽(채)', label: isJapanese ? 'クラブ' : '파크골프채(클럽)' },
+                  { id: '파우치/가방', label: isJapanese ? 'ポーチ・バッグ' : '파우치·가방' },
+                  { id: '볼/공', label: isJapanese ? 'ボールセット' : '볼·공 세트' },
+                  { id: '기타용품', label: isJapanese ? 'その他用品' : '기타 용품' },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -3739,10 +3636,12 @@ export default function CoursesPage() {
                   <span className="text-3xl block">🤝</span>
                   <div className="space-y-1">
                     <h4 className="font-black text-stone-900 text-sm">
-                      등록된 중고 매물이 없습니다
+                      {isJapanese ? '登録された出品がありません' : '등록된 무료 매물이 없습니다'}
                     </h4>
                     <p className="text-xs text-stone-600 leading-relaxed">
-                      쓰지 않는 파크골프채나 파우치, 용품을 회원들에게 첫 매물로 등록해 보세요!
+                      {isJapanese
+                        ? '使わないクラブやポーチ、用品、または店舗商品を会員に無料で出品してみましょう！'
+                        : '쓰지 않는 파크골프채나 파우치, 용품, 또는 매장 상품을 회원들에게 첫 매물로 무료 등록해 보세요!'}
                     </p>
                   </div>
                   <div className="pt-2 flex justify-center">
@@ -3752,7 +3651,7 @@ export default function CoursesPage() {
                       className="bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs py-2.5 px-4 rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>첫 중고 매물 등록하기</span>
+                      <span>{isJapanese ? '最初の出品を無料登録する' : '첫 매물 무료 등록하기'}</span>
                     </button>
                   </div>
                 </div>
@@ -3935,17 +3834,35 @@ export default function CoursesPage() {
           })()}
             </div>
 
+            {/* 대표님 지침: 맛집 탭일 경우 최하단 항상 고정 [ ✍️ 나의 단골 식당 추천하기 ] 바 (어떤 기종이든 스크롤 없이 1초 노출) */}
+            {activeServiceTab === 'RESTAURANT' && (
+              <div className="p-3 bg-gradient-to-r from-amber-500/15 via-amber-400/25 to-amber-500/15 border-t-2 border-amber-300 shrink-0">
+                <button
+                  type="button"
+                  id="btn-fixed-restaurant-submit"
+                  onClick={() => setShowRestaurantSubmitModal(true)}
+                  className="w-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-stone-950 font-black text-sm sm:text-base py-3 px-4 rounded-2xl flex items-center justify-center gap-2 shadow-md active:scale-98 transition cursor-pointer border border-amber-400"
+                >
+                  <span className="text-xl">✍️</span>
+                  <span>{isJapanese ? '行きつけのお店を推薦する' : '나의 단골 식당 추천하기'}</span>
+                  <span className="bg-stone-950 text-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full ml-1">
+                    {isJapanese ? '簡単登録' : '1초 자동 등록'}
+                  </span>
+                </button>
+              </div>
+            )}
+
             {/* 팝업 하단 고정 닫기 바 */}
             <div className="p-3 bg-stone-50 border-t border-stone-200 flex items-center justify-between shrink-0">
               <span className="text-[11px] text-stone-500 font-semibold">
-                닫으시면 이전 전국 구장 검색 화면으로 바로 복귀합니다.
+                {isJapanese ? '閉じると前のコース検索画面に戻ります。' : '닫으시면 이전 전국 구장 검색 화면으로 바로 복귀합니다.'}
               </span>
               <button
                 type="button"
                 onClick={() => setActiveServiceTab(null)}
                 className="px-4 py-2 bg-stone-800 hover:bg-stone-900 text-white font-black text-xs rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1 shadow-xs"
               >
-                <span>✕ 창 닫기</span>
+                <span>{isJapanese ? '✕ 閉じる' : '✕ 창 닫기'}</span>
               </button>
             </div>
           </div>
@@ -3962,7 +3879,7 @@ export default function CoursesPage() {
               <div className="flex items-center gap-2">
                 <span className="text-xl">🤝</span>
                 <h3 className="text-base font-black text-stone-900">
-                  내 중고 매물 등록하기
+                  {isJapanese ? '無料出品を登録する' : '내 무료 매물 등록하기'}
                 </h3>
               </div>
               <button
@@ -5197,6 +5114,28 @@ export default function CoursesPage() {
           setAffiliatedStores(AuctionStorage.getAllStores());
         }}
         isJapanese={isJapanese}
+      />
+
+      {/* Restaurant Recommendation UGC Submit Modal */}
+      <RestaurantSubmitModal
+        isOpen={showRestaurantSubmitModal}
+        onClose={() => setShowRestaurantSubmitModal(false)}
+        defaultCourseName={courses.find((c) => c.id === selectedStoreCourseId)?.name || '구미 동락 파크골프장'}
+        defaultCourseId={selectedStoreCourseId}
+        onSuccess={() => {
+          setUserRecommendedStores(RestaurantStorage.getAllRestaurants());
+        }}
+      />
+
+      {/* Restaurant Detail Modal (Kakao Map Split-View & Reviews) */}
+      <RestaurantDetailModal
+        isOpen={Boolean(selectedDetailRestaurant)}
+        onClose={() => setSelectedDetailRestaurant(null)}
+        restaurant={selectedDetailRestaurant}
+        onReviewAdded={(updated) => {
+          setUserRecommendedStores(RestaurantStorage.getAllRestaurants());
+          setSelectedDetailRestaurant(updated);
+        }}
       />
 
       {/* Tour Register Modal (Free Tour Registration & Auction) */}

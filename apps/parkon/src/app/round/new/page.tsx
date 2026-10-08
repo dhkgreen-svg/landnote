@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Users, Flag, Play, Plus, Trash2, ArrowLeft, MapPin, Edit3, Settings, QrCode, Copy, Check, Sparkles, Share2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, Flag, Play, Plus, Trash2, ArrowLeft, MapPin, Edit3, Settings, QrCode, Copy, Check, Sparkles, Share2, X } from 'lucide-react';
 import Link from 'next/link';
 import { Course, RoundPlayer, RoundSession, formatCourseHolesText } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
@@ -54,7 +54,6 @@ function NewRoundForm() {
   const [showPlayStartNotice, setShowPlayStartNotice] = useState<boolean>(false);
   const [isUnlimitedRound, setIsUnlimitedRound] = useState<boolean>(true);
   const [targetHolesCount, setTargetHolesCount] = useState<number>(18);
-  const [showRoundModeSelector, setShowRoundModeSelector] = useState<boolean>(false);
   const [recentPartners, setRecentPartners] = useState<string[]>([]);
 
   useEffect(() => {
@@ -207,7 +206,7 @@ function NewRoundForm() {
         setSelectedCourseLetter(availableLetters[0]);
       }
     }
-  }, [selectedCourseId]);
+  }, [selectedCourseId, numCourses]);
 
   // Compute 9 hole numbers in shotgun cyclic order starting from startHoleIndex (1 to 9)
   const courseIdx = Math.max(0, COURSE_LETTERS.indexOf(selectedCourseLetter));
@@ -227,15 +226,20 @@ function NewRoundForm() {
   useEffect(() => {
     if (currentCourse) {
       setEditHoles(currentCourse.totalHoles || 18);
-      setEditContributor(currentCourse.contributorName || '');
     }
   }, [currentCourse]);
 
   const openEditModal = () => {
     if (currentCourse) {
       setEditHoles(currentCourse.totalHoles || 18);
-      setEditContributor(currentCourse.contributorName || '');
     }
+    const currentUserName =
+      playersList.find((p) => p.isSelf || p.isLeader)?.name?.trim() ||
+      playersList[0]?.name?.trim() ||
+      ParkOnStorage.getUserDisplayName() ||
+      getDefaultSelfName(isJapanese) ||
+      '';
+    setEditContributor(currentUserName);
     setShowEditModal(true);
   };
 
@@ -839,14 +843,6 @@ function NewRoundForm() {
                   >
                     <span>{isJapanese ? 'コース変更' : '구장 변경'}</span>
                   </Link>
-                  <button
-                    type="button"
-                    onClick={openEditModal}
-                    className="bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-black py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px] cursor-pointer"
-                  >
-                    <Settings className="w-3 h-3 text-emerald-700 shrink-0" />
-                    <span>{isJapanese ? 'ホール数修正' : '코스·홀수 정정'}</span>
-                  </button>
                 </div>
               </div>
             );
@@ -1030,10 +1026,20 @@ function NewRoundForm() {
 
       {/* 3. Starting Course & Hole Selection */}
       <div className="bg-white rounded-2xl p-3.5 border border-stone-200 shadow-sm space-y-2.5">
-        <label className="text-sm font-black text-stone-900 flex items-center gap-1.5">
-          <Flag className="w-4 h-4 text-emerald-700" />
-          <span>{isJapanese ? 'どのコースからスタートしますか？' : '어느 코스부터 시작하겠습니까?'}</span>
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-black text-stone-900 flex items-center gap-1.5">
+            <Flag className="w-4 h-4 text-emerald-700" />
+            <span>{isJapanese ? 'どのコースからスタートしますか？' : '어느 코스부터 시작하겠습니까?'}</span>
+          </label>
+          <button
+            type="button"
+            onClick={openEditModal}
+            className="bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 font-black py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px] cursor-pointer shrink-0"
+          >
+            <Settings className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+            <span>{isJapanese ? 'コース訂正' : '코스 정정'}</span>
+          </button>
+        </div>
 
         <div className="grid grid-cols-4 gap-1.5 pt-0.5">
           {availableLetters.map((letter) => {
@@ -1109,128 +1115,7 @@ function NewRoundForm() {
         </div>
       </div>
 
-      {/* 4. 라운드 진행 방식 */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden transition-all">
-        <button
-          type="button"
-          onClick={() => setShowRoundModeSelector(!showRoundModeSelector)}
-          className="w-full p-3.5 flex items-center justify-between hover:bg-stone-50 transition active:scale-[0.99] cursor-pointer text-left"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-base shrink-0">🔄</span>
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-black text-stone-900">
-                {isJapanese ? 'ラウンド方式' : '라운드 진행 방식'}
-              </span>
-              <span className="text-xs font-bold text-stone-500">
-                {isJapanese ? '(選択してください)' : '(선택하세요)'}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {!isUnlimitedRound && (
-              <span className="text-xs font-black px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-900 border-amber-300">
-                🎯 {targetHolesCount}{isJapanese ? 'ホール' : '홀'}
-              </span>
-            )}
-            {showRoundModeSelector ? (
-              <ChevronUp className="w-5 h-5 text-stone-500 shrink-0" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-stone-500 shrink-0" />
-            )}
-          </div>
-        </button>
 
-        {showRoundModeSelector && (
-          <div className="p-3.5 pt-2 border-t border-stone-100 bg-stone-50/60 space-y-3 animate-fadeIn">
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsUnlimitedRound(true);
-                }}
-                className={`p-3 rounded-xl border-2 text-left transition flex flex-col justify-between active:scale-95 cursor-pointer ${
-                  isUnlimitedRound
-                    ? 'bg-emerald-50 border-emerald-600 shadow-sm ring-1 ring-emerald-400'
-                    : 'bg-white border-stone-200 hover:bg-stone-100'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-black text-xs text-stone-900 flex items-center gap-1">
-                    <span>♾️</span>
-                    <span>{isJapanese ? '無制限 フリーラウンド' : '무제한 자유 라운드'}</span>
-                  </span>
-                  <span className="text-[9px] bg-emerald-600 text-white font-black px-1.5 py-0.5 rounded-full">
-                    {isJapanese ? 'おすすめ' : '추천'}
-                  </span>
-                </div>
-                <p className="text-[10.5px] text-stone-600 mt-1 leading-tight font-medium">
-                  {isJapanese
-                    ? 'ホール数の制限なく、好きなだけラウンドしていつでも直接終了'
-                    : '홀 수 강제 없이 원하는 만큼 순환 후 언제든 직접 종료'}
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setIsUnlimitedRound(false);
-                }}
-                className={`p-3 rounded-xl border-2 text-left transition flex flex-col justify-between active:scale-95 cursor-pointer ${
-                  !isUnlimitedRound
-                    ? 'bg-amber-50 border-amber-600 shadow-sm ring-1 ring-amber-400'
-                    : 'bg-white border-stone-200 hover:bg-stone-100'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-black text-xs text-stone-900 flex items-center gap-1">
-                    <span>🎯</span>
-                    <span>{isJapanese ? '目標ホール設定' : '목표 홀 설정 라운드'}</span>
-                  </span>
-                  {!isUnlimitedRound && <span className="text-xs text-amber-600 font-black">✓</span>}
-                </div>
-                <p className="text-[10.5px] text-stone-600 mt-1 leading-tight font-medium">
-                  {isJapanese
-                    ? '目標ホール到達時に [続ける] vs [終了する] をシンプル選択'
-                    : '목표 홀 도달 시 [더 치기] vs [종료하기] 심플 선택'}
-                </p>
-              </button>
-            </div>
-
-            {!isUnlimitedRound && (
-              <div className="pt-2 border-t border-stone-200 flex items-center justify-between">
-                <span className="text-xs font-bold text-stone-700">{isJapanese ? '目標ホール数:' : '목표 홀 수:'}</span>
-                <div className="flex items-center gap-1.5">
-                  {[9, 18, 27, 36].map((hCount) => (
-                    <button
-                      key={hCount}
-                      type="button"
-                      onClick={() => setTargetHolesCount(hCount)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-black transition active:scale-95 cursor-pointer ${
-                        targetHolesCount === hCount
-                          ? 'bg-amber-600 text-white shadow-xs'
-                          : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-100'
-                      }`}
-                    >
-                      {hCount}{isJapanese ? 'ホール' : '홀'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="pt-1 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowRoundModeSelector(false)}
-                className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-black px-4 py-1.5 rounded-xl transition active:scale-95 cursor-pointer shadow-xs"
-              >
-                {isJapanese ? '選択完了 ✓' : '선택 완료 ✓'}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* 5. Bottom Start Button */}
       <button
@@ -1299,13 +1184,13 @@ function NewRoundForm() {
 
               <div>
                 <label className="block text-xs font-bold text-stone-800 mb-1">
-                  {isJapanese ? '訂正者ニックネーム (名誉の殿堂登録)' : '정정자 닉네임 (명예의 전당 등록)'}
+                  {isJapanese ? '訂正者 (名誉の殿堂登録)' : '정정자 (명예의 전당 등록)'}
                 </label>
                 <input
                   type="text"
                   value={editContributor}
                   onChange={(e) => setEditContributor(e.target.value)}
-                  placeholder={isJapanese ? '例: パーク会長 (任意)' : '예: 옥성클럽회장 (선택)'}
+                  placeholder={isJapanese ? '訂正者のお名前' : '정정자 성명'}
                   className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-sm font-bold text-stone-900 outline-none focus:border-emerald-600"
                 />
               </div>
