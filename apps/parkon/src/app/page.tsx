@@ -80,6 +80,7 @@ export default function HomePage() {
   const [clubBadge, setClubBadge] = useState<{ text: string; isPlaying: boolean } | null>(null);
   const [hasNewClubNotice, setHasNewClubNotice] = useState<boolean>(false);
   const [showKakaoModal, setShowKakaoModal] = useState<boolean>(false);
+  const [kakaoModalInitialMode, setKakaoModalInitialMode] = useState<'login' | 'profile' | 'find' | 'new'>('login');
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showCourseTodayModal, setShowCourseTodayModal] = useState<boolean>(false);
@@ -234,6 +235,7 @@ export default function HomePage() {
 
     const isNewUserMode = urlParams?.get('mode') === 'new' || urlParams?.get('join') === 'true' || urlParams?.get('auth') === '1';
     if (isNewUserMode) {
+      setKakaoModalInitialMode('new');
       setShowKakaoModal(true);
     }
 
@@ -3811,8 +3813,10 @@ export default function HomePage() {
       {/* 카카오 로그인 모달 */}
       <KakaoLoginModal
         isOpen={showKakaoModal}
+        initialMode={kakaoModalInitialMode}
         onClose={() => {
           setShowKakaoModal(false);
+          setKakaoModalInitialMode('login');
           setKakaoUser(ParkOnStorage.getKakaoUser());
           setUserProfile(ParkOnStorage.getUserProfile());
         }}

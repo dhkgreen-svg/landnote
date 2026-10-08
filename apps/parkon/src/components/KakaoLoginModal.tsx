@@ -14,7 +14,7 @@ interface KakaoLoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess?: (user: KakaoAuthUser) => void;
-  initialMode?: 'login' | 'profile' | 'find';
+  initialMode?: 'login' | 'profile' | 'find' | 'new';
   title?: string;
   subtitle?: string;
   initialTab?: 'CODE_LOGIN' | 'NEW_USER';
@@ -128,6 +128,8 @@ export function KakaoLoginModal({
       // 3) 등록되지 않은 신규 방문자면 1초 간편 시작 화면(NEW_USER)
       if (initialMode === 'find') {
         setViewMode('LOOKUP');
+      } else if (initialMode === 'new') {
+        setViewMode('NEW_USER');
       } else if (hasRegisteredNow && initialMode !== 'login') {
         setViewMode('PROFILE');
       } else if (!hasRegisteredNow) {
