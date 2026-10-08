@@ -115,22 +115,18 @@ export function Footer() {
 
         {/* E-E-A-T 운영자 신뢰성 및 투명성 안내 박스 */}
         <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 text-[10.5px] text-stone-600 text-left space-y-2 leading-relaxed">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-b border-stone-200/80 pb-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 border-b border-stone-200/80 pb-2">
             <div>
-              <span className="font-bold text-stone-500">운영 주체 / 총괄 책임자:</span>{' '}
-              <span className="font-bold text-stone-800">김대희 대표 (Kim Dae-hee)</span>
-            </div>
-            <div>
-              <span className="font-bold text-stone-500">대표 도메인:</span>{' '}
+              <span className="font-bold text-stone-500">{isJapanese ? '公式ドメイン:' : isEnglish ? 'Domain:' : '대표 도메인:'}</span>{' '}
               <span className="font-bold text-emerald-800">https://www.parkgolfallinone.com</span>
             </div>
             <div>
-              <span className="font-bold text-stone-500">고객지원 & 제휴:</span>{' '}
+              <span className="font-bold text-stone-500">{isJapanese ? 'サポート & 提携:' : isEnglish ? 'Contact:' : '고객지원 & 제휴:'}</span>{' '}
               <span className="font-bold text-stone-800">contact@parkgolfallinone.com</span>
             </div>
             <div>
-              <span className="font-bold text-stone-500">콘텐츠 감수:</span>{' '}
-              <span className="font-bold text-stone-700">협회 공인 지도자 & 룰 검증팀</span>
+              <span className="font-bold text-stone-500">{isJapanese ? 'コンテンツ監修:' : isEnglish ? 'Content Supervision:' : '콘텐츠 감수:'}</span>{' '}
+              <span className="font-bold text-stone-700">{isJapanese ? '協会公認指導員＆ルール検証チーム' : isEnglish ? 'Official Instructors & Rule Team' : '협회 공인 지도자 & 룰 검증팀'}</span>
             </div>
           </div>
 
