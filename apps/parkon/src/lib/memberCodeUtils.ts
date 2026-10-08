@@ -83,9 +83,21 @@ export function isPlaceholderName(name?: string | null): boolean {
     clean === '본인' ||
     clean === '회원' ||
     clean === '파크골퍼' ||
+    clean === '골퍼' ||
+    clean === '게스트' ||
+    clean === '선수' ||
     clean === 'パークゴルファー' ||
+    clean === 'ゴルファー' ||
     clean === '山田太郎' ||
-    clean === 'ゲスト'
+    clean === 'ゲスト' ||
+    clean === 'プレイヤー' ||
+    clean === 'リーダー' ||
+    clean === '選手' ||
+    clean === '孫悟空' ||
+    clean === 'パーク達人' ||
+    clean === 'パークの達人' ||
+    clean === '同伴者' ||
+    clean === '代表'
   );
 }
 

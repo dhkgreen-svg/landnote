@@ -271,7 +271,13 @@ function NewRoundForm() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          setRecentPartners(parsed.filter((n) => typeof n === 'string' && n.trim().length > 0));
+          const cleaned = parsed.filter(
+            (n) => typeof n === 'string' && n.trim().length > 0 && !/[ㄱ-ㅎㅏ-ㅣ]/.test(n) && !isDefaultCompanionName(n)
+          );
+          setRecentPartners(cleaned);
+          if (cleaned.length !== parsed.length) {
+            localStorage.setItem('parkon_recent_partners', JSON.stringify(cleaned));
+          }
         }
       }
     } catch (e) {}

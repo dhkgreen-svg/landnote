@@ -231,18 +231,47 @@ export default function RootLayout({
                     return;
                   }
 
-                  if (localStorage.getItem('parkon_identity_purged_v2') !== 'true') {
-                    localStorage.setItem('parkon_identity_purged_v2', 'true');
+                  if (localStorage.getItem('parkon_identity_purged_v3') !== 'true') {
+                    localStorage.setItem('parkon_identity_purged_v3', 'true');
 
                     var profStr = localStorage.getItem('parkon_user_profile_v1');
-                    var kakaoStr = localStorage.getItem('parkon_kakao_auth_v1');
+                    var kakaoStr = localStorage.getItem('parkon_kakao_user_v1') || localStorage.getItem('parkon_kakao_auth_v1');
                     var memberCode = localStorage.getItem('parkon_member_code_v1');
+
+                    // 더미 계정(プレイヤー, 플레이어 등) 자동 정화
+                    if (kakaoStr) {
+                      try {
+                        var k = JSON.parse(kakaoStr);
+                        if (k && (k.realName === 'プレイヤー' || k.nickname === 'プレイヤー' || k.realName === '플레이어' || k.nickname === '플레이어' || !k.id)) {
+                          localStorage.removeItem('parkon_kakao_user_v1');
+                          localStorage.removeItem('parkon_kakao_auth_v1');
+                          localStorage.removeItem('parkon_user_profile_v1');
+                          localStorage.removeItem('parkon_member_code_v1');
+                        }
+                      } catch(e) {}
+                    }
+
+                    // 깨진 자모가 포함된 최근 동반자 기록 자동 정화 (+ ㅅ순덕, + 죄순ㄷ덕 등)
+                    var partnersRaw = localStorage.getItem('parkon_recent_partners');
+                    if (partnersRaw) {
+                      try {
+                        var parsedP = JSON.parse(partnersRaw);
+                        if (Array.isArray(parsedP)) {
+                          var cleanP = parsedP.filter(function(n) {
+                            return typeof n === 'string' && n.trim().length > 0 && !/[ㄱ-ㅎㅏ-ㅣ]/.test(n);
+                          });
+                          if (cleanP.length !== parsedP.length) {
+                            localStorage.setItem('parkon_recent_partners', JSON.stringify(cleanP));
+                          }
+                        }
+                      } catch(e) {}
+                    }
 
                     var isKakaoLoggedIn = false;
                     if (kakaoStr) {
                       try {
                         var k = JSON.parse(kakaoStr);
-                        if (k && k.id && !k.id.toString().startsWith('guest_')) {
+                        if (k && k.id && !k.id.toString().startsWith('guest_') && k.realName !== 'プレイヤー' && k.nickname !== 'プレイヤー') {
                           isKakaoLoggedIn = true;
                         }
                       } catch(e) {}

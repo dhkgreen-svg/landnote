@@ -113,7 +113,11 @@ export const ParkOnStorage = {
       const data = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
       if (!data) {
         const playerName = typeof localStorage !== 'undefined' ? localStorage.getItem('parkon_player_name')?.trim() : null;
-        const isDummy = !playerName || playerName === '손오공' || playerName === '홍길동' || playerName === '홍길동(본인)' || playerName === '플레이어' || playerName === '본인(조장)' || playerName === '조장(본인)' || playerName === '본인' || playerName === '파크골퍼' || playerName === 'パークゴルファー';
+        const isDummy = !playerName || [
+          '손오공', '홍길동', '홍길동(본인)', '플레이어', '본인(조장)', '조장(본인)', '조장', '본인',
+          '회원', '파크골퍼', '골퍼', '게스트', '선수', 'パークゴルファー', 'ゴルファー', '山田太郎',
+          'ゲスト', 'プレイヤー', 'リーダー', '選手', '孫悟空', 'パーク達人', 'パークの達人', '同伴者', '代表'
+        ].includes(playerName);
         if (playerName && !isDummy) {
           return {
             ...DEFAULT_USER_PROFILE,
@@ -125,7 +129,11 @@ export const ParkOnStorage = {
       const parsed: UserGolfProfile = JSON.parse(data);
       // 더미 이름(손오공, 홍길동, 플레이어, 본인 등)은 빈 문자열로 정화하여 완전한 제로 베이스 유지
       const rawName = (parsed.userName || '').trim();
-      if (!rawName || rawName === '손오공' || rawName === '홍길동' || rawName === '홍길동(본인)' || rawName === '플레이어' || rawName === '본인(조장)' || rawName === '조장(본인)' || rawName === '본인' || rawName === '파크골퍼' || rawName === 'パークゴルファー') {
+      if (!rawName || [
+        '손오공', '홍길동', '홍길동(본인)', '플레이어', '본인(조장)', '조장(본인)', '조장', '본인',
+        '회원', '파크골퍼', '골퍼', '게스트', '선수', 'パークゴルファー', 'ゴルファー', '山田太郎',
+        'ゲスト', 'プレイヤー', 'リーダー', '選手', '孫悟空', 'パーク達人', 'パークの達人', '同伴者', '代表'
+      ].includes(rawName)) {
         parsed.userName = '';
       }
       if (parsed.clubName === '동락 파크골프 클럽') {
