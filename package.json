@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "turbo dev",
-    "build": "turbo build",
+    "build": "turbo build && node -e \"const fs=require('fs'); if(fs.existsSync('apps/parkon/.next')){ fs.cpSync('apps/parkon/.next', '.next', {recursive: true}); }\"",
     "lint": "turbo lint",
     "dev:web": "turbo dev --filter=@landnote/web",
     "dev:api": "turbo dev --filter=@landnote/api",

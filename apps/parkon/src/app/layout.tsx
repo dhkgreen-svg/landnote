@@ -315,7 +315,7 @@ export default function RootLayout({
           {`
             (function() {
               if (typeof window === 'undefined') return;
-              var TARGET_BUILD_VER = '20261007_08';
+              var TARGET_BUILD_VER = '20261008_18';
               var currentVer = localStorage.getItem('parkon_build_ver');
               if (currentVer !== TARGET_BUILD_VER) {
                 localStorage.setItem('parkon_build_ver', TARGET_BUILD_VER);

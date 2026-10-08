@@ -7,7 +7,7 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "dist/**", "apps/web/.next/**", "apps/api/dist/**"]
+      "outputs": [".next/**", "dist/**", "apps/web/.next/**", "apps/parkon/.next/**", "apps/api/dist/**"]
     },
     "lint": {
       "dependsOn": ["^build"]
