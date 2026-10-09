@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { GeoCountryService } from '@/lib/geoCountryService';
 import { 
   ShieldAlert, 
   Users, 
@@ -184,6 +185,12 @@ interface Metrics {
   kakaoUsersCount?: number;
   totalAppDownloads: number;
   provinceStats: ProvinceStat[];
+  koreaProvinceStats?: ProvinceStat[];
+  japanProvinceStats?: ProvinceStat[];
+  countryTotals?: {
+    kr: { totalUsers: number; liveUsers: number };
+    jp: { totalUsers: number; liveUsers: number };
+  };
   courseRankings?: CourseRoundRanking[];
   liveRounds?: LiveRoundInfo[];
   userRoundAnalytics?: UserRoundAnalyticsSummary;
@@ -219,6 +226,8 @@ export default function AdminDashboardPage() {
 
   // 전국 시·도별 전체 모달 상태
   const [showAllProvincesModal, setShowAllProvincesModal] = useState(false);
+  // 국가별 탭 ('KR': 대한민국 17개 시·도 | 'JP': 일본 도도부현/권역)
+  const [provinceCountryTab, setProvinceCountryTab] = useState<'KR' | 'JP'>('KR');
   // 실시간 필드 라운딩 라이브 관제 팝업 모달 상태
   const [showLiveRoundsModal, setShowLiveRoundsModal] = useState(false);
   // 전국 구장별 실제 라운딩 랭킹 팝업 모달 상태
@@ -243,6 +252,12 @@ export default function AdminDashboardPage() {
 
   // Check saved session PIN on load (6자리 768517)
   useEffect(() => {
+    try {
+      const detected = GeoCountryService.getDetectedCountry();
+      if (detected === 'JP') {
+        setProvinceCountryTab('JP');
+      }
+    } catch {}
     const savedPin = sessionStorage.getItem('parkon_admin_pin');
     if (savedPin === '768517') {
       setPin('768517');
@@ -250,11 +265,11 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
-  const fetchMetrics = useCallback(async (authPin: string) => {
-    setIsLoading(true);
+  const fetchMetrics = useCallback(async (authPin: string, isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
     setErrorMsg('');
     try {
-      const res = await fetch(`/api/admin/analytics?pin=${authPin}`, {
+      const res = await fetch(`/api/admin/analytics?pin=${authPin}&_t=${Date.now()}`, {
         headers: { 'Cache-Control': 'no-cache' },
       });
       if (!res.ok) {
@@ -278,9 +293,20 @@ export default function AdminDashboardPage() {
       setErrorMsg(err.message || '인증 실패');
       setIsAuthenticated(false);
     } finally {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
     }
   }, []);
+
+  const handleOpenProvincesModal = () => {
+    try {
+      const detected = GeoCountryService.getDetectedCountry();
+      if (detected === 'JP') {
+        setProvinceCountryTab('JP');
+      }
+    } catch {}
+    fetchMetrics(pin || '768517', true);
+    setShowAllProvincesModal(true);
+  };
 
   // Auto-refresh interval when authenticated (60s / 1 minute to save traffic)
   useEffect(() => {
@@ -326,8 +352,23 @@ export default function AdminDashboardPage() {
   };
 
   const provinces = useMemo(() => {
-    return metrics?.provinceStats ?? [];
-  }, [metrics?.provinceStats]);
+    const list = provinceCountryTab === 'KR'
+      ? (metrics?.koreaProvinceStats || metrics?.provinceStats || [])
+      : (metrics?.japanProvinceStats || []);
+    return [...list].sort((a, b) => {
+      // 0 유저 지역 맨 하단 배치
+      if (a.userCount === 0 && b.userCount > 0) return 1;
+      if (b.userCount === 0 && a.userCount > 0) return -1;
+      // 1순위: userCount 내림차순
+      if (b.userCount !== a.userCount) return b.userCount - a.userCount;
+      // 2순위: 실시간 접속자 liveUsers 내림차순
+      if (b.liveUsers !== a.liveUsers) return b.liveUsers - a.liveUsers;
+      // 3순위: 등록 클럽 수 clubCount 내림차순
+      if (b.clubCount !== a.clubCount) return b.clubCount - a.clubCount;
+      // 4순위: 이름 가나다/오십음도 순
+      return a.name.localeCompare(b.name, provinceCountryTab === 'JP' ? 'ja' : 'ko');
+    });
+  }, [provinceCountryTab, metrics?.koreaProvinceStats, metrics?.japanProvinceStats, metrics?.provinceStats]);
 
   // --- PIN Locked Screen (6자리 암호) ---
   if (!isAuthenticated) {
@@ -479,7 +520,13 @@ export default function AdminDashboardPage() {
             </span>
             <span className="text-xs sm:text-sm font-bold text-zinc-500">명</span>
           </div>
-          <div className="mt-1.5 flex items-center justify-center gap-1 text-[10px] font-bold whitespace-nowrap flex-wrap">
+          {/* 양국 분리 표기 */}
+          <div className="mt-1 px-1.5 py-0.5 rounded bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 text-[10px] font-bold text-emerald-800 dark:text-emerald-200 flex items-center justify-center gap-1.5 whitespace-nowrap">
+            <span>🇰🇷 한국 {metrics?.countryTotals?.kr?.totalUsers ?? (metrics?.totalAllTimeUsers ?? 0)}명</span>
+            <span className="text-emerald-300 dark:text-emerald-700">|</span>
+            <span>🇯🇵 일본 {metrics?.countryTotals?.jp?.totalUsers ?? 0}명</span>
+          </div>
+          <div className="mt-1 flex items-center justify-center gap-1 text-[10px] font-bold whitespace-nowrap flex-wrap">
             <span className="px-1.5 py-0.5 rounded bg-yellow-400 text-yellow-950 border border-yellow-500/50">
               💬 카카오 {metrics?.kakaoUsersCount ?? (metrics?.userRoundAnalytics?.kakaoUsersCount ?? 0)}명
             </span>
@@ -519,8 +566,15 @@ export default function AdminDashboardPage() {
             </span>
             <span className="text-xs sm:text-sm font-bold text-zinc-500">명</span>
           </div>
-          <div className="mt-1.5 text-[10px] text-amber-600 dark:text-amber-400 font-bold">
-            실시간 10분내
+          {/* 양국 분리 표기 */}
+          <div className="mt-1 px-1.5 py-0.5 rounded bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 text-[10px] font-bold text-amber-800 dark:text-amber-200 flex items-center justify-center gap-1.5 whitespace-nowrap">
+            <span>🇰🇷 한국 {metrics?.countryTotals?.kr?.liveUsers ?? (metrics?.liveUsers ?? 0)}명</span>
+            <span className="text-amber-300 dark:text-amber-700">|</span>
+            <span>🇯🇵 일본 {metrics?.countryTotals?.jp?.liveUsers ?? 0}명</span>
+          </div>
+          <div className="mt-1 text-[10px] text-amber-600 dark:text-amber-400 font-bold flex items-center justify-center gap-1">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+            <span>실시간 90초 TTL</span>
           </div>
         </div>
 
@@ -572,10 +626,10 @@ export default function AdminDashboardPage() {
         </button>
       </div>
 
-      {/* 2. 전국 16개 시·도별 현황 열기 (간결한 작은 카드) */}
+      {/* 2. 한·일 지역별 현황 열기 (간결한 작은 카드) */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3 sm:p-3.5 shadow-xs">
         <button
-          onClick={() => setShowAllProvincesModal(true)}
+          onClick={handleOpenProvincesModal}
           className="w-full py-2.5 px-3 sm:px-4 bg-emerald-50/60 hover:bg-emerald-100/70 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/60 hover:border-emerald-500 rounded-xl transition-all flex items-center justify-between gap-3 text-left group cursor-pointer active:scale-99"
         >
           <div className="flex items-center gap-2.5 min-w-0">
@@ -585,19 +639,19 @@ export default function AdminDashboardPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 whitespace-nowrap">
                 <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  전국 16개 시·도별 현황
+                  한·일 지역별 실제 현황 (대한민국 17개 시·도 / 일본 권역)
                 </span>
                 <span className="text-[10px] px-1.5 py-0.2 bg-emerald-200/70 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 rounded font-bold shrink-0">
-                  100% 팩트
+                  실시간 90초 TTL
                 </span>
               </div>
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400 whitespace-nowrap overflow-hidden text-ellipsis mt-0.5">
-                클릭하시면 16개 시·도별 실제 유저 수, 접속자 및 클럽 현황이 팝업됩니다.
+                클릭하시면 대한민국 17개 시·도 및 일본 주요 권역별 유저 수, 접속자 및 클럽 현황이 팝업됩니다.
               </p>
             </div>
           </div>
           <div className="px-3 py-1.5 bg-emerald-600 group-hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shrink-0 whitespace-nowrap shadow-xs">
-            <span>전국 시·도별 현황 열기</span>
+            <span>한·일 지역 현황 열기</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </div>
         </button>
@@ -674,10 +728,10 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* 전국 16개 시·도 전체 카드 팝업 모달 */}
+      {/* 한·일 지역별 실제 현황 전체 카드 팝업 모달 */}
       {showAllProvincesModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center font-bold">
@@ -685,11 +739,13 @@ export default function AdminDashboardPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                    전국 16개 시·도별 실제 현황
-                    <span className="text-xs px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold rounded">100% 팩트</span>
+                    한·일 지역별 실제 현황
+                    <span className="text-xs px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold rounded">
+                      실시간 90초 TTL
+                    </span>
                   </h3>
                   <p className="text-xs text-zinc-400 mt-0.5">
-                    원하시는 지역 카드를 클릭하시면 해당 시·도의 <strong>세부 시·군·구별 유저 수, 접속자, 클럽</strong> 정보가 열립니다.
+                    원하시는 지역 카드를 클릭하시면 해당 지역의 <strong>세부 시·군·구별 유저 수, 접속자, 클럽</strong> 정보가 열립니다.
                   </p>
                 </div>
               </div>
@@ -701,31 +757,136 @@ export default function AdminDashboardPage() {
               </button>
             </div>
 
+            {/* 상단 양국 총계 분리 표기 박스 */}
+            <div className="grid grid-cols-2 gap-2 bg-zinc-50 dark:bg-zinc-800/50 p-2.5 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 text-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-2 py-1 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200/50 dark:border-zinc-800">
+                <span className="font-bold text-zinc-600 dark:text-zinc-300">👥 [누적 유저]</span>
+                <div className="font-bold font-mono flex items-center gap-1.5 text-[11px] sm:text-xs">
+                  <span className="text-emerald-600 dark:text-emerald-400">🇰🇷 한국 {metrics?.countryTotals?.kr?.totalUsers ?? (metrics?.totalAllTimeUsers ?? 0)}명</span>
+                  <span className="text-zinc-300 dark:text-zinc-600">|</span>
+                  <span className="text-blue-600 dark:text-blue-400">🇯🇵 일본 {metrics?.countryTotals?.jp?.totalUsers ?? 0}명</span>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-2 py-1 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200/50 dark:border-zinc-800">
+                <span className="font-bold text-zinc-600 dark:text-zinc-300 flex items-center gap-1">
+                  <Radio className="w-3 h-3 text-amber-500 animate-pulse" />
+                  <span>[실시간 접속]</span>
+                </span>
+                <div className="font-bold font-mono flex items-center gap-1.5 text-[11px] sm:text-xs">
+                  <span className="text-amber-600 dark:text-amber-400">🇰🇷 한국 {metrics?.countryTotals?.kr?.liveUsers ?? (metrics?.liveUsers ?? 0)}명</span>
+                  <span className="text-zinc-300 dark:text-zinc-600">|</span>
+                  <span className="text-amber-600 dark:text-amber-400">🇯🇵 일본 {metrics?.countryTotals?.jp?.liveUsers ?? 0}명</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 국가별 탭 전환 버튼 */}
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setProvinceCountryTab('KR')}
+                className={`flex-1 py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  provinceCountryTab === 'KR'
+                    ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/30'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                }`}
+              >
+                <span>🇰🇷 대한민국 (17개 시·도)</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  provinceCountryTab === 'KR' ? 'bg-white/20 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'
+                }`}>
+                  {metrics?.koreaProvinceStats?.length ?? 17}개
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setProvinceCountryTab('JP')}
+                className={`flex-1 py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  provinceCountryTab === 'JP'
+                    ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-500/30'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                }`}
+              >
+                <span>🇯🇵 일본 (도도부현/권역)</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  provinceCountryTab === 'JP' ? 'bg-white/20 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300'
+                }`}>
+                  {metrics?.japanProvinceStats?.length ?? 7}개
+                </span>
+              </button>
+            </div>
+
+            {/* 카드 그리드: 4-Tier 정렬 및 1~3위 뱃지 표출 */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5 pt-1">
-              {provinces.map((prov) => (
-                <button
-                  key={prov.code}
-                  onClick={() => {
-                    setShowAllProvincesModal(false);
-                    setSelectedProvinceModal(prov);
-                  }}
-                  className="aspect-square p-2.5 sm:p-3 bg-zinc-50 dark:bg-zinc-800/70 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 rounded-xl sm:rounded-2xl text-center shadow-xs transition-all flex flex-col justify-between items-center group cursor-pointer active:scale-98"
-                >
-                  <span className="text-sm sm:text-base font-black text-zinc-800 dark:text-zinc-100 group-hover:text-emerald-600 transition-colors">
-                    {prov.name}
-                  </span>
-                  <div className="my-auto py-0.5">
-                    <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
-                      {prov.userCount}
+              {provinces.map((prov, index) => {
+                const isTop1 = index === 0 && prov.userCount > 0;
+                const isTop2 = index === 1 && prov.userCount > 0;
+                const isTop3 = index === 2 && prov.userCount > 0;
+                const isZero = prov.userCount === 0;
+
+                return (
+                  <button
+                    key={prov.code}
+                    onClick={() => {
+                      setShowAllProvincesModal(false);
+                      setSelectedProvinceModal(prov);
+                    }}
+                    className={`relative aspect-square p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-center shadow-xs transition-all flex flex-col justify-between items-center group cursor-pointer active:scale-98 border ${
+                      isTop1
+                        ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700/80 hover:border-amber-500 shadow-amber-500/10'
+                        : isTop2
+                        ? 'bg-slate-50 dark:bg-zinc-800/80 border-slate-300 dark:border-zinc-600 hover:border-slate-500'
+                        : isTop3
+                        ? 'bg-amber-50/30 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60 hover:border-amber-400'
+                        : isZero
+                        ? 'bg-zinc-50/50 dark:bg-zinc-900/40 border-zinc-200/50 dark:border-zinc-800/50 opacity-70 hover:opacity-100 hover:border-zinc-400'
+                        : 'bg-zinc-50 dark:bg-zinc-800/70 border-zinc-200 dark:border-zinc-700 hover:border-emerald-500 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40'
+                    }`}
+                  >
+                    {/* Top 3 순위 뱃지 */}
+                    {isTop1 && (
+                      <span className="absolute -top-2 -right-1 px-1.5 py-0.5 rounded-full bg-amber-400 text-amber-950 text-[10px] font-black shadow-xs flex items-center gap-0.5">
+                        🥇 1위
+                      </span>
+                    )}
+                    {isTop2 && (
+                      <span className="absolute -top-2 -right-1 px-1.5 py-0.5 rounded-full bg-slate-300 text-slate-900 text-[10px] font-black shadow-xs flex items-center gap-0.5">
+                        🥈 2위
+                      </span>
+                    )}
+                    {isTop3 && (
+                      <span className="absolute -top-2 -right-1 px-1.5 py-0.5 rounded-full bg-amber-700 text-amber-100 text-[10px] font-black shadow-xs flex items-center gap-0.5">
+                        🥉 3위
+                      </span>
+                    )}
+
+                    <span className={`text-sm sm:text-base font-black transition-colors ${
+                      isTop1
+                        ? 'text-amber-900 dark:text-amber-200'
+                        : 'text-zinc-800 dark:text-zinc-100 group-hover:text-emerald-600'
+                    }`}>
+                      {prov.name}
                     </span>
-                  </div>
-                  <div className="w-full pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 text-[10px] sm:text-xs text-zinc-500 flex flex-col sm:flex-row items-center justify-center sm:gap-1.5 leading-tight">
-                    <span>접속 <strong className="text-amber-600 dark:text-amber-400 font-bold">{prov.liveUsers}명</strong></span>
-                    <span className="hidden sm:inline text-zinc-300 dark:text-zinc-600">·</span>
-                    <span>클럽 {prov.clubCount}개</span>
-                  </div>
-                </button>
-              ))}
+                    <div className="my-auto py-0.5">
+                      <span className={`text-2xl sm:text-3xl font-black ${
+                        isTop1
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : isZero
+                          ? 'text-zinc-400 dark:text-zinc-600 font-bold'
+                          : 'text-emerald-600 dark:text-emerald-400'
+                      }`}>
+                        {prov.userCount}
+                      </span>
+                      <span className="text-xs text-zinc-400 ml-0.5 font-medium">명</span>
+                    </div>
+                    <div className="w-full pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 text-[10px] sm:text-xs text-zinc-500 flex flex-col sm:flex-row items-center justify-center sm:gap-1.5 leading-tight">
+                      <span>접속 <strong className="text-amber-600 dark:text-amber-400 font-bold">{prov.liveUsers}명</strong></span>
+                      <span className="hidden sm:inline text-zinc-300 dark:text-zinc-600">·</span>
+                      <span>클럽 {prov.clubCount}개</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="pt-2">

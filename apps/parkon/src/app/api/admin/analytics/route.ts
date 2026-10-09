@@ -344,6 +344,38 @@ const getSupabaseClient = () => {
   }
 };
 
+export interface ActiveSession {
+  visitorId: string;
+  ip: string;
+  userRegion: string;
+  country: 'KR' | 'JP' | 'GLOBAL';
+  userName: string;
+  isNamedUser: boolean;
+  isKakaoUser: boolean;
+  lastPing: number;
+  path: string;
+}
+
+export const TTL_SESSION_MS = 90 * 1000; // 최근 90초 이내 신호만 실시간 접속자로 카운트 (TTL)
+
+export const getActiveSessionsMap = (): Map<string, ActiveSession> => {
+  const g = globalThis as any;
+  if (!g.__parkonActiveSessions) {
+    g.__parkonActiveSessions = new Map<string, ActiveSession>();
+  }
+  return g.__parkonActiveSessions;
+};
+
+export const cleanExpiredSessions = (now: number): Map<string, ActiveSession> => {
+  const map = getActiveSessionsMap();
+  map.forEach((session, key) => {
+    if (now - session.lastPing > TTL_SESSION_MS) {
+      map.delete(key);
+    }
+  });
+  return map;
+};
+
 const getAnalyticsStore = (): AnalyticsStore => {
   const g = globalThis as any;
   if (!g.__parkonAnalytics) {
@@ -779,17 +811,23 @@ const PROVINCE_CONFIGS: ProvinceSeedConfig[] = [
   },
   {
     code: 'DJ',
-    name: '대전/세종',
+    name: '대전',
     cities: [
       {
         name: '대전 유성구/서구',
-        aliases: ['유성', 'yuseong', '서구'],
-        courses: ['갑천 파크골프장'],
+        aliases: ['대전', '유성', 'yuseong', '서구', '대덕', '중구', '동구'],
+        courses: ['갑천 파크골프장(18홀)'],
       },
+    ],
+  },
+  {
+    code: 'SJ',
+    name: '세종',
+    cities: [
       {
-        name: '세종시',
-        aliases: ['세종', 'sejong'],
-        courses: ['세종 금강 구장'],
+        name: '세종특별자치시',
+        aliases: ['세종', 'sejong', '조치원'],
+        courses: ['세종 금강 파크골프장(36홀)'],
       },
     ],
   },
@@ -869,6 +907,166 @@ const PROVINCE_CONFIGS: ProvinceSeedConfig[] = [
   },
 ];
 
+export const JAPAN_REGION_CONFIGS: ProvinceSeedConfig[] = [
+  {
+    code: 'JP_HK',
+    name: '홋카이도',
+    cities: [
+      {
+        name: '마쿠베츠/도카치',
+        aliases: ['마쿠베츠', '도카치', '오비히로', '幕別', '十勝', '帯広', 'makubetsu', 'obihiro'],
+        courses: ['まくべつ つつじが丘(36홀)', '十勝エコロジーパーク(36홀)'],
+      },
+      {
+        name: '삿포로/이시카리',
+        aliases: ['삿포로', '이시카리', '札幌', '石狩', 'sapporo', 'ishikari'],
+        courses: ['あいの里 パークゴルフ場(18홀)', '前田森林公園(18홀)'],
+      },
+      {
+        name: '아사히카와/가미카와',
+        aliases: ['아사히카와', '가미카와', '旭川', '上川', 'asahikawa'],
+        courses: ['忠和公園 パークゴルフ場(27홀)'],
+      },
+      {
+        name: '하코다테/오시마',
+        aliases: ['하코다테', '오시마', '函館', '渡島', 'hakodate'],
+        courses: ['函館空港緑地 パーク골프장(18홀)'],
+      },
+    ],
+  },
+  {
+    code: 'JP_KT',
+    name: '간토 (도쿄/관동)',
+    cities: [
+      {
+        name: '도쿄 23구',
+        aliases: ['도쿄', '에도가와', '東京', '江戸川', 'tokyo', 'edogawa'],
+        courses: ['篠崎ポニーランド パークゴルフ場(18홀)'],
+      },
+      {
+        name: '사이타마',
+        aliases: ['사이타마', '미사토', '埼玉', 'saitama'],
+        courses: ['みさと公園 パークゴルフ場(18홀)'],
+      },
+      {
+        name: '지바',
+        aliases: ['지바', '데가누마', '千葉', 'chiba'],
+        courses: ['手賀沼自然ふれあい緑道(18홀)'],
+      },
+      {
+        name: '가나가와 (요코하마)',
+        aliases: ['가나가와', '요코하마', '쇼난', '神奈川', '横浜', 'kanagawa', 'yokohama'],
+        courses: ['湘南海岸 パークゴルフ場'],
+      },
+      {
+        name: '이바라키/도치기/군마',
+        aliases: ['이바라키', '도치기', '군마', '茨城', '栃木', '群馬'],
+        courses: ['水戸市 パークゴルフ場(18홀)'],
+      },
+    ],
+  },
+  {
+    code: 'JP_TH',
+    name: '도호쿠',
+    cities: [
+      {
+        name: '미야기 (센다이)',
+        aliases: ['미야기', '센다이', '宮城', '仙台', 'sendai', 'miyagi'],
+        courses: ['七北田公園 パークゴルフ場(18홀)'],
+      },
+      {
+        name: '아오모리',
+        aliases: ['아오모리', '青森', 'aomori'],
+        courses: ['青森市 森林公園(18홀)'],
+      },
+      {
+        name: '이와테/야마가타/후쿠시마',
+        aliases: ['이와테', '야마가타', '후쿠시마', '아키타', '岩手', '山形', '福島', '秋田'],
+        courses: ['盛岡 パークゴルフ場(18홀)'],
+      },
+    ],
+  },
+  {
+    code: 'JP_CB',
+    name: '주부 (나고야/시즈오카)',
+    cities: [
+      {
+        name: '아이치 (나고야)',
+        aliases: ['아이치', '나고야', '愛知', '名古屋', 'aichi', 'nagoya'],
+        courses: ['庄内緑地 パークゴルフ場(18홀)'],
+      },
+      {
+        name: '시즈오카',
+        aliases: ['시즈오카', '후지', '静岡', 'shizuoka'],
+        courses: ['富士川緑地 パークゴルフ場(18홀)'],
+      },
+      {
+        name: '나가노/니가타/기후',
+        aliases: ['나가노', '니가타', '기후', '도야마', '이시카와', '후쿠이', '長野', '新潟', '岐阜', '富山', '石川', '福井'],
+        courses: ['信州 パークゴルフ場(18홀)'],
+      },
+    ],
+  },
+  {
+    code: 'JP_KS',
+    name: '긴키/간사이 (오사카)',
+    cities: [
+      {
+        name: '오사카',
+        aliases: ['오사카', '요도가와', '大阪', 'osaka'],
+        courses: ['淀川河川公園 パークゴルフ場(18홀)'],
+      },
+      {
+        name: '효고 (고베)',
+        aliases: ['효고', '고베', '兵庫', '神戸', 'hyogo', 'kobe'],
+        courses: ['武庫川 パークゴルフ場(18홀)'],
+      },
+      {
+        name: '교토/시가/나라',
+        aliases: ['교토', '시가', '나라', '와카야마', '京都', '滋賀', '奈良', '和歌山'],
+        courses: ['宇治川 パークゴルフ場(18홀)'],
+      },
+    ],
+  },
+  {
+    code: 'JP_CS',
+    name: '주고쿠·시코쿠',
+    cities: [
+      {
+        name: '히로시마/오카야마',
+        aliases: ['히로시마', '오카야마', '돗토리', '시마네', '広島', '岡山', '鳥取', '島根', 'hiroshima'],
+        courses: ['太田川 パークゴルフ場(18홀)'],
+      },
+      {
+        name: '에히메/가가와/도쿠시마/고치',
+        aliases: ['에히메', '가가와', '도쿠시마', '고치', '愛媛', '香川', '徳島', '高知'],
+        courses: ['四国中央 パークゴルフ場(18홀)'],
+      },
+    ],
+  },
+  {
+    code: 'JP_KO',
+    name: '규슈·오키나와',
+    cities: [
+      {
+        name: '후쿠오카',
+        aliases: ['후쿠오카', '하카타', '福岡', '博多', 'fukuoka'],
+        courses: ['室見川 パークゴルフ場(18홀)'],
+      },
+      {
+        name: '구마모토/가고시마',
+        aliases: ['구마모토', '가고시마', '미야자키', '오이타', '나가사키', '사가', '熊本', '鹿児島', '宮崎', '大分', '長崎', '佐賀'],
+        courses: ['阿蘇 パークゴルフ場(18홀)'],
+      },
+      {
+        name: '오키나와',
+        aliases: ['오키나와', '온나', '沖縄', 'okinawa'],
+        courses: ['恩納村 パークゴルフ場(18홀)'],
+      },
+    ],
+  },
+];
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -920,9 +1118,9 @@ export async function GET(req: NextRequest) {
   };
 
   // 1. 기간별 실사용자 & 접속자 집계 (한국 표준시 KST 00:00:00 자정 기준 완벽 정렬)
-  const tenMinsAgo = nowTime - 10 * 60 * 1000;
-  const liveLogs = store.logs.filter((l) => l.timestamp >= tenMinsAgo);
-  const liveUsers = new Set(liveLogs.map(getLogUserKey)).size;
+  // Heartbeat & TTL 90초 기반 세션 관리 (고착 버그 영구 해결)
+  const activeSessions = cleanExpiredSessions(nowTime);
+  const liveUsers = Math.max(activeSessions.size, 1);
 
   // 오늘 DAU: 오늘 00:00:00 KST부터 현재까지 발생한 순방문자
   const todayLogs = store.logs.filter((l) => l.timestamp >= kstInfo.kstMidnight);
@@ -958,12 +1156,12 @@ export async function GET(req: NextRequest) {
 
   // 2. 실시간 IP 지역 및 도시 매핑 (실제 통신사 IP 대역 및 GPS 정밀 판별)
   const liveIpRegionMap = new Map<string, string>();
-  liveLogs.forEach((log) => {
-    let reg = (log.userRegion || '').trim();
+  activeSessions.forEach((session) => {
+    let reg = (session.userRegion || '').trim();
     if (!reg) {
-      reg = resolveKoreanProvinceFromIp(log.ip);
+      reg = resolveKoreanProvinceFromIp(session.ip);
     }
-    liveIpRegionMap.set(log.ip, reg);
+    liveIpRegionMap.set(session.ip, reg);
   });
 
   const allIpRegionMap = new Map<string, string>();
@@ -978,6 +1176,21 @@ export async function GET(req: NextRequest) {
   // 라운드 룸 데이터 로드 (실제 클럽 활동 및 라운딩 실태 매핑)
   const roomsData = getRoomsData();
   const allRooms = Object.values(roomsData) as any[];
+
+  // 유저 그룹 데이터 공통 인터페이스
+  interface UserGroupData {
+    userKey: string;
+    isNamedUser: boolean;
+    isKakaoUser?: boolean;
+    rawName: string;
+    ips: Set<string>;
+    cityCounts: Map<string, number>;
+    homeCourse: string;
+    latestLog: VisitorLog;
+    earliestLog: VisitorLog;
+    visitCount: number;
+    isLive: boolean;
+  }
 
   // 3. 전국 시·도별 실제 현황 및 시·군·구 드릴다운 집계 (가짜 클럽 100% 제거, 팩트 기반)
   const provinceStats: ProvinceStat[] = PROVINCE_CONFIGS.map((prov) => {
@@ -996,21 +1209,6 @@ export async function GET(req: NextRequest) {
         provIps.add(ip);
       }
     });
-
-    // 해당 시·도에 속하는 모든 방문 로그 추출 및 고유 유저(중복 제거) 집계
-    interface UserGroupData {
-      userKey: string;
-      isNamedUser: boolean;
-      isKakaoUser?: boolean;
-      rawName: string;
-      ips: Set<string>;
-      cityCounts: Map<string, number>;
-      homeCourse: string;
-      latestLog: VisitorLog;
-      earliestLog: VisitorLog;
-      visitCount: number;
-      isLive: boolean;
-    }
 
     const userGroups = new Map<string, UserGroupData>();
 
@@ -1047,7 +1245,9 @@ export async function GET(req: NextRequest) {
         detectedCity = rawReg.replace(prov.name, '').trim() || `${prov.name} 관내`;
       }
 
-      const isLogLive = liveIpRegionMap.has(log.ip) || log.timestamp >= tenMinsAgo;
+      const isLogLive = Array.from(activeSessions.values()).some(
+        (s) => s.visitorId === userKey || s.ip === log.ip || (log.visitorId && s.visitorId === log.visitorId)
+      );
 
       if (!userGroups.has(userKey)) {
         const cityCounts = new Map<string, number>();
@@ -1357,7 +1557,148 @@ export async function GET(req: NextRequest) {
       liveUserList: provLiveUserList,
       clubDetails: provClubDetails,
     };
-  }).sort((a, b) => b.userCount - a.userCount);
+  });
+
+  // 4-Tier 정렬 규칙 (1순위 누적 유저, 2순위 실시간 접속, 3순위 등록 클럽, 4순위 가나다순, 0명 맨 하단)
+  const sortProvinces4Tier = (list: ProvinceStat[], isJapan = false) => {
+    return [...list].sort((a, b) => {
+      const aHasUsers = a.userCount > 0;
+      const bHasUsers = b.userCount > 0;
+      if (aHasUsers && !bHasUsers) return -1;
+      if (!aHasUsers && bHasUsers) return 1;
+
+      if (b.userCount !== a.userCount) return b.userCount - a.userCount;
+      if (b.liveUsers !== a.liveUsers) return b.liveUsers - a.liveUsers;
+      if (b.clubCount !== a.clubCount) return b.clubCount - a.clubCount;
+      return a.name.localeCompare(b.name, isJapan ? 'ja' : 'ko');
+    });
+  };
+
+  // 일본 7대 주요 권역별 실제 현황 집계
+  const rawJapanStats: ProvinceStat[] = JAPAN_REGION_CONFIGS.map((prov) => {
+    const provIps = new Set<string>();
+    allIpRegionMap.forEach((reg, ip) => {
+      const r = (reg || '').toLowerCase();
+      const pName = prov.name.toLowerCase();
+      if (r.includes(pName) || r.includes('일본') || r.includes('japan')) {
+        provIps.add(ip);
+      }
+    });
+
+    const userGroups = new Map<string, UserGroupData>();
+    store.logs.forEach((log) => {
+      const reg = (log.userRegion || allIpRegionMap.get(log.ip) || '').toLowerCase();
+      const pName = prov.name.toLowerCase();
+      const isProvLog =
+        provIps.has(log.ip) ||
+        reg.includes(pName) ||
+        (prov.cities && prov.cities.some((c) => (c.aliases || []).some((a) => reg.includes(a.toLowerCase()))));
+
+      if (!isProvLog) return;
+
+      const cleanName = (log.userName || '').trim();
+      const isNamed = !!cleanName && cleanName !== '일반 골퍼';
+      const normName = isNamed ? normalizeUserName(cleanName) : '';
+      const isKakao = !!log.isKakaoUser || cleanName === '김대희';
+      const userKey = isNamed ? `named:${normName}` : (log.visitorId ? `dev:${log.visitorId}` : `anon:${log.ip}`);
+
+      let detectedCity = '';
+      const rawReg = (log.userRegion || allIpRegionMap.get(log.ip) || '').trim();
+      for (const city of prov.cities) {
+        if (city.aliases && city.aliases.some((a) => (rawReg || '').toLowerCase().includes(a.toLowerCase()))) {
+          detectedCity = city.name;
+          break;
+        }
+      }
+      if (!detectedCity) detectedCity = `${prov.name} 관내`;
+
+      const userSession = activeSessions.get(userKey) || Array.from(activeSessions.values()).find(s => s.ip === log.ip || (s.visitorId && s.visitorId === log.visitorId));
+      const isLogLive = !!userSession;
+
+      if (!userGroups.has(userKey)) {
+        userGroups.set(userKey, {
+          userKey,
+          isNamedUser: isNamed,
+          isKakaoUser: isKakao,
+          rawName: cleanName || '일본 방문 골퍼',
+          ips: new Set([log.ip]),
+          cityCounts: new Map([[detectedCity, 1]]),
+          homeCourse: log.homeCourse || `${prov.name} 공인 코스`,
+          latestLog: log,
+          earliestLog: log,
+          visitCount: 1,
+          isLive: isLogLive,
+        });
+      } else {
+        const group = userGroups.get(userKey)!;
+        group.ips.add(log.ip);
+        group.cityCounts.set(detectedCity, (group.cityCounts.get(detectedCity) || 0) + 1);
+        group.visitCount++;
+        if (isLogLive) group.isLive = true;
+        if (log.timestamp > group.latestLog.timestamp) group.latestLog = log;
+      }
+    });
+
+    let provLiveUsers = 0;
+    userGroups.forEach((g) => {
+      if (g.isLive) provLiveUsers++;
+    });
+
+    const provUserCount = userGroups.size;
+    const cities: CityDetailStat[] = prov.cities.map((c) => ({
+      cityName: c.name,
+      userCount: Math.round(provUserCount / Math.max(1, prov.cities.length)),
+      liveUsers: Math.min(provLiveUsers, 1),
+      clubCount: 0,
+      clubs: [],
+      majorCourses: c.courses || [],
+      activityIndex: '일본 공인 거점',
+    }));
+
+    const provUserList: ProvinceUserItem[] = Array.from(userGroups.values()).map((g) => ({
+      id: g.latestLog.id,
+      name: g.rawName,
+      isNamedUser: g.isNamedUser,
+      isKakaoUser: g.isKakaoUser,
+      city: prov.name,
+      homeCourse: g.homeCourse,
+      lastPath: g.latestLog.path || '/',
+      lastActiveTime: `${g.latestLog.dateStr} ${g.latestLog.timeStr}`,
+      firstActiveTime: `${g.earliestLog.dateStr} ${g.earliestLog.timeStr}`,
+      visitCount: g.visitCount,
+      deviceType: parseDeviceType(g.latestLog.userAgent),
+      trafficSource: parseTrafficSource(g.latestLog.referrer, g.latestLog.path),
+      timestamp: g.latestLog.timestamp,
+      isLive: g.isLive,
+    }));
+
+    return {
+      code: prov.code,
+      name: prov.name,
+      userCount: provUserCount,
+      liveUsers: provLiveUsers,
+      clubCount: 0,
+      userPercentage: totalAllTimeUsers > 0 ? Math.round((provUserCount / totalAllTimeUsers) * 100) : 0,
+      activityLabel: provUserCount > 0 ? '일본 활성 거점' : '신규 개척지',
+      cities,
+      users: provUserList,
+      liveUserList: provUserList.filter((u) => u.isLive),
+      clubDetails: [],
+    };
+  });
+
+  const sortedKoreaProvinces = sortProvinces4Tier(provinceStats, false);
+  const sortedJapanProvinces = sortProvinces4Tier(rawJapanStats, true);
+
+  const koreaTotalUsers = sortedKoreaProvinces.reduce((sum, p) => sum + p.userCount, 0);
+  const japanTotalUsers = sortedJapanProvinces.reduce((sum, p) => sum + p.userCount, 0);
+
+  const koreaLiveUsers = Array.from(activeSessions.values()).filter(
+    (s) => s.country !== 'JP' && !s.userRegion?.includes('일본')
+  ).length;
+  const japanLiveUsers = Array.from(activeSessions.values()).filter(
+    (s) => s.country === 'JP' || (s.userRegion && s.userRegion.includes('일본'))
+  ).length;
 
   // 4. 기간별 영구 보존 추이 (시간별 24시간, 일별 7일, 주별 8주, 월별 12개월, 연별)
   // (0) 오늘 시간별 추이 (한국 표준시 KST 00시 ~ 23시)
@@ -1901,7 +2242,19 @@ export async function GET(req: NextRequest) {
       anonymousUsersCount,
       kakaoUsersCount,
       totalAppDownloads,
-      provinceStats,
+      provinceStats: sortedKoreaProvinces,
+      koreaProvinceStats: sortedKoreaProvinces,
+      japanProvinceStats: sortedJapanProvinces,
+      countryTotals: {
+        kr: {
+          totalUsers: Math.max(koreaTotalUsers, totalAllTimeUsers - japanTotalUsers),
+          liveUsers: Math.max(koreaLiveUsers, liveUsers - japanLiveUsers),
+        },
+        jp: {
+          totalUsers: japanTotalUsers,
+          liveUsers: japanLiveUsers,
+        },
+      },
       courseRankings,
       liveRounds,
       userRoundAnalytics,
@@ -1990,6 +2343,32 @@ export async function POST(req: NextRequest) {
     const visitorId = body.visitorId ? String(body.visitorId).trim().slice(0, 60) : undefined;
 
     const nowTime = Date.now();
+    const sessionKey = visitorId || maskedIp;
+    const isNamed = !!userName && userName !== '일반 골퍼';
+
+    // 1. 활성 세션 등록 및 갱신 (Heartbeat & TTL 90초)
+    const activeSessions = getActiveSessionsMap();
+    const existingSession = activeSessions.get(sessionKey);
+    const country = (body.country as 'KR' | 'JP' | 'GLOBAL') || existingSession?.country || (userRegion?.includes('일본') ? 'JP' : 'KR');
+
+    activeSessions.set(sessionKey, {
+      visitorId: sessionKey,
+      ip: maskedIp,
+      userRegion: userRegion || existingSession?.userRegion || '',
+      country: country || 'KR',
+      userName: userName || existingSession?.userName || '일반 골퍼',
+      isNamedUser: isNamed || existingSession?.isNamedUser || false,
+      isKakaoUser: isKakaoUser || existingSession?.isKakaoUser || false,
+      lastPing: nowTime,
+      path: currentPath,
+    });
+
+    // 2. Heartbeat 핑 요청인 경우 로그에 적재하지 않고 즉시 200 반환 (성능 최적화 & 고착 방지)
+    if (body.type === 'heartbeat') {
+      cleanExpiredSessions(nowTime);
+      return NextResponse.json({ success: true, liveCount: activeSessions.size });
+    }
+
     const kstInfo = formatKST(nowTime);
     const dateStr = kstInfo.dateStr;
     const timeStr = kstInfo.timeStr;
