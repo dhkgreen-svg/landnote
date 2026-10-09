@@ -702,7 +702,7 @@ export default function RoundPlayPage() {
   const holeMetadata = activeHolesMetadata.find((m) => Number(m.hole) === baseHoleNumber) || {
     hole: baseHoleNumber,
     par: 3,
-    distanceMeter: 50,
+    distanceMeter: 0,
     localRule: undefined,
     tip: undefined,
     isVerified: false,
@@ -720,7 +720,9 @@ export default function RoundPlayPage() {
     holeMetadata.contributedBy
   );
 
-  const currentPar = Number(holeMetadata.par) || 3;
+  // [대표님 절대 원칙]: 단일 진실 공급원(Single Source of Truth) 확립
+  // 공인 검증/실측 홀은 DB의 실제 Par(3/4/5), 미등록 홀은 예외 없이 무조건 Par 3 고정!
+  const currentPar = isHoleVerified ? (Number(holeMetadata.par) || 3) : 3;
 
   // Helper to determine which course letter a hole belongs to
   const getCourseLetterForHole = (hNum: number) => {
@@ -765,8 +767,9 @@ export default function RoundPlayPage() {
 
     const segmentPar = confirmedInSeg.reduce((sum, h) => {
       const base = ((h - 1) % 1000) + 1;
-      const meta = course.holesMetadata?.find((m) => Number(m.hole) === base);
-      return sum + Number(meta?.par || 3);
+      const meta = activeHolesMetadata?.find((m) => Number(m.hole) === base);
+      const isVerified = Boolean(meta?.isVerified === true || meta?.contributedBy);
+      return sum + (isVerified ? (Number(meta?.par) || 3) : 3);
     }, 0);
 
     const title = roundsPerLetter[seg.cLetter] > 1 || seg.round > 1
@@ -780,8 +783,9 @@ export default function RoundPlayPage() {
 
       const holeDetails = fullHoles.map((hNum, i) => {
         const base = ((hNum - 1) % 1000) + 1;
-        const meta = course.holesMetadata?.find((m) => Number(m.hole) === base);
-        const par = Number(meta?.par || 3);
+        const meta = activeHolesMetadata?.find((m) => Number(m.hole) === base);
+        const isVerified = Boolean(meta?.isVerified === true || meta?.contributedBy);
+        const par = isVerified ? (Number(meta?.par) || 3) : 3;
         const isConfirmed = confirmedHoles.includes(hNum);
         const s = isConfirmed ? p.scores[hNum] : undefined;
         const d = s !== undefined ? s - par : undefined;
@@ -1338,10 +1342,32 @@ export default function RoundPlayPage() {
     if (existingHoleIdx >= 0) {
       // If target hole already in session, just navigate to it
       const targetCurrentHole = existingHoleIdx + 1;
+      const targetActualHole = targetSpecificHoleNumber;
+      const targetBaseHole = ((Number(targetActualHole) - 1) % 1000) + 1;
+      const targetMeta = activeHolesMetadata.find((m) => Number(m.hole) === targetBaseHole);
+      const targetIsVerified = Boolean(targetMeta?.isVerified === true || targetMeta?.contributedBy);
+      const targetHolePar = targetIsVerified ? (Number(targetMeta?.par) || 3) : 3;
+      const targetDefaultStroke = countingMode === 'ZERO_BASE' ? 0 : targetHolePar;
+
+      const currentConfirmed = session.confirmedHoles || [];
+      const updatedPlayers = session.players.map((p) => {
+        if (p.isOut) return p;
+        if (!currentConfirmed.includes(targetActualHole)) {
+          return {
+            ...p,
+            scores: {
+              ...p.scores,
+              [targetActualHole]: targetDefaultStroke,
+            },
+          };
+        }
+        return p;
+      });
+
       setCurrentHole(targetCurrentHole);
       setHoleStep('TEE_SHOT');
       setRestingPlayerIds([]);
-      updateSession({ ...session, currentHole: targetCurrentHole });
+      updateSession({ ...session, currentHole: targetCurrentHole, players: updatedPlayers });
       setShowCoursePicker(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -1640,6 +1666,27 @@ export default function RoundPlayPage() {
 
     if (currentHole < session.totalHoles) {
       const nextH = currentHole + 1;
+      const nextActualHole = (session.selectedHoleNumbers && session.selectedHoleNumbers[nextH - 1]) || nextH;
+      const nextBaseHole = ((Number(nextActualHole) - 1) % 1000) + 1;
+      const nextMeta = activeHolesMetadata.find((m) => Number(m.hole) === nextBaseHole);
+      const nextIsVerified = Boolean(nextMeta?.isVerified === true || nextMeta?.contributedBy);
+      const nextHolePar = nextIsVerified ? (Number(nextMeta?.par) || 3) : 3;
+      const nextDefaultStroke = countingMode === 'ZERO_BASE' ? 0 : nextHolePar;
+
+      const playersForNextHole = updatedPlayers.map((p) => {
+        if (p.isOut) return p;
+        if (!currentConfirmed.includes(nextActualHole)) {
+          return {
+            ...p,
+            scores: {
+              ...p.scores,
+              [nextActualHole]: nextDefaultStroke,
+            },
+          };
+        }
+        return p;
+      });
+
       setCurrentHole(nextH);
       setHoleStep('TEE_SHOT'); // 2단계에서 다음 홀 1단계 대형 전광판으로 자동 전환!
       setRestingPlayerIds([]);
@@ -1648,7 +1695,7 @@ export default function RoundPlayPage() {
         currentHole: nextH,
         holeStep: 'TEE_SHOT',
         confirmedHoles: currentConfirmed,
-        players: updatedPlayers,
+        players: playersForNextHole,
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -1952,12 +1999,14 @@ export default function RoundPlayPage() {
       session.selectedHoleNumbers.forEach((hNum) => {
         const baseH = ((Number(hNum) - 1) % 1000) + 1;
         const hMeta = updatedMetadata.find((m) => Number(m.hole) === baseH);
-        totalParSoFar += Number(hMeta?.par || 3);
+        const isV = Boolean(hMeta?.isVerified === true || hMeta?.contributedBy);
+        totalParSoFar += isV ? (Number(hMeta?.par) || 3) : 3;
       });
     } else {
       for (let h = 1; h <= session.totalHoles; h++) {
         const hMeta = updatedMetadata.find((m) => Number(m.hole) === h);
-        totalParSoFar += Number(hMeta?.par || 3);
+        const isV = Boolean(hMeta?.isVerified === true || hMeta?.contributedBy);
+        totalParSoFar += isV ? (Number(hMeta?.par) || 3) : 3;
       }
     }
 
@@ -2497,7 +2546,7 @@ export default function RoundPlayPage() {
                   title={isJapanese ? '諸元入力' : '제원 입력'}
                 >
                   <Pencil className="w-3 h-3 text-amber-300" />
-                  <span>{isJapanese ? '✏️ 諸元入力' : isEnglish ? '✏️ Edit Spec' : '✏️ 제원 입력'}</span>
+                  <span>Par 3 · {isJapanese ? '✏️ 諸元入力' : isEnglish ? '✏️ Edit Spec' : '✏️ 제원 입력'}</span>
                 </button>
               ) : (
                 <button
@@ -2578,8 +2627,9 @@ export default function RoundPlayPage() {
               const pConfirmedHoles = getPlayerConfirmedHoles(player);
               const pTotalStrokes = pConfirmedHoles.reduce((sum, hNum) => sum + (player.scores[hNum] || 0), 0);
               const pTotalPar = pConfirmedHoles.reduce((sum, hNum) => {
-                const meta = course.holesMetadata?.find((m) => Number(m.hole) === Number(hNum));
-                return sum + Number(meta?.par || 3);
+                const meta = activeHolesMetadata?.find((m) => Number(m.hole) === Number(hNum));
+                const isVerified = Boolean(meta?.isVerified === true || meta?.contributedBy);
+                return sum + (isVerified ? (Number(meta?.par) || 3) : 3);
               }, 0);
               const pTotalDiff = pTotalStrokes - pTotalPar;
 

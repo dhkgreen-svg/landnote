@@ -86,8 +86,8 @@ export function RoundScoreboardModal({
         address: '',
         holesMetadata: Array.from({ length: 72 }, (_, i) => ({
           hole: i + 1,
-          par: (i + 1) % 3 === 0 ? 5 : (i + 1) % 2 === 0 ? 4 : 3,
-          distanceMeter: 50,
+          par: 3,
+          distanceMeter: 0,
         })),
       };
     }
@@ -106,8 +106,8 @@ export function RoundScoreboardModal({
       address: '',
       holesMetadata: Array.from({ length: 72 }, (_, i) => ({
         hole: i + 1,
-        par: (i + 1) % 3 === 0 ? 5 : (i + 1) % 2 === 0 ? 4 : 3,
-        distanceMeter: 50,
+        par: 3,
+        distanceMeter: 0,
       })),
     };
   }, [currentRound, courses]);
@@ -176,7 +176,9 @@ export function RoundScoreboardModal({
       const segmentPar = confirmedInSeg.reduce((sum, h) => {
         const base = ((h - 1) % 1000) + 1;
         const meta = activeCourse.holesMetadata?.find((m) => Number(m.hole) === base);
-        return sum + Number(meta?.par || (base % 3 === 0 ? 5 : base % 2 === 0 ? 4 : 3));
+        const isVerified = Boolean(meta?.isVerified === true || meta?.contributedBy);
+        const holePar = isVerified ? (Number(meta?.par) || 3) : 3;
+        return sum + holePar;
       }, 0);
 
       const title = roundsPerLetter[seg.cLetter] > 1 || seg.round > 1
@@ -191,7 +193,8 @@ export function RoundScoreboardModal({
         const holeDetails = fullHoles.map((hNum, i) => {
           const base = ((hNum - 1) % 1000) + 1;
           const meta = activeCourse.holesMetadata?.find((m) => Number(m.hole) === base);
-          const par = Number(meta?.par || (base % 3 === 0 ? 5 : base % 2 === 0 ? 4 : 3));
+          const isVerified = Boolean(meta?.isVerified === true || meta?.contributedBy);
+          const par = isVerified ? (Number(meta?.par) || 3) : 3;
           const isConfirmed = confirmedHoles.includes(hNum);
           const s = isConfirmed ? p.scores?.[hNum] : undefined;
           const d = s !== undefined ? s - par : undefined;
@@ -861,7 +864,8 @@ export function RoundScoreboardModal({
                             {seg.fullHoles.map((hNum) => {
                               const base = ((hNum - 1) % 1000) + 1;
                               const meta = activeCourse.holesMetadata?.find((m) => Number(m.hole) === base);
-                              const par = Number(meta?.par || (base % 3 === 0 ? 5 : base % 2 === 0 ? 4 : 3));
+                              const isVerified = Boolean(meta?.isVerified === true || meta?.contributedBy);
+                              const par = isVerified ? (Number(meta?.par) || 3) : 3;
                               const s = ps.player.scores?.[hNum] || 0;
                               const ob = ps.player.obCount?.[hNum] || 0;
                               return (

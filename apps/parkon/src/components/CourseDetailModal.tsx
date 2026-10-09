@@ -45,7 +45,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
   if (initialHoles.length < totalRequiredHoles) {
     const std = generateStandardHoles(totalRequiredHoles);
     for (let i = initialHoles.length; i < totalRequiredHoles; i++) {
-      initialHoles.push(std[i] || { hole: i + 1, par: 4, distanceMeter: 70 });
+      initialHoles.push(std[i] || { hole: i + 1, par: 3, distanceMeter: 0, isVerified: false });
     }
   }
 

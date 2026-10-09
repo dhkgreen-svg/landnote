@@ -599,10 +599,10 @@ export const ParkOnStorage = {
           name: '동반 골퍼 2',
           isLeader: false,
           isSelf: false,
-          scores: { 1: 4 },
+          scores: { 1: 3 },
           obCount: { 1: 0 },
-          totalStrokes: 4,
-          totalParDiff: 1,
+          totalStrokes: 3,
+          totalParDiff: 0,
         },
         {
           id: 'p_v3',
@@ -882,11 +882,14 @@ export const ParkOnStorage = {
           if (isOfficiallyVerified && h.isVerified !== false) {
             return {
               ...h,
+              par: Number(h.par) || 3,
               isVerified: true,
             };
           }
           return {
             ...h,
+            par: 3,
+            distanceMeter: 0,
             isVerified: false,
           };
         });

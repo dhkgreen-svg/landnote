@@ -2,14 +2,11 @@ import { Course, HoleMetadata, DisputeRule } from '@/types/parkon';
 
 export function generateStandardHoles(totalHoles: number = 18): HoleMetadata[] {
   const holes: HoleMetadata[] = [];
-  const parPattern = [4, 3, 4, 3, 4, 4, 3, 3, 5];
-  const distancePattern = [77, 45, 76, 55, 70, 85, 42, 65, 145];
   for (let i = 1; i <= totalHoles; i++) {
-    const patternIdx = (i - 1) % 9;
     holes.push({
       hole: i,
-      par: parPattern[patternIdx],
-      distanceMeter: distancePattern[patternIdx],
+      par: 3,
+      distanceMeter: 0,
       isVerified: false,
       localRule: undefined,
       tip: undefined,
