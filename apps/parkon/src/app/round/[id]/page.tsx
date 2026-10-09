@@ -71,6 +71,8 @@ export default function RoundPlayPage() {
 
   // 🏌️ [5대 마스터 아키텍처 1] 2단계 경기 동선: 'TEE_SHOT' (1단계 코스안내 전광판) | 'SCORING' (2단계 스코어 기입창)
   const [holeStep, setHoleStep] = useState<'TEE_SHOT' | 'SCORING'>('TEE_SHOT');
+  // 🛡️ 화면 깜빡임/왔다갔다(리바운드) 방지용 최근 로컬 조작 시각 Ref (네트워크 지연 이전 패킷 역류 차단)
+  const lastLocalActionTimeRef = useRef<number>(0);
 
   // 🏌️ [5대 마스터 아키텍처 2] 카운트 방식 토글: 기본값 'PAR_BASE' (Par기준 우선) | 'ZERO_BASE' (0베이스)
   const [countingMode, setCountingMode] = useState<'ZERO_BASE' | 'PAR_BASE'>('PAR_BASE');
@@ -430,8 +432,14 @@ export default function RoundPlayPage() {
 
   // Sync state to LocalStorage & Club Storage & Offline Backup & Realtime Broadcast
   const updateSession = useCallback((updated: RoundSession) => {
-    setSession(updated);
-    ParkOnStorage.saveCurrentRound(updated);
+    // 🛡️ 로컬 조작 시각 최신화 (네트워크 지연된 stale 폴링에 의한 리바운드 차단)
+    lastLocalActionTimeRef.current = Date.now();
+    const enriched: RoundSession = {
+      ...updated,
+      updatedAt: new Date().toISOString(),
+    };
+    setSession(enriched);
+    ParkOnStorage.saveCurrentRound(enriched);
 
     // 강변 음영 지역 대비 전용 2중 오프라인 스냅샷 보관
     if (typeof window !== 'undefined') {
@@ -439,9 +447,9 @@ export default function RoundPlayPage() {
         localStorage.setItem(
           'parkon_offline_score_backup',
           JSON.stringify({
-            roundId: updated.id,
+            roundId: enriched.id,
             timestamp: new Date().toISOString(),
-            data: updated,
+            data: enriched,
           })
         );
       } catch (e) {}
@@ -449,9 +457,10 @@ export default function RoundPlayPage() {
 
     // 🌐 실시간 룸 서버 동기화 & Supabase Realtime 무지연 브로드캐스트 전송 (조장 <-> 동반자 전원 50ms 실시간 양방향 연동)
     const effectiveRoomId =
-      updated.roomId ||
+      enriched.roomId ||
       (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('roomId') : null) ||
-      'latest';
+      roundId ||
+      '';
 
     try {
       fetch('/api/round/room', {
@@ -460,18 +469,20 @@ export default function RoundPlayPage() {
         body: JSON.stringify({
           action: 'start',
           roomId: effectiveRoomId,
-          roundSession: updated,
+          roundSession: enriched,
         }),
       }).catch(() => {});
 
-      const channel = supabase.channel(`room_${effectiveRoomId}`);
-      channel.send({
-        type: 'broadcast',
-        event: 'score_updated',
-        payload: {
-          session: updated,
-        },
-      });
+      if (effectiveRoomId) {
+        const channel = supabase.channel(`room_${effectiveRoomId}`);
+        channel.send({
+          type: 'broadcast',
+          event: 'score_updated',
+          payload: {
+            session: enriched,
+          },
+        });
+      }
     } catch (e) {}
 
     // Sync to ClubStorage if linked to club room
@@ -499,13 +510,24 @@ export default function RoundPlayPage() {
     const effectiveRoomId =
       session?.roomId ||
       (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('roomId') : null) ||
-      'latest';
+      roundId ||
+      '';
 
     const applyIncomingSession = (incoming: RoundSession) => {
       if (!incoming || !isSubscribed) return;
 
+      // 0) 라운드 ID 검증: 현재 라운드 ID와 완전히 다른 방의 세션이면 절대 적용하지 않음!
+      if (incoming.id && roundId && incoming.id !== roundId) {
+        return;
+      }
+
+      // 🛡️ [대표님 특명 화면 깜빡임/왔다갔다(리바운드) 원천 차단 가드]
+      // 조장이나 유저가 로컬에서 [확인 완료 (티샷 시작)], 점수 입력, 홀 전환 등을 직접 조작한 직후(2.5초 이내)에는
+      // 네트워크 지연으로 뒤늦게 도착한 서버의 이전(Stale) holeStep 또는 currentHole로 되돌아가지 않도록 철저히 보호!
+      const isRecentLocalAction = (Date.now() - lastLocalActionTimeRef.current) < 2500;
+
       // 1) 홀 진행 단계(holeStep: TEE_SHOT vs SCORING) 자동 동기화!
-      if (incoming.holeStep) {
+      if (incoming.holeStep && !isRecentLocalAction) {
         setHoleStep(incoming.holeStep);
         if (incoming.holeStep === 'SCORING') {
           setShowHoleSpecModal(false);
@@ -513,8 +535,8 @@ export default function RoundPlayPage() {
         }
       }
 
-      // 2) 현재 홀 번호 동기화
-      if (incoming.currentHole && incoming.currentHole !== currentHole) {
+      // 2) 현재 홀 번호 동기화 (최근 로컬 조작 중이 아닐 때만)
+      if (incoming.currentHole && incoming.currentHole !== currentHole && !isRecentLocalAction) {
         setCurrentHole(incoming.currentHole);
       }
 
@@ -557,9 +579,10 @@ export default function RoundPlayPage() {
         const merged: RoundSession = {
           ...prev,
           ...incoming,
+          currentHole: isRecentLocalAction ? prev.currentHole : (incoming.currentHole || prev.currentHole),
           customHolesMetadata: incoming.customHolesMetadata || prev.customHolesMetadata,
           courseCompletedModal: incoming.courseCompletedModal !== undefined ? incoming.courseCompletedModal : prev.courseCompletedModal,
-          holeStep: incoming.holeStep || prev.holeStep,
+          holeStep: isRecentLocalAction ? prev.holeStep : (incoming.holeStep || prev.holeStep),
           players: mergedPlayers,
         };
         ParkOnStorage.saveCurrentRound(merged);
@@ -601,42 +624,48 @@ export default function RoundPlayPage() {
     };
 
     // Supabase Realtime 채널 구독 (외부 모바일 기기 간 50ms 무지연 스코어/홀스텝 양방향 연동)
-    const channel = supabase.channel(`room_${effectiveRoomId}`, {
-      config: {
-        broadcast: { ack: true },
-      },
-    });
+    if (effectiveRoomId) {
+      const channel = supabase.channel(`room_${effectiveRoomId}`, {
+        config: {
+          broadcast: { ack: true },
+        },
+      });
 
-    channel
-      .on('broadcast', { event: 'score_updated' }, ({ payload }) => {
-        if (payload?.session && isSubscribed) {
-          applyIncomingSession(payload.session);
-        }
-      })
-      .subscribe();
-
-    // DB / API fallback 1초 주기 폴링
-    const pollRoom = async () => {
-      try {
-        const res = await fetch(`/api/round/room?roomId=${encodeURIComponent(effectiveRoomId)}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.room?.roundSession) {
-            applyIncomingSession(data.room.roundSession);
+      channel
+        .on('broadcast', { event: 'score_updated' }, ({ payload }) => {
+          if (payload?.session && isSubscribed) {
+            applyIncomingSession(payload.session);
           }
-        }
-      } catch (e) {}
-    };
+        })
+        .subscribe();
 
-    pollRoom();
-    const interval = setInterval(pollRoom, 1000);
+      // DB / API fallback 1초 주기 폴링
+      const pollRoom = async () => {
+        try {
+          const res = await fetch(`/api/round/room?roomId=${encodeURIComponent(effectiveRoomId)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.room?.roundSession) {
+              applyIncomingSession(data.room.roundSession);
+            }
+          }
+        } catch (e) {}
+      };
 
-    return () => {
-      isSubscribed = false;
-      clearInterval(interval);
-      supabase.removeChannel(channel);
-    };
-  }, [session?.roomId, roundId, holeStep, currentHole, countingMode]);
+      pollRoom();
+      const interval = setInterval(pollRoom, 1000);
+
+      return () => {
+        isSubscribed = false;
+        clearInterval(interval);
+        supabase.removeChannel(channel);
+      };
+    } else {
+      return () => {
+        isSubscribed = false;
+      };
+    }
+  }, [session?.roomId, roundId]);
 
   // [대표님 특명]: 제원 미등록 시 차단 모달을 띄우지 않고 기본값(Par 3, -m) 패스
   // 라운드 최초 시작 시 심플 안내 1회만 표시:
@@ -1367,7 +1396,7 @@ export default function RoundPlayPage() {
       setCurrentHole(targetCurrentHole);
       setHoleStep('TEE_SHOT');
       setRestingPlayerIds([]);
-      updateSession({ ...session, currentHole: targetCurrentHole, players: updatedPlayers });
+      updateSession({ ...session, currentHole: targetCurrentHole, holeStep: 'TEE_SHOT', players: updatedPlayers, updatedAt: new Date().toISOString() });
       setShowCoursePicker(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -2412,10 +2441,10 @@ export default function RoundPlayPage() {
             <button
               type="button"
               onClick={() => {
+                lastLocalActionTimeRef.current = Date.now();
                 const nextStep: 'SCORING' = 'SCORING';
                 setHoleStep(nextStep);
-                const updated: RoundSession = { ...session, holeStep: nextStep };
-                setSession(updated);
+                const updated: RoundSession = { ...session, holeStep: nextStep, updatedAt: new Date().toISOString() };
                 updateSession(updated);
                 if (typeof window !== 'undefined' && 'vibrate' in navigator) {
                   try { navigator.vibrate?.(50); } catch (e) {}
@@ -2522,10 +2551,10 @@ export default function RoundPlayPage() {
             <button
               type="button"
               onClick={() => {
+                lastLocalActionTimeRef.current = Date.now();
                 const prevStep: 'TEE_SHOT' = 'TEE_SHOT';
                 setHoleStep(prevStep);
-                const updated: RoundSession = { ...session, holeStep: prevStep };
-                setSession(updated);
+                const updated: RoundSession = { ...session, holeStep: prevStep, updatedAt: new Date().toISOString() };
                 updateSession(updated);
               }}
               className="bg-white/20 hover:bg-white/30 text-white text-[11px] sm:text-xs font-black px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl transition active:scale-95 flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
