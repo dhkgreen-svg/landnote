@@ -7,6 +7,7 @@ import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
 
 import { ParkOnStorage } from '@/lib/storage';
+import { GeoCountryService } from '@/lib/geoCountryService';
 
 // 두 위경도 좌표 간 거리 계산 (단위: 미터)
 function getDistanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -43,6 +44,26 @@ export function AutoLocationBanner({ courses, onStartGame }: AutoLocationBannerP
     }
 
     const checkLocation = () => {
+      // 1. 모의(Mock) GPS가 설정된 경우 해당 좌표 기준으로 최근접 구장 즉시 매칭
+      const mock = GeoCountryService.getMockLocation();
+      if (mock) {
+        let closestCourse: Course | null = null;
+        let minDistance = Infinity;
+        courses.forEach((c) => {
+          if (typeof c.lat === 'number' && typeof c.lng === 'number') {
+            const dist = getDistanceMeters(mock.lat, mock.lng, c.lat, c.lng);
+            if (dist < minDistance) {
+              minDistance = dist;
+              closestCourse = c;
+            }
+          }
+        });
+        if (closestCourse) {
+          setDetectedCourse({ course: closestCourse, distance: Math.min(minDistance, 50), isVirtualGps: true });
+        }
+        return;
+      }
+
       const country = ParkOnStorage.getServiceCountry();
 
       if (!navigator.geolocation) {
@@ -127,8 +148,10 @@ export function AutoLocationBanner({ courses, onStartGame }: AutoLocationBannerP
     };
 
     window.addEventListener('parkon_country_changed', handleCountryChange);
+    window.addEventListener('parky_geo_updated', handleCountryChange);
     return () => {
       window.removeEventListener('parkon_country_changed', handleCountryChange);
+      window.removeEventListener('parky_geo_updated', handleCountryChange);
     };
   }, [courses]);
 

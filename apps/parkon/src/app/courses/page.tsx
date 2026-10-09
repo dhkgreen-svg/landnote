@@ -28,9 +28,11 @@ import {
   Building,
   Crown,
   Minus,
+  Navigation,
 } from 'lucide-react';
 import { Course, formatCourseHolesText } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
+import { GeoCountryService } from '@/lib/geoCountryService';
 import { DEFAULT_COURSES, generateStandardHoles } from '@/lib/defaultCourses';
 import { ContributeModal } from '@/components/ContributeModal';
 import { CourseDetailModal } from '@/components/CourseDetailModal';
@@ -260,7 +262,7 @@ const DEFAULT_PAID_RESTAURANTS: ParkGolfRestaurant[] = [];
 
 export default function CoursesPage() {
   const router = useRouter();
-  const { t, isJapanese, isEnglish } = useTranslation();
+  const { t, isJapanese, isEnglish, isKorean } = useTranslation();
 
   const getLocalizedCourseName = (c?: Course | null) => {
     if (!c) return '';
@@ -281,13 +283,23 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>(() => ParkOnStorage.getAllCourses());
   const [homeCourseId, setHomeCourseId] = useState<string>('');
   const [favoriteHomeCourseIds, setFavoriteHomeCourseIds] = useState<string[]>([]);
-  const [countryFilter, setCountryFilter] = useState<'ALL' | 'KR' | 'JP'>('ALL');
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(() => GeoCountryService.getCurrentCoords());
+  const [countryFilter, setCountryFilter] = useState<'ALL' | 'KR' | 'JP'>(() => {
+    const c = ParkOnStorage.getServiceCountry();
+    if (c === 'JP') return 'JP';
+    const detected = GeoCountryService.getDetectedCountry();
+    if (detected === 'JP') return 'JP';
+    if (detected === 'KR') return 'KR';
+    return 'ALL';
+  });
 
   useEffect(() => {
     if (isJapanese) {
       setCountryFilter('JP');
+    } else if (isKorean) {
+      setCountryFilter('KR');
     }
-  }, [isJapanese]);
+  }, [isJapanese, isKorean]);
   
   // Search input and applied search term
   const [inputQuery, setInputQuery] = useState<string>('');
@@ -634,11 +646,16 @@ export default function CoursesPage() {
       console.error(err);
     }
     refreshCourses();
+    const handleGeoUpdate = () => {
+      refreshCourses();
+    };
     window.addEventListener('parkon_favorite_courses_updated', refreshCourses);
     window.addEventListener('parkon_country_changed', refreshCourses);
+    window.addEventListener('parky_geo_updated', handleGeoUpdate);
     return () => {
       window.removeEventListener('parkon_favorite_courses_updated', refreshCourses);
       window.removeEventListener('parkon_country_changed', refreshCourses);
+      window.removeEventListener('parky_geo_updated', handleGeoUpdate);
     };
   }, []);
 
@@ -660,7 +677,10 @@ export default function CoursesPage() {
     const c = ParkOnStorage.getServiceCountry();
     if (c === 'JP') {
       setCountryFilter('JP');
+    } else if (c === 'KR') {
+      setCountryFilter('KR');
     }
+    setUserCoords(GeoCountryService.getCurrentCoords());
   };
 
   const handleToggleFavoriteHomeCourse = (courseId: string) => {
@@ -1098,6 +1118,21 @@ export default function CoursesPage() {
           matchNoSpace
         );
       });
+
+  // Sort Courses: When userCoords exist, sort by distance ascending
+  const sortedCourses = useMemo(() => {
+    if (!userCoords) return filteredCourses;
+    return [...filteredCourses].sort((a, b) => {
+      const hasA = typeof a.lat === 'number' && typeof a.lng === 'number';
+      const hasB = typeof b.lat === 'number' && typeof b.lng === 'number';
+      if (!hasA && !hasB) return 0;
+      if (!hasA) return 1;
+      if (!hasB) return -1;
+      const distA = GeoCountryService.calculateDistanceMeters(userCoords.lat, userCoords.lng, a.lat!, a.lng!);
+      const distB = GeoCountryService.calculateDistanceMeters(userCoords.lat, userCoords.lng, b.lat!, b.lng!);
+      return distA - distB;
+    });
+  }, [filteredCourses, userCoords]);
 
   // Filtered Restaurants (User entered only, NO dummy info)
   const isRestaurantFilterActive = Boolean(restaurantCategory || restaurantSearchText.trim());
@@ -1744,7 +1779,7 @@ export default function CoursesPage() {
                 </button>
               </div>
             ) : (
-              filteredCourses.map((c) => {
+              sortedCourses.map((c) => {
                 const isHome = homeCourseId === c.id;
                 const isFavorite = favoriteHomeCourseIds.includes(c.id);
                 const dual = getCourseDualName(c, isJapanese);
@@ -1783,6 +1818,15 @@ export default function CoursesPage() {
                           {c.isVerified && (
                             <span className="text-[9px] bg-blue-100 text-blue-800 font-extrabold px-1.5 py-0.2 rounded shrink-0">
                               {isJapanese ? '公認' : '공인'}
+                            </span>
+                          )}
+                          {userCoords && typeof c.lat === 'number' && typeof c.lng === 'number' && (
+                            <span className="text-[9px] bg-emerald-100 text-emerald-800 font-black px-1.5 py-0.2 rounded shrink-0 inline-flex items-center gap-0.5 shadow-2xs">
+                              <Navigation className="w-2.5 h-2.5 inline" />
+                              {(() => {
+                                const m = GeoCountryService.calculateDistanceMeters(userCoords.lat, userCoords.lng, c.lat, c.lng);
+                                return m < 1000 ? `${m}m` : `${(m / 1000).toFixed(1)}km`;
+                              })()}
                             </span>
                           )}
                           {isHome ? (

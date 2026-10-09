@@ -3,13 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { HelpCircle, MapPin, AlertTriangle, Trophy, Newspaper, Globe, Sparkles } from 'lucide-react';
+import { HelpCircle, MapPin, AlertTriangle, Trophy, Newspaper, Globe, Sparkles, Check } from 'lucide-react';
 import { ParkOnStorage, KakaoAuthUser } from '@/lib/storage';
 import { getSavedMemberCode, isPlaceholderName } from '@/lib/memberCodeUtils';
 import { KakaoLoginModal } from './KakaoLoginModal';
 import { HelpRulesHubModal } from './HelpRulesHubModal';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { calculateTier, getUserCompleted9Holes } from '@/lib/courseBlockTier';
+import { GeoCountryService, ServiceCountry, ServiceLanguage } from '@/lib/geoCountryService';
 
 interface NavGuardInfo {
   url: string;
@@ -28,6 +29,7 @@ export function Header() {
   const [mounted, setMounted] = useState(false);
   const [showKakaoModal, setShowKakaoModal] = useState(false);
   const [showHelpRulesModal, setShowHelpRulesModal] = useState(false);
+  const [showLangMenu, setShowLangMenu] = useState(false);
   const [modalMode, setModalMode] = useState<'login' | 'profile'>('login');
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -148,6 +150,12 @@ export function Header() {
     }
   };
 
+  const handleSelectLanguageAndCountry = (country: ServiceCountry, lang: ServiceLanguage) => {
+    setShowLangMenu(false);
+    GeoCountryService.setManualCountryAndLanguage(country, lang);
+    setLanguage(lang);
+  };
+
   return (
     <>
       <header className="sticky top-0 z-40 bg-emerald-700 text-white shadow-md">
@@ -241,6 +249,57 @@ export function Header() {
             >
               <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
             </Link>
+
+            {/* 3. 🌐 다국어 및 국가 수동 전환 토글 (🇰🇷 한국어 | 🇯🇵 日本語 | 🇺🇸 English) */}
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                data-testid="header-lang-btn"
+                onClick={() => setShowLangMenu((prev) => !prev)}
+                className="h-7 sm:h-8 px-1.5 sm:px-2 rounded-full bg-white hover:bg-amber-100 text-emerald-900 border border-amber-300 shadow-md flex items-center gap-1 transition active:scale-95 cursor-pointer text-xs font-black"
+                title={isJapanese ? '言語と国を選択' : isEnglish ? 'Select Language & Country' : '언어 및 국가 선택'}
+              >
+                <span className="text-sm leading-none">{language === 'ja' ? '🇯🇵' : language === 'en' ? '🇺🇸' : '🇰🇷'}</span>
+                <span className="text-[10px] hidden xs:inline font-bold">
+                  {language === 'ja' ? '日本語' : language === 'en' ? 'EN' : '한국어'}
+                </span>
+              </button>
+
+              {showLangMenu && (
+                <div className="absolute right-0 top-9 z-50 w-36 bg-white text-stone-900 rounded-2xl p-1.5 shadow-2xl border border-stone-200 animate-in zoom-in-95 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectLanguageAndCountry('KR', 'ko')}
+                    className={`w-full py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition cursor-pointer ${
+                      language === 'ko' ? 'bg-emerald-600 text-white font-black' : 'hover:bg-stone-100 text-stone-800'
+                    }`}
+                  >
+                    <span>🇰🇷 한국어</span>
+                    {language === 'ko' && <Check className="w-3.5 h-3.5" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectLanguageAndCountry('JP', 'ja')}
+                    className={`w-full py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition cursor-pointer ${
+                      language === 'ja' ? 'bg-emerald-600 text-white font-black' : 'hover:bg-stone-100 text-stone-800'
+                    }`}
+                  >
+                    <span>🇯🇵 日本語</span>
+                    {language === 'ja' && <Check className="w-3.5 h-3.5" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectLanguageAndCountry('GLOBAL', 'en')}
+                    className={`w-full py-2 px-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition cursor-pointer ${
+                      language === 'en' ? 'bg-emerald-600 text-white font-black' : 'hover:bg-stone-100 text-stone-800'
+                    }`}
+                  >
+                    <span>🇺🇸 English</span>
+                    {language === 'en' && <Check className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

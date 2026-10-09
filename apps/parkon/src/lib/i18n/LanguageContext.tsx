@@ -69,6 +69,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       setLanguageState('ko');
     }
     setMounted(true);
+
+    const handleLangChange = (e: any) => {
+      const newLang = e.detail?.language;
+      if (newLang && (newLang === 'ko' || newLang === 'ja' || newLang === 'en')) {
+        setLanguageState(newLang);
+      }
+    };
+    window.addEventListener('parky_lang_changed', handleLangChange);
+    return () => window.removeEventListener('parky_lang_changed', handleLangChange);
   }, []);
 
   useEffect(() => {
