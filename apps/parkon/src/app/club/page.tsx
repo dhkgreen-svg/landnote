@@ -256,6 +256,11 @@ export default function ClubGatheringHomePage() {
   const [customGraceMonths, setCustomGraceMonths] = useState<number>(3);
   const [customConcede, setCustomConcede] = useState<string>('1클럽 샤프트 이내 (약 80cm)');
 
+  // 6070 시니어 임원진을 위한 3단계 위저드 상태
+  const [tournamentWizardStep, setTournamentWizardStep] = useState<1 | 2 | 3>(1);
+  const [selectedGroupingMethod, setSelectedGroupingMethod] = useState<'RANDOM' | 'BALANCED_GENDER' | 'BALANCED_TIER'>('RANDOM');
+  const [showAdvancedRules, setShowAdvancedRules] = useState<boolean>(false);
+
   // 새 대회 폼 상태
   const [tournamentClubId, setTournamentClubId] = useState<string>('');
   const [title, setTitle] = useState('구미 동락 vs 부산 삼락 파크골프 클럽 친선 대항전 ⚔️');
@@ -736,6 +741,7 @@ export default function ClubGatheringHomePage() {
       bankAccount: bankAccount.trim(),
       gameMode,
       gameRuleNotes: gameRuleNotes.trim(),
+      groupingMethod: selectedGroupingMethod,
     });
 
     setRooms(ClubStorage.getAllRooms());
@@ -855,10 +861,22 @@ export default function ClubGatheringHomePage() {
       ? round.acceptedPlayers
       : round.currentPlayers;
 
-    // 4인 이하일 때는 간편 스코어카드로 시작
+    // 4인 이하일 때는 최신 4인 스코어보드로 시작
     if (rawPlayerList.length <= 4) {
-      const names = rawPlayerList.map((p) => p.name).join(',');
-      router.push(`/score/quick?courseId=${round.courseId}&players=${encodeURIComponent(names)}`);
+      const names = rawPlayerList.map((p) => p.name).filter(Boolean);
+      const hostName = round.hostName || ParkOnStorage.getUserDisplayName();
+      const hostIdx = names.findIndex((n) => n === hostName);
+      if (hostIdx > 0) {
+        const [host] = names.splice(hostIdx, 1);
+        names.unshift(host);
+      }
+      if (names.length === 0) {
+        names.push(hostName || '플레이어');
+      }
+      while (names.length < 4) {
+        names.push(`동반자${names.length}`);
+      }
+      router.push(`/round/new?courseId=${encodeURIComponent(round.courseId || '')}&players=${encodeURIComponent(names.slice(0, 4).join(','))}`);
       return;
     }
 
@@ -6560,7 +6578,49 @@ ${shareUrl}`;
                 </button>
               </div>
 
-            <form onSubmit={handleCreateRoom} className="p-4 space-y-3.5 text-stone-800 max-h-[82vh] overflow-y-auto">
+            {/* 3단계 스텝 네비게이션 인디케이터 (6070 시니어 전용 원터치 위저드) */}
+            <div className="bg-stone-100 p-2.5 border-b border-stone-200 flex items-center justify-between text-xs sm:text-sm font-black gap-2">
+              <button
+                type="button"
+                onClick={() => setTournamentWizardStep(1)}
+                className={`flex-1 min-h-[52px] py-2.5 text-center rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
+                  tournamentWizardStep === 1
+                    ? 'bg-purple-800 text-white shadow-md text-sm font-black ring-2 ring-purple-400'
+                    : 'bg-white text-stone-700 hover:bg-stone-200 text-xs font-bold border border-stone-300'
+                }`}
+              >
+                <span>① 어디서·언제</span>
+              </button>
+              <span className="text-stone-400 font-black">➔</span>
+              <button
+                type="button"
+                onClick={() => setTournamentWizardStep(2)}
+                className={`flex-1 min-h-[52px] py-2.5 text-center rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
+                  tournamentWizardStep === 2
+                    ? 'bg-purple-800 text-white shadow-md text-sm font-black ring-2 ring-purple-400'
+                    : 'bg-white text-stone-700 hover:bg-stone-200 text-xs font-bold border border-stone-300'
+                }`}
+              >
+                <span>② 몇 명이</span>
+              </button>
+              <span className="text-stone-400 font-black">➔</span>
+              <button
+                type="button"
+                onClick={() => setTournamentWizardStep(3)}
+                className={`flex-1 min-h-[52px] py-2.5 text-center rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
+                  tournamentWizardStep === 3
+                    ? 'bg-purple-800 text-white shadow-md text-sm font-black ring-2 ring-purple-400'
+                    : 'bg-white text-stone-700 hover:bg-stone-200 text-xs font-bold border border-stone-300'
+                }`}
+              >
+                <span>③ 조 편성</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateRoom} className="p-4 space-y-3.5 text-stone-800 max-h-[76vh] overflow-y-auto">
+              {/* STEP 1: 어디서·언제 */}
+              {tournamentWizardStep === 1 && (
+                <div className="space-y-3 animate-fadeIn">
               {/* 클럽 대항전 전용: 매칭 방식, 팀 수, 상대 클럽 선택 (대표님 지시: 중복 선택 제거 후 직결) */}
               {tournamentType === 'CLUB_MATCH' && (
                 <div className="space-y-2.5 bg-purple-50 p-3 rounded-2xl border border-purple-200">
@@ -6774,8 +6834,8 @@ ${shareUrl}`;
                 />
               </div>
 
-              {/* 구장 선택 */}
-              <div className="space-y-1">
+              {/* 구장 선택 (시니어 맞춤 홈구장 원터치 칩 포함) */}
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-extrabold text-stone-800">{isJapanese ? '大会コース選択' : '대회 구장 선택'}</label>
                   <button
@@ -6791,16 +6851,110 @@ ${shareUrl}`;
                     <span>{isJapanese ? '全国コース検索' : '전국 구장 검색'}</span>
                   </button>
                 </div>
-                <div className="p-2.5 bg-stone-50 border border-stone-300 rounded-xl flex items-center justify-between text-xs font-bold text-stone-800">
-                  <span className="flex items-center gap-1.5">
+
+                {/* 자주 찾는 추천/홈구장 원터치 칩 */}
+                <div className="space-y-1">
+                  <span className="text-[10px] text-stone-500 font-bold">⚡ 자주 가는 추천/홈구장 원터치:</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {allCourses.slice(0, 4).map((c) => {
+                      const isSelected = selectedCourseId === c.id;
+                      return (
+                        <button
+                          key={`quick-course-${c.id}`}
+                          type="button"
+                          onClick={() => handleCourseChange(c.id)}
+                          className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition cursor-pointer flex items-center gap-1 ${
+                            isSelected
+                              ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                              : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                          }`}
+                        >
+                          <span>⛳ {c.name.replace('파크골프장', '').trim()}</span>
+                          {isSelected && <span>✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 선택된 구장 카드 표출 */}
+                <div className="p-2.5 bg-emerald-50/80 border border-emerald-300 rounded-xl flex items-center justify-between text-xs font-bold text-stone-800">
+                  <span className="flex items-center gap-1.5 truncate">
                     <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
-                    <span className="truncate">{selectedCourse.name}</span>
+                    <span className="truncate font-black text-emerald-950">{selectedCourse.name}</span>
                   </span>
-                  <span className="text-stone-500 shrink-0">
-                    {selectedCourse.region} · {isJapanese ? `計 ${selectedCourse.totalHoles}ホール` : `총 ${selectedCourse.totalHoles}홀`}
+                  <span className="text-emerald-800 shrink-0 text-[11px] font-extrabold">
+                    {selectedCourse.region} · 총 {selectedCourse.totalHoles}홀
                   </span>
                 </div>
               </div>
+
+              {/* 진행 코스 선택 */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold text-stone-800">{isJapanese ? '進行コース選択 (重複選択可能)' : '진행 코스 선택 (중복 선택 가능)'}</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {['A', 'B', 'C', 'D'].map((letStr) => {
+                    const isSelected = selectedLetters.includes(letStr);
+                    return (
+                      <button
+                        key={letStr}
+                        type="button"
+                        onClick={() => {
+                          let updated = [...selectedLetters];
+                          if (isSelected) {
+                            if (updated.length > 1) {
+                              updated = updated.filter((l) => l !== letStr);
+                            }
+                          } else {
+                            updated.push(letStr);
+                            updated.sort();
+                          }
+                          setSelectedLetters(updated);
+                        }}
+                        className={`py-2.5 px-1 rounded-xl text-xs font-black border transition active:scale-95 cursor-pointer flex items-center justify-center gap-0.5 ${
+                          isSelected
+                            ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
+                            : 'bg-white hover:bg-stone-100 text-stone-700 border-stone-300'
+                        }`}
+                      >
+                        <span className="whitespace-nowrap">{letStr}{isJapanese ? 'コース' : '코스'}</span>
+                        {isSelected && <span className="text-[10px] font-black">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-xs font-black text-emerald-950 flex items-center justify-between">
+                  <span>{isJapanese ? '⛳ 指定競技コース:' : '⛳ 지정 경기 코스:'}</span>
+                  <span className="text-emerald-800 font-black text-sm">
+                    {selectedLetters.join('-')} 코스 (총 {selectedLetters.length * 9}홀)
+                  </span>
+                </div>
+              </div>
+
+              {/* Step 1 하단 이동 버튼 (터치 영역 min-height 54px 및 여백 14px) */}
+              <div className="pt-3 flex gap-3.5">
+                <button
+                  type="button"
+                  onClick={handleCloseCreateModal}
+                  className="w-1/3 min-h-[54px] py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-sm rounded-xl cursor-pointer transition border border-stone-300"
+                >
+                  {isJapanese ? 'キャンセル' : '취소'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTournamentWizardStep(2)}
+                  className="w-2/3 min-h-[54px] py-3 bg-purple-700 hover:bg-purple-800 text-white font-black text-sm sm:text-base rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 transition"
+                >
+                  <span>다음: 참가 인원 선택 (몇 명이) ➔</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: 몇 명이 */}
+          {tournamentWizardStep === 2 && (
+            <div className="space-y-3 animate-fadeIn">
 
               {/* 참가 인원수 설정: 클럽 대항전(팀당 엔트리 × 팀 수) vs 일반 월례회/시도대회 (대표님 요청) */}
               {tournamentType === 'CLUB_MATCH' ? (
@@ -6988,24 +7142,63 @@ ${shareUrl}`;
                         )}
                       </div>
 
-                      {/* 인원수 조절 (+ / - 버튼 및 직접 입력) */}
-                      <div className="bg-white p-3 rounded-xl border border-purple-200/80 space-y-2">
-                        <div className="flex items-center justify-between text-[11px] font-bold text-stone-600">
-                          <span>{recruitPolicy === 'OPEN_ALL' ? (isJapanese ? '予想参加人数 (基準値)' : '예상 참가 인원 (기준치)') : (isJapanese ? '最大参加定員' : '최대 참가 정원')}</span>
-                          <span className="text-purple-700 font-bold">{isJapanese ? '+ / - ボタンまたは直接入力' : '+ / - 버튼 또는 직접 입력'}</span>
+                      {/* 4의 배수 대형 원터치 칩 그리드 (6070 시니어 맞춤) */}
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-bold text-stone-700">⚡ 4의 배수 원터치 정원 선택:</span>
+                        <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                          {[
+                            { count: 4, label: '4명 (1개 조)' },
+                            { count: 8, label: '8명 (2개 조)' },
+                            { count: 12, label: '12명 (3개 조)' },
+                            { count: 16, label: '16명 (4개 조)' },
+                            { count: 20, label: '20명 (5개 조)' },
+                            { count: 24, label: '24명 (6개 조)' },
+                            { count: 28, label: '28명 (7개 조)' },
+                            { count: 32, label: '32명 (8개 조)' },
+                            { count: 36, label: '36명 (9개 조)' },
+                            { count: 40, label: '40명 (10개 조)' },
+                          ].map((item) => {
+                            const isSelected = targetPlayers === item.count;
+                            return (
+                              <button
+                                key={`chip-${item.count}`}
+                                type="button"
+                                onClick={() => {
+                                  setTargetPlayers(item.count);
+                                  setGroupCount(item.count / 4);
+                                }}
+                                className={`py-3 px-3 min-h-[52px] rounded-xl text-xs sm:text-sm font-black border transition cursor-pointer flex items-center justify-between active:scale-98 ${
+                                  isSelected
+                                    ? 'bg-purple-800 text-white border-purple-900 shadow-md ring-2 ring-purple-400'
+                                    : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50'
+                                }`}
+                              >
+                                <span>👥 {item.label}</span>
+                                {isSelected && <span className="font-black text-yellow-300 text-sm">✓</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 인원수 미세 조절 (+ / - 버튼 및 직접 입력) */}
+                      <div className="bg-white p-3.5 rounded-xl border border-purple-200 space-y-2">
+                        <div className="flex items-center justify-between text-xs font-bold text-stone-700">
+                          <span>{recruitPolicy === 'OPEN_ALL' ? (isJapanese ? '予想参加人数 (基準値)' : '기타 인원 직접 조절') : (isJapanese ? '最大参加定員' : '최대 참가 정원')}</span>
+                          <span className="text-purple-800 font-bold">+ / - 버튼 또는 직접 입력</span>
                         </div>
 
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center justify-between gap-3">
                           <button
                             type="button"
                             onClick={() => handleTargetPlayersChange(Math.max(1, targetPlayers - 1))}
-                            className="w-12 h-12 rounded-xl bg-purple-100 hover:bg-purple-200 active:scale-95 text-purple-900 flex items-center justify-center font-black text-2xl border border-purple-300 transition cursor-pointer shadow-xs shrink-0"
+                            className="w-14 h-14 min-h-[52px] rounded-xl bg-purple-100 hover:bg-purple-200 active:scale-95 text-purple-900 flex items-center justify-center font-black text-3xl border border-purple-300 transition cursor-pointer shadow-xs shrink-0"
                             title={isJapanese ? '1人減らす' : '1명 내림'}
                           >
                             <Minus className="w-6 h-6 stroke-[3]" />
                           </button>
 
-                          <div className="flex-1 flex items-center justify-center gap-1.5 py-1 px-3 bg-purple-50/60 rounded-xl border-2 border-purple-400 text-center">
+                          <div className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-purple-50/70 rounded-xl border-2 border-purple-400 text-center min-h-[52px]">
                             <input
                               type="number"
                               min={1}
@@ -7014,13 +7207,13 @@ ${shareUrl}`;
                               onChange={(e) => handleTargetPlayersChange(Number(e.target.value))}
                               className="w-20 text-center text-3xl font-black text-purple-950 bg-transparent focus:outline-none"
                             />
-                            <span className="text-base font-black text-purple-800">{isJapanese ? '人' : '명'}</span>
+                            <span className="text-lg font-black text-purple-800">{isJapanese ? '人' : '명'}</span>
                           </div>
 
                           <button
                             type="button"
                             onClick={() => handleTargetPlayersChange(Math.min(999, targetPlayers + 1))}
-                            className="w-12 h-12 rounded-xl bg-purple-700 hover:bg-purple-800 active:scale-95 text-white flex items-center justify-center font-black text-2xl border border-purple-800 transition cursor-pointer shadow-md shrink-0"
+                            className="w-14 h-14 min-h-[52px] rounded-xl bg-purple-700 hover:bg-purple-800 active:scale-95 text-white flex items-center justify-center font-black text-3xl border border-purple-800 transition cursor-pointer shadow-md shrink-0"
                             title={isJapanese ? '1人増やす' : '1명 올림'}
                           >
                             <Plus className="w-6 h-6 stroke-[3]" />
@@ -7029,154 +7222,179 @@ ${shareUrl}`;
                       </div>
 
                       {/* 3~4인 최적 조 편성 요약 */}
-                      <div className="bg-white p-2.5 rounded-xl border border-purple-200/80 text-xs font-black text-purple-950 flex items-center justify-between">
+                      <div className="bg-purple-100 p-3 rounded-xl border border-purple-300 text-xs sm:text-sm font-black text-purple-950 flex items-center justify-between">
                         <span>🎯 {targetPlayers}{isJapanese ? '人基準 最適組編成:' : '명 기준 최적 조 편성:'}</span>
-                        <span className="text-purple-800 font-black">{summaryText}</span>
+                        <span className="text-purple-800 font-extrabold text-sm">{summaryText}</span>
                       </div>
                     </div>
                   );
                 })()
               )}
 
-              {/* 플레이 코스 선택 (대표님 요청: A·B·C·D 4개 한 줄 나열) */}
-              <div className="space-y-2 bg-stone-50 p-3 rounded-2xl border border-stone-200">
-                <div className="flex items-center justify-between text-xs font-black text-stone-800">
-                  <span className="flex items-center gap-1.5">
-                    <Flag className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>{isJapanese ? 'プレーコース選択' : '플레이 코스 선택'}</span>
-                  </span>
-                  <span className="text-stone-500 font-bold text-[11px]">{isJapanese ? 'タップして選択' : '터치하여 선택'}</span>
-                </div>
+              {/* Step 2 하단 이동 버튼 (터치 영역 min-height 54px 및 여백 14px) */}
+              <div className="pt-3 flex gap-3.5">
+                <button
+                  type="button"
+                  onClick={() => setTournamentWizardStep(1)}
+                  className="w-1/3 min-h-[54px] py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-sm rounded-xl cursor-pointer transition border border-stone-300"
+                >
+                  ◀ 이전 단계
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTournamentWizardStep(3)}
+                  className="w-2/3 min-h-[54px] py-3 bg-purple-700 hover:bg-purple-800 text-white font-black text-sm sm:text-base rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 transition"
+                >
+                  <span>다음: 조 편성 방식 선택 ➔</span>
+                </button>
+              </div>
+            </div>
+          )}
 
+          {/* ========================================================================= */}
+          {/* STEP 3: 조 편성은 (3대 쉬운 말 조 편성 선택 & 고급 규정 토글) */}
+          {/* ========================================================================= */}
+          {tournamentWizardStep === 3 && (
+            <div className="space-y-3 animate-fadeIn">
+              {/* 3대 쉬운 말 조 편성 선택 카드 */}
+              <div className="space-y-2">
+                <label className="text-xs font-extrabold text-stone-800 flex items-center gap-1">
+                  <span>🎯 조 편성 방식 선택 (쉬운 말 3대 룰)</span>
+                </label>
+
+                {/* 1. 골고루 랜덤 편성 (기본 추천) */}
                 <div
-                  className={`grid gap-1.5 pt-0.5 ${
-                    availableLetters.length === 1
-                      ? 'grid-cols-1 max-w-[120px]'
-                      : availableLetters.length === 2
-                      ? 'grid-cols-2'
-                      : availableLetters.length === 3
-                      ? 'grid-cols-3'
-                      : 'grid-cols-4'
+                  onClick={() => setSelectedGroupingMethod('RANDOM')}
+                  className={`p-3 rounded-2xl border-2 transition cursor-pointer flex items-start gap-2.5 ${
+                    selectedGroupingMethod === 'RANDOM'
+                      ? 'bg-purple-50 border-purple-600 shadow-xs ring-2 ring-purple-200'
+                      : 'bg-white border-stone-200 hover:border-stone-300'
                   }`}
                 >
-                  {availableLetters.map((letStr) => {
-                    const isSelected = selectedLetters.includes(letStr);
-                    return (
-                      <button
-                        key={letStr}
-                        type="button"
-                        onClick={() => {
-                          let updated: string[];
-                          if (isSelected) {
-                            if (selectedLetters.length <= 1) {
-                              showToast(isJapanese ? '⚠️ 最低1つのコースを選択してください。' : '⚠️ 최소 1개 코스는 선택되어야 합니다.');
-                              return;
-                            }
-                            updated = selectedLetters.filter((l) => l !== letStr);
-                          } else {
-                            updated = [...selectedLetters, letStr].sort(
-                              (a, b) => COURSE_LETTERS.indexOf(a) - COURSE_LETTERS.indexOf(b)
-                            );
-                          }
-                          setSelectedLetters(updated);
-                        }}
-                        className={`py-2.5 px-1 rounded-xl text-xs font-black border transition active:scale-95 cursor-pointer flex items-center justify-center gap-0.5 ${
-                          isSelected
-                            ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
-                            : 'bg-white hover:bg-stone-100 text-stone-700 border-stone-300'
-                        }`}
-                      >
-                        <span className="whitespace-nowrap">{letStr}{isJapanese ? 'コース' : '코스'}</span>
-                        {isSelected && <span className="text-[10px] font-black">✓</span>}
-                      </button>
-                    );
-                  })}
+                  <span className="text-xl">🎲</span>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-purple-950">[ 🎲 골고루 랜덤 편성 ]</span>
+                      <span className="text-[10px] bg-purple-700 text-white font-bold px-1.5 py-0.5 rounded">기본 추천</span>
+                    </div>
+                    <p className="text-[11px] text-stone-600 font-medium mt-0.5">
+                      실력에 관계없이 모든 참가자를 골고루 섞어 공평하고 재미있게 편성합니다.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-xs font-black text-emerald-950 flex items-center justify-between">
-                  <span>{isJapanese ? '⛳ 指定競技コース:' : '⛳ 지정 경기 코스:'}</span>
-                  <span className="text-emerald-800 font-black text-sm">
-                    {selectedLetters.join('-')} {isJapanese ? `コース (計 ${selectedLetters.length * 9}ホール)` : `코스 (총 ${selectedLetters.length * 9}홀)`}
+                {/* 2. 남녀 성비 균등 맞춤 */}
+                <div
+                  onClick={() => setSelectedGroupingMethod('BALANCED_GENDER')}
+                  className={`p-3 rounded-2xl border-2 transition cursor-pointer flex items-start gap-2.5 ${
+                    selectedGroupingMethod === 'BALANCED_GENDER'
+                      ? 'bg-purple-50 border-purple-600 shadow-xs ring-2 ring-purple-200'
+                      : 'bg-white border-stone-200 hover:border-stone-300'
+                  }`}
+                >
+                  <span className="text-xl">⚖️</span>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-purple-950">[ ⚖️ 남녀 성비 균등 맞춤 ]</span>
+                    </div>
+                    <p className="text-[11px] text-stone-600 font-medium mt-0.5">
+                      남녀 회원이 각 조에 2:2 또는 균등한 비율로 고르게 배치되도록 자동 안배합니다.
+                    </p>
+                  </div>
+                </div>
+
+                {/* 3. 실력(타수) 평준화 */}
+                <div
+                  onClick={() => setSelectedGroupingMethod('BALANCED_TIER')}
+                  className={`p-3 rounded-2xl border-2 transition cursor-pointer flex items-start gap-2.5 ${
+                    selectedGroupingMethod === 'BALANCED_TIER'
+                      ? 'bg-purple-50 border-purple-600 shadow-xs ring-2 ring-purple-200'
+                      : 'bg-white border-stone-200 hover:border-stone-300'
+                  }`}
+                >
+                  <span className="text-xl">🏆</span>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-purple-950">[ 🏆 실력(타수) 평준화 ]</span>
+                    </div>
+                    <p className="text-[11px] text-stone-600 font-medium mt-0.5">
+                      고수(에이스)와 입문자가 한 조가 되도록 조별 실력 편차를 줄여 팽팽하게 편성합니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 대회 고급 규정 설정 토글 (신페리오 · 백카운트 · 참가비 · 로컬룰) */}
+              <div className="bg-stone-50 rounded-2xl border border-stone-300 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedRules(!showAdvancedRules)}
+                  className="w-full p-3 flex items-center justify-between text-xs font-black text-stone-800 hover:bg-stone-100 transition cursor-pointer"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Settings className="w-3.5 h-3.5 text-stone-600" />
+                    <span>⚙️ 대회 고급 규정 설정 (신페리오 · 백카운트 · 참가비)</span>
                   </span>
-                </div>
-              </div>
+                  <span className="text-stone-500 font-bold">{showAdvancedRules ? '접기 ▲' : '펼치기 ▼'}</span>
+                </button>
 
-              {/* 참가비 및 입금 계좌 안내 (팝업 호출형 간소화) */}
-              <div
-                onClick={() => setShowCreateFeeModal(true)}
-                className="bg-amber-50/70 p-3 rounded-2xl border border-amber-200/80 flex items-center justify-between cursor-pointer hover:border-amber-400 hover:bg-amber-50/90 transition active:scale-[0.99]"
-              >
-                <div className="flex items-center gap-2">
-                  <Coins className="w-4 h-4 text-amber-700 shrink-0" />
-                  <div>
-                    <div className="text-xs font-black text-stone-800">{isJapanese ? '参加費・振込口座のご案内' : '참가비 & 입금 계좌 안내'}</div>
-                    <div className="text-[11px] font-bold text-amber-800">
-                      {entryFee > 0 ? (isJapanese ? `1人 ${entryFee.toLocaleString()}円 · ${bankAccount || '口座登録済'}` : `1인 ${entryFee.toLocaleString()}원 · ${bankAccount || '계좌 등록됨'}`) : (isJapanese ? '無料 (参加費なし)' : '무료 (참가비 없음)')}
+                {/* 기본 활성화 안내 */}
+                <div className="px-3 pb-2.5 text-[11px] text-emerald-800 font-bold flex items-center gap-1">
+                  <span>✓</span>
+                  <span>신페리오 공식 핸디캡(SHA-256 암호봉인) 및 백카운트 룰 기본 활성화됨</span>
+                </div>
+
+                {/* 펼쳤을 때 세부 설정 */}
+                {showAdvancedRules && (
+                  <div className="p-3 pt-0 space-y-2 border-t border-stone-200">
+                    {/* 참가비 설정 */}
+                    <div
+                      onClick={() => setShowCreateFeeModal(true)}
+                      className="p-2.5 bg-white rounded-xl border border-stone-200 flex items-center justify-between cursor-pointer hover:bg-stone-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Coins className="w-4 h-4 text-amber-700 shrink-0" />
+                        <div>
+                          <div className="text-[11px] font-bold text-stone-800">참가비 & 입금 계좌 안내</div>
+                          <div className="text-[10px] text-amber-800 font-bold">
+                            {entryFee > 0 ? `1인 ${entryFee.toLocaleString()}원 · ${bankAccount || '계좌 등록됨'}` : '무료'}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-purple-700 font-black">설정 ⚙️</span>
+                    </div>
+
+                    {/* 공식 경기 방식 */}
+                    <div
+                      onClick={() => setShowCreateGameModeModal(true)}
+                      className="p-2.5 bg-white rounded-xl border border-stone-200 flex items-center justify-between cursor-pointer hover:bg-stone-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{ClubStorage.getGameModeInfo(gameMode).badge}</span>
+                        <div>
+                          <div className="text-[11px] font-bold text-stone-800">공식 경기 방식</div>
+                          <div className="text-[10px] text-indigo-800 font-bold">{ClubStorage.getGameModeInfo(gameMode).title}</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-purple-700 font-black">변경 ▾</span>
+                    </div>
+
+                    {/* 로컬 룰 & 특별시상 */}
+                    <div
+                      onClick={() => setShowCreateRulesModal(true)}
+                      className="p-2.5 bg-white rounded-xl border border-stone-200 flex items-center justify-between cursor-pointer hover:bg-stone-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Award className="w-4 h-4 text-emerald-700 shrink-0" />
+                        <div>
+                          <div className="text-[11px] font-bold text-stone-800">로컬 룰 & 특별시상 공시</div>
+                          <div className="text-[10px] text-stone-600 truncate max-w-[180px]">{gameRuleNotes || '기본 규정 적용'}</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-purple-700 font-black">공시 ▾</span>
                     </div>
                   </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowCreateFeeModal(true);
-                  }}
-                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-amber-950 rounded-xl text-xs font-black shadow-2xs transition cursor-pointer"
-                >
-                  {isJapanese ? '設定 ⚙️' : '설정 ⚙️'}
-                </button>
-              </div>
-
-              {/* 대회 경기 방식 공시 (팝업 호출형 간소화) */}
-              <div
-                onClick={() => setShowCreateGameModeModal(true)}
-                className="bg-indigo-50/70 p-3 rounded-2xl border border-indigo-200/80 flex items-center justify-between cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/90 transition active:scale-[0.99]"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-xl shrink-0">{ClubStorage.getGameModeInfo(gameMode).badge}</span>
-                  <div>
-                    <div className="text-xs font-black text-stone-800">{isJapanese ? '公式競技方式' : '공식 경기 방식'}</div>
-                    <div className="text-[11px] font-bold text-indigo-800">
-                      {ClubStorage.getGameModeInfo(gameMode).title}
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowCreateGameModeModal(true);
-                  }}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-black shadow-2xs transition cursor-pointer"
-                >
-                  {isJapanese ? '方式選択 ▾' : '방식 선택 ▾'}
-                </button>
-              </div>
-
-              {/* 로컬 룰 & 특별시상 공시 (팝업 호출형 간소화) */}
-              <div
-                onClick={() => setShowCreateRulesModal(true)}
-                className="bg-emerald-50/70 p-3 rounded-2xl border border-emerald-200/80 flex items-center justify-between cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/90 transition active:scale-[0.99]"
-              >
-                <div className="flex items-center gap-2">
-                  <Award className="w-4 h-4 text-emerald-700 shrink-0" />
-                  <div>
-                    <div className="text-xs font-black text-stone-800">{isJapanese ? 'ローカルルール・特別表彰の告知' : '로컬 룰 & 특별시상 공시'}</div>
-                    <div className="text-[11px] font-medium text-stone-600 truncate max-w-[200px]">
-                      {gameRuleNotes ? gameRuleNotes.slice(0, 24) + '...' : (isJapanese ? '基本規定を適用' : '기본 규정 적용')}
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowCreateRulesModal(true);
-                  }}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-black shadow-2xs transition cursor-pointer"
-                >
-                  {isJapanese ? '告知設定 ▾' : '공시 설정 ▾'}
-                </button>
+                )}
               </div>
 
               {/* 총무 이름 */}
@@ -7186,27 +7404,30 @@ ${shareUrl}`;
                   type="text"
                   value={hostName}
                   onChange={(e) => setHostName(e.target.value)}
-                  placeholder={isJapanese ? '例: 田中幹事' : '예: 김총무'}
+                  placeholder="예: 김총무"
                   required
                   className="w-full px-3 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold"
                 />
               </div>
 
-              <div className="pt-2 flex gap-2">
+              {/* Step 3 최종 제출 버튼 (터치 영역 min-height 56px 및 여백 14px) */}
+              <div className="pt-3 flex gap-3.5">
                 <button
                   type="button"
-                  onClick={handleCloseCreateModal}
-                  className="w-1/3 py-3 bg-stone-100 text-stone-600 font-bold text-xs rounded-xl"
+                  onClick={() => setTournamentWizardStep(2)}
+                  className="w-1/3 min-h-[56px] py-3.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-sm rounded-xl cursor-pointer transition border border-stone-300"
                 >
-                  {isJapanese ? 'キャンセル' : '취소'}
+                  ◀ 이전 단계
                 </button>
                 <button
                   type="submit"
-                  className="w-2/3 py-3 bg-purple-700 hover:bg-purple-800 text-white font-black text-xs rounded-xl shadow-md"
+                  className="w-2/3 min-h-[56px] py-3.5 bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 text-white font-black text-sm sm:text-base rounded-xl shadow-lg active:scale-98 transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  {isJapanese ? '大会ルーム開設完了' : '대회 방 개설 완료'}
+                  <span>🏆 대회 개설 완료 (전광판 등록)</span>
                 </button>
               </div>
+            </div>
+          )}
             </form>
           </div>
         </div>

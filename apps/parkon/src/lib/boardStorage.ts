@@ -826,6 +826,73 @@ export class BoardStorage {
     return newItem;
   }
 
+  // 🏆 신규 대회/월례회 개설 시 공식 공지사항(Notices)으로 자동 실시간 연동
+  static syncTournamentToNotice(room: {
+    id: string;
+    title: string;
+    courseName: string;
+    selectedCourseLetters?: string[];
+    entryFee?: number;
+    hostName?: string;
+    targetTotalPlayers?: number;
+    gameRuleNotes?: string;
+    createdAt?: string;
+  }): TournamentNotice {
+    const list = this.getNotices();
+    const noticeId = `notice-room-${room.id}`;
+    const existingIdx = list.findIndex((n) => n.id === noticeId);
+    
+    const courseLettersStr = (room.selectedCourseLetters || ['A', 'B']).join('-') + ' 코스';
+    const feeStr = room.entryFee && room.entryFee > 0 ? `1인 ${room.entryFee.toLocaleString()}원` : '무료 참가';
+    const targetCountStr = `${room.targetTotalPlayers || 16}명 (선착순 접수)`;
+    const today = new Date().toISOString().split('T')[0];
+
+    const noticeItem: TournamentNotice = {
+      id: noticeId,
+      country: 'KR',
+      title: `🏆 [공식 대회/월례회] ${room.title}`,
+      titleKo: `🏆 [공식 대회/월례회] ${room.title}`,
+      titleJa: `🏆 [公式大会・月例会] ${room.title}`,
+      host: room.hostName ? `${room.hostName} (주최)` : '파크골프 클럽 운영진',
+      hostKo: room.hostName ? `${room.hostName} (주최)` : '파크골프 클럽 운영진',
+      hostJa: room.hostName ? `${room.hostName} (主催)` : 'クラブ役員',
+      region: '전국/클럽',
+      regionKo: '전국/클럽',
+      regionJa: '全国/クラブ',
+      courseName: `${room.courseName} (${courseLettersStr})`,
+      courseNameKo: `${room.courseName} (${courseLettersStr})`,
+      courseNameJa: `${room.courseName} (${courseLettersStr})`,
+      status: 'RECRUITING',
+      periodStr: `${today} ~ 마감 시`,
+      periodStrKo: `${today} ~ 마감 시`,
+      periodStrJa: `${today} ~ 締切時`,
+      eventDateStr: '대회 요강 참조 (모집 즉시 티오프)',
+      eventDateStrKo: '대회 요강 참조 (모집 즉시 티오프)',
+      eventDateStrJa: '大会要項参照',
+      entryFee: feeStr,
+      entryFeeKo: feeStr,
+      entryFeeJa: feeStr,
+      targetCount: targetCountStr,
+      targetCountKo: targetCountStr,
+      targetCountJa: targetCountStr,
+      qualification: '해당 클럽 정회원 및 초청 동호인',
+      qualificationKo: '해당 클럽 정회원 및 초청 동호인',
+      qualificationJa: '該当クラブ正会員および招待愛好者',
+      linkUrl: `/club?roomId=${room.id}`,
+      directNoticeUrl: `/club?roomId=${room.id}`,
+      isAiCurated: false,
+      createdAt: today,
+    };
+
+    if (existingIdx !== -1) {
+      list[existingIdx] = noticeItem;
+    } else {
+      list.unshift(noticeItem);
+    }
+    this.saveNotices(list);
+    return noticeItem;
+  }
+
   // 3. 파크골프 뉴스 목록
   static getNews(): ParkGolfNewsItem[] {
     if (!this.isBrowser()) return DEFAULT_NEWS;

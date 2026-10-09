@@ -23,6 +23,7 @@ import {
   verifyAndUnsealHolesSync,
   calculateDynamicNewPerio,
 } from './newPerioSealer';
+import { BoardStorage } from './boardStorage';
 
 const STORAGE_KEYS = {
   CLUB_ROOMS: 'parkon_club_rooms_v1',
@@ -952,6 +953,7 @@ export const ClubStorage = {
     gameRuleNotes?: string;
     nearPinHole?: number;
     longestHole?: number;
+    groupingMethod?: 'RANDOM' | 'BALANCED_GENDER' | 'BALANCED_TIER' | 'KEEP_LEADERS' | 'ASSIGN_LEADERS' | 'PARTIAL_ASSIGN' | 'MANUAL';
   }): ClubEventRoom {
     const id = `club-${Date.now().toString(36)}`;
     const groups: ClubGroup[] = [];
@@ -1003,6 +1005,7 @@ export const ClubStorage = {
       sealedSecret: params.gameMode !== 'STROKE' ? generateSealedNewPerioHolesSync(letters.length * 9).sealedSecret : undefined,
       isUnsealed: false,
       unsealedHoles: [],
+      groupingMethod: params.groupingMethod || 'RANDOM',
       groups,
       waitingPool: [],
       status: 'RECRUITING',
@@ -1011,6 +1014,9 @@ export const ClubStorage = {
 
     this.saveRoom(newRoom);
     this.syncEventToSupabase(newRoom).catch(() => {});
+    try {
+      BoardStorage.syncTournamentToNotice(newRoom);
+    } catch (e) {}
     return newRoom;
   },
 

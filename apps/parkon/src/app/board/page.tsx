@@ -491,62 +491,62 @@ export default function CommunityBoardPage() {
                   <div
                     key={item.id}
                     onClick={() => setSelectedNotice(item)}
-                    className="bg-white rounded-2xl p-3 border border-stone-200/90 shadow-2xs hover:border-purple-500 hover:shadow-sm transition cursor-pointer active:scale-[0.99] flex items-center justify-between gap-3 group"
+                    className="bg-white rounded-2xl p-4 border border-stone-300 shadow-2xs hover:border-purple-600 hover:shadow-md transition cursor-pointer active:scale-[0.99] flex items-center justify-between gap-3 group min-h-[68px]"
                   >
-                    <div className="space-y-1 min-w-0 flex-1">
+                    <div className="space-y-1.5 min-w-0 flex-1">
                       {/* 1행: 상태 배지 + 국가/지역 + 거리 + 접수/대회일시 */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
                         {item.status === 'RECRUITING' ? (
-                          <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-black px-1.5 py-0.2 rounded-md">
+                          <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-black px-2 py-0.5 rounded-md">
                             {isJapanese ? '受付中 ⏳' : '접수중 ⏳'}
                           </span>
                         ) : item.status === 'UPCOMING' ? (
-                          <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-1.5 py-0.2 rounded-md">
+                          <span className="bg-amber-100 text-amber-950 border border-amber-300 text-xs font-black px-2 py-0.5 rounded-md">
                             {isJapanese ? '予定 📅' : '접수예정 📅'}
                           </span>
                         ) : (
-                          <span className="bg-stone-200 text-stone-700 text-[10px] font-black px-1.5 py-0.2 rounded-md">
+                          <span className="bg-stone-200 text-stone-800 text-xs font-black px-2 py-0.5 rounded-md">
                             {isJapanese ? '締切 🏁' : '마감 🏁'}
                           </span>
                         )}
-                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-1 border ${
+                        <span className={`text-xs font-black px-2 py-0.5 rounded-md flex items-center gap-1 border ${
                           isJp
-                            ? 'text-rose-900 bg-rose-50 border-rose-200'
-                            : 'text-blue-900 bg-blue-50 border-blue-200'
+                            ? 'text-rose-950 bg-rose-50 border-rose-300'
+                            : 'text-blue-950 bg-blue-50 border-blue-300'
                         }`}>
-                          <span className={`px-1 py-0.2 rounded text-[9px] font-black text-white ${isJp ? 'bg-rose-600' : 'bg-blue-600'}`}>
+                          <span className={`px-1.5 py-0.2 rounded text-[10px] font-black text-white ${isJp ? 'bg-rose-600' : 'bg-blue-600'}`}>
                             {isJp ? 'JP' : 'KR'}
                           </span>
                           <span>{displayRegion}</span>
                         </span>
                         {item.distKm !== null && !isJapanese && (
-                          <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded-md">
+                          <span className="text-xs font-black text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
                             🚗 {item.distKm}km
                           </span>
                         )}
-                        <span className="text-[10px] text-stone-500 font-bold ml-auto sm:ml-0">
+                        <span className="text-xs text-stone-600 font-bold ml-auto sm:ml-0">
                           {displayDate}
                         </span>
                       </div>
 
-                      {/* 2행: 대회 제목 (한국어/일본어 자동 반영) */}
-                      <h3 className="text-xs sm:text-sm font-black text-stone-900 leading-snug group-hover:text-purple-900 transition truncate">
+                      {/* 2행: 대회 제목 (한국어/일본어 자동 반영 - 시니어 16px 가독성) */}
+                      <h3 className="text-sm sm:text-base font-black text-stone-950 leading-snug group-hover:text-purple-900 transition truncate">
                         {displayTitle}
                       </h3>
 
                       {/* 3행: 제원 한줄 요약 (구장 · 주최 · 참가비) */}
-                      <div className="text-[11px] text-stone-500 font-medium truncate flex items-center gap-1.5">
-                        <span className="font-bold text-stone-700">⛳ {displayCourse}</span>
+                      <div className="text-xs text-stone-600 font-semibold truncate flex items-center gap-1.5">
+                        <span className="font-extrabold text-stone-800">⛳ {displayCourse}</span>
                         <span>·</span>
                         <span className="truncate">{displayHost}</span>
                         {displayFee && (
                           <>
                             <span>·</span>
-                            <span className="text-emerald-700 font-bold">{displayFee}</span>
+                            <span className="text-emerald-700 font-extrabold">{displayFee}</span>
                           </>
                         )}
                         {item.pdfUrl && (
-                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1 rounded">
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded border border-amber-300">
                             PDF
                           </span>
                         )}
@@ -555,12 +555,10 @@ export default function CommunityBoardPage() {
 
                     {/* 우측 바로가기 화살표 버튼 */}
                     <div className="flex items-center gap-1 shrink-0 text-stone-400 group-hover:text-purple-700">
-                      <span className="hidden sm:inline text-[11px] font-black text-purple-700 bg-purple-50 px-2 py-1 rounded-lg">
-                        {isJapanese ? '詳細' : '상세보기'}
+                      <span className="hidden sm:inline text-xs font-black text-purple-800 bg-purple-100 px-2.5 py-1.5 rounded-xl border border-purple-200">
+                        {isJapanese ? '詳細 ➔' : '상세보기 ➔'}
                       </span>
-                      <div className="w-8 h-8 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600 group-hover:bg-purple-100 group-hover:text-purple-800 transition">
-                        <ChevronRight className="w-4 h-4" />
-                      </div>
+                      <ChevronRight className="w-5 h-5 text-purple-700" />
                     </div>
                   </div>
                 );
@@ -893,26 +891,26 @@ export default function CommunityBoardPage() {
               </button>
             </form>
 
-            {/* 피드 목록 */}
-            <div className="space-y-2.5">
-              {posts.map((p) => (
-                <div key={p.id} className="bg-white rounded-2xl p-3.5 border border-stone-200 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-stone-900 font-black flex items-center gap-1.5">
-                      <span className="w-6 h-6 rounded-full bg-purple-100 text-purple-900 flex items-center justify-center text-[10px] font-black">
-                        {p.authorName.slice(0, 1)}
+              {/* 피드 목록 (시니어 가독성 p-4, 16px 본문) */}
+              <div className="space-y-3">
+                {posts.map((p) => (
+                  <div key={p.id} className="bg-white rounded-2xl p-4 border border-stone-300 shadow-2xs space-y-2.5">
+                    <div className="flex items-center justify-between text-xs sm:text-sm font-bold">
+                      <span className="text-stone-900 font-black flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-full bg-purple-100 text-purple-900 flex items-center justify-center text-xs font-black border border-purple-200">
+                          {p.authorName.slice(0, 1)}
+                        </span>
+                        <span className="text-sm font-extrabold">{p.authorName}</span>
+                        {p.region && (
+                          <span className="text-xs text-stone-500 font-normal">({p.region})</span>
+                        )}
                       </span>
-                      <span>{p.authorName}</span>
-                      {p.region && (
-                        <span className="text-[10px] text-stone-500 font-normal">({p.region})</span>
-                      )}
-                    </span>
-                    <span className="text-[10px] text-stone-400 font-normal">{p.createdAt}</span>
+                      <span className="text-xs text-stone-400 font-normal">{p.createdAt}</span>
+                    </div>
+                    <p className="text-sm sm:text-base text-stone-800 leading-relaxed font-semibold">{p.content}</p>
                   </div>
-                  <p className="text-xs text-stone-700 leading-relaxed font-medium">{p.content}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
           </div>
         )}
       </main>
