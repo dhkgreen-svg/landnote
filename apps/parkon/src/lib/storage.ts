@@ -35,6 +35,7 @@ const STORAGE_KEYS = {
   CUSTOM_COURSES: 'parkon_custom_courses_v1',
   COURSE_CONDITIONS: 'parkon_course_conditions_v1',
   CROWD_HOLE_SPECS: 'parkon_crowd_hole_specs_v1',
+  CROWD_HOLE_TIPS: 'parkon_crowd_hole_tips_v1',
   USER_PROFILE: 'parkon_user_profile_v1',
   SUNLIGHT_MODE: 'parkon_sunlight_mode_v1',
   KAKAO_USER: 'parkon_kakao_user_v1',
@@ -1211,6 +1212,42 @@ export const ParkOnStorage = {
       }
     } catch (e) {
       console.error('Failed to reset all specs for course:', e);
+    }
+  },
+
+  // 7. [대표님 지침]: 현장 실전 팁 (고수 꿀팁) 조회 및 저장
+  getHoleTip(courseId: string, courseName: string, hole: number): string | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const tipsJson = localStorage.getItem(STORAGE_KEYS.CROWD_HOLE_TIPS);
+      if (!tipsJson) return null;
+      const tips = JSON.parse(tipsJson);
+      const cleanName = courseName ? courseName.replace(/\s+/g, '') : '';
+      const key1 = `${courseId}_hole_${hole}`;
+      const key2 = `${cleanName}_hole_${hole}`;
+      return tips[key1]?.tip || tips[key2]?.tip || null;
+    } catch {
+      return null;
+    }
+  },
+
+  saveHoleTip(courseId: string, courseName: string, hole: number, tip: string, author?: string): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const tipsJson = localStorage.getItem(STORAGE_KEYS.CROWD_HOLE_TIPS);
+      const tips = tipsJson ? JSON.parse(tipsJson) : {};
+      const cleanName = courseName ? courseName.replace(/\s+/g, '') : '';
+      const record = {
+        hole,
+        tip: tip.trim(),
+        author: author || '고수 골퍼',
+        updatedAt: new Date().toISOString(),
+      };
+      if (courseId) tips[`${courseId}_hole_${hole}`] = record;
+      if (cleanName) tips[`${cleanName}_hole_${hole}`] = record;
+      localStorage.setItem(STORAGE_KEYS.CROWD_HOLE_TIPS, JSON.stringify(tips));
+    } catch (e) {
+      console.error('Failed to save hole tip:', e);
     }
   },
 

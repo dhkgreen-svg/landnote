@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { CourseStampModal } from '@/components/CourseStampModal';
 import { buildCourseBlocksFromSession, incrementUserCompleted9Holes, calculateTier, getUserCompleted9Holes } from '@/lib/courseBlockTier';
 import { DiamondTierBadge } from '@/components/DiamondTierBadge';
+import { RoundExceptionModals } from '@/components/RoundExceptionModals';
 
 export default function RoundPlayPage() {
   const params = useParams();
@@ -96,6 +97,16 @@ export default function RoundPlayPage() {
   // 👑 [대표님 특명] 조장(기록원) 독점 입력 및 동반자 실시간 확인 모드 상태
   const [leaderOnlyToast, setLeaderOnlyToast] = useState<string | null>(null);
   const [showLeaderTransferModal, setShowLeaderTransferModal] = useState<boolean>(false);
+
+  // 🌟 [대표님 지시]: 예외 상황(이탈/종료/위임) 분기 모달 5종 상태 관리
+  const [isExitModalOpen, setIsExitModalOpen] = useState<boolean>(false);
+  const [isRestModalOpen, setIsRestModalOpen] = useState<boolean>(false);
+  const [targetRestPlayer, setTargetRestPlayer] = useState<RoundPlayer | null>(null);
+  const [isLeaderDelegateModalOpen, setIsLeaderDelegateModalOpen] = useState<boolean>(false);
+  const [isSwitchCourseModalOpen, setIsSwitchCourseModalOpen] = useState<boolean>(false);
+  const [isSaveWarningModalOpen, setIsSaveWarningModalOpen] = useState<boolean>(false);
+  const [saveWarningNames, setSaveWarningNames] = useState<string>('');
+  const [delegateSource, setDelegateSource] = useState<'REST' | 'SWITCH'>('REST');
 
   // 현재 접속자가 조장인지 여부 판별
   const rawDisplayName = typeof window !== 'undefined' ? ParkOnStorage.getUserDisplayName() : '';
@@ -625,42 +636,29 @@ export default function RoundPlayPage() {
     };
   }, [session?.roomId, roundId, holeStep, currentHole, countingMode]);
 
-  // [대표님 특명]: 미확인 홀 진입 시 '조장(기록원)'에게만 팻말 제원 등록 모달 즉시 자동 팝업!
-  // 동반자들은 조장이 등록한 제원이 실시간 동기화될 때까지 깔끔한 안내 대기 상태 유지
+  // [대표님 특명]: 제원 미등록 시 차단 모달을 띄우지 않고 기본값(Par 3, -m) 패스
+  // 라운드 최초 시작 시 심플 안내 1회만 표시:
+  // "제원이 비어있는 홀은 라운드 중 상단 제원을 눌러 등록해주시면 감사하겠습니다."
+  const hasShownSpecToastRef = useRef<boolean>(false);
   useEffect(() => {
     if (!session || !course) return;
+    if (hasShownSpecToastRef.current) return;
 
-    // 조장이 아닌 일반 동반자는 제원 입력 모달을 자동 팝업하지 않음 (혹시 열려있다면 즉시 닫음)
-    if (!isCurrentUserLeader) {
-      if (showHoleSpecModal) {
-        setShowHoleSpecModal(false);
-      }
-      return;
-    }
-
-    const actualHole = Number(
-      session.selectedHoleNumbers && session.selectedHoleNumbers[currentHole - 1]
-        ? session.selectedHoleNumbers[currentHole - 1]
-        : currentHole
-    );
-    const baseHole = ((actualHole - 1) % 1000) + 1;
     const activeMeta = session.customHolesMetadata || course.holesMetadata || [];
-    const meta = activeMeta.find((m) => Number(m.hole) === baseHole);
-    const verified = Boolean(
-      meta?.isVerified === true ||
-      meta?.contributedBy
-    );
-    if (holeStep === 'TEE_SHOT' && !verified) {
-      if (!autoPromptedHolesRef.current[actualHole]) {
-        autoPromptedHolesRef.current[actualHole] = true;
-        setEditingPar(0);
-        setEditingDistance('50');
-        setSignboardChecked(true);
-        setShowSpecConfirmStep(false);
-        setShowHoleSpecModal(true);
-      }
+    const hasUnverified = activeMeta.some((m) => !m.isVerified && !m.contributedBy) || activeMeta.length === 0;
+
+    if (hasUnverified) {
+      hasShownSpecToastRef.current = true;
+      setSpecSavedToast(
+        isJapanese
+          ? '諸元が空いているホールは、上部の「諸元入力」をタップしてご登録いただけます。'
+          : '제원이 비어있는 홀은 라운드 중 상단 제원을 눌러 등록해주시면 감사하겠습니다.'
+      );
+      setTimeout(() => {
+        setSpecSavedToast(null);
+      }, 5000);
     }
-  }, [session, course, holeStep, currentHole, isCurrentUserLeader, showHoleSpecModal]);
+  }, [session, course, isJapanese]);
 
   if (!session || !course) {
     return (
@@ -707,6 +705,10 @@ export default function RoundPlayPage() {
     tip: undefined,
     isVerified: false,
   };
+
+  // [대표님 지침]: 현장 고수 꿀팁 우선 반영
+  const savedCrowdTip = course ? ParkOnStorage.getHoleTip(course.id, course.name, baseHoleNumber) : null;
+  const currentEffectiveTip = savedCrowdTip || holeMetadata.tip;
 
   // [대표님 지침]: 엉터리 더미 제원 방지 & 실측 검증 여부 판별 (홀별 개별 검증)
   // 1) 개별 홀에 isVerified: true 가 있거나
@@ -1063,18 +1065,9 @@ export default function RoundPlayPage() {
     }
   };
 
-  // Confirm scores and save to storage
-  const handleConfirmHole = () => {
-    if (!isCurrentUserLeader) {
-      const leaderName = currentLeaderPlayer?.name || '조장';
-      setLeaderOnlyToast(
-        isJapanese
-          ? `👑 ホールアウト確認は代表(${leaderName})のみ行えます。`
-          : `👑 점수 저장은 조장(${leaderName})님만 가능합니다.`
-      );
-      setTimeout(() => setLeaderOnlyToast(null), 3000);
-      return;
-    }
+  // 실제 현재 홀 점수 확정 및 저장 실행 함수
+  const executeConfirmHoleSave = () => {
+    if (!session) return;
 
     // 1. Add current hole to confirmedHoles if not already present
     const currentConfirmed = session.confirmedHoles ? [...session.confirmedHoles] : [];
@@ -1158,6 +1151,141 @@ export default function RoundPlayPage() {
       });
       return;
     }
+  };
+
+  // D. [ ✅ 확인(저장) ] 버튼 검증 로직 강화
+  const handleConfirmHole = () => {
+    if (!isCurrentUserLeader) {
+      const leaderName = currentLeaderPlayer?.name || '조장';
+      setLeaderOnlyToast(
+        isJapanese
+          ? `👑 ホールアウト確認は代表(${leaderName})のみ行えます。`
+          : `👑 점수 저장은 조장(${leaderName})님만 가능합니다.`
+      );
+      setTimeout(() => setLeaderOnlyToast(null), 3000);
+      return;
+    }
+
+    if (!session || !session.players) return;
+
+    // 현재 활성 상태인 모든 플레이어의 타수 및 휴식 상태 검증
+    const warningList = session.players
+      .filter((p) => !p.isOut && (restingPlayerIds.includes(p.id) || p.scores[actualHoleNumber] === undefined || p.scores[actualHoleNumber] === null || p.scores[actualHoleNumber] === 0))
+      .map((p) => `${p.name}(${restingPlayerIds.includes(p.id) ? '휴식' : '미입력'})`)
+      .join(', ');
+
+    if (warningList) {
+      setSaveWarningNames(warningList);
+      setIsSaveWarningModalOpen(true);
+      return;
+    }
+
+    executeConfirmHoleSave();
+  };
+
+  // A. [경기 종료] 클릭 시 분기 핸들러
+  const handleExitWithCurrentHole = () => {
+    setIsExitModalOpen(false);
+    executeConfirmHoleSave();
+    setTimeout(() => {
+      executeFinishRound(true);
+    }, 200);
+  };
+
+  const handleExitWithoutCurrentHole = () => {
+    setIsExitModalOpen(false);
+    if (session) {
+      const currentConfirmed = (session.confirmedHoles || []).filter((h) => h !== actualHoleNumber);
+      const updatedPlayers = session.players.map((p) => {
+        const sc = { ...p.scores };
+        delete sc[actualHoleNumber];
+        const ob = { ...p.obCount };
+        delete ob[actualHoleNumber];
+        const total = currentConfirmed.reduce((sum, hNum) => sum + (sc[hNum] || 0), 0);
+        return { ...p, scores: sc, obCount: ob, totalStrokes: total };
+      });
+      const updatedSession = { ...session, confirmedHoles: currentConfirmed, players: updatedPlayers };
+      setSession(updatedSession);
+      updateSession(updatedSession);
+    }
+    setTimeout(() => {
+      executeFinishRound(true);
+    }, 200);
+  };
+
+  // B. [잠시 빠지기] 및 코스 이동 시 기록자 위임 소스 구분
+  const handleDelegateAndSwitchCourse = () => {
+    setDelegateSource('SWITCH');
+    setIsSwitchCourseModalOpen(false);
+    setIsLeaderDelegateModalOpen(true);
+  };
+
+  const handleTriggerRest = (player?: RoundPlayer) => {
+    setDelegateSource('REST');
+    if (!session || !session.players) return;
+    const target = player || session.players.find((p) => p.isSelf) || session.players[0];
+    if (!target) return;
+    setTargetRestPlayer(target);
+
+    // 기록자(조장) 본인이 빠지는 경우: 다른 동반자가 있으면 기록자 위임 팝업 선행
+    const isTargetLeader = target.isLeader || (target.isSelf && isCurrentUserLeader);
+    const otherCompanions = session.players.filter((p) => p.id !== target.id);
+
+    if (isTargetLeader && otherCompanions.length > 0) {
+      setIsLeaderDelegateModalOpen(true);
+    } else {
+      setIsRestModalOpen(true);
+    }
+  };
+
+  const handleSelectNewLeader = (newLeaderId: string) => {
+    handleTransferLeader(newLeaderId);
+    setIsLeaderDelegateModalOpen(false);
+    if (delegateSource === 'SWITCH') {
+      openCoursePicker();
+    } else {
+      setIsRestModalOpen(true);
+    }
+  };
+
+  const handleRestAfterCurrentHole = () => {
+    if (!targetRestPlayer || !session) return;
+    setIsRestModalOpen(false);
+    setLeaderOnlyToast(`${targetRestPlayer.name}님은 이번 홀 플레이 후 다음 홀부터 휴식 처리됩니다. ☕`);
+    setTimeout(() => setLeaderOnlyToast(null), 3000);
+  };
+
+  const handleRestFromCurrentHole = () => {
+    if (!targetRestPlayer || !session) return;
+    const updatedPlayers = session.players.map((p) => {
+      if (p.id === targetRestPlayer.id) {
+        const sc = { ...p.scores };
+        delete sc[actualHoleNumber];
+        return { ...p, scores: sc };
+      }
+      return p;
+    });
+    setRestingPlayerIds((prev) => (prev.includes(targetRestPlayer.id) ? prev : [...prev, targetRestPlayer.id]));
+    const updatedSession = { ...session, players: updatedPlayers };
+    setSession(updatedSession);
+    updateSession(updatedSession);
+    setIsRestModalOpen(false);
+    setLeaderOnlyToast(`${targetRestPlayer.name}님이 이번 홀부터 즉시 휴식 처리되었습니다. ☕`);
+    setTimeout(() => setLeaderOnlyToast(null), 3000);
+  };
+
+  // C. [다른 코스 이동] 분기 핸들러
+  const handleSwitchWithCurrentHole = () => {
+    setIsSwitchCourseModalOpen(false);
+    executeConfirmHoleSave();
+    setTimeout(() => {
+      openCoursePicker();
+    }, 200);
+  };
+
+  const handleSwitchWithoutCurrentHole = () => {
+    setIsSwitchCourseModalOpen(false);
+    openCoursePicker();
   };
 
   // Switch to another course and hole (e.g. B코스 5번 홀 or C코스 2회차)
@@ -1712,7 +1840,7 @@ export default function RoundPlayPage() {
   const openHoleSpecModal = () => {
     // 대표님 지침: 미확인 구장은 50m로 시작하여 좌우 증감 버튼으로 손쉽게 조절!
     if (!isHoleVerified) {
-      setEditingPar(0); // 0 = 미선택 / 공란 (버튼 선택 유도)
+      setEditingPar(3); // 기본 Par 3 자동 설정
       setEditingDistance('50'); // 기본 50m 표출
     } else {
       setEditingPar(Number(holeMetadata.par) || 3);
@@ -1828,6 +1956,49 @@ export default function RoundPlayPage() {
     setTimeout(() => {
       setSpecSavedToast(null);
     }, 4500);
+  };
+
+  // [대표님 지침]: 고수들의 현장 실전 팁(노하우) 등록 및 즉시 반영
+  const handleSaveHoleTip = (newTip: string) => {
+    if (!course) return;
+    const authorName = (session?.players?.find((p) => p.isSelf)?.name) || session?.players?.[0]?.name || '고수 골퍼';
+    ParkOnStorage.saveHoleTip(course.id, course.name, baseHoleNumber, newTip, authorName);
+
+    // 1. 코스 메타데이터 갱신 및 캐시 반영
+    let found = false;
+    const existingMetadata = session?.customHolesMetadata || course.holesMetadata || [];
+    const updatedMetadata = existingMetadata.map((m) => {
+      if (Number(m.hole) === baseHoleNumber) {
+        found = true;
+        return { ...m, tip: newTip };
+      }
+      return m;
+    });
+    if (!found) {
+      updatedMetadata.push({
+        hole: baseHoleNumber,
+        par: holeMetadata.par || 3,
+        distanceMeter: holeMetadata.distanceMeter || 50,
+        tip: newTip,
+      });
+    }
+
+    const updatedCourse: Course = {
+      ...course,
+      holesMetadata: updatedMetadata,
+    };
+    setCourse(updatedCourse);
+    ParkOnStorage.updateCourse(updatedCourse);
+
+    // 2. 현재 세션 동기화 및 저장
+    if (session) {
+      const updatedSession: RoundSession = {
+        ...session,
+        customHolesMetadata: updatedMetadata,
+      };
+      setSession(updatedSession);
+      ParkOnStorage.saveCurrentRound(updatedSession);
+    }
   };
 
   return (
@@ -2040,8 +2211,8 @@ export default function RoundPlayPage() {
                       {isJapanese ? '公認' : '공인'}
                     </span>
                   ) : (
-                    <span className="text-[9px] bg-amber-500/30 text-yellow-300 border border-amber-400/50 px-1.5 py-0.2 rounded font-black animate-pulse">
-                      {isJapanese ? '未確認' : '미확인'}
+                    <span className="text-[9px] bg-amber-500/30 text-yellow-300 border border-amber-400/50 px-1.5 py-0.2 rounded font-bold">
+                      {isJapanese ? '基本設定' : '기본값'}
                     </span>
                   )}
                 </div>
@@ -2053,11 +2224,11 @@ export default function RoundPlayPage() {
                   </span>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-0.5">
-                    <span className="text-3xl font-black text-amber-300 tracking-wider">
-                      Par --
+                    <span className="text-4xl font-black text-yellow-400 tracking-wider">
+                      Par 3
                     </span>
-                    <span className="text-[10px] text-amber-200 font-bold underline mt-1">
-                      {isJapanese ? '看板見てPar選択' : '팻말 보고 Par선택'}
+                    <span className="text-[10px] text-amber-200 font-bold mt-1">
+                      {isJapanese ? '(基本Par3 · 変更可)' : '(기본 Par 3 · 변경가능)'}
                     </span>
                   </div>
                 )}
@@ -2067,7 +2238,7 @@ export default function RoundPlayPage() {
               <div 
                 onClick={openHoleSpecModal}
                 className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center cursor-pointer active:scale-95 transition ${
-                  !isHoleVerified ? 'border-amber-400 bg-amber-950/40 shadow-lg ring-1 ring-amber-400/50 hover:bg-amber-900/50' :
+                  !isHoleVerified ? 'border-amber-400/60 bg-amber-950/30 hover:bg-amber-900/40 shadow-inner' :
                   sunlightMode ? 'bg-zinc-900 border-yellow-400' : 'bg-black/35 border-emerald-400/40 shadow-inner'
                 }`}
                 title={isJapanese ? 'タップして距離入力' : '터치하여 거리 입력'}
@@ -2079,8 +2250,8 @@ export default function RoundPlayPage() {
                       {isJapanese ? '実測済' : '실측'}
                     </span>
                   ) : (
-                    <span className="text-[9px] bg-amber-500 text-stone-950 font-black px-1.5 py-0.2 rounded animate-bounce">
-                      {isJapanese ? '入力要' : '입력요망'}
+                    <span className="text-[9px] bg-stone-600/50 text-stone-300 border border-stone-500/50 px-1.5 py-0.2 rounded font-bold">
+                      {isJapanese ? '未確認' : '미확인'}
                     </span>
                   )}
                 </div>
@@ -2090,11 +2261,11 @@ export default function RoundPlayPage() {
                   </span>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-0.5">
-                    <span className="text-3xl font-black text-amber-300 tracking-wider">
-                      -- <span className="text-xl">m</span>
+                    <span className="text-4xl font-black text-stone-300 tracking-wider">
+                      - <span className="text-2xl font-bold">m</span>
                     </span>
-                    <span className="text-[10px] text-amber-200 font-bold underline mt-1">
-                      {isJapanese ? '看板見て距離入力' : '팻말 보고 거리입력'}
+                    <span className="text-[10px] text-stone-300 font-bold mt-1">
+                      {isJapanese ? '現地距離未確認' : '현장 거리 미확인'}
                     </span>
                   </div>
                 )}
@@ -2178,112 +2349,64 @@ export default function RoundPlayPage() {
               <ChevronRight className="w-6 h-6 ml-1" />
             </button>
 
-            {/* 코스 공략 제공 (확인 완료 버튼 밑으로 배치) */}
-            <TipCard hole={actualHoleNumber} tip={holeMetadata.tip} />
+            {/* 코스 공략 제공 (확인 완료 버튼 밑으로 배치): 스마트 2단계 및 고수 꿀팁 등록 연동 */}
+            <TipCard
+              hole={actualHoleNumber}
+              courseLabel={`${courseLetter}-${holeInCourse}번 홀`}
+              tip={currentEffectiveTip}
+              onSaveTip={handleSaveHoleTip}
+            />
 
-            {/* [대표님 지침]: 상시 스코어보드 보기 버튼 (코스공략 바로 밑 배치 + 고대비 녹색 테두리 & 시인성 대폭 강화) */}
-            <button
-              type="button"
-              onClick={() => setShowTotalScoreModal(true)}
-              className={`w-full py-3 px-3.5 rounded-2xl font-black text-sm flex items-center justify-between transition border-2 shadow-sm active:scale-[0.98] cursor-pointer ${
-                sunlightMode
-                  ? 'bg-zinc-900 text-yellow-300 border-yellow-400 ring-2 ring-yellow-400/30 hover:bg-zinc-800'
-                  : 'bg-white hover:bg-emerald-50/80 text-emerald-950 border-emerald-600 ring-2 ring-emerald-500/15 shadow-emerald-900/5'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shadow-2xs">
-                  <BarChart2 className="w-4 h-4 text-emerald-700" />
-                </span>
-                <span className="font-black text-sm">
-                  {isJapanese ? '現在のスコアボードを見る' : isEnglish ? 'View Scoreboard' : '현재 스코어보드판 보기'}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="bg-emerald-600 text-white font-black text-[11px] px-2.5 py-0.5 rounded-full shadow-2xs">
-                  {confirmedHoles.length}{isJapanese ? 'ホール累積' : '홀 누적 현황'}
-                </span>
-                <ChevronRight className="w-4 h-4 text-emerald-700 shrink-0" />
-              </div>
-            </button>
-
-            {/* 4. 하단 보조 3대 액션 버튼: [ 🔄 코스/홀 이동 ] [ ☕ 잠시 빠지기 ] [ 🛑 경기 종료 (빨간색) ] */}
-            <div className="grid grid-cols-3 gap-2 pt-1">
+            {/* [2. 실시간 스코어판 메인 버튼 (중앙 집중형: 너비 100%, 52px 이상, 다크 네이비 포인트)] */}
+            <div className="pt-1">
               <button
                 type="button"
-                onClick={openCoursePicker}
-                className={`py-3 px-1.5 rounded-xl font-black text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 transition border active:scale-95 cursor-pointer ${
-                  sunlightMode
-                    ? 'bg-zinc-900 text-yellow-300 border-zinc-700 hover:bg-zinc-800'
-                    : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-50 shadow-2xs'
-                }`}
+                onClick={() => setShowTotalScoreModal(true)}
+                className="w-full min-h-[52px] py-3.5 px-4 rounded-2xl font-black text-sm sm:text-base flex items-center justify-between shadow-lg border-2 transition active:scale-[0.98] cursor-pointer bg-[#0f1d31] hover:bg-[#182d4b] text-white border-slate-600 ring-2 ring-blue-500/20"
               >
-                <span className="text-base">🔄</span>
-                <span className="truncate">{isJapanese ? '他のコース' : '다른 코스 이동'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handlePauseAndGoHome}
-                className={`py-3 px-1.5 rounded-xl font-black text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 transition border active:scale-95 cursor-pointer ${
-                  sunlightMode
-                    ? 'bg-zinc-900 text-amber-300 border-zinc-700 hover:bg-zinc-800'
-                    : 'bg-white text-amber-950 border-amber-300 hover:bg-amber-50 shadow-2xs'
-                }`}
-              >
-                <span className="text-base">☕</span>
-                <span className="truncate">{isJapanese ? '一時退出' : '잠시 빠지기'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleEarlyFinishConfirm}
-                className={`py-3 px-1.5 rounded-xl font-black text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 transition border-2 active:scale-95 cursor-pointer shadow-md ${
-                  sunlightMode
-                    ? 'bg-red-600 text-white border-white ring-2 ring-red-400 hover:bg-red-500'
-                    : 'bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 text-white border-red-300 ring-2 ring-red-400/30 shadow-red-900/20'
-                }`}
-              >
-                <span className="text-base">🛑</span>
-                <span className="truncate font-black">{isJapanese ? 'ラウンド終了' : '경기 종료'}</span>
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">📊</span>
+                  <span className="tracking-tight">{isJapanese ? '現在のリアルタイムスコアボードを見る' : '현재 실시간 스코어판 보기'}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="bg-emerald-500 text-stone-950 font-black text-xs px-2.5 py-1 rounded-full shadow-xs">
+                    {confirmedHoles.length}홀 누적
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-stone-300" />
+                </div>
               </button>
             </div>
 
-            {/* [대표님 요청]: 하단 2분할 버튼 [ 🌱 잔디 상태 1초 제보 ] + [ ☀️ 햇빛모드 ] */}
-            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-stone-200/40">
+            {/* [3. 서브 기능 액션 바 (하단 보조 메뉴: 12px 간격 mt-3, 톤다운 3대 보조 버튼)] */}
+            <div className="mt-3 grid grid-cols-3 gap-2 pb-1">
+              {/* 1. [ 🔄 다른 코스 이동 ] */}
               <button
                 type="button"
-                onClick={() => {
-                  if (session?.isVirtual) {
-                    alert(isJapanese ? '体験モードでは利用できません。' : '가상 상태에서는 작동이 안 됩니다.');
-                    return;
-                  }
-                  setShowConditionModal(true);
-                }}
-                className={`w-full py-2.5 px-2 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer border flex items-center justify-center gap-1.5 shadow-2xs ${
-                  session?.isVirtual
-                    ? 'bg-stone-100 text-stone-500 border-stone-300'
-                    : sunlightMode
-                    ? 'bg-blue-600 hover:bg-blue-500 text-white border-yellow-300 ring-2 ring-blue-400/30'
-                    : 'bg-gradient-to-r from-blue-600 via-sky-600 to-blue-700 hover:from-blue-500 text-white border-blue-400'
-                }`}
+                onClick={() => setIsSwitchCourseModalOpen(true)}
+                className="py-2.5 px-1.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 shadow-2xs"
               >
-                <span className="text-sm">🌱</span>
-                <span className="tracking-tight truncate">{isJapanese ? '芝の状況を報告' : isEnglish ? 'Turf Report' : '잔디 상태 제보'}</span>
+                <span className="text-sm">🔄</span>
+                <span className="truncate">{isJapanese ? '他のコース' : '다른 코스 이동'}</span>
               </button>
 
+              {/* 2. [ ☕ 잠시 빠지기 ] */}
               <button
                 type="button"
-                onClick={toggleSunlightMode}
-                className={`w-full py-2.5 px-2 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer border-2 flex items-center justify-center gap-1.5 shadow-2xs ${
-                  sunlightMode
-                    ? 'bg-yellow-400 text-stone-950 border-white ring-2 ring-yellow-400 shadow-yellow-500/50'
-                    : 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300'
-                }`}
-                title={isJapanese ? '炎天下でも画面が見やすい高コントラスト表示' : '대낮 직사광선 아래 선글라스를 껴도 선명한 야외 고대비 화면'}
+                onClick={() => handleTriggerRest()}
+                className="py-2.5 px-1.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer bg-stone-100 hover:bg-amber-50 text-stone-700 hover:text-amber-900 border border-stone-300 hover:border-amber-300 shadow-2xs"
               >
-                <span className="text-sm">☀️</span>
-                <span className="tracking-tight truncate">{sunlightMode ? (isJapanese ? '日差しモード ON' : '햇빛모드 ON') : (isJapanese ? '日差しモード' : '햇빛모드')}</span>
+                <span className="text-sm">☕</span>
+                <span className="truncate">{isJapanese ? '一時退出' : '잠시 빠지기'}</span>
+              </button>
+
+              {/* 3. [ ⏹️ 경기 종료 ] - 차분한 톤다운 레드 */}
+              <button
+                type="button"
+                onClick={() => setIsExitModalOpen(true)}
+                className="py-2.5 px-1.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs"
+              >
+                <span className="text-sm">⏹️</span>
+                <span className="truncate font-black">{isJapanese ? 'ラウンド終了' : '경기 종료'}</span>
               </button>
             </div>
 
@@ -2332,9 +2455,27 @@ export default function RoundPlayPage() {
               <span className="font-black text-sm sm:text-base text-yellow-300 drop-shadow-xs whitespace-nowrap">
                 {courseLetter}-{holeInCourse}{isJapanese ? '番ホール' : '번 홀'}
               </span>
-              <span className="text-[11px] sm:text-xs font-black text-white bg-black/30 px-1.5 sm:px-2 py-0.5 rounded-lg border border-white/20 whitespace-nowrap">
-                {isHoleVerified ? `Par ${holeMetadata.par} · ${holeMetadata.distanceMeter}m` : (isJapanese ? '諸元未確認' : '제원 미확인')}
-              </span>
+              {!isHoleVerified ? (
+                <button
+                  type="button"
+                  onClick={openHoleSpecModal}
+                  className="bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 hover:text-white border-2 border-amber-400/70 px-2.5 py-1 rounded-xl text-[11px] sm:text-xs font-black flex items-center gap-1 shadow-xs transition active:scale-95 cursor-pointer whitespace-nowrap animate-pulse"
+                  title={isJapanese ? '諸元入力' : '제원 입력'}
+                >
+                  <Pencil className="w-3 h-3 text-amber-300" />
+                  <span>{isJapanese ? '✏️ 諸元入力' : isEnglish ? '✏️ Edit Spec' : '✏️ 제원 입력'}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={openHoleSpecModal}
+                  className="bg-black/30 hover:bg-black/50 text-white border border-white/20 hover:border-emerald-400 px-2 py-0.5 rounded-xl text-[11px] sm:text-xs font-black flex items-center gap-1 transition active:scale-95 cursor-pointer whitespace-nowrap shadow-xs"
+                  title={isJapanese ? '諸元修正' : '제원 수정'}
+                >
+                  <span>Par {holeMetadata.par} / {holeMetadata.distanceMeter ? `${holeMetadata.distanceMeter}m` : '-m'}</span>
+                  <Pencil className="w-2.5 h-2.5 text-stone-300" />
+                </button>
+              )}
             </div>
 
             {/* 카운트 방식 2분할 세그먼트 토글 */}
@@ -2566,7 +2707,7 @@ export default function RoundPlayPage() {
                       {/* ☕ 휴식 토글 버튼 */}
                       <button
                         type="button"
-                        onClick={() => togglePlayerRest(player.id)}
+                        onClick={() => handleTriggerRest(player)}
                         className={`text-[10.5px] font-extrabold px-2 h-7 flex items-center justify-center shrink-0 rounded-lg border transition active:scale-95 cursor-pointer ${
                           sunlightMode
                             ? 'bg-zinc-900 text-stone-300 border-zinc-700 hover:text-white'
@@ -2725,172 +2866,133 @@ export default function RoundPlayPage() {
             })}
           </div>
 
-          {/* [대표님 특명 UX]: 3단 버튼 구성 (좌: [ < 이전 홀 ] | 중: [✔️ 확인 (저장)] | 우: [다음 홀 이동 > ]) */}
+          {/* [1. 스코어 저장 및 이동 바 (상단 조작계): 가로 1행 균형 배치] */}
           <div className="grid grid-cols-3 gap-2 pt-1">
-            {/* 좌측: [ < 이전 홀 ] 버튼 */}
+            {/* 좌측: [ < 이전 홀 ] 버튼 (중립 회색/화이트) */}
             <button
               type="button"
               onClick={handlePrevHole}
               disabled={currentHole === 1}
-              className={`h-16 rounded-2xl font-black text-sm sm:text-base shadow-md border-2 transition flex items-center justify-center gap-1 active:scale-95 ${
+              className={`h-14 rounded-2xl font-black text-sm sm:text-base shadow-sm border-2 transition flex items-center justify-center gap-1 active:scale-95 ${
                 currentHole === 1
-                  ? 'opacity-35 cursor-not-allowed bg-stone-200 border-stone-300 text-stone-400 dark:bg-stone-800 dark:border-stone-700 dark:text-stone-500'
-                  : sunlightMode
-                  ? 'bg-zinc-800 text-yellow-300 border-yellow-400 hover:bg-zinc-700 cursor-pointer'
-                  : 'bg-stone-100 hover:bg-stone-200 text-stone-800 border-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 dark:text-stone-100 dark:border-stone-600 cursor-pointer'
+                  ? 'opacity-35 cursor-not-allowed bg-stone-200 border-stone-300 text-stone-400'
+                  : 'bg-stone-100 hover:bg-stone-200 text-stone-800 border-stone-300 cursor-pointer'
               }`}
             >
               <ChevronLeft className="w-5 h-5" />
               <span>{isEnglish ? 'Prev Hole' : isJapanese ? '前のホール' : '이전 홀'}</span>
             </button>
 
-            {/* 중앙: [✔️ 확인 (저장)] 버튼 (타수 확정 + 드르륵 진동 + 띵똥 차임벨 - 그자리 그대로 즉시 색상 전환) */}
+            {/* 중앙: [ ✅ 확인 (저장) ] 버튼 (포인트 초록색, 중요도 강조 - 절대 유지) */}
             <button
               type="button"
               onClick={handleConfirmHole}
-              className={`h-16 rounded-2xl font-black text-sm sm:text-base shadow-xl border-2 transition-colors flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
+              className={`h-14 rounded-2xl font-black text-sm sm:text-base shadow-lg border-2 transition-colors flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
                 confirmedFeedback
                   ? 'bg-amber-400 text-stone-950 border-amber-500 ring-2 ring-amber-400'
-                  : sunlightMode
-                  ? 'bg-zinc-900 text-yellow-300 border-yellow-400 hover:bg-zinc-800'
-                  : 'bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white border-emerald-400 shadow-emerald-900/30 ring-2 ring-emerald-500/20'
+                  : 'bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-emerald-400 shadow-emerald-900/20 ring-2 ring-emerald-500/20'
               }`}
             >
               <CheckCircle2 className={`w-5 h-5 ${confirmedFeedback ? 'text-stone-950' : 'text-yellow-300'}`} />
-              <span>{confirmedFeedback ? (isEnglish ? '✅ Saved!' : isJapanese ? '✅ 保存完了！' : '✅ 저장 완료!') : (isEnglish ? 'Save & Done' : isJapanese ? '確認 (保存)' : '확인 (저장)')}</span>
+              <span>{confirmedFeedback ? '✅ 저장 완료!' : '✅ 확인 (저장)'}</span>
             </button>
 
-            {/* 우측: [다음 홀 이동 >] 버튼 */}
-            {isRefereeMode ? (
-              <button
-                type="button"
-                onClick={handleNextHole}
-                className={`h-16 rounded-2xl font-black text-sm sm:text-base shadow-xl border-2 transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
-                  sunlightMode
-                    ? 'bg-purple-600 text-white border-white ring-4 ring-purple-400/40 hover:bg-purple-500'
-                    : 'bg-gradient-to-r from-purple-700 to-indigo-700 text-white border-purple-400'
-                }`}
-              >
-                <span>✍️</span>
-                <span>{isEnglish ? 'Confirm Strokes' : isJapanese ? '選手確認' : '선수 확인'}</span>
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleNextHole}
-                className={`h-16 rounded-2xl font-black text-sm sm:text-base shadow-xl border-2 transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
-                  sunlightMode
-                    ? 'bg-yellow-400 text-black border-white ring-4 ring-yellow-400/40 hover:bg-yellow-300'
-                    : 'bg-gradient-to-r from-teal-600 via-emerald-600 to-emerald-700 text-white border-teal-300 ring-2 ring-teal-400/30 shadow-teal-900/30'
-                }`}
-              >
-                <span>{isJapanese ? '次のホール' : isEnglish ? 'Next Hole' : '다음 홀 이동'}</span>
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            )}
+            {/* 우측: [ 다음 홀 이동 > ] 버튼 (진한 청록/민트) */}
+            <button
+              type="button"
+              onClick={handleNextHole}
+              className="h-14 rounded-2xl font-black text-sm sm:text-base shadow-lg border-2 transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer bg-gradient-to-r from-teal-700 via-teal-800 to-cyan-800 hover:from-teal-600 hover:to-cyan-700 text-white border-teal-400"
+            >
+              <span>{isJapanese ? '次のホール' : isEnglish ? 'Next Hole' : '다음 홀 이동'}</span>
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
 
-          {/* [대표님 특명 UX 2]: 현재 실시간 스코어보드판 보기 (크기를 컴팩트하게 축소) */}
-          <div className="pt-0.5">
+          {/* [2. 실시간 스코어판 메인 버튼 (중앙 집중형: 너비 100%, 52px 이상, 다크 네이비 포인트)] */}
+          <div className="pt-2">
             <button
               type="button"
               onClick={() => setShowTotalScoreModal(true)}
-              className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs border transition active:scale-[0.98] cursor-pointer ${
-                sunlightMode
-                  ? 'bg-zinc-900 text-yellow-300 border-zinc-700 hover:bg-zinc-800'
-                  : 'bg-stone-800 hover:bg-stone-700 text-stone-300 border-stone-600'
-              }`}
+              className="w-full min-h-[52px] py-3.5 px-4 rounded-2xl font-black text-sm sm:text-base flex items-center justify-between shadow-lg border-2 transition active:scale-[0.98] cursor-pointer bg-[#0f1d31] hover:bg-[#182d4b] text-white border-slate-600 ring-2 ring-blue-500/20"
             >
-              <BarChart2 className="w-3.5 h-3.5 text-amber-400" />
-              <span>📋 {isEnglish ? `View Current Scorecard (${confirmedHoles.length}H)` : isJapanese ? `現在のスコアボードを見る (${confirmedHoles.length}ホール累積)` : `현재 실시간 스코어판 보기 (${confirmedHoles.length}홀 누적)`}</span>
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">📊</span>
+                <span className="tracking-tight">{isJapanese ? '現在のリアルタイムスコアボードを見る' : '현재 실시간 스코어판 보기'}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="bg-emerald-500 text-stone-950 font-black text-xs px-2.5 py-1 rounded-full shadow-xs">
+                  {confirmedHoles.length}홀 누적
+                </span>
+                <ChevronRight className="w-4 h-4 text-stone-300" />
+              </div>
             </button>
           </div>
 
-          {/* [대표님 특명 현장 UX]: 대형 원터치 현장 대응 3대 버튼 (코스 이동 / 잠시 빠지기 / 🛑 경기 종료 빨간색 대형 버튼) */}
-          <div className="grid grid-cols-3 gap-2 pt-1 pb-1">
-            {/* 1. 다른 코스/홀 이동 */}
+          {/* [3. 서브 기능 액션 바 (하단 보조 메뉴: 12px 간격 mt-3, 톤다운 3대 보조 버튼)] */}
+          <div className="mt-3 grid grid-cols-3 gap-2 pb-2">
+            {/* 1. [ 🔄 다른 코스 이동 ] */}
             <button
               type="button"
-              onClick={openCoursePicker}
-              className={`py-3 px-1.5 rounded-xl font-black text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer border shadow-sm ${
-                sunlightMode
-                  ? 'bg-zinc-900 text-yellow-300 border-zinc-700 hover:bg-zinc-800'
-                  : 'bg-white hover:bg-stone-50 text-stone-800 border-stone-300 shadow-stone-200'
-              }`}
+              onClick={() => setIsSwitchCourseModalOpen(true)}
+              className="py-2.5 px-1.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 shadow-2xs"
             >
-              <span className="text-base">🔄</span>
+              <span className="text-sm">🔄</span>
               <span className="truncate">{isEnglish ? 'Switch Course' : isJapanese ? '他のコース' : '다른 코스 이동'}</span>
             </button>
 
-            {/* 2. 잠시 빠지기 */}
+            {/* 2. [ ☕ 잠시 빠지기 ] */}
             <button
               type="button"
-              onClick={handlePauseAndGoHome}
-              className={`py-3 px-1.5 rounded-xl font-black text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer border shadow-sm ${
-                sunlightMode
-                  ? 'bg-zinc-900 text-amber-300 border-zinc-700 hover:bg-zinc-800'
-                  : 'bg-amber-50 hover:bg-amber-100 text-amber-950 border-amber-300'
-              }`}
+              onClick={() => handleTriggerRest()}
+              className="py-2.5 px-1.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer bg-stone-100 hover:bg-amber-50 text-stone-700 hover:text-amber-900 border border-stone-300 hover:border-amber-300 shadow-2xs"
             >
-              <span className="text-base">☕</span>
+              <span className="text-sm">☕</span>
               <span className="truncate">{isEnglish ? 'Take Break' : isJapanese ? '一時退出' : '잠시 빠지기'}</span>
             </button>
 
-            {/* 3. 🚨 언제든 경기 종료 (선명한 빨간색 고대비 대형 버튼!) */}
+            {/* 3. [ ⏹️ 경기 종료 ] - 차분한 톤다운 레드 */}
             <button
               type="button"
-              onClick={handleEarlyFinishConfirm}
-              className={`py-3 px-1.5 rounded-xl font-black text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer border-2 shadow-md ${
-                sunlightMode
-                  ? 'bg-red-600 text-white border-white ring-2 ring-red-400 hover:bg-red-500'
-                  : 'bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 text-white border-red-300 ring-2 ring-red-400/30 shadow-red-900/20'
-              }`}
+              onClick={() => setIsExitModalOpen(true)}
+              className="py-2.5 px-1.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs"
             >
-              <span className="text-base">🛑</span>
+              <span className="text-sm">⏹️</span>
               <span className="truncate font-black">{isEnglish ? 'Finish Round' : isJapanese ? 'ラウンド終了' : '경기 종료'}</span>
-            </button>
-          </div>
-
-          {/* [대표님 요청]: 하단 2분할 버튼 [ 🌱 잔디 상태 1초 제보 ] + [ ☀️ 햇빛모드 ] */}
-          <div className="pt-1.5 border-t border-stone-200/60 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (session?.isVirtual) {
-                  alert(isJapanese ? 'バーチャル体験モードでは利用できません。' : '가상 상태에서는 작동이 안 됩니다.');
-                  return;
-                }
-                setShowConditionModal(true);
-              }}
-              className={`w-full py-3 px-2 rounded-xl text-xs sm:text-sm font-black transition active:scale-95 cursor-pointer border flex items-center justify-center gap-1.5 shadow-sm ${
-                session?.isVirtual
-                  ? 'bg-stone-100 text-stone-500 border-stone-300'
-                  : sunlightMode
-                  ? 'bg-blue-600 hover:bg-blue-500 text-white border-yellow-300 ring-2 ring-blue-400/30'
-                  : 'bg-gradient-to-r from-blue-600 via-sky-600 to-blue-700 hover:from-blue-500 hover:to-sky-500 text-white border-blue-400 shadow-blue-600/20'
-              }`}
-            >
-              <span className="text-base">🌱</span>
-              <span className="tracking-tight truncate">{isJapanese ? '芝の状況を1秒報告' : '잔디 상태 1초 제보'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={toggleSunlightMode}
-              className={`w-full py-3 px-2 rounded-xl text-xs sm:text-sm font-black transition active:scale-95 cursor-pointer border-2 flex items-center justify-center gap-1.5 shadow-sm ${
-                sunlightMode
-                  ? 'bg-yellow-400 text-stone-950 border-white ring-2 ring-yellow-400 shadow-yellow-500/50'
-                  : 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300'
-              }`}
-              title={isJapanese ? '炎天下でも画面が見やすい高コントラスト表示' : '대낮 직사광선 아래 선글라스를 껴도 선명한 야외 고대비 화면'}
-            >
-              <span className="text-base">☀️</span>
-              <span className="tracking-tight truncate">{sunlightMode ? (isJapanese ? '日差しモード ON' : '햇빛모드 ON') : (isJapanese ? '日差しモード' : '햇빛모드')}</span>
             </button>
           </div>
         </div>
       )}
+
+      {/* 🌟 [대표님 지시]: 예외 상황(이탈/종료/위임) 분기 모달 5종 */}
+      <RoundExceptionModals
+        currentHoleLabel={`${courseLetter}-${holeInCourse}번 홀`}
+        isExitModalOpen={isExitModalOpen}
+        onCloseExitModal={() => setIsExitModalOpen(false)}
+        onExitWithCurrentHole={handleExitWithCurrentHole}
+        onExitWithoutCurrentHole={handleExitWithoutCurrentHole}
+        isRestModalOpen={isRestModalOpen}
+        targetRestPlayerName={targetRestPlayer?.name}
+        onCloseRestModal={() => setIsRestModalOpen(false)}
+        onRestAfterCurrentHole={handleRestAfterCurrentHole}
+        onRestFromCurrentHole={handleRestFromCurrentHole}
+        isLeaderDelegateModalOpen={isLeaderDelegateModalOpen}
+        companions={(session?.players || []).filter((p) => delegateSource === 'SWITCH' ? (p.id !== currentLeaderPlayer?.id) : (p.id !== targetRestPlayer?.id))}
+        onCloseLeaderDelegateModal={() => setIsLeaderDelegateModalOpen(false)}
+        onSelectNewLeader={handleSelectNewLeader}
+        isSwitchCourseModalOpen={isSwitchCourseModalOpen}
+        onCloseSwitchCourseModal={() => setIsSwitchCourseModalOpen(false)}
+        onSwitchWithCurrentHole={handleSwitchWithCurrentHole}
+        onSwitchWithoutCurrentHole={handleSwitchWithoutCurrentHole}
+        isLeader={Boolean(isCurrentUserLeader)}
+        onDelegateAndSwitchCourse={handleDelegateAndSwitchCourse}
+        isSaveWarningModalOpen={isSaveWarningModalOpen}
+        saveWarningNames={saveWarningNames}
+        onCloseSaveWarningModal={() => setIsSaveWarningModalOpen(false)}
+        onConfirmSaveAnyway={() => {
+          setIsSaveWarningModalOpen(false);
+          executeConfirmHoleSave();
+        }}
+      />
 
       {/* 7. Course & Hole Picker Modal ("어느 코스로 이동하시겠습니까?") */}
       {showCoursePicker && (
@@ -3097,15 +3199,14 @@ export default function RoundPlayPage() {
                       </p>
                     </div>
                   </div>
-                  {isHoleVerified && (
-                    <button
-                      type="button"
-                      onClick={() => setShowHoleSpecModal(false)}
-                      className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 flex items-center justify-center font-bold"
-                    >
-                      ✕
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowHoleSpecModal(false)}
+                    className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 flex items-center justify-center font-bold cursor-pointer transition"
+                    title={isJapanese ? '閉じる' : '닫기'}
+                  >
+                    ✕
+                  </button>
                 </div>
 
                 {/* 안내 배너: 미확인 구장 vs 기존 제원 수정 분기 */}
@@ -3258,33 +3359,42 @@ export default function RoundPlayPage() {
                 {/* Modal Actions: 미확인 구장 1-Touch 즉시 등록 vs 기존 제원 2단계 확인 */}
                 <div className="pt-1">
                   {!isHoleVerified ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!editingPar || editingPar < 3 || editingPar > 5) {
-                          alert(isJapanese ? '⚠️ 現地公式看板の基準打数 (Par 3, 4, 5) を選択してください。' : '⚠️ 현장 공식 안내판(팻말)에 적힌 기준 타수 (Par 3, 4, 5 중 하나) 를 선택해 주십시오.');
-                          return;
-                        }
-                        const numDist = Number(editingDistance);
-                        if (!editingDistance || isNaN(numDist) || numDist < 10) {
-                          alert(isJapanese ? '⚠️ ティー看板を確認し、有効なホール距離 (10m〜300m) を入力してください。' : '⚠️ 현장 팻말을 확인하시고 올바른 홀 거리 (10m ~ 300m) 를 입력해 주십시오.');
-                          return;
-                        }
-                        handleSaveHoleSpec(editingPar, numDist, true);
-                      }}
-                      className="w-full font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-emerald-400"
-                    >
-                      <CheckCircle2 className="w-5 h-5 shrink-0" />
-                      <span>
-                        {editingPar && editingDistance
-                          ? (isJapanese
-                              ? `✍️ 現地公式看板の諸元で登録・確認 (Par ${editingPar}, ${editingDistance}m)`
-                              : `✍️ 현장 공식 안내판 제원으로 등록 및 확인 (Par ${editingPar}, ${editingDistance}m)`)
-                          : (isJapanese
-                              ? '✍️ 現地公式案内看板に書かれた諸元で登録および確認'
-                              : '✍️ 현장 공식 안내판에 적힌 제원으로 등록 및 확인')}
-                      </span>
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!editingPar || editingPar < 3 || editingPar > 5) {
+                            alert(isJapanese ? '⚠️ 現地公式看板の基準打数 (Par 3, 4, 5) を選択してください。' : '⚠️ 현장 공식 안내판(팻말)에 적힌 기준 타수 (Par 3, 4, 5 중 하나) 를 선택해 주십시오.');
+                            return;
+                          }
+                          const numDist = Number(editingDistance);
+                          if (!editingDistance || isNaN(numDist) || numDist < 10) {
+                            alert(isJapanese ? '⚠️ ティー看板を確認し、有効なホール距離 (10m〜300m) を入力してください。' : '⚠️ 현장 팻말을 확인하시고 올바른 홀 거리 (10m ~ 300m) 를 입력해 주십시오.');
+                            return;
+                          }
+                          handleSaveHoleSpec(editingPar, numDist, true);
+                        }}
+                        className="w-full font-black py-3.5 rounded-xl text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-[0.98] border cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-emerald-400"
+                      >
+                        <CheckCircle2 className="w-5 h-5 shrink-0" />
+                        <span>
+                          {editingPar && editingDistance
+                            ? (isJapanese
+                                ? `✍️ 現地公式看板の諸元で登録・確認 (Par ${editingPar}, ${editingDistance}m)`
+                                : `✍️ 현장 공식 안내판 제원으로 등록 및 확인 (Par ${editingPar}, ${editingDistance}m)`)
+                            : (isJapanese
+                                ? '✍️ 現地公式案内看板に書かれた諸元で登録および確認'
+                                : '✍️ 현장 공식 안내판에 적힌 제원으로 등록 및 확인')}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowHoleSpecModal(false)}
+                        className="w-full mt-2 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold rounded-xl text-xs transition cursor-pointer"
+                      >
+                        {isJapanese ? '閉じる (後で入力)' : '닫기 (나중에 입력)'}
+                      </button>
+                    </>
                   ) : (
                     <button
                       type="button"
