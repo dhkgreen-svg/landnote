@@ -344,7 +344,7 @@ const getSupabaseClient = () => {
   }
 };
 
-export interface ActiveSession {
+interface ActiveSession {
   visitorId: string;
   ip: string;
   userRegion: string;
@@ -356,9 +356,9 @@ export interface ActiveSession {
   path: string;
 }
 
-export const TTL_SESSION_MS = 90 * 1000; // 최근 90초 이내 신호만 실시간 접속자로 카운트 (TTL)
+const TTL_SESSION_MS = 90 * 1000; // 최근 90초 이내 신호만 실시간 접속자로 카운트 (TTL)
 
-export const getActiveSessionsMap = (): Map<string, ActiveSession> => {
+const getActiveSessionsMap = (): Map<string, ActiveSession> => {
   const g = globalThis as any;
   if (!g.__parkonActiveSessions) {
     g.__parkonActiveSessions = new Map<string, ActiveSession>();
@@ -366,7 +366,7 @@ export const getActiveSessionsMap = (): Map<string, ActiveSession> => {
   return g.__parkonActiveSessions;
 };
 
-export const cleanExpiredSessions = (now: number): Map<string, ActiveSession> => {
+const cleanExpiredSessions = (now: number): Map<string, ActiveSession> => {
   const map = getActiveSessionsMap();
   map.forEach((session, key) => {
     if (now - session.lastPing > TTL_SESSION_MS) {
@@ -907,7 +907,7 @@ const PROVINCE_CONFIGS: ProvinceSeedConfig[] = [
   },
 ];
 
-export const JAPAN_REGION_CONFIGS: ProvinceSeedConfig[] = [
+const JAPAN_REGION_CONFIGS: ProvinceSeedConfig[] = [
   {
     code: 'JP_HK',
     name: '홋카이도',
