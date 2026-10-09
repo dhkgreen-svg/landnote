@@ -98,7 +98,7 @@ export default function RoundPlayPage() {
   const [leaderOnlyToast, setLeaderOnlyToast] = useState<string | null>(null);
   const [showLeaderTransferModal, setShowLeaderTransferModal] = useState<boolean>(false);
 
-  // 🌟 [대표님 지시]: 예외 상황(이탈/종료/위임) 분기 모달 5종 상태 관리
+  // 🌟 [대표님 지시]: 예외 상황(이탈/종료/위임) 분기 모달 상태 관리
   const [isExitModalOpen, setIsExitModalOpen] = useState<boolean>(false);
   const [isRestModalOpen, setIsRestModalOpen] = useState<boolean>(false);
   const [targetRestPlayer, setTargetRestPlayer] = useState<RoundPlayer | null>(null);
@@ -107,6 +107,8 @@ export default function RoundPlayPage() {
   const [isSaveWarningModalOpen, setIsSaveWarningModalOpen] = useState<boolean>(false);
   const [saveWarningNames, setSaveWarningNames] = useState<string>('');
   const [delegateSource, setDelegateSource] = useState<'REST' | 'SWITCH'>('REST');
+  const [isHoleConfirmModalOpen, setIsHoleConfirmModalOpen] = useState<boolean>(false);
+  const [isRoundSaveOptionModalOpen, setIsRoundSaveOptionModalOpen] = useState<boolean>(false);
 
   // 현재 접속자가 조장인지 여부 판별
   const rawDisplayName = typeof window !== 'undefined' ? ParkOnStorage.getUserDisplayName() : '';
@@ -1181,15 +1183,47 @@ export default function RoundPlayPage() {
     }
 
     executeConfirmHoleSave();
+    setIsHoleConfirmModalOpen(true);
   };
 
-  // A. [경기 종료] 클릭 시 분기 핸들러
+  // ⛳ 1. [확인] 클릭 시 3단 액션 모달 핸들러
+  const handleConfirmNextHole = () => {
+    setIsHoleConfirmModalOpen(false);
+    handleNextHole();
+  };
+
+  const handleConfirmStayHole = () => {
+    setIsHoleConfirmModalOpen(false);
+  };
+
+  const handleConfirmFinishFromModal = () => {
+    setIsHoleConfirmModalOpen(false);
+    setIsRoundSaveOptionModalOpen(true);
+  };
+
+  // 💾 2. 경기 종료 시 '기록 저장 여부' 분기 모달 핸들러
+  const handleSaveAndFinishRound = () => {
+    setIsRoundSaveOptionModalOpen(false);
+    executeFinishRound(true);
+  };
+
+  const handleDiscardAndExitHome = () => {
+    setIsRoundSaveOptionModalOpen(false);
+    ParkOnStorage.clearCurrentRound();
+    router.push('/');
+  };
+
+  const handleCloseRoundSaveOptionModal = () => {
+    setIsRoundSaveOptionModalOpen(false);
+  };
+
+  // A. [경기 종료] 클릭 시 분기 핸들러 (2차 기록 저장 모달로 연계)
   const handleExitWithCurrentHole = () => {
     setIsExitModalOpen(false);
     executeConfirmHoleSave();
     setTimeout(() => {
-      executeFinishRound(true);
-    }, 200);
+      setIsRoundSaveOptionModalOpen(true);
+    }, 150);
   };
 
   const handleExitWithoutCurrentHole = () => {
@@ -1209,8 +1243,8 @@ export default function RoundPlayPage() {
       updateSession(updatedSession);
     }
     setTimeout(() => {
-      executeFinishRound(true);
-    }, 200);
+      setIsRoundSaveOptionModalOpen(true);
+    }, 150);
   };
 
   // B. [잠시 빠지기] 및 코스 이동 시 기록자 위임 소스 구분
@@ -2953,7 +2987,13 @@ export default function RoundPlayPage() {
             {/* 3. [ ⏹️ 경기 종료 ] - 차분한 톤다운 레드 */}
             <button
               type="button"
-              onClick={() => setIsExitModalOpen(true)}
+              onClick={() => {
+                if (confirmedHoles.includes(actualHoleNumber)) {
+                  setIsRoundSaveOptionModalOpen(true);
+                } else {
+                  setIsExitModalOpen(true);
+                }
+              }}
               className="py-2.5 px-1.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs"
             >
               <span className="text-sm">⏹️</span>
@@ -2963,7 +3003,7 @@ export default function RoundPlayPage() {
         </div>
       )}
 
-      {/* 🌟 [대표님 지시]: 예외 상황(이탈/종료/위임) 분기 모달 5종 */}
+      {/* 🌟 [대표님 지시]: 예외 상황(이탈/종료/위임) 분기 모달 & 확인 3단 액션 & 기록 보관 모달 */}
       <RoundExceptionModals
         currentHoleLabel={`${courseLetter}-${holeInCourse}번 홀`}
         isExitModalOpen={isExitModalOpen}
@@ -2991,7 +3031,17 @@ export default function RoundPlayPage() {
         onConfirmSaveAnyway={() => {
           setIsSaveWarningModalOpen(false);
           executeConfirmHoleSave();
+          setIsHoleConfirmModalOpen(true);
         }}
+        isHoleConfirmModalOpen={isHoleConfirmModalOpen}
+        onCloseHoleConfirmModal={() => setIsHoleConfirmModalOpen(false)}
+        onConfirmNextHole={handleConfirmNextHole}
+        onConfirmStayHole={handleConfirmStayHole}
+        onConfirmFinishRound={handleConfirmFinishFromModal}
+        isRoundSaveOptionModalOpen={isRoundSaveOptionModalOpen}
+        onCloseRoundSaveOptionModal={handleCloseRoundSaveOptionModal}
+        onSaveAndFinishRound={handleSaveAndFinishRound}
+        onDiscardAndExitHome={handleDiscardAndExitHome}
       />
 
       {/* 7. Course & Hole Picker Modal ("어느 코스로 이동하시겠습니까?") */}

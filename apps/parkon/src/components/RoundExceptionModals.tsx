@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { AlertTriangle, Coffee, Flag, LogOut, ArrowRight, UserCheck, X, Check, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Coffee, Flag, LogOut, ArrowRight, UserCheck, X, Check, ShieldAlert, CheckCircle2, RotateCcw } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 export interface ExceptionCompanion {
@@ -46,6 +46,19 @@ interface RoundExceptionModalsProps {
   saveWarningNames: string;
   onCloseSaveWarningModal: () => void;
   onConfirmSaveAnyway: () => void;
+
+  // 6. [확인] 클릭 시 3단 액션 모달 (다음 홀 이동 / 현재 홀 유지 / 경기 종료)
+  isHoleConfirmModalOpen?: boolean;
+  onCloseHoleConfirmModal?: () => void;
+  onConfirmNextHole?: () => void;
+  onConfirmStayHole?: () => void;
+  onConfirmFinishRound?: () => void;
+
+  // 7. 경기 종료 시 '기록 저장 여부' 분기 모달 (정식 저장 종료 / 연습 경기 폐기 / 돌아가기)
+  isRoundSaveOptionModalOpen?: boolean;
+  onCloseRoundSaveOptionModal?: () => void;
+  onSaveAndFinishRound?: () => void;
+  onDiscardAndExitHome?: () => void;
 }
 
 export function RoundExceptionModals({
@@ -73,6 +86,15 @@ export function RoundExceptionModals({
   saveWarningNames,
   onCloseSaveWarningModal,
   onConfirmSaveAnyway,
+  isHoleConfirmModalOpen,
+  onCloseHoleConfirmModal,
+  onConfirmNextHole,
+  onConfirmStayHole,
+  onConfirmFinishRound,
+  isRoundSaveOptionModalOpen,
+  onCloseRoundSaveOptionModal,
+  onSaveAndFinishRound,
+  onDiscardAndExitHome,
 }: RoundExceptionModalsProps) {
   const { isJapanese } = useTranslation();
 
@@ -528,6 +550,204 @@ export function RoundExceptionModals({
                 >
                   <Check className="w-4 h-4" />
                   <span>{isJapanese ? 'このまま確定' : '이대로 확정 저장'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================================= */}
+      {/* 6. [확인] 클릭 시 3단 액션 모달                            */}
+      {/* ========================================================= */}
+      {isHoleConfirmModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white text-stone-900 rounded-3xl w-full max-w-sm sm:max-w-md shadow-2xl border border-stone-200 overflow-hidden animate-in zoom-in-95">
+            {/* 헤더 */}
+            <div className="px-5 py-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black tracking-tight">
+                    {isJapanese ? 'ホール記録の確認' : '홀 기록 확인'}
+                  </h3>
+                  <span className="text-[11px] text-emerald-100 font-bold">
+                    {currentHoleLabel} {isJapanese ? '保存完了' : '타수 저장 완료'}
+                  </span>
+                </div>
+              </div>
+              {onCloseHoleConfirmModal && (
+                <button
+                  type="button"
+                  onClick={onCloseHoleConfirmModal}
+                  className="w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+
+            {/* 본문 안내 */}
+            <div className="p-5 sm:p-6 space-y-4">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center">
+                <p className="text-base sm:text-lg font-black text-emerald-950 leading-relaxed">
+                  <span className="text-emerald-700 underline decoration-2">{currentHoleLabel}</span> 타수가 저장되었습니다.
+                </p>
+                <p className="text-xs sm:text-sm text-emerald-800 font-bold mt-1">
+                  {isJapanese ? '次の操作を選択してください。' : '다음 작업을 선택해주세요.'}
+                </p>
+              </div>
+
+              {/* 버튼 3개: 노년층 오터치 방지를 위한 gap-4(16px) 이상 확보 & 18px 이상 큰 글씨 */}
+              <div className="space-y-4 pt-1">
+                {/* 버튼 1 (최상단 메인, 강조): [ ⛳ 다음 홀로 이동 ] */}
+                <button
+                  type="button"
+                  onClick={onConfirmNextHole}
+                  className="w-full min-h-[56px] py-4 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white font-black text-lg sm:text-xl shadow-lg border-2 border-emerald-400 flex items-center justify-between cursor-pointer transition ring-2 ring-emerald-500/20"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl">⛳</span>
+                    <span className="tracking-tight">
+                      {isJapanese ? '次のホールへ移動' : '다음 홀로 이동'}
+                    </span>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-emerald-200" />
+                </button>
+
+                {/* 버튼 2 (중간 보조): [ ⏸️ 현재 홀 유지 (머물기) ] */}
+                <button
+                  type="button"
+                  onClick={onConfirmStayHole}
+                  className="w-full min-h-[48px] py-3.5 px-5 rounded-2xl bg-stone-100 hover:bg-stone-200 active:scale-[0.98] text-stone-800 font-bold text-lg border-2 border-stone-300 flex items-center justify-between cursor-pointer transition shadow-xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl">⏸️</span>
+                    <span className="tracking-tight">
+                      {isJapanese ? '現在のホールを維持 (留まる)' : '현재 홀 유지 (머물기)'}
+                    </span>
+                  </div>
+                  <span className="text-xs text-stone-500 font-normal">
+                    {isJapanese ? '修正・待機' : '추가 수정 / 대기'}
+                  </span>
+                </button>
+
+                {/* 버튼 3 (하단 종료): [ ⏹️ 여기서 경기 종료 ] */}
+                <button
+                  type="button"
+                  onClick={onConfirmFinishRound}
+                  className="w-full min-h-[48px] py-3.5 px-5 rounded-2xl bg-rose-50 hover:bg-rose-100 active:scale-[0.98] text-rose-800 font-black text-lg border-2 border-rose-300 flex items-center justify-between cursor-pointer transition shadow-xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl">⏹️</span>
+                    <span className="tracking-tight">
+                      {isJapanese ? 'ここでラウンド終了' : '여기서 경기 종료'}
+                    </span>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-rose-400" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 7. 경기 종료 시 '기록 저장 여부' 분기 모달                 */}
+      {/* ========================================================= */}
+      {isRoundSaveOptionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white text-stone-900 rounded-3xl w-full max-w-sm sm:max-w-md shadow-2xl border border-stone-200 overflow-hidden animate-in zoom-in-95">
+            {/* 헤더 */}
+            <div className="px-5 py-4 bg-gradient-to-r from-slate-800 via-stone-800 to-neutral-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                  <LogOut className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black tracking-tight">
+                    {isJapanese ? 'ラウンド終了と記録処理' : '경기 종료 및 기록 처리'}
+                  </h3>
+                  <span className="text-[11px] text-stone-300 font-bold">
+                    {isJapanese ? '記録保存の選択' : '기록 보관 여부 확인'}
+                  </span>
+                </div>
+              </div>
+              {onCloseRoundSaveOptionModal && (
+                <button
+                  type="button"
+                  onClick={onCloseRoundSaveOptionModal}
+                  className="w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+
+            {/* 본문 안내 */}
+            <div className="p-5 sm:p-6 space-y-4">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center">
+                <p className="text-base sm:text-lg font-black text-stone-900 leading-relaxed">
+                  {isJapanese ? '今までの記録を保存しますか？' : '지금까지 친 기록을 보관하시겠습니까?'}
+                </p>
+                <p className="text-xs sm:text-sm text-stone-600 font-semibold mt-1">
+                  {isJapanese
+                    ? '練習試合の場合は記録を残さず終了できます。'
+                    : '연습 경기인 경우 기록을 남기지 않고 즉시 정리할 수 있습니다.'}
+                </p>
+              </div>
+
+              {/* 버튼 3개: 16px 이상(space-y-4) 간격 유지 & 18px 이상 큰 글씨 */}
+              <div className="space-y-4 pt-1">
+                {/* 선택지 1: [ 💾 지금까지 친 기록 저장하고 종료 ] */}
+                <button
+                  type="button"
+                  onClick={onSaveAndFinishRound}
+                  className="w-full min-h-[56px] py-4 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white font-black text-lg sm:text-xl shadow-lg border-2 border-emerald-400 flex items-center justify-between cursor-pointer transition"
+                >
+                  <div className="flex items-center gap-2.5 text-left">
+                    <span className="text-2xl">💾</span>
+                    <div>
+                      <div className="font-black text-base sm:text-lg leading-snug break-keep">
+                        {isJapanese ? '記録を保存して終了' : '지금까지 친 기록 저장하고 종료'}
+                      </div>
+                      <div className="text-[11px] text-emerald-100 font-normal">
+                        회원 기록 및 DB에 정식 집계 저장 후 결과 화면 이동
+                      </div>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-emerald-200 shrink-0 ml-1" />
+                </button>
+
+                {/* 선택지 2: [ 🗑️ 연습 경기 (기록 남기지 않고 종료) ] */}
+                <button
+                  type="button"
+                  onClick={onDiscardAndExitHome}
+                  className="w-full min-h-[52px] py-3.5 px-4 rounded-2xl bg-stone-100 hover:bg-stone-200 active:scale-[0.98] text-stone-800 font-black text-lg border-2 border-stone-300 flex items-center justify-between cursor-pointer transition shadow-xs"
+                >
+                  <div className="flex items-center gap-2.5 text-left">
+                    <span className="text-2xl">🗑️</span>
+                    <div>
+                      <div className="font-black text-base sm:text-lg leading-snug text-stone-900 break-keep">
+                        {isJapanese ? '練習ラウンド (記録を残さず終了)' : '연습 경기 (기록 남기지 않고 종료)'}
+                      </div>
+                      <div className="text-[11px] text-stone-500 font-normal">
+                        기록을 저장하지 않고 폐기(초기화) 후 홈 화면 이동
+                      </div>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-stone-400 shrink-0 ml-1" />
+                </button>
+
+                {/* 선택지 3: [ ↩️ 돌아가기 (계속 경기) ] */}
+                <button
+                  type="button"
+                  onClick={onCloseRoundSaveOptionModal}
+                  className="w-full min-h-[48px] py-3 px-4 rounded-2xl bg-stone-50 hover:bg-stone-100 active:scale-[0.98] text-stone-600 hover:text-stone-900 font-bold text-base sm:text-lg border border-stone-300 flex items-center justify-center gap-2 cursor-pointer transition"
+                >
+                  <RotateCcw className="w-4 h-4 text-stone-500" />
+                  <span>{isJapanese ? '戻る (ラウンドを続ける)' : '돌아가기 (계속 경기)'}</span>
                 </button>
               </div>
             </div>
