@@ -28,9 +28,38 @@ export default function RoundPlayPage() {
   const roundId = params?.id as string;
   const { t, isJapanese, isEnglish } = useTranslation();
 
-  const [session, setSession] = useState<RoundSession | null>(null);
-  const [course, setCourse] = useState<Course | null>(null);
-  const [currentHole, setCurrentHole] = useState<number>(1);
+  const [session, setSession] = useState<RoundSession | null>(() => {
+    if (typeof window !== 'undefined') {
+      const active = ParkOnStorage.getCurrentRound();
+      if (active && (active.id === roundId || !roundId)) {
+        return active;
+      }
+    }
+    return null;
+  });
+  const [course, setCourse] = useState<Course | null>(() => {
+    if (typeof window !== 'undefined') {
+      const active = ParkOnStorage.getCurrentRound();
+      if (active && (active.id === roundId || !roundId) && active.courseId) {
+        const all = ParkOnStorage.getAllCourses();
+        const found = all.find((c) => c.id === active.courseId) || all[0];
+        if (found && active.customHolesMetadata && active.customHolesMetadata.length > 0) {
+          return { ...found, holesMetadata: active.customHolesMetadata, isSpecsVerified: true };
+        }
+        return found || null;
+      }
+    }
+    return null;
+  });
+  const [currentHole, setCurrentHole] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const active = ParkOnStorage.getCurrentRound();
+      if (active && (active.id === roundId || !roundId)) {
+        return active.currentHole || 1;
+      }
+    }
+    return 1;
+  });
   const [wakeLockActive, setWakeLockActive] = useState<boolean>(false);
   const [sunlightMode, setSunlightModeState] = useState<boolean>(false);
   const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
@@ -70,7 +99,15 @@ export default function RoundPlayPage() {
   const [shareFeedbackToast, setShareFeedbackToast] = useState<string | null>(null);
 
   // 🏌️ [5대 마스터 아키텍처 1] 2단계 경기 동선: 'TEE_SHOT' (1단계 코스안내 전광판) | 'SCORING' (2단계 스코어 기입창)
-  const [holeStep, setHoleStep] = useState<'TEE_SHOT' | 'SCORING'>('TEE_SHOT');
+  const [holeStep, setHoleStep] = useState<'TEE_SHOT' | 'SCORING'>(() => {
+    if (typeof window !== 'undefined') {
+      const active = ParkOnStorage.getCurrentRound();
+      if (active && (active.id === roundId || !roundId) && active.holeStep) {
+        return active.holeStep;
+      }
+    }
+    return 'TEE_SHOT';
+  });
   // 🛡️ 화면 깜빡임/왔다갔다(리바운드) 방지용 최근 로컬 조작 시각 Ref (네트워크 지연 이전 패킷 역류 차단)
   const lastLocalActionTimeRef = useRef<number>(0);
 

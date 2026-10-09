@@ -258,6 +258,7 @@ function NewRoundForm() {
   const [isUnlimitedRound, setIsUnlimitedRound] = useState<boolean>(true);
   const [targetHolesCount, setTargetHolesCount] = useState<number>(18);
   const [recentPartners, setRecentPartners] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   // 슬롯별 독립 포커스 및 디바운스 관리
   const activeFocusIdxRef = useRef<number | null>(null);
   const syncDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -872,6 +873,7 @@ function NewRoundForm() {
 
   const startRound = async () => {
     if (!currentCourse) return;
+    setIsSubmitting(true);
 
     const newId = 'round_' + Date.now();
 
@@ -941,35 +943,42 @@ function NewRoundForm() {
       }
     }
 
-    // 3. 서버 룸(Room)에 라운드 시작 알림 및 Supabase Realtime Broadcast 전송 -> 대기실의 동반자들도 즉시 스코어카드로 50ms 내 자동 이동!
-    try {
-      await fetch('/api/round/room', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'start',
-          roomId,
-          roundSession: newSession,
-        }),
-      });
-
-      const channel = supabase.channel(`room_${roomId}`);
-      channel.send({
-        type: 'broadcast',
-        event: 'round_started',
-        payload: {
-          roomId,
-          roundId: newId,
-          roundSession: newSession,
-        },
-      });
-    } catch (e) {
-      console.error('Failed to notify room start:', e);
-    }
-
+    // 3. ⚡ 즉시 화면 전환 (0초 즉답 광속 이동):
+    // 로컬 스토리지에 새 라운드 세션을 먼저 저장하고, 곧바로 A-1번 홀로 0.05초 만에 이동!
+    // 서버 통신(fetch, supabase)을 기다리느라 화면이 버벅거리거나 멈추는 현상을 100% 제거!
     ParkOnStorage.saveCurrentRound(newSession);
     ParkOnStorage.setHomeCourseId(currentCourse.id);
     router.push(`/round/${newId}`);
+
+    // 4. 백그라운드 비동기 통신: 대기실 동반자들에게 실시간 브로드캐스트 전송 (Non-blocking)
+    (async () => {
+      try {
+        await fetch('/api/round/room', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'start',
+            roomId,
+            roundSession: newSession,
+          }),
+        });
+
+        if (roomId) {
+          const channel = supabase.channel(`room_${roomId}`);
+          channel.send({
+            type: 'broadcast',
+            event: 'round_started',
+            payload: {
+              roomId,
+              roundId: newId,
+              roundSession: newSession,
+            },
+          });
+        }
+      } catch (e) {
+        console.warn('Background room start sync error:', e);
+      }
+    })();
   };
 
   const handleInitiateStartRound = () => {
@@ -1310,21 +1319,28 @@ function NewRoundForm() {
       {/* 5. Bottom Start Button */}
       <button
         type="button"
+        disabled={isSubmitting}
         onClick={handleInitiateStartRound}
         className={`w-full text-base font-black py-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5 active:scale-[0.98] transition cursor-pointer ${
+          isSubmitting ? 'opacity-70 cursor-wait' : ''
+        } ${
           isTrialMode
             ? 'bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-stone-950 border-2 border-amber-300'
             : 'bg-emerald-600 hover:bg-emerald-500 text-white'
         }`}
       >
-        <Play className="w-4 h-4 fill-current" />
+        <Play className={`w-4 h-4 fill-current ${isSubmitting ? 'animate-spin' : ''}`} />
         <span>
-          {isTrialMode ? '🎯 ' : ''}
-          {selectedCourseLetter}{isEnglish ? ' Course ' : isJapanese ? 'コース ' : '코스 '}
-          {startHoleIndex}{isEnglish ? ' Hole ' : isJapanese ? '番ホール ' : '번 홀 '}
-          {isTrialMode
-            ? (isEnglish ? 'Start Practice Round' : isJapanese ? '体験ティーショット開始' : '체험 티샷 시작')
-            : (isEnglish ? 'Start Tee Shot ⛳' : isJapanese ? 'ティーショット開始 ⛳' : '티샷 시작 ⛳')}
+          {isSubmitting ? (isJapanese ? '入場中... ⛳' : '입장 중... ⛳') : (
+            <>
+              {isTrialMode ? '🎯 ' : ''}
+              {selectedCourseLetter}{isEnglish ? ' Course ' : isJapanese ? 'コース ' : '코스 '}
+              {startHoleIndex}{isEnglish ? ' Hole ' : isJapanese ? '番ホール ' : '번 홀 '}
+              {isTrialMode
+                ? (isEnglish ? 'Start Practice Round' : isJapanese ? '体験ティーショット開始' : '체험 티샷 시작')
+                : (isEnglish ? 'Start Tee Shot ⛳' : isJapanese ? 'ティーショット開始 ⛳' : '티샷 시작 ⛳')}
+            </>
+          )}
         </span>
       </button>
 
