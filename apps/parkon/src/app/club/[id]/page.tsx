@@ -1105,6 +1105,13 @@ function ClubRoomDetailContent() {
       return;
     }
 
+    // 동일 조의 다른 선수를 터치한 경우: 이동/맞바꾸기 대상 선수 교체
+    if (selectedSwapPlayer.groupNumber === groupNumber) {
+      setSelectedSwapPlayer({ id: player.id, name: player.name, groupNumber });
+      showToast(`🔄 [${player.name}] 님으로 이동/맞바꾸기 대상이 변경되었습니다.`);
+      return;
+    }
+
     // 2번째 선수 터치 ➔ 즉시 두 선수의 조 Swap!
     const newGroups = room.groups.map((g) => ({
       ...g,
@@ -3864,17 +3871,27 @@ function ClubRoomDetailContent() {
                 {/* 인터랙션 안내 배너 */}
                 <div className={`p-3 rounded-2xl border text-center transition ${
                   selectedSwapPlayer
-                    ? 'bg-amber-100 border-amber-400 text-amber-950 font-black animate-pulse'
+                    ? 'bg-amber-100 border-amber-400 text-amber-950 font-black ring-2 ring-amber-300 shadow-xs'
                     : 'bg-purple-50 border-purple-200 text-purple-900 font-bold'
                 }`}>
                   <p className="text-xs">
                     {selectedSwapPlayer ? (
-                      <span>
-                        🔄 <strong>[{selectedSwapPlayer.name}]</strong> {isJapanese ? '様選択中！他組の選手をタップして1:1入替(Swap)するか、各組の「➔移動」ボタンで単独移動できます。(解除: 再タップ)' : '님 선택됨! 다른 선수를 터치해 1:1 맞바꾸거나(Swap), 각 조의 [➔ N조로 이동]을 눌러 단독 이동하세요. (취소: 다시 터치)'}
+                      <span className="flex items-center justify-center flex-wrap gap-1.5">
+                        <span>🎯 <strong>[{selectedSwapPlayer.name}]</strong> {isJapanese ? '様選択中！' : '님 선택됨!'}</span>
+                        <span>{isJapanese ? '他組の' : '타 조의'} <strong className="bg-emerald-600 text-white px-1.5 py-0.5 rounded text-[11px] font-black">➔ {isJapanese ? '移動' : '이동'}</strong> {isJapanese ? 'ボタンで単独移動するか、他選手をタップして1:1入替できます。' : '버튼으로 단독 이동하거나, 다른 선수를 터치해 1:1 맞바꾸기하세요.'}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSwapPlayer(null)}
+                          className="ml-1 text-[10px] bg-stone-800 hover:bg-black text-white px-2 py-0.5 rounded-md font-bold cursor-pointer"
+                        >
+                          {isJapanese ? '解除 ✕' : '선택 취소 ✕'}
+                        </button>
                       </span>
                     ) : (
                       <span>
-                        💡 {isJapanese ? '選手をタップすると、他組の選手との「1:1入替(Swap)」または「1人単独組移動(Move)」が可能です！' : '선수를 터치하면 다른 선수와의 [1:1 맞바꾸기(Swap)] 또는 [1인 단독 조 이동(Move)]이 가능합니다!'}
+                        💡 {isJapanese
+                          ? '選手をタップすると、他組ヘの「1人単独組移動(➔移動)」または「1:1入替(Swap)」が可能です！'
+                          : '선수를 먼저 터치하세요! 타 조 헤더에 [➔ N조로 이동] 뱃지가 나타나 자유롭게 인원수(Move)를 조정할 수 있습니다.'}
                       </span>
                     )}
                   </p>
@@ -3882,92 +3899,116 @@ function ClubRoomDetailContent() {
 
                 {/* 1조, 2조, 3조 가편성 카드 리스트 */}
                 <div className="space-y-2.5">
-                  {room?.groups.map((grp) => (
-                    <div key={grp.groupNumber} className="bg-stone-50 rounded-2xl p-3 border border-stone-200 space-y-2">
-                      <div className="flex items-center justify-between text-xs font-black">
-                        <span className="text-purple-900 font-black flex items-center gap-1.5">
-                          <span>🚩 {grp.name}</span>
-                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
-                            grp.players.length >= 5
-                              ? 'bg-red-100 text-red-800 border border-red-300'
-                              : 'bg-purple-100 text-purple-800'
-                          }`}>
-                            {grp.players.length}{isJapanese ? '人' : '명'}
-                            {grp.players.length >= 5 ? (isJapanese ? ' (満員)' : ' (정원 마감)') : ''}
-                          </span>
-                        </span>
+                  {room?.groups.map((grp) => {
+                    const isSourceGroup = selectedSwapPlayer?.groupNumber === grp.groupNumber;
+                    const canMoveToThisGroup = Boolean(
+                      selectedSwapPlayer && !isSourceGroup && grp.players.length < 5
+                    );
+                    const isGroupFull = grp.players.length >= 5;
 
-                        <div className="flex items-center gap-1.5">
-                          {selectedSwapPlayer && selectedSwapPlayer.groupNumber !== grp.groupNumber && (
+                    return (
+                      <div
+                        key={grp.groupNumber}
+                        className={`rounded-2xl p-3 border transition ${
+                          isSourceGroup
+                            ? 'bg-purple-50/70 border-purple-300 ring-2 ring-purple-300 shadow-xs'
+                            : canMoveToThisGroup
+                            ? 'bg-emerald-50/50 border-emerald-400 shadow-sm'
+                            : 'bg-stone-50 border-stone-200'
+                        } space-y-2`}
+                      >
+                        <div className="flex items-center justify-between text-xs font-black flex-wrap gap-2">
+                          <span className="text-purple-900 font-black flex items-center gap-1.5">
+                            <span className="text-sm">🚩</span>
+                            <span>{grp.name}</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              isGroupFull
+                                ? 'bg-red-100 text-red-800 border border-red-300 font-black'
+                                : 'bg-purple-100 text-purple-800'
+                            }`}>
+                              {grp.players.length}{isJapanese ? '人' : '명'}
+                              {isGroupFull ? (isJapanese ? ' (満員 5/5)' : ' (정원 마감 5/5)') : ''}
+                            </span>
+                          </span>
+
+                          {/* 우측 상단/헤더 영역: [ ➔ N조로 이동 ] 청록색/에메랄드 뱃지 형태 */}
+                          <div className="flex items-center gap-1.5">
+                            {selectedSwapPlayer && !isSourceGroup && (
+                              <button
+                                type="button"
+                                data-testid={`btn-move-to-group-${grp.groupNumber}`}
+                                onClick={() => handleMoveSinglePlayerToGroup(grp.groupNumber)}
+                                disabled={isGroupFull}
+                                className={`font-black text-xs px-3 py-1.5 rounded-xl shadow-md flex items-center gap-1 transition active:scale-95 cursor-pointer border ${
+                                  isGroupFull
+                                    ? 'bg-stone-200 text-stone-400 border-stone-300 cursor-not-allowed'
+                                    : 'bg-gradient-to-r from-teal-500 via-emerald-600 to-teal-600 hover:from-teal-600 hover:to-emerald-700 text-white border-emerald-300 ring-2 ring-emerald-200 animate-pulse'
+                                }`}
+                              >
+                                <span>➔ {grp.groupNumber}{isJapanese ? '組へ移動' : '조로 이동'}</span>
+                              </button>
+                            )}
+                            <span className="text-[10px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200 font-bold">
+                              {isJapanese ? `A-${grp.groupNumber}番ホール 出発予定` : `A-${grp.groupNumber}번 홀 출발 예정`}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {grp.players.map((p) => {
+                            const isSelected = selectedSwapPlayer?.id === p.id;
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                data-testid="player-swap-chip"
+                                data-player-id={p.id}
+                                data-player-name={p.name}
+                                data-group-number={grp.groupNumber}
+                                onClick={() => handleSwapPlayersInPreview(p, grp.groupNumber)}
+                                className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between cursor-pointer active:scale-95 ${
+                                  isSelected
+                                    ? 'bg-amber-100 border-2 border-purple-600 ring-2 ring-amber-400 font-black text-purple-950 shadow-md scale-[1.02]'
+                                    : 'bg-white hover:bg-purple-50/60 border-stone-200 text-stone-800'
+                                }`}
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  {p.isLeader ? (
+                                    <span className="text-amber-500 shrink-0 font-bold" title="조장">👑</span>
+                                  ) : (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0" />
+                                  )}
+                                  <span className="font-extrabold text-xs truncate">{p.name}</span>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <span className="text-[9px] text-stone-500 font-bold">
+                                    {p.gender === 'F' ? (isJapanese ? '女' : '여') : (isJapanese ? '남' : '남')}·
+                                    {p.handicapTier === 'ADVANCED' ? (isJapanese ? '상' : '상') : p.handicapTier === 'BEGINNER' ? (isJapanese ? '초' : '초') : (isJapanese ? '중' : '중')}
+                                  </span>
+                                  {isSelected && (
+                                    <span className="bg-purple-700 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs">
+                                      {isJapanese ? '選択中' : '선택됨'}
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+
+                          {/* 1인 단독 이동용 인라인 슬롯 (선택된 선수 단독 투입) */}
+                          {selectedSwapPlayer && !isSourceGroup && grp.players.length < 5 && (
                             <button
                               type="button"
-                              data-testid={`btn-move-to-group-${grp.groupNumber}`}
                               onClick={() => handleMoveSinglePlayerToGroup(grp.groupNumber)}
-                              className="bg-amber-500 hover:bg-amber-600 active:scale-95 text-stone-950 font-black text-[11px] px-2.5 py-1 rounded-lg shadow-xs flex items-center gap-1 transition cursor-pointer border border-amber-600 animate-bounce"
+                              className="p-2.5 rounded-xl border-2 border-dashed border-emerald-500 bg-emerald-50/90 hover:bg-emerald-100 text-emerald-950 flex items-center justify-center gap-1.5 text-xs font-black transition cursor-pointer active:scale-95 shadow-xs col-span-2"
                             >
-                              <span>➔ {grp.groupNumber}{isJapanese ? '組へ移動' : '조로 이동'}</span>
+                              <span>➕ [{selectedSwapPlayer.name}] {isJapanese ? '様を' : '님을'} {grp.groupNumber}{isJapanese ? '組へ単独移動' : '조로 단독 이동'}</span>
                             </button>
                           )}
-                          <span className="text-[10px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200 font-bold">
-                            {isJapanese ? `A-${grp.groupNumber}番ホール 出発予定` : `A-${grp.groupNumber}번 홀 출발 예정`}
-                          </span>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {grp.players.map((p) => {
-                          const isSelected = selectedSwapPlayer?.id === p.id;
-                          return (
-                            <button
-                              key={p.id}
-                              type="button"
-                              data-testid="player-swap-chip"
-                              data-player-id={p.id}
-                              data-player-name={p.name}
-                              data-group-number={grp.groupNumber}
-                              onClick={() => handleSwapPlayersInPreview(p, grp.groupNumber)}
-                              className={`p-2.5 rounded-xl border text-left transition flex items-center justify-between cursor-pointer active:scale-95 ${
-                                isSelected
-                                  ? 'bg-amber-200/90 border-amber-500 ring-2 ring-amber-400 font-black text-amber-950 shadow-md'
-                                  : 'bg-white hover:bg-purple-50/60 border-stone-200 text-stone-800'
-                              }`}
-                            >
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                {p.isLeader ? (
-                                  <span className="text-amber-500 shrink-0 font-bold" title="조장">👑</span>
-                                ) : (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0" />
-                                )}
-                                <span className="font-extrabold text-xs truncate">{p.name}</span>
-                              </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <span className="text-[9px] text-stone-500 font-bold">
-                                  {p.gender === 'F' ? (isJapanese ? '女' : '여') : (isJapanese ? '남' : '남')}·
-                                  {p.handicapTier === 'ADVANCED' ? (isJapanese ? '上' : '상') : p.handicapTier === 'BEGINNER' ? (isJapanese ? '初' : '초') : (isJapanese ? '中' : '중')}
-                                </span>
-                                {isSelected && (
-                                  <span className="bg-amber-600 text-white text-[8px] font-black px-1 rounded">
-                                    {isJapanese ? '選択中' : '선택됨'}
-                                  </span>
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })}
-
-                        {/* 1인 단독 이동용 인라인 슬롯 추가 */}
-                        {selectedSwapPlayer && selectedSwapPlayer.groupNumber !== grp.groupNumber && grp.players.length < 5 && (
-                          <button
-                            type="button"
-                            onClick={() => handleMoveSinglePlayerToGroup(grp.groupNumber)}
-                            className="p-2.5 rounded-xl border-2 border-dashed border-amber-400 bg-amber-50/70 hover:bg-amber-100 text-amber-900 flex items-center justify-center gap-1 text-[11px] font-black transition cursor-pointer active:scale-95 shadow-2xs col-span-2 sm:col-span-1"
-                          >
-                            <span>➕ [{selectedSwapPlayer.name}] {grp.groupNumber}{isJapanese ? '組へ単独移動' : '조로 단독 이동'}</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* 2단계 모달 하단 원스톱 최종 확정 액션 */}
