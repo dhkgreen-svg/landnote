@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -1404,10 +1404,37 @@ function ClubRoomDetailContent() {
   };
 
   // 우리 조 18홀 라운드 시작 (스코어보드로 이동)
-  const handleStartGroupRound = (group: ClubGroup) => {
+  const handleStartGroupRound = useCallback((group: ClubGroup) => {
     if (group.players.length === 0) {
       alert('조원이 최소 1명 이상 등록되어야 라운드를 시작할 수 있습니다.');
       return;
+    }
+
+    const roundId = `round_club_${room.id}_g${group.groupNumber}`;
+
+    const targetUrl = `/round/${roundId}?user=${encodeURIComponent(currentUser)}&roomId=${encodeURIComponent(roundId)}`;
+
+    // 이미 저장된 활성 세션이 있는지 확인 (있으면 덮어쓰지 않고 최신 유지)
+    const existing = ParkOnStorage.getCurrentRound();
+    if (existing && (existing.id === roundId || existing.id === `room_club_${room.id}_g${group.groupNumber}`)) {
+      try { router.push(targetUrl); } catch {}
+      if (typeof window !== 'undefined') window.location.assign(targetUrl);
+      return;
+    }
+
+    if (typeof localStorage !== 'undefined') {
+      const syncData = localStorage.getItem(`parkon_active_round_sync_${roundId}`);
+      if (syncData) {
+        try {
+          const parsed = JSON.parse(syncData);
+          if (parsed && parsed.session) {
+            ParkOnStorage.saveCurrentRound(parsed.session);
+            try { router.push(targetUrl); } catch {}
+            if (typeof window !== 'undefined') window.location.assign(targetUrl);
+            return;
+          }
+        } catch (e) {}
+      }
     }
 
     const courseObj = DEFAULT_COURSES.find((c) => c.id === room.courseId) || DEFAULT_COURSES[0];
@@ -1423,8 +1450,6 @@ function ClubRoomDetailContent() {
       }
     });
 
-    const roundId = `round_club_${room.id}_g${group.groupNumber}`;
-
     const players: RoundPlayer[] = group.players.map((p, idx) => {
       const scores: Record<number, number> = {};
       const obCount: Record<number, number> = {};
@@ -1438,6 +1463,7 @@ function ClubRoomDetailContent() {
       return {
         id: p.id || `p_${idx}_${Date.now()}`,
         name: p.name,
+        isLeader: Boolean(p.isLeader || idx === 0),
         scores,
         obCount,
         totalStrokes: p.totalStrokes || Object.values(scores).reduce((a, b) => a + b, 0),
@@ -1461,8 +1487,120 @@ function ClubRoomDetailContent() {
     };
 
     ParkOnStorage.saveCurrentRound(newSession);
-    router.push(`/round/${roundId}`);
-  };
+    try { router.push(targetUrl); } catch {}
+    if (typeof window !== 'undefined') window.location.assign(targetUrl);
+  }, [room, currentUser, router]);
+
+  // 🏌️ [동반자 실시간 자동 연동] 조장이 [티샷 시작] 누르면 같은 조 전원 스코어보드로 자동 전환 (Auto-navigate / Sync)
+  const hasAutoNavigatedRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (!room || !myGroup || hasAutoNavigatedRef.current) return;
+
+    const targetRoundId = `round_club_${room.id}_g${myGroup.groupNumber}`;
+    const altTargetRoomId = `room_club_${room.id}_g${myGroup.groupNumber}`;
+
+    const triggerAutoNavigate = (source: string) => {
+      if (hasAutoNavigatedRef.current) return;
+      hasAutoNavigatedRef.current = true;
+      showToast(
+        isJapanese
+          ? '🏌️ 代表がティーショットを開始しました！自組スコアボードへ自動移動します…'
+          : '🏌️ 조장님이 1번 홀 티샷을 시작했습니다! 우리 조 스코어보드로 자동 이동합니다...'
+      );
+      handleStartGroupRound(myGroup);
+    };
+
+    // 1) BroadcastChannel 실시간 감지 (0ms 즉시 연동)
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('parkon_round_channel');
+      bc.onmessage = (event) => {
+        const data = event.data;
+        if (!data) return;
+        const isTarget =
+          data.roundId === targetRoundId ||
+          data.roomId === targetRoundId ||
+          data.roomId === altTargetRoomId ||
+          data.session?.id === targetRoundId ||
+          data.session?.id === altTargetRoomId;
+        if (
+          isTarget &&
+          (data.holeStep === 'SCORING' ||
+            data.type === 'TEE_SHOT_STARTED' ||
+            data.status === 'STARTED' ||
+            data.session?.holeStep === 'SCORING' ||
+            data.session?.status === 'IN_PROGRESS')
+        ) {
+          triggerAutoNavigate('broadcast');
+        }
+      };
+    } catch (e) {}
+
+    // 2) window storage 이벤트 실시간 감지 (크로스 탭/창 동기화)
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (!e.key) return;
+      if (
+        e.key === `parkon_active_round_sync_${targetRoundId}` ||
+        e.key === `parkon_active_round_sync_${altTargetRoomId}` ||
+        e.key === `parkon_group_active_${room.id}_g${myGroup.groupNumber}`
+      ) {
+        try {
+          const parsed = JSON.parse(e.newValue || '{}');
+          if (
+            parsed &&
+            (parsed.holeStep === 'SCORING' ||
+              parsed.active ||
+              parsed.session?.holeStep === 'SCORING' ||
+              parsed.status === 'STARTED')
+          ) {
+            triggerAutoNavigate('storage');
+          }
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorageEvent);
+
+    // 3) 1초 주기 폴링 fallback (서버 round_rooms 및 ClubStorage 확인)
+    const pollInterval = setInterval(async () => {
+      if (hasAutoNavigatedRef.current) return;
+
+      // 로컬 스토리지에 이미 조 시작 상태가 기록되었는지 확인
+      const groupActiveKey = localStorage.getItem(`parkon_group_active_${room.id}_g${myGroup.groupNumber}`);
+      if (groupActiveKey) {
+        try {
+          const parsed = JSON.parse(groupActiveKey);
+          if (parsed.active || parsed.holeStep === 'SCORING') {
+            triggerAutoNavigate('local_storage_poll');
+            return;
+          }
+        } catch (e) {}
+      }
+
+      // API 폴링 확인
+      try {
+        const res = await fetch(`/api/round/room?roomId=${encodeURIComponent(targetRoundId)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.room) {
+            const sess = json.room.roundSession;
+            if (
+              sess?.holeStep === 'SCORING' ||
+              (json.room.status === 'STARTED' && sess?.holeStep === 'SCORING') ||
+              (sess?.currentHole && sess.currentHole >= 1 && sess?.holeStep === 'SCORING')
+            ) {
+              triggerAutoNavigate('api_poll');
+            }
+          }
+        }
+      } catch (e) {}
+    }, 1000);
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('storage', handleStorageEvent);
+      clearInterval(pollInterval);
+    };
+  }, [room, myGroup, isJapanese, handleStartGroupRound]);
 
   return (
     <div className="p-3 max-w-xl mx-auto space-y-3 pb-20" suppressHydrationWarning>

@@ -153,14 +153,19 @@ export default function RoundPlayPage() {
   const rawDisplayName = typeof window !== 'undefined' ? ParkOnStorage.getUserDisplayName() : '';
   const localPlayerName = typeof window !== 'undefined' ? (localStorage.getItem('parkon_player_name')?.trim() || '') : '';
   const localMemberCode = typeof window !== 'undefined' ? (localStorage.getItem('parkon_member_code')?.trim() || '') : '';
-  const myLocalName = (rawDisplayName && rawDisplayName !== '플레이어' ? rawDisplayName : '') || localPlayerName;
+  const searchParamUser = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('user')?.trim() || '') : '';
+  const myLocalName = searchParamUser || (rawDisplayName && rawDisplayName !== '플레이어' ? rawDisplayName : '') || localPlayerName;
 
   const currentLeaderPlayer = session?.players?.find((p) => p.isLeader) || session?.players?.[0];
   const isCurrentUserLeader = Boolean(
     currentLeaderPlayer && (
       (localMemberCode && currentLeaderPlayer.id === localMemberCode) ||
-      (myLocalName && currentLeaderPlayer.name && (currentLeaderPlayer.name.trim() === myLocalName || currentLeaderPlayer.name.includes(myLocalName) || myLocalName.includes(currentLeaderPlayer.name))) ||
-      (currentLeaderPlayer.isSelf === true && !myLocalName)
+      (myLocalName && currentLeaderPlayer.name && (
+        currentLeaderPlayer.name.trim().toLowerCase() === myLocalName.toLowerCase() ||
+        currentLeaderPlayer.name.toLowerCase().includes(myLocalName.toLowerCase()) ||
+        myLocalName.toLowerCase().includes(currentLeaderPlayer.name.toLowerCase())
+      )) ||
+      (!myLocalName && currentLeaderPlayer.isSelf === true)
     )
   );
 
@@ -237,28 +242,77 @@ export default function RoundPlayPage() {
     if (!active || active.id !== roundId) {
       // 🌐 원격 서버 룸에서 세션 복원 시도 (동반자 직접 입장 또는 새로고침 시 이탈 방지)
       const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-      const rid = searchParams?.get('roomId') || 'latest';
+      const rid = searchParams?.get('roomId') || roundId || 'latest';
       fetch(`/api/round/room?roomId=${encodeURIComponent(rid)}`)
         .then((res) => res.json())
         .then((data) => {
-          if (data.success && data.room?.roundSession && (data.room.roundSession.id === roundId || !roundId)) {
-            const restored = data.room.roundSession;
+          if (data.success && data.room) {
+            const searchUser = searchParams?.get('user')?.trim() || '';
             const rawName = ParkOnStorage.getUserDisplayName();
             const localName = typeof localStorage !== 'undefined' ? localStorage.getItem('parkon_player_name')?.trim() : '';
             const localCode = typeof localStorage !== 'undefined' ? localStorage.getItem('parkon_member_code')?.trim() : '';
-            const effectiveName = (rawName && rawName !== '플레이어' ? rawName : '') || localName || '';
+            const effectiveName = searchUser || (rawName && rawName !== '플레이어' ? rawName : '') || localName || '';
+
+            let restored: RoundSession = data.room.roundSession;
+            if (!restored) {
+              const allCourses = ParkOnStorage.getAllCourses();
+              const courseObj = allCourses.find((c) => c.id === data.room.courseId) || allCourses[0];
+              const letters = [data.room.courseLetter || 'A'];
+              const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+              const holeNumbers: number[] = [];
+              letters.forEach((letStr) => {
+                const cIdx = Math.max(0, COURSE_LETTERS.indexOf(letStr));
+                for (let i = 1; i <= 9; i++) {
+                  holeNumbers.push(cIdx * 9 + i);
+                }
+              });
+
+              const initialPlayers: RoundPlayer[] = (data.room.players || []).map((p: any, idx: number) => {
+                const scores: Record<number, number> = {};
+                const obCount: Record<number, number> = {};
+                holeNumbers.forEach((hNum) => {
+                  const meta = courseObj?.holesMetadata?.find((m) => m.hole === hNum);
+                  scores[hNum] = meta?.par || 3;
+                  obCount[hNum] = 0;
+                });
+                return {
+                  id: p.id || `p_${idx}_${Date.now()}`,
+                  name: p.name,
+                  isLeader: Boolean(p.isLeader || idx === 0),
+                  scores,
+                  obCount,
+                  totalStrokes: Object.values(scores).reduce((a, b) => a + b, 0),
+                  totalParDiff: 0,
+                };
+              });
+
+              restored = {
+                id: roundId || data.room.roomId,
+                roomId: data.room.roomId,
+                courseId: courseObj?.id || 'course_1',
+                courseName: courseObj?.name || data.room.courseName || '파크골프장',
+                startedAt: new Date().toISOString(),
+                currentHole: data.room.startHoleIndex || 1,
+                totalHoles: holeNumbers.length,
+                selectedCourseLetters: letters,
+                selectedHoleNumbers: holeNumbers,
+                players: initialPlayers,
+                status: 'IN_PROGRESS',
+                holeStep: 'TEE_SHOT',
+              };
+            }
 
             if (restored.players && restored.players.length > 0) {
               let hasMatched = false;
               restored.players = restored.players.map((p: RoundPlayer) => {
                 const isMe = Boolean(
                   (localCode && p.id === localCode) ||
-                  (effectiveName && p.name && (p.name.trim() === effectiveName || p.name.includes(effectiveName) || effectiveName.includes(p.name)))
+                  (effectiveName && p.name && (p.name.trim().toLowerCase() === effectiveName.toLowerCase() || p.name.toLowerCase().includes(effectiveName.toLowerCase()) || effectiveName.toLowerCase().includes(p.name.toLowerCase())))
                 );
                 if (isMe) hasMatched = true;
                 return { ...p, isSelf: isMe };
               });
-              if (!hasMatched && restored.players.length > 0 && !localName && !localCode) {
+              if (!hasMatched && restored.players.length > 0 && !localName && !localCode && !searchUser) {
                 restored.players[0].isSelf = true;
               }
             }
@@ -335,11 +389,14 @@ export default function RoundPlayPage() {
     }
 
     // 1번 조장 우선 배치 + 동반자 가나다순 정렬 및 본인 활동명 실시간 동기화
+    const searchUser = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('user')?.trim() || '') : '';
     const basePlayers = sanitizedSession.players || active.players || [];
-    const currentSelfName = getDefaultSelfName(isJapanese);
+    const currentSelfName = searchUser || getDefaultSelfName(isJapanese);
     const syncedSelfPlayers = basePlayers.map((p, idx) => {
-      const isSelf = p.isSelf ?? (idx === 0);
-      if (isSelf && !isSampleOrPlaceholder(currentSelfName) && p.name !== currentSelfName) {
+      const isSelf = searchUser
+        ? Boolean(p.name && (p.name.trim().toLowerCase() === searchUser.toLowerCase() || p.name.toLowerCase().includes(searchUser.toLowerCase()) || searchUser.toLowerCase().includes(p.name.toLowerCase())))
+        : (p.isSelf ?? (idx === 0));
+      if (isSelf && !isSampleOrPlaceholder(currentSelfName) && p.name !== currentSelfName && !searchUser) {
         return { ...p, name: currentSelfName, isSelf: true };
       }
       return { ...p, isSelf };
@@ -520,6 +577,47 @@ export default function RoundPlayPage() {
           },
         });
       }
+
+      if (typeof window !== 'undefined') {
+        try {
+          const bc = new BroadcastChannel('parkon_round_channel');
+          bc.postMessage({
+            type: 'SCORE_UPDATED',
+            roomId: effectiveRoomId,
+            roundId: enriched.id,
+            holeStep: enriched.holeStep,
+            currentHole: enriched.currentHole,
+            session: enriched,
+          });
+          bc.close();
+        } catch (e) {}
+
+        try {
+          localStorage.setItem(
+            'parkon_active_round_sync_' + enriched.id,
+            JSON.stringify({
+              timestamp: Date.now(),
+              roomId: effectiveRoomId,
+              roundId: enriched.id,
+              holeStep: enriched.holeStep,
+              currentHole: enriched.currentHole,
+              session: enriched,
+            })
+          );
+          if (enriched.clubRoomId && enriched.clubGroupNumber) {
+            localStorage.setItem(
+              `parkon_group_active_${enriched.clubRoomId}_g${enriched.clubGroupNumber}`,
+              JSON.stringify({
+                active: true,
+                holeStep: enriched.holeStep,
+                currentHole: enriched.currentHole,
+                roundId: enriched.id,
+                timestamp: Date.now(),
+              })
+            );
+          }
+        } catch (e) {}
+      }
     } catch (e) {}
 
     // Sync to ClubStorage if linked to club room
@@ -602,11 +700,14 @@ export default function RoundPlayPage() {
       // 5) 선수 스코어 및 상태 병합 (내 isSelf 플래그는 보존)
       setSession((prev) => {
         if (!prev) return incoming;
+        const searchUser = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('user')?.trim() : '';
         const myPlayer = prev.players?.find((p) => p.isSelf);
-        const myName = myPlayer?.name;
+        const myName = searchUser || myPlayer?.name;
 
         const mergedPlayers = (incoming.players || []).map((ip) => {
-          const isMe = myName ? ip.name === myName : ip.isSelf;
+          const isMe = myName
+            ? Boolean(ip.name && (ip.name.trim().toLowerCase() === myName.toLowerCase() || ip.name.toLowerCase().includes(myName.toLowerCase()) || myName.toLowerCase().includes(ip.name.toLowerCase())))
+            : ip.isSelf;
           return {
             ...ip,
             isSelf: isMe,
@@ -660,6 +761,42 @@ export default function RoundPlayPage() {
       }
     };
 
+    // 0) BroadcastChannel 실시간 구독 (로컬 브라우저 창/탭 간 0ms 무지연 스코어/홀스텝 연동)
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('parkon_round_channel');
+      bc.onmessage = (event) => {
+        const data = event.data;
+        if (!data || !isSubscribed) return;
+        const matches =
+          data.roundId === roundId ||
+          data.roomId === effectiveRoomId ||
+          data.roundId === effectiveRoomId ||
+          data.session?.id === roundId ||
+          data.session?.id === effectiveRoomId;
+        if (matches && data.session) {
+          applyIncomingSession(data.session);
+        }
+      };
+    } catch (e) {}
+
+    // 0-1) window storage 이벤트 구독 (크로스 탭 스토리지 즉시 감지)
+    const handleStorage = (e: StorageEvent) => {
+      if (!e.key || !isSubscribed) return;
+      if (
+        e.key === `parkon_active_round_sync_${roundId}` ||
+        e.key === `parkon_active_round_sync_${effectiveRoomId}`
+      ) {
+        try {
+          const parsed = JSON.parse(e.newValue || '{}');
+          if (parsed && parsed.session) {
+            applyIncomingSession(parsed.session);
+          }
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
     // Supabase Realtime 채널 구독 (외부 모바일 기기 간 50ms 무지연 스코어/홀스텝 양방향 연동)
     if (effectiveRoomId) {
       const channel = supabase.channel(`room_${effectiveRoomId}`, {
@@ -694,12 +831,16 @@ export default function RoundPlayPage() {
 
       return () => {
         isSubscribed = false;
+        if (bc) bc.close();
+        window.removeEventListener('storage', handleStorage);
         clearInterval(interval);
         supabase.removeChannel(channel);
       };
     } else {
       return () => {
         isSubscribed = false;
+        if (bc) bc.close();
+        window.removeEventListener('storage', handleStorage);
       };
     }
   }, [session?.roomId, roundId]);
@@ -2481,8 +2622,45 @@ export default function RoundPlayPage() {
                 lastLocalActionTimeRef.current = Date.now();
                 const nextStep: 'SCORING' = 'SCORING';
                 setHoleStep(nextStep);
-                const updated: RoundSession = { ...session, holeStep: nextStep, updatedAt: new Date().toISOString() };
+                const updated: RoundSession = {
+                  ...session,
+                  holeStep: nextStep,
+                  status: 'IN_PROGRESS',
+                  updatedAt: new Date().toISOString(),
+                };
                 updateSession(updated);
+
+                if (typeof window !== 'undefined') {
+                  const effRoomId = session?.roomId || roundId || '';
+                  try {
+                    const bc = new BroadcastChannel('parkon_round_channel');
+                    bc.postMessage({
+                      type: 'TEE_SHOT_STARTED',
+                      roomId: effRoomId,
+                      roundId: updated.id,
+                      holeStep: 'SCORING',
+                      currentHole: updated.currentHole,
+                      session: updated,
+                    });
+                    bc.close();
+                  } catch (e) {}
+
+                  try {
+                    if (updated.clubRoomId && updated.clubGroupNumber) {
+                      localStorage.setItem(
+                        `parkon_group_active_${updated.clubRoomId}_g${updated.clubGroupNumber}`,
+                        JSON.stringify({
+                          active: true,
+                          holeStep: 'SCORING',
+                          currentHole: updated.currentHole,
+                          roundId: updated.id,
+                          timestamp: Date.now(),
+                        })
+                      );
+                    }
+                  } catch (e) {}
+                }
+
                 if (typeof window !== 'undefined' && 'vibrate' in navigator) {
                   try { navigator.vibrate?.(50); } catch (e) {}
                 }
@@ -2579,6 +2757,19 @@ export default function RoundPlayPage() {
       {/* ========================================================================= */}
       {holeStep === 'SCORING' && (
         <div className="space-y-2.5 animate-fadeIn">
+          {/* 동반자 실시간 뷰어 상태 띠 */}
+          {!isCurrentUserLeader && (
+            <div className="p-2.5 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-between text-xs text-teal-900 dark:text-teal-200 font-bold shadow-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                <span>👤 {isJapanese ? '同伴者リアルタイムビューア (代表入力同期中 🟢)' : '동반자 실시간 뷰어 (조장 입력 실시간 연동 중 🟢)'}</span>
+              </div>
+              <span className="text-[10px] text-teal-700 dark:text-teal-300 font-extrabold bg-teal-100 dark:bg-teal-900/60 px-2 py-0.5 rounded-full shrink-0">
+                👑 {isJapanese ? '代表' : '조장'}: {currentLeaderPlayer?.name || '조장'}
+              </span>
+            </div>
+          )}
+
           {/* 상단 미니 바: [ ◀ 코스 제원 다시보기 ] + 홀 정보 + 카운트 방식 표시 */}
           <div className={`flex items-center justify-between p-2.5 sm:p-3 gap-1.5 sm:gap-2 rounded-2xl border transition ${
             sunlightMode

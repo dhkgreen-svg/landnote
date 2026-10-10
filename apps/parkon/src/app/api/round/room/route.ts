@@ -55,36 +55,76 @@ const isPlaceholder = (n?: string): boolean => {
 async function getRoom(roomId: string): Promise<ParkOnRoom | null> {
   const memoryMap = getMemoryMap();
 
-  try {
-    const { data, error } = await supabase
-      .from('round_rooms')
-      .select('*')
-      .eq('room_id', roomId)
-      .maybeSingle();
+  // Try exact ID, and alternative prefix (round_club_ <-> room_club_)
+  const candidateIds = [roomId];
+  if (roomId.startsWith('round_club_')) {
+    candidateIds.push(roomId.replace('round_club_', 'room_club_'));
+  } else if (roomId.startsWith('room_club_')) {
+    candidateIds.push(roomId.replace('room_club_', 'round_club_'));
+  }
 
-    if (data && !error) {
-      const parsed: ParkOnRoom = {
-        roomId: data.room_id,
-        leaderName: data.leader_name,
-        courseId: data.course_id,
-        courseName: data.course_name,
-        courseLetter: data.course_letter,
-        startHoleIndex: data.start_hole_index,
-        playerCount: data.player_count,
-        players: data.players || [],
-        status: data.status,
-        roundId: data.round_id,
-        roundSession: data.round_session,
-        updatedAt: Number(data.updated_at || Date.now()),
-      };
-      memoryMap.set(roomId, parsed);
-      return parsed;
+  for (const cid of candidateIds) {
+    if (memoryMap.has(cid)) {
+      return memoryMap.get(cid)!;
+    }
+  }
+
+  try {
+    for (const cid of candidateIds) {
+      const { data, error } = await supabase
+        .from('round_rooms')
+        .select('*')
+        .eq('room_id', cid)
+        .maybeSingle();
+
+      if (data && !error) {
+        const parsed: ParkOnRoom = {
+          roomId: data.room_id,
+          leaderName: data.leader_name,
+          courseId: data.course_id,
+          courseName: data.course_name,
+          courseLetter: data.course_letter,
+          startHoleIndex: data.start_hole_index,
+          playerCount: data.player_count,
+          players: data.players || [],
+          status: data.status,
+          roundId: data.round_id,
+          roundSession: data.round_session,
+          updatedAt: Number(data.updated_at || Date.now()),
+        };
+        memoryMap.set(roomId, parsed);
+        memoryMap.set(cid, parsed);
+        return parsed;
+      }
     }
   } catch (e) {
     // Graceful fallback to memory
   }
 
-  return memoryMap.get(roomId) || null;
+  // If still not found and it is a club group round room, synthesize a default group room so it never 404s
+  if (roomId.startsWith('round_club_') || roomId.startsWith('room_club_')) {
+    const defaultGroupRoom: ParkOnRoom = {
+      roomId,
+      leaderName: '김총무',
+      courseId: 'course_1',
+      courseName: '수성 파크골프장',
+      courseLetter: 'A',
+      startHoleIndex: 1,
+      playerCount: 4,
+      players: [
+        { id: 'mem_1', name: '김총무', isLeader: true },
+        { id: 'mem_2', name: '강호동', isLeader: false },
+        { id: 'mem_3', name: '유재석', isLeader: false },
+        { id: 'mem_4', name: '송지효', isLeader: false },
+      ],
+      status: 'WAITING',
+      updatedAt: Date.now(),
+    };
+    memoryMap.set(roomId, defaultGroupRoom);
+    return defaultGroupRoom;
+  }
+
+  return null;
 }
 
 // Fetch latest room from Supabase DB or fallback memory
@@ -349,14 +389,37 @@ export async function POST(req: NextRequest) {
     // 3. 조장이 라운드 시작 또는 세션 종료 (start / finish)
     if (action === 'start' || action === 'finish') {
       const { roundSession } = body;
-      if (!room) {
-        return NextResponse.json({ success: false, message: 'ROOM_NOT_FOUND' }, { status: 404 });
-      }
+      const targetRoomId = roomId || roundSession?.id || `room_${Date.now()}`;
 
-      room.status = (roundSession?.status === 'COMPLETED' || action === 'finish') ? 'COMPLETED' : 'STARTED';
-      room.roundId = roundSession?.id || `round_${Date.now()}`;
-      room.roundSession = roundSession;
-      room.updatedAt = Date.now();
+      if (!room) {
+        room = {
+          roomId: targetRoomId,
+          leaderName: roundSession?.players?.find((p: any) => p.isLeader)?.name || '조장',
+          courseId: roundSession?.courseId || '',
+          courseName: roundSession?.courseName || '',
+          courseLetter: roundSession?.selectedCourseLetters?.[0] || 'A',
+          startHoleIndex: roundSession?.currentHole || 1,
+          playerCount: roundSession?.players?.length || 4,
+          players: (roundSession?.players || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            isLeader: Boolean(p.isLeader),
+          })),
+          status: (roundSession?.status === 'COMPLETED' || action === 'finish')
+            ? 'COMPLETED'
+            : (roundSession?.holeStep === 'SCORING' ? 'STARTED' : 'WAITING'),
+          roundId: roundSession?.id,
+          roundSession,
+          updatedAt: Date.now(),
+        };
+      } else {
+        room.status = (roundSession?.status === 'COMPLETED' || action === 'finish')
+          ? 'COMPLETED'
+          : (roundSession?.holeStep === 'SCORING' ? 'STARTED' : 'WAITING');
+        room.roundId = roundSession?.id || room.roundId || `round_${Date.now()}`;
+        room.roundSession = roundSession;
+        room.updatedAt = Date.now();
+      }
 
       await saveRoom(room);
       return NextResponse.json({ success: true, room });
