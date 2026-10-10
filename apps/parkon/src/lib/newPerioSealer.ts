@@ -212,7 +212,8 @@ export function calculateDynamicNewPerio(
 
   const scale = targetHiddenCount / countedHoles;
   const estimatedHiddenSum = hiddenSum * scale;
-  const rawHandicap = (estimatedHiddenSum * 1.5 - basePar) * 0.8;
+  const multiplier = targetHiddenCount > 0 ? totalHoles / targetHiddenCount : 1.5;
+  const rawHandicap = (estimatedHiddenSum * multiplier - basePar) * 0.8;
   const handicap = Math.max(0, Math.round(rawHandicap * 10) / 10);
   const netScore = Math.round((totalStrokes - handicap) * 10) / 10;
 

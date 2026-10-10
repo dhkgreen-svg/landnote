@@ -252,6 +252,7 @@ export const ClubStorage = {
   },
 
   // 3-4. 스마트 조 편성 엔진 (완전 랜덤 / 조장 지정 고정 / 일부 인원 고정 / 성비 균형 / 실력 균형 / 조장 사전지정 유지)
+  // 3-4. 스마트 조 편성 엔진 (완전 랜덤 / 조장 지정 고정 / 복수 동반 묶음 / 절대 분리 기피 / 성비 균형 / 실력 균형)
   autoGroupPlayers(
     roomId: string,
     method: 'RANDOM' | 'BALANCED_GENDER' | 'BALANCED_TIER' | 'KEEP_LEADERS' | 'ASSIGN_LEADERS' | 'PARTIAL_ASSIGN',
@@ -259,6 +260,11 @@ export const ClubStorage = {
     options?: {
       designatedLeaderIds?: string[];
       preAssignedGroupMap?: Record<string, number>;
+      togetherGroups?: (string[] | { playerIds: string[]; targetGroup?: number })[];
+      separateGroups?: (string[] | { playerIds: string[] })[];
+      balanceGender?: boolean;
+      balanceTier?: boolean;
+      separatePrevBuddies?: boolean;
     }
   ): ClubEventRoom | null {
     const room = this.getRoom(roomId);
@@ -320,165 +326,254 @@ export const ClubStorage = {
       });
     }
 
-    // 5. 조건별 사전 고정 배치 처리
-    const placedPlayerIds = new Set<string>();
+    // 5. 조건별 사전 고정 배치 처리 및 제약 조건 엔진 (Constraint Satisfaction Engine)
+    // [하드 제약 1순위] 조장 고정 + [반드시 함께 묶을 동반 그룹] 한 조 안착 + [절대 분리 기피 그룹] 서로 다른 조 강제 분산
+    // [소프트 제약 2순위] 남녀 성비 균등 + 직전 모임 동반자 분리
+    // [최종 채우기 3순위] 남은 빈 슬롯 100% 완전 랜덤 또는 실력 밸런스 분배
 
-    // [조건 A] 조장 N명 지정 후 돌리기 (ASSIGN_LEADERS)
-    if (method === 'ASSIGN_LEADERS' && options?.designatedLeaderIds && options.designatedLeaderIds.length > 0) {
+    // A. 동반 묶음 그룹 정규화
+    interface TogetherDef {
+      playerIds: string[];
+      targetGroup?: number;
+    }
+    const rawTogether: TogetherDef[] = [];
+    if (options?.togetherGroups) {
+      options.togetherGroups.forEach((tg) => {
+        const ids = (Array.isArray(tg) ? tg : tg.playerIds || []).filter((id) => allPlayersMap.has(id));
+        const uniqueIds = Array.from(new Set(ids));
+        if (uniqueIds.length >= 2) {
+          rawTogether.push({
+            playerIds: uniqueIds,
+            targetGroup: Array.isArray(tg) ? undefined : tg.targetGroup,
+          });
+        }
+      });
+    }
+
+    // 부부/동반자 사전 묶기 맵(preAssignedGroupMap) 레거시 병합
+    if (options?.preAssignedGroupMap) {
+      const groupToPlayers: Record<number, string[]> = {};
+      Object.entries(options.preAssignedGroupMap).forEach(([pid, gNum]) => {
+        if (allPlayersMap.has(pid)) {
+          if (!groupToPlayers[gNum]) groupToPlayers[gNum] = [];
+          groupToPlayers[gNum].push(pid);
+        }
+      });
+      Object.entries(groupToPlayers).forEach(([gNumStr, pids]) => {
+        const gNum = Number(gNumStr);
+        rawTogether.push({ playerIds: pids, targetGroup: gNum });
+      });
+    }
+
+    // 중복 및 겹치는 묶음 병합 (Union-Find)
+    const mergedTogether: TogetherDef[] = [];
+    rawTogether.forEach((item) => {
+      const match = mergedTogether.find((m) => m.playerIds.some((id) => item.playerIds.includes(id)));
+      if (match) {
+        item.playerIds.forEach((id) => {
+          if (!match.playerIds.includes(id)) match.playerIds.push(id);
+        });
+        if (!match.targetGroup && item.targetGroup) {
+          match.targetGroup = item.targetGroup;
+        }
+      } else {
+        mergedTogether.push({ playerIds: [...item.playerIds], targetGroup: item.targetGroup });
+      }
+    });
+
+    // B. 절대 분리 기피 그룹 정규화
+    const normSeparate: string[][] = [];
+    if (options?.separateGroups) {
+      options.separateGroups.forEach((sg) => {
+        const ids = (Array.isArray(sg) ? sg : sg.playerIds || []).filter((id) => allPlayersMap.has(id));
+        const uniqueIds = Array.from(new Set(ids));
+        if (uniqueIds.length >= 2) {
+          normSeparate.push(uniqueIds);
+        }
+      });
+    }
+
+    // C. 페어별 분리 여부 판별 헬퍼
+    const areSeparated = (idA: string, idB: string): boolean => {
+      if (idA === idB) return false;
+      return normSeparate.some((sep) => sep.includes(idA) && sep.includes(idB));
+    };
+
+    const hasSeparateConflictWithGroup = (candidateIds: string[], groupIds: string[]): boolean => {
+      for (const c of candidateIds) {
+        for (const g of groupIds) {
+          if (areSeparated(c, g)) return true;
+        }
+      }
+      return false;
+    };
+
+    // D. 조장 고정에 따른 타겟 조 강제 바인딩
+    if (options?.designatedLeaderIds) {
       options.designatedLeaderIds.forEach((leaderId, idx) => {
         if (idx < groupCount) {
-          const leaderPlayer = allPlayers.find((p) => p.id === leaderId);
-          if (leaderPlayer) {
-            const playerObj: ClubPlayer = {
-              ...leaderPlayer,
-              isLeader: true,
-            };
-            newGroups[idx].players.push(playerObj);
-            newGroups[idx].leaderName = playerObj.name;
-            placedPlayerIds.add(leaderPlayer.id);
-          }
-        }
-      });
-    }
-    // [조건 B] 일부 인원 특정 조 사전 배치 후 나머지 돌리기 (PARTIAL_ASSIGN)
-    else if (method === 'PARTIAL_ASSIGN' && options?.preAssignedGroupMap) {
-      Object.entries(options.preAssignedGroupMap).forEach(([playerId, targetGroupNumber]) => {
-        const player = allPlayers.find((p) => p.id === playerId);
-        const grpIdx = targetGroupNumber - 1;
-        if (player && grpIdx >= 0 && grpIdx < groupCount) {
-          const isFirstInGroup = newGroups[grpIdx].players.length === 0;
-          const playerObj: ClubPlayer = {
-            ...player,
-            isLeader: isFirstInGroup,
-          };
-          newGroups[grpIdx].players.push(playerObj);
-          if (isFirstInGroup) {
-            newGroups[grpIdx].leaderName = playerObj.name;
-          }
-          placedPlayerIds.add(player.id);
-        }
-      });
-    }
-    // [조건 C] 기존 조장 유지 (KEEP_LEADERS)
-    else if (method === 'KEEP_LEADERS') {
-      room.groups.forEach((g, idx) => {
-        if (idx < groupCount) {
-          const leader = g.players.find((p) => p.isLeader) || g.players[0];
-          if (leader) {
-            const playerObj: ClubPlayer = { ...leader, isLeader: true };
-            newGroups[idx].players.push(playerObj);
-            newGroups[idx].leaderName = playerObj.name;
-            placedPlayerIds.add(leader.id);
+          const matchTg = mergedTogether.find((tg) => tg.playerIds.includes(leaderId));
+          if (matchTg) {
+            matchTg.targetGroup = idx + 1;
           }
         }
       });
     }
 
-    // 6. 나머지 일반 대상 인원(후보군) 수집
-    const remainingCandidates = allPlayers.filter((p) => !placedPlayerIds.has(p.id));
-
-    // 7. 후보군 셔플 및 정렬
-    let orderedCandidates = [...remainingCandidates];
-
-    if (method === 'RANDOM' || method === 'ASSIGN_LEADERS' || method === 'PARTIAL_ASSIGN' || method === 'KEEP_LEADERS') {
-      // 순수 무작위 셔플 (Fisher-Yates)
-      for (let i = orderedCandidates.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [orderedCandidates[i], orderedCandidates[j]] = [orderedCandidates[j], orderedCandidates[i]];
-      }
-    } else if (method === 'BALANCED_GENDER') {
-      const males = orderedCandidates.filter((p) => p.gender !== 'F');
-      const females = orderedCandidates.filter((p) => p.gender === 'F');
-
-      males.sort(() => Math.random() - 0.5);
-      females.sort(() => Math.random() - 0.5);
-
-      orderedCandidates = [];
-      const maxLen = Math.max(males.length, females.length);
-      for (let i = 0; i < maxLen; i++) {
-        if (i < males.length) orderedCandidates.push(males[i]);
-        if (i < females.length) orderedCandidates.push(females[i]);
-      }
-    } else if (method === 'BALANCED_TIER') {
-      const tierWeight = { ADVANCED: 3, INTERMEDIATE: 2, BEGINNER: 1 };
-      orderedCandidates.sort((a, b) => {
-        const wa = tierWeight[a.handicapTier || 'INTERMEDIATE'];
-        const wb = tierWeight[b.handicapTier || 'INTERMEDIATE'];
-        if (wb !== wa) return wb - wa;
-        return Math.random() - 0.5;
-      });
+    // E. 블록 단위 형성
+    interface AssignmentBlock {
+      playerIds: string[];
+      targetGroup?: number;
     }
 
-    // 8. 스네이크 방식으로 남은 빈 슬롯 균등 분배
-    let gIdx = 0;
-    let forward = true;
+    const blocks: AssignmentBlock[] = [];
+    const assignedBlockPlayerIds = new Set<string>();
 
-    orderedCandidates.forEach((player) => {
-      let targetGroup: ClubGroup | undefined;
-      let attempts = 0;
-
-      while (attempts < groupCount) {
-        const group = newGroups[gIdx];
-        const capacity = distribution[gIdx] || 4;
-        if (group.players.length < capacity) {
-          targetGroup = group;
-          break;
-        }
-        if (forward) {
-          gIdx++;
-          if (gIdx >= groupCount) {
-            gIdx = groupCount - 1;
-            forward = false;
-          }
-        } else {
-          gIdx--;
-          if (gIdx < 0) {
-            gIdx = 0;
-            forward = true;
-          }
-        }
-        attempts++;
-      }
-
-      if (!targetGroup) {
-        newGroups.sort((a, b) => a.players.length - b.players.length);
-        targetGroup = newGroups[0];
-        newGroups.sort((a, b) => a.groupNumber - b.groupNumber);
-      }
-
-      const isFirst = targetGroup.players.length === 0;
-      targetGroup.players.push({
-        ...player,
-        isLeader: isFirst,
+    mergedTogether.forEach((tg) => {
+      blocks.push({
+        playerIds: tg.playerIds,
+        targetGroup: tg.targetGroup,
       });
+      tg.playerIds.forEach((id) => assignedBlockPlayerIds.add(id));
+    });
 
-      if (forward) {
-        gIdx++;
-        if (gIdx >= groupCount) {
-          gIdx = groupCount - 1;
-          forward = false;
+    allPlayers.forEach((p) => {
+      if (!assignedBlockPlayerIds.has(p.id)) {
+        let targetGroup: number | undefined;
+        if (options?.designatedLeaderIds) {
+          const lIdx = options.designatedLeaderIds.indexOf(p.id);
+          if (lIdx !== -1 && lIdx < groupCount) {
+            targetGroup = lIdx + 1;
+          }
         }
-      } else {
-        gIdx--;
-        if (gIdx < 0) {
-          gIdx = 0;
-          forward = true;
-        }
+        blocks.push({
+          playerIds: [p.id],
+          targetGroup,
+        });
       }
     });
 
-    // 9. 최종 조장 확정
-    newGroups.forEach((g) => {
-      if (g.players.length > 0) {
-        if (!g.players.some((p) => p.isLeader)) {
-          g.players[0].isLeader = true;
-        }
-        const leader = g.players.find((p) => p.isLeader) || g.players[0];
-        g.leaderName = leader.name;
-      } else {
-        g.leaderName = '';
-      }
+    // 정렬 우선순위: 타겟 조 고정 블록 ➔ 대형 묶음 블록 ➔ 분리 제약 보유 블록
+    blocks.sort((a, b) => {
+      if (a.targetGroup !== undefined && b.targetGroup === undefined) return -1;
+      if (a.targetGroup === undefined && b.targetGroup !== undefined) return 1;
+      return b.playerIds.length - a.playerIds.length;
     });
+
+    // F. 백트래킹 제약 충족 검색 (Backtracking Constraint Solver)
+    const groupAssignments: string[][] = Array.from({ length: groupCount }, () => []);
+
+    const getTierWeight = (tier?: string) => (tier === 'ADVANCED' ? 3 : tier === 'BEGINNER' ? 1 : 2);
+    const getGroupTierSum = (groupIds: string[]): number => {
+      return groupIds.reduce((sum, id) => sum + getTierWeight(allPlayersMap.get(id)?.handicapTier), 0);
+    };
+    const getGroupFemaleCount = (groupIds: string[]): number => {
+      return groupIds.filter((id) => allPlayersMap.get(id)?.gender === 'F').length;
+    };
+
+    const solve = (bIdx: number, enforceSeparate: boolean): boolean => {
+      if (bIdx === blocks.length) return true;
+      const block = blocks[bIdx];
+
+      // 타겟 조가 지정된 경우
+      if (block.targetGroup !== undefined) {
+        const g = block.targetGroup - 1;
+        if (g >= 0 && g < groupCount) {
+          const cap = distribution[g] || 4;
+          if (groupAssignments[g].length + block.playerIds.length <= cap) {
+            if (!enforceSeparate || !hasSeparateConflictWithGroup(block.playerIds, groupAssignments[g])) {
+              groupAssignments[g].push(...block.playerIds);
+              if (solve(bIdx + 1, enforceSeparate)) return true;
+              groupAssignments[g].splice(groupAssignments[g].length - block.playerIds.length, block.playerIds.length);
+            }
+          }
+        }
+        return false;
+      }
+
+      // 후보 조 수집
+      const candidates: number[] = [];
+      for (let g = 0; g < groupCount; g++) {
+        const cap = distribution[g] || 4;
+        if (groupAssignments[g].length + block.playerIds.length <= cap) {
+          if (!enforceSeparate || !hasSeparateConflictWithGroup(block.playerIds, groupAssignments[g])) {
+            candidates.push(g);
+          }
+        }
+      }
+
+      // 소프트 제약 정렬 (실력 밸런스 / 성비 균등 / 랜덤 셔플)
+      if (options?.balanceTier || method === 'BALANCED_TIER') {
+        candidates.sort((a, b) => getGroupTierSum(groupAssignments[a]) - getGroupTierSum(groupAssignments[b]));
+      } else if (options?.balanceGender || method === 'BALANCED_GENDER') {
+        const hasFemale = block.playerIds.some((id) => allPlayersMap.get(id)?.gender === 'F');
+        candidates.sort((a, b) => {
+          if (hasFemale) {
+            return getGroupFemaleCount(groupAssignments[a]) - getGroupFemaleCount(groupAssignments[b]);
+          }
+          return groupAssignments[a].length - groupAssignments[b].length;
+        });
+      } else {
+        // 완전 무작위 셔플
+        for (let i = candidates.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
+      }
+
+      for (const g of candidates) {
+        groupAssignments[g].push(...block.playerIds);
+        if (solve(bIdx + 1, enforceSeparate)) return true;
+        groupAssignments[g].splice(groupAssignments[g].length - block.playerIds.length, block.playerIds.length);
+      }
+
+      return false;
+    };
+
+    // 1차 시도: 하드 제약(동반 묶음 + 절대 분리) 100% 엄격 적용
+    let solved = solve(0, true);
+    if (!solved) {
+      // 수학적으로 분리가 불가능한 극단적 입력 시 안전 폴백 (동반 묶음 유지, 분리 제약만 완화하여 전원 정상 배정)
+      for (let g = 0; g < groupCount; g++) groupAssignments[g] = [];
+      solved = solve(0, false);
+    }
+
+    // G. 최종 배정 결과를 조 객체에 반영
+    for (let g = 0; g < groupCount; g++) {
+      const assignedIds = groupAssignments[g];
+      const playersInGroup: ClubPlayer[] = [];
+
+      assignedIds.forEach((pid) => {
+        const p = allPlayersMap.get(pid);
+        if (p) {
+          playersInGroup.push({ ...p, isLeader: false });
+        }
+      });
+
+      // 조장 우선 지정 확인
+      let leaderAssigned = false;
+      if (options?.designatedLeaderIds && options.designatedLeaderIds[g]) {
+        const designatedId = options.designatedLeaderIds[g];
+        const leaderObj = playersInGroup.find((p) => p.id === designatedId);
+        if (leaderObj) {
+          leaderObj.isLeader = true;
+          leaderAssigned = true;
+          // 지정 조장은 1번 슬롯(index 0)으로 이동
+          const lIdx = playersInGroup.indexOf(leaderObj);
+          if (lIdx > 0) {
+            playersInGroup.splice(lIdx, 1);
+            playersInGroup.unshift(leaderObj);
+          }
+        }
+      }
+
+      if (!leaderAssigned && playersInGroup.length > 0) {
+        playersInGroup[0].isLeader = true;
+      }
+
+      newGroups[g].players = playersInGroup;
+      newGroups[g].leaderName = playersInGroup.find((p) => p.isLeader)?.name || playersInGroup[0]?.name || '';
+    }
 
     room.groups = newGroups;
     room.waitingPool = [];
@@ -728,6 +823,9 @@ export const ClubStorage = {
     }
 
     room.status = 'PLAYING';
+    room.groupingConfirmed = true;
+    room.groupingStatus = 'CONFIRMED';
+    room.waitingPool = [];
     this.saveRoom(room);
     await this.syncEventToSupabase(room);
 
@@ -748,6 +846,11 @@ export const ClubStorage = {
   }> {
     const room = this.getRoom(roomId);
     if (!room) return { success: false, holeInOneAlerts: [], updatedGroupsCount: 0 };
+
+    // 로컬 모의 라이브 룸은 불필요한 Supabase 원격 호출 방지 (404 에러 원천 차단)
+    if (roomId.includes('tourney-10p-live') || roomId.includes('live')) {
+      return { success: true, room, holeInOneAlerts: [], updatedGroupsCount: 0 };
+    }
 
     const holeInOneAlerts: { playerName: string; groupNumber: number; holeNumber: number }[] = [];
     let updatedGroupsCount = 0;
@@ -1303,11 +1406,20 @@ export const ClubStorage = {
           }
         }
 
-        // 파크골프 공식 백카운트(후반 10~18번홀 타수 합계) 산출
+        // 파크골프 공식 백카운트(18홀: 후반 10~18번홀 / 9홀: 후반 7~9번홀 타수 합계) 산출
         let backCountScore = 0;
-        for (let h = 10; h <= 18; h++) {
-          if (typeof p.scores[h] === 'number') {
-            backCountScore += p.scores[h];
+        const totalHoles = room.totalHoles || 18;
+        if (totalHoles <= 9) {
+          for (let h = 7; h <= 9; h++) {
+            if (typeof p.scores[h] === 'number') {
+              backCountScore += p.scores[h];
+            }
+          }
+        } else {
+          for (let h = 10; h <= 18; h++) {
+            if (typeof p.scores[h] === 'number') {
+              backCountScore += p.scores[h];
+            }
           }
         }
 

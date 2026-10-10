@@ -280,7 +280,7 @@ export default function ClubGatheringHomePage() {
   const [editTitle, setEditTitle] = useState('');
   const [editHostName, setEditHostName] = useState('');
   const [editTargetPlayers, setEditTargetPlayers] = useState<number>(16);
-  const [editStatus, setEditStatus] = useState<'RECRUITING' | 'PLAYING' | 'FINISHED'>('PLAYING');
+  const [editStatus, setEditStatus] = useState<'RECRUITING' | 'GROUPED' | 'PLAYING' | 'FINISHED'>('PLAYING');
   const [editEntryFee, setEditEntryFee] = useState<number>(10000);
   const [editBankAccount, setEditBankAccount] = useState('');
   const [editGameMode, setEditGameMode] = useState<'STROKE' | 'NEW_PERIO' | 'SCRAMBLE' | 'STABLEFORD' | 'CASUAL'>('NEW_PERIO');
@@ -8500,10 +8500,11 @@ ${shareUrl}`;
                 <label className="font-bold text-stone-700">{isJapanese ? '進行状態' : '진행 상태'}</label>
                 <select
                   value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value as 'RECRUITING' | 'PLAYING' | 'FINISHED')}
+                  onChange={(e) => setEditStatus(e.target.value as 'RECRUITING' | 'GROUPED' | 'PLAYING' | 'FINISHED')}
                   className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl font-bold"
                 >
                   <option value="RECRUITING">{isJapanese ? '⏳ 参加受付中' : '⏳ 참가 접수 중'}</option>
+                  <option value="GROUPED">{isJapanese ? '📢 組編成確定 (出発待機)' : '📢 조 편성 확정 (출발 대기)'}</option>
                   <option value="PLAYING">{isJapanese ? '⛳ ラウンド進行中' : '⛳ 실시간 라운드 중'}</option>
                   <option value="FINISHED">{isJapanese ? '🏁 競技終了 (結果確定)' : '🏁 경기 종료 (결과 확정)'}</option>
                 </select>

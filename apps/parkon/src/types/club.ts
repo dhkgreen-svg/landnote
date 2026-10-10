@@ -64,7 +64,9 @@ export interface ClubEventRoom {
   groups: ClubGroup[];
   waitingPool?: ClubPlayer[]; // 참가 신청 대기 명단 (조 편성 전)
   groupingMethod?: 'RANDOM' | 'BALANCED_GENDER' | 'BALANCED_TIER' | 'KEEP_LEADERS' | 'ASSIGN_LEADERS' | 'PARTIAL_ASSIGN' | 'MANUAL';
-  status: 'RECRUITING' | 'PLAYING' | 'FINISHED';
+  groupingStatus?: 'WAITING' | 'PREVIEW' | 'CONFIRMED'; // [1단계: WAITING / 2단계: PREVIEW / 3단계: CONFIRMED]
+  groupingConfirmed?: boolean; // 조 편성 최종 확정 및 전송 여부
+  status: 'RECRUITING' | 'GROUPED' | 'PLAYING' | 'FINISHED';
   createdAt: string;
 }
 

@@ -38,6 +38,19 @@ export function Header() {
   const [showLoginTip, setShowLoginTip] = useState(false);
   const [tipUserName, setTipUserName] = useState('');
 
+  const [urlUser, setUrlUser] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const u = new URLSearchParams(window.location.search).get('user');
+      if (u) return u;
+      const stored =
+        ParkOnStorage.getUserDisplayName() ||
+        ParkOnStorage.getUserProfile()?.userName ||
+        ParkOnStorage.getKakaoUser()?.realName;
+      if (stored) return stored;
+    }
+    return '';
+  });
+
   // 현재 라운딩 진행 중인 화면인지 여부 감지 (/round/[id] 등, /round/new 및 /round/result 제외)
   const isPlayingRound = Boolean(
     pathname?.startsWith('/round/') &&
@@ -46,11 +59,12 @@ export function Header() {
   );
 
   const rawDisplayName = mounted
-    ? (kakaoUser
+    ? (urlUser ||
+       (kakaoUser
         ? (kakaoUser.preferredDisplay === 'ALIAS'
             ? kakaoUser.aliasName || kakaoUser.realName
             : kakaoUser.realName || kakaoUser.nickname)
-        : (userProfile?.userName || '')) || ''
+        : (userProfile?.userName || '')) || '')
     : '';
 
   const hasRegisteredName = mounted && Boolean(
@@ -69,6 +83,12 @@ export function Header() {
   useEffect(() => {
     setMounted(true);
     const checkUser = () => {
+      if (typeof window !== 'undefined') {
+        const u = new URLSearchParams(window.location.search).get('user');
+        if (u) {
+          setUrlUser(u);
+        }
+      }
       setKakaoUser(ParkOnStorage.getKakaoUser());
       setUserProfile(ParkOnStorage.getUserProfile());
       setMemberCode(getSavedMemberCode());
@@ -180,11 +200,14 @@ export function Header() {
             </div>
           </Link>
 
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            {/* 👑 헤더 로그인/프로필 버튼 (미로그인 vs 로그인 원터치 심플화) */}
-            {!hasRegisteredName ? (
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0" suppressHydrationWarning>
+            {/* 👑 헤더 로그인/프로필 버튼 (하이드레이션 불일치 100% 원천 차단) */}
+            {!mounted ? (
+              <div className="h-7 sm:h-8 w-24 rounded-xl bg-emerald-800/50" suppressHydrationWarning />
+            ) : !hasRegisteredName ? (
               <button
                 type="button"
+                suppressHydrationWarning
                 onClick={() => handleOpenModal('login')}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-black bg-amber-400 hover:bg-amber-300 text-stone-950 shadow-sm border border-amber-500 transition active:scale-95 shrink-0 cursor-pointer"
                 title={isJapanese ? '会員番号または電話番号でログイン' : isEnglish ? 'Login / Find Records' : '8자리 고유번호 또는 전화번호로 1초 로그인'}
@@ -197,6 +220,7 @@ export function Header() {
             ) : (
               <button
                 type="button"
+                suppressHydrationWarning
                 onClick={() => handleOpenModal('profile')}
                 className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-black bg-emerald-800/90 hover:bg-emerald-900 text-amber-300 border border-amber-300/60 shadow-sm transition active:scale-95 shrink-0 cursor-pointer"
                 title={isJapanese ? `${currentDisplayName} 様 プロフィール・活動名切替` : isEnglish ? `${currentDisplayName} Profile & Name Switch` : `${currentDisplayName} 님 프로필 & 활동명 전환`}
