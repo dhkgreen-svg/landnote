@@ -28,6 +28,11 @@ export default function RoundPlayPage() {
   const roundId = params?.id as string;
   const { t, isJapanese, isEnglish } = useTranslation();
 
+  const [mounted, setMounted] = useState<boolean>(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [session, setSession] = useState<RoundSession | null>(() => {
     if (typeof window !== 'undefined') {
       const active = ParkOnStorage.getCurrentRound();
@@ -396,10 +401,17 @@ export default function RoundPlayPage() {
       const isSelf = searchUser
         ? Boolean(p.name && (p.name.trim().toLowerCase() === searchUser.toLowerCase() || p.name.toLowerCase().includes(searchUser.toLowerCase()) || searchUser.toLowerCase().includes(p.name.toLowerCase())))
         : (p.isSelf ?? (idx === 0));
+      let name = p.name;
       if (isSelf && !isSampleOrPlaceholder(currentSelfName) && p.name !== currentSelfName && !searchUser) {
-        return { ...p, name: currentSelfName, isSelf: true };
+        name = currentSelfName;
       }
-      return { ...p, isSelf };
+      return {
+        ...p,
+        name,
+        scores: p.scores || {},
+        obCount: p.obCount || {},
+        isSelf,
+      };
     });
     const sortedPlayers = sortPlayersByLeaderAndAlphabetical(syncedSelfPlayers);
     sanitizedSession = {
@@ -453,14 +465,12 @@ export default function RoundPlayPage() {
     };
     window.addEventListener('popstate', handlePopState);
 
-    // 탭 닫기 전 자동 저장 및 확인
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    // 탭 닫기 전 자동 저장
+    const handleBeforeUnload = () => {
       const current = ParkOnStorage.getCurrentRound();
       if (current) {
         ParkOnStorage.saveCurrentRound(current);
       }
-      e.preventDefault();
-      e.returnValue = '';
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
@@ -710,6 +720,8 @@ export default function RoundPlayPage() {
             : ip.isSelf;
           return {
             ...ip,
+            scores: ip.scores || {},
+            obCount: ip.obCount || {},
             isSelf: isMe,
           };
         });
@@ -869,10 +881,11 @@ export default function RoundPlayPage() {
     }
   }, [session, course, isJapanese]);
 
-  if (!session || !course) {
+  if (!mounted || !session || !course) {
     return (
-      <div className="p-8 text-center font-bold text-stone-500">
-        {isJapanese ? 'スコアボード読み込み中...' : '스코어보드 불러오는 중...'}
+      <div className="min-h-screen bg-stone-900 flex flex-col items-center justify-center p-6 text-center text-xs font-bold text-stone-300">
+        <div className="w-8 h-8 border-3 border-emerald-400 border-t-transparent rounded-full animate-spin mb-3" />
+        <p>{isJapanese ? 'スコアボード読み込み中...' : '파키 앱 - 스코어보드 불러오는 중...'}</p>
       </div>
     );
   }
@@ -896,6 +909,8 @@ export default function RoundPlayPage() {
       ? session.selectedHoleNumbers[currentHole - 1]
       : currentHole
   );
+
+  const isFirstHole = currentHole === 1;
 
   const currentHoleInfo = getHoleInfo(actualHoleNumber);
   const baseHoleNumber = currentHoleInfo.base;
@@ -984,7 +999,7 @@ export default function RoundPlayPage() {
       : `${seg.cLetter}코스`;
 
     const playerSummaries = session.players.map((p) => {
-      const strokes = confirmedInSeg.reduce((sum, h) => sum + (p.scores[h] || 0), 0);
+      const strokes = confirmedInSeg.reduce((sum, h) => sum + (p.scores?.[h] || 0), 0);
       const diff = strokes - segmentPar;
       const avgHole = playedCount > 0 ? (strokes / playedCount).toFixed(2) : '0.00';
 
@@ -994,7 +1009,7 @@ export default function RoundPlayPage() {
         const isVerified = Boolean(meta?.isVerified === true || meta?.contributedBy);
         const par = isVerified ? (Number(meta?.par) || 3) : 3;
         const isConfirmed = confirmedHoles.includes(hNum);
-        const s = isConfirmed ? p.scores[hNum] : undefined;
+        const s = isConfirmed ? p.scores?.[hNum] : undefined;
         const d = s !== undefined ? s - par : undefined;
         return {
           hNum,
@@ -1083,7 +1098,7 @@ export default function RoundPlayPage() {
   const overallPlayerRankings = session.players
     .map((p, idx) => {
       const pConfirmed = getPlayerConfirmedHoles(p);
-      const pStrokes = pConfirmed.reduce((sum, h) => sum + (p.scores[h] || 0), 0);
+      const pStrokes = pConfirmed.reduce((sum, h) => sum + (p.scores?.[h] || 0), 0);
       const pPar = pConfirmed.reduce((sum, h) => {
         const base = ((h - 1) % 1000) + 1;
         const meta = course.holesMetadata?.find((m) => Number(m.hole) === base);
@@ -1127,11 +1142,11 @@ export default function RoundPlayPage() {
     const updatedPlayers = session.players.map((p) => {
       if (p.id !== playerId || p.isOut) return p;
       const defaultStroke = countingMode === 'ZERO_BASE' ? 0 : currentPar;
-      const currentStrokes = p.scores[actualHoleNumber] ?? defaultStroke;
+      const currentStrokes = p.scores?.[actualHoleNumber] ?? defaultStroke;
       const minStroke = countingMode === 'ZERO_BASE' ? 0 : 1;
       const newStrokes = Math.max(minStroke, currentStrokes + delta);
 
-      const newScores = { ...p.scores, [actualHoleNumber]: newStrokes };
+      const newScores = { ...(p.scores || {}), [actualHoleNumber]: newStrokes };
       const totalStrokes = curConfirmed.reduce(
         (acc, hNum) => acc + (newScores[hNum] || 0),
         0
@@ -1171,11 +1186,11 @@ export default function RoundPlayPage() {
     const updatedPlayers = session.players.map((p) => {
       if (p.id !== playerId || p.isOut) return p;
       const defaultStroke = countingMode === 'ZERO_BASE' ? 0 : currentPar;
-      const currentStrokes = p.scores[actualHoleNumber] ?? defaultStroke;
-      const currentOb = p.obCount[actualHoleNumber] ?? 0;
+      const currentStrokes = p.scores?.[actualHoleNumber] ?? defaultStroke;
+      const currentOb = p.obCount?.[actualHoleNumber] ?? 0;
 
-      const newScores = { ...p.scores, [actualHoleNumber]: currentStrokes + 2 };
-      const newOb = { ...p.obCount, [actualHoleNumber]: currentOb + 1 };
+      const newScores = { ...(p.scores || {}), [actualHoleNumber]: currentStrokes + 2 };
+      const newOb = { ...(p.obCount || {}), [actualHoleNumber]: currentOb + 1 };
       const totalStrokes = curConfirmed.reduce(
         (acc, hNum) => acc + (newScores[hNum] || 0),
         0
@@ -1292,9 +1307,9 @@ export default function RoundPlayPage() {
     const updatedPlayers = session.players.map((p) => {
       if (p.isOut) return p;
       const defaultVal = countingMode === 'ZERO_BASE' ? 0 : currentPar;
-      const currentVal = p.scores[actualHoleNumber] ?? defaultVal;
-      const newScores = { ...p.scores, [actualHoleNumber]: currentVal };
-      const newOb = { ...p.obCount, [actualHoleNumber]: p.obCount[actualHoleNumber] ?? 0 };
+      const currentVal = p.scores?.[actualHoleNumber] ?? defaultVal;
+      const newScores = { ...(p.scores || {}), [actualHoleNumber]: currentVal };
+      const newOb = { ...(p.obCount || {}), [actualHoleNumber]: p.obCount?.[actualHoleNumber] ?? 0 };
       const totalStrokes = currentConfirmed.reduce(
         (sum, hNum) => sum + (newScores[hNum] || 0),
         0
@@ -1366,14 +1381,25 @@ export default function RoundPlayPage() {
     }
   };
 
-  // D. [ ✅ 확인(저장) ] 버튼 검증 로직 강화
+  // D. [ ✅ 확인(저장) ] 버튼 검증 로직 강화 (동반자 확인 피드백 + 조장 최종 확정)
   const handleConfirmHole = () => {
     if (!isCurrentUserLeader) {
       const leaderName = currentLeaderPlayer?.name || '조장';
+      // 동반자에게 즉각적인 만족감 및 타수 확인 피드백 부여 (햅틱 + 딩동 차임벨)
+      try {
+        playDingDong();
+      } catch (e) {}
+      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate?.(50);
+        } catch (e) {}
+      }
+      setConfirmedFeedback(true);
+      setTimeout(() => setConfirmedFeedback(false), 2000);
       setLeaderOnlyToast(
         isJapanese
-          ? `👑 ホールアウト確認は代表(${leaderName})のみ行えます。`
-          : `👑 점수 저장은 조장(${leaderName})님만 가능합니다.`
+          ? `✅ スコア確認完了！👍 (公式確定・次ホール移動は代表[${leaderName}]様が統括します)`
+          : `✅ 내 타수 확인 완료! 👍 (공식 기록 확정 및 다음 홀 이동은 조장[${leaderName}]님이 총괄합니다)`
       );
       setTimeout(() => setLeaderOnlyToast(null), 3000);
       return;
@@ -1383,7 +1409,7 @@ export default function RoundPlayPage() {
 
     // 현재 활성 상태인 모든 플레이어의 타수 및 휴식 상태 검증
     const warningList = session.players
-      .filter((p) => !p.isOut && (restingPlayerIds.includes(p.id) || p.scores[actualHoleNumber] === undefined || p.scores[actualHoleNumber] === null || p.scores[actualHoleNumber] === 0))
+      .filter((p) => !p.isOut && (restingPlayerIds.includes(p.id) || p.scores?.[actualHoleNumber] === undefined || p.scores?.[actualHoleNumber] === null || p.scores?.[actualHoleNumber] === 0))
       .map((p) => `${p.name}(${restingPlayerIds.includes(p.id) ? '휴식' : '미입력'})`)
       .join(', ');
 
@@ -1753,9 +1779,9 @@ export default function RoundPlayPage() {
 
     const updatedPlayers = session.players.map((p) => {
       const defaultVal = countingMode === 'ZERO_BASE' ? 0 : currentPar;
-      const currentVal = p.scores[actualHoleNumber] ?? defaultVal;
-      const newScores = { ...p.scores, [actualHoleNumber]: currentVal };
-      const newOb = { ...p.obCount, [actualHoleNumber]: p.obCount[actualHoleNumber] ?? 0 };
+      const currentVal = p.scores?.[actualHoleNumber] ?? defaultVal;
+      const newScores = { ...(p.scores || {}), [actualHoleNumber]: currentVal };
+      const newOb = { ...(p.obCount || {}), [actualHoleNumber]: p.obCount?.[actualHoleNumber] ?? 0 };
       const totalStrokes = currentConfirmed.reduce((sum, hNum) => sum + (newScores[hNum] || 0), 0);
       return {
         ...p,
@@ -1809,9 +1835,9 @@ export default function RoundPlayPage() {
 
     const updatedPlayers = session.players.map((p) => {
       const defaultVal = countingMode === 'ZERO_BASE' ? 0 : currentPar;
-      const currentVal = p.scores[actualHoleNumber] ?? defaultVal;
-      const newScores = { ...p.scores, [actualHoleNumber]: currentVal };
-      const newOb = { ...p.obCount, [actualHoleNumber]: p.obCount[actualHoleNumber] ?? 0 };
+      const currentVal = p.scores?.[actualHoleNumber] ?? defaultVal;
+      const newScores = { ...(p.scores || {}), [actualHoleNumber]: currentVal };
+      const newOb = { ...(p.obCount || {}), [actualHoleNumber]: p.obCount?.[actualHoleNumber] ?? 0 };
       const totalStrokes = currentConfirmed.reduce(
         (sum, hNum) => sum + (newScores[hNum] || 0),
         0
@@ -2614,67 +2640,86 @@ export default function RoundPlayPage() {
           {/* 2. 상단 로컬룰 주의 띠 (로컬룰 등록 시만 표시) */}
           <LocalRuleBanner hole={actualHoleNumber} localRule={holeMetadata.localRule} />
 
-          {/* 3. [최상단 배치] 단일 대형 버튼: [ 🏌️ 확인 완료 (티샷 시작) ] */}
+          {/* 3. [최상단 배치] 단일 대형 버튼: [ 🏌️ 확인 완료 (티샷 시작) ] (1번 홀은 누구나 시작 가능, 2번 홀부터는 조장 통제) */}
           <div className="pt-2 space-y-2.5">
-            <button
-              type="button"
-              onClick={() => {
-                lastLocalActionTimeRef.current = Date.now();
-                const nextStep: 'SCORING' = 'SCORING';
-                setHoleStep(nextStep);
-                const updated: RoundSession = {
-                  ...session,
-                  holeStep: nextStep,
-                  status: 'IN_PROGRESS',
-                  updatedAt: new Date().toISOString(),
-                };
-                updateSession(updated);
+            {isFirstHole || isCurrentUserLeader ? (
+              <button
+                type="button"
+                onClick={() => {
+                  lastLocalActionTimeRef.current = Date.now();
+                  const nextStep: 'SCORING' = 'SCORING';
+                  setHoleStep(nextStep);
+                  const updated: RoundSession = {
+                    ...session,
+                    holeStep: nextStep,
+                    status: 'IN_PROGRESS',
+                    updatedAt: new Date().toISOString(),
+                  };
+                  updateSession(updated);
 
-                if (typeof window !== 'undefined') {
-                  const effRoomId = session?.roomId || roundId || '';
-                  try {
-                    const bc = new BroadcastChannel('parkon_round_channel');
-                    bc.postMessage({
-                      type: 'TEE_SHOT_STARTED',
-                      roomId: effRoomId,
-                      roundId: updated.id,
-                      holeStep: 'SCORING',
-                      currentHole: updated.currentHole,
-                      session: updated,
-                    });
-                    bc.close();
-                  } catch (e) {}
+                  if (typeof window !== 'undefined') {
+                    const effRoomId = session?.roomId || roundId || '';
+                    try {
+                      const bc = new BroadcastChannel('parkon_round_channel');
+                      bc.postMessage({
+                        type: 'TEE_SHOT_STARTED',
+                        roomId: effRoomId,
+                        roundId: updated.id,
+                        holeStep: 'SCORING',
+                        currentHole: updated.currentHole,
+                        session: updated,
+                      });
+                      bc.close();
+                    } catch (e) {}
 
-                  try {
-                    if (updated.clubRoomId && updated.clubGroupNumber) {
-                      localStorage.setItem(
-                        `parkon_group_active_${updated.clubRoomId}_g${updated.clubGroupNumber}`,
-                        JSON.stringify({
-                          active: true,
-                          holeStep: 'SCORING',
-                          currentHole: updated.currentHole,
-                          roundId: updated.id,
-                          timestamp: Date.now(),
-                        })
-                      );
-                    }
-                  } catch (e) {}
-                }
+                    try {
+                      if (updated.clubRoomId && updated.clubGroupNumber) {
+                        localStorage.setItem(
+                          `parkon_group_active_${updated.clubRoomId}_g${updated.clubGroupNumber}`,
+                          JSON.stringify({
+                            active: true,
+                            holeStep: 'SCORING',
+                            currentHole: updated.currentHole,
+                            roundId: updated.id,
+                            timestamp: Date.now(),
+                          })
+                        );
+                      }
+                    } catch (e) {}
+                  }
 
-                if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-                  try { navigator.vibrate?.(50); } catch (e) {}
-                }
-              }}
-              className={`w-full h-16 rounded-2xl font-black text-lg sm:text-xl shadow-xl border-2 transition flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer ${
-                sunlightMode
-                  ? 'bg-yellow-400 text-black border-white ring-4 ring-yellow-400/40 hover:bg-yellow-300'
-                  : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white border-emerald-400 ring-4 ring-emerald-500/20 hover:from-emerald-500 hover:to-teal-500'
-              }`}
-            >
-              <span className="text-2xl">🏌️</span>
-              <span>{isCurrentUserLeader ? t.round.tee_shot_start : (isJapanese ? '確認完了 (ティーショット開始)' : '확인 완료 (티샷 시작)')}</span>
-              <ChevronRight className="w-6 h-6 ml-1" />
-            </button>
+                  if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+                    try { navigator.vibrate?.(50); } catch (e) {}
+                  }
+                }}
+                className={`w-full h-16 rounded-2xl font-black text-lg sm:text-xl shadow-xl border-2 transition flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer ${
+                  sunlightMode
+                    ? 'bg-yellow-400 text-black border-white ring-4 ring-yellow-400/40 hover:bg-yellow-300'
+                    : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white border-emerald-400 ring-4 ring-emerald-500/20 hover:from-emerald-500 hover:to-teal-500'
+                }`}
+              >
+                <span className="text-2xl">🏌️</span>
+                <span>
+                  {isCurrentUserLeader
+                    ? t.round.tee_shot_start
+                    : isFirstHole
+                    ? (isJapanese ? '確認完了 (ティーショット開始)' : '확인 완료 (티샷 시작)')
+                    : (isJapanese ? '確認完了 (ティーショット開始)' : '확인 완료 (티샷 시작)')}
+                </span>
+                <ChevronRight className="w-6 h-6 ml-1" />
+              </button>
+            ) : (
+              <div className="w-full py-4 px-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 text-amber-300 text-center flex flex-col items-center justify-center gap-1.5 shadow-lg animate-pulse">
+                <div className="flex items-center gap-2 font-black text-sm sm:text-base">
+                  <span>👑</span>
+                  <span>{currentLeaderPlayer?.name || '조장'}님이 티샷을 시작하면 자동으로 전환됩니다</span>
+                </div>
+                <div className="text-xs text-amber-400/80 flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  <span>실시간 동기화 대기 중 (코스 제원을 먼저 확인하세요)</span>
+                </div>
+              </div>
+            )}
 
             {/* 코스 공략 제공 (확인 완료 버튼 밑으로 배치): 스마트 2단계 및 고수 꿀팁 등록 연동 */}
             <TipCard
@@ -2876,13 +2921,13 @@ export default function RoundPlayPage() {
 
             {session.players.map((player, idx) => {
               const defaultStroke = countingMode === 'ZERO_BASE' ? 0 : currentPar;
-              const strokes = player.scores[actualHoleNumber] ?? defaultStroke;
-              const obCount = player.obCount[actualHoleNumber] ?? 0;
+              const strokes = player.scores?.[actualHoleNumber] ?? defaultStroke;
+              const obCount = player.obCount?.[actualHoleNumber] ?? 0;
               const isResting = restingPlayerIds.includes(player.id);
 
               // Cumulative strokes for this player based only on confirmed holes
               const pConfirmedHoles = getPlayerConfirmedHoles(player);
-              const pTotalStrokes = pConfirmedHoles.reduce((sum, hNum) => sum + (player.scores[hNum] || 0), 0);
+              const pTotalStrokes = pConfirmedHoles.reduce((sum, hNum) => sum + (player.scores?.[hNum] || 0), 0);
               const pTotalPar = pConfirmedHoles.reduce((sum, hNum) => {
                 const meta = activeHolesMetadata?.find((m) => Number(m.hole) === Number(hNum));
                 const isVerified = Boolean(meta?.isVerified === true || meta?.contributedBy);
@@ -3224,30 +3269,61 @@ export default function RoundPlayPage() {
               <span>{isEnglish ? 'Prev Hole' : isJapanese ? '前のホール' : '이전 홀'}</span>
             </button>
 
-            {/* 중앙: [ ✅ 확인 (저장) ] 버튼 (포인트 초록색, 중요도 강조 - 절대 유지) */}
+            {/* 중앙: [ ✅ 확인 (저장) ] 버튼 (조장은 공식 저장, 동반자는 내 타수 확인) */}
             <button
               type="button"
               onClick={handleConfirmHole}
-              className={`h-14 rounded-2xl font-black text-sm sm:text-base shadow-lg border-2 transition-colors flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
+              className={`h-14 rounded-2xl font-black text-xs sm:text-base shadow-lg border-2 transition-colors flex items-center justify-center gap-1 active:scale-95 cursor-pointer ${
                 confirmedFeedback
                   ? 'bg-amber-400 text-stone-950 border-amber-500 ring-2 ring-amber-400'
                   : 'bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-emerald-400 shadow-emerald-900/20 ring-2 ring-emerald-500/20'
               }`}
             >
               <CheckCircle2 className={`w-5 h-5 ${confirmedFeedback ? 'text-stone-950' : 'text-yellow-300'}`} />
-              <span>{confirmedFeedback ? '✅ 저장 완료!' : '✅ 확인 (저장)'}</span>
+              <span>
+                {isCurrentUserLeader
+                  ? (confirmedFeedback ? '✅ 저장 완료!' : '✅ 확인 (저장)')
+                  : (confirmedFeedback ? '✅ 확인 완료!' : '✅ 내 타수 확인')}
+              </span>
             </button>
 
-            {/* 우측: [ 다음 홀 이동 > ] 버튼 (진한 청록/민트) */}
-            <button
-              type="button"
-              onClick={handleNextHole}
-              className="h-14 rounded-2xl font-black text-sm sm:text-base shadow-lg border-2 transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer bg-gradient-to-r from-teal-700 via-teal-800 to-cyan-800 hover:from-teal-600 hover:to-cyan-700 text-white border-teal-400"
-            >
-              <span>{isJapanese ? '次のホール' : isEnglish ? 'Next Hole' : '다음 홀 이동'}</span>
-              <ChevronRight className="w-5 h-5" />
-            </button>
+            {/* 우측: [ 다음 홀 이동 > ] 버튼 (조장 전용 독점 권한, 동반자는 자동전환 안내) */}
+            {isCurrentUserLeader ? (
+              <button
+                type="button"
+                onClick={handleNextHole}
+                className="h-14 rounded-2xl font-black text-sm sm:text-base shadow-lg border-2 transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer bg-gradient-to-r from-teal-700 via-teal-800 to-cyan-800 hover:from-teal-600 hover:to-cyan-700 text-white border-teal-400"
+              >
+                <span>{isJapanese ? '次のホール' : isEnglish ? 'Next Hole' : '다음 홀 이동'}</span>
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  const leaderName = currentLeaderPlayer?.name || '조장';
+                  setLeaderOnlyToast(
+                    isJapanese
+                      ? `👑 次ホールへの移動は代表(${leaderName})のみ行えます。移動すると自動で切り替わります。`
+                      : `👑 다음 홀 이동은 조장(${leaderName})님 전용입니다. 조장이 이동하면 자동으로 함께 넘어갑니다!`
+                  );
+                  setTimeout(() => setLeaderOnlyToast(null), 3000);
+                }}
+                className="h-14 rounded-2xl font-black text-[11px] sm:text-xs shadow-md border-2 transition flex items-center justify-center gap-1 active:scale-95 cursor-pointer bg-stone-800/90 hover:bg-stone-800 text-amber-300 border-amber-500/50"
+              >
+                <span className="text-xs">🔒</span>
+                <span>{isJapanese ? '次ホール (自動)' : '다음 홀 (자동)'}</span>
+              </button>
+            )}
           </div>
+
+          {/* 동반자 전용 실시간 자동 동기화 안내 배지 */}
+          {!isCurrentUserLeader && (
+            <div className="py-2 px-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-center text-xs font-semibold flex items-center justify-center gap-1.5 mt-2 shadow-xs">
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>조장({currentLeaderPlayer?.name || '조장'})님이 다음 홀로 이동하면 자동으로 전환됩니다</span>
+            </div>
+          )}
 
           {/* [2. 실시간 스코어판 메인 버튼 (중앙 집중형: 너비 100%, 52px 이상, 다크 네이비 포인트)] */}
           <div className="pt-2">
@@ -4039,8 +4115,8 @@ export default function RoundPlayPage() {
               </div>
               {session.players.filter((p) => !p.isOut).map((p) => {
                 const defaultVal = countingMode === 'ZERO_BASE' ? 0 : currentPar;
-                const s = p.scores[actualHoleNumber] ?? defaultVal;
-                const ob = p.obCount[actualHoleNumber] ?? 0;
+                const s = p.scores?.[actualHoleNumber] ?? defaultVal;
+                const ob = p.obCount?.[actualHoleNumber] ?? 0;
                 const isRest = restingPlayerIds.includes(p.id);
                 return (
                   <div key={p.id} className="grid grid-cols-4 items-center text-center py-1 border-b border-stone-100 text-stone-900 font-extrabold">
@@ -4609,14 +4685,14 @@ export default function RoundPlayPage() {
                         <tbody className="divide-y divide-stone-100 font-medium">
                           {session.players.map((p) => {
                             const pScored = getPlayerConfirmedHoles(p);
-                            const pTotal = pScored.reduce((sum, hNum) => sum + (p.scores[hNum] || 0), 0);
+                            const pTotal = pScored.reduce((sum, hNum) => sum + (p.scores?.[hNum] || 0), 0);
                             return (
                               <tr key={p.id} className="hover:bg-stone-50">
                                 <td className="py-2 px-2 text-left font-black text-stone-800 text-[11px] truncate max-w-[70px]">
                                   {p.name}
                                 </td>
                                 {confirmedHoles.map((hNum) => {
-                                  const s = p.scores[hNum];
+                                  const s = p.scores?.[hNum];
                                   const isScored = s !== undefined && s > 0 && pScored.includes(hNum);
                                   const hInfo = getHoleInfo(hNum);
                                   const meta = course.holesMetadata?.find((m) => Number(m.hole) === hInfo.base);
@@ -4703,7 +4779,7 @@ export default function RoundPlayPage() {
               </div>
               <div className="pt-1 grid grid-cols-2 gap-1.5 text-[11px]">
                 {session.players.map((p) => {
-                  const strokes = (session.confirmedHoles || []).reduce((sum, h) => sum + (p.scores[h] || 0), 0);
+                  const strokes = (session.confirmedHoles || []).reduce((sum, h) => sum + (p.scores?.[h] || 0), 0);
                   return (
                     <div key={p.id} className="bg-white px-2 py-1.5 rounded-xl border border-stone-200/60 flex items-center justify-between font-bold shadow-2xs">
                       <span className="text-stone-700 truncate max-w-[70px]">{p.name}</span>
@@ -4807,7 +4883,7 @@ export default function RoundPlayPage() {
               <div className="pt-1 grid grid-cols-2 gap-1.5 text-[11px]">
                 {session.players.map((p) => {
                   const pConfirmed = getPlayerConfirmedHoles(p);
-                  const pStrokes = pConfirmed.reduce((sum, h) => sum + (p.scores[h] || 0), 0);
+                  const pStrokes = pConfirmed.reduce((sum, h) => sum + (p.scores?.[h] || 0), 0);
                   return (
                     <div key={p.id} className="bg-white px-2 py-1.5 rounded-xl border border-stone-200/60 flex items-center justify-between font-bold shadow-2xs">
                       <span className="text-stone-700 truncate max-w-[70px]">{p.name}</span>

@@ -2081,7 +2081,12 @@ export async function requestWakeLock(): Promise<boolean> {
 
 export function releaseWakeLock(): void {
   if (wakeLockSentinel) {
-    wakeLockSentinel.release();
+    try {
+      const p = wakeLockSentinel.release();
+      if (p && typeof p.catch === 'function') {
+        p.catch(() => {});
+      }
+    } catch {}
     wakeLockSentinel = null;
   }
 }
