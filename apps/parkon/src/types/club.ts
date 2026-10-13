@@ -50,6 +50,7 @@ export interface ClubEventRoom {
   targetTotalPlayers?: number; // 예상 정원 (자유 인원 시 선택 사항)
   entryFee?: number;   // [NEW] 1인 참가비 (예: 10000원, 0이면 무료)
   bankAccount?: string; // [NEW] 총무 입금 계좌 안내 (예: '농협 352-1234-5678-93 홍길동')
+  startMode?: 'SEQUENTIAL' | 'SHOTGUN'; // [NEW] 'SEQUENTIAL' (1번홀 순차 출발) | 'SHOTGUN' (전 홀 동시 분산 출발)
   gameMode?: 'STROKE' | 'NEW_PERIO' | 'SCRAMBLE' | 'STABLEFORD' | 'CASUAL'; // [NEW] 경기 방식
   gameModeTitle?: string; // [NEW] 경기 방식 표기명 (예: '신페리오 방식 (핸디캡 적용)')
   gameRuleNotes?: string; // [NEW] 대회 요강 및 로컬 룰 공시 (예: 'OB 시 2벌타 특설티, 컨시드 1클럽 샤프트')
@@ -66,6 +67,7 @@ export interface ClubEventRoom {
   groupingMethod?: 'RANDOM' | 'BALANCED_GENDER' | 'BALANCED_TIER' | 'KEEP_LEADERS' | 'ASSIGN_LEADERS' | 'PARTIAL_ASSIGN' | 'MANUAL';
   groupingStatus?: 'WAITING' | 'PREVIEW' | 'CONFIRMED'; // [1단계: WAITING / 2단계: PREVIEW / 3단계: CONFIRMED]
   groupingConfirmed?: boolean; // 조 편성 최종 확정 및 전송 여부
+  isAnnounced?: boolean; // [NEW] 대회 공식 공지 및 회원 초대장 발송 여부 (false = 총무 공지 준비 중 / 회원 초대 대기)
   status: 'RECRUITING' | 'GROUPED' | 'PLAYING' | 'FINISHED';
   createdAt: string;
 }

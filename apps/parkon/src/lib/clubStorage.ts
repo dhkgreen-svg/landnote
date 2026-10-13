@@ -172,6 +172,7 @@ export const ClubStorage = {
       name: string;
       gender?: 'M' | 'F';
       handicapTier?: 'ADVANCED' | 'INTERMEDIATE' | 'BEGINNER';
+      isGuest?: boolean;
     }
   ): ClubEventRoom | null {
     const room = this.getRoom(roomId);
@@ -191,19 +192,26 @@ export const ClubStorage = {
       return room;
     }
 
+    const isGuest =
+      player.isGuest ||
+      trimmed.includes('게스트') ||
+      trimmed.startsWith('guest');
+
+    const newPlayerId = isGuest
+      ? `guest_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`
+      : `wp_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 4)}`;
+
     const currentActiveCount =
       (room.groups?.reduce((acc, g) => acc + (g.players?.length || 0), 0) || 0) +
       room.waitingPool.filter((p) => !p.waitNumber).length;
-    const targetLimit = room.targetTotalPlayers || (room.groups?.length ? room.groups.length * 4 : 0);
 
-    let waitNumber: number | undefined = undefined;
-    if (targetLimit > 0 && currentActiveCount >= targetLimit) {
-      const currentWaitingCount = room.waitingPool.filter((p) => p.waitNumber).length;
-      waitNumber = currentWaitingCount + 1;
+    // 현장 게스트 또는 현장 인원 추가 시 대회 정원(targetTotalPlayers) 자동 확장 (10인 제한 초과 수용)
+    if (room.targetTotalPlayers && currentActiveCount >= room.targetTotalPlayers) {
+      room.targetTotalPlayers = currentActiveCount + 1;
     }
 
     const newPlayer: ClubPlayer = {
-      id: `wp_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 4)}`,
+      id: newPlayerId,
       name: trimmed,
       isLeader: false,
       scores: {},
@@ -212,7 +220,6 @@ export const ClubStorage = {
       holesCompleted: 0,
       gender: player.gender || 'M',
       handicapTier: player.handicapTier || 'INTERMEDIATE',
-      waitNumber,
     };
 
     room.waitingPool.push(newPlayer);
@@ -230,6 +237,13 @@ export const ClubStorage = {
     const wasRegular = target && !target.waitNumber;
 
     room.waitingPool = room.waitingPool.filter((p) => p.id !== playerId);
+
+    if (room.targetTotalPlayers && room.targetTotalPlayers > 10) {
+      const remainingCount =
+        room.waitingPool.length +
+        (room.groups?.reduce((a, g) => a + g.players.length, 0) || 0);
+      room.targetTotalPlayers = Math.max(10, remainingCount);
+    }
 
     // 정원 자리가 비었고 1순위 대기자가 있으면 자동 승격
     if (wasRegular) {
@@ -795,6 +809,9 @@ export const ClubStorage = {
       group.status = 'PLAYING';
       count++;
 
+      const isSequential = (room.startMode || 'SEQUENTIAL') === 'SEQUENTIAL';
+      const startHoleNum = isSequential ? 1 : (((group.groupNumber - 1) % 9) + 1);
+
       // Supabase round_rooms 테이블 일괄 레코드 생성 (오프라인 Fail-Safe)
       try {
         await supabase.from('round_rooms').upsert(
@@ -804,7 +821,7 @@ export const ClubStorage = {
             course_id: room.courseId,
             course_name: room.courseName,
             course_letter: group.startCourseLetter || 'A',
-            start_hole_index: 1,
+            start_hole_index: startHoleNum,
             player_count: group.players.length,
             players: group.players.map((p, pIdx) => ({
               id: p.id,
@@ -3560,7 +3577,7 @@ ${shareUrl}`;
       const leaderStr = g.leaderName
         ? (isJapanese ? ` (代表: ${g.leaderName})` : ` (조장: ${g.leaderName})`)
         : '';
-      const startHoleRaw = this.getGroupStartHole(gIdx, room.selectedCourseLetters, g.startCourseLetter);
+      const startHoleRaw = this.getGroupStartHole(gIdx, room.selectedCourseLetters, g.startCourseLetter, room.startMode);
       const startHoleStr = isJapanese
         ? `[🚩 ${startHoleRaw.replace('홀', '番H')} 出発]`
         : `[🚩 ${startHoleRaw} 티샷]`;
@@ -3575,9 +3592,18 @@ ${shareUrl}`;
     return text;
   },
 
-  // [대표님 지시] 50개 조 이상 대규모 샷건 출발 홀 자동 순환 분배 계산
-  getGroupStartHole(groupIndex: number, roomCourseLetters?: string[], groupStartCourseLetter?: string): string {
+  // [대표님 지시] 순차 출발(1번홀 통일) vs 샷건 출발(전 홀 분산) 자동 순환 분배 계산
+  getGroupStartHole(
+    groupIndex: number,
+    roomCourseLetters?: string[],
+    groupStartCourseLetter?: string,
+    startMode?: 'SEQUENTIAL' | 'SHOTGUN'
+  ): string {
     const letters = roomCourseLetters && roomCourseLetters.length > 0 ? roomCourseLetters : ['A', 'B'];
+    if (startMode === 'SEQUENTIAL') {
+      const firstLetter = letters[0] || 'A';
+      return `${firstLetter}-1홀 (순차 대기)`;
+    }
     const totalPhysicalHoles = letters.length * 9;
     const holeOffset = groupIndex % totalPhysicalHoles;
     const courseIndex = Math.floor(holeOffset / 9);

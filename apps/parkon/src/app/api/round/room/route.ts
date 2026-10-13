@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { saveCompletedRoundForAllPlayers } from '@/lib/serverMemberSync';
 
 interface RoomPlayer {
   id: string;
@@ -422,6 +423,18 @@ export async function POST(req: NextRequest) {
       }
 
       await saveRoom(room);
+
+      // 동반자 오프라인 상태에서도 최종 기록 영구 보존:
+      // 라운드가 종료된 경우(action === 'finish' 또는 status === 'COMPLETED'),
+      // 조에 속한 동반자 전원의 계정에 공식 스코어카드를 클라우드/서버에 100% 영구 누적 저장!
+      if (action === 'finish' || roundSession?.status === 'COMPLETED' || room.status === 'COMPLETED') {
+        try {
+          await saveCompletedRoundForAllPlayers(roundSession || room.roundSession);
+        } catch (syncErr) {
+          console.warn('Failed to save completed round for all players:', syncErr);
+        }
+      }
+
       return NextResponse.json({ success: true, room });
     }
 

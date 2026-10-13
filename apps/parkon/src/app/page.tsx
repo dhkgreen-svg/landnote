@@ -307,6 +307,55 @@ export default function HomePage() {
         setActiveRound(null);
       }
 
+      // [Task 2] 동반자 재접속 시 상태 즉시 복원 (Hot-Rejoin) 및 무손실 세션 동기화:
+      // 서버 최신 룸을 조회하여 현재 사용자가 참여 중인 진행 라운드가 있는지 확인
+      fetch('/api/round/room?roomId=latest')
+        .then((res) => res.json())
+        .then((data) => {
+          if (!data.success || !data.room) return;
+          const room = data.room;
+          const searchUser = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('user')?.trim() : '';
+          const rawName = ParkOnStorage.getUserDisplayName();
+          const localName = typeof localStorage !== 'undefined' ? localStorage.getItem('parkon_player_name')?.trim() : '';
+          const localCode = typeof localStorage !== 'undefined' ? localStorage.getItem('parkon_member_code')?.trim() : '';
+          const myName = searchUser || (rawName && rawName !== '플레이어' ? rawName : '') || localName || '';
+
+          const isPlayerInRoom = (room.players || []).some((p: any) =>
+            (localCode && p.id === localCode) ||
+            (myName && p.name && (p.name.trim().toLowerCase() === myName.toLowerCase() || p.name.includes(myName) || myName.includes(p.name)))
+          );
+
+          if (isPlayerInRoom && room.roundSession) {
+            if (room.status === 'STARTED' || room.roundSession.status === 'IN_PROGRESS') {
+              const mergedForMe = {
+                ...room.roundSession,
+                roomId: room.roomId,
+                players: (room.roundSession.players || []).map((p: any) => ({
+                  ...p,
+                  isSelf: Boolean((localCode && p.id === localCode) || (myName && p.name === myName)),
+                })),
+              };
+              ParkOnStorage.saveCurrentRound(mergedForMe);
+              setActiveRound(mergedForMe);
+            } else if (room.status === 'COMPLETED' || room.roundSession.status === 'COMPLETED') {
+              // 이미 종료된 라운드라면 내 로컬 완주 기록에 안전 병합
+              const existing = ParkOnStorage.getCompletedRounds();
+              if (!existing.some((r) => r.id === room.roundSession.id)) {
+                const finishedForMe = {
+                  ...room.roundSession,
+                  players: (room.roundSession.players || []).map((p: any) => ({
+                    ...p,
+                    isSelf: Boolean((localCode && p.id === localCode) || (myName && p.name === myName)),
+                  })),
+                };
+                ParkOnStorage.saveCompletedRound(finishedForMe);
+                setCompletedRounds(ParkOnStorage.getCompletedRounds());
+              }
+            }
+          }
+        })
+        .catch(() => {});
+
       const completed = ParkOnStorage.getCompletedRounds();
       setCompletedRounds(completed);
       const kUser = ParkOnStorage.getKakaoUser();
@@ -1083,7 +1132,7 @@ export default function HomePage() {
                 <span>{isJapanese ? '終了' : isEnglish ? 'End' : '끝내기'}</span>
               </button>
               <Link
-                href={`/round/${activeRound.id}`}
+                href={activeRound.roomId ? `/round/${activeRound.id}?roomId=${encodeURIComponent(activeRound.roomId)}` : `/round/${activeRound.id}`}
                 className="bg-stone-900 hover:bg-stone-800 text-amber-300 font-black px-3 py-1.5 rounded-lg text-xs shadow-md transition active:scale-95 flex items-center gap-1 border border-stone-800 cursor-pointer"
               >
                 <span>{isJapanese ? '再開' : isEnglish ? 'Resume' : '이어하기'}</span>

@@ -2062,12 +2062,15 @@ export const ParkOnStorage = {
   },
 };
 
-// WakeLock Safeguard (화면 꺼짐 방지)
+// WakeLock Safeguard (화면 꺼짐 방지 & 보안 락 즉시 복구 & 15분 미조작 안전 타이머)
 let wakeLockSentinel: any = null;
 
 export async function requestWakeLock(): Promise<boolean> {
   if (typeof window === 'undefined' || !('wakeLock' in navigator)) return false;
   try {
+    if (wakeLockSentinel && !wakeLockSentinel.released) {
+      return true;
+    }
     wakeLockSentinel = await (navigator as any).wakeLock.request('screen');
     wakeLockSentinel.addEventListener('release', () => {
       wakeLockSentinel = null;
@@ -2089,4 +2092,116 @@ export function releaseWakeLock(): void {
     } catch {}
     wakeLockSentinel = null;
   }
+
+  // 화면이 내려가거나 백그라운드 전환 시 풀스크린 즉시 해제 (기기 자체 절전/잠금 타이머 신속 복구)
+  if (typeof document !== 'undefined' && document.fullscreenElement) {
+    try {
+      document.exitFullscreen().catch(() => {});
+    } catch {}
+  }
+}
+
+export function isWakeLockActive(): boolean {
+  return Boolean(wakeLockSentinel && !wakeLockSentinel.released);
+}
+
+/**
+ * 라운드 화면 꺼짐 방지(Wake Lock), 앱 이탈 시 즉시 기기 락 복구 및 15분 안전 타이머 가드
+ * 1. 라운드 진행 중 화면 상시 켜짐 유지
+ * 2. 홈 버튼 터치, 타 앱 전환, 탭 닫기, 백그라운드 전환(hidden/blur/pagehide) 즉시 Wake Lock 해제 및 풀스크린 해제 -> OS 원래 잠금/절전 타이머 복구
+ * 3. 15분간 터치 인터랙션이 전혀 없으면 Wake Lock 강제 해제 -> 분실 대비 절전 모드 자동 진입
+ */
+export function setupRoundWakeLockGuard(options?: {
+  onStatusChange?: (active: boolean) => void;
+  inactivityLimitMs?: number; // 기본 15분 (900,000ms)
+}): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  const timeoutMs = options?.inactivityLimitMs ?? (15 * 60 * 1000);
+  let inactivityTimer: any = null;
+  let isEnabled = true;
+  let isTimedOut = false;
+
+  const acquire = async () => {
+    if (!isEnabled || isTimedOut) return false;
+    const ok = await requestWakeLock();
+    options?.onStatusChange?.(ok);
+    return ok;
+  };
+
+  const release = () => {
+    releaseWakeLock();
+    options?.onStatusChange?.(false);
+  };
+
+  const resetInactivityTimer = () => {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+
+    // 15분 타임아웃 상태에서 사용자가 다시 화면을 터치/조작하면 Wake Lock 즉시 재가동!
+    if (isTimedOut) {
+      isTimedOut = false;
+      acquire();
+    }
+
+    inactivityTimer = setTimeout(() => {
+      // 15분간 인터랙션이 전혀 없으면 Wake Lock 해제 -> OS 절전 모드 진입 유도
+      isTimedOut = true;
+      release();
+    }, timeoutMs);
+  };
+
+  // 1. 초기 획득 및 15분 타이머 가동
+  acquire();
+  resetInactivityTimer();
+
+  // 2. 파키앱 내리기/이탈 시 즉각적인 기기 락 복구 (document.visibilityState === 'hidden' 또는 blur/pagehide)
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'hidden') {
+      release();
+    } else if (document.visibilityState === 'visible') {
+      resetInactivityTimer();
+      acquire();
+    }
+  };
+
+  const handleBlur = () => {
+    release();
+  };
+
+  const handleFocus = () => {
+    resetInactivityTimer();
+    acquire();
+  };
+
+  const handlePageHide = () => {
+    release();
+  };
+
+  // 3. 미조작 감지 리셋 이벤트 목록 (터치/클릭/스크롤/키입력)
+  const interactionEvents = ['pointerdown', 'touchstart', 'mousedown', 'keydown', 'scroll'];
+  const handleInteraction = () => {
+    resetInactivityTimer();
+  };
+
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  window.addEventListener('blur', handleBlur);
+  window.addEventListener('focus', handleFocus);
+  window.addEventListener('pagehide', handlePageHide);
+
+  interactionEvents.forEach((evt) => {
+    window.addEventListener(evt, handleInteraction, { passive: true });
+  });
+
+  return () => {
+    isEnabled = false;
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    release();
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('blur', handleBlur);
+    window.removeEventListener('focus', handleFocus);
+    window.removeEventListener('pagehide', handlePageHide);
+    interactionEvents.forEach((evt) => {
+      window.removeEventListener(evt, handleInteraction);
+    });
+  };
 }

@@ -3,8 +3,8 @@ import { ClubEventRoom, ClubPlayer, ClubGroup } from '@/types/club';
 
 // 10인 모의 정기전 데이터
 const MEMBERS = [
-  { id: 'mem_1', name: '김총무(조장1)', role: 'MANAGER', gender: 'M' as const },
-  { id: 'mem_2', name: '강호동', role: 'MEMBER', gender: 'M' as const },
+  { id: 'mem_1', name: '김총무', role: 'MANAGER', gender: 'M' as const },
+  { id: 'mem_2', name: '강호동(조장1)', role: 'MEMBER', gender: 'M' as const },
   { id: 'mem_3', name: '유재석', role: 'MEMBER', gender: 'M' as const },
   { id: 'mem_4', name: '송지효', role: 'MEMBER', gender: 'F' as const },
   { id: 'mem_5', name: '하동훈(조장2)', role: 'MEMBER', gender: 'M' as const },
@@ -25,7 +25,7 @@ function getRoomStateForStep(step: number): ClubEventRoom {
     title: '2026 가을맞이 클럽 10인 친선 정기전',
     courseId: 'course-gumi-dongrak',
     courseName: '구미 동락 파크골프장 A코스',
-    hostName: '김총무(조장1)',
+    hostName: '김총무',
     selectedCourseLetters: ['A'],
     totalHoles: 9,
     targetTotalPlayers: 10,
@@ -41,12 +41,24 @@ function getRoomStateForStep(step: number): ClubEventRoom {
     createdAt: '2026-10-09T21:40:00.000Z'
   };
 
+  if (step === 0) {
+    // [0단계: 대회 공지 전 (초안 상태) - 회원들은 초대 미수신 대기 상태]
+    baseRoom.isAnnounced = false;
+    baseRoom.waitingPool = [];
+    baseRoom.groups = [];
+    baseRoom.groupingStatus = 'WAITING';
+    baseRoom.groupingConfirmed = false;
+    baseRoom.status = 'RECRUITING';
+    return baseRoom;
+  }
+
   if (step === 1) {
-    // [1단계: 모집/출석 확인] (10명 전원 출석 대기실 입장, 아직 조 번호 없음)
-    baseRoom.waitingPool = MEMBERS.map((m, idx) => ({
+    // [1단계: 모집/출석 확인] (대회 공지 완료 상태)
+    baseRoom.isAnnounced = true;
+    baseRoom.waitingPool = MEMBERS.map((m) => ({
       id: m.id,
       name: m.name,
-      isLeader: idx === 0,
+      isLeader: m.name.includes('조장'),
       scores: {},
       totalStrokes: 0,
       parDiff: 0,
@@ -62,10 +74,10 @@ function getRoomStateForStep(step: number): ClubEventRoom {
   }
 
   // 3개 조 구성 (1조 4인, 2조 3인, 3조 3인)
-  const group1Players: ClubPlayer[] = MEMBERS.slice(0, 4).map((m, idx) => ({
+  const group1Players: ClubPlayer[] = MEMBERS.slice(0, 4).map((m) => ({
     id: m.id,
     name: m.name,
-    isLeader: idx === 0,
+    isLeader: m.name.includes('강호동'),
     scores: {},
     totalStrokes: 0,
     parDiff: 0,
@@ -74,10 +86,10 @@ function getRoomStateForStep(step: number): ClubEventRoom {
     handicapTier: 'INTERMEDIATE'
   }));
 
-  const group2Players: ClubPlayer[] = MEMBERS.slice(4, 7).map((m, idx) => ({
+  const group2Players: ClubPlayer[] = MEMBERS.slice(4, 7).map((m) => ({
     id: m.id,
     name: m.name,
-    isLeader: idx === 0,
+    isLeader: m.name.includes('하동훈'),
     scores: {},
     totalStrokes: 0,
     parDiff: 0,
@@ -86,10 +98,10 @@ function getRoomStateForStep(step: number): ClubEventRoom {
     handicapTier: 'INTERMEDIATE'
   }));
 
-  const group3Players: ClubPlayer[] = MEMBERS.slice(7, 10).map((m, idx) => ({
+  const group3Players: ClubPlayer[] = MEMBERS.slice(7, 10).map((m) => ({
     id: m.id,
     name: m.name,
-    isLeader: idx === 0,
+    isLeader: m.name.includes('서장훈'),
     scores: {},
     totalStrokes: 0,
     parDiff: 0,
@@ -99,9 +111,9 @@ function getRoomStateForStep(step: number): ClubEventRoom {
   }));
 
   const groups: ClubGroup[] = [
-    { groupNumber: 1, name: '1조 (4인)', startCourseLetter: 'A', leaderName: group1Players[0].name, players: group1Players, status: 'WAITING' },
-    { groupNumber: 2, name: '2조 (3인)', startCourseLetter: 'A', leaderName: group2Players[0].name, players: group2Players, status: 'WAITING' },
-    { groupNumber: 3, name: '3조 (3인)', startCourseLetter: 'A', leaderName: group3Players[0].name, players: group3Players, status: 'WAITING' }
+    { groupNumber: 1, name: '1조 (4인)', startCourseLetter: 'A', leaderName: '강호동(조장1)', players: group1Players, status: 'WAITING' },
+    { groupNumber: 2, name: '2조 (3인)', startCourseLetter: 'A', leaderName: '하동훈(조장2)', players: group2Players, status: 'WAITING' },
+    { groupNumber: 3, name: '3조 (3인)', startCourseLetter: 'A', leaderName: '서장훈(조장3)', players: group3Players, status: 'WAITING' }
   ];
 
   baseRoom.groups = groups;
@@ -178,9 +190,9 @@ export async function GET(req: NextRequest) {
 
   let entry = liveMap.get(id);
 
-  if (stepParam) {
+  if (stepParam !== null && stepParam !== undefined) {
     const stepNum = parseInt(stepParam, 10);
-    if (!isNaN(stepNum) && stepNum >= 1 && stepNum <= 5) {
+    if (!isNaN(stepNum) && stepNum >= 0 && stepNum <= 5) {
       const room = getRoomStateForStep(stepNum);
       entry = { room, step: stepNum };
       liveMap.set(id, entry);
@@ -189,9 +201,9 @@ export async function GET(req: NextRequest) {
   }
 
   if (!entry) {
-    // 기본적으로 1단계 상태로 시작
-    const room = getRoomStateForStep(1);
-    entry = { room, step: 1 };
+    // 기본적으로 0단계(대회 공지 전 / 초대 대기) 상태로 시작
+    const room = getRoomStateForStep(0);
+    entry = { room, step: 0 };
     liveMap.set(id, entry);
   }
 
@@ -213,31 +225,59 @@ export async function POST(req: NextRequest) {
       entry.room.status = 'PLAYING';
       entry.room.groupingStatus = 'CONFIRMED';
       entry.room.groupingConfirmed = true;
+      if (body.startMode) {
+        entry.room.startMode = body.startMode;
+      }
       if (body.groups && body.groups.length > 0) {
         entry.room.groups = body.groups;
         entry.room.waitingPool = [];
       }
+      // ⚠️ 대표님 절대 원칙: 대회 시작 시 모든 조는 일단 대기(WAITING) 상태로 시작하며,
+      // 각 조의 조장이 [우리 조 스코어보드 입장]을 누른 조만 순차적으로 PLAYING으로 전환된다!
       entry.room.groups.forEach((g) => {
-        g.status = 'PLAYING';
+        g.status = 'WAITING';
       });
-      entry.step = 4;
+      entry.step = 3;
       liveMap.set(roomId, entry);
-      return NextResponse.json({ success: true, room: entry.room, message: '경기 시작 전 조 출발 확정!' });
+      return NextResponse.json({ success: true, room: entry.room, message: '대회 출발 준비 완료! 전 조 대기실 가동' });
     }
 
-    if (body.action === 'CONFIRM_GROUPING') {
+    if (body.action === 'START_GROUP_ROUND') {
       let entry = liveMap.get(roomId);
       if (!entry) {
         const room = getRoomStateForStep(3);
         entry = { room, step: 3 };
       }
-      entry.room.groupingStatus = 'CONFIRMED';
-      entry.room.groupingConfirmed = true;
-      entry.room.status = 'GROUPED';
-      if (body.groups && body.groups.length > 0) {
+      const grp = entry.room.groups.find((g) => g.groupNumber === body.groupNumber);
+      if (grp) {
+        grp.status = 'PLAYING';
+        (grp as any).startedAt = body.startedAt || Date.now();
+      }
+      liveMap.set(roomId, entry);
+      return NextResponse.json({ success: true, room: entry.room, message: `${body.groupNumber}조 경기 시작!` });
+    }
+
+    if (body.action === 'CONFIRM_GROUPING') {
+      let entry = liveMap.get(roomId);
+      if (!entry || !entry.room || !entry.room.groups || entry.room.groups.length === 0 || !body.groups) {
+        const freshRoom = getRoomStateForStep(3);
+        entry = { room: freshRoom, step: 3 };
+      } else if (body.groups && body.groups.length > 0) {
         entry.room.groups = body.groups;
         entry.room.waitingPool = [];
       }
+      entry.room.groupingStatus = 'CONFIRMED';
+      entry.room.groupingConfirmed = true;
+      entry.room.status = 'GROUPED';
+      if (body.startMode) {
+        entry.room.startMode = body.startMode;
+      }
+
+      // ⚠️ 대표님 절대 원칙: 모든 조는 대기(WAITING) 상태로 시작!
+      entry.room.groups.forEach((g) => {
+        g.status = 'WAITING';
+        delete (g as any).startedAt;
+      });
       entry.step = 3;
       liveMap.set(roomId, entry);
       return NextResponse.json({ success: true, room: entry.room, message: '조 편성 확정 및 회원들에게 전송 완료!' });
@@ -255,9 +295,100 @@ export async function POST(req: NextRequest) {
         entry.room.groups = body.groups;
         entry.room.waitingPool = [];
       }
+      if (body.startMode) {
+        entry.room.startMode = body.startMode;
+      }
       entry.step = 2;
       liveMap.set(roomId, entry);
       return NextResponse.json({ success: true, room: entry.room, message: '가편성 결과 생성 완료' });
+    }
+
+    if (body.action === 'RESET_TO_STAGE0') {
+      const room = getRoomStateForStep(0);
+      liveMap.set(roomId, { room, step: 0 });
+      return NextResponse.json({ success: true, room, message: '대회 공지 전(초기 초대 대기) 상태로 초기화되었습니다.' });
+    }
+
+    if (body.action === 'ANNOUNCE_TOURNAMENT') {
+      let entry = liveMap.get(roomId);
+      if (!entry) {
+        const room = getRoomStateForStep(0);
+        entry = { room, step: 0 };
+      }
+      entry.room.isAnnounced = true;
+      if (body.title) entry.room.title = body.title;
+      if (body.courseName) entry.room.courseName = body.courseName;
+      if (!entry.room.waitingPool) entry.room.waitingPool = [];
+      // 총무(김총무) 자동 참가
+      if (!entry.room.waitingPool.some((p: any) => p.name === '김총무')) {
+        entry.room.waitingPool.push({
+          id: 'mem_1',
+          name: '김총무',
+          isLeader: true,
+          scores: {},
+          totalStrokes: 0,
+          parDiff: 0,
+          holesCompleted: 0,
+          gender: 'M',
+          handicapTier: 'INTERMEDIATE'
+        });
+      }
+      entry.step = 1;
+      liveMap.set(roomId, entry);
+      return NextResponse.json({ success: true, room: entry.room, message: '대회가 공식 공지되고 클럽원들에게 초대장이 전송되었습니다!' });
+    }
+
+    if (body.action === 'JOIN_TOURNAMENT') {
+      let entry = liveMap.get(roomId);
+      if (!entry) {
+        const room = getRoomStateForStep(1);
+        entry = { room, step: 1 };
+      }
+      if (!entry.room.waitingPool) entry.room.waitingPool = [];
+
+      const userName = (body.userName || body.name || '').trim();
+      const existing = entry.room.waitingPool.find((p: any) => p.name === userName);
+      if (!existing && userName) {
+        const predefined = MEMBERS.find((m) => m.name.startsWith(userName) || userName.startsWith(m.name));
+        const newPlayer: ClubPlayer = {
+          id: predefined?.id || `p_${Date.now()}`,
+          name: userName,
+          isLeader: predefined ? predefined.name.includes('조장') : false,
+          scores: {},
+          totalStrokes: 0,
+          parDiff: 0,
+          holesCompleted: 0,
+          gender: predefined?.gender || 'M',
+          handicapTier: 'INTERMEDIATE'
+        };
+        entry.room.waitingPool.push(newPlayer);
+      }
+      entry.step = 1;
+      liveMap.set(roomId, entry);
+      return NextResponse.json({ success: true, room: entry.room, message: `${userName} 님 참가 신청 완료!` });
+    }
+
+    if (body.action === 'ACCEPT_ALL_INVITES') {
+      let entry = liveMap.get(roomId);
+      if (!entry) {
+        const room = getRoomStateForStep(1);
+        entry = { room, step: 1 };
+      }
+      entry.room.isAnnounced = true;
+      entry.room.waitingPool = MEMBERS.map((m) => ({
+        id: m.id,
+        name: m.name,
+        isLeader: m.name.includes('조장'),
+        scores: {},
+        totalStrokes: 0,
+        parDiff: 0,
+        holesCompleted: 0,
+        gender: m.gender,
+        handicapTier: 'INTERMEDIATE'
+      }));
+      entry.step = 1;
+      liveMap.set(roomId, entry);
+      return NextResponse.json({ success: true, room: entry.room, message: '클럽원 9명이 전원 초대장을 수락하고 출석을 완료했습니다!' });
     }
 
     if (body.action === 'RESET_TO_STAGE1') {
@@ -272,9 +403,23 @@ export async function POST(req: NextRequest) {
         const room = getRoomStateForStep(1);
         entry = { room, step: 1 };
       }
-      const guestName = body.name || `게스트${(entry.room.waitingPool?.length || 0) + 1}`;
+      if (!entry.room.waitingPool) entry.room.waitingPool = [];
+
+      let rawName = (body.name || '').trim();
+      if (!rawName || rawName === '게스트' || rawName === 'ゲスト') {
+        const existingGuestCount = entry.room.waitingPool.filter((p: any) => p.name.includes('게스트') || p.name.includes('ゲスト')).length;
+        rawName = `게스트 ${existingGuestCount + 1}`;
+      }
+
+      let guestName = rawName;
+      let counter = 2;
+      while (entry.room.waitingPool.some((p: any) => p.name === guestName)) {
+        guestName = `${rawName} (${counter})`;
+        counter++;
+      }
+
       const newGuest: ClubPlayer = {
-        id: `guest_${Date.now()}`,
+        id: `guest_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         name: guestName,
         isLeader: false,
         scores: {},
@@ -284,10 +429,35 @@ export async function POST(req: NextRequest) {
         gender: body.gender || 'M',
         handicapTier: body.handicapTier || 'INTERMEDIATE'
       };
-      if (!entry.room.waitingPool) entry.room.waitingPool = [];
+
       entry.room.waitingPool.push(newGuest);
+      entry.room.targetTotalPlayers = Math.max(10, entry.room.waitingPool.length);
       liveMap.set(roomId, entry);
       return NextResponse.json({ success: true, room: entry.room, message: `${guestName} 님이 출석 대기실에 추가되었습니다.` });
+    }
+
+    if (body.action === 'REMOVE_GUEST') {
+      let entry = liveMap.get(roomId);
+      if (!entry) {
+        const room = getRoomStateForStep(1);
+        entry = { room, step: 1 };
+      }
+      if (entry.room.waitingPool) {
+        entry.room.waitingPool = entry.room.waitingPool.filter(
+          (p: any) => p.id !== body.playerId && p.name !== body.playerName && p.name !== body.name
+        );
+      }
+      entry.room.targetTotalPlayers = Math.max(10, entry.room.waitingPool?.length || 0);
+      liveMap.set(roomId, entry);
+      return NextResponse.json({ success: true, room: entry.room, message: '참가자 명단에서 제외되었습니다.' });
+    }
+
+    if (body.action === 'SYNC_ROOM' && body.room) {
+      let entry = liveMap.get(roomId);
+      const currentStep = entry ? entry.step : 1;
+      entry = { room: body.room, step: currentStep };
+      liveMap.set(roomId, entry);
+      return NextResponse.json({ success: true, room: entry.room });
     }
 
     if (body.action === 'RECORD_HOLE') {
