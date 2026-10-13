@@ -55,6 +55,7 @@ import { PILGRIMAGE_COURSES, PilgrimageStorage, PilgrimageCourse } from '@/lib/p
 import { PilgrimageDetailModal } from '@/components/PilgrimageDetailModal';
 import { RoundScoreboardModal } from '@/components/RoundScoreboardModal';
 import { RestaurantStorage } from '@/lib/restaurantStorage';
+import { ParShotAnalyticsWidget } from '@/components/ParShotAnalyticsWidget';
 
 function ChronicleContent() {
   const router = useRouter();
@@ -811,6 +812,15 @@ function ChronicleContent() {
               </div>
             </Link>
           </div>
+
+          {/* 🎯 [과업 2] Par별 샷 정밀 분석 및 샷 결과 분포 위젯 */}
+          <ParShotAnalyticsWidget
+            completedRounds={completedRounds}
+            allCourses={allCourses}
+            userName={userName}
+            isJapanese={isJapanese}
+            isEnglish={isEnglish}
+          />
 
           {/* 타임라인 히스토리 */}
           <div className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm space-y-3">

@@ -40,6 +40,7 @@ import {
   Search,
   Download,
   Image as ImageIcon,
+  BarChart3,
 } from 'lucide-react';
 import {
   ClubEventRoom,
@@ -57,6 +58,7 @@ import { RoundPlayer, RoundSession } from '@/types/parkon';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { generateClubAwardCardImage, downloadClubAwardCard } from '@/lib/clubAwardImageGenerator';
+import { ClubAnalyticsHub } from '@/components/ClubAnalyticsHub';
 
 const MEMBERS_10P: ClubPlayer[] = [
   { id: 'mem_1', name: '김총무', isLeader: false, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'ADVANCED' },
@@ -164,7 +166,8 @@ function ClubRoomDetailContent() {
     }
     return null;
   });
-  const [activeTab, setActiveTab] = useState<'roster' | 'team' | 'individual'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'team' | 'individual' | 'stats'>('roster');
+  const [mainViewMode, setMainViewMode] = useState<'MATCH' | 'STATS'>('MATCH');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // [3단계] 그로스 vs 신페리오 듀얼 탭 & 실시간 홀인원 토스트 & 1080p 시상 카드 상태
@@ -1831,8 +1834,8 @@ function ClubRoomDetailContent() {
   // 📊 [대표님 절대 표준] 전체 조 편성 및 실시간 순위표 탭 컨텐츠
   const renderLeaderboardTabsContent = () => (
     <div className="space-y-3">
-{/* 3대 탭 네비게이션 */}
-      <div className="grid grid-cols-3 gap-1 bg-stone-200/70 p-1 rounded-2xl">
+{/* 4대 탭 네비게이션 */}
+      <div className="grid grid-cols-4 gap-1 bg-stone-200/70 p-1 rounded-2xl">
         <button
           type="button"
           onClick={() => setActiveTab('roster')}
@@ -1843,7 +1846,7 @@ function ClubRoomDetailContent() {
           }`}
         >
           <Users className="w-3.5 h-3.5" />
-          <span>{isJapanese ? `組編成表 (${room.groups.length}組)` : `조 편성표 (${room.groups.length}조)`}</span>
+          <span>{isJapanese ? `組編成` : `조 편성`}</span>
         </button>
         <button
           type="button"
@@ -1855,7 +1858,7 @@ function ClubRoomDetailContent() {
           }`}
         >
           <Trophy className="w-3.5 h-3.5 text-amber-500" />
-          <span>{isJapanese ? '団体順位' : '단체 순위'}</span>
+          <span>{isJapanese ? '団体' : '단체'}</span>
         </button>
         <button
           type="button"
@@ -1867,7 +1870,20 @@ function ClubRoomDetailContent() {
           }`}
         >
           <Crown className="w-3.5 h-3.5 text-indigo-500" />
-          <span>{isJapanese ? '個人順位' : '개인 순위'}</span>
+          <span>{isJapanese ? '個人' : '개인'}</span>
+        </button>
+        <button
+          type="button"
+          data-testid="tab-club-stats-modal"
+          onClick={() => setActiveTab('stats')}
+          className={`py-2 text-xs font-black rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${
+            activeTab === 'stats'
+              ? 'bg-emerald-800 text-white shadow-sm'
+              : 'text-stone-600 hover:text-stone-900'
+          }`}
+        >
+          <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />
+          <span>{isJapanese ? '統計' : '통계'}</span>
         </button>
       </div>
 
@@ -2702,6 +2718,13 @@ function ClubRoomDetailContent() {
           </div>
         </div>
       )}
+
+      {/* TAB 4: 📊 클럽 통계 Hub */}
+      {activeTab === 'stats' && (
+        <div className="space-y-3 animate-fadeIn">
+          <ClubAnalyticsHub room={room} isJapanese={isJapanese} currentUser={currentUser} />
+        </div>
+      )}
     </div>
   );
 
@@ -3046,10 +3069,44 @@ function ClubRoomDetailContent() {
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* 👤 [A. 일반 회원 모드] - 1/2단계 대기실 */}
-      {/* ======================================================== */}
-      {!isManager && !isGroupingConfirmed && !isMatchPlaying && (
+      {/* 📊 [신설] 상단 메인 탭: [ ⛳ 대회 진행 / 관제 ] vs [ 📊 클럽 통계 Hub ] */}
+      <div className="grid grid-cols-2 gap-1.5 bg-stone-200/80 p-1 rounded-2xl shadow-xs">
+        <button
+          type="button"
+          data-testid="tab-main-match"
+          onClick={() => setMainViewMode('MATCH')}
+          className={`py-2.5 text-xs font-black rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+            mainViewMode === 'MATCH'
+              ? 'bg-purple-900 text-white shadow-sm'
+              : 'text-stone-700 hover:text-stone-900 bg-transparent'
+          }`}
+        >
+          <Trophy className="w-3.5 h-3.5 text-amber-400" />
+          <span>{isJapanese ? '⛳ 大会進行・管制' : '⛳ 대회 진행 / 관제'}</span>
+        </button>
+        <button
+          type="button"
+          data-testid="tab-main-stats"
+          onClick={() => setMainViewMode('STATS')}
+          className={`py-2.5 text-xs font-black rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer ${
+            mainViewMode === 'STATS'
+              ? 'bg-emerald-800 text-white shadow-sm'
+              : 'text-stone-700 hover:text-stone-900 bg-transparent'
+          }`}
+        >
+          <BarChart3 className="w-3.5 h-3.5 text-emerald-300" />
+          <span>{isJapanese ? '📊 クラブ統計 Hub' : '📊 클럽 통계 Hub'}</span>
+        </button>
+      </div>
+
+      {mainViewMode === 'STATS' ? (
+        <ClubAnalyticsHub room={room} isJapanese={isJapanese} currentUser={currentUser} />
+      ) : (
+        <>
+          {/* ======================================================== */}
+          {/* 👤 [A. 일반 회원 모드] - 1/2단계 대기실 */}
+          {/* ======================================================== */}
+          {!isManager && !isGroupingConfirmed && !isMatchPlaying && (
         <div className="space-y-3 animate-fadeIn">
           {/* 상황 1: 아직 총무가 공지하기 전 */}
           {room.isAnnounced === false ? (
@@ -3989,6 +4046,8 @@ function ClubRoomDetailContent() {
           </div>
           )}
         </div>
+      )}
+        </>
       )}
 
       {/* 📊 [대표님 절대 표준] 대회 전체 현황 & 실시간 순위표 (전광판 보기 ▶) 단일 슬릭 탭 (모든 단계 상단 밀착 팝업창 단일화) */}
