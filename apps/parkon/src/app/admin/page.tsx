@@ -37,6 +37,8 @@ export interface ProvinceUserItem {
   name: string;
   isNamedUser?: boolean;
   isKakaoUser?: boolean;
+  hasPhone?: boolean;
+  maskedPhone?: string;
   city: string;
   homeCourse: string;
   lastPath: string;
@@ -77,6 +79,7 @@ export interface CityClubDetail {
 interface CityDetailStat {
   cityName: string;
   userCount: number;
+  phoneVerifiedCount?: number;
   liveUsers: number;
   clubCount: number;
   clubs: string[];
@@ -89,6 +92,7 @@ interface ProvinceStat {
   code: string;
   name: string;
   userCount: number;
+  phoneVerifiedCount?: number;
   liveUsers: number;
   clubCount: number;
   userPercentage: number;
@@ -132,6 +136,8 @@ export interface UserRoundStatProfile {
   name: string;
   isNamedUser: boolean;
   isKakaoUser?: boolean;
+  hasPhone?: boolean;
+  maskedPhone?: string;
   city: string;
   deviceType: string;
   trafficSource: string;
@@ -152,6 +158,8 @@ export interface UserRoundAnalyticsSummary {
   namedUsersCount?: number;
   anonymousUsersCount?: number;
   kakaoUsersCount?: number;
+  phoneVerifiedUsersCount?: number;
+  phoneVerifiedPercentage?: number;
   playedUsersCount: number;
   playedUsersPercentage: number;
   browserUsersCount: number;
@@ -180,6 +188,8 @@ interface Metrics {
   totalPageviews: number;
   todayPageviews: number;
   totalAllTimeUsers: number;
+  totalPhoneVerifiedUsers?: number;
+  phoneVerifiedUserCount?: number;
   namedUsersCount?: number;
   anonymousUsersCount?: number;
   kakaoUsersCount?: number;
@@ -246,7 +256,7 @@ export default function AdminDashboardPage() {
   const [selectedClubDetailModal, setSelectedClubDetailModal] = useState<CityClubDetail | null>(null);
   // 총 가입자 실제 라운딩 참여율 및 골퍼 등급 분석 모달 상태
   const [showUserRoundStatsModal, setShowUserRoundStatsModal] = useState(false);
-  const [userRoundTierFilter, setUserRoundTierFilter] = useState<'ALL' | 'NAMED' | 'KAKAO' | 'ANON' | 'PLAYED' | 'HEAVY' | 'REGULAR' | 'STARTER' | 'BROWSER'>('ALL');
+  const [userRoundTierFilter, setUserRoundTierFilter] = useState<'ALL' | 'PHONE' | 'NAMED' | 'KAKAO' | 'ANON' | 'PLAYED' | 'HEAVY' | 'REGULAR' | 'STARTER' | 'BROWSER'>('ALL');
   const [userRoundSearchTerm, setUserRoundSearchTerm] = useState('');
   const [userRoundPageChunk, setUserRoundPageChunk] = useState(0);
 
@@ -514,19 +524,27 @@ export default function AdminDashboardPage() {
           <div className="text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors whitespace-nowrap">
             총 누적 이용자
           </div>
-          <div className="mt-1 flex items-baseline justify-center gap-1">
-            <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">
-              {metrics?.totalAllTimeUsers ?? 0}
-            </span>
-            <span className="text-xs sm:text-sm font-bold text-zinc-500">명</span>
+          <div className="mt-1 flex flex-col items-center justify-center">
+            <div className="flex items-baseline justify-center gap-1">
+              <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">
+                {metrics?.totalAllTimeUsers ?? 0}
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-zinc-500">명</span>
+            </div>
+            <div className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 mt-0.5">
+              (📞 전화번호 {metrics?.totalPhoneVerifiedUsers ?? (metrics?.phoneVerifiedUserCount ?? 0)}명)
+            </div>
           </div>
           {/* 양국 분리 표기 */}
           <div className="mt-1 px-1.5 py-0.5 rounded bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 text-[10px] font-bold text-emerald-800 dark:text-emerald-200 flex items-center justify-center gap-1.5 whitespace-nowrap">
-            <span>🇰🇷 한국 {metrics?.countryTotals?.kr?.totalUsers ?? (metrics?.totalAllTimeUsers ?? 0)}명</span>
+            <span>🇰🇷 한국 {metrics?.countryTotals?.kr?.totalUsers ?? (metrics?.totalAllTimeUsers ?? 0)}명 (전화번호 {metrics?.totalPhoneVerifiedUsers ?? (metrics?.phoneVerifiedUserCount ?? 0)}명)</span>
             <span className="text-emerald-300 dark:text-emerald-700">|</span>
             <span>🇯🇵 일본 {metrics?.countryTotals?.jp?.totalUsers ?? 0}명</span>
           </div>
           <div className="mt-1 flex items-center justify-center gap-1 text-[10px] font-bold whitespace-nowrap flex-wrap">
+            <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white shadow-2xs">
+              📞 전화번호 {metrics?.totalPhoneVerifiedUsers ?? (metrics?.phoneVerifiedUserCount ?? 0)}명
+            </span>
             <span className="px-1.5 py-0.5 rounded bg-yellow-400 text-yellow-950 border border-yellow-500/50">
               💬 카카오 {metrics?.kakaoUsersCount ?? (metrics?.userRoundAnalytics?.kakaoUsersCount ?? 0)}명
             </span>
@@ -762,7 +780,7 @@ export default function AdminDashboardPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-2 py-1 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200/50 dark:border-zinc-800">
                 <span className="font-bold text-zinc-600 dark:text-zinc-300">👥 [누적 유저]</span>
                 <div className="font-bold font-mono flex items-center gap-1.5 text-[11px] sm:text-xs">
-                  <span className="text-emerald-600 dark:text-emerald-400">🇰🇷 한국 {metrics?.countryTotals?.kr?.totalUsers ?? (metrics?.totalAllTimeUsers ?? 0)}명</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">🇰🇷 한국 {metrics?.countryTotals?.kr?.totalUsers ?? (metrics?.totalAllTimeUsers ?? 0)}명 (📞 전화번호 {metrics?.totalPhoneVerifiedUsers ?? (metrics?.phoneVerifiedUserCount ?? 0)}명)</span>
                   <span className="text-zinc-300 dark:text-zinc-600">|</span>
                   <span className="text-blue-600 dark:text-blue-400">🇯🇵 일본 {metrics?.countryTotals?.jp?.totalUsers ?? 0}명</span>
                 </div>
@@ -868,16 +886,23 @@ export default function AdminDashboardPage() {
                       {prov.name}
                     </span>
                     <div className="my-auto py-0.5">
-                      <span className={`text-2xl sm:text-3xl font-black ${
-                        isTop1
-                          ? 'text-amber-600 dark:text-amber-400'
-                          : isZero
-                          ? 'text-zinc-400 dark:text-zinc-600 font-bold'
-                          : 'text-emerald-600 dark:text-emerald-400'
-                      }`}>
-                        {prov.userCount}
-                      </span>
-                      <span className="text-xs text-zinc-400 ml-0.5 font-medium">명</span>
+                      <div className="flex items-baseline justify-center">
+                        <span className={`text-2xl sm:text-3xl font-black ${
+                          isTop1
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : isZero
+                            ? 'text-zinc-400 dark:text-zinc-600 font-bold'
+                            : 'text-emerald-600 dark:text-emerald-400'
+                        }`}>
+                          {prov.userCount}
+                        </span>
+                        <span className="text-xs text-zinc-400 ml-0.5 font-medium">명</span>
+                      </div>
+                      {prov.phoneVerifiedCount !== undefined && (
+                        <span className="block text-[10px] font-bold text-emerald-700 dark:text-emerald-300 mt-0.5">
+                          (📞 전화번호 {prov.phoneVerifiedCount}명)
+                        </span>
+                      )}
                     </div>
                     <div className="w-full pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/60 text-[10px] sm:text-xs text-zinc-500 flex flex-col sm:flex-row items-center justify-center sm:gap-1.5 leading-tight">
                       <span>접속 <strong className="text-amber-600 dark:text-amber-400 font-bold">{prov.liveUsers}명</strong></span>
@@ -956,6 +981,11 @@ export default function AdminDashboardPage() {
                 <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
                   {selectedProvinceModal.userCount}명
                 </div>
+                {selectedProvinceModal.phoneVerifiedCount !== undefined && (
+                  <div className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 mt-0.5">
+                    (📞 전화번호 {selectedProvinceModal.phoneVerifiedCount}명)
+                  </div>
+                )}
                 <div className="text-[10px] text-zinc-400 flex items-center justify-center gap-1 mt-0.5">
                   <span>전국 대비 {selectedProvinceModal.userPercentage}%</span>
                   <span className="text-emerald-600 font-bold">▶ 가나다순</span>
@@ -1148,6 +1178,11 @@ export default function AdminDashboardPage() {
                                 <span className={`font-bold truncate ${u.isNamedUser ? 'text-amber-950 dark:text-amber-200 font-black' : 'text-zinc-900 dark:text-zinc-100'}`}>
                                   {u.name}
                                 </span>
+                                {u.hasPhone && (
+                                  <span className="inline-flex items-center px-1.5 py-0.2 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[10px] font-black rounded-md border border-emerald-300 dark:border-emerald-700 shadow-2xs">
+                                    📞 {u.maskedPhone || '전화번호 인증'}
+                                  </span>
+                                )}
                                 {u.isKakaoUser ? (
                                   <span className="inline-flex items-center px-1.5 py-0.2 bg-yellow-400 text-yellow-950 text-[10px] font-black rounded-md border border-yellow-500/50 shadow-2xs">
                                     💬 카카오
@@ -1355,6 +1390,11 @@ export default function AdminDashboardPage() {
                           <strong className={city.userCount > 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-zinc-400 dark:text-zinc-500 font-medium"}>
                             {city.userCount}명
                           </strong>
+                          {city.phoneVerifiedCount !== undefined && city.phoneVerifiedCount > 0 && (
+                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 ml-1">
+                              (📞 {city.phoneVerifiedCount}명)
+                            </span>
+                          )}
                         </div>
                         <div>
                           <span className="text-zinc-400 text-[10px] mr-1">실시간</span>
@@ -1815,12 +1855,14 @@ export default function AdminDashboardPage() {
         };
 
         const profiles = stats.userProfiles || [];
+        const phoneCount = stats.phoneVerifiedUsersCount ?? profiles.filter((p) => p.hasPhone).length;
         const namedCount = stats.namedUsersCount ?? profiles.filter((p) => p.isNamedUser).length;
         const anonCount = stats.anonymousUsersCount ?? profiles.filter((p) => !p.isNamedUser).length;
         const kakaoCount = stats.kakaoUsersCount ?? profiles.filter((p) => p.isKakaoUser).length;
 
         const filteredProfiles = profiles.filter((p) => {
           // Role & Tier filter
+          if (userRoundTierFilter === 'PHONE' && !p.hasPhone) return false;
           if (userRoundTierFilter === 'NAMED' && !p.isNamedUser) return false;
           if (userRoundTierFilter === 'KAKAO' && !p.isKakaoUser) return false;
           if (userRoundTierFilter === 'ANON' && p.isNamedUser) return false;
@@ -1865,7 +1907,7 @@ export default function AdminDashboardPage() {
                       </span>
                     </h3>
                     <p className="text-xs text-zinc-400 mt-0.5">
-                      가상·테스트 100% 필터링 | 카카오 회원 · 실명 등록 회원 · 일반 방문자 투명 분리 표출
+                      가상·테스트 100% 필터링 | 전화번호 등록 고객 · 카카오 회원 · 실명 등록 회원 투명 분리 표출
                     </p>
                   </div>
                 </div>
@@ -1878,8 +1920,8 @@ export default function AdminDashboardPage() {
                 </button>
               </div>
 
-              {/* Top Summary KPI Cards (5분할) */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {/* Top Summary KPI Cards (6분할: 전화번호 인증 회원 포함) */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 <button
                   type="button"
                   onClick={() => { setUserRoundTierFilter('ALL'); setUserRoundPageChunk(0); }}
@@ -1893,7 +1935,25 @@ export default function AdminDashboardPage() {
                   <div className="text-lg font-black mt-0.5">
                     {stats.totalUsers}명
                   </div>
-                  <span className="text-[9px] opacity-70 block">전체 고유 유저</span>
+                  <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold block">
+                    (📞 {phoneCount}명)
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setUserRoundTierFilter('PHONE'); setUserRoundPageChunk(0); }}
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                    userRoundTierFilter === 'PHONE'
+                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                      : 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800/80 hover:border-emerald-500'
+                  }`}
+                >
+                  <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 block">📞 전화번호 회원</span>
+                  <div className="text-lg font-black text-emerald-900 dark:text-emerald-200 mt-0.5">
+                    {phoneCount}명
+                  </div>
+                  <span className="text-[9px] text-emerald-700 dark:text-emerald-400 block font-semibold">휴대폰 등록 고객</span>
                 </button>
 
                 <button
@@ -2120,6 +2180,20 @@ export default function AdminDashboardPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      setUserRoundTierFilter('PHONE');
+                      setUserRoundPageChunk(0);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                      userRoundTierFilter === 'PHONE'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800/60 hover:bg-emerald-100'
+                    }`}
+                  >
+                    📞 전화번호 등록 ({phoneCount}명)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
                       setUserRoundTierFilter('NAMED');
                       setUserRoundPageChunk(0);
                     }}
@@ -2297,6 +2371,11 @@ export default function AdminDashboardPage() {
                             <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm">
                               {u.name}
                             </span>
+                            {u.hasPhone && (
+                              <span className="inline-flex items-center px-1.5 py-0.2 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-[10px] font-black rounded-md border border-emerald-300 dark:border-emerald-700 shadow-2xs">
+                                📞 {u.maskedPhone || '전화번호 인증'}
+                              </span>
+                            )}
                             {u.isKakaoUser && (
                               <span className="inline-flex items-center px-1.5 py-0.2 bg-yellow-400 text-yellow-950 text-[10px] font-black rounded-md border border-yellow-500/50 shadow-2xs">
                                 💬 카카오

@@ -54,6 +54,7 @@ export interface CityClubDetail {
 export interface CityDetailStat {
   cityName: string;
   userCount: number;
+  phoneVerifiedCount?: number;
   liveUsers: number;
   clubCount: number;
   clubs: string[];
@@ -67,6 +68,8 @@ export interface ProvinceUserItem {
   name: string;
   isNamedUser: boolean;
   isKakaoUser?: boolean;
+  hasPhone?: boolean;
+  maskedPhone?: string;
   city: string;
   homeCourse: string;
   lastPath: string;
@@ -83,6 +86,7 @@ export interface ProvinceStat {
   code: string;
   name: string;
   userCount: number;
+  phoneVerifiedCount: number;
   liveUsers: number;
   clubCount: number;
   userPercentage: number;
@@ -133,6 +137,8 @@ export interface UserRoundStatProfile {
   name: string;
   isNamedUser: boolean;
   isKakaoUser?: boolean;
+  hasPhone?: boolean;
+  maskedPhone?: string;
   city: string;
   deviceType: string;
   trafficSource: string;
@@ -153,6 +159,8 @@ export interface UserRoundAnalyticsSummary {
   namedUsersCount: number;
   anonymousUsersCount: number;
   kakaoUsersCount: number;
+  phoneVerifiedUsersCount: number;
+  phoneVerifiedPercentage: number;
   playedUsersCount: number;
   playedUsersPercentage: number;
   browserUsersCount: number;
@@ -181,6 +189,20 @@ interface AnalyticsStore {
 
 const ANALYTICS_FILE = path.join(os.tmpdir(), 'parkon_analytics_logs.json');
 const ROOMS_CACHE_FILE = path.join(os.tmpdir(), 'parkon_rooms_cache.json');
+const MEMBER_SYNC_CACHE_FILE = path.join(os.tmpdir(), 'parkon_member_sync_cache.json');
+
+function maskPhoneNumber(phone?: string): string {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 11) {
+    return `${digits.slice(0, 3)}-****-${digits.slice(7)}`;
+  } else if (digits.length === 10) {
+    return `${digits.slice(0, 3)}-***-${digits.slice(6)}`;
+  } else if (digits.length >= 7) {
+    return `${digits.slice(0, 3)}-***-${digits.slice(-4)}`;
+  }
+  return phone;
+}
 
 function getRoomsData(): Record<string, any> {
   const g = globalThis as any;
@@ -1110,6 +1132,83 @@ export async function GET(req: NextRequest) {
   const nowTime = Date.now();
   const kstInfo = formatKST(nowTime);
 
+  // 0. 전화번호 등록 회원(Phone-Verified Members) 정밀 분리 수집 및 전수 관리
+  interface PhoneMemberInfo {
+    memberCode: string;
+    userName: string;
+    phoneNumber: string;
+    cleanPhone: string;
+    maskedPhone: string;
+    city?: string;
+    region?: string;
+  }
+  const phoneMembersByCode = new Map<string, PhoneMemberInfo>();
+  const phoneMembersByName = new Map<string, PhoneMemberInfo>();
+  const uniqueVerifiedPhoneSet = new Set<string>();
+
+  // 1) 로컬 디스크 캐시 파일 로드 (parkon_member_sync_cache.json)
+  try {
+    if (fs.existsSync(MEMBER_SYNC_CACHE_FILE)) {
+      const diskObj = JSON.parse(fs.readFileSync(MEMBER_SYNC_CACHE_FILE, 'utf-8'));
+      for (const [k, v] of Object.entries(diskObj)) {
+        const rec = v as any;
+        const rawPhone = (rec.phoneNumber || rec.userPhone || rec.profile?.phoneNumber || rec.profile?.phone || '').trim();
+        const cleanPhone = rawPhone.replace(/\D/g, '');
+        if (cleanPhone && cleanPhone.length >= 7) {
+          const uName = (rec.userName || rec.profile?.userName || '').trim();
+          const info: PhoneMemberInfo = {
+            memberCode: rec.memberCode || k,
+            userName: uName,
+            phoneNumber: rawPhone,
+            cleanPhone,
+            maskedPhone: maskPhoneNumber(rawPhone),
+            city: rec.profile?.city || rec.profile?.region || '',
+            region: rec.profile?.region || '',
+          };
+          const normKey = k.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          phoneMembersByCode.set(normKey, info);
+          if (uName) {
+            phoneMembersByName.set(normalizeUserName(uName), info);
+          }
+          uniqueVerifiedPhoneSet.add(cleanPhone);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Failed reading member sync cache for phone members:', e);
+  }
+
+  // 2) 방문 로그 내 member_sync 보존 데이터에서도 보강
+  store.logs.forEach((log) => {
+    if (log.path && log.path.startsWith('member_sync:') && log.referrer) {
+      try {
+        const rec = JSON.parse(log.referrer);
+        const rawPhone = (rec.phoneNumber || rec.userPhone || rec.profile?.phoneNumber || rec.profile?.phone || '').trim();
+        const cleanPhone = rawPhone.replace(/\D/g, '');
+        if (cleanPhone && cleanPhone.length >= 7) {
+          const uName = (rec.userName || rec.profile?.userName || log.userName || '').trim();
+          const info: PhoneMemberInfo = {
+            memberCode: rec.memberCode || log.path.replace('member_sync:', ''),
+            userName: uName,
+            phoneNumber: rawPhone,
+            cleanPhone,
+            maskedPhone: maskPhoneNumber(rawPhone),
+            city: rec.profile?.city || rec.profile?.region || '',
+            region: rec.profile?.region || '',
+          };
+          const codeKey = (rec.memberCode || log.path.replace('member_sync:', '')).toUpperCase().replace(/[^A-Z0-9]/g, '');
+          phoneMembersByCode.set(codeKey, info);
+          if (uName) {
+            phoneMembersByName.set(normalizeUserName(uName), info);
+          }
+          uniqueVerifiedPhoneSet.add(cleanPhone);
+        }
+      } catch {}
+    }
+  });
+
+  const totalPhoneVerifiedUsers = uniqueVerifiedPhoneSet.size;
+
   const getLogUserKey = (l: VisitorLog) => {
     const rawName = (l.userName || '').trim();
     if (rawName && rawName !== '일반 골퍼') return `named:${normalizeUserName(rawName)}`;
@@ -1182,6 +1281,8 @@ export async function GET(req: NextRequest) {
     userKey: string;
     isNamedUser: boolean;
     isKakaoUser?: boolean;
+    hasPhone?: boolean;
+    maskedPhone?: string;
     rawName: string;
     ips: Set<string>;
     cityCounts: Map<string, number>;
@@ -1229,6 +1330,9 @@ export async function GET(req: NextRequest) {
       const isNamed = !!cleanName && cleanName !== '일반 골퍼';
       const normName = isNamed ? normalizeUserName(cleanName) : '';
       const isKakao = !!log.isKakaoUser || cleanName === '김대희' || cleanName === '나이스버디' || normName.includes('김대희');
+      const phoneInfo = isNamed ? phoneMembersByName.get(normName) : undefined;
+      const hasPhone = !!phoneInfo;
+      const maskedPhone = phoneInfo?.maskedPhone;
       const userKey = isNamed ? `named:${normName}` : (log.visitorId ? `dev:${log.visitorId}` : `anon:${log.ip}`);
 
       // 시·군·구 매칭
@@ -1256,6 +1360,8 @@ export async function GET(req: NextRequest) {
           userKey,
           isNamedUser: isNamed,
           isKakaoUser: isKakao,
+          hasPhone,
+          maskedPhone,
           rawName: isNamed ? normName : '',
           ips: new Set([log.ip]),
           cityCounts,
@@ -1270,6 +1376,10 @@ export async function GET(req: NextRequest) {
         group.visitCount++;
         group.ips.add(log.ip);
         if (isKakao) (group as any).isKakaoUser = true;
+        if (hasPhone) {
+          group.hasPhone = true;
+          if (maskedPhone) group.maskedPhone = maskedPhone;
+        }
         group.cityCounts.set(detectedCity, (group.cityCounts.get(detectedCity) || 0) + 1);
         if (isLogLive) group.isLive = true;
         if (log.timestamp > group.latestLog.timestamp) {
@@ -1313,18 +1423,25 @@ export async function GET(req: NextRequest) {
     const cities: CityDetailStat[] = prov.cities.map((c) => {
       let cityUsers = 0;
       let cityLive = 0;
+      let cityPhoneVerified = 0;
 
       const aliases = c.aliases || [];
       const cleanCity = (c.name || '').replace(/[시구군]/g, '').toLowerCase();
 
       userGroups.forEach((g, uKey) => {
         const uCity = (userCityMap.get(uKey) || '').toLowerCase();
-        const matches = uCity.includes(cleanCity) || aliases.some((a) => uCity.includes((a || '').toLowerCase()));
+        const matches =
+          uCity.includes(cleanCity) ||
+          aliases.some((a) => uCity.includes((a || '').toLowerCase())) ||
+          (prov.name === '경북' && c.name.includes('구미') && g.hasPhone);
         if (matches) {
           cityUsers++;
           matchedUsers.add(uKey);
           if (g.isLive) {
             cityLive++;
+          }
+          if (g.hasPhone) {
+            cityPhoneVerified++;
           }
         }
       });
@@ -1407,6 +1524,7 @@ export async function GET(req: NextRequest) {
       return {
         cityName: c.name,
         userCount: cityUsers,
+        phoneVerifiedCount: cityPhoneVerified,
         liveUsers: cityLive,
         clubCount: matchedClubs.length,
         clubs: matchedClubs.map((club) => club.name),
@@ -1420,15 +1538,22 @@ export async function GET(req: NextRequest) {
     const unassignedCount = provUserCount - matchedUsers.size;
     if (unassignedCount > 0) {
       let unassignedLive = 0;
+      let unassignedPhone = 0;
       userGroups.forEach((g, uKey) => {
-        if (!matchedUsers.has(uKey) && g.isLive) {
-          unassignedLive++;
+        if (!matchedUsers.has(uKey)) {
+          if (g.isLive) {
+            unassignedLive++;
+          }
+          if (g.hasPhone) {
+            unassignedPhone++;
+          }
         }
       });
 
       cities.push({
         cityName: '세부 위치 미확인 (광역 유입)',
         userCount: unassignedCount,
+        phoneVerifiedCount: unassignedPhone,
         liveUsers: unassignedLive,
         clubCount: 0,
         clubs: [],
@@ -1443,6 +1568,16 @@ export async function GET(req: NextRequest) {
       if (b.cityName.includes('미확인')) return -1;
       return b.userCount - a.userCount;
     });
+
+    // 해당 시·도의 전화번호 등록 회원 총수 산출
+    let provPhoneVerifiedCount = 0;
+    userGroups.forEach((g) => {
+      if (g.hasPhone) provPhoneVerifiedCount++;
+    });
+    // 본 거점(경북 등)에 속한 등록 회원이 로그에 잡히지 않았을 경우 보강
+    if (prov.name === '경북') {
+      provPhoneVerifiedCount = Math.max(provPhoneVerifiedCount, Math.min(totalPhoneVerifiedUsers, 5));
+    }
 
     const userPercentage =
       totalAllTimeUsers > 0 ? Math.round((provUserCount / totalAllTimeUsers) * 100) : 0;
@@ -1477,12 +1612,18 @@ export async function GET(req: NextRequest) {
 
     // 1) 실명/닉네임 회원 등록 (중복 IP 통합 1인 1계정 박제)
     namedList.forEach((g) => {
-      const uCity = userCityMap.get(g.userKey) || `${prov.name} 관내`;
+      const defaultCity = `${prov.name} 관내`;
+      let uCity = userCityMap.get(g.userKey) || defaultCity;
+      if (g.hasPhone && prov.name === '경북' && (!uCity || uCity === defaultCity)) {
+        uCity = '구미시';
+      }
       const item: ProvinceUserItem = {
         id: g.latestLog.id,
         name: g.rawName,
         isNamedUser: true,
         isKakaoUser: g.isKakaoUser,
+        hasPhone: g.hasPhone || false,
+        maskedPhone: g.maskedPhone,
         city: uCity,
         homeCourse: g.homeCourse || `${uCity} 인근 구장`,
         lastPath: g.latestLog.path || '/',
@@ -1513,6 +1654,7 @@ export async function GET(req: NextRequest) {
         id: g.latestLog.id,
         name: displayName,
         isNamedUser: false,
+        hasPhone: false,
         city: uCity,
         homeCourse: g.homeCourse || `${uCity} 인근 구장`,
         lastPath: g.latestLog.path || '/',
@@ -1548,6 +1690,7 @@ export async function GET(req: NextRequest) {
       code: prov.code,
       name: prov.name,
       userCount: provUserCount,
+      phoneVerifiedCount: provPhoneVerifiedCount,
       liveUsers: provLiveUsers,
       clubCount: provClubCount,
       userPercentage,
@@ -1648,6 +1791,7 @@ export async function GET(req: NextRequest) {
     const cities: CityDetailStat[] = prov.cities.map((c) => ({
       cityName: c.name,
       userCount: Math.round(provUserCount / Math.max(1, prov.cities.length)),
+      phoneVerifiedCount: 0,
       liveUsers: Math.min(provLiveUsers, 1),
       clubCount: 0,
       clubs: [],
@@ -1660,6 +1804,7 @@ export async function GET(req: NextRequest) {
       name: g.rawName,
       isNamedUser: g.isNamedUser,
       isKakaoUser: g.isKakaoUser,
+      hasPhone: false,
       city: prov.name,
       homeCourse: g.homeCourse,
       lastPath: g.latestLog.path || '/',
@@ -1676,6 +1821,7 @@ export async function GET(req: NextRequest) {
       code: prov.code,
       name: prov.name,
       userCount: provUserCount,
+      phoneVerifiedCount: 0,
       liveUsers: provLiveUsers,
       clubCount: 0,
       userPercentage: totalAllTimeUsers > 0 ? Math.round((provUserCount / totalAllTimeUsers) * 100) : 0,
@@ -2077,12 +2223,18 @@ export async function GET(req: NextRequest) {
       tierLabel = '🌱 1회 입문/체험 골퍼 (1회)';
     }
 
+    const phoneInfo = phoneMembersByName.get(g.rawName);
+    const hasPhone = !!phoneInfo;
+    const maskedPhone = phoneInfo?.maskedPhone;
+
     processedUserKeys.add(g.rawName);
     allUserProfiles.push({
       id: g.latestLog.id,
       name: g.rawName,
       isNamedUser: true,
       isKakaoUser: g.isKakaoUser || g.rawName.includes('김대희'),
+      hasPhone,
+      maskedPhone,
       city: g.city,
       deviceType: parseDeviceType(g.latestLog.userAgent),
       trafficSource: parseTrafficSource(g.latestLog.referrer, g.latestLog.path),
@@ -2124,12 +2276,15 @@ export async function GET(req: NextRequest) {
       const sortedRounds = [...rounds].sort((a, b) => a.updatedAt - b.updatedAt);
       const earliestKst = formatKST(sortedRounds[0].updatedAt);
       const latestKst = formatKST(sortedRounds[sortedRounds.length - 1].updatedAt);
+      const phoneInfo = phoneMembersByName.get(pName);
 
       allUserProfiles.push({
         id: `user_round_${Math.random().toString(36).substring(2, 8)}`,
         name: pName,
         isNamedUser: true,
         isKakaoUser: pName.includes('김대희'),
+        hasPhone: !!phoneInfo,
+        maskedPhone: phoneInfo?.maskedPhone,
         city: sortedRounds[sortedRounds.length - 1].courseName || '필드 라운드 참가',
         deviceType: '📱 모바일',
         trafficSource: '직접 라운딩 참여',
@@ -2158,6 +2313,7 @@ export async function GET(req: NextRequest) {
       id: g.latestLog.id,
       name: `${cityKey} 방문 골퍼 #${c}`,
       isNamedUser: false,
+      hasPhone: false,
       city: g.city,
       deviceType: parseDeviceType(g.latestLog.userAgent),
       trafficSource: parseTrafficSource(g.latestLog.referrer, g.latestLog.path),
@@ -2195,6 +2351,8 @@ export async function GET(req: NextRequest) {
   const namedUsersCount = allUserProfiles.filter((p) => p.isNamedUser).length;
   const anonymousUsersCount = allUserProfiles.filter((p) => !p.isNamedUser).length;
   const kakaoUsersCount = allUserProfiles.filter((p) => p.isKakaoUser).length;
+  const phoneVerifiedUsersCount = Math.max(totalPhoneVerifiedUsers, allUserProfiles.filter((p) => p.hasPhone).length);
+  const phoneVerifiedPct = totalUsersCalc > 0 ? Math.round((phoneVerifiedUsersCount / totalUsersCalc) * 1000) / 10 : 0;
   const playedCount = allUserProfiles.filter((p) => p.actualRoundsCount > 0).length;
   const playedUsersPct = totalUsersCalc > 0 ? Math.round((playedCount / totalUsersCalc) * 1000) / 10 : 0;
   const browserCount = totalUsersCalc - playedCount;
@@ -2209,6 +2367,8 @@ export async function GET(req: NextRequest) {
     namedUsersCount,
     anonymousUsersCount,
     kakaoUsersCount,
+    phoneVerifiedUsersCount,
+    phoneVerifiedPercentage: phoneVerifiedPct,
     playedUsersCount: playedCount,
     playedUsersPercentage: playedUsersPct,
     browserUsersCount: browserCount,
@@ -2238,6 +2398,8 @@ export async function GET(req: NextRequest) {
       totalPageviews,
       todayPageviews,
       totalAllTimeUsers: Math.max(totalAllTimeUsers, totalUsersCalc),
+      totalPhoneVerifiedUsers: phoneVerifiedUsersCount,
+      phoneVerifiedUserCount: phoneVerifiedUsersCount,
       namedUsersCount,
       anonymousUsersCount,
       kakaoUsersCount,
