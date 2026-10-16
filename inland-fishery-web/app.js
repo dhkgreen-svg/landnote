@@ -4003,8 +4003,13 @@ window.onclick = function(event) {
   const addBranchModal = document.getElementById('add-branch-modal');
   const indivOfficerModal = document.getElementById('individual-officer-modal');
   const addOfficerModal = document.getElementById('add-officer-modal');
+  const pastNoticeEditModal = document.getElementById('past-notice-edit-modal');
+  const noticeEditModal = document.getElementById('notice-edit-modal');
+
   if (event.target === indivOfficerModal) closeIndividualOfficerModal();
   if (event.target === addOfficerModal) closeAddOfficerModal();
+  if (event.target === pastNoticeEditModal) closePastNoticeEditModal();
+  if (event.target === noticeEditModal) closeNoticeEditModal();
 
   if (event.target === detailModal) closeModal();
   if (event.target === adminModal) closeAdminModal();
@@ -4088,29 +4093,49 @@ function openPastNoticeEditModal(id = null, e = null) {
   if (e) { e.stopPropagation(); e.preventDefault(); }
   editingPastNoticeId = id;
   const isPopupCheckbox = document.getElementById('edit-past-notice-is-popup');
+  const titleEl = document.getElementById('past-notice-modal-title');
 
   if (id !== null) {
+    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> 공지사항 수정';
     const notice = pastNotices.find(n => n.id === id);
-    document.getElementById('edit-past-notice-title').value = notice.title;
-    document.getElementById('edit-past-notice-date').value = (notice.date || '').replace(/\./g, '-');
-    document.getElementById('edit-past-notice-tag').value = notice.tag;
-    document.getElementById('edit-past-notice-content').value = notice.content;
-    if (isPopupCheckbox) isPopupCheckbox.checked = !!notice.isPopup;
+    if (notice) {
+      document.getElementById('edit-past-notice-title').value = notice.title || '';
+      document.getElementById('edit-past-notice-date').value = (notice.date || '').replace(/\./g, '-');
+      document.getElementById('edit-past-notice-tag').value = notice.tag || '';
+      document.getElementById('edit-past-notice-content').value = notice.content || '';
+      if (isPopupCheckbox) isPopupCheckbox.checked = !!notice.isPopup;
+    }
   } else {
+    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-bullhorn"></i> 📢 신규 공지사항 등록 / 작성';
     document.getElementById('edit-past-notice-title').value = '';
     const today = new Date();
     document.getElementById('edit-past-notice-date').value = today.toISOString().slice(0, 10);
-    document.getElementById('edit-past-notice-tag').value = '';
+    document.getElementById('edit-past-notice-tag').value = '이사회 공지';
     document.getElementById('edit-past-notice-content').value = '';
-    if (isPopupCheckbox) isPopupCheckbox.checked = false;
+    if (isPopupCheckbox) isPopupCheckbox.checked = true;
   }
-  showModalClean('past-notice-edit-modal');
+
+  const modal = document.getElementById('past-notice-edit-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.style.zIndex = '300050';
+    modal.classList.add('active');
+    modal.scrollTop = 0;
+    const content = modal.querySelector('.modal-content');
+    if (content) content.scrollTop = 0;
+  }
 }
+window.openPastNoticeEditModal = openPastNoticeEditModal;
 
 function closePastNoticeEditModal() {
-  hideModalClean('past-notice-edit-modal');
+  const modal = document.getElementById('past-notice-edit-modal');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+  }
   editingPastNoticeId = null;
 }
+window.closePastNoticeEditModal = closePastNoticeEditModal;
 
 async function savePastNoticeData() {
   const title = document.getElementById('edit-past-notice-title').value.trim();
@@ -4158,11 +4183,13 @@ async function savePastNoticeData() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pastNotices: pastNotices })
     });
-    alert("저장되었습니다. 새로고침을 하시면 팝업이 나타납니다.");
+    checkAutoWelcomeNotice();
+    alert("📢 공지사항이 성공적으로 등록되었습니다!\n홈페이지 팝업 및 공지사항 목록에 즉시 반영되었습니다.");
   } catch (err) {
     console.log("Error:", err);
   }
 }
+window.savePastNoticeData = savePastNoticeData;
 
 async function deletePastNotice(id, e) {
   if (e) { e.stopPropagation(); e.preventDefault(); }
