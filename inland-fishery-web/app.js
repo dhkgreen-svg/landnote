@@ -915,12 +915,16 @@ function renderBranchCards() {
           ? `<span style="background: #E0F2FE; color: #0284C7; border: 1px solid #BAE6FD; padding: 2px 8px; border-radius: 4px; font-size: 0.76rem; font-weight: 800; margin-left: 6px;"><i class="fa-solid fa-crown"></i> 중앙 이사회 ${boardSeat.tag || '겸임 이사'}</span>`
           : '';
 
-        // delegateList에서 해당 지회 소속 대의원 동적 매칭
+        // delegateList에서 해당 지회 소속 대의원 100% 동적 매칭 (일체화)
+        const cleanNameNoSpace = cleanName.replace(/\s+/g, '');
+        const branchRegionKey = cleanName.replace(/^[0-9.\s]+/, '').replace(/^🏛️\s*/, '').replace(/지회.*/, '').trim();
+
         const linkedDelegates = (Array.isArray(delegateList) ? delegateList : []).filter(d => {
+          const dBranchNoSpace = (d.branchName || '').replace(/\s+/g, '');
           return (d.branchId && String(d.branchId) === String(item.id)) ||
-                 (d.branchName && d.branchName.includes(cleanName)) ||
-                 (d.region && d.region.includes(cleanName)) ||
-                 (d.role && d.role.includes(cleanName));
+                 (dBranchNoSpace && (cleanNameNoSpace.includes(dBranchNoSpace) || dBranchNoSpace.includes(cleanNameNoSpace))) ||
+                 (branchRegionKey && d.region && d.region.includes(branchRegionKey)) ||
+                 (branchRegionKey && d.role && d.role.includes(branchRegionKey));
         });
 
         let delegatesList = [];
@@ -948,7 +952,7 @@ function renderBranchCards() {
             <div id="branch-detail-${item.id}" style="display: none; padding: 14px 16px; border-top: 1px dashed #BAE6FD; background: #FFF;">
               <div style="font-size: 0.86rem; color: #334155; line-height: 1.6; background: #F8FAFC; padding: 12px 14px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #E2E8F0;">
                 <div style="font-size: 0.89rem; color: #0A2540; font-weight: 800;">
-                  👤 <strong>지회장:</strong> <span style="color: #0284C7; font-weight: 900;">${rawLeader}</span> ${boardBadge} ${boardBadge}
+                  👤 <strong>지회장:</strong> <span style="color: #0284C7; font-weight: 900;">${rawLeader}</span> ${boardBadge}
                 </div>
                 
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #E2E8F0;">
@@ -1098,8 +1102,16 @@ function editBranchOrg(idx) {
   const container = document.getElementById('dynamic-delegates-container');
   if (container) {
     container.innerHTML = '';
-    if (branch.delegates && branch.delegates.length > 0) {
-      branch.delegates.forEach(d => {
+    const cleanBName = (branch.name || '').replace(/^[0-9.\s]+/, '').replace(/^🏛️\s*/, '').replace(/지회.*/, '').trim();
+    const linkedDels = (Array.isArray(delegateList) ? delegateList : []).filter(d => 
+      (d.branchId && String(d.branchId) === String(branch.id)) ||
+      (d.branchName && (d.branchName.includes(cleanBName) || cleanBName.includes(d.branchName.replace(/지회.*/, ''))))
+    );
+    const delsToShow = linkedDels.length > 0
+      ? linkedDels.map(d => ({ name: d.name + (d.name.includes('대의원') ? '' : ' 대의원'), phone: d.phone }))
+      : (branch.delegates && branch.delegates.length > 0 ? branch.delegates : []);
+    if (delsToShow.length > 0) {
+      delsToShow.forEach(d => {
         addDelegateRow(d.name, d.phone);
       });
     } else {
@@ -1200,8 +1212,37 @@ function handleAddBranchSubmit(e) {
     branchOrgList.push(newBranch);
   }
 
+  // 대의원 명부(delegateList)와 완전 일체화 동기화
+  delegates.forEach(d => {
+    const rawDName = d.name.replace('대의원', '').trim();
+    if (!rawDName) return;
+    const existingD = delegateList.find(item => 
+      (item.branchId && String(item.branchId) === String(targetBranchId) && item.name === rawDName) ||
+      (item.name === rawDName && item.phone === d.phone)
+    );
+    if (existingD) {
+      existingD.branchId = targetBranchId;
+      existingD.branchName = cleanBranchName;
+      existingD.phone = d.phone;
+    } else {
+      delegateList.push({
+        name: rawDName,
+        phone: d.phone,
+        branchId: targetBranchId,
+        branchName: cleanBranchName,
+        region: region || cleanBranchName,
+        role: `${cleanBranchName} 소속 대의원`,
+        tag: '지회 대의원',
+        tagClass: 'tag-delegate',
+        image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+      });
+    }
+  });
+
   syncOrgDataToServer();
   renderBranchManageList();
+  renderBranchCards();
+  filterDirectory(currentDirectoryType || 'board');
   
   const form = document.getElementById('add-branch-form');
   if (form) form.reset();
@@ -2008,6 +2049,8 @@ async function loadServerData() {
       renderPresidentGreeting();
       renderContactInfo();
       checkAutoWelcomeNotice();
+      renderBranchCards();
+      filterDirectory(currentDirectoryType || 'board');
       return;
     }
   } catch (err) {
@@ -2032,6 +2075,8 @@ async function loadServerData() {
   renderPresidentGreeting();
   renderContactInfo();
   checkAutoWelcomeNotice();
+  renderBranchCards();
+  filterDirectory(currentDirectoryType || 'board');
 }
 
 function renderGalleryGrid(filterCategory = 'all', event = null) {
@@ -2136,7 +2181,8 @@ function filterDirectory(type = 'board') {
               <span class="officer-tag ${tagClass}" style="flex-shrink: 0; font-size: 0.76rem; padding: 2px 8px; border-radius: 4px;">${item.tag || (isBoard ? '임원' : '대의원')}</span>
               <strong style="color: #0A2540; font-size: 0.95rem; font-weight: 900; white-space: nowrap;">${idx + 1}. ${item.name}</strong>
               <span style="font-size: 0.84rem; color: #64748B; font-weight: 700; white-space: nowrap;">(${item.role})</span>
-                ${item.region ? `<span style="margin-left: auto; font-size: 0.8rem; color: #15803D; background: #DCFCE7; padding: 2px 6px; border-radius: 4px; font-weight: 800; white-space: nowrap;">${item.region}</span>` : ""}
+              ${item.branchName ? `<span style="font-size: 0.76rem; color: #0284C7; background: #E0F2FE; border: 1px solid #BAE6FD; padding: 2px 7px; border-radius: 4px; font-weight: 800; white-space: nowrap;"><i class="fa-solid fa-building-flag"></i> ${item.branchName}</span>` : ''}
+              ${item.region ? `<span style="margin-left: auto; font-size: 0.8rem; color: #15803D; background: #DCFCE7; padding: 2px 6px; border-radius: 4px; font-weight: 800; white-space: nowrap;">${item.region}</span>` : ""}
             </div>
             <span id="dir-icon-${type}-${idx}" style="color: #0284C7; font-size: 0.8rem; font-weight: 700; white-space: nowrap; flex-shrink: 0;">
               <i class="fa-solid fa-chevron-down"></i> 상세보기
@@ -2150,8 +2196,9 @@ function filterDirectory(type = 'board') {
               </div>
               <div style="flex: 1; min-width: 200px; font-size: 0.88rem; color: #334155; line-height: 1.8;">
                 <div style="font-size: 1.05rem; font-weight: 900; color: #0A2540; margin-bottom: 4px;">
-                  👤 <strong>${item.name}</strong> <span style="font-size: 0.85rem; color: #0284C7; font-weight: 800;">(${item.tag || '임원'})</span>
+                  👤 <strong>${item.name}</strong> <span style="font-size: 0.85rem; color: #0284C7; font-weight: 800;">(${item.tag || (isBoard ? '임원' : '대의원')})</span>
                 </div>
+                ${item.branchName ? `<div style="font-size: 0.88rem; color: #0284C7; font-weight: 800;">🏛️ <strong>소속 지회:</strong> ${item.branchName}</div>` : ''}
                 <div>📌 <strong>직책 및 역할:</strong> ${item.role}</div>
                 <div>📞 <strong>연락처:</strong> <a href="tel:${item.phone}" style="color: #0284C7; font-weight: 800;">${item.phone}</a></div>
                 <div>📍 <strong>소속 수계 및 관할 어가:</strong> ${item.region}</div>
