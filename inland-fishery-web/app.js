@@ -2460,6 +2460,9 @@ function switchOfficerModalTab(type = 'board') {
   const boardConcurrentGroup = document.getElementById('officer-board-concurrent-group');
   populateBranchSelectOptions();
 
+  const tagInput = document.getElementById('officer-tag');
+  const roleInput = document.getElementById('officer-role');
+
   if (type === 'delegate') {
     if (branchGroup) branchGroup.style.display = 'block';
     if (boardConcurrentGroup) boardConcurrentGroup.style.display = 'none';
@@ -2467,20 +2470,18 @@ function switchOfficerModalTab(type = 'board') {
     if (branchSelect && branchSelect.value) {
       handleOfficerBranchSelect(branchSelect.value);
     }
+    if (tagInput) tagInput.placeholder = '예: 대의원, 대의원 의장';
+    if (roleInput) roleInput.placeholder = '예: 충북 지역 대의원 또는 남한강 수계 대의원';
   } else {
     if (branchGroup) branchGroup.style.display = 'none';
     if (boardConcurrentGroup) boardConcurrentGroup.style.display = 'block';
-  }
-
-  const tagInput = document.getElementById('officer-tag');
-  const roleInput = document.getElementById('officer-role');
-  if (tagInput && roleInput) {
-    if (type === 'delegate') {
-      tagInput.placeholder = '예: 대의원, 대의원 의장';
-      roleInput.placeholder = '예: 충북 지역 대의원 또는 남한강 수계 대의원';
-    } else {
+    if (tagInput) {
       tagInput.placeholder = '예: 부회장, 감사, 이사';
+      if (!tagInput.value || tagInput.value.includes('대의원')) tagInput.value = '이사';
+    }
+    if (roleInput) {
       roleInput.placeholder = '예: 중앙연합회 부회장 또는 충북 수계 이사';
+      if (!roleInput.value || roleInput.value.includes('대의원')) roleInput.value = '중앙연합회 이사';
     }
   }
 
@@ -3812,12 +3813,24 @@ function openIndividualOfficerModal(idx, type) {
   }
   document.getElementById('indiv-officer-image-file').value = '';
 
-  showModalClean('individual-officer-modal');
+  const modal = document.getElementById('individual-officer-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    modal.style.zIndex = '300050';
+    modal.classList.add('active');
+    modal.scrollTop = 0;
+    const content = modal.querySelector('.modal-content');
+    if (content) content.scrollTop = 0;
+  }
 }
 window.openIndividualOfficerModal = openIndividualOfficerModal;
 
 function closeIndividualOfficerModal() {
-  hideModalClean('individual-officer-modal');
+  const modal = document.getElementById('individual-officer-modal');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+  }
   uploadedIndivOfficerImageBase64 = null;
 }
 window.closeIndividualOfficerModal = closeIndividualOfficerModal;
@@ -3989,7 +4002,9 @@ window.onclick = function(event) {
   const branchListModal = document.getElementById('branch-list-modal');
   const addBranchModal = document.getElementById('add-branch-modal');
   const indivOfficerModal = document.getElementById('individual-officer-modal');
+  const addOfficerModal = document.getElementById('add-officer-modal');
   if (event.target === indivOfficerModal) closeIndividualOfficerModal();
+  if (event.target === addOfficerModal) closeAddOfficerModal();
 
   if (event.target === detailModal) closeModal();
   if (event.target === adminModal) closeAdminModal();
