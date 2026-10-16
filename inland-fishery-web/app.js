@@ -1126,9 +1126,13 @@ function editBranchOrg(idx) {
   const boardRoleSelect = document.getElementById('branch-board-role');
   const boardRoleContainer = document.getElementById('branch-board-role-container');
   if (isBoardCheckbox) {
-    isBoardCheckbox.checked = !!branch.isBoardMember;
-    if (boardRoleContainer) boardRoleContainer.style.display = branch.isBoardMember ? 'block' : 'none';
-    if (boardRoleSelect && branch.boardRole) boardRoleSelect.value = branch.boardRole;
+    const isConcurrent = !!(branch.isBoardMember || (Array.isArray(boardList) && boardList.some(b => (b.branchId && String(b.branchId) === String(branch.id)) || (lName && b.name === lName && b.isBranchLeader))));
+    isBoardCheckbox.checked = isConcurrent;
+    if (boardRoleContainer) boardRoleContainer.style.display = isConcurrent ? 'block' : 'none';
+    if (boardRoleSelect) {
+      const existingBoard = (Array.isArray(boardList) ? boardList : []).find(b => (b.branchId && String(b.branchId) === String(branch.id)) || (lName && b.name === lName));
+      boardRoleSelect.value = branch.boardRole || (existingBoard ? existingBoard.tag : '이사');
+    }
   }
   
   toggleNewBranchForm(true);
@@ -1170,24 +1174,66 @@ function handleAddBranchSubmit(e) {
 
   // 지회장 이사회 겸임 동기화
   if (isBoardMember && leaderName) {
-    const existingIdx = boardList.findIndex(b => String(b.branchId) === String(targetBranchId) || (b.name === leaderName && b.isBranchLeader));
+    const existingIdx = boardList.findIndex(b => 
+      (b.branchId && String(b.branchId) === String(targetBranchId)) || 
+      b.name === leaderName
+    );
+
+    let roleText = `중앙연합회 ${boardRole} (${cleanBranchName} 지회장)`;
+    let tagText = boardRole;
+    if (boardRole === '회장' || boardRole === '중앙회 연합회장') {
+      tagText = '회장';
+      roleText = `중앙회 연합회장 (${cleanBranchName} 지회장)`;
+    } else if (boardRole === '수석부회장') {
+      tagText = '수석부회장';
+      roleText = `중앙연합회 수석부회장 (${cleanBranchName} 지회장)`;
+    } else if (boardRole === '사무총장') {
+      tagText = '사무총장';
+      roleText = `사무국 총괄 국장 (${cleanBranchName} 지회장)`;
+    }
+
+    const prevImage = (existingIdx !== -1 && boardList[existingIdx].image) 
+      ? boardList[existingIdx].image 
+      : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+
     const boardOfficerObj = {
       name: leaderName,
-      role: `중앙연합회 ${boardRole} (${cleanBranchName} 지회장)`,
-      tag: boardRole,
+      role: roleText,
+      tag: tagText,
       tagClass: 'tag-director',
-      image: 'logo_clean.svg',
-      phone: leaderPhone || '010-0000-0000',
+      image: prevImage,
+      phone: leaderPhone || (existingIdx !== -1 ? boardList[existingIdx].phone : '010-0000-0000'),
       region: region || cleanBranchName,
       branchId: targetBranchId,
+      branchName: cleanBranchName,
       isBranchLeader: true
     };
+
     if (existingIdx !== -1) {
       boardList[existingIdx] = { ...boardList[existingIdx], ...boardOfficerObj };
     } else {
       boardList.push(boardOfficerObj);
     }
+
+    // 중복 등록 방지 (동일인 중복 제거)
+    boardList = boardList.filter((b, bIdx) => {
+      if (b.name === leaderName) {
+        return bIdx === (existingIdx !== -1 ? existingIdx : boardList.length - 1);
+      }
+      return true;
+    });
   } else {
+    // 겸임 해제 시 기존 중앙회 핵심 임원이면 지회장 표기만 제거, 지회장 전용 등록자면 목록에서 제거
+    boardList.forEach(b => {
+      if (String(b.branchId) === String(targetBranchId)) {
+        b.isBranchLeader = false;
+        b.branchId = null;
+        b.branchName = '';
+        if (b.role && b.role.includes('지회장')) {
+          b.role = b.role.replace(/\s*\([^)]*지회장\)/, '').trim();
+        }
+      }
+    });
     boardList = boardList.filter(b => !(String(b.branchId) === String(targetBranchId) && b.isBranchLeader));
   }
 

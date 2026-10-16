@@ -1204,10 +1204,12 @@
               <div id="branch-board-role-container" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #BAE6FD;">
                 <label for="branch-board-role" style="font-size: 0.8rem; color: #0284C7; font-weight: 700; display: block; margin-bottom: 4px;">중앙 이사회 겸임 직책 *</label>
                 <select id="branch-board-role" style="width: 100%; padding: 8px; border: 1px solid #7DD3FC; border-radius: 6px; font-size: 0.85rem; background: #FFF;">
-                  <option value="이사">🏛️ 이사</option>
-                  <option value="부회장">⭐ 부회장</option>
-                  <option value="수석부회장">👑 수석부회장</option>
+                  <option value="회장">👑 중앙회 연합회장 (회장)</option>
+                  <option value="수석부회장">⭐ 수석부회장</option>
+                  <option value="부회장">✨ 부회장</option>
                   <option value="감사">⚖️ 감사</option>
+                  <option value="사무총장">📋 사무총장</option>
+                  <option value="이사" selected>🏛️ 이사</option>
                 </select>
               </div>
             </div>
@@ -1448,7 +1450,7 @@
     window.firebaseUploadString = uploadString;
     window.firebaseGetDownloadURL = getDownloadURL;
   </script>
-  <script defer src="app.js?v=20261016_branch_name_badge"></script>
+  <script defer src="app.js?v=20261016_president_branch_fix"></script>
 
   <!-- 📩 INQUIRY LIST MODAL -->
   <div class="modal" id="inquiry-list-modal">
