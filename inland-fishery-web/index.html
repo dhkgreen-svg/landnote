@@ -1216,12 +1216,15 @@
           </div>
 
           <div class="form-group">
-              <label>지회 소속 대의원 명단</label>
+              <label style="display: flex; justify-content: space-between; align-items: center;">
+                <span>👥 지회 소속 임원 및 대의원 명단</span>
+                <span style="font-size: 0.76rem; color: #0284C7; font-weight: 700;">직책(대의원/감사/이사 등) 선택 가능</span>
+              </label>
               <div id="dynamic-delegates-container">
                 <!-- Dynamic rows will be injected here -->
               </div>
-              <button type="button" onclick="addDelegateRow()" style="margin-top: 8px; background: #F1F5F9; border: 1px dashed #94A3B8; padding: 8px; width: 100%; border-radius: 6px; cursor: pointer; color: #475569; font-size: 0.82rem; font-weight: 800;">
-                <i class="fa-solid fa-user-plus"></i> + 대의원 1명 추가
+              <button type="button" onclick="addDelegateRow()" style="margin-top: 8px; background: #F0F9FF; border: 1px dashed #7DD3FC; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; color: #0369A1; font-size: 0.84rem; font-weight: 800;">
+                <i class="fa-solid fa-user-plus"></i> + 임원 / 대의원 1명 추가
               </button>
             </div>
 
@@ -1450,7 +1453,7 @@
     window.firebaseUploadString = uploadString;
     window.firebaseGetDownloadURL = getDownloadURL;
   </script>
-  <script defer src="app.js?v=20261016_president_branch_fix"></script>
+  <script defer src="app.js?v=20261016_branch_officer_roles"></script>
 
   <!-- 📩 INQUIRY LIST MODAL -->
   <div class="modal" id="inquiry-list-modal">
