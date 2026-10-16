@@ -1639,13 +1639,13 @@ function getOfficerRankPriority(item) {
 }
 
 let presidentGreeting = {
-  name: '',
-  badge: '',
-  subtitle: '',
-  phone: '',
-  region: '',
-  photo: '',
-  message: ''
+  name: '이재완',
+  badge: '연합회장',
+  subtitle: '"전국 내수면 어로어업인 여러분의 든든한 동반자가 되겠습니다."',
+  phone: '010-5468-3208',
+  region: '충북 단양',
+  photo: 'logo_clean.svg',
+  message: '우리나라 내수면 어업은 강과 호수를 터전으로 국민들에게 건강한 수산먹거리를 제공해 온 소중한 민물 자원의 뿌리입니다. 전국내수면어로어업인연합회는 소통과 협력을 바탕으로 내수면 어업인의 경제적·사회적 지위 향상과 내수 경제 활성화에 최선을 다하겠습니다.\n\n어가의 현장 애로사항 청취, 수생태계 보전, 그리고 투명한 행정 집행을 통해 전국 시·도 지회 회원이 한마음으로 번영할 수 있도록 앞장서겠습니다.'
 };
 
 function renderPresidentGreeting() {
@@ -1658,14 +1658,26 @@ function renderPresidentGreeting() {
   const messageEl = document.getElementById('pres-message-p');
   const sigEl = document.getElementById('pres-sig');
 
-  if (imgEl) imgEl.src = presidentGreeting.photo || '';
-  if (badgeEl) badgeEl.textContent = presidentGreeting.badge || '';
-  if (nameEl) nameEl.innerHTML = presidentGreeting.name ? `${presidentGreeting.name} <span class="title-sub">회장 (대표이사)</span>` : '';
-  if (phoneEl) phoneEl.innerHTML = presidentGreeting.phone ? `<i class="fa-solid fa-phone"></i> ${presidentGreeting.phone}` : '';
-  if (regionEl) regionEl.innerHTML = presidentGreeting.region ? `<i class="fa-solid fa-location-dot"></i> ${presidentGreeting.region}` : '';
-  if (subtitleEl) subtitleEl.textContent = presidentGreeting.subtitle;
-  if (messageEl) messageEl.innerHTML = (presidentGreeting.message || '').replace(/\n/g, '<br>');
-  if (sigEl) sigEl.innerHTML = presidentGreeting.name ? `사단법인 전국내수면어로어업인연합회 회장 <strong>${presidentGreeting.name}</strong> 올림` : '';
+  if (imgEl) {
+    imgEl.src = presidentGreeting.photo || 'logo_clean.svg';
+    imgEl.onerror = function() {
+      this.onerror = null;
+      this.src = 'logo_clean.svg';
+    };
+  }
+  if (badgeEl) badgeEl.textContent = presidentGreeting.badge || '연합회장';
+  if (nameEl) nameEl.innerHTML = presidentGreeting.name ? `${presidentGreeting.name} <span class="title-sub">회장 (대표이사)</span>` : '이재완 <span class="title-sub">회장 (대표이사)</span>';
+  if (phoneEl) phoneEl.innerHTML = presidentGreeting.phone ? `<i class="fa-solid fa-phone"></i> ${presidentGreeting.phone}` : '<i class="fa-solid fa-phone"></i> 010-5468-3208';
+  if (regionEl) regionEl.innerHTML = presidentGreeting.region ? `<i class="fa-solid fa-location-dot"></i> ${presidentGreeting.region}` : '<i class="fa-solid fa-location-dot"></i> 충북 단양';
+  if (subtitleEl) subtitleEl.textContent = presidentGreeting.subtitle || '"전국 내수면 어로어업인 여러분의 든든한 동반자가 되겠습니다."';
+  if (messageEl) {
+    const rawMsg = presidentGreeting.message || '우리나라 내수면 어업은 강과 호수를 터전으로 국민들에게 건강한 수산먹거리를 제공해 온 소중한 민물 자원의 뿌리입니다. 전국내수면어로어업인연합회는 소통과 협력을 바탕으로 내수면 어업인의 경제적·사회적 지위 향상과 내수 경제 활성화에 최선을 다하겠습니다.\n\n어가의 현장 애로사항 청취, 수생태계 보전, 그리고 투명한 행정 집행을 통해 전국 시·도 지회 회원이 한마음으로 번영할 수 있도록 앞장서겠습니다.';
+    messageEl.innerHTML = rawMsg.replace(/\n/g, '<br>');
+  }
+  if (sigEl) {
+    const presName = presidentGreeting.name || '이재완';
+    sigEl.innerHTML = `사단법인 전국내수면어로어업인연합회 회장 <strong>${presName}</strong> 올림`;
+  }
 }
 
 let uploadedPresImageBase64 = null;
@@ -1893,7 +1905,7 @@ async function loadServerData() {
           }
 
           if (needsOrgSync) {
-            fetch('/api/sync-org-data', {
+            fetch('/api/save-org-data', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(syncPayload)
@@ -2303,6 +2315,7 @@ function openAboutModal(e) {
   if (e && e.preventDefault) e.preventDefault();
   closeWelcomeNotice();
   hideModalClean('notice-modal');
+  renderPresidentGreeting();
   filterDirectory('board');
   showModalClean('about-modal');
 }

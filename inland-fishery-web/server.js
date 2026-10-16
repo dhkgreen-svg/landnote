@@ -73,7 +73,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.url === '/api/save-org-data' && req.method === 'POST') {
+  if ((req.url === '/api/save-org-data' || req.url === '/api/sync-org-data') && req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk.toString());
     req.on('end', async () => {
