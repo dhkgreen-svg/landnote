@@ -44,7 +44,7 @@ let usersList = [];
 let pendingUsersList = [];
 let editingItemId = null;
 let currentLedgerYear = '2026';
-let contactInfo = { address: '', tel: '', fax: '', email: '' };
+let contactInfo = { address: '충북 단양', tel: '010-5468-3208', fax: '', email: 'dhkgreen@naver.com', bizNum: '', president: '이재완' };
 
 let committeesList = [
   {
@@ -4212,13 +4212,42 @@ async function deletePastNotice(id, e) {
 function renderContactInfo() {
   const pList = document.querySelectorAll('.info-list .info-item p');
   if (pList && pList.length >= 3) {
-    pList[0].innerText = contactInfo.address || '';
-    pList[1].innerText = 'Tel: ' + (contactInfo.tel || '') + ' | Fax: ' + (contactInfo.fax || '');
-    pList[2].innerText = contactInfo.email || '';
+    pList[0].innerText = contactInfo.address || '충북 단양';
+    pList[1].innerText = 'Tel: ' + (contactInfo.tel || '010-5468-3208') + (contactInfo.fax ? ' | Fax: ' + contactInfo.fax : '');
+    pList[2].innerText = contactInfo.email || 'dhkgreen@naver.com';
   }
   const headerTel = document.getElementById('header-contact-tel');
   if (headerTel) {
-    headerTel.innerText = contactInfo.tel || '';
+    headerTel.innerText = contactInfo.tel || '010-5468-3208';
+  }
+
+  // Footer dynamic rendering
+  const footerBizNum = document.getElementById('footer-biznum');
+  const footerPresident = document.getElementById('footer-president');
+  const footerAddress = document.getElementById('footer-address');
+
+  if (footerBizNum) {
+    footerBizNum.innerText = contactInfo.bizNum || '등록 대기중';
+  }
+  if (footerPresident) {
+    footerPresident.innerText = contactInfo.president || (presidentGreeting && presidentGreeting.name) || '이재완';
+  }
+  if (footerAddress) {
+    footerAddress.innerText = contactInfo.address || '충북 단양';
+  }
+
+  const footerAdminWrap = document.getElementById('footer-admin-btn-wrap');
+  const user = getCurrentUser();
+  if (footerAdminWrap) {
+    if (user && user.role === 'master') {
+      footerAdminWrap.innerHTML = `
+        <button type="button" onclick="openContactSettingsModal()" style="background: rgba(255,255,255,0.12); color: #BAE6FD; border: 1px solid rgba(255,255,255,0.25); padding: 5px 14px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+          <i class="fa-solid fa-gear"></i> 고유번호 / 대표자 / 주소 정보 변경
+        </button>
+      `;
+    } else {
+      footerAdminWrap.innerHTML = '';
+    }
   }
 }
 
@@ -4232,7 +4261,7 @@ function insertMasterContactSettingsButton() {
   btn.type = 'button';
   btn.onclick = openContactSettingsModal;
   btn.style.cssText = 'background: #8B5CF6; color: #FFF; border: none; padding: 16px; border-radius: 12px; font-size: 1.05rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px;';
-  btn.innerHTML = '<i class="fa-solid fa-address-book"></i> 기본 연락처 및 주소 변경';
+  btn.innerHTML = '<i class="fa-solid fa-address-book"></i> 기본 연락처 및 고유번호/주소 변경';
   container.appendChild(btn);
 
     if (!container.querySelector('#btn-president-settings')) {
@@ -4255,36 +4284,46 @@ function openContactSettingsModal() {
     modal.className = 'modal';
     modal.id = 'contact-settings-modal';
     modal.innerHTML = `
-      <div class="modal-content" style="max-width: 460px; padding: 24px;">
+      <div class="modal-content" style="max-width: 500px; padding: 24px;">
         <button class="modal-close" onclick="hideModalClean('contact-settings-modal')">&times;</button>
-        <div style="margin-bottom: 24px;">
-          <h2 style="font-size: 1.35rem; color: #0A2540; font-weight: 900;"><i class="fa-solid fa-address-book" style="color: #8B5CF6;"></i> 연합회 기본 정보 설정</h2>
-          <p style="font-size: 0.88rem; color: #64748B; margin-top: 6px;">홈페이지 하단에 노출되는 연락처 및 주소를 변경합니다.</p>
+        <div style="margin-bottom: 20px;">
+          <h2 style="font-size: 1.3rem; color: #0A2540; font-weight: 900;"><i class="fa-solid fa-address-book" style="color: #0284C7;"></i> 연합회 고유번호 및 기본 정보 설정</h2>
+          <p style="font-size: 0.84rem; color: #64748B; margin-top: 4px;">홈페이지 하단(Footer)에 표시되는 대표자, 고유번호, 주소 및 연락처를 변경합니다.</p>
         </div>
         <form id="contact-settings-form" onsubmit="saveContactSettings(event)">
           <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; gap: 10px;">
+              <div style="flex: 1;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 4px;">대표자 성함 *</label>
+                <input type="text" id="contact-edit-president" required style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 6px;">
+              </div>
+              <div style="flex: 1;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 4px;">고유번호 (사업자등록번호)</label>
+                <input type="text" id="contact-edit-biznum" placeholder="예: 000-00-00000" style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 6px;">
+              </div>
+            </div>
             <div>
-              <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px;">중앙 사무국 주소</label>
-              <input type="text" id="contact-edit-address" required style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;">
+              <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 4px;">중앙 사무국 주소 *</label>
+              <input type="text" id="contact-edit-address" required style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 6px;">
             </div>
             <div style="display: flex; gap: 10px;">
               <div style="flex: 1;">
-                <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px;">대표 전화 (Tel)</label>
-                <input type="text" id="contact-edit-tel" required style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 4px;">대표 전화 (Tel) *</label>
+                <input type="text" id="contact-edit-tel" required style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 6px;">
               </div>
               <div style="flex: 1;">
-                <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px;">팩스 (Fax)</label>
-                <input type="text" id="contact-edit-fax" required style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 4px;">팩스 (Fax)</label>
+                <input type="text" id="contact-edit-fax" placeholder="선택 사항" style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 6px;">
               </div>
             </div>
             <div>
-              <label style="display: block; font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px;">이메일 문의</label>
-              <input type="email" id="contact-edit-email" required style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 8px;">
+              <label style="display: block; font-size: 0.84rem; font-weight: 700; color: #334155; margin-bottom: 4px;">이메일 문의 *</label>
+              <input type="email" id="contact-edit-email" required style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 6px;">
             </div>
           </div>
-          <div style="margin-top: 24px; display: flex; gap: 10px; justify-content: flex-end;">
+          <div style="margin-top: 22px; display: flex; gap: 8px; justify-content: flex-end;">
             <button type="button" onclick="hideModalClean('contact-settings-modal')" class="btn" style="background: #E2E8F0; color: #475569;">취소</button>
-            <button type="submit" class="btn btn-primary" style="background: #8B5CF6;"><i class="fa-solid fa-floppy-disk"></i> 저장하기</button>
+            <button type="submit" class="btn btn-primary" style="background: #0284C7;"><i class="fa-solid fa-floppy-disk"></i> 저장하기</button>
           </div>
         </form>
       </div>
@@ -4292,16 +4331,20 @@ function openContactSettingsModal() {
     document.body.appendChild(modal);
   }
   
-  document.getElementById('contact-edit-address').value = contactInfo.address || '';
-  document.getElementById('contact-edit-tel').value = contactInfo.tel || '';
+  document.getElementById('contact-edit-president').value = contactInfo.president || (presidentGreeting && presidentGreeting.name) || '이재완';
+  document.getElementById('contact-edit-biznum').value = contactInfo.bizNum || '';
+  document.getElementById('contact-edit-address').value = contactInfo.address || '충북 단양';
+  document.getElementById('contact-edit-tel').value = contactInfo.tel || '010-5468-3208';
   document.getElementById('contact-edit-fax').value = contactInfo.fax || '';
-  document.getElementById('contact-edit-email').value = contactInfo.email || '';
+  document.getElementById('contact-edit-email').value = contactInfo.email || 'dhkgreen@naver.com';
   
   showModalClean('contact-settings-modal');
 }
 
 async function saveContactSettings(e) {
   e.preventDefault();
+  contactInfo.president = document.getElementById('contact-edit-president').value.trim() || '이재완';
+  contactInfo.bizNum = document.getElementById('contact-edit-biznum').value.trim();
   contactInfo.address = document.getElementById('contact-edit-address').value.trim();
   contactInfo.tel = document.getElementById('contact-edit-tel').value.trim();
   contactInfo.fax = document.getElementById('contact-edit-fax').value.trim();
@@ -4317,7 +4360,7 @@ async function saveContactSettings(e) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contactInfo: contactInfo })
     });
-    alert('기본 연락처 정보가 성공적으로 변경되었습니다.');
+    alert('연합회 고유번호, 대표자, 주소 및 연락처 정보가 성공적으로 저장되었습니다.');
   } catch (err) {
     console.log(err);
   }
