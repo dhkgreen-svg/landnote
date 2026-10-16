@@ -905,11 +905,33 @@ function renderBranchCards() {
         const displayTitle = `${idx + 1}. ${cleanName}`;
         const rawLeader = item.leader || '지회장 (연락처 미등록)';
         const cleanLeaderName = rawLeader.replace('지회장', '').split('(')[0].trim() || '지회장';
-        const delegatesList = item.delegates && item.delegates.length > 0 ? item.delegates : [
-          { name: '1번 대의원', phone: '010-0000-0001' },
-          { name: '2번 대의원', phone: '010-0000-0002' },
-          { name: '3번 대의원', phone: '010-0000-0003' }
-        ];
+
+        // 중앙 이사회 겸임 여부 배지
+        const boardSeat = (Array.isArray(boardList) ? boardList : []).find(b => 
+          (b.branchId && String(b.branchId) === String(item.id)) || 
+          (cleanLeaderName && cleanLeaderName !== '지회장' && b.name && b.name.includes(cleanLeaderName))
+        );
+        const boardBadge = boardSeat
+          ? `<span style="background: #E0F2FE; color: #0284C7; border: 1px solid #BAE6FD; padding: 2px 8px; border-radius: 4px; font-size: 0.76rem; font-weight: 800; margin-left: 6px;"><i class="fa-solid fa-crown"></i> 중앙 이사회 ${boardSeat.tag || '겸임 이사'}</span>`
+          : '';
+
+        // delegateList에서 해당 지회 소속 대의원 동적 매칭
+        const linkedDelegates = (Array.isArray(delegateList) ? delegateList : []).filter(d => {
+          return (d.branchId && String(d.branchId) === String(item.id)) ||
+                 (d.branchName && d.branchName.includes(cleanName)) ||
+                 (d.region && d.region.includes(cleanName)) ||
+                 (d.role && d.role.includes(cleanName));
+        });
+
+        let delegatesList = [];
+        if (linkedDelegates.length > 0) {
+          delegatesList = linkedDelegates.map(d => ({
+            name: d.name + (d.name.includes('대의원') ? '' : ' 대의원'),
+            phone: d.phone
+          }));
+        } else if (item.delegates && item.delegates.length > 0) {
+          delegatesList = item.delegates;
+        }
 
         return `
           <div style="border: 1px solid #BAE6FD; border-radius: 10px; background: #FFF; overflow: hidden; box-shadow: 0 2px 6px rgba(2,132,199,0.05);">
@@ -926,7 +948,7 @@ function renderBranchCards() {
             <div id="branch-detail-${item.id}" style="display: none; padding: 14px 16px; border-top: 1px dashed #BAE6FD; background: #FFF;">
               <div style="font-size: 0.86rem; color: #334155; line-height: 1.6; background: #F8FAFC; padding: 12px 14px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #E2E8F0;">
                 <div style="font-size: 0.89rem; color: #0A2540; font-weight: 800;">
-                  👤 <strong>지회장:</strong> <span style="color: #0284C7; font-weight: 900;">${rawLeader}</span>
+                  👤 <strong>지회장:</strong> <span style="color: #0284C7; font-weight: 900;">${rawLeader}</span> ${boardBadge} ${boardBadge}
                 </div>
                 
                 <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #E2E8F0;">
@@ -1087,6 +1109,15 @@ function editBranchOrg(idx) {
   
   document.getElementById('branch-list-region').value = branch.region || '';
   document.getElementById('branch-list-office').value = branch.office || '';
+
+  const isBoardCheckbox = document.getElementById('branch-is-board-member');
+  const boardRoleSelect = document.getElementById('branch-board-role');
+  const boardRoleContainer = document.getElementById('branch-board-role-container');
+  if (isBoardCheckbox) {
+    isBoardCheckbox.checked = !!branch.isBoardMember;
+    if (boardRoleContainer) boardRoleContainer.style.display = branch.isBoardMember ? 'block' : 'none';
+    if (boardRoleSelect && branch.boardRole) boardRoleSelect.value = branch.boardRole;
+  }
   
   toggleNewBranchForm(true);
 }
@@ -1120,6 +1151,33 @@ function handleAddBranchSubmit(e) {
   });
 
   const formattedName = name.startsWith('🏛️') ? name : `🏛️ ${name}`;
+  const isBoardMember = document.getElementById('branch-is-board-member') ? document.getElementById('branch-is-board-member').checked : false;
+  const boardRole = document.getElementById('branch-board-role') ? document.getElementById('branch-board-role').value : '이사';
+  const cleanBranchName = name.replace(/^(\d+\.\s*|🏛️\s*)/, '').trim();
+  const targetBranchId = currentEditingBranchId || Date.now();
+
+  // 지회장 이사회 겸임 동기화
+  if (isBoardMember && leaderName) {
+    const existingIdx = boardList.findIndex(b => String(b.branchId) === String(targetBranchId) || (b.name === leaderName && b.isBranchLeader));
+    const boardOfficerObj = {
+      name: leaderName,
+      role: `중앙연합회 ${boardRole} (${cleanBranchName} 지회장)`,
+      tag: boardRole,
+      tagClass: 'tag-director',
+      image: 'logo_clean.svg',
+      phone: leaderPhone || '010-0000-0000',
+      region: region || cleanBranchName,
+      branchId: targetBranchId,
+      isBranchLeader: true
+    };
+    if (existingIdx !== -1) {
+      boardList[existingIdx] = { ...boardList[existingIdx], ...boardOfficerObj };
+    } else {
+      boardList.push(boardOfficerObj);
+    }
+  } else {
+    boardList = boardList.filter(b => !(String(b.branchId) === String(targetBranchId) && b.isBranchLeader));
+  }
 
   if (currentEditingBranchId) {
     const idx = branchOrgList.findIndex(b => b.id === currentEditingBranchId);
@@ -1127,15 +1185,17 @@ function handleAddBranchSubmit(e) {
       branchOrgList[idx] = {
         ...branchOrgList[idx],
         name: formattedName,
-        leader, delegates, region, office
+        leader, delegates, region, office,
+        isBoardMember, boardRole
       };
     }
     currentEditingBranchId = null;
   } else {
     const newBranch = {
-      id: Date.now(),
+      id: targetBranchId,
       name: formattedName,
-      leader, delegates, region, office
+      leader, delegates, region, office,
+      isBoardMember, boardRole
     };
     branchOrgList.push(newBranch);
   }
@@ -2131,6 +2191,89 @@ function openAddOfficerModal(type = 'board') {
 }
 window.openAddOfficerModal = openAddOfficerModal;
 
+function populateBranchSelectOptions() {
+  const branchSelect = document.getElementById('officer-branch-select');
+  const concurrentSelect = document.getElementById('officer-concurrent-branch-select');
+  const branches = Array.isArray(branchOrgList) ? branchOrgList : [];
+  
+  let optionsHtml = '';
+  if (branches.length === 0) {
+    optionsHtml = '<option value="">등록된 지회가 없습니다</option>';
+  } else {
+    optionsHtml = branches.map(b => {
+      const cleanName = (b.name || '시·도 지회').replace(/^(\d+\.\s*|🏛️\s*)/, '').trim();
+      return `<option value="${b.id}">${cleanName}</option>`;
+    }).join('');
+  }
+
+  if (branchSelect) branchSelect.innerHTML = optionsHtml;
+  if (concurrentSelect) concurrentSelect.innerHTML = optionsHtml;
+}
+
+function handleOfficerBranchSelect(branchId) {
+  const branches = Array.isArray(branchOrgList) ? branchOrgList : [];
+  const branch = branches.find(b => String(b.id) === String(branchId));
+  if (branch) {
+    const cleanName = (branch.name || '').replace(/^(\d+\.\s*|🏛️\s*)/, '').trim();
+    const tagInput = document.getElementById('officer-tag');
+    const roleInput = document.getElementById('officer-role');
+    const regionInput = document.getElementById('officer-region');
+    if (tagInput && (!tagInput.value || tagInput.value.includes('대의원'))) {
+      tagInput.value = `${cleanName} 대의원`;
+    }
+    if (roleInput && (!roleInput.value || roleInput.value.includes('소속 대의원'))) {
+      roleInput.value = `${cleanName} 소속 대의원`;
+    }
+    if (regionInput && branch.region) {
+      regionInput.value = branch.region;
+    }
+  }
+}
+window.handleOfficerBranchSelect = handleOfficerBranchSelect;
+
+function toggleOfficerBranchLeaderOptions(checked) {
+  const container = document.getElementById('officer-branch-leader-select-container');
+  if (container) container.style.display = checked ? 'block' : 'none';
+  if (checked) {
+    const concurrentSelect = document.getElementById('officer-concurrent-branch-select');
+    if (concurrentSelect && concurrentSelect.value) {
+      handleOfficerConcurrentBranchSelect(concurrentSelect.value);
+    }
+  }
+}
+window.toggleOfficerBranchLeaderOptions = toggleOfficerBranchLeaderOptions;
+
+function handleOfficerConcurrentBranchSelect(branchId) {
+  const branches = Array.isArray(branchOrgList) ? branchOrgList : [];
+  const branch = branches.find(b => String(b.id) === String(branchId));
+  if (branch) {
+    const cleanName = (branch.name || '').replace(/^(\d+\.\s*|🏛️\s*)/, '').trim();
+    let lName = '';
+    let lPhone = '';
+    if (branch.leader) {
+      const match = branch.leader.match(/^(.*?)\s*\((.*?)\)$/);
+      if (match) {
+        lName = match[1].trim();
+        lPhone = match[2].trim();
+      } else {
+        lName = branch.leader.trim();
+      }
+    }
+    if (lName) document.getElementById('officer-name').value = lName;
+    if (lPhone) document.getElementById('officer-phone').value = lPhone;
+    if (branch.region) document.getElementById('officer-region').value = branch.region;
+    document.getElementById('officer-tag').value = '이사';
+    document.getElementById('officer-role').value = `중앙연합회 이사 (${cleanName} 지회장)`;
+  }
+}
+window.handleOfficerConcurrentBranchSelect = handleOfficerConcurrentBranchSelect;
+
+function toggleBranchBoardRoleSelect(checked) {
+  const container = document.getElementById('branch-board-role-container');
+  if (container) container.style.display = checked ? 'block' : 'none';
+}
+window.toggleBranchBoardRoleSelect = toggleBranchBoardRoleSelect;
+
 function switchOfficerModalTab(type = 'board') {
   const select = document.getElementById('officer-group-type');
   if (select) select.value = type;
@@ -2160,6 +2303,22 @@ function switchOfficerModalTab(type = 'board') {
     formTitle.innerHTML = type === 'board' 
       ? '➕ 신규 임원(이사/부회장/감사) 추가 등록 (사진 포함)' 
       : '➕ 신규 대의원 추가 등록 (사진 포함)';
+  }
+
+  const branchGroup = document.getElementById('officer-branch-group');
+  const boardConcurrentGroup = document.getElementById('officer-board-concurrent-group');
+  populateBranchSelectOptions();
+
+  if (type === 'delegate') {
+    if (branchGroup) branchGroup.style.display = 'block';
+    if (boardConcurrentGroup) boardConcurrentGroup.style.display = 'none';
+    const branchSelect = document.getElementById('officer-branch-select');
+    if (branchSelect && branchSelect.value) {
+      handleOfficerBranchSelect(branchSelect.value);
+    }
+  } else {
+    if (branchGroup) branchGroup.style.display = 'none';
+    if (boardConcurrentGroup) boardConcurrentGroup.style.display = 'block';
   }
 
   const tagInput = document.getElementById('officer-tag');
@@ -2288,15 +2447,27 @@ function resetOfficerFormState(keepType = true) {
 function deleteOfficer(index, type) {
   if (confirm("정말 이 인원 명부를 삭제하시겠습니까?")) {
     if (type === 'board') {
-      boardList.splice(index, 1);
+      const removed = boardList.splice(index, 1)[0];
+      if (removed && removed.branchId) {
+        const br = branchOrgList.find(b => String(b.id) === String(removed.branchId));
+        if (br) br.isBoardMember = false;
+      }
     } else {
-      delegateList.splice(index, 1);
+      const removed = delegateList.splice(index, 1)[0];
+      if (removed) {
+        branchOrgList.forEach(br => {
+          if (Array.isArray(br.delegates)) {
+            br.delegates = br.delegates.filter(d => !d.name.includes(removed.name));
+          }
+        });
+      }
     }
     if (currentEditingOfficerIndex === index && currentEditingOfficerType === type) {
-      resetOfficerFormState();
+      resetOfficerFormState(true);
     }
     syncOrgDataToServer();
     renderOfficerManageList();
+    renderBranchCards();
     filterDirectory(type);
     alert("삭제 처리되었습니다.");
   }
@@ -2329,11 +2500,48 @@ async function handleAddOfficerSubmit(e) {
     let finalImg = uploadedOfficerImageBase64 || urlInput || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
     uploadedOfficerImageBase64 = null;
 
+  let branchId = null;
+  let branchName = '';
+  let isBranchLeader = false;
+
+  if (groupType === 'delegate') {
+    const branchSelect = document.getElementById('officer-branch-select');
+    branchId = branchSelect ? branchSelect.value : null;
+    const branches = Array.isArray(branchOrgList) ? branchOrgList : [];
+    const targetBranch = branches.find(b => String(b.id) === String(branchId));
+    if (targetBranch) {
+      branchName = (targetBranch.name || '').replace(/^(\d+\.\s*|🏛️\s*)/, '').trim();
+      if (!Array.isArray(targetBranch.delegates)) targetBranch.delegates = [];
+      const dIdx = targetBranch.delegates.findIndex(d => d.name.includes(name));
+      const delItem = { name: `${name} 대의원`, phone: phone || '' };
+      if (dIdx !== -1) {
+        targetBranch.delegates[dIdx] = delItem;
+      } else {
+        targetBranch.delegates.push(delItem);
+      }
+    }
+  } else {
+    const isLeaderCheck = document.getElementById('officer-is-branch-leader');
+    if (isLeaderCheck && isLeaderCheck.checked) {
+      isBranchLeader = true;
+      const concSelect = document.getElementById('officer-concurrent-branch-select');
+      branchId = concSelect ? concSelect.value : null;
+      const targetBranch = branchOrgList.find(b => String(b.id) === String(branchId));
+      if (targetBranch) {
+        targetBranch.isBoardMember = true;
+        targetBranch.boardRole = tag || '이사';
+      }
+    }
+  }
+
   const newOfficer = {
     name, role, tag,
     tagClass: groupType === 'board' ? 'tag-director' : 'tag-delegate',
     image: finalImg,
-    phone, region
+    phone, region,
+    branchId: branchId || null,
+    branchName: branchName || '',
+    isBranchLeader: isBranchLeader
   };
 
   if (currentEditingOfficerIndex !== -1 && currentEditingOfficerType === groupType) {

@@ -1060,6 +1060,31 @@
           </select>
         </div>
 
+        <!-- 👥 대의원 전용: 소속 시·도 지회 필수 선택 연동 -->
+        <div class="form-group" id="officer-branch-group" style="display: none; background: #F0FDF4; border: 1px solid #BBF7D0; padding: 12px; border-radius: 8px;">
+          <label for="officer-branch-select" style="font-weight: 800; color: #166534; font-size: 0.86rem; display: block; margin-bottom: 6px;">
+            🏛️ 소속 시·도 지회 선택 * (등록된 지회와 자동 연동)
+          </label>
+          <select id="officer-branch-select" onchange="handleOfficerBranchSelect(this.value)" style="width: 100%; padding: 10px; border: 1px solid #86EFAC; border-radius: 6px; font-size: 0.88rem; background: #FFF;">
+            <!-- Rendered dynamically by populateBranchSelectOptions() -->
+          </select>
+          <p style="font-size: 0.78rem; color: #15803D; margin-top: 4px; margin-bottom: 0;">
+            👉 대의원이 소속된 지회를 선택하면, [시·도 지회 조직 현황]의 해당 지회 하단 대의원 명단에 자동으로 함께 등록됩니다.
+          </p>
+        </div>
+
+        <!-- 🏛️ 이사회 전용: 시·도 지회장 겸임 여부 옵션 -->
+        <div class="form-group" id="officer-board-concurrent-group" style="background: #F0F9FF; border: 1px solid #BAE6FD; padding: 10px 12px; border-radius: 8px;">
+          <label style="display: flex; align-items: center; gap: 8px; font-weight: 800; color: #0369A1; font-size: 0.86rem; cursor: pointer; margin-bottom: 0;">
+            <input type="checkbox" id="officer-is-branch-leader" onchange="toggleOfficerBranchLeaderOptions(this.checked)" style="width: 16px; height: 16px; cursor: pointer;">
+            <span>🏛️ 시·도 지회장 겸임 이사/임원 (체크 시 지회와 연동)</span>
+          </label>
+          <div id="officer-branch-leader-select-container" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #BAE6FD;">
+            <label for="officer-concurrent-branch-select" style="font-size: 0.8rem; color: #0284C7; font-weight: 700; display: block; margin-bottom: 4px;">겸임하는 시·도 지회 선택</label>
+            <select id="officer-concurrent-branch-select" onchange="handleOfficerConcurrentBranchSelect(this.value)" style="width: 100%; padding: 8px; border: 1px solid #7DD3FC; border-radius: 6px; font-size: 0.85rem; background: #FFF;"></select>
+          </div>
+        </div>
+
         <div class="form-row">
           <div class="form-group" style="flex: 1;">
             <label for="officer-name">성함 *</label>
@@ -1168,6 +1193,23 @@
             <div style="display: flex; gap: 8px;">
               <input type="text" id="branch-list-leader-name" required placeholder="이름 (예: 홍길동)" style="flex: 1; padding: 12px; border: 1px solid #CBD5E1; border-radius: 6px;">
               <input type="text" id="branch-list-leader-phone" required placeholder="연락처" style="flex: 1; padding: 12px; border: 1px solid #CBD5E1; border-radius: 6px;">
+            </div>
+            
+            <!-- 👑 중앙 이사회 임원 겸임 옵션 -->
+            <div style="background: #F0F9FF; border: 1px solid #BAE6FD; padding: 10px 12px; border-radius: 8px; margin-top: 8px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-weight: 800; color: #0369A1; font-size: 0.85rem; cursor: pointer; margin-bottom: 0;">
+                <input type="checkbox" id="branch-is-board-member" onchange="toggleBranchBoardRoleSelect(this.checked)" style="width: 16px; height: 16px; cursor: pointer;">
+                <span>👑 중앙 연합회 이사회 임원 겸임 (체크 시 이사회 명부에 자동 등재)</span>
+              </label>
+              <div id="branch-board-role-container" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #BAE6FD;">
+                <label for="branch-board-role" style="font-size: 0.8rem; color: #0284C7; font-weight: 700; display: block; margin-bottom: 4px;">중앙 이사회 겸임 직책 *</label>
+                <select id="branch-board-role" style="width: 100%; padding: 8px; border: 1px solid #7DD3FC; border-radius: 6px; font-size: 0.85rem; background: #FFF;">
+                  <option value="이사">🏛️ 이사</option>
+                  <option value="부회장">⭐ 부회장</option>
+                  <option value="수석부회장">👑 수석부회장</option>
+                  <option value="감사">⚖️ 감사</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -1406,7 +1448,7 @@
     window.firebaseUploadString = uploadString;
     window.firebaseGetDownloadURL = getDownloadURL;
   </script>
-  <script defer src="app.js?v=20261016_officer_fix"></script>
+  <script defer src="app.js?v=20261016_branch_delegate_link"></script>
 
   <!-- 📩 INQUIRY LIST MODAL -->
   <div class="modal" id="inquiry-list-modal">
