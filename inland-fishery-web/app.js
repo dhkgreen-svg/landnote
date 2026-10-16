@@ -2417,10 +2417,24 @@ function renderOfficerManageList() {
       👑 현재 등록된 ${type === 'board' ? '임원(이사회)' : '대의원'} 현황 (${currentList.length}명):
     </div>
     <div style="display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; padding-right: 4px;">
-      ${currentList.map((item, idx) => `
+      ${currentList.map((item, idx) => {
+        let displayRole = item.tag || item.role;
+        if (type === 'delegate') {
+          const bName = (item.branchName || (item.region ? item.region.split(' ')[0] : '')).replace(/^🏛️\s*/, '').trim();
+          if (bName) {
+            displayRole = bName.includes('대의원') ? bName : `${bName} 대의원`;
+          } else if (item.role && item.role.includes('대의원')) {
+            displayRole = item.role;
+          } else {
+            displayRole = '지회 대의원';
+          }
+        }
+        return `
         <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 8px 10px; border-radius: 6px; display: flex; flex-direction: column; font-size: 0.82rem;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: #0A2540; font-weight: 700;">${item.name} (${item.tag || item.role})</span>
+            <span style="color: #0A2540; font-weight: 700;">
+              ${item.name} <span style="color: #0284C7; font-weight: 800;">(${displayRole})</span>
+            </span>
             <button type="button" onclick="toggleOfficerAction(${idx}, '${type}')" style="background: #E0F2FE; color: #0284C7; border: 1px solid #BAE6FD; padding: 2px 8px; border-radius: 4px; font-weight: 800; cursor: pointer; font-size: 0.75rem;">관리</button>
           </div>
           <div id="officer-action-${type}-${idx}" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #CBD5E1; text-align: right;">
@@ -2430,7 +2444,8 @@ function renderOfficerManageList() {
             <button type="button" onclick="deleteOfficer(${idx}, '${type}')" style="background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5; padding: 2px 10px; border-radius: 4px; font-weight: 800; cursor: pointer; font-size: 0.75rem;">삭제</button>
           </div>
         </div>
-      `).join('')}
+      `;
+      }).join('')}
     </div>
   `;
 }
@@ -2457,6 +2472,18 @@ function editOfficer(idx, type) {
   document.getElementById('officer-role').value = officer.role || '';
   document.getElementById('officer-phone').value = officer.phone || '';
   document.getElementById('officer-region').value = officer.region || '';
+  
+  if (type === 'delegate') {
+    const branchSelect = document.getElementById('officer-branch-select');
+    if (branchSelect) {
+      if (officer.branchId) {
+        branchSelect.value = officer.branchId;
+      } else if (officer.branchName) {
+        const found = (branchOrgList || []).find(b => b.name && b.name.includes(officer.branchName.replace(/^🏛️\s*/, '')));
+        if (found) branchSelect.value = found.id;
+      }
+    }
+  }
   
   if (officer.image && officer.image.startsWith('http')) {
     document.getElementById('officer-image-url').value = officer.image;
