@@ -2122,18 +2122,65 @@ function filterDirectory(type = 'board') {
 }
 
 function openAddOfficerModal(type = 'board') {
-  const select = document.getElementById('officer-group-type');
-  if (select) select.value = type;
   uploadedOfficerImageBase64 = null;
   const form = document.getElementById('add-officer-form');
   if (form) form.reset();
-  renderOfficerManageList();
+  resetOfficerFormState(false);
+  switchOfficerModalTab(type);
   showModalClean('add-officer-modal');
 }
+window.openAddOfficerModal = openAddOfficerModal;
+
+function switchOfficerModalTab(type = 'board') {
+  const select = document.getElementById('officer-group-type');
+  if (select) select.value = type;
+
+  const btnBoard = document.getElementById('tab-btn-modal-board');
+  const btnDelegate = document.getElementById('tab-btn-modal-delegate');
+  if (btnBoard && btnDelegate) {
+    if (type === 'board') {
+      btnBoard.style.borderColor = '#0284C7';
+      btnBoard.style.background = '#0284C7';
+      btnBoard.style.color = '#FFF';
+      btnDelegate.style.borderColor = '#CBD5E1';
+      btnDelegate.style.background = '#F8FAFC';
+      btnDelegate.style.color = '#64748B';
+    } else {
+      btnDelegate.style.borderColor = '#0284C7';
+      btnDelegate.style.background = '#0284C7';
+      btnDelegate.style.color = '#FFF';
+      btnBoard.style.borderColor = '#CBD5E1';
+      btnBoard.style.background = '#F8FAFC';
+      btnBoard.style.color = '#64748B';
+    }
+  }
+
+  const formTitle = document.getElementById('officer-form-title');
+  if (formTitle) {
+    formTitle.innerHTML = type === 'board' 
+      ? '➕ 신규 임원(이사/부회장/감사) 추가 등록 (사진 포함)' 
+      : '➕ 신규 대의원 추가 등록 (사진 포함)';
+  }
+
+  const tagInput = document.getElementById('officer-tag');
+  const roleInput = document.getElementById('officer-role');
+  if (tagInput && roleInput) {
+    if (type === 'delegate') {
+      tagInput.placeholder = '예: 대의원, 대의원 의장';
+      roleInput.placeholder = '예: 충북 지역 대의원 또는 남한강 수계 대의원';
+    } else {
+      tagInput.placeholder = '예: 부회장, 감사, 이사';
+      roleInput.placeholder = '예: 중앙연합회 부회장 또는 충북 수계 이사';
+    }
+  }
+
+  renderOfficerManageList();
+}
+window.switchOfficerModalTab = switchOfficerModalTab;
 
 function closeAddOfficerModal() {
   hideModalClean('add-officer-modal');
-  resetOfficerFormState();
+  resetOfficerFormState(false);
 }
 
 let currentEditingOfficerIndex = -1;
@@ -2148,13 +2195,20 @@ function renderOfficerManageList() {
   const currentList = (type === 'board') ? boardList : delegateList;
 
   if (!currentList || currentList.length === 0) {
-    area.innerHTML = `<div style="font-size: 0.82rem; color: #94A3B8;">등록된 인원이 없습니다.</div>`;
+    area.innerHTML = `
+      <div style="font-size: 0.86rem; font-weight: 800; color: #0A2540; margin-bottom: 8px;">
+        👑 현재 등록된 ${type === 'board' ? '임원(이사회)' : '대의원'} 현황 (0명):
+      </div>
+      <div style="font-size: 0.82rem; color: #94A3B8; padding: 12px; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 6px; text-align: center;">
+        등록된 ${type === 'board' ? '임원이' : '대의원이'} 없습니다. 아래 양식에서 신규 ${type === 'board' ? '임원을' : '대의원을'} 등록해 주세요.
+      </div>
+    `;
     return;
   }
 
   area.innerHTML = `
     <div style="font-size: 0.86rem; font-weight: 800; color: #0A2540; margin-bottom: 8px;">
-      👑 현재 등록된 ${type === 'board' ? '임원' : '대의원'} 현황 (${currentList.length}명):
+      👑 현재 등록된 ${type === 'board' ? '임원(이사회)' : '대의원'} 현황 (${currentList.length}명):
     </div>
     <div style="display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; padding-right: 4px;">
       ${currentList.map((item, idx) => `
@@ -2190,8 +2244,7 @@ function editOfficer(idx, type) {
   currentEditingOfficerIndex = idx;
   currentEditingOfficerType = type;
 
-  const typeSelect = document.getElementById('officer-group-type');
-  if (typeSelect) typeSelect.value = type;
+  switchOfficerModalTab(type);
 
   document.getElementById('officer-name').value = officer.name || '';
   document.getElementById('officer-tag').value = officer.tag || '';
@@ -2216,7 +2269,9 @@ function editOfficer(idx, type) {
   if (actionDiv) actionDiv.style.display = 'none';
 }
 
-function resetOfficerFormState() {
+function resetOfficerFormState(keepType = true) {
+  const select = document.getElementById('officer-group-type');
+  const savedType = select ? select.value : 'board';
   currentEditingOfficerIndex = -1;
   currentEditingOfficerType = '';
   const submitBtn = document.getElementById('officer-submit-btn');
@@ -2226,6 +2281,7 @@ function resetOfficerFormState() {
   }
   const form = document.getElementById('add-officer-form');
   if (form) form.reset();
+  if (keepType && select) select.value = savedType;
   uploadedOfficerImageBase64 = null;
 }
 

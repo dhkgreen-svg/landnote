@@ -1028,23 +1028,33 @@
           <i class="fa-solid fa-crown"></i> 마스터 임원/대의원 관리
         </span>
         <h2 style="font-size: 1.25rem; color: #0A2540; margin-top: 8px; font-weight: 900;">
-          👤 임원 및 대의원 등록 / 해체 관리
+          👤 임원 및 대의원 등록 / 명부 관리
         </h2>
       </div>
 
-      <!-- 현재 등록된 명단 목록 및 삭제 영역 -->
+      <!-- 🏛️ 이사회 / 👥 대의원회 원클릭 전환 탭 버튼 -->
+      <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <button type="button" id="tab-btn-modal-board" onclick="switchOfficerModalTab('board')" style="flex: 1; padding: 10px 8px; border-radius: 8px; font-weight: 800; font-size: 0.84rem; cursor: pointer; border: 2px solid #0284C7; background: #0284C7; color: #FFF; transition: all 0.2s;">
+          🏛️ 이사회 관리 (이사/부회장/감사)
+        </button>
+        <button type="button" id="tab-btn-modal-delegate" onclick="switchOfficerModalTab('delegate')" style="flex: 1; padding: 10px 8px; border-radius: 8px; font-weight: 800; font-size: 0.84rem; cursor: pointer; border: 2px solid #E2E8F0; background: #F8FAFC; color: #64748B; transition: all 0.2s;">
+          👥 대의원회 관리 (대의원)
+        </button>
+      </div>
+
+      <!-- 현재 등록된 명단 목록 및 관리(수정/삭제/순서변경) 영역 -->
       <div id="officer-manage-list-area" style="margin-bottom: 16px; border-bottom: 1px solid #E2E8F0; padding-bottom: 14px;">
         <!-- Rendered dynamically by JavaScript renderOfficerManageList() -->
       </div>
 
       <form id="add-officer-form" onsubmit="handleAddOfficerSubmit(event)">
-        <h4 style="font-size: 0.92rem; color: #0A2540; font-weight: 900; margin-bottom: 10px;">
+        <h4 id="officer-form-title" style="font-size: 0.92rem; color: #0A2540; font-weight: 900; margin-bottom: 10px;">
           ➕ 신규 임원 또는 대의원 추가 등록 (사진 포함)
         </h4>
 
         <div class="form-group">
           <label for="officer-group-type">소속 구분 *</label>
-          <select id="officer-group-type" style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem; background: #FFF;">
+          <select id="officer-group-type" onchange="switchOfficerModalTab(this.value)" style="width: 100%; padding: 10px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.88rem; background: #FFF;">
             <option value="board">🏛️ 이사회 명단 (이사/부회장/감사)</option>
             <option value="delegate">👥 대의원회 명단 (대의원)</option>
           </select>
@@ -1396,7 +1406,7 @@
     window.firebaseUploadString = uploadString;
     window.firebaseGetDownloadURL = getDownloadURL;
   </script>
-  <script defer src="app.js?v=20261016_pres"></script>
+  <script defer src="app.js?v=20261016_officer_fix"></script>
 
   <!-- 📩 INQUIRY LIST MODAL -->
   <div class="modal" id="inquiry-list-modal">
