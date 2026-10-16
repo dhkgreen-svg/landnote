@@ -1127,6 +1127,104 @@
         </div>
       </form>
     </div>
+  <!-- 👤 INDIVIDUAL OFFICER / DELEGATE EDIT MODAL (개인별 인적사항 및 직책 전용 관리 팝업) -->
+  <div class="modal" id="individual-officer-modal">
+    <div class="modal-content" style="max-width: 520px; padding: 24px;">
+      <button class="modal-close" onclick="closeIndividualOfficerModal()">&times;</button>
+      
+      <div style="text-align: center; margin-bottom: 16px;">
+        <span id="indiv-officer-badge" style="background: #0284C7; color: #FFF; padding: 3px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 800;">
+          개인별 인적사항 관리
+        </span>
+        <h2 id="indiv-officer-title" style="font-size: 1.25rem; color: #0A2540; margin-top: 6px; font-weight: 900;">
+          👤 인적사항 및 직책 수정
+        </h2>
+        <p style="font-size: 0.82rem; color: #64748B; margin-top: 2px;">
+          성함, 직책, 소속 지회, 연락처 및 프로필 사진을 수정합니다.
+        </p>
+      </div>
+
+      <form id="indiv-officer-form" onsubmit="handleIndividualOfficerSubmit(event)">
+        <input type="hidden" id="indiv-officer-idx" value="-1">
+        <input type="hidden" id="indiv-officer-type" value="delegate">
+
+        <!-- 소속 구분 변경 -->
+        <div class="form-group">
+          <label for="indiv-officer-group-type">소속 구분 *</label>
+          <select id="indiv-officer-group-type" onchange="handleIndivGroupTypeChange(this.value)" style="width: 100%; padding: 9px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.85rem; background: #FFF;">
+            <option value="board">🏛️ 중앙 이사회 명단 (이사/부회장/감사/회장)</option>
+            <option value="delegate">👥 대의원회 명단 (대의원)</option>
+          </select>
+        </div>
+
+        <!-- 소속 시·도 지회 선택 -->
+        <div class="form-group" style="background: #F0FDF4; border: 1px solid #BBF7D0; padding: 10px; border-radius: 8px;">
+          <label for="indiv-officer-branch-select" style="font-weight: 800; color: #166534; font-size: 0.82rem; display: block; margin-bottom: 4px;">
+            🏛️ 소속 시·도 지회 연동 *
+          </label>
+          <select id="indiv-officer-branch-select" onchange="handleIndivBranchSelect(this.value)" style="width: 100%; padding: 8px; border: 1px solid #86EFAC; border-radius: 6px; font-size: 0.85rem; background: #FFF;">
+            <!-- Options populated from branchOrgList -->
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group" style="flex: 1;">
+            <label for="indiv-officer-name">성함 *</label>
+            <input type="text" id="indiv-officer-name" required placeholder="성함">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="indiv-officer-tag">직책 구분 태그 *</label>
+            <input type="text" id="indiv-officer-tag" required placeholder="예: 대의원, 감사, 이사">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="indiv-officer-role">세부 직책 및 역할 *</label>
+          <input type="text" id="indiv-officer-role" required placeholder="예: 전북 지회 소속 대의원">
+        </div>
+
+        <div class="form-group">
+          <label for="indiv-officer-phone">연락처 *</label>
+          <input type="text" id="indiv-officer-phone" required placeholder="010-0000-0000">
+        </div>
+
+        <div class="form-group">
+          <label for="indiv-officer-region">소속 수계 및 주요 지역 *</label>
+          <input type="text" id="indiv-officer-region" required placeholder="예: 전북 김제">
+        </div>
+
+        <div class="form-group">
+          <label for="indiv-officer-image-file">📸 프로필 사진 변경 (선택)</label>
+          <input type="file" id="indiv-officer-image-file" accept="image/*" style="margin-bottom: 6px; font-size: 0.82rem;" onchange="handleIndivOfficerImageUpload(event)">
+          <input type="url" id="indiv-officer-image-url" placeholder="또는 이미지 URL (예: https://...)" style="font-size: 0.82rem;">
+        </div>
+
+        <!-- 순서 이동 및 삭제 버튼 바 -->
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 10px; border-radius: 8px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; gap: 6px;">
+            <button type="button" onclick="moveIndivOfficer('up')" style="background: #FFF; color: #475569; border: 1px solid #CBD5E1; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; font-weight: 800; cursor: pointer;">
+              ▲ 위로
+            </button>
+            <button type="button" onclick="moveIndivOfficer('down')" style="background: #FFF; color: #475569; border: 1px solid #CBD5E1; padding: 6px 10px; border-radius: 4px; font-size: 0.78rem; font-weight: 800; cursor: pointer;">
+              ▼ 아래로
+            </button>
+          </div>
+          <button type="button" onclick="deleteIndivOfficer()" style="background: #FEE2E2; color: #DC2626; border: 1px solid #FCA5A5; padding: 6px 12px; border-radius: 4px; font-size: 0.78rem; font-weight: 800; cursor: pointer;">
+            <i class="fa-solid fa-trash"></i> 명부에서 삭제
+          </button>
+        </div>
+
+        <!-- 저장 / 닫기 버튼 바 -->
+        <div style="display: flex; gap: 8px; margin-top: 14px;">
+          <button type="submit" class="btn btn-primary" style="flex: 2; padding: 12px; background: #0284C7; font-weight: 800; font-size: 0.9rem;">
+            <i class="fa-solid fa-check"></i> 수정사항 저장하기
+          </button>
+          <button type="button" class="btn btn-outline" onclick="closeIndividualOfficerModal()" style="flex: 1; padding: 12px;">
+            닫기
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- 🏛️ REGIONAL BRANCHES MODAL: 전국 16개 시·도 지회 조직 현황 팝업 -->
@@ -1453,7 +1551,7 @@
     window.firebaseUploadString = uploadString;
     window.firebaseGetDownloadURL = getDownloadURL;
   </script>
-  <script defer src="app.js?v=20261016_branch_officer_roles"></script>
+  <script defer src="app.js?v=20261016_individual_modal"></script>
 
   <!-- 📩 INQUIRY LIST MODAL -->
   <div class="modal" id="inquiry-list-modal">

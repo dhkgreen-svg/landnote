@@ -2534,19 +2534,13 @@ function renderOfficerManageList() {
           }
         }
         return `
-        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 8px 10px; border-radius: 6px; display: flex; flex-direction: column; font-size: 0.82rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: #0A2540; font-weight: 700;">
-              ${item.name} <span style="color: #0284C7; font-weight: 800;">(${displayRole})</span>
-            </span>
-            <button type="button" onclick="toggleOfficerAction(${idx}, '${type}')" style="background: #E0F2FE; color: #0284C7; border: 1px solid #BAE6FD; padding: 2px 8px; border-radius: 4px; font-weight: 800; cursor: pointer; font-size: 0.75rem;">관리</button>
-          </div>
-          <div id="officer-action-${type}-${idx}" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #CBD5E1; text-align: right;">
-            <button type="button" onclick="moveOfficerUp(${idx}, '${type}')" style="background: #E5E7EB; color: #4B5563; border: 1px solid #D1D5DB; padding: 2px 8px; border-radius: 4px; font-weight: 800; cursor: pointer; font-size: 0.75rem; margin-right: 4px;">▲위로</button>
-            <button type="button" onclick="moveOfficerDown(${idx}, '${type}')" style="background: #E5E7EB; color: #4B5563; border: 1px solid #D1D5DB; padding: 2px 8px; border-radius: 4px; font-weight: 800; cursor: pointer; font-size: 0.75rem; margin-right: 12px;">▼아래로</button>
-            <button type="button" onclick="editOfficer(${idx}, '${type}')" style="background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; padding: 2px 10px; border-radius: 4px; font-weight: 800; cursor: pointer; font-size: 0.75rem; margin-right: 6px;">수정</button>
-            <button type="button" onclick="deleteOfficer(${idx}, '${type}')" style="background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5; padding: 2px 10px; border-radius: 4px; font-weight: 800; cursor: pointer; font-size: 0.75rem;">삭제</button>
-          </div>
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 8px 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem;">
+          <span style="color: #0A2540; font-weight: 700;">
+            ${item.name} <span style="color: #0284C7; font-weight: 800;">(${displayRole})</span>
+          </span>
+          <button type="button" onclick="openIndividualOfficerModal(${idx}, '${type}')" style="background: #0284C7; color: #FFF; border: none; padding: 4px 12px; border-radius: 6px; font-weight: 800; cursor: pointer; font-size: 0.76rem; display: flex; align-items: center; gap: 4px; box-shadow: 0 1px 3px rgba(2,132,199,0.25);">
+            <i class="fa-solid fa-pen-to-square"></i> 관리 (수정)
+          </button>
         </div>
       `;
       }).join('')}
@@ -3762,6 +3756,224 @@ async function deleteInquiry(id) {
   }
 }
 
+
+// ==========================================
+// 👤 INDIVIDUAL OFFICER EDIT MODAL LOGIC (개인별 팝업 관리)
+// ==========================================
+let uploadedIndivOfficerImageBase64 = null;
+
+function openIndividualOfficerModal(idx, type) {
+  const currentList = (type === 'board') ? boardList : delegateList;
+  const officer = currentList[idx];
+  if (!officer) return;
+
+  uploadedIndivOfficerImageBase64 = null;
+  document.getElementById('indiv-officer-idx').value = idx;
+  document.getElementById('indiv-officer-type').value = type;
+
+  // Title & badge
+  document.getElementById('indiv-officer-title').innerHTML = `👤 [${officer.name}] 인적사항 및 직책 관리`;
+  document.getElementById('indiv-officer-badge').textContent = type === 'board' ? '🏛️ 중앙 이사회 명단' : '👥 대의원회 명단';
+  document.getElementById('indiv-officer-group-type').value = type;
+
+  // Populate branch select options
+  const branchSelect = document.getElementById('indiv-officer-branch-select');
+  const branches = Array.isArray(branchOrgList) ? branchOrgList : [];
+  let bOptions = '<option value="">소속 지회 없음 (중앙 전용)</option>';
+  branches.forEach(b => {
+    const cleanBName = (b.name || '').replace(/^(\d+\.\s*|🏛️\s*)/, '').trim();
+    bOptions += `<option value="${b.id}">🏛️ ${cleanBName}</option>`;
+  });
+  if (branchSelect) {
+    branchSelect.innerHTML = bOptions;
+    if (officer.branchId) {
+      branchSelect.value = officer.branchId;
+    } else if (officer.branchName) {
+      const found = branches.find(b => b.name && b.name.includes(officer.branchName.replace(/^🏛️\s*/, '').trim()));
+      if (found) branchSelect.value = found.id;
+      else branchSelect.value = "";
+    } else {
+      branchSelect.value = "";
+    }
+  }
+
+  // Fields
+  document.getElementById('indiv-officer-name').value = officer.name || '';
+  document.getElementById('indiv-officer-tag').value = officer.tag || '';
+  document.getElementById('indiv-officer-role').value = officer.role || '';
+  document.getElementById('indiv-officer-phone').value = officer.phone || '';
+  document.getElementById('indiv-officer-region').value = officer.region || '';
+  
+  if (officer.image && officer.image.startsWith('http')) {
+    document.getElementById('indiv-officer-image-url').value = officer.image;
+  } else {
+    document.getElementById('indiv-officer-image-url').value = '';
+    uploadedIndivOfficerImageBase64 = officer.image;
+  }
+  document.getElementById('indiv-officer-image-file').value = '';
+
+  showModalClean('individual-officer-modal');
+}
+window.openIndividualOfficerModal = openIndividualOfficerModal;
+
+function closeIndividualOfficerModal() {
+  hideModalClean('individual-officer-modal');
+  uploadedIndivOfficerImageBase64 = null;
+}
+window.closeIndividualOfficerModal = closeIndividualOfficerModal;
+
+function handleIndivGroupTypeChange(newType) {
+  const tagInput = document.getElementById('indiv-officer-tag');
+  const roleInput = document.getElementById('indiv-officer-role');
+  if (newType === 'board') {
+    if (tagInput.value.includes('대의원')) tagInput.value = '이사';
+    if (roleInput.value.includes('소속 대의원')) roleInput.value = '중앙연합회 이사';
+  } else {
+    if (!tagInput.value.includes('대의원')) tagInput.value = '지회 대의원';
+    if (!roleInput.value.includes('대의원')) roleInput.value = '지회 소속 대의원';
+  }
+}
+window.handleIndivGroupTypeChange = handleIndivGroupTypeChange;
+
+function handleIndivBranchSelect(branchId) {
+  const branches = Array.isArray(branchOrgList) ? branchOrgList : [];
+  const branch = branches.find(b => String(b.id) === String(branchId));
+  if (branch) {
+    const cleanName = (branch.name || '').replace(/^(\d+\.\s*|🏛️\s*)/, '').trim();
+    const groupType = document.getElementById('indiv-officer-group-type').value;
+    const tagInput = document.getElementById('indiv-officer-tag');
+    const roleInput = document.getElementById('indiv-officer-role');
+    const regionInput = document.getElementById('indiv-officer-region');
+    if (groupType === 'delegate') {
+      tagInput.value = `${cleanName} 대의원`;
+      roleInput.value = `${cleanName} 소속 대의원`;
+    } else {
+      if (!roleInput.value.includes(cleanName)) {
+        roleInput.value = `${roleInput.value || '중앙연합회 ' + tagInput.value} (${cleanName})`;
+      }
+    }
+    if (branch.region) regionInput.value = branch.region;
+  }
+}
+window.handleIndivBranchSelect = handleIndivBranchSelect;
+
+function handleIndivOfficerImageUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    uploadedIndivOfficerImageBase64 = event.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+window.handleIndivOfficerImageUpload = handleIndivOfficerImageUpload;
+
+async function handleIndividualOfficerSubmit(e) {
+  e.preventDefault();
+  const idx = parseInt(document.getElementById('indiv-officer-idx').value, 10);
+  const origType = document.getElementById('indiv-officer-type').value;
+  const targetType = document.getElementById('indiv-officer-group-type').value;
+  const name = document.getElementById('indiv-officer-name').value.trim();
+  const tag = document.getElementById('indiv-officer-tag').value.trim();
+  const role = document.getElementById('indiv-officer-role').value.trim();
+  const phone = document.getElementById('indiv-officer-phone').value.trim();
+  const region = document.getElementById('indiv-officer-region').value.trim();
+  const urlInput = document.getElementById('indiv-officer-image-url').value.trim();
+  const branchId = document.getElementById('indiv-officer-branch-select').value;
+
+  const branches = Array.isArray(branchOrgList) ? branchOrgList : [];
+  const targetBranch = branches.find(b => String(b.id) === String(branchId));
+  const branchName = targetBranch ? (targetBranch.name || '').replace(/^(\d+\.\s*|🏛️\s*)/, '').trim() : '';
+
+  if (uploadedIndivOfficerImageBase64 && uploadedIndivOfficerImageBase64.startsWith('data:image')) {
+    uploadedIndivOfficerImageBase64 = await uploadToSupabase(uploadedIndivOfficerImageBase64, 'officer');
+  }
+
+  const currentList = (origType === 'board') ? boardList : delegateList;
+  const origOfficer = (idx >= 0 && currentList[idx]) ? currentList[idx] : {};
+  let finalImg = uploadedIndivOfficerImageBase64 || urlInput || origOfficer.image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+  uploadedIndivOfficerImageBase64 = null;
+
+  const updatedObj = {
+    name, tag, role, phone, region,
+    tagClass: targetType === 'board' ? 'tag-director' : 'tag-delegate',
+    image: finalImg,
+    branchId: branchId || null,
+    branchName: branchName || '',
+    isBranchLeader: origOfficer.isBranchLeader || false
+  };
+
+  if (origType === targetType) {
+    if (origType === 'board') {
+      boardList[idx] = updatedObj;
+    } else {
+      delegateList[idx] = updatedObj;
+    }
+  } else {
+    if (origType === 'board') {
+      boardList.splice(idx, 1);
+      delegateList.push(updatedObj);
+    } else {
+      delegateList.splice(idx, 1);
+      boardList.push(updatedObj);
+    }
+  }
+
+  if (targetBranch) {
+    if (!Array.isArray(targetBranch.delegates)) targetBranch.delegates = [];
+    const cleanDName = name.replace(/(대의원|감사|이사|부회장)/g, '').trim();
+    const dIdx = targetBranch.delegates.findIndex(d => d.name.includes(cleanDName));
+    const roleSuffix = targetType === 'board' ? (tag || '임원') : '대의원';
+    const delItem = { name: `${cleanDName} ${roleSuffix}`, phone: phone || '', role: roleSuffix, cleanName: cleanDName };
+    if (dIdx !== -1) {
+      targetBranch.delegates[dIdx] = delItem;
+    } else {
+      targetBranch.delegates.push(delItem);
+    }
+  }
+
+  syncOrgDataToServer();
+  renderOfficerManageList();
+  renderBranchCards();
+  filterDirectory(targetType);
+  closeIndividualOfficerModal();
+  alert(`[수정 완료]\n'${name}' 님의 인적사항 및 직책이 성공적으로 반영되었습니다.`);
+}
+window.handleIndividualOfficerSubmit = handleIndividualOfficerSubmit;
+
+function moveIndivOfficer(dir) {
+  const idx = parseInt(document.getElementById('indiv-officer-idx').value, 10);
+  const type = document.getElementById('indiv-officer-type').value;
+  const list = type === 'board' ? boardList : delegateList;
+  if (dir === 'up') {
+    if (idx <= 0) return alert('이미 가장 첫 번째 순서입니다.');
+    const temp = list[idx - 1];
+    list[idx - 1] = list[idx];
+    list[idx] = temp;
+    document.getElementById('indiv-officer-idx').value = idx - 1;
+  } else {
+    if (idx >= list.length - 1) return alert('이미 가장 마지막 순서입니다.');
+    const temp = list[idx + 1];
+    list[idx + 1] = list[idx];
+    list[idx] = temp;
+    document.getElementById('indiv-officer-idx').value = idx + 1;
+  }
+  syncOrgDataToServer();
+  renderOfficerManageList();
+  filterDirectory(type);
+}
+window.moveIndivOfficer = moveIndivOfficer;
+
+function deleteIndivOfficer() {
+  const idx = parseInt(document.getElementById('indiv-officer-idx').value, 10);
+  const type = document.getElementById('indiv-officer-type').value;
+  const name = document.getElementById('indiv-officer-name').value;
+  if (!confirm(`정말 '${name}' 님을 명부에서 삭제하시겠습니까?`)) return;
+  deleteOfficer(idx, type);
+  closeIndividualOfficerModal();
+}
+window.deleteIndivOfficer = deleteIndivOfficer;
+
 window.onclick = function(event) {
   const detailModal = document.getElementById('detail-modal');
   const adminModal = document.getElementById('admin-modal');
@@ -3776,6 +3988,8 @@ window.onclick = function(event) {
   const addCommitteeModal = document.getElementById('add-committee-modal');
   const branchListModal = document.getElementById('branch-list-modal');
   const addBranchModal = document.getElementById('add-branch-modal');
+  const indivOfficerModal = document.getElementById('individual-officer-modal');
+  if (event.target === indivOfficerModal) closeIndividualOfficerModal();
 
   if (event.target === detailModal) closeModal();
   if (event.target === adminModal) closeAdminModal();
