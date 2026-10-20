@@ -25,6 +25,8 @@ interface NavGuardInfo {
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
+
+  if (pathname?.includes('/watch')) return null;
   const { language, setLanguage, t, isJapanese, isEnglish } = useTranslation();
 
   const [mounted, setMounted] = useState(false);

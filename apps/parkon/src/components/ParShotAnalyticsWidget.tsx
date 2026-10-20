@@ -269,7 +269,7 @@ export function ParShotAnalyticsWidget({
 
           <div className="bg-white rounded-xl p-2 border border-stone-200 shadow-2xs space-y-0.5">
             <div className="text-sm font-black text-stone-900">
-              {analytics.metricP3.avgStrokes}타
+              {analytics.metricP3.avgStrokes}{isJapanese ? '打' : isEnglish ? '' : '타'}
             </div>
             <div className="text-[9px] font-bold text-stone-500">
               {analytics.metricP3.diffFromPar <= 0
@@ -280,7 +280,7 @@ export function ParShotAnalyticsWidget({
 
           <div className="space-y-1 text-left text-[10px] pt-0.5">
             <div className="flex items-center justify-between font-bold text-stone-600">
-              <span>파 세이브</span>
+              <span>{isJapanese ? 'パーセーブ' : isEnglish ? 'Par Save' : '파 세이브'}</span>
               <span className="text-emerald-700 font-black">{analytics.metricP3.parSaveRate}%</span>
             </div>
             <div className="w-full bg-stone-200 h-1.5 rounded-full overflow-hidden">
@@ -290,7 +290,7 @@ export function ParShotAnalyticsWidget({
               />
             </div>
             <div className="flex items-center justify-between text-[9px] text-stone-400 font-medium pt-0.5">
-              <span>버디율</span>
+              <span>{isJapanese ? 'バーディー率' : isEnglish ? 'Birdie Rate' : '버디율'}</span>
               <span className="text-purple-700 font-bold">{analytics.metricP3.birdieRate}%</span>
             </div>
           </div>
@@ -310,7 +310,7 @@ export function ParShotAnalyticsWidget({
 
           <div className="bg-white rounded-xl p-2 border border-stone-200 shadow-2xs space-y-0.5">
             <div className="text-sm font-black text-stone-900">
-              {analytics.metricP4.avgStrokes}타
+              {analytics.metricP4.avgStrokes}{isJapanese ? '打' : isEnglish ? '' : '타'}
             </div>
             <div className="text-[9px] font-bold text-stone-500">
               {analytics.metricP4.diffFromPar <= 0
@@ -321,7 +321,7 @@ export function ParShotAnalyticsWidget({
 
           <div className="space-y-1 text-left text-[10px] pt-0.5">
             <div className="flex items-center justify-between font-bold text-stone-600">
-              <span>파 세이브</span>
+              <span>{isJapanese ? 'パーセーブ' : isEnglish ? 'Par Save' : '파 세이브'}</span>
               <span className="text-indigo-700 font-black">{analytics.metricP4.parSaveRate}%</span>
             </div>
             <div className="w-full bg-stone-200 h-1.5 rounded-full overflow-hidden">
@@ -331,7 +331,7 @@ export function ParShotAnalyticsWidget({
               />
             </div>
             <div className="flex items-center justify-between text-[9px] text-stone-400 font-medium pt-0.5">
-              <span>버디율</span>
+              <span>{isJapanese ? 'バーディー率' : isEnglish ? 'Birdie Rate' : '버디율'}</span>
               <span className="text-purple-700 font-bold">{analytics.metricP4.birdieRate}%</span>
             </div>
           </div>
@@ -351,7 +351,7 @@ export function ParShotAnalyticsWidget({
 
           <div className="bg-white rounded-xl p-2 border border-stone-200 shadow-2xs space-y-0.5">
             <div className="text-sm font-black text-stone-900">
-              {analytics.metricP5.avgStrokes}타
+              {analytics.metricP5.avgStrokes}{isJapanese ? '打' : isEnglish ? '' : '타'}
             </div>
             <div className="text-[9px] font-bold text-stone-500">
               {analytics.metricP5.diffFromPar <= 0
@@ -362,7 +362,7 @@ export function ParShotAnalyticsWidget({
 
           <div className="space-y-1 text-left text-[10px] pt-0.5">
             <div className="flex items-center justify-between font-bold text-stone-600">
-              <span>파 세이브</span>
+              <span>{isJapanese ? 'パーセーブ' : isEnglish ? 'Par Save' : '파 세이브'}</span>
               <span className="text-amber-700 font-black">{analytics.metricP5.parSaveRate}%</span>
             </div>
             <div className="w-full bg-stone-200 h-1.5 rounded-full overflow-hidden">
@@ -372,7 +372,7 @@ export function ParShotAnalyticsWidget({
               />
             </div>
             <div className="flex items-center justify-between text-[9px] text-stone-400 font-medium pt-0.5">
-              <span>버디율</span>
+              <span>{isJapanese ? 'バーディー率' : isEnglish ? 'Birdie Rate' : '버디율'}</span>
               <span className="text-purple-700 font-bold">{analytics.metricP5.birdieRate}%</span>
             </div>
           </div>
@@ -417,37 +417,37 @@ export function ParShotAnalyticsWidget({
           <div className="bg-white p-1.5 rounded-xl border border-stone-200/80 shadow-2xs">
             <div className="flex items-center justify-center gap-1 text-[10px] text-stone-500 font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0" />
-              <span>버디+</span>
+              <span>{isJapanese ? 'バーディー+' : isEnglish ? 'Birdie+' : '버디+'}</span>
             </div>
             <div className="text-xs font-black text-teal-700">{analytics.distribution.birdiePct}%</div>
-            <div className="text-[9px] text-stone-400">{analytics.distribution.totalBirdies}회</div>
+            <div className="text-[9px] text-stone-400">{analytics.distribution.totalBirdies}{isJapanese ? '回' : isEnglish ? '' : '회'}</div>
           </div>
 
           <div className="bg-white p-1.5 rounded-xl border border-stone-200/80 shadow-2xs">
             <div className="flex items-center justify-center gap-1 text-[10px] text-stone-500 font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
-              <span>파(Par)</span>
+              <span>{isJapanese ? 'パー(Par)' : isEnglish ? 'Par' : '파(Par)'}</span>
             </div>
             <div className="text-xs font-black text-indigo-700">{analytics.distribution.parPct}%</div>
-            <div className="text-[9px] text-stone-400">{analytics.distribution.totalPars}회</div>
+            <div className="text-[9px] text-stone-400">{analytics.distribution.totalPars}{isJapanese ? '回' : isEnglish ? '' : '회'}</div>
           </div>
 
           <div className="bg-white p-1.5 rounded-xl border border-stone-200/80 shadow-2xs">
             <div className="flex items-center justify-center gap-1 text-[10px] text-stone-500 font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-              <span>보기</span>
+              <span>{isJapanese ? 'ボギー' : isEnglish ? 'Bogey' : '보기'}</span>
             </div>
             <div className="text-xs font-black text-amber-700">{analytics.distribution.bogeyPct}%</div>
-            <div className="text-[9px] text-stone-400">{analytics.distribution.totalBogeys}회</div>
+            <div className="text-[9px] text-stone-400">{analytics.distribution.totalBogeys}{isJapanese ? '回' : isEnglish ? '' : '회'}</div>
           </div>
 
           <div className="bg-white p-1.5 rounded-xl border border-stone-200/80 shadow-2xs">
             <div className="flex items-center justify-center gap-1 text-[10px] text-stone-500 font-bold">
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-              <span>더블+</span>
+              <span>{isJapanese ? 'ダブル+' : isEnglish ? 'Double+' : '더블+'}</span>
             </div>
             <div className="text-xs font-black text-rose-700">{analytics.distribution.doublePct}%</div>
-            <div className="text-[9px] text-stone-400">{analytics.distribution.totalDoubles}회</div>
+            <div className="text-[9px] text-stone-400">{analytics.distribution.totalDoubles}{isJapanese ? '回' : isEnglish ? '' : '회'}</div>
           </div>
         </div>
       </div>

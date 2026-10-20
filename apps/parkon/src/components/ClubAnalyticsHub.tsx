@@ -364,7 +364,7 @@ export function ClubAnalyticsHub({ room, isJapanese = false, currentUser = '' }:
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>{isJapanese ? '大会実録 요약' : '대회 히스토리'}</span>
+            <span>{isJapanese ? '大会実録 サマリー' : '대회 히스토리'}</span>
           </button>
         </div>
       </div>

@@ -96,7 +96,7 @@ export function RoundExceptionModals({
   onSaveAndFinishRound,
   onDiscardAndExitHome,
 }: RoundExceptionModalsProps) {
-  const { isJapanese } = useTranslation();
+  const { isJapanese, isEnglish } = useTranslation();
 
   return (
     <>
@@ -134,9 +134,19 @@ export function RoundExceptionModals({
             <div className="p-5 space-y-4">
               <div className="bg-rose-50 border border-rose-200 rounded-2xl p-3.5 text-center">
                 <p className="text-xs sm:text-sm font-black text-rose-950 leading-relaxed">
-                  현재 <span className="text-rose-600 underline decoration-2">{currentHoleLabel}</span> 진행 중입니다.
-                  <br />
-                  이번 홀 플레이를 마치셨습니까?
+                  {isJapanese ? (
+                    <>
+                      現在 <span className="text-rose-600 underline decoration-2">{currentHoleLabel}</span> を進行中です。
+                      <br />
+                      このホールのプレイを終了しますか？
+                    </>
+                  ) : (
+                    <>
+                      현재 <span className="text-rose-600 underline decoration-2">{currentHoleLabel}</span> 진행 중입니다.
+                      <br />
+                      이번 홀 플레이를 마치셨습니까?
+                    </>
+                  )}
                 </p>
                 <p className="text-[11px] text-rose-700 font-bold mt-1">
                   {isJapanese
@@ -160,7 +170,7 @@ export function RoundExceptionModals({
                         {isJapanese ? 'このホールを含めて終了' : '이 홀 타수 포함하고 종료'}
                       </div>
                       <div className="text-[10px] text-emerald-100 font-normal">
-                        현재 화면에 입력된 타수를 확정 저장 후 종료
+                        {isJapanese ? '入力された打数を確定保存して終了' : '현재 화면에 입력된 타수를 확정 저장 후 종료'}
                       </div>
                     </div>
                   </div>
@@ -180,7 +190,7 @@ export function RoundExceptionModals({
                         {isJapanese ? 'このホールを除外して終了' : '이 홀은 치지 않고(제외) 종료'}
                       </div>
                       <div className="text-[10px] text-stone-500 font-normal">
-                        직전 홀까지의 공식 타수만 합산 확정 후 종료
+                        {isJapanese ? '直前のホールまでの公式打数のみ確定して終了' : '직전 홀까지의 공식 타수만 합산 확정 후 종료'}
                       </div>
                     </div>
                   </div>
@@ -234,9 +244,19 @@ export function RoundExceptionModals({
             <div className="p-5 space-y-4">
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-center">
                 <p className="text-xs sm:text-sm font-black text-amber-950">
-                  조장님이 잠시 빠지시므로,
-                  <br />
-                  <span className="text-amber-700">다음 홀부터 점수 기록을 담당할 동반자</span>를 선택해주세요.
+                  {isJapanese ? (
+                    <>
+                      代表が一時退出されるため、
+                      <br />
+                      <span className="text-amber-700">次ホールから記録を担当する同伴者</span>を選択してください。
+                    </>
+                  ) : (
+                    <>
+                      조장님이 잠시 빠지시므로,
+                      <br />
+                      <span className="text-amber-700">다음 홀부터 점수 기록을 담당할 동반자</span>를 선택해주세요.
+                    </>
+                  )}
                 </p>
               </div>
 
@@ -312,12 +332,24 @@ export function RoundExceptionModals({
             <div className="p-5 space-y-4">
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 text-center">
                 <p className="text-xs sm:text-sm font-black text-amber-950 leading-relaxed">
-                  <span className="text-amber-800 underline decoration-2">{targetRestPlayerName || '해당 선수'}</span>님의
-                  <br />
-                  휴식(잠시 빠지기) 시점을 선택해주세요.
+                  {isJapanese ? (
+                    <>
+                      <span className="text-amber-800 underline decoration-2">{targetRestPlayerName || '該当プレーヤー'}</span>様の
+                      <br />
+                      一時休憩のタイミングを選択してください。
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-amber-800 underline decoration-2">{targetRestPlayerName || '해당 선수'}</span>님의
+                      <br />
+                      휴식(잠시 빠지기) 시점을 선택해주세요.
+                    </>
+                  )}
                 </p>
                 <p className="text-[11px] text-amber-700 font-bold mt-1">
-                  이번 홀 타수를 기록하고 빠질지, 지금 바로 쉴지 결정합니다.
+                  {isJapanese
+                    ? 'このホールの打数を記録して休憩するか、今すぐ休憩するか決定します。'
+                    : '이번 홀 타수를 기록하고 빠질지, 지금 바로 쉴지 결정합니다.'}
                 </p>
               </div>
 
@@ -335,7 +367,7 @@ export function RoundExceptionModals({
                         {isJapanese ? 'このホール終了後、次から休憩' : '이번 홀 치고 다음 홀부터 휴식'}
                       </div>
                       <div className="text-[10px] text-amber-100 font-normal">
-                        현재 홀 타수 정상 저장 후 다음 홀부터 휴식(결번)
+                        {isJapanese ? '現ホール打数を正常保存後、次ホールから休憩' : '현재 홀 타수 정상 저장 후 다음 홀부터 휴식(결번)'}
                       </div>
                     </div>
                   </div>
@@ -355,7 +387,7 @@ export function RoundExceptionModals({
                         {isJapanese ? 'このホールから即時休憩' : '이번 홀부터 바로 휴식'}
                       </div>
                       <div className="text-[10px] text-stone-500 font-normal">
-                        현재 홀은 미플레이(0점) 처리하고 즉시 휴식
+                        {isJapanese ? '現ホールはスキップ(0打)処理して即座に休憩' : '현재 홀은 미플레이(0점) 처리하고 즉시 휴식'}
                       </div>
                     </div>
                   </div>
@@ -408,12 +440,24 @@ export function RoundExceptionModals({
             <div className="p-5 space-y-4">
               <div className="bg-teal-50 border border-teal-200 rounded-2xl p-3.5 text-center">
                 <p className="text-xs sm:text-sm font-black text-teal-950 leading-relaxed">
-                  현재 <span className="text-teal-700 underline decoration-2">{currentHoleLabel}</span> 진행 중입니다.
-                  <br />
-                  이번 홀 타수를 반영하고 이동하시겠습니까?
+                  {isJapanese ? (
+                    <>
+                      現在 <span className="text-teal-700 underline decoration-2">{currentHoleLabel}</span> を進行中です。
+                      <br />
+                      このホールの打数を反映して移動しますか？
+                    </>
+                  ) : (
+                    <>
+                      현재 <span className="text-teal-700 underline decoration-2">{currentHoleLabel}</span> 진행 중입니다.
+                      <br />
+                      이번 홀 타수를 반영하고 이동하시겠습니까?
+                    </>
+                  )}
                 </p>
                 <p className="text-[11px] text-teal-700 font-bold mt-1">
-                  선택 후 이동할 새로운 코스/홀 선택 창이 나타납니다.
+                  {isJapanese
+                    ? '選択後、移動する新しいコース/ホールの選択画面が表示されます。'
+                    : '선택 후 이동할 새로운 코스/홀 선택 창이 나타납니다.'}
                 </p>
               </div>
 
@@ -431,7 +475,7 @@ export function RoundExceptionModals({
                         {isJapanese ? 'このホールを反映して移動' : '이번 홀 타수 포함하고 코스 이동'}
                       </div>
                       <div className="text-[10px] text-teal-100 font-normal">
-                        현재 홀 점수를 확정 저장한 후 새 코스로 이동
+                        {isJapanese ? '現ホール打数を確定保存後、新コースへ移動' : '현재 홀 점수를 확정 저장한 후 새 코스로 이동'}
                       </div>
                     </div>
                   </div>
@@ -451,7 +495,7 @@ export function RoundExceptionModals({
                         {isJapanese ? 'このホールは除外して移動' : '이번 홀 제외하고 바로 코스 이동'}
                       </div>
                       <div className="text-[10px] text-stone-500 font-normal">
-                        현재 홀 점수는 치지 않은 것으로 처리하고 이동
+                        {isJapanese ? '現ホールの打数は除外(未打)処理して移動' : '현재 홀 점수는 치지 않은 것으로 처리하고 이동'}
                       </div>
                     </div>
                   </div>
@@ -526,12 +570,32 @@ export function RoundExceptionModals({
             <div className="p-5 space-y-4">
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center space-y-2">
                 <p className="text-xs sm:text-sm font-black text-amber-950 leading-relaxed">
-                  동반자 <span className="text-amber-800 underline decoration-2">{saveWarningNames}</span> 님이
-                  <br />
-                  <span className="text-rose-600">미입력 또는 휴식 상태</span>입니다.
+                  {isJapanese ? (
+                    <>
+                      同伴者 <span className="text-amber-800 underline decoration-2">{saveWarningNames}</span> 様が
+                      <br />
+                      <span className="text-rose-600">未入力または休憩中</span>です。
+                    </>
+                  ) : isEnglish ? (
+                    <>
+                      Companion <span className="text-amber-800 underline decoration-2">{saveWarningNames}</span> is
+                      <br />
+                      <span className="text-rose-600">unentered or resting</span>.
+                    </>
+                  ) : (
+                    <>
+                      동반자 <span className="text-amber-800 underline decoration-2">{saveWarningNames}</span> 님이
+                      <br />
+                      <span className="text-rose-600">미입력 또는 휴식 상태</span>입니다.
+                    </>
+                  )}
                 </p>
                 <p className="text-xs text-stone-600 font-bold">
-                  이대로 {currentHoleLabel} 타수를 확정하시겠습니까?
+                  {isJapanese
+                    ? `このまま${currentHoleLabel}のスコアを確定しますか？`
+                    : isEnglish
+                    ? `Do you want to confirm score for ${currentHoleLabel}?`
+                    : `이대로 ${currentHoleLabel} 타수를 확정하시겠습니까?`}
                 </p>
               </div>
 
@@ -592,7 +656,7 @@ export function RoundExceptionModals({
             <div className="p-5 sm:p-6 space-y-4">
               <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center">
                 <p className="text-base sm:text-lg font-black text-emerald-950 leading-relaxed">
-                  <span className="text-emerald-700 underline decoration-2">{currentHoleLabel}</span> 타수가 저장되었습니다.
+                  <span className="text-emerald-700 underline decoration-2">{currentHoleLabel}</span> {isJapanese ? 'スコアが保存されました。' : isEnglish ? 'score saved.' : '타수가 저장되었습니다.'}
                 </p>
                 <p className="text-xs sm:text-sm text-emerald-800 font-bold mt-1">
                   {isJapanese ? '次の操作を選択してください。' : '다음 작업을 선택해주세요.'}

@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Settings, Check, Sparkles, HelpCircle } from 'lucide-react';
+import { X, Settings, Check, Sparkles, HelpCircle, Globe } from 'lucide-react';
 import { HoleDisplayMode, HoleTransitionPopup, RoundSettings } from '@/types/parkon';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { GeoCountryService, ServiceCountry } from '@/lib/geoCountryService';
+import { ParkOnStorage } from '@/lib/storage';
 
 interface RoundSettingsModalProps {
   isOpen: boolean;
@@ -27,6 +30,7 @@ export function RoundSettingsModal({
   onClose,
   onSettingsChange,
 }: RoundSettingsModalProps) {
+  const { language, setLanguage, isJapanese, isEnglish } = useTranslation();
   const [holeDisplayMode, setHoleDisplayMode] = useState<HoleDisplayMode>('PAR');
   const [holeTransitionPopup, setHoleTransitionPopup] = useState<HoleTransitionPopup>('OFF');
 
@@ -40,6 +44,17 @@ export function RoundSettingsModal({
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const handleSelectLanguage = (lang: 'ko' | 'ja' | 'en') => {
+    setLanguage(lang);
+    if (typeof window !== 'undefined') {
+      const country: ServiceCountry = lang === 'ko' ? 'KR' : lang === 'ja' ? 'JP' : 'GLOBAL';
+      GeoCountryService.setManualCountryAndLanguage(country, lang);
+      ParkOnStorage.setServiceCountry(lang === 'ja' ? 'JP' : 'KR');
+      window.dispatchEvent(new Event('parkon_country_changed'));
+      window.dispatchEvent(new Event('storage'));
+    }
+  };
 
   const handleSelectDisplayMode = (mode: HoleDisplayMode) => {
     setHoleDisplayMode(mode);
@@ -82,13 +97,17 @@ export function RoundSettingsModal({
             </span>
             <div>
               <h2 className="text-base font-black text-white flex items-center gap-1.5">
-                <span>라운드 환경 설정</span>
+                <span>{isJapanese ? '環境設定' : isEnglish ? 'Settings' : '환경 설정'}</span>
                 <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.5 rounded-full">
-                  실시간 연동
+                  {isJapanese ? 'リアルタイム連動' : isEnglish ? 'Live Sync' : '실시간 연동'}
                 </span>
               </h2>
               <p className="text-[11px] text-stone-400 font-medium">
-                홀 표기 범위 및 홀 전환 동작을 내 스타일에 맞게 설정합니다.
+                {isJapanese
+                  ? '言語、ホール表記、画面遷移を好みに合わせて設定します。'
+                  : isEnglish
+                  ? 'Configure language, display mode, and screen transitions.'
+                  : '언어, 홀 표기 범위 및 홀 전환 동작을 내 스타일에 맞게 설정합니다.'}
               </p>
             </div>
           </div>
@@ -102,15 +121,87 @@ export function RoundSettingsModal({
           </button>
         </div>
 
-        {/* 1. 홀 정보 표시 범위 (3단 택1 / localStorage 영구 저장) */}
+        {/* 1. 🌐 언어 및 국가 선택 (Language / 言語) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-xs font-black text-amber-300 flex items-center gap-1.5">
-              <span>1. 홀 정보 표시 범위</span>
-              <span className="text-[10px] text-stone-400 font-normal">(3단 택1)</span>
+              <Globe className="w-3.5 h-3.5" />
+              <span>{isJapanese ? '1. 言語および地域選択' : isEnglish ? '1. Language & Country' : '1. 언어 및 국가 선택'}</span>
+              <span className="text-[10px] text-stone-400 font-normal">
+                {isJapanese ? '(3ヶ国)' : isEnglish ? '(3 Regions)' : '(3개 국어)'}
+              </span>
             </label>
             <span className="text-[10px] bg-stone-800 text-stone-300 px-2 py-0.5 rounded-md font-bold">
-              자동 영구 보존
+              {isJapanese ? '即時保存' : isEnglish ? 'Auto Save' : '자동 저장'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {/* 한국어 */}
+            <button
+              type="button"
+              onClick={() => handleSelectLanguage('ko')}
+              className={`p-2.5 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-1 cursor-pointer min-h-[58px] ${
+                language === 'ko'
+                  ? 'bg-amber-400/20 border-amber-400 text-yellow-300 shadow-md font-black ring-1 ring-amber-400/50'
+                  : 'bg-stone-800/70 border-stone-700/60 text-stone-300 hover:bg-stone-800 hover:text-white'
+              }`}
+            >
+              <span className="text-xl leading-none">🇰🇷</span>
+              <span className="text-xs font-black">한국어</span>
+              <span className="text-[10px] text-stone-400 font-medium">대한민국</span>
+            </button>
+
+            {/* 日本語 */}
+            <button
+              type="button"
+              onClick={() => handleSelectLanguage('ja')}
+              className={`p-2.5 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-1 cursor-pointer min-h-[58px] ${
+                language === 'ja'
+                  ? 'bg-amber-400/20 border-amber-400 text-yellow-300 shadow-md font-black ring-1 ring-amber-400/50'
+                  : 'bg-stone-800/70 border-stone-700/60 text-stone-300 hover:bg-stone-800 hover:text-white'
+              }`}
+            >
+              <span className="text-xl leading-none">🇯🇵</span>
+              <span className="text-xs font-black">日本語</span>
+              <span className="text-[10px] text-stone-400 font-medium">日本</span>
+            </button>
+
+            {/* English */}
+            <button
+              type="button"
+              onClick={() => handleSelectLanguage('en')}
+              className={`p-2.5 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-1 cursor-pointer min-h-[58px] ${
+                language === 'en'
+                  ? 'bg-amber-400/20 border-amber-400 text-yellow-300 shadow-md font-black ring-1 ring-amber-400/50'
+                  : 'bg-stone-800/70 border-stone-700/60 text-stone-300 hover:bg-stone-800 hover:text-white'
+              }`}
+            >
+              <span className="text-xl leading-none">🇺🇸</span>
+              <span className="text-xs font-black">English</span>
+              <span className="text-[10px] text-stone-400 font-medium">Global</span>
+            </button>
+          </div>
+          <p className="text-[10.5px] text-stone-400 leading-snug px-0.5">
+            {isJapanese
+              ? '※ 選択した言語に合わせて、全画面のテキストおよびコース・公認ルール案内が即座に切り替わります。'
+              : isEnglish
+              ? '※ Screen texts, courses, and official rules will adapt to your language choice.'
+              : '※ 선택한 언어에 맞춰 전체 메뉴, 구장 안내 및 공인 룰북이 즉시 전환됩니다.'}
+          </p>
+        </div>
+
+        {/* 2. 홀 정보 표시 범위 (3단 택1 / localStorage 영구 저장) */}
+        <div className="space-y-2 pt-1 border-t border-stone-800">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+              <span>{isJapanese ? '2. ホール情報表示範囲' : isEnglish ? '2. Hole Display Mode' : '2. 홀 정보 표시 범위'}</span>
+              <span className="text-[10px] text-stone-400 font-normal">
+                {isJapanese ? '(3段階選択)' : isEnglish ? '(Pick 1 of 3)' : '(3단 택1)'}
+              </span>
+            </label>
+            <span className="text-[10px] bg-stone-800 text-stone-300 px-2 py-0.5 rounded-md font-bold">
+              {isJapanese ? '自動保存' : isEnglish ? 'Auto Save' : '자동 영구 보존'}
             </span>
           </div>
 
@@ -138,16 +229,24 @@ export function RoundSettingsModal({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-xs font-black text-white">홀명만</span>
+                  <span className="text-xs font-black text-white">{isJapanese ? 'ホール名のみ' : isEnglish ? 'Hole Only' : '홀명만'}</span>
                   <span className="text-[11px] font-mono font-bold text-yellow-300 bg-stone-900 px-2 py-0.5 rounded border border-white/10">
                     A-1 홀
                   </span>
                 </div>
                 <p className="text-[11px] text-stone-400 leading-snug">
-                  헤더에 <strong className="text-stone-200">'A-1 홀'</strong>만 간결 표기합니다.
+                  {isJapanese
+                    ? 'ヘッダーに\'A-1 ホール\'のみを簡潔に表示します。'
+                    : isEnglish
+                    ? 'Displays only \'A-1 Hole\' cleanly in the header.'
+                    : '헤더에 \'A-1 홀\'만 간결 표기합니다.'}
                   <br />
                   <span className="text-[10.5px] text-amber-300/80">
-                    ※ 연필(✏️) 숨김 처리되며, 내부 타수 및 공식 Par 연산은 100% 정상 작동합니다.
+                    {isJapanese
+                      ? '※ 鉛筆アイコン(✏️)は非表示になりますが、打数計算は正常に動作します。'
+                      : isEnglish
+                      ? '※ Pencil icon hidden; internal strokes & official Par calculate normally.'
+                      : '※ 연필(✏️) 숨김 처리되며, 내부 타수 및 공식 Par 연산은 100% 정상 작동합니다.'}
                   </span>
                 </p>
               </div>
@@ -177,9 +276,9 @@ export function RoundSettingsModal({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-0.5">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black text-white">파까지</span>
+                    <span className="text-xs font-black text-white">{isJapanese ? 'Parまで' : isEnglish ? 'Up to Par' : '파까지'}</span>
                     <span className="text-[9px] bg-emerald-500 text-white font-black px-1.5 py-0.2 rounded-full">
-                      기본 추천
+                      {isJapanese ? '基本おすすめ' : isEnglish ? 'Default' : '기본 추천'}
                     </span>
                   </div>
                   <span className="text-[11px] font-mono font-bold text-yellow-300 bg-stone-900 px-2 py-0.5 rounded border border-white/10">
@@ -187,7 +286,11 @@ export function RoundSettingsModal({
                   </span>
                 </div>
                 <p className="text-[11px] text-stone-400 leading-snug">
-                  헤더에 <strong className="text-stone-200">'A-1 홀 · Par 3 ✏️'</strong>로 기준 타수와 함께 표기합니다.
+                  {isJapanese
+                    ? 'ヘッダーに\'A-1 ホール · Par 3 ✏️\'と基準打数付きで表示します。'
+                    : isEnglish
+                    ? 'Displays \'A-1 Hole · Par 3 ✏️\' with standard par strokes.'
+                    : '헤더에 \'A-1 홀 · Par 3 ✏️\'로 기준 타수와 함께 표기합니다.'}
                 </p>
               </div>
             </button>
@@ -215,24 +318,28 @@ export function RoundSettingsModal({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-xs font-black text-white">거리까지</span>
+                  <span className="text-xs font-black text-white">{isJapanese ? '距離まで' : isEnglish ? 'Up to Distance' : '거리까지'}</span>
                   <span className="text-[11px] font-mono font-bold text-yellow-300 bg-stone-900 px-2 py-0.5 rounded border border-white/10">
                     A-1 홀 · Par 3 60m ✏️
                   </span>
                 </div>
                 <p className="text-[11px] text-stone-400 leading-snug">
-                  헤더에 <strong className="text-stone-200">'A-1 홀 · Par 3 60m ✏️'</strong>로 공식 거리까지 한눈에 표기합니다.
+                  {isJapanese
+                    ? 'ヘッダーに\'A-1 ホール · Par 3 60m ✏️\'と公式距離まで一目で表示します。'
+                    : isEnglish
+                    ? 'Displays \'A-1 Hole · Par 3 60m ✏️\' with official distance.'
+                    : '헤더에 \'A-1 홀 · Par 3 60m ✏️\'로 공식 거리까지 한눈에 표기합니다.'}
                 </p>
               </div>
             </button>
           </div>
         </div>
 
-        {/* 2. 홀 전환 안내 팝업 토글 (localStorage 저장) */}
+        {/* 3. 홀 전환 안내 팝업 토글 (localStorage 저장) */}
         <div className="space-y-2 pt-1 border-t border-stone-800">
           <div className="flex items-center justify-between">
             <label className="text-xs font-black text-amber-300">
-              2. 홀 전환 안내 팝업 토글
+              {isJapanese ? '3. ホール遷移案内ポップアップ' : isEnglish ? '3. Hole Transition Popup' : '3. 홀 전환 안내 팝업 토글'}
             </label>
             <div className="flex items-center gap-1 bg-stone-800 p-1 rounded-xl border border-stone-700">
               <button
@@ -244,7 +351,7 @@ export function RoundSettingsModal({
                     : 'text-stone-400 hover:text-white'
                 }`}
               >
-                OFF (기본값)
+                OFF ({isJapanese ? '既定' : isEnglish ? 'Default' : '기본값'})
               </button>
               <button
                 type="button"
@@ -263,25 +370,51 @@ export function RoundSettingsModal({
           <div className="bg-stone-800/50 p-2.5 rounded-xl border border-stone-700/60 text-[11px] text-stone-300 leading-relaxed">
             {holeTransitionPopup === 'OFF' ? (
               <p>
-                <span className="text-yellow-300 font-bold">⚡ OFF (초고속 진행):</span> 홀 전환 시 전광판 없이 즉시 다음 홀 스코어보드로 직행하여 빠르게 다음 타수를 기입합니다.
+                <span className="text-yellow-300 font-bold">⚡ OFF ({isJapanese ? '超高速進行' : isEnglish ? 'Fast Track' : '초고속 진행'}):</span>{' '}
+                {isJapanese
+                  ? 'ホール切り替え時にポップアップなしで即座に次のホールスコアボードへ移動します。'
+                  : isEnglish
+                  ? 'Instantly moves to next hole without transition overlay for quickest scoring.'
+                  : '홀 전환 시 전광판 없이 즉시 다음 홀 스코어보드로 직행하여 빠르게 다음 타수를 기입합니다.'}
               </p>
             ) : (
               <p>
-                <span className="text-emerald-400 font-bold">🏌️ ON (안내 표출):</span> 다음 홀 전환 시 1.5초간 가벼운 코스 안내 카드가 표출된 후 자동으로 부드럽게 페이드아웃됩니다.
+                <span className="text-emerald-400 font-bold">🏌️ ON ({isJapanese ? 'コース案内' : isEnglish ? 'Course Guide' : '안내 표출'}):</span>{' '}
+                {isJapanese
+                  ? '次のホール切り替え時に1.5秒間コース案内カードが表示された後、自動フェードアウトします。'
+                  : isEnglish
+                  ? 'Displays a 1.5s course info card before fading into the next hole.'
+                  : '다음 홀 전환 시 1.5초간 가벼운 코스 안내 카드가 표출된 후 자동으로 부드럽게 페이드아웃됩니다.'}
               </p>
             )}
           </div>
         </div>
 
-        {/* 3. 조별 라운드 규칙 안내 */}
+        {/* 4. 조별 라운드 규칙 안내 */}
         <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-950/60 to-stone-900 border border-emerald-500/30 text-[11px] text-emerald-200/90 space-y-1">
           <div className="flex items-center gap-1 font-black text-emerald-300 text-xs">
-            <span>💡 4인 조별 경기 규칙</span>
+            <span>{isJapanese ? '💡 4人組ラウンドルール' : isEnglish ? '💡 Group Round Rules' : '💡 4인 조별 경기 규칙'}</span>
           </div>
           <p className="leading-snug">
-            • <strong>조장</strong>이 톱니바퀴에서 설정을 변경하면 조원 스마트폰 화면에 <strong>100% 자동 추종(미러링)</strong>됩니다.
-            <br />
-            • 라운드 종료 후 <strong>개인 기록실(연대기)</strong>에서는 조원 본인의 로컬 설정에 맞춰 스코어카드가 정상 복원되어 표출됩니다.
+            {isJapanese ? (
+              <>
+                • <strong>組長(Host)</strong>が歯車設定を変更すると、組員のスマートフォン画面に<strong>100%自動同期(ミラーリング)</strong>されます。
+                <br />
+                • ラウンド終了後の<strong>個人記録室(年代記)</strong>では、ご自身のローカル設定に合わせてスコアカードが復元されます。
+              </>
+            ) : isEnglish ? (
+              <>
+                • When the <strong>Host</strong> modifies round settings, players’ screens will <strong>mirror automatically 100%</strong> in real-time.
+                <br />
+                • In your <strong>Personal Chronicle</strong>, cards will reflect your local personal preferences.
+              </>
+            ) : (
+              <>
+                • <strong>조장</strong>이 톱니바퀴에서 설정을 변경하면 조원 스마트폰 화면에 <strong>100% 자동 추종(미러링)</strong>됩니다.
+                <br />
+                • 라운드 종료 후 <strong>개인 기록실(연대기)</strong>에서는 조원 본인의 로컬 설정에 맞춰 스코어카드가 정상 복원되어 표출됩니다.
+              </>
+            )}
           </p>
         </div>
 
@@ -293,7 +426,7 @@ export function RoundSettingsModal({
             className="w-full py-3 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black rounded-2xl text-sm shadow-lg transition active:scale-98 cursor-pointer flex items-center justify-center gap-1.5"
           >
             <Check className="w-4 h-4 stroke-[3]" />
-            <span>설정 완료</span>
+            <span>{isJapanese ? '設定完了' : isEnglish ? 'Done' : '설정 완료'}</span>
           </button>
         </div>
       </div>

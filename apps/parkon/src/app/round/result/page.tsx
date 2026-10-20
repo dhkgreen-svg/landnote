@@ -216,7 +216,7 @@ function ResultContent() {
   if (!session || !course) {
     return (
       <div className="p-8 text-center font-bold text-stone-600">
-        성적표 불러오는 중...
+        {isJapanese ? 'スコアカード読み込み中...' : isEnglish ? 'Loading scorecard...' : '성적표 불러오는 중...'}
       </div>
     );
   }
@@ -457,10 +457,14 @@ function ResultContent() {
             <span className="text-3xl select-none">{newlyUnlockedProvince.symbol}</span>
             <div>
               <div className="text-[10px] font-black bg-stone-950 text-yellow-300 px-2 py-0.5 rounded-full inline-block">
-                🎉 전국 17개 시·도 투어 퍼즐 해금!
+                {isJapanese ? '🎉 全国ツアーパズル解放！' : isEnglish ? '🎉 Tour Unlocked!' : '🎉 전국 17개 시·도 투어 퍼즐 해금!'}
               </div>
               <div className="text-xs font-black text-stone-950 mt-1">
-                [{newlyUnlockedProvince.name}] 조각이 황금빛으로 점등되었습니다!
+                {isJapanese
+                  ? `[${newlyUnlockedProvince.name}] ピースが黄金に点灯しました！`
+                  : isEnglish
+                  ? `[${newlyUnlockedProvince.name}] piece unlocked!`
+                  : `[${newlyUnlockedProvince.name}] 조각이 황금빛으로 점등되었습니다!`}
               </div>
             </div>
           </div>
@@ -469,7 +473,7 @@ function ResultContent() {
             onClick={() => setShowNationalTourModal(true)}
             className="bg-stone-950 hover:bg-stone-900 text-amber-300 text-xs font-black px-3.5 py-2 rounded-2xl shadow-lg shrink-0 cursor-pointer transition active:scale-95"
           >
-            지도 보기 ▶
+            {isJapanese ? '地図を見る ▶' : isEnglish ? 'View Map ▶' : '지도 보기 ▶'}
           </button>
         </div>
       )}
@@ -486,10 +490,14 @@ function ResultContent() {
           />
           <div className="text-left">
             <span className="text-[10px] bg-amber-400 text-emerald-950 font-black px-1.5 py-0.2 rounded-md">
-              스마트 AI 코치 파키의 한마디
+              {isJapanese ? 'スマートAIコーチ パキの一言' : isEnglish ? 'AI Coach PARKY' : '스마트 AI 코치 파키의 한마디'}
             </span>
             <p className="text-xs font-bold text-amber-200 mt-0.5">
-              &ldquo;오늘 멋진 라운드 완주를 진심으로 축하드려요! 굿샷! 🎉&rdquo;
+              {isJapanese
+                ? '“本日の素晴らしいラウンド完走、心よりお祝い申し上げます！ナイスショット！🎉”'
+                : isEnglish
+                ? '“Congratulations on finishing a great round today! Nice shot! 🎉”'
+                : '“오늘 멋진 라운드 완주를 진심으로 축하드려요! 굿샷! 🎉”'}
             </p>
           </div>
         </div>
@@ -543,7 +551,7 @@ function ResultContent() {
             className="text-[11px] underline text-emerald-200 hover:text-white font-bold cursor-pointer"
             title={isJapanese ? '状態切り替え' : '상태 전환'}
           >
-            {session.isOfficial === false ? (isJapanese ? '戦績反映に変更' : '전적 반영으로 변경') : (isJapanese ? '연습/테스트로 변경' : '연습/테스트로 변경')}
+            {session.isOfficial === false ? (isJapanese ? '戦績反映に変更' : '전적 반영으로 변경') : (isJapanese ? '練習/テストに変更' : isEnglish ? 'Change to practice' : '연습/테스트로 변경')}
           </button>
         </div>
 
@@ -601,7 +609,7 @@ function ResultContent() {
           <span className="text-xs text-yellow-300 font-bold">{isJapanese ? '🥇 1位 優勝:' : '🥇 1위 우승:'}</span>
           <span className="text-lg font-black text-white">{winner.name}</span>
           <span className="text-xs bg-emerald-500 text-emerald-950 font-black px-2 py-0.5 rounded-full">
-            {winner.realTotalStrokes}타 (
+            {winner.realTotalStrokes}{isJapanese ? '打' : isEnglish ? ' ' : '타'} (
             {winner.realTotalStrokes - totalCoursePar === 0
               ? 'E'
               : winner.realTotalStrokes - totalCoursePar > 0
@@ -1286,7 +1294,7 @@ function ResultContent() {
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {session.players.map((p, idx) => {
-                    const displayName = p.isSelf ? `${p.name || (isJapanese ? '本人' : '나')}(나)` : p.name;
+                    const displayName = p.isSelf ? `${p.name || (isJapanese ? '本人' : '나')}(${isJapanese ? '本人' : '나'})` : p.name;
                     return (
                       <span
                         key={idx}
@@ -1380,7 +1388,7 @@ function ResultContent() {
 
 export default function ResultPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center font-bold text-stone-600">성적표 집계 중...</div>}>
+    <Suspense fallback={<div className="p-8 text-center font-bold text-stone-600">Loading...</div>}>
       <ResultContent />
     </Suspense>
   );

@@ -151,7 +151,7 @@ export const CompanionStorage = {
         lastCourseName: lastCourseName || '전국 파크골프장',
         createdAt: new Date().toISOString(),
         avatarColor: randomColor,
-        memo: customMemo || '새로 맺은 1촌 동반자',
+        memo: customMemo || (typeof window !== 'undefined' && localStorage.getItem('parky_lang') === 'ja' ? '新しく結ばれたパートナー' : '새로 맺은 1촌 동반자'),
       };
       list.unshift(result);
     }

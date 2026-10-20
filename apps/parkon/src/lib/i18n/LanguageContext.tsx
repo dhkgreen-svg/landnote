@@ -31,7 +31,30 @@ const LanguageContext = createContext<LanguageContextProps>({
 });
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('ko');
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryLang = urlParams.get('lang');
+        if (queryLang === 'ja' || queryLang === 'en' || queryLang === 'ko') {
+          return queryLang as Language;
+        }
+        const savedLang = (localStorage.getItem('parky_lang') || localStorage.getItem('parkon_language')) as Language;
+        if (savedLang === 'ko' || savedLang === 'ja' || savedLang === 'en') {
+          return savedLang;
+        }
+        const savedCountry = localStorage.getItem('parkon_country');
+        if (savedCountry === 'JP') return 'ja';
+        const browserLang = (navigator.language || '').toLowerCase();
+        if (browserLang.startsWith('ja')) return 'ja';
+        if (browserLang.startsWith('ko')) return 'ko';
+        return 'en';
+      } catch {
+        return 'ko';
+      }
+    }
+    return 'ko';
+  });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

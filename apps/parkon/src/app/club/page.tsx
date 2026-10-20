@@ -3329,7 +3329,7 @@ ${shareUrl}`;
                               </span>
                             ) : (
                               <span className="bg-blue-100 text-blue-800 text-[10px] font-black px-2 py-0.5 rounded-md">
-                                {acceptedCount >= 2 ? (isJapanese ? `🟢 2名以上確定 (${acceptedCount}/4名、スタート可能)` : `🟢 2인 이상 모임 (${acceptedCount}/4명, 출발 가능)`) : (isJapanese ? `⏳ 仲間の承諾待ち (${acceptedCount}/4명)` : `⏳ 1촌 수락 대기 중 (${acceptedCount}/4명)`)}
+                                {acceptedCount >= 2 ? (isJapanese ? `🟢 2名以上確定 (${acceptedCount}/4名、スタート可能)` : `🟢 2인 이상 모임 (${acceptedCount}/4명, 출발 가능)`) : (isJapanese ? `⏳ 仲間の承諾待ち (${acceptedCount}/4名)` : `⏳ 1촌 수락 대기 중 (${acceptedCount}/4명)`)}
                               </span>
                             )}
                           </div>
@@ -5546,7 +5546,7 @@ ${shareUrl}`;
                             />
                           </span>
                           <span className="text-[10px] bg-stone-200 text-stone-700 px-2 py-0.5 rounded font-black shrink-0">
-                            {m.role === 'PRESIDENT' ? (isJapanese ? '👑 会長' : '👑 회장') : m.role === 'MANAGER' ? (isJapanese ? '📋 총무' : '📋 총무') : (isJapanese ? '会員' : '회원')}
+                            {m.role === 'PRESIDENT' ? (isJapanese ? '👑 会長' : '👑 회장') : m.role === 'MANAGER' ? (isJapanese ? '📋 幹事' : '📋 총무') : (isJapanese ? '会員' : '회원')}
                           </span>
                         </div>
                       );
@@ -8278,7 +8278,7 @@ ${shareUrl}`;
                           .map((s) => s.trim())
                           .filter((s) => s && !s.includes('우승자') && !s.includes('시상 유예') && !s.includes('優勝者') && !s.includes('表彰猶予'));
                         if (val > 0) {
-                          notes.push(isJapanese ? `前回大会優勝者 ${val}개월간賞品表彰猶予 (次順位継承＆名誉メダリスト個別)` : `직전 대회 우승자 ${val}개월간 상품 시상 유예 (차순위 승계 & 명예 메달리스트 분리)`);
+                          notes.push(isJapanese ? `前回大会優勝者 ${val}ヶ月間賞品表彰猶予 (次順位継承＆名誉メダリスト個別)` : `직전 대회 우승자 ${val}개월간 상품 시상 유예 (차순위 승계 & 명예 메달리스트 분리)`);
                         }
                         setGameRuleNotes(notes.join(', '));
                       }}

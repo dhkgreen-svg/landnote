@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 export interface HoleScoreBadgeProps {
   score?: number | null;
@@ -174,6 +175,7 @@ export function HoleScoreBadge({
  * 스코어카드 상단/하단에 노출되는 기호 범례 (Legend)
  */
 export function ScoreBadgeLegend({ className = '' }: { className?: string }) {
+  const { isJapanese, isEnglish } = useTranslation();
   return (
     <div
       className={`flex items-center justify-center flex-wrap gap-x-3 gap-y-1 py-1.5 px-3 bg-stone-50/95 border border-stone-200 rounded-xl text-[10px] text-stone-600 font-bold ${className}`}
@@ -183,37 +185,39 @@ export function ScoreBadgeLegend({ className = '' }: { className?: string }) {
         <span className="w-3.5 h-3.5 rounded-full border border-rose-600 ring-1 ring-amber-400 ring-offset-1 flex items-center justify-center text-[8px] font-black text-rose-700 bg-amber-100 leading-none">
           1
         </span>
-        <span className="font-extrabold text-amber-900">홀인원(왕관+이중원)</span>
+        <span className="font-extrabold text-amber-900">
+          {isJapanese ? 'ホールインワン(王冠+二重丸)' : isEnglish ? 'Hole-in-One' : '홀인원(왕관+이중원)'}
+        </span>
       </div>
       <div className="flex items-center gap-1">
         <span className="w-3.5 h-3.5 rounded-full border border-red-500 ring-1 ring-red-500 ring-offset-1 flex items-center justify-center text-[7.5px] font-black text-red-600 bg-rose-50 leading-none">
           -2
         </span>
-        <span>이글(-2, 이중원)</span>
+        <span>{isJapanese ? 'イーグル(-2, 二重丸)' : isEnglish ? 'Eagle (-2)' : '이글(-2, 이중원)'}</span>
       </div>
       <div className="flex items-center gap-1">
         <span className="w-3.5 h-3.5 rounded-full border-2 border-red-500 flex items-center justify-center text-[7.5px] font-black text-red-600 bg-white leading-none">
           -1
         </span>
-        <span>버디(-1, 동그라미1개)</span>
+        <span>{isJapanese ? 'バーディー(-1, 丸1つ)' : isEnglish ? 'Birdie (-1)' : '버디(-1, 동그라미1개)'}</span>
       </div>
       <div className="flex items-center gap-1">
         <span className="w-3.5 h-3.5 rounded-full border-[2px] border-rose-600 ring-1 ring-amber-400 ring-offset-1 flex items-center justify-center text-[7.5px] font-black text-red-950 bg-amber-100 leading-none">
           -3
         </span>
-        <span>알바트로스(굵은테두리)</span>
+        <span>{isJapanese ? 'アルバトロス(太枠)' : isEnglish ? 'Albatross (-3)' : '알바트로스(굵은테두리)'}</span>
       </div>
       <div className="flex items-center gap-1">
         <span className="w-3.5 h-3.5 rounded-xs bg-stone-200 flex items-center justify-center text-[8px] font-bold text-stone-700 leading-none">
           0
         </span>
-        <span>파(Par)</span>
+        <span>{isJapanese ? 'パー(Par)' : isEnglish ? 'Par (0)' : '파(Par)'}</span>
       </div>
       <div className="flex items-center gap-1">
         <span className="w-3.5 h-3.5 rounded-xs border border-stone-400 flex items-center justify-center text-[7.5px] font-bold text-stone-600 leading-none">
           +1
         </span>
-        <span>보기(+1)</span>
+        <span>{isJapanese ? 'ボギー(+1)' : isEnglish ? 'Bogey (+1)' : '보기(+1)'}</span>
       </div>
     </div>
   );

@@ -50,6 +50,7 @@ import { KakaoLoginModal } from '@/components/KakaoLoginModal';
 import { getSavedMemberCode } from '@/lib/memberCodeUtils';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { getCourseDualName } from '@/lib/courseLocalization';
 import { formatPlayerDisplayName } from '@/lib/playerUtils';
 import { PILGRIMAGE_COURSES, PilgrimageStorage, PilgrimageCourse } from '@/lib/pilgrimageStorage';
 import { PilgrimageDetailModal } from '@/components/PilgrimageDetailModal';
@@ -286,10 +287,12 @@ function ChronicleContent() {
 
   // 사용자 실제 프로필 (클럽 및 첫 라운드 일자)
   const userProfile = ParkOnStorage.getUserProfile();
-  const clubNameDisplay =
-    userProfile.clubName && userProfile.clubName !== '동락 파크골프 클럽'
-      ? userProfile.clubName
-      : (isJapanese ? '所属クラブ未登録' : '소속 클럽 미등록');
+  const rawClubName = userProfile.clubName && userProfile.clubName !== '동락 파크골프 클럽'
+    ? userProfile.clubName
+    : '';
+  const clubNameDisplay = rawClubName
+    ? (isJapanese ? `${getCourseDualName(rawClubName.replace(/클럽/g, '').replace(/파크골프/g, '').trim(), true).primary} パークゴルフクラブ` : rawClubName)
+    : (isJapanese ? '所属クラブ未登録' : '소속 클럽 미등록');
 
   const careerStartDateText =
     completedRounds.length > 0
@@ -414,8 +417,8 @@ function ChronicleContent() {
             <div className="text-[10px] text-emerald-200 font-medium">
               {isEnglish ? 'Total Holes' : isJapanese ? '累計ホール数' : '누적 홀수'}
             </div>
-            <div className="text-lg font-black text-white mt-0.5">
-              {totalHolesCount}{isEnglish ? ' H' : isJapanese ? 'ホール' : '홀'}
+            <div className="text-base sm:text-lg font-black text-white mt-0.5 whitespace-nowrap tracking-tight">
+              {totalHolesCount}<span className="text-[11px] font-bold ml-0.5">{isEnglish ? 'H' : isJapanese ? 'ホール' : '홀'}</span>
             </div>
           </div>
           <div className="bg-emerald-950/40 rounded-xl p-2 border border-emerald-600/30">
@@ -461,12 +464,12 @@ function ChronicleContent() {
               <button
                 type="button"
                 onClick={handleCopyMemberCode}
-                className={`py-1.5 px-3 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-xs flex items-center gap-1 ${
+                className={`py-1.5 px-3 rounded-xl text-xs font-black transition active:scale-95 cursor-pointer shadow-xs flex items-center gap-1 shrink-0 whitespace-nowrap ${
                   codeCopied ? 'bg-emerald-500 text-white' : 'bg-amber-400 hover:bg-amber-300 text-stone-950'
                 }`}
               >
-                {codeCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{isEnglish ? (codeCopied ? 'Copied!' : 'Copy ID') : isJapanese ? (codeCopied ? 'コピー完了!' : '番号コピー') : (codeCopied ? '복사됨!' : '번호 복사')}</span>
+                {codeCopied ? <Check className="w-3.5 h-3.5 shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
+                <span className="whitespace-nowrap">{isEnglish ? (codeCopied ? 'Copied!' : 'Copy ID') : isJapanese ? (codeCopied ? 'コピー完了!' : '番号コピー') : (codeCopied ? '복사됨!' : '번호 복사')}</span>
               </button>
               <button
                 type="button"
@@ -577,7 +580,15 @@ function ChronicleContent() {
                       {topCompanion.companionName} {isJapanese ? '様' : '님'}
                     </h4>
                     <p className="text-xs text-stone-500 font-medium">
-                      {topCompanion.memo || (isJapanese ? '最高のナイスショットパートナー' : '최고의 굿샷 파트너')}
+                      {isJapanese
+                        ? (topCompanion.memo === '새로 맺은 1촌 동반자' || !topCompanion.memo
+                            ? '新しく結ばれたパートナー'
+                            : topCompanion.memo)
+                        : isEnglish
+                        ? (topCompanion.memo === '새로 맺은 1촌 동반자' || !topCompanion.memo
+                            ? 'New Companion'
+                            : topCompanion.memo)
+                        : (topCompanion.memo || '최고의 굿샷 파트너')}
                     </p>
                   </div>
                 </div>
@@ -586,7 +597,7 @@ function ChronicleContent() {
                     {isJapanese ? '最近同伴コース' : '최근 동반 구장'}
                   </span>
                   <p className="text-[11px] text-stone-600 font-bold">
-                    {topCompanion.lastCourseName || (isJapanese ? 'フィールドラウンド' : '필드 라운드')}
+                    {getCourseDualName(topCompanion.lastCourseName, isJapanese).primary || (isJapanese ? 'フィールドラウンド' : '필드 라운드')}
                   </p>
                 </div>
               </div>
@@ -903,7 +914,7 @@ function ChronicleContent() {
                     const companionsText =
                       (r.players || [])
                         .filter((p) => !p.isSelf && p.name !== userName)
-                        .map((p) => p.name)
+                        .map((p) => (isJapanese && p.name?.startsWith('동반자') ? p.name.replace('동반자', '同伴者') : p.name))
                         .join(', ') || (isJapanese ? '単独プレー' : '단독 플레이');
 
                     // Exact start & end timestamps and duration calculation
@@ -922,7 +933,11 @@ function ChronicleContent() {
                     const isRealisticTime = durationMin >= (holesCount <= 9 ? 25 : 50);
                     const isFieldVerified = r.isFieldVerified ?? (r.isOfficial !== false && !r.isVirtual && isRealisticTime);
                     const isFastTest = !isRealisticTime && durationMin < 15;
-                    const durationText = durationMin >= 60 ? `${Math.floor(durationMin / 60)}시간 ${durationMin % 60}분` : `${durationMin}분`;
+                    const durationText = isJapanese
+                      ? (durationMin >= 60 ? `${Math.floor(durationMin / 60)}時間 ${durationMin % 60}分` : `${durationMin}分`)
+                      : isEnglish
+                      ? (durationMin >= 60 ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}m` : `${durationMin}m`)
+                      : (durationMin >= 60 ? `${Math.floor(durationMin / 60)}시간 ${durationMin % 60}분` : `${durationMin}분`);
 
                     return (
                       <div
@@ -957,7 +972,7 @@ function ChronicleContent() {
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="text-xs font-black text-stone-900 group-hover:text-emerald-900 truncate">
-                                  {r.courseName}
+                                  {getCourseDualName(r.courseName, isJapanese).primary || r.courseName}
                                 </span>
                                 <span className="text-[10px] text-stone-400 font-normal">
                                   ({r.confirmedHoles?.length || r.totalHoles}{isJapanese ? 'ホール' : '홀'})
@@ -982,7 +997,7 @@ function ChronicleContent() {
                                 {hasPhotos && (
                                   <span className="text-[9px] bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full shadow-2xs flex items-center gap-0.5 border border-amber-300">
                                     <span>📸</span>
-                                    <span>사진 {r.photos!.length}장</span>
+                                    <span>{isJapanese ? `写真 ${r.photos!.length}枚` : `사진 ${r.photos!.length}장`}</span>
                                   </span>
                                 )}
                               </div>

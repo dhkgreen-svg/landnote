@@ -133,8 +133,8 @@ export const CourseStampModal: React.FC<CourseStampModalProps> = ({
                     {idx + 1}
                   </span>
                   {p.isLeader && <span className="text-[10px] text-amber-600 font-black">👑</span>}
-                  <span className="truncate max-w-[120px]">{p.name || `동반자 ${idx + 1}`}</span>
-                  {p.isSelf && <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded font-bold">나</span>}
+                  <span className="truncate max-w-[120px]">{p.name || (isJapanese ? `同伴者 ${idx + 1}` : `동반자 ${idx + 1}`)}</span>
+                  {p.isSelf && <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded font-bold">{isJapanese ? '本人' : '나'}</span>}
                 </div>
                 <div className="flex items-center gap-1.5 font-black">
                   <span className="text-stone-900 font-extrabold">{pStrokes}{isJapanese ? '打' : '타'}</span>
@@ -147,7 +147,7 @@ export const CourseStampModal: React.FC<CourseStampModalProps> = ({
                         : 'bg-blue-100 text-blue-800'
                     }`}
                   >
-                    {pDiff === 0 ? 'E (파)' : pDiff > 0 ? `+${pDiff}` : `${pDiff}`}
+                    {pDiff === 0 ? (isJapanese ? 'E (パー)' : 'E (파)') : pDiff > 0 ? `+${pDiff}` : `${pDiff}`}
                   </span>
                 </div>
               </div>
@@ -169,7 +169,7 @@ export const CourseStampModal: React.FC<CourseStampModalProps> = ({
                   <span className="text-xl">⛳</span>
                   <span>{isJapanese ? '次の9ホールへ進む' : '다음 9홀 이어서 치기'}</span>
                   <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-bold">
-                    추천: {info.nextRecommendedLetter}코스
+                    {isJapanese ? `おすすめ: ${info.nextRecommendedLetter}コース` : `추천: ${info.nextRecommendedLetter}코스`}
                   </span>
                 </div>
                 <span className="text-[11px] text-emerald-100 font-normal pt-0.5">
@@ -204,10 +204,10 @@ export const CourseStampModal: React.FC<CourseStampModalProps> = ({
                             : 'bg-white text-stone-800 border-stone-200 hover:border-emerald-400'
                         }`}
                       >
-                        <span className="text-base">{letter}코스</span>
+                        <span className="text-base">{letter}{isJapanese ? 'コース' : '코스'}</span>
                         {isRec && (
                           <span className={`text-[9px] px-1 rounded font-bold ${isSel ? 'bg-emerald-800 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
-                            추천
+                            {isJapanese ? 'おすすめ' : '추천'}
                           </span>
                         )}
                       </button>
@@ -221,7 +221,9 @@ export const CourseStampModal: React.FC<CourseStampModalProps> = ({
                 >
                   <span>🏌️</span>
                   <span>
-                    {selectedCourseChip || info.nextRecommendedLetter}코스 1번 홀 티박스로 출발 ➔
+                    {isJapanese
+                      ? `${selectedCourseChip || info.nextRecommendedLetter}コース 1番ホールへ出発 ➔`
+                      : `${selectedCourseChip || info.nextRecommendedLetter}코스 1번 홀 티박스로 출발 ➔`}
                   </span>
                 </button>
               </div>

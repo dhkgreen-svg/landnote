@@ -403,6 +403,7 @@ export default function HomePage() {
     window.addEventListener('parkon_favorite_courses_updated', loadData);
     window.addEventListener('parkon_club_updated', loadData);
     window.addEventListener('parkon_country_changed', loadData);
+    window.addEventListener('parky_geo_updated', loadData);
     window.addEventListener('parkon_member_synced', loadData);
     return () => {
       window.removeEventListener('storage', loadData);
@@ -411,22 +412,10 @@ export default function HomePage() {
       window.removeEventListener('parkon_favorite_courses_updated', loadData);
       window.removeEventListener('parkon_club_updated', loadData);
       window.removeEventListener('parkon_country_changed', loadData);
+      window.removeEventListener('parky_geo_updated', loadData);
       window.removeEventListener('parkon_member_synced', loadData);
     };
   }, []);
-
-  const handleCountryToggle = (newCountry: 'KR' | 'JP') => {
-    ParkOnStorage.setServiceCountry(newCountry);
-    setServiceCountryState(newCountry);
-    // 사용자가 영어를 선택한 상태라면 언어는 영어로 그대로 유지 (데이터와 언어의 독립성 보장)
-    if (language !== 'en') {
-      if (newCountry === 'JP') {
-        setLanguage('ja');
-      } else {
-        setLanguage('ko');
-      }
-    }
-  };
 
   const handleEndActiveRound = () => {
     if (!activeRound) return;
@@ -1058,12 +1047,12 @@ export default function HomePage() {
                 </span>
                 <div>
                   <div className="text-sm font-black text-white flex items-center gap-1.5">
-                    <span>룰 솔로몬 & 만화 웹툰 가이드</span>
+                    <span>{isJapanese ? 'ルールソロモン＆マンガWebtoonガイド' : '룰 솔로몬 & 만화 웹툰 가이드'}</span>
                     <span className="text-[9px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.2 rounded-full">
                       공인 규정 준거
                     </span>
                   </div>
-                  <div className="text-[10px] text-emerald-200">필드 분쟁 1초 판정 · 음성/사진 판정 · 챕터별 만화</div>
+                  <div className="text-[10px] text-emerald-200">{isJapanese ? 'フィールド紛争1秒判定 · 音声/写真判定 · チャプター別マンガ' : '필드 분쟁 1초 판정 · 음성/사진 판정 · 챕터별 만화'}</div>
                 </div>
               </div>
               <button
@@ -1071,7 +1060,7 @@ export default function HomePage() {
                 onClick={() => setShowRulesSolomonPopup(false)}
                 className="px-3 py-1.5 bg-white/20 hover:bg-white/30 active:scale-95 text-white text-xs font-black rounded-xl flex items-center gap-1 transition shadow-xs"
               >
-                <span>✕ 닫기</span>
+                <span>{isJapanese ? '✕ 閉じる' : '✕ 닫기'}</span>
               </button>
             </div>
             {/* Iframe to /rules */}
@@ -1245,7 +1234,7 @@ export default function HomePage() {
                       <span className="text-base sm:text-lg">🌿</span>
                       <span className="truncate">
                         {isJapanese
-                          ? (homeCourse ? `本日 ${shortName} 状況` : '本日コース状況')
+                          ? '本日コース状況'
                           : (homeCourse ? `오늘 ${shortName} 상태` : '오늘 구장 상태')}
                       </span>
                     </div>
@@ -1272,9 +1261,7 @@ export default function HomePage() {
                       <span className="truncate">{isJapanese ? 'スコア記録スタート' : isEnglish ? 'Start Score Record' : '스코어 기록 시작하기'}</span>
                     </div>
                     <span className="text-[10px] sm:text-[10.5px] font-extrabold text-emerald-950 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-                      {homeCourse
-                        ? (isJapanese ? '公式スコアボード保存' : isEnglish ? 'Official Scoreboard' : '공식 스코어보드 저장')
-                        : (isJapanese ? `${courseShortName} で即開始` : `${courseShortName} 바로 시작`)}
+                      {isJapanese ? '公式スコアボード保存' : isEnglish ? 'Official Scoreboard' : (homeCourse ? '공식 스코어보드 저장' : `${courseShortName} 바로 시작`)}
                     </span>
                   </Link>
                 );
@@ -1463,82 +1450,6 @@ export default function HomePage() {
             <span>▶</span>
           </span>
         </button>
-
-        {/* ② 글로벌 언어 선택 바 (한국어 / 日本語 / English) */}
-        <div className="w-full bg-stone-100 p-1 rounded-2xl border-2 border-stone-800 grid grid-cols-3 gap-1 shadow-xs">
-          <button
-            type="button"
-            onClick={() => setLanguage('ko')}
-            className={`py-2 px-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 ${
-              language === 'ko'
-                ? 'bg-stone-900 text-amber-300 shadow-md scale-[1.02]'
-                : 'bg-white/80 hover:bg-white text-stone-700'
-            }`}
-          >
-            <span>🇰🇷</span>
-            <span>한국어</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setLanguage('ja')}
-            className={`py-2 px-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 ${
-              language === 'ja'
-                ? 'bg-stone-900 text-amber-300 shadow-md scale-[1.02]'
-                : 'bg-white/80 hover:bg-white text-stone-700'
-            }`}
-          >
-            <span>🇯🇵</span>
-            <span>日本語</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setLanguage('en')}
-            className={`py-2 px-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 ${
-              language === 'en'
-                ? 'bg-stone-900 text-amber-300 shadow-md scale-[1.02]'
-                : 'bg-white/80 hover:bg-white text-stone-700'
-            }`}
-          >
-            <span>🇺🇸</span>
-            <span>English</span>
-          </button>
-        </div>
-
-        {/* 서비스 대상 지역 / 구장 모드 선택 (🇰🇷 한국 구장 vs 🇯🇵 日本 コース & 仮想GPS) */}
-        <div className="bg-stone-50 border-2 border-stone-200 rounded-2xl p-2.5 flex items-center justify-between gap-2 shadow-xs mt-2">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-sm">🌏</span>
-            <span className="text-xs font-black text-stone-800 whitespace-nowrap">
-              {isJapanese ? 'コース対象地域' : '서비스 대상 구장'}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 w-full max-w-[210px]">
-            <button
-              type="button"
-              onClick={() => handleCountryToggle('KR')}
-              className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 border ${
-                serviceCountry === 'KR'
-                  ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
-                  : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-100'
-              }`}
-            >
-              <span>🇰🇷</span>
-              <span>{isJapanese ? '韓国' : '한국'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCountryToggle('JP')}
-              className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 border ${
-                serviceCountry === 'JP'
-                  ? 'bg-rose-700 text-white border-rose-800 shadow-xs ring-2 ring-rose-400'
-                  : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-100'
-              }`}
-            >
-              <span>🇯🇵</span>
-              <span>日本</span>
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* 4.6. 1촌 실시간 응원 피드 위젯 */}
@@ -2990,7 +2901,7 @@ export default function HomePage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <Share2 className="w-3.5 h-3.5 text-stone-600" />
-                          <span className="text-xs font-black text-stone-900">내 전적 데이터 1초 백업 &amp; 복원</span>
+                          <span className="text-xs font-black text-stone-900">{isJapanese ? '戦績データ1秒バックアップ＆復元' : '내 전적 데이터 1초 백업 & 복원'}</span>
                         </div>
                         <span className="text-[9.5px] font-bold text-stone-500 bg-stone-200/80 px-2 py-0.5 rounded-full">
                           기기변경/초기화 대비
@@ -3003,7 +2914,7 @@ export default function HomePage() {
                           className="py-2 px-3 bg-stone-800 hover:bg-stone-900 active:scale-95 text-white font-black text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <Share2 className="w-3.5 h-3.5" />
-                          <span>내 전적 백업 복사</span>
+                          <span>{isJapanese ? '戦績バックアップコピー' : '내 전적 백업 복사'}</span>
                         </button>
                         <button
                           type="button"
@@ -3011,7 +2922,7 @@ export default function HomePage() {
                           className="py-2 px-3 bg-white hover:bg-stone-100 active:scale-95 text-stone-800 font-black text-xs rounded-xl border border-stone-300 shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <Download className="w-3.5 h-3.5 text-stone-600" />
-                          <span>백업 기록 복원</span>
+                          <span>{isJapanese ? 'バックアップ復元' : '백업 기록 복원'}</span>
                         </button>
                       </div>
                     </div>
@@ -3110,10 +3021,10 @@ export default function HomePage() {
                     />
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-stone-500 font-bold px-0.5">
-                    <span>초급 (45%~)</span>
-                    <span>중급 (25%)</span>
-                    <span>상급 (10%)</span>
-                    <span>마스터 (1%)</span>
+                    <span>{isJapanese ? '初級 (45%~)' : '초급 (45%~)'}</span>
+                    <span>{isJapanese ? '中級 (25%)' : '중급 (25%)'}</span>
+                    <span>{isJapanese ? '上級 (10%)' : '상급 (10%)'}</span>
+                    <span>{isJapanese ? 'マスター (1%)' : '마스터 (1%)'}</span>
                   </div>
                 </div>
               ) : (
@@ -3144,11 +3055,11 @@ export default function HomePage() {
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="bg-white p-2 rounded-xl border border-stone-200 shadow-2xs">
-                      <div className="text-[10px] text-stone-500 font-bold">총 완주</div>
+                      <div className="text-[10px] text-stone-500 font-bold">{isJapanese ? '総完走' : '총 완주'}</div>
                       <div className="text-xs font-black text-stone-900 mt-0.5">{completedRounds.length}회</div>
                     </div>
                     <div className="bg-white p-2 rounded-xl border border-stone-200 shadow-2xs">
-                      <div className="text-[10px] text-stone-500 font-bold">최저 타수</div>
+                      <div className="text-[10px] text-stone-500 font-bold">{isJapanese ? '最少打数' : '최저 타수'}</div>
                       <div className="text-xs font-black text-emerald-700 mt-0.5">
                         {Math.min(...completedRounds.map((r) => {
                           const me = r.players?.find((p) => p.isSelf) || r.players?.[0];
@@ -3157,7 +3068,7 @@ export default function HomePage() {
                       </div>
                     </div>
                     <div className="bg-white p-2 rounded-xl border border-stone-200 shadow-2xs">
-                      <div className="text-[10px] text-stone-500 font-bold">노OB 완주</div>
+                      <div className="text-[10px] text-stone-500 font-bold">{isJapanese ? 'ノーOB完走' : '노OB 완주'}</div>
                       <div className="text-xs font-black text-amber-700 mt-0.5">
                         {completedRounds.filter((r) => {
                           const me = r.players?.find((p) => p.isSelf) || r.players?.[0];
@@ -3212,8 +3123,8 @@ export default function HomePage() {
                   🔍
                 </span>
                 <div>
-                  <h3 className="text-base font-black text-stone-900 leading-tight">전국 구장 검색</h3>
-                  <p className="text-[11px] text-stone-500 font-medium">조회할 파크골프장을 선택하세요</p>
+                  <h3 className="text-base font-black text-stone-900 leading-tight">{isJapanese ? '全国パークゴルフ場検索' : '전국 구장 검색'}</h3>
+                  <p className="text-[11px] text-stone-500 font-medium">{isJapanese ? 'コースを選択してください' : '조회할 파크골프장을 선택하세요'}</p>
                 </div>
               </div>
               <button
@@ -3236,7 +3147,7 @@ export default function HomePage() {
                   type="text"
                   value={statsSearchQuery}
                   onChange={(e) => setStatsSearchQuery(e.target.value)}
-                  placeholder="구장명 또는 지역 검색 (예: 동락, 구미, 양포, 인천...)"
+                  placeholder={isJapanese ? "コース名または地域検索 (例: 幕別, 札幌, つつじ...)" : "구장명 또는 지역 검색 (예: 동락, 구미, 양포, 인천...)"}
                   className="w-full pl-9 pr-8 py-2.5 bg-white border border-stone-300 rounded-xl text-xs font-bold text-stone-900 placeholder:text-stone-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none shadow-2xs"
                   autoFocus
                 />
@@ -3255,7 +3166,7 @@ export default function HomePage() {
               {myHomeCourseList.length > 0 && !statsSearchQuery && (
                 <div className="mt-2.5 space-y-1">
                   <div className="text-[10.5px] font-black text-stone-600 flex items-center gap-1">
-                    <span>⭐ 내 지정 홈구장 빠른 선택</span>
+                    <span>{isJapanese ? '⭐ マイホームコース クイック選択' : '⭐ 내 지정 홈구장 빠른 선택'}</span>
                   </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {myHomeCourseList.map((hc) => (
@@ -3408,7 +3319,7 @@ export default function HomePage() {
                   }`}
                 >
                   <span>🏆</span>
-                  <span>공인 실력 1~100위</span>
+                  <span>{isJapanese ? '公認実力 1〜100位' : '공인 실력 1~100위'}</span>
                 </button>
                 <button
                   type="button"
@@ -3420,7 +3331,7 @@ export default function HomePage() {
                   }`}
                 >
                   <span>🔥</span>
-                  <span>필드 활동 1~100위</span>
+                  <span>{isJapanese ? 'フィールド活動 1〜100位' : '필드 활동 1~100위'}</span>
                 </button>
               </div>
             </div>
@@ -3444,9 +3355,9 @@ export default function HomePage() {
                   {activeLeaderboard100.userSkillStatus.hasOfficialMatch ? (
                     <div className="bg-emerald-50 border-2 border-emerald-400 rounded-xl p-2.5 flex items-center justify-between text-xs font-black text-emerald-950">
                       <div className="flex items-center gap-1.5">
-                        <span>🏅 내 공인 순위:</span>
+                        <span>{isJapanese ? '🏅 私の公認順位:' : '🏅 내 공인 순위:'}</span>
                         <span className="text-emerald-800 text-sm font-black">{activeLeaderboard100.userSkillStatus.officialRank}위</span>
-                        <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded">공인 인증</span>
+                        <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded">{isJapanese ? '公認認定' : '공인 인증'}</span>
                       </div>
                       <span className="text-sm font-black text-emerald-800">
                         {activeLeaderboard100.userSkillStatus.officialScore}타
@@ -3456,7 +3367,7 @@ export default function HomePage() {
                     <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-2.5 space-y-1 text-xs font-bold text-amber-950">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
-                          <span>🏅 내 최고 기록:</span>
+                          <span>{isJapanese ? '🏅 私のベスト記録:' : '🏅 내 최고 기록:'}</span>
                           <span className="text-emerald-800 font-black text-sm">{activeLeaderboard100.userSkillStatus.casualScore}타</span>
                           <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-1.5 py-0.2 rounded">
                             등외 점수 (비공식 친선)
@@ -3544,7 +3455,7 @@ export default function HomePage() {
                   <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 text-[11px] space-y-1">
                     <div className="flex items-center gap-1 text-amber-900 font-black">
                       <span>💡</span>
-                      <span>공인 실력 순위 100% 팩트 집계 기준</span>
+                      <span>{isJapanese ? '公認実力順位 100%ファクト集計基準' : '공인 실력 순위 100% 팩트 집계 기준'}</span>
                     </div>
                     <p className="text-stone-600 font-medium leading-relaxed">
                       공인 실력 랭킹은 <strong>파크골프 올인원이 인증한 공인 클럽전 또는 공식 대회 18홀 완주 기록만</strong> 정직하게 반영됩니다. 개인 친선 라운드는 등외 점수로 안전하게 분리 평가됩니다.
@@ -3569,7 +3480,7 @@ export default function HomePage() {
                   {/* 내 활동 순위 카드 */}
                   <div className="bg-emerald-50 border-2 border-emerald-400 rounded-xl p-2.5 flex items-center justify-between text-xs font-black text-emerald-950">
                     <div className="flex items-center gap-1.5">
-                      <span>🔥 내 활동 순위:</span>
+                      <span>{isJapanese ? '🔥 私の活動順位:' : '🔥 내 활동 순위:'}</span>
                       <span className="text-emerald-800 text-sm font-black">{activeLeaderboard100.userActivityStatus.rank > 0 ? `${activeLeaderboard100.userActivityStatus.rank}위` : '기록 대기'}</span>
                       <span className="text-[10px] bg-emerald-700 text-white px-1.5 py-0.2 rounded font-bold">
                         {activeLeaderboard100.userActivityStatus.tier}
@@ -3647,7 +3558,7 @@ export default function HomePage() {
                   <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-2.5 text-[11px] space-y-1">
                     <div className="flex items-center gap-1 text-emerald-900 font-black">
                       <span>💡</span>
-                      <span>필드 활동 지수 100% 팩트 집계 안내</span>
+                      <span>{isJapanese ? 'フィールド活動指数 100%ファクト集計案内' : '필드 활동 지수 100% 팩트 집계 안내'}</span>
                     </div>
                     <p className="text-stone-600 font-medium leading-relaxed">
                       활동 지수는 <strong>정규 리그나 대회 여부와 관계없이</strong>, 실제 필드를 방문하여 혼자 연습하거나 친선으로 플레이한 모든 완주 기록(하루 2~3회 포함)을 <strong>100% 실시간으로 반영</strong>합니다.

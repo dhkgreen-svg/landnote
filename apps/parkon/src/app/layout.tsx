@@ -6,7 +6,6 @@ import { VisitorTracker } from '@/components/VisitorTracker';
 import { MainWrapper } from '@/components/MainWrapper';
 import { LanguageProvider } from '@/lib/i18n/LanguageContext';
 import { InAppBrowserGuideModal } from '@/components/InAppBrowserGuideModal';
-import { LocationSimulatorSwitch } from '@/components/LocationSimulatorSwitch';
 import Script from 'next/script';
 
 export const metadata: Metadata = {
@@ -357,7 +356,6 @@ export default function RootLayout({
           <MainWrapper>
             {children}
           </MainWrapper>
-          <LocationSimulatorSwitch />
           <Footer />
           <InAppBrowserGuideModal />
         </LanguageProvider>

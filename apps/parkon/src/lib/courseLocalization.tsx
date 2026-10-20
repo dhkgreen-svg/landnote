@@ -132,7 +132,9 @@ const KOREAN_TO_JAPANESE_MAP: Record<string, { kanji: string; kana: string }> = 
 export function translateKoreanCourseNameToJapanese(cleanKoName: string): string {
   if (!cleanKoName) return '';
 
-  const words = cleanKoName.split(/\s+/);
+  // 1. 한국 구장명의 괄호 병기(예: "양포(양호)", "동락(인동)")는 일본어 변환 시 괄호 내부 사족 제거
+  const sanitized = cleanKoName.replace(/\([^)]*\)/g, '').trim();
+  const words = sanitized.split(/\s+/);
   const kanjiParts: string[] = [];
   const kanaParts: string[] = [];
 
@@ -146,8 +148,11 @@ export function translateKoreanCourseNameToJapanese(cleanKoName: string): string
       for (const [k, v] of Object.entries(KOREAN_TO_JAPANESE_MAP)) {
         if (word.startsWith(k)) {
           const rest = word.slice(k.length);
-          kanjiParts.push(v.kanji + (KOREAN_TO_JAPANESE_MAP[rest]?.kanji || rest));
-          kanaParts.push(v.kana + (KOREAN_TO_JAPANESE_MAP[rest]?.kana || rest));
+          const restSanitized = rest.replace(/\([^)]*\)/g, '').trim();
+          const restKanji = KOREAN_TO_JAPANESE_MAP[restSanitized]?.kanji || (restSanitized ? restSanitized : '');
+          const restKana = KOREAN_TO_JAPANESE_MAP[restSanitized]?.kana || (restSanitized ? restSanitized : '');
+          kanjiParts.push(v.kanji + (restKanji ? ' ' + restKanji : ''));
+          kanaParts.push(v.kana + (restKana ? ' ' + restKana : ''));
           matched = true;
           break;
         }
@@ -158,8 +163,8 @@ export function translateKoreanCourseNameToJapanese(cleanKoName: string): string
     }
   }
 
-  const kanjiStr = kanjiParts.join(' ');
-  const kanaStr = kanaParts.length > 0 ? kanaParts.join(' ') : '';
+  const kanjiStr = kanjiParts.join(' ').trim();
+  const kanaStr = kanaParts.length > 0 ? kanaParts.join(' ').trim() : '';
 
   if (kanaStr && kanaStr !== kanjiStr) {
     return `${kanjiStr} (${kanaStr})`;

@@ -1,11 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Compass, Check, X, RefreshCw, ChevronUp, ChevronDown, Globe, MapPin, Sparkles } from 'lucide-react';
 import { GeoCountryService, GeoCountryResult, MOCK_LOCATION_PRESETS, ServiceCountry, ServiceLanguage } from '@/lib/geoCountryService';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 
 export function LocationSimulatorSwitch() {
+  const pathname = usePathname();
+  if (pathname?.includes('/watch')) return null;
+
   const { language, setLanguage } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [geoState, setGeoState] = useState<GeoCountryResult | null>(null);

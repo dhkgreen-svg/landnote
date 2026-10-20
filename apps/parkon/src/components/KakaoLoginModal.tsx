@@ -662,7 +662,7 @@ export function KakaoLoginModal({
                     }`}
                   >
                     {codeCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                    <span>{codeCopied ? (isJapanese ? 'コピー済' : '복사됨!') : (isJapanese ? '번호 복사' : '번호 복사')}</span>
+                    <span>{codeCopied ? (isJapanese ? 'コピー済' : '복사됨!') : (isJapanese ? '番号コピー' : '번호 복사')}</span>
                   </button>
                 </div>
 
