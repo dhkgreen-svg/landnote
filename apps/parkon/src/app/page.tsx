@@ -314,6 +314,19 @@ export default function HomePage() {
         .then((data) => {
           if (!data.success || !data.room) return;
           const room = data.room;
+          if (!room.roundSession) return;
+
+          // 🛡️ [대표님 특명 유령 라운드 부활 원천 차단]: 사용자가 이미 '끝내기'한 라운드는 절대 다시 살리지 않음
+          if (typeof window !== 'undefined') {
+            const isDismissed = Boolean(
+              (room.roundSession.id && localStorage.getItem('parkon_dismissed_round_' + room.roundSession.id)) ||
+              (room.roomId && localStorage.getItem('parkon_dismissed_room_' + room.roomId))
+            );
+            if (isDismissed) {
+              return;
+            }
+          }
+
           const searchUser = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('user')?.trim() : '';
           const rawName = ParkOnStorage.getUserDisplayName();
           const localName = typeof localStorage !== 'undefined' ? localStorage.getItem('parkon_player_name')?.trim() : '';
@@ -417,8 +430,10 @@ export default function HomePage() {
     };
   }, []);
 
+  const isEndingRoundRef = useRef<boolean>(false);
   const handleEndActiveRound = () => {
-    if (!activeRound) return;
+    if (!activeRound || isEndingRoundRef.current) return;
+    isEndingRoundRef.current = true;
     const courseName = activeRound.courseName || '진행 중인 라운드';
     const confirmMsg = isJapanese
       ? `「${courseName}」ラウンドを終了しますか？\n終了すると進行中バナーが非表示になります。`
@@ -426,25 +441,63 @@ export default function HomePage() {
       ? `End round for "${courseName}"?\nThis will dismiss the ongoing banner.`
       : `「${courseName}」 라운드를 지금 종료(끝내기)하시겠습니까?\n종료 후 홈 화면의 진행 중 배너가 사라집니다.`;
 
-    if (window.confirm(confirmMsg)) {
-      const me = (activeRound.players || []).find((p) => p.isSelf) || activeRound.players?.[0];
-      const hasScores = Boolean(me && me.scores && Object.keys(me.scores).length > 0 && (me.totalStrokes || 0) > 0);
+    try {
+      if (window.confirm(confirmMsg)) {
+        const me = (activeRound.players || []).find((p) => p.isSelf) || activeRound.players?.[0];
+        const hasScores = Boolean(me && me.scores && Object.keys(me.scores).length > 0 && (me.totalStrokes || 0) > 0);
 
-      if (hasScores && !activeRound.isVirtual) {
-        const finishedSession: RoundSession = {
-          ...activeRound,
-          status: 'COMPLETED',
-          completedAt: activeRound.completedAt || new Date().toISOString(),
-        };
-        ParkOnStorage.saveCompletedRound(finishedSession);
-        setCompletedRounds(ParkOnStorage.getCompletedRounds());
-      } else {
-        ParkOnStorage.clearCurrentRound();
+        // 🛡️ [대표님 특명 유령 라운드 부활 차단]: 사용자가 명시적으로 끝내기한 라운드 영구 제외 등록
+        if (typeof window !== 'undefined') {
+          try {
+            if (activeRound.id) {
+              localStorage.setItem('parkon_dismissed_round_' + activeRound.id, Date.now().toString());
+            }
+            if (activeRound.roomId) {
+              localStorage.setItem('parkon_dismissed_room_' + activeRound.roomId, Date.now().toString());
+            }
+          } catch (e) {}
+        }
+
+        // 서버 룸에도 즉시 완료/종료 신호 전송 (서버에서 다시 살아나는 것 방지)
+        const effRoomId = activeRound.roomId || activeRound.id;
+        if (effRoomId) {
+          try {
+            fetch('/api/round/room', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'finish',
+                roomId: effRoomId,
+                roundSession: {
+                  ...activeRound,
+                  status: 'COMPLETED',
+                  completedAt: activeRound.completedAt || new Date().toISOString(),
+                },
+              }),
+            }).catch(() => {});
+          } catch (e) {}
+        }
+
+        if (hasScores && !activeRound.isVirtual) {
+          const finishedSession: RoundSession = {
+            ...activeRound,
+            status: 'COMPLETED',
+            completedAt: activeRound.completedAt || new Date().toISOString(),
+          };
+          ParkOnStorage.saveCompletedRound(finishedSession);
+          setCompletedRounds(ParkOnStorage.getCompletedRounds());
+        } else {
+          ParkOnStorage.clearCurrentRound();
+        }
+
+        setActiveRound(null);
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new Event('parkon_round_completed'));
       }
-
-      setActiveRound(null);
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new Event('parkon_round_completed'));
+    } finally {
+      setTimeout(() => {
+        isEndingRoundRef.current = false;
+      }, 500);
     }
   };
 

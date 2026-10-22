@@ -118,6 +118,12 @@ export default function RoundPlayPage() {
   });
   // 🛡️ 화면 깜빡임/왔다갔다(리바운드) 방지용 최근 로컬 조작 시각 Ref (네트워크 지연 이전 패킷 역류 차단)
   const lastLocalActionTimeRef = useRef<number>(0);
+  // 🛡️ [수정 시각(updatedAt) 단방향 버전 가드]: 과거 패킷 수신 시 100% 폐기 (화면 흔들림/인타발 원천 차단)
+  const lastAppliedUpdatedAtRef = useRef<number>(0);
+  const currentHoleRef = useRef<number>(currentHole);
+  useEffect(() => {
+    currentHoleRef.current = currentHole;
+  }, [currentHole]);
 
   // 🏌️ [5대 마스터 아키텍처 2] 카운트 방식 토글: 기본값 'PAR_BASE' (Par기준 우선) | 'ZERO_BASE' (0베이스)
   const [countingMode, setCountingMode] = useState<'ZERO_BASE' | 'PAR_BASE'>('PAR_BASE');
@@ -618,11 +624,13 @@ export default function RoundPlayPage() {
 
   // Sync state to LocalStorage & Club Storage & Offline Backup & Realtime Broadcast
   const updateSession = useCallback((updated: RoundSession) => {
-    // 🛡️ 로컬 조작 시각 최신화 (네트워크 지연된 stale 폴링에 의한 리바운드 차단)
-    lastLocalActionTimeRef.current = Date.now();
+    // 🛡️ 로컬 조작 시각 및 적용 시각 최신화 (네트워크 지연된 stale 폴링에 의한 리바운드 차단)
+    const now = Date.now();
+    lastLocalActionTimeRef.current = now;
+    lastAppliedUpdatedAtRef.current = now;
     const enriched: RoundSession = {
       ...updated,
-      updatedAt: new Date().toISOString(),
+      updatedAt: new Date(now).toISOString(),
     };
     setSession(enriched);
     ParkOnStorage.saveCurrentRound(enriched);
@@ -748,9 +756,24 @@ export default function RoundPlayPage() {
         return;
       }
 
-      // 🛡️ [대표님 특명 화면 깜빡임/왔다갔다(리바운드) 원천 차단 가드]
-      // 조장이나 유저가 로컬에서 [확인 완료 (티샷 시작)], 점수 입력, 홀 전환 등을 직접 조작한 직후(2.5초 이내)에는
-      // 네트워크 지연으로 뒤늦게 도착한 서버의 이전(Stale) holeStep 또는 currentHole로 되돌아가지 않도록 철저히 보호!
+      // 🛡️ [대표님 특명 화면 흔들림/인타발 원천 차단 1: 수정 시각(updatedAt) 단방향 버전 가드]
+      // 수신된 패킷의 시각이 이미 적용된 최신 시각보다 과거이면(1ms라도 과거이면), 지연 도착한 구버전 패킷이므로 즉시 폐기!
+      const incomingTime = incoming.updatedAt ? new Date(incoming.updatedAt).getTime() : 0;
+      if (incomingTime > 0) {
+        if (incomingTime < lastAppliedUpdatedAtRef.current) {
+          return; // Stale 패킷 폐기 (이전 홀로 되돌아가는 리바운드/화면 흔들림 100% 방지)
+        }
+        lastAppliedUpdatedAtRef.current = incomingTime;
+      }
+
+      // 🛡️ [대표님 특명 화면 흔들림/인타발 원천 차단 2: 동반자 홀 역행 방지 단방향 전진 가드]
+      // 조장이 넘겨주는 것을 수신하는 동반자 폰에서도, 이미 앞선 홀로 진행된 상태라면 과거 홀 번호로 되돌아가지 않도록 방어!
+      const isOlderHole = incoming.currentHole && incoming.currentHole < currentHoleRef.current;
+      if (isOlderHole && incoming.status !== 'COMPLETED') {
+        return; // 이전 홀로 튕겨 돌아가는 현상 완전 차단
+      }
+
+      // 🛡️ [대표님 특명 가드 3]: 조장 및 직접 조작 유저 로컬 2.5초 보호 가드
       const isRecentLocalAction = (Date.now() - lastLocalActionTimeRef.current) < 2500;
 
       // 1) 홀 진행 단계(holeStep: TEE_SHOT vs SCORING) 자동 동기화!
@@ -1688,7 +1711,7 @@ export default function RoundPlayPage() {
       setRestingPlayerIds([]);
       updateSession({ ...session, currentHole: targetCurrentHole, holeStep: 'TEE_SHOT', players: updatedPlayers, updatedAt: new Date().toISOString() });
       setShowCoursePicker(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'instant' as any });
       return;
     }
 
@@ -1759,7 +1782,7 @@ export default function RoundPlayPage() {
     setRestingPlayerIds([]);
     updateSession(updatedSession);
     setShowCoursePicker(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'instant' as any });
   };
 
   // 🎉 [대표님 특명 현장 표준] 매 9홀 완주 후 다음 코스로 연장 이동
@@ -1811,7 +1834,7 @@ export default function RoundPlayPage() {
     setRestingPlayerIds([]);
     setCourseCompletedModalInfo(null);
     updateSession(updatedSession);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'instant' as any });
   };
 
   const handleFinishRoundFromModal = () => {
@@ -1898,7 +1921,7 @@ export default function RoundPlayPage() {
     setRestingPlayerIds([]);
     updateSession(updatedSession);
     setShowTargetHoleReachedModal(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'instant' as any });
   };
 
   // 다음 홀 직접 이동 처리 (목표 도달 검사 포함)
@@ -2031,7 +2054,7 @@ export default function RoundPlayPage() {
         confirmedHoles: currentConfirmed,
         players: playersForNextHole,
       });
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'instant' as any });
     } else {
       handleExtendNext9Holes();
     }
@@ -2116,7 +2139,7 @@ export default function RoundPlayPage() {
           setSession(updated);
         }
       }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'instant' as any });
     }
   };
 
@@ -2211,6 +2234,18 @@ export default function RoundPlayPage() {
     updateSession(finished);
 
     const effectiveRoomId = finished.roomId || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('roomId') : null) || 'latest';
+
+    // 🛡️ [대표님 특명 유령 라운드 부활 원천 차단]: 완료된 라운드는 로컬에 영구 완료/해제 플래그 등록
+    if (typeof window !== 'undefined') {
+      try {
+        if (finished.id) {
+          localStorage.setItem('parkon_dismissed_round_' + finished.id, Date.now().toString());
+        }
+        if (effectiveRoomId) {
+          localStorage.setItem('parkon_dismissed_room_' + effectiveRoomId, Date.now().toString());
+        }
+      } catch (e) {}
+    }
 
     // [Task 2] 동반자 오프라인 상태에서도 최종 기록 영구 보존:
     // 조장이 라운드 종료(최종 스코어 제출)를 누르면 조에 속한 동반자 전원의 계정에 공식 스코어카드를 클라우드/서버에 영구 누적 저장
