@@ -325,7 +325,7 @@ export default function CoursesPage() {
 
   // Affiliated Stores & Auction State
   const [affiliatedStores, setAffiliatedStores] = useState<AffiliatedStore[]>(() => AuctionStorage.getAllStores());
-  const [selectedStoreCourseId, setSelectedStoreCourseId] = useState<string>('course-gumi-dongrak');
+  const [selectedStoreCourseId, setSelectedStoreCourseId] = useState<string>(() => ParkOnStorage.getHomeCourseId() || 'course-gumi-dongrak');
   const [showCourseSelectModal, setShowCourseSelectModal] = useState<boolean>(false);
   const [courseSelectSearchTerm, setCourseSelectSearchTerm] = useState<string>('');
   const [courseSelectRegionFilter, setCourseSelectRegionFilter] = useState<string>('ALL');
@@ -412,9 +412,9 @@ export default function CoursesPage() {
           }
         }
       }
-      const homeCourseId = localStorage.getItem('parkon_home_course_id');
-      if (homeCourseId && courses.some((c) => c.id === homeCourseId)) {
-        setSelectedStoreCourseId(homeCourseId);
+      const savedHomeId = ParkOnStorage.getHomeCourseId() || localStorage.getItem('parkon_home_course_id');
+      if (savedHomeId && courses.some((c) => c.id === savedHomeId)) {
+        setSelectedStoreCourseId(savedHomeId);
         return;
       }
       const dongrak = courses.find((c) => c.id === 'course-gumi-dongrak' || c.name.includes('동락'));
@@ -1255,333 +1255,69 @@ export default function CoursesPage() {
 
   return (
     <div className="px-3 sm:px-4 py-4 space-y-4 max-w-md mx-auto w-full">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              if (typeof window !== 'undefined' && window.history.length > 1) {
-                router.back();
-              } else {
-                router.push('/');
-              }
-            }}
-            className="p-2 -ml-2 text-stone-700 hover:text-stone-950 cursor-pointer"
-            title={isJapanese ? "戻る" : "이전으로"}
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-          <div>
-            <h2 className="text-xl font-black text-stone-900 leading-tight">
-              {isJapanese ? '全国パークゴルフ場 検索' : '전국 파크골프장 검색'}
-            </h2>
-            <p className="text-xs text-stone-700 font-semibold">
-              {isJapanese ? '全国公認コース検索＆登録' : '전국 시·군 공인 구장 검색 및 등록'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black px-3 py-2 rounded-xl flex items-center gap-1 shadow active:scale-95 transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{isJapanese ? '新規登録' : '신규 등록'}</span>
-          </button>
-          {/* 대표님 요청: 상단 우측 닫기 (X) 버튼 누르면 항상 직전 화면으로 복귀 */}
-          <button
-            type="button"
-            onClick={() => {
-              if (typeof window !== 'undefined' && window.history.length > 1) {
-                router.back();
-              } else {
-                router.push('/');
-              }
-            }}
-            className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition cursor-pointer"
-            title={isJapanese ? "閉じる (前画面へ)" : "닫기 (이전 화면으로)"}
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      {/* 🔍 SEARCH BAR (도시명 / 구장명 직접 검색 & 돋보기 클릭 시에만 나열) */}
-      <div className="space-y-2">
-        <div className="relative flex items-center bg-white border-2 border-emerald-600 rounded-2xl shadow-md overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500/30 w-full">
-          <input
-            type="text"
-            value={inputQuery}
-            onChange={(e) => {
-              setInputQuery(e.target.value);
-              if (!e.target.value.trim()) {
-                setAppliedQuery('');
-              }
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder={isJapanese ? "都市名またはコース名で検索 (例: 幕別、忠類、札幌)" : "도시명 또는 구장명 검색 (예: 밀양, 청송, 지산)"}
-            className="min-w-0 flex-1 pl-3.5 sm:pl-4 pr-1.5 py-3 sm:py-3.5 text-sm sm:text-base font-bold text-stone-900 outline-none placeholder:text-stone-400 bg-transparent"
-          />
-
-          {/* Clear Button */}
-          {inputQuery && (
-            <button
-              type="button"
-              onClick={handleClearSearch}
-              className="p-1.5 sm:p-2 text-stone-400 hover:text-stone-700 cursor-pointer shrink-0"
-              title={isJapanese ? "検索クリア" : "검색어 지우기"}
-            >
-              <X className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
-            </button>
-          )}
-
-          {/* 돋보기 검색 실행 버튼 */}
-          <button
-            type="button"
-            onClick={() => handleExecuteSearch()}
-            className="self-stretch px-3.5 sm:px-5 py-3 sm:py-3.5 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white flex items-center justify-center transition shrink-0 cursor-pointer gap-1 font-black whitespace-nowrap"
-            title={isJapanese ? "検索" : "검색하기"}
-          >
-            <Search className="w-4.5 h-4.5 sm:w-5 sm:h-5 shrink-0" />
-            <span className="text-xs sm:text-sm font-black">{isJapanese ? '検索' : '검색'}</span>
-          </button>
-        </div>
-
-        {/* 🇰🇷 🇯🇵 국가별 필터 탭 & ⛳ 전국 17개 시·도 탐색 바 (검색어 직접 입력 시에만 숨김) */}
-        {!isTextSearchActive && (
-          <>
-            {/* 🇰🇷 🇯🇵 국가별 필터 탭 (전체 / 대한민국 / 일본 본토) */}
-            <div className="flex items-center gap-1.5 p-1 bg-stone-100/90 rounded-2xl border border-stone-200 text-xs font-black">
-              <button
-                type="button"
-                onClick={() => {
-                  setCountryFilter('ALL');
-                  setInputQuery('');
-                  setAppliedQuery('');
-                }}
-                className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                  countryFilter === 'ALL'
-                    ? 'bg-emerald-700 text-white shadow'
-                    : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/60'
-                }`}
-              >
-                <span>🌐</span>
-                <span>{isEnglish ? 'All' : isJapanese ? '全体' : '전체'}</span>
-                <span className="text-[10px] opacity-80">({courses.length})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setCountryFilter('KR');
-                  setInputQuery('');
-                  setAppliedQuery('');
-                }}
-                className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                  (countryFilter as string) === 'KR'
-                    ? 'bg-emerald-700 text-white shadow'
-                    : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/60'
-                }`}
-              >
-                <span>🇰🇷</span>
-                <span>{isEnglish ? 'Korea' : isJapanese ? '韓国' : '대한민국'}</span>
-                <span className="text-[10px] opacity-80">({courses.filter((c) => c.country !== 'JP').length})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setCountryFilter('JP');
-                  setInputQuery('');
-                  setAppliedQuery('');
-                }}
-                className={`flex-1 py-2 px-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                  (countryFilter as string) === 'JP'
-                    ? 'bg-emerald-700 text-white shadow'
-                    : 'text-stone-700 hover:text-stone-900 hover:bg-stone-200/60'
-                }`}
-              >
-                <span>🇯🇵</span>
-                <span>{isEnglish ? 'Japan' : isJapanese ? '日本公認' : '일본 공인'}</span>
-                <span className="text-[10px] opacity-80">({courses.filter((c) => c.country === 'JP').length})</span>
-              </button>
-            </div>
-
-            {/* ⛳ 전국 17개 시·도 / 일본 지역 원터치 빠른 탐색 바 */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  setInputQuery('');
-                  setAppliedQuery('');
-                }}
-                className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition cursor-pointer ${
-                  !appliedQuery || appliedQuery === '전체' || appliedQuery === '全国'
-                    ? 'bg-emerald-700 text-white shadow-xs'
-                    : 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200'
-                }`}
-              >
-                {isJapanese
-                  ? countryFilter === 'JP'
-                    ? `全国すべて (${courses.filter((c) => c.country === 'JP').length})`
-                    : `全体 (${courses.length})`
-                  : countryFilter === 'KR'
-                  ? `전국 전체 (${courses.filter((c) => c.country !== 'JP').length})`
-                  : `전체 (${courses.length})`
-                }
-              </button>
-              {((isJapanese || countryFilter === 'JP')
-                ? [
-                    { name: '北海道', count: courses.filter((c) => c.country === 'JP' && (c.region === 'Hokkaido' || c.regionJa?.includes('北海道') || c.region?.includes('北海道'))).length },
-                    { name: '東北', count: courses.filter((c) => c.country === 'JP' && (c.region === 'Tohoku' || c.regionJa === '東北' || c.regionKo === '도호쿠' || /青森|岩手|宮城|秋田|山形|福島/.test(c.regionJa || c.region || c.addressJa || ''))).length },
-                    { name: '関東', count: courses.filter((c) => c.country === 'JP' && (c.region === 'Kanto' || c.regionJa === '関東' || c.regionKo === '간토' || /東京|神奈川|埼玉|千葉|茨城|栃木|群馬|山梨/.test(c.regionJa || c.region || c.addressJa || ''))).length },
-                    { name: '中部', count: courses.filter((c) => c.country === 'JP' && (c.region === 'Chubu' || c.regionJa === '中部' || c.regionKo === '주부' || /新潟|富山|石川|福井|長野|岐阜|静岡|愛知|三重/.test(c.regionJa || c.region || c.addressJa || ''))).length },
-                    { name: '近畿', count: courses.filter((c) => c.country === 'JP' && (c.region === 'Kinki' || c.regionJa === '近畿' || c.regionJa === '関西' || c.regionKo === '긴키' || /大阪|京都|兵庫|奈良|滋賀|和歌山/.test(c.regionJa || c.region || c.addressJa || ''))).length },
-                    { name: '中国・四国', count: courses.filter((c) => c.country === 'JP' && (c.region === 'Chugoku-Shikoku' || c.regionJa === '中国・四国' || c.regionKo === '주고쿠·시코쿠' || /鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知/.test(c.regionJa || c.region || c.addressJa || ''))).length },
-                    { name: '九州・沖縄', count: courses.filter((c) => c.country === 'JP' && (c.region === 'Kyushu-Okinawa' || c.regionJa === '九州・沖縄' || c.regionKo === '규슈·오키나와' || /福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄/.test(c.regionJa || c.region || c.addressJa || ''))).length },
-                  ]
-                : [
-                    { name: '서울', count: 28 },
-                    { name: '경기', count: 58 },
-                    { name: '인천', count: 8 },
-                    { name: '부산', count: 18 },
-                    { name: '대구', count: 39 },
-                    { name: '광주', count: 9 },
-                    { name: '대전', count: 5 },
-                    { name: '울산', count: 7 },
-                    { name: '세종', count: 9 },
-                    { name: '강원', count: 46 },
-                    { name: '충북', count: 26 },
-                    { name: '충남', count: 35 },
-                    { name: '전북', count: 33 },
-                    { name: '전남', count: 43 },
-                    { name: '경북', count: 71 },
-                    { name: '경남', count: 89 },
-                    { name: '제주', count: 11 },
-                  ]
-              ).map((reg) => (
-                <button
-                  key={reg.name}
-                  type="button"
-                  onClick={() => {
-                    setInputQuery(reg.name);
-                    setAppliedQuery(reg.name);
-                  }}
-                  className={`px-2.5 py-1.5 rounded-xl font-bold whitespace-nowrap transition cursor-pointer ${
-                    appliedQuery === reg.name
-                      ? 'bg-emerald-700 text-white shadow-xs'
-                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200 border border-stone-200'
-                  }`}
-                >
-                  {reg.name} ({reg.count})
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* 3-Second Quick Course Creator Form */}
-      {showAddForm && (
-        <form
-          onSubmit={handleCreateCourse}
-          className="bg-emerald-50 border-2 border-emerald-500 rounded-3xl p-4 space-y-3 shadow-lg animate-fadeIn"
+      {/* Header - Back and Close */}
+      <div className="flex items-center justify-between py-0.5">
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              router.back();
+            } else {
+              router.push('/');
+            }
+          }}
+          className="p-2 -ml-2 text-stone-700 hover:text-stone-950 cursor-pointer"
+          title={isJapanese ? "戻る" : "이전으로"}
         >
-          <div className="flex items-center justify-between">
-            <h3 className="font-black text-emerald-950 text-base flex items-center gap-1.5">
-              <Sparkles className="w-5 h-5 text-emerald-600" />
-              <span>미등록 신규 구장 3초 자동 생성</span>
-            </h3>
-            <span className="text-[11px] bg-emerald-200 text-emerald-900 font-bold px-2 py-0.5 rounded-full">
-              표준 Par 자동 세팅
-            </span>
-          </div>
+          <ArrowLeft className="w-6 h-6" />
+        </button>
 
-          <div>
-            <label className="block text-xs font-bold text-stone-800 mb-1">
-              구장 이름 *
-            </label>
-            <input
-              type="text"
-              required
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="예: 구미 낙동 파크골프장"
-              className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-2.5 text-sm font-bold text-stone-900 outline-none focus:border-emerald-600"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-xs font-bold text-stone-800 mb-1">
-                지역 (시/군/구)
-              </label>
-              <input
-                type="text"
-                value={newRegion}
-                onChange={(e) => setNewRegion(e.target.value)}
-                placeholder="예: 경북 구미시"
-                className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-2.5 text-sm font-bold text-stone-900 outline-none focus:border-emerald-600"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-stone-800 mb-1">
-                코스 및 홀 수 선택
-              </label>
-              <select
-                value={newHoles}
-                onChange={(e) => setNewHoles(Number(e.target.value))}
-                className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-2.5 text-sm font-bold text-stone-900 outline-none focus:border-emerald-600"
-              >
-                <option value={9}>총 1코스 9홀</option>
-                <option value={18}>총 2코스 18홀 (표준 일반)</option>
-                <option value={27}>총 3코스 27홀</option>
-                <option value={36}>총 4코스 36홀 (표준 대형)</option>
-                <option value={45}>총 5코스 45홀 (밀양 아리랑형)</option>
-                <option value={54}>총 6코스 54홀</option>
-                <option value={63}>총 7코스 63홀 (구미 지산형)</option>
-                <option value={72}>총 8코스 72홀 (창원 대산형)</option>
-                <option value={108}>총 12코스 108홀 (의성 초대형)</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-stone-800 mb-1">
-              등록자 명예 닉네임 (선택)
-            </label>
-            <input
-              type="text"
-              value={newContributor}
-              onChange={(e) => setNewContributor(e.target.value)}
-              placeholder="예: 구미선산총무 (구장 상단에 명예 표시)"
-              className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-2 text-sm font-bold text-stone-900 outline-none focus:border-emerald-600"
-            />
-          </div>
-
-          <div className="flex gap-2 pt-1">
-            <button
-              type="submit"
-              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl text-sm shadow active:scale-95 transition"
-            >
-              생성 및 즉시 홈구장 지정 ⛳
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowAddForm(false)}
-              className="px-4 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs"
-            >
-              취소
-            </button>
-          </div>
-        </form>
-      )}
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              router.back();
+            } else {
+              router.push('/');
+            }
+          }}
+          className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition cursor-pointer"
+          title={isJapanese ? "閉じる" : "닫기"}
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
       {/* ========================================================================= */}
+      {/* ⛳ [1단] 현재 선택 구장 정보 슬림 배너 (대표님 요청: 배지/검색버튼 제거, 슬림화) */}
+      {/* ========================================================================= */}
+      {(() => {
+        const currentCourse =
+          courses.find((c) => c.id === selectedStoreCourseId) ||
+          courses.find((c) => c.id === homeCourseId) ||
+          courses.find((c) => c.id === 'course-gumi-dongrak') ||
+          courses[0];
+        const dual = currentCourse ? getCourseDualName(currentCourse, isJapanese) : { primary: '구미 동락', secondary: '' };
+        const displayRegion = currentCourse ? getLocalizedCourseRegion(currentCourse) : '경북 구미시';
+
+        return (
+          <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-emerald-950 text-white rounded-2xl px-4 py-3 shadow-md border border-emerald-700/80 animate-fadeIn space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">⛳</span>
+              <h3 className="text-lg sm:text-xl font-black text-white leading-tight tracking-tight">
+                {dual.primary}
+              </h3>
+              <span className="text-xs text-emerald-200 font-bold truncate">
+                📍 {displayRegion}
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-emerald-100 font-medium pl-0.5">
+              현재 선택하신 <strong className="text-amber-300 font-black underline underline-offset-2">{dual.primary}</strong> 구장 주변 업체 & 편의시설 둘러보기
+            </p>
+          </div>
+        );
+      })()}
+
       {/* 8 Main Action Category Tiles (2x4 Grid) - 상시 노출 */}
       {/* 어르신 시인성 고려 큼직한 아이콘과 직관적 텍스트, 운영자용 단어(유료/옥션 등) 완전 배제 */}
       {/* ========================================================================= */}
@@ -1708,8 +1444,152 @@ export default function CoursesPage() {
       </div>
 
       {/* ========================================================================= */}
+      {/* 🔍 [3단] 다른 구장 검색창 (대표님 요청: 상단 안내글자 제거, 검색창 단독 배치) */}
+      {/* ========================================================================= */}
+      <div id="course-search-section" className="pt-1">
+        <div className="relative flex items-center bg-white border-2 border-emerald-600 rounded-2xl shadow-md overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500/30 w-full">
+          <input
+            type="text"
+            value={inputQuery}
+            onChange={(e) => {
+              setInputQuery(e.target.value);
+              if (!e.target.value.trim()) {
+                setAppliedQuery('');
+              }
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder={isJapanese ? "コース名で他のコースを検索 (例: 幕別、忠類、札幌)" : "구장명으로 다른 구장 검색하기 (예: 밀양, 선산, 양평, 지산)"}
+            className="min-w-0 flex-1 pl-3.5 sm:pl-4 pr-1.5 py-3 sm:py-3.5 text-sm sm:text-base font-bold text-stone-900 outline-none placeholder:text-stone-400 bg-transparent"
+          />
+
+          {/* Clear Button */}
+          {inputQuery && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="p-1.5 sm:p-2 text-stone-400 hover:text-stone-700 cursor-pointer shrink-0"
+              title={isJapanese ? "検索クリア" : "검색어 지우기"}
+            >
+              <X className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
+            </button>
+          )}
+
+          {/* 돋보기 검색 실행 버튼 */}
+          <button
+            type="button"
+            onClick={() => handleExecuteSearch()}
+            className="self-stretch px-4 sm:px-5 py-3 sm:py-3.5 bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800 text-white flex items-center justify-center transition shrink-0 cursor-pointer gap-1.5 font-black whitespace-nowrap"
+            title={isJapanese ? "検索" : "검색하기"}
+          >
+            <Search className="w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0" />
+            <span className="text-xs sm:text-sm font-black">{isJapanese ? '検索' : '검색'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3-Second Quick Course Creator Form */}
+      {showAddForm && (
+        <form
+          onSubmit={handleCreateCourse}
+          className="bg-emerald-50 border-2 border-emerald-500 rounded-3xl p-4 space-y-3 shadow-lg animate-fadeIn"
+        >
+          <div className="flex items-center justify-between">
+            <h3 className="font-black text-emerald-950 text-base flex items-center gap-1.5">
+              <Sparkles className="w-5 h-5 text-emerald-600" />
+              <span>미등록 신규 구장 3초 자동 생성</span>
+            </h3>
+            <span className="text-[11px] bg-emerald-200 text-emerald-900 font-bold px-2 py-0.5 rounded-full">
+              표준 Par 자동 세팅
+            </span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-stone-800 mb-1">
+              구장 이름 *
+            </label>
+            <input
+              type="text"
+              required
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="예: 구미 낙동 파크골프장"
+              className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-2.5 text-sm font-bold text-stone-900 outline-none focus:border-emerald-600"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-bold text-stone-800 mb-1">
+                지역 (시/군/구)
+              </label>
+              <input
+                type="text"
+                value={newRegion}
+                onChange={(e) => setNewRegion(e.target.value)}
+                placeholder="예: 경북 구미시"
+                className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-2.5 text-sm font-bold text-stone-900 outline-none focus:border-emerald-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-stone-800 mb-1">
+                코스 및 홀 수 선택
+              </label>
+              <select
+                value={newHoles}
+                onChange={(e) => setNewHoles(Number(e.target.value))}
+                className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-2.5 text-sm font-bold text-stone-900 outline-none focus:border-emerald-600"
+              >
+                <option value={9}>총 1코스 9홀</option>
+                <option value={18}>총 2코스 18홀 (표준 일반)</option>
+                <option value={27}>총 3코스 27홀</option>
+                <option value={36}>총 4코스 36홀 (표준 대형)</option>
+                <option value={45}>총 5코스 45홀 (밀양 아리랑형)</option>
+                <option value={54}>총 6코스 54홀</option>
+                <option value={63}>총 7코스 63홀 (구미 지산형)</option>
+                <option value={72}>총 8코스 72홀 (창원 대산형)</option>
+                <option value={108}>총 12코스 108홀 (의성 초대형)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-stone-800 mb-1">
+              등록자 명예 닉네임 (선택)
+            </label>
+            <input
+              type="text"
+              value={newContributor}
+              onChange={(e) => setNewContributor(e.target.value)}
+              placeholder="예: 구미선산총무 (구장 상단에 명예 표시)"
+              className="w-full bg-white border border-emerald-300 rounded-xl px-3 py-2 text-sm font-bold text-stone-900 outline-none focus:border-emerald-600"
+            />
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="submit"
+              className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl text-sm shadow active:scale-95 transition"
+            >
+              생성 및 즉시 홈구장 지정 ⛳
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddForm(false)}
+              className="px-4 bg-stone-200 text-stone-700 font-bold rounded-xl text-xs"
+            >
+              취소
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* ========================================================================= */}
+
+      {/* ========================================================================= */}
       {/* GOLF COURSE LIST (전국 구장 검색 & 공인 구장 목록 상시 노출) */}
       {/* ========================================================================= */}
+      {Boolean(isTextSearchActive && appliedQuery) && (
       <div className="space-y-3 animate-fadeIn">
         {/* Search Result Status & Clear Button */}
         <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs">
@@ -1801,7 +1681,14 @@ export default function CoursesPage() {
                   >
                     {/* 2줄 카드 헤더 행 (구장명 및 지역명 잘림 완전 방지) */}
                     <div
-                      onClick={() => setExpandedCourseId(isExpanded ? null : c.id)}
+                      onClick={() => {
+                        setSelectedStoreCourseId(c.id);
+                        setHomeCourseId(c.id);
+                        ParkOnStorage.setHomeCourseId(c.id);
+                        ParkOnStorage.addFavoriteHomeCourse(c.id);
+                        handleClearSearch();
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
                       className="p-3 sm:p-3.5 flex items-start justify-between gap-2.5 cursor-pointer select-none active:bg-stone-50 transition"
                     >
                       {/* 좌측: 구장명 및 배지 (1행) + 지역명 & 서브발음 (2행) */}
@@ -1854,7 +1741,24 @@ export default function CoursesPage() {
                             ? `全${c.totalCourses || Math.max(1, Math.round(c.totalHoles / 9))}コース ${c.totalHoles}H`
                             : formatCourseHolesText(c)}
                         </span>
-                        <ChevronDown
+                        <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedStoreCourseId(c.id);
+                          setHomeCourseId(c.id);
+                          ParkOnStorage.setHomeCourseId(c.id);
+                          ParkOnStorage.addFavoriteHomeCourse(c.id);
+                          handleClearSearch();
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-white font-black text-xs px-3 py-1.5 rounded-xl shadow-xs transition flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <span>⛳</span>
+                        <span>{isJapanese ? 'このコースを見る' : '이 구장 둘러보기'}</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                      <ChevronDown
                           className={`w-4 h-4 text-stone-400 transition-transform duration-200 ${
                             isExpanded ? 'rotate-180 text-emerald-700' : ''
                           }`}
@@ -2021,6 +1925,7 @@ export default function CoursesPage() {
             )}
           </div>
         </div>
+      )}
 
 
       {/* ========================================================================= */}

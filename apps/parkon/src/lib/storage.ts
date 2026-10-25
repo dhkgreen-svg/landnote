@@ -462,6 +462,7 @@ export const ParkOnStorage = {
     if (typeof window === 'undefined') return;
     const validId = this.normalizeCourseId(courseId);
     localStorage.setItem(STORAGE_KEYS.HOME_COURSE_ID, validId);
+    localStorage.setItem("parkon_home_course_id", validId);
     // 선택된 구장을 홈구장 목록에도 자동 포함
     this.addFavoriteHomeCourse(validId);
   },
@@ -523,12 +524,17 @@ export const ParkOnStorage = {
   removeFavoriteHomeCourse(courseId: string): string[] {
     const validId = this.normalizeCourseId(courseId);
     let list = this.getFavoriteHomeCourseIds().filter((id) => id !== validId && id !== courseId);
-    if (list.length === 0) {
-      list = [validId]; // 최소 1개 유지
-    }
     this.setFavoriteHomeCourseIds(list);
     if (this.normalizeCourseId(this.getHomeCourseId()) === validId) {
-      this.setHomeCourseId(list[0]);
+      if (list.length > 0) {
+        this.setHomeCourseId(list[0]);
+      } else {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(STORAGE_KEYS.HOME_COURSE_ID);
+          localStorage.removeItem('parkon_home_course_id');
+          localStorage.removeItem('parkon_home_course_id_v1');
+        }
+      }
     }
     return list;
   },
