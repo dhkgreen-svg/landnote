@@ -22,6 +22,23 @@ interface KakaoLoginModalProps {
   isJoinFlow?: boolean;
 }
 
+function isValidKoreanRealName(name?: string): boolean {
+  if (!name) return false;
+  const clean = name.trim();
+  return /^[가-힣]{2,5}$/.test(clean);
+}
+
+function formatFullPhone(p?: string): string {
+  if (!p) return '010-0000-0000';
+  const clean = p.replace(/[^0-9]/g, '');
+  if (clean.length === 11) {
+    return `${clean.slice(0, 3)}-${clean.slice(3, 7)}-${clean.slice(7)}`;
+  } else if (clean.length === 10) {
+    return `${clean.slice(0, 3)}-${clean.slice(3, 6)}-${clean.slice(6)}`;
+  }
+  return p;
+}
+
 export function KakaoLoginModal({
   isOpen,
   onClose,
@@ -75,7 +92,9 @@ export function KakaoLoginModal({
   const [nicknames, setNicknames] = useState<string[]>([]);
   const [activeNickname, setActiveNicknameState] = useState('');
   const [newNicknameInput, setNewNicknameInput] = useState('');
-  const [showAddNickname, setShowAddNickname] = useState(false);
+    const [showEditRealName, setShowEditRealName] = useState(false);
+  const [editRealNameInput, setEditRealNameInput] = useState('');
+const [showAddNickname, setShowAddNickname] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
   // 고유번호 분실 시 찾기 모달/상태
@@ -144,6 +163,7 @@ export function KakaoLoginModal({
       } else if (u) {
         const uReal = !isPlaceholderName(u.realName) ? u.realName! : (!isPlaceholderName(u.nickname) ? u.nickname : '');
         setRealName(uReal);
+        setEditRealNameInput(uReal);
         setNewName(uReal);
         setAliasName(u.aliasName || '');
         setPreferredDisplay(u.preferredDisplay || 'REAL');
@@ -151,6 +171,7 @@ export function KakaoLoginModal({
         const p = ParkOnStorage.getUserProfile();
         const existingName = p?.userName && !isPlaceholderName(p.userName) ? p.userName : '';
         setRealName(existingName);
+        setEditRealNameInput(existingName);
         setNewName(existingName);
         setAliasName('');
         setPhoneNumber(p?.phoneNumber || '');
@@ -248,7 +269,48 @@ export function KakaoLoginModal({
     setTimeout(() => setIsSavedNotice(false), 2000);
   };
 
-  const handleAddNewNickname = () => {
+    const handleSaveRealName = (inputName: string) => {
+    const clean = inputName.trim();
+    if (!clean) return;
+
+    setRealName(clean);
+    setEditRealNameInput(clean);
+
+    const currentProf = ParkOnStorage.getUserProfile();
+    const updatedProf = {
+      ...currentProf,
+      realName: clean,
+      userName: clean,
+    };
+    ParkOnStorage.saveUserProfile(updatedProf);
+
+    const kUser = ParkOnStorage.getKakaoUser();
+    if (kUser) {
+      ParkOnStorage.setKakaoUser({
+        ...kUser,
+        realName: clean,
+      });
+    }
+
+    const nicks = ParkOnStorage.getNicknames();
+    if (!nicks.includes(clean)) {
+      const newNicks = ParkOnStorage.addNickname(clean);
+      setNicknames(newNicks);
+    } else {
+      setNicknames(nicks);
+    }
+
+    ParkOnStorage.setActiveNickname(clean);
+    setActiveNicknameState(clean);
+
+    syncMemberDataToCloud().catch(() => {});
+
+    setShowEditRealName(false);
+    setIsSavedNotice(true);
+    setTimeout(() => setIsSavedNotice(false), 2500);
+  };
+
+const handleAddNewNickname = () => {
     const clean = newNicknameInput.trim();
     if (!clean) return;
     const updated = ParkOnStorage.addNickname(clean);
@@ -267,7 +329,7 @@ export function KakaoLoginModal({
     setNicknames(updated);
     const next = ParkOnStorage.getUserDisplayName();
     setActiveNicknameState(next);
-    setRealName(next);
+    // do not overwrite realName with nickname
   };
 
   // 📱 휴대폰 번호 자동 하이픈 포맷터 (010-XXXX-XXXX)
@@ -627,99 +689,113 @@ export function KakaoLoginModal({
           {viewMode === 'PROFILE' ? (
             /* ================= [1. 로그인 상태 모달 (기존 회원)] ================= */
             <div className="space-y-2 text-xs">
-              {/* 1. 내 계정 기본 정보 (안심 확인용) */}
-              <div className="bg-gradient-to-br from-amber-50 via-amber-100/50 to-emerald-50 border-2 border-amber-300 rounded-xl p-2.5 shadow-2xs space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 font-black text-amber-950 text-xs">
-                    <span className="text-sm">👑</span>
-                    <span>{isJapanese ? 'マイ公式アカウント情報' : isEnglish ? 'Official Account' : '내 계정 기본 정보'}</span>
-                  </div>
-                  <span className="text-[9.5px] bg-amber-400 text-amber-950 font-black px-1.5 py-0.2 rounded-full">
-                    {isJapanese ? '永久安心保管' : isEnglish ? 'Permanent' : '안심 영구 보관'}
-                  </span>
-                </div>
-
-                {/* 고유번호 8자리 표시 & 복사 */}
-                <div className="flex items-center justify-between bg-white rounded-lg p-2 border border-amber-200 shadow-2xs">
-                  <div className="flex items-center gap-2">
-                    <KeyRound className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <div>
-                      <div className="text-[9px] text-stone-500 font-bold leading-none mb-0.5">
-                        {isJapanese ? '8桁会員番号 (パスワード不要)' : isEnglish ? '8-digit Member Code' : '8자리 평생 고유번호 (비밀번호 없음)'}
-                      </div>
-                      <span className="text-sm sm:text-base font-black text-stone-900 tracking-wider font-mono">
-                        {memberCode || 'PKYA-7788'}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleCopyMemberCode}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10.5px] font-black transition active:scale-95 cursor-pointer shadow-2xs ${
-                      codeCopied
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-amber-400 hover:bg-amber-300 text-stone-950'
-                    }`}
-                  >
-                    {codeCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                    <span>{codeCopied ? (isJapanese ? 'コピー済' : '복사됨!') : (isJapanese ? '番号コピー' : '번호 복사')}</span>
-                  </button>
-                </div>
-
-                {/* 연결된 휴대폰 & 나의 연대기 요약 한눈에 */}
-                <div className="grid grid-cols-2 gap-1.5 text-xs">
-                  {/* 연결된 휴대폰 */}
-                  <div className="bg-white/90 p-1.5 px-2 rounded-lg border border-amber-200">
-                    <div className="text-[9.5px] text-stone-500 font-bold flex items-center gap-1">
-                      <Smartphone className="w-3 h-3 text-amber-600" />
-                      <span>{isJapanese ? '連携電話番号' : isEnglish ? 'Phone' : '연결된 휴대폰'}</span>
-                    </div>
-                    <div className="font-mono font-black text-[11px] text-stone-800 mt-0.5 truncate">
-                      {phoneNumber ? maskPhoneNumber(phoneNumber) : (prof?.phoneNumber ? maskPhoneNumber(prof.phoneNumber) : '010-****-5678')}
-                    </div>
-                  </div>
-
-                  {/* 나의 연대기 요약 (완주 OO회 | 메달 OO개) */}
-                  <div className="bg-white/90 p-1.5 px-2 rounded-lg border border-amber-200">
-                    <div className="text-[9.5px] text-stone-500 font-bold flex items-center gap-1">
-                      <span className="text-xs">🏆</span>
-                      <span>{isJapanese ? '年代記要約' : isEnglish ? 'Chronicle' : '나의 연대기 요약'}</span>
-                    </div>
-                    <div className="font-black text-[11px] text-emerald-800 mt-0.5 truncate">
-                      {isJapanese ? (
-                        <>完走 <span className="text-amber-600 font-mono font-black">{roundCount}</span>回 | メダル <span className="text-amber-600 font-mono font-black">{medalCount}</span>個</>
-                      ) : isEnglish ? (
-                        <><span className="text-amber-600 font-mono font-black">{roundCount}</span> Rounds | <span className="text-amber-600 font-mono font-black">{medalCount}</span> Medals</>
-                      ) : (
-                        <>완주 <span className="text-amber-600 font-mono font-black">{roundCount}</span>회 | 메달 <span className="text-amber-600 font-mono font-black">{medalCount}</span>개</>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. "오늘 라운드에 사용할 이름 선택" (멀티 프로필) */}
+              {/* 1. "오늘 라운드에 사용할 이름 선택" (대표님 지침: 본명 고정 분리 & 실명 수정 지원) */}
               <div className="space-y-1.5 bg-gradient-to-br from-emerald-50/80 to-amber-50/80 p-2.5 rounded-xl border-2 border-emerald-300/80">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 font-black text-emerald-950 text-xs">
                     <span className="text-sm">🏌️</span>
                     <span>{isJapanese ? '今日ラウンドで使用するお名前' : isEnglish ? 'Select Name for Today\'s Round' : '오늘 라운드에 사용할 이름 선택'}</span>
                   </div>
-                  <span className="text-[9px] text-emerald-800 font-black bg-emerald-100 px-1.5 py-0.2 rounded-full border border-emerald-300">
-                    {isJapanese ? '即時同期' : isEnglish ? 'Instant Sync' : '즉시 반영'}
+                  <span className="text-[9.5px] text-emerald-800 font-bold bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-300/80">
+                    스코어카드 표시용
                   </span>
                 </div>
 
                 {/* 칩 / 라디오 리스트 */}
                 <div className="space-y-1 pt-0.5">
-                  {nicknames.map((nick) => {
-                    const isSelected = activeNickname === nick;
-                    const isReal = Boolean(
-                      (currentUser?.realName && currentUser.realName === nick) ||
-                      (realName && realName === nick) ||
-                      nick.includes('김대희')
+                  {/* (A) 고정 본명(실명) 행 */}
+                  {(() => {
+                    const isHangulReal = isValidKoreanRealName(realName);
+                    const isSelected = activeNickname === realName;
+                    const labelText = isHangulReal ? `${realName} (본명)` : `${realName || '이름 미등록'} (임시 등록명)`;
+
+                    return (
+                      <div
+                        onClick={() => realName && handleSelectNickname(realName)}
+                        className={`flex items-center justify-between py-1.5 px-2.5 rounded-lg border transition cursor-pointer active:scale-98 ${
+                          isSelected
+                            ? 'bg-emerald-700 text-white border-emerald-800 shadow-2xs'
+                            : 'bg-white hover:bg-stone-50 text-stone-800 border-stone-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs leading-none shrink-0">
+                            {isSelected ? '🔘' : '⚪'}
+                          </span>
+                          <span className={`text-xs font-black tracking-tight truncate ${isSelected ? 'text-white' : 'text-stone-900'}`}>
+                            {labelText}
+                          </span>
+                          {isSelected && (
+                            <span className="text-[9px] bg-amber-400 text-emerald-950 font-black px-1.5 py-0.2 rounded-full shrink-0">
+                              {isJapanese ? '適用中' : isEnglish ? 'Active' : '현재 적용 중'}
+                            </span>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditRealNameInput(realName || '');
+                            setShowEditRealName(!showEditRealName);
+                          }}
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-black transition cursor-pointer shrink-0 shadow-2xs flex items-center gap-1 ${
+                            isHangulReal
+                              ? (isSelected ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300')
+                              : 'bg-amber-400 hover:bg-amber-300 text-stone-950 border border-amber-500 font-extrabold'
+                          }`}
+                          title="실제 성함 수정"
+                        >
+                          <span>✏️</span>
+                          <span>{isHangulReal ? '본명 수정' : '실명 등록'}</span>
+                        </button>
+                      </div>
                     );
-                    const label = isReal && !nick.includes('본명') ? `${nick} (본명)` : nick;
+                  })()}
+
+                  {/* 본명 수정 인라인 폼 */}
+                  {showEditRealName && (
+                    <div className="p-2 bg-amber-50 rounded-lg border-2 border-amber-300 space-y-1.5 animate-fadeIn shadow-xs">
+                      <div className="flex items-center justify-between text-[11px] font-black text-amber-950">
+                        <span className="flex items-center gap-1">
+                          <span>✏️</span>
+                          <span>실제 성함 (본명) 등록/수정</span>
+                        </span>
+                        <span className="text-[9.5px] text-amber-800 font-bold">공식 기록·대회 확인용</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          value={editRealNameInput}
+                          onChange={(e) => setEditRealNameInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveRealName(editRealNameInput);
+                          }}
+                          placeholder="실제 성함 입력 (예: 김대희)"
+                          className="flex-1 px-2.5 py-1.5 bg-white border border-amber-400 rounded-md text-xs font-black text-stone-900 outline-none focus:border-emerald-600 shadow-inner"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveRealName(editRealNameInput)}
+                          className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-md transition active:scale-95 cursor-pointer shrink-0"
+                        >
+                          저장
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowEditRealName(false)}
+                          className="px-2 py-1.5 text-stone-400 hover:text-stone-700 text-xs font-bold cursor-pointer shrink-0"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* (B) 라운드용 닉네임 리스트 (본명 외 추가된 닉네임들) */}
+                  {nicknames.filter((nick) => nick !== realName).map((nick) => {
+                    const isSelected = activeNickname === nick;
 
                     return (
                       <div
@@ -736,7 +812,7 @@ export function KakaoLoginModal({
                             {isSelected ? '🔘' : '⚪'}
                           </span>
                           <span className={`text-xs font-black tracking-tight truncate ${isSelected ? 'text-white' : 'text-stone-900'}`}>
-                            {label}
+                            {nick}
                           </span>
                           {isSelected && (
                             <span className="text-[9px] bg-amber-400 text-emerald-950 font-black px-1.5 py-0.2 rounded-full shrink-0">
@@ -744,23 +820,21 @@ export function KakaoLoginModal({
                             </span>
                           )}
                         </div>
-                        {nicknames.length > 1 && !isReal && (
-                          <button
-                            type="button"
-                            onClick={(e) => handleRemoveNickname(nick, e)}
-                            className={`p-1 rounded-md hover:bg-rose-100 hover:text-rose-700 transition cursor-pointer shrink-0 ${
-                              isSelected ? 'text-emerald-200 hover:text-rose-200' : 'text-stone-400'
-                            }`}
-                            title="닉네임 삭제"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => handleRemoveNickname(nick, e)}
+                          className={`p-1 rounded-md hover:bg-rose-100 hover:text-rose-700 transition cursor-pointer shrink-0 ${
+                            isSelected ? 'text-emerald-200 hover:text-rose-200' : 'text-stone-400'
+                          }`}
+                          title="닉네임 삭제"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
                       </div>
                     );
                   })}
 
-                  {/* + 새 닉네임 추가하기 버튼 또는 인풋 */}
+                  {/* + 라운드용 이름 추가하기 버튼 또는 인풋 */}
                   {!showAddNickname ? (
                     <button
                       type="button"
@@ -768,7 +842,7 @@ export function KakaoLoginModal({
                       className="w-full py-1.5 px-2.5 border border-dashed border-emerald-400/80 hover:border-emerald-600 bg-white/70 hover:bg-white text-emerald-800 font-black text-[11px] rounded-lg transition flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
                     >
                       <Plus className="w-3 h-3" />
-                      <span>{isJapanese ? '新しいニックネームを追加' : isEnglish ? 'Add New Nickname' : '새 닉네임 추가 (예: 나이스버디, 파크도사)'}</span>
+                      <span>{isJapanese ? 'ラウンド用の名前を追加' : isEnglish ? 'Add Round Name' : '라운드용 이름 추가 (예: 나이스버디, 파크도사)'}</span>
                     </button>
                   ) : (
                     <div className="flex items-center gap-1.5 bg-white p-1.5 rounded-lg border border-emerald-500 shadow-2xs animate-fadeIn">
@@ -779,7 +853,7 @@ export function KakaoLoginModal({
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleAddNewNickname();
                         }}
-                        placeholder="새 닉네임 입력 (예: 파크도사)"
+                        placeholder="새 라운드 이름 입력 (예: 나이스버디)"
                         className="flex-1 px-2 py-1.5 bg-stone-50 border border-stone-300 rounded-md text-xs font-bold outline-none focus:border-emerald-600"
                         autoFocus
                       />
@@ -807,63 +881,80 @@ export function KakaoLoginModal({
 
               {isSavedNotice && (
                 <div className="p-2 bg-emerald-100 text-emerald-800 font-black rounded-lg text-center text-[11px] animate-fadeIn border border-emerald-300">
-                  ✓ {isJapanese ? '活動名が正常に変更されました！' : '프로필 활동명이 즉시 적용되었습니다!'}
+                  ✓ {isJapanese ? '活動名が正常に変更されました！' : '프로필 정보가 정상 반영되었습니다!'}
                 </div>
               )}
 
-              {/* 보조 설정 (기본 접힘): 연락처 수정 및 클라우드 백업 */}
-              <div className="bg-stone-50 rounded-xl border border-stone-200 overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                  className="w-full py-2 px-2.5 flex items-center justify-between font-black text-stone-600 hover:bg-stone-100 text-xs transition cursor-pointer"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <span>⚙️</span>
-                    <span>{isJapanese ? '詳細情報設定 ＆ クラウド同期' : isEnglish ? 'Settings & Cloud Backup' : '연락처 수정 및 클라우드 백업'}</span>
+              {/* 2. 내 계정 기본 정보 (대표님 지침: 휴대폰 번호 전체 노출 최우선 배치, 연대기 요약 제거) */}
+              <div className="bg-gradient-to-br from-amber-50 via-amber-100/50 to-emerald-50 border-2 border-amber-300 rounded-xl p-2.5 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-black text-amber-950 text-xs">
+                    <span className="text-sm">👑</span>
+                    <span>{isJapanese ? 'マイ公式アカウント情報' : isEnglish ? 'Official Account' : '내 계정 기본 정보'}</span>
+                  </div>
+                  <span className="text-[9.5px] bg-amber-400 text-amber-950 font-black px-1.5 py-0.2 rounded-full">
+                    {isJapanese ? '永久安心保管' : isEnglish ? 'Permanent' : '안심 영구 보관'}
                   </span>
-                  {showAdvancedSettings ? <ChevronUp className="w-3.5 h-3.5 text-stone-400" /> : <ChevronDown className="w-3.5 h-3.5 text-stone-400" />}
-                </button>
+                </div>
 
-                {showAdvancedSettings && (
-                  <div className="p-2.5 pt-0 space-y-2 border-t border-stone-200 animate-fadeIn">
-                    <div className="space-y-0.5">
-                      <label className="font-black text-stone-700 text-[10.5px] flex items-center justify-between">
-                        <span>성함 (실제 이름)</span>
-                        <span className="text-[9.5px] text-emerald-700 font-bold">공식 기록·대회용</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={realName}
-                        onChange={(e) => setRealName(e.target.value)}
-                        placeholder="성함을 입력하세요 (예: 김대희)"
-                        className="w-full px-2.5 py-1.5 bg-white border border-stone-300 rounded-lg font-bold text-xs focus:border-emerald-600 outline-none"
-                      />
+                {/* 1. 연결된 휴대폰 (대표님 지침: 번호 마스킹 없이 그대로 전체 노출 & 실명 검증 상태 연동) */}
+                <div className="flex items-center justify-between bg-white rounded-lg p-2 border border-amber-200 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <div>
+                      <div className="text-[9px] text-stone-500 font-bold leading-none mb-0.5">
+                        {isJapanese ? '連携電話番号' : isEnglish ? 'Connected Phone' : '연결된 휴대폰'}
+                      </div>
+                      <span className="text-xs sm:text-sm font-black text-stone-900 tracking-wider font-mono">
+                        {phoneNumber ? formatFullPhone(phoneNumber) : (prof?.phoneNumber ? formatFullPhone(prof.phoneNumber) : '010-1234-5678')}
+                      </span>
                     </div>
-
-                    <div className="space-y-0.5">
-                      <label className="font-black text-stone-700 text-[10.5px] flex items-center justify-between">
-                        <span>휴대폰 번호 (고유번호 분실 시 1초 조회용)</span>
-                        <span className="text-[9.5px] text-amber-700 font-bold">안심 보관</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        placeholder="예: 010-1234-7788 또는 끝 4자리"
-                        className="w-full px-2.5 py-1.5 bg-white border border-stone-300 rounded-lg font-bold text-xs focus:border-emerald-600 outline-none"
-                      />
-                    </div>
-
+                  </div>
+                  {isValidKoreanRealName(realName) ? (
+                    <span className="text-[9.5px] text-emerald-800 font-black bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300 shrink-0">
+                      실명 확인됨 ✓
+                    </span>
+                  ) : (
                     <button
                       type="button"
-                      onClick={handleSaveProfile}
-                      className="w-full py-1.5 bg-stone-800 hover:bg-stone-900 text-white font-black text-xs rounded-lg transition cursor-pointer"
+                      onClick={() => {
+                        setEditRealNameInput(realName || '');
+                        setShowEditRealName(true);
+                      }}
+                      className="text-[9.5px] text-amber-900 font-black bg-amber-200 hover:bg-amber-300 px-2 py-0.5 rounded-full border border-amber-400 shrink-0 cursor-pointer animate-pulse"
+                      title="실제 성함을 등록해 주세요"
                     >
-                      연락처 / 실명 저장
+                      본명 등록 필요 ✏️
                     </button>
+                  )}
+                </div>
+
+                {/* 2. 8자리 평생 고유번호 표시 & 복사 (대표님 지침: 휴대폰 바로 밑에 배치) */}
+                <div className="flex items-center justify-between bg-white rounded-lg p-2 border border-amber-200 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <div>
+                      <div className="text-[9px] text-stone-500 font-bold leading-none mb-0.5">
+                        {isJapanese ? '8桁会員番号 (パスワード不要)' : isEnglish ? '8-digit Member Code' : '8자리 평생 고유번호 (비밀번호 없음)'}
+                      </div>
+                      <span className="text-sm sm:text-base font-black text-stone-900 tracking-wider font-mono">
+                        {memberCode || 'PKYA-7788'}
+                      </span>
+                    </div>
                   </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={handleCopyMemberCode}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10.5px] font-black transition active:scale-95 cursor-pointer shadow-2xs ${
+                      codeCopied
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-amber-400 hover:bg-amber-300 text-stone-950'
+                    }`}
+                  >
+                    {codeCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    <span>{codeCopied ? (isJapanese ? 'コピー済' : '복사됨!') : (isJapanese ? '번호 복사' : '번호 복사')}</span>
+                  </button>
+                </div>
               </div>
 
               {/* 하단 단일 액션 배치 (대표님 절대 원칙 지침: 로그아웃/전환/초기화 전면 제거, 오직 기록/번호 다시 찾기 버튼만 단정하게 유지) */}
@@ -916,7 +1007,7 @@ export function KakaoLoginModal({
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    placeholder={isJapanese ? 'お名前を入力 (例: 田中太郎)' : '성함을 입력하세요 (예: 홍길동)'}
+                    placeholder={isJapanese ? 'お名前を入力 (例: 田中太郎)' : '실제 성함을 입력하세요 (예: 김대희)'}
                     className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl font-black text-xs text-stone-900 focus:border-emerald-600 focus:bg-white outline-none transition"
                     autoFocus
                   />
