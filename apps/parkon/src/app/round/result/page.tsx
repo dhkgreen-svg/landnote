@@ -395,6 +395,10 @@ function ResultContent() {
 
   // Toggle between Official and Practice/Test mode
   const handleToggleOfficial = () => {
+    if (!session.isGpsVerified && session.isOfficial === false) {
+      alert(isJapanese ? '現地のGPS認証がない場合、公式戦績・統計には反映できません。' : '실제 구장 현장 GPS 인증이 없는 경우, 대표님 원칙에 따라 공식 전적 및 통계에 반영할 수 없습니다.');
+      return;
+    }
     const updated: RoundSession = {
       ...session,
       isOfficial: session.isOfficial === false ? true : false,
@@ -533,26 +537,35 @@ function ResultContent() {
         })()}
 
         {/* Official vs Practice Status Badge & Switcher */}
-        <div className="mt-2.5 flex items-center justify-center gap-2">
-          {session.isOfficial === false ? (
-            <span className="inline-flex items-center gap-1 bg-amber-400 text-stone-950 font-black px-2.5 py-1 rounded-full text-xs shadow-xs">
-              <span>🧪</span>
-              <span>{isJapanese ? '練習・テストラウンド (戦績未反映)' : '연습·테스트 라운드 (전적 미반영)'}</span>
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 bg-emerald-400 text-emerald-950 font-black px-2.5 py-1 rounded-full text-xs shadow-xs">
-              <span>🏌️</span>
-              <span>{isJapanese ? '実戦ラウンド (戦績反映済み)' : '실제 라운드 (전적 반영됨)'}</span>
-            </span>
+        <div className="mt-2.5 flex flex-col items-center justify-center gap-1.5">
+          <div className="flex items-center gap-2">
+            {session.isGpsVerified ? (
+              <span className="inline-flex items-center gap-1 bg-emerald-400 text-emerald-950 font-black px-2.5 py-1 rounded-full text-xs shadow-xs">
+                <span>📍</span>
+                <span>{isJapanese ? '現地GPS認証済み (公式戦績反映)' : '현장 GPS 인증 완료 (공식 전적 반영됨)'}</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 bg-amber-400 text-stone-950 font-black px-2.5 py-1 rounded-full text-xs shadow-xs">
+                <span>⚠️</span>
+                <span>{isJapanese ? 'GPS未認証 (代表者原則: 公式統計未反映)' : '현장 GPS 미인증 (대표님 원칙: 공식 통계 100% 미반영)'}</span>
+              </span>
+            )}
+            {session.isGpsVerified && (
+              <button
+                type="button"
+                onClick={handleToggleOfficial}
+                className="text-[11px] underline text-emerald-200 hover:text-white font-bold cursor-pointer"
+                title={isJapanese ? '状態切り替え' : '상태 전환'}
+              >
+                {session.isOfficial === false ? (isJapanese ? '戦績反映に変更' : '전적 반영으로 변경') : (isJapanese ? '연습으로 변경' : '연습으로 변경')}
+              </button>
+            )}
+          </div>
+          {!session.isGpsVerified && (
+            <p className="text-[10px] text-amber-200/90 font-bold">
+              {isJapanese ? '※ 実際のコースでGPS認証を行って完走したゲームのみが年代記・ランク統計に反映されます。' : '※ 실제 구장에서 GPS 인증과 함께 완주한 게임만 연대기·스타 랭킹 통계에 100% 반영됩니다.'}
+            </p>
           )}
-          <button
-            type="button"
-            onClick={handleToggleOfficial}
-            className="text-[11px] underline text-emerald-200 hover:text-white font-bold cursor-pointer"
-            title={isJapanese ? '状態切り替え' : '상태 전환'}
-          >
-            {session.isOfficial === false ? (isJapanese ? '戦績反映に変更' : '전적 반영으로 변경') : (isJapanese ? '練習/テストに変更' : isEnglish ? 'Change to practice' : '연습/테스트로 변경')}
-          </button>
         </div>
 
         {/* 구장 명예의 전당 & 완주 뱃지 (실타수 증서 전면 삭제: 9홀 이상 정규 완주 시에만 완주 뱃지 노출) */}

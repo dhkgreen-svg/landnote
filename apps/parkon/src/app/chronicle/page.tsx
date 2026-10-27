@@ -121,6 +121,7 @@ function ChronicleContent() {
   // 2. 로컬 스토리지 및 이벤트 감청 (순수 로컬 상태 갱신만 수행)
   useEffect(() => {
     setMounted(true);
+    ParkOnStorage.purgeUnverifiedRounds();
     const load = () => {
       const raw = ParkOnStorage.getUserDisplayName();
       setUserName(formatPlayerDisplayName(raw, true, isJapanese));
@@ -165,7 +166,7 @@ function ChronicleContent() {
   // 1-1. 실제 사용자가 완주한 공식 라운드만 반영 (가상 연습 라운드 제외)
   const completedRounds = useMemo(() => {
     return allCompletedRounds.filter(
-      (r) => !r.isVirtual && r.isOfficial !== false
+      (r) => !r.isVirtual && r.isOfficial !== false && r.isGpsVerified === true
     );
   }, [allCompletedRounds]);
   const totalRoundsCount = completedRounds.length;
@@ -202,7 +203,7 @@ function ChronicleContent() {
   const parPattern = [4, 3, 4, 3, 4, 4, 3, 3, 5];
 
   // 공식 필드 라운드만 명예의 전당 훈장, 평균 타수, 스타 등급에 반영 (집에서 임의로 눌러본 연습/테스트 제외)
-  const officialRounds = completedRounds.filter((r) => r.isOfficial !== false && !r.isVirtual);
+  const officialRounds = completedRounds.filter((r) => r.isOfficial !== false && !r.isVirtual && r.isGpsVerified === true);
 
   officialRounds.forEach((r) => {
     const p = (r.players || []).find(

@@ -28,6 +28,8 @@ import { ChroniclePhotoUploadModal } from '@/components/ChroniclePhotoUploadModa
 import { ChronicleBackupModal } from '@/components/ChronicleBackupModal';
 import { NationalRankingDetailModal } from '@/components/NationalRankingDetailModal';
 import { ChroniclePhotoStorage, ChroniclePhotoItem } from '@/lib/chroniclePhotoStorage';
+import { CourseEditModal } from '@/components/CourseEditModal';
+import { CourseSearchModal } from '@/components/CourseSearchModal';
 import { KakaoAuthUser } from '@/lib/storage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName, stripParkGolfSuffix, translateKoreanAddressToJapanese } from '@/lib/courseLocalization';
@@ -43,6 +45,8 @@ export default function HomePage() {
   const [showNationalTourModal, setShowNationalTourModal] = useState<boolean>(false);
   const [favoriteHomeCourseIds, setFavoriteHomeCourseIds] = useState<string[]>([]);
   const [showCourseSearchModal, setShowCourseSearchModal] = useState<boolean>(false);
+  const [courseToEdit, setCourseToEdit] = useState<Course | null>(null);
+  const [showCourseEditModal, setShowCourseEditModal] = useState<boolean>(false);
   const [courseSearchModalQuery, setCourseSearchModalQuery] = useState<string>('');
   const [showHomeModal, setShowHomeModal] = useState<boolean>(false);
   const [homeModalSearch, setHomeModalSearch] = useState<string>('');
@@ -258,6 +262,7 @@ export default function HomePage() {
   // 2. 로컬 스토리지 및 이벤트 감청 (순수 로컬 상태 갱신만 수행, 재귀 API 호출 차단)
   useEffect(() => {
     setMounted(true);
+    ParkOnStorage.purgeUnverifiedRounds();
     const loadData = () => {
       const allCourses = ParkOnStorage.getAllCourses();
       setCourses(allCourses);
@@ -677,7 +682,7 @@ export default function HomePage() {
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
     // 공식 전적 라운드만 필터링
-    const officialRounds = completedRounds.filter((r) => r.isOfficial !== false);
+    const officialRounds = completedRounds.filter((r) => r.isOfficial !== false && !r.isVirtual && r.isGpsVerified === true);
 
     // 기록이 한 번도 없는 경우: 별 0개 & '미반영'
     if (officialRounds.length === 0) {
@@ -876,7 +881,7 @@ export default function HomePage() {
     const cleanName = c.name.replace(/\s+/g, '');
     const courseRounds = completedRounds.filter(
       (r) =>
-        r.isOfficial !== false &&
+        r.isOfficial !== false && !r.isVirtual && r.isGpsVerified === true &&
         (r.courseId === c.id || r.courseName?.replace(/\s+/g, '') === cleanName)
     );
 
@@ -3182,162 +3187,22 @@ export default function HomePage() {
         }}
       />
 
-      {/* 🔍 대표님 특명: 메인 배너 구장 검색 & 변경 전용 모달 */}
-      {showCourseSearchModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[85vh]">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-4 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <Search className="w-5 h-5 text-amber-300 stroke-[2.5]" />
-                <div>
-                  <h3 className="font-black text-base leading-tight">
-                    {isJapanese ? 'コース検索 & 変更' : '골프장 검색 & 변경'}
-                  </h3>
-                  <p className="text-[11px] text-emerald-200 font-medium">
-                    {isJapanese ? 'プレーするコースを検索して選択してください' : '플레이할 골프장을 검색하고 선택하세요'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCourseSearchModal(false);
-                  setCourseSearchModalQuery('');
-                }}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Search Input */}
-            <div className="p-3.5 bg-stone-100 border-b border-stone-200 shrink-0">
-              <div className="relative">
-                <Search className="w-4 h-4 text-emerald-600 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={courseSearchModalQuery}
-                  onChange={(e) => setCourseSearchModalQuery(e.target.value)}
-                  placeholder={isJapanese ? 'コース名・地名を入力してください' : '지명이나 골프장 이름을 입력하세요'}
-                  className="w-full bg-white text-stone-900 pl-9 pr-9 py-2.5 rounded-xl text-xs sm:text-sm border-2 border-emerald-500/60 focus:outline-hidden focus:border-emerald-600 font-bold placeholder:text-stone-400 shadow-inner"
-                  autoFocus
-                />
-                {courseSearchModalQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setCourseSearchModalQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Modal Body */}
-            {!courseSearchModalQuery.trim() ? (
-              <div className="py-10 text-center text-xs text-stone-400 font-medium">
-                {isJapanese ? 'コース名または地域名を入力してください' : '골프장명 또는 지역명을 검색창에 입력해 주세요'}
-              </div>
-            ) : (
-              (() => {
-                const searchResults = courses.filter((c) => {
-                  const q = courseSearchModalQuery.trim().toLowerCase();
-                  const noSpaceQ = q.replace(/\s+/g, '');
-                  const name = c.name.toLowerCase();
-                  const noSpaceName = name.replace(/\s+/g, '');
-                  const reg = (c.region || '').toLowerCase();
-                  const addr = (c.address || '').toLowerCase();
-                  const isYanghoQuery = q.includes('양포') || q.includes('양호') || noSpaceQ.includes('양포') || noSpaceQ.includes('양호');
-                  const isYanghoCourse = name.includes('양포') || name.includes('양호') || addr.includes('양호');
-                  return (
-                    name.includes(q) ||
-                    noSpaceName.includes(noSpaceQ) ||
-                    reg.includes(q) ||
-                    addr.includes(q) ||
-                    (isYanghoQuery && isYanghoCourse)
-                  );
-                });
-
-                if (searchResults.length === 0) {
-                  return (
-                    <div className="p-8 text-center space-y-2 my-auto">
-                      <div className="text-3xl">🔍</div>
-                      <div className="text-sm font-black text-stone-800">
-                        {isJapanese ? '該当するコースが見つかりませんでした' : `'${courseSearchModalQuery}' 검색 결과가 없습니다`}
-                      </div>
-                      <div className="text-xs text-stone-500 font-medium">
-                        {isJapanese
-                          ? '他のコース名や地域名で検索してみてください'
-                          : '다른 지명이나 골프장 이름을 입력해 보세요.'}
-                      </div>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="p-3 space-y-2 overflow-y-auto divide-y divide-stone-100 flex-1">
-                    <div className="text-xs text-stone-500 font-bold px-1 pb-1 flex items-center justify-between">
-                      <span>검색 결과 ({searchResults.length}개)</span>
-                      <span className="text-[11px] text-emerald-700 font-black">터치 시 구장 변경</span>
-                    </div>
-                    {searchResults.slice(0, 25).map((sc) => {
-                      const dual = getCourseDualName(sc, isJapanese);
-                      const displayRegion = getLocalizedCourseRegion(sc);
-                      const holesText = formatCourseHolesText(sc);
-                      return (
-                        <div
-                          key={sc.id}
-                          onClick={() => {
-                            ParkOnStorage.addFavoriteHomeCourse(sc.id);
-                            handleSelectHomeCourse(sc.id);
-                            setShowCourseSearchModal(false);
-                            setCourseSearchModalQuery('');
-                          }}
-                          className="p-3.5 rounded-2xl border-2 border-stone-200 hover:border-emerald-500 hover:bg-emerald-50/50 flex items-center justify-between transition cursor-pointer active:scale-[0.99] group bg-white shadow-xs"
-                        >
-                          <div className="min-w-0 flex-1 pr-2">
-                            <div className="font-black text-stone-900 text-sm sm:text-base flex items-center gap-1.5 group-hover:text-emerald-800 transition">
-                              <span>⛳</span>
-                              <span>{dual.primary}</span>
-                            </div>
-                            <div className="text-xs text-stone-500 font-medium mt-0.5">
-                              📍 {displayRegion} · {holesText}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            data-testid="select-searched-course-btn"
-                            className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs rounded-xl shadow-xs transition shrink-0 ml-2 flex items-center gap-1 cursor-pointer pointer-events-none"
-                          >
-                            <span>{isJapanese ? '選択' : '구장 선택'}</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()
-            )}
-
-            {/* Footer */}
-            <div className="p-3 bg-stone-50 border-t border-stone-200 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCourseSearchModal(false);
-                  setCourseSearchModalQuery('');
-                }}
-                className="w-full py-3 bg-stone-900 hover:bg-black text-white font-black rounded-xl text-xs transition cursor-pointer active:scale-[0.99]"
-              >
-                {isJapanese ? '閉じる' : '닫기'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 🔍 대표님 특명: 메인 배너 구장 검색 & 변경 전용 모달 (유사명 오타 추천 & 1초 신규 구장 등록 탑재) */}
+      <CourseSearchModal
+        isOpen={showCourseSearchModal}
+        onClose={() => setShowCourseSearchModal(false)}
+        onSelectCourse={(sc) => {
+          ParkOnStorage.addFavoriteHomeCourse(sc.id);
+          handleSelectHomeCourse(sc.id);
+          setShowCourseSearchModal(false);
+        }}
+        onEditCourse={(c) => {
+          setShowCourseSearchModal(false);
+          setCourseToEdit(c);
+          setShowCourseEditModal(true);
+        }}
+        isJapanese={isJapanese}
+      />
 
       {/* 🔍 다른 구장 검색하기 (전국 구장 검색 & 랭킹 조회 구장 변경 모달) */}
       {showStatsSearchModal && (
@@ -4202,6 +4067,27 @@ export default function HomePage() {
         onClose={() => setShowWatermarkCardModal(false)}
         session={watermarkCardSession}
         initialImage={watermarkCardInitialImage}
+      />
+
+      {/* ✏️ 구장명·제원 수정 전용 모달 */}
+      <CourseEditModal
+        isOpen={showCourseEditModal}
+        course={courseToEdit}
+        onClose={() => {
+          setShowCourseEditModal(false);
+          setCourseToEdit(null);
+        }}
+        onSave={(updatedCourse) => {
+          const all = ParkOnStorage.getAllCourses();
+          setCourses([...all]);
+          if (homeCourse?.id === updatedCourse.id) {
+            setHomeCourse(updatedCourse);
+            ParkOnStorage.setHomeCourseId(updatedCourse.id);
+          }
+          setShowCourseEditModal(false);
+          setCourseToEdit(null);
+        }}
+        isJapanese={isJapanese}
       />
 
       {/* 🏆 전국 랭킹 상세 팝업 (내 순위 기반 3개 탭 팝업: 내 순위&분석, 주변 라이벌, 전국 1~100위) */}

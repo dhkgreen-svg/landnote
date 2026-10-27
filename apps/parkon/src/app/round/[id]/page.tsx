@@ -17,6 +17,7 @@ import { FloatingCameraFAB } from '@/components/FloatingCameraFAB';
 import { BadgeStorage } from '@/lib/badgeStorage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
+import { calculateDistanceMeters, GeoCountryService } from '@/lib/geoCountryService';
 import { supabase } from '@/lib/supabase';
 import { CourseStampModal } from '@/components/CourseStampModal';
 import { buildCourseBlocksFromSession, incrementUserCompleted9Holes, calculateTier, getUserCompleted9Holes } from '@/lib/courseBlockTier';
@@ -58,6 +59,54 @@ export default function RoundPlayPage() {
     }
     return null;
   });
+
+  // 📍 [대표님 절대 원칙]: 실제 구장 현장 GPS 인증 상태 (구장 반경 3km 이내 실측)
+  const [gpsVerified, setGpsVerified] = useState<boolean>(false);
+  const [gpsDistance, setGpsDistance] = useState<number | null>(null);
+  const [gpsChecked, setGpsChecked] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !course) return;
+
+    // 1. 모의 위치(Mock Location) 활성화 여부 확인 (개발/테스트용)
+    const mock = GeoCountryService.getMockLocation();
+    if (mock && course.lat && course.lng) {
+      const dist = calculateDistanceMeters(mock.lat, mock.lng, course.lat, course.lng);
+      if (dist <= 3000) {
+        setGpsVerified(true);
+        setGpsDistance(dist);
+        setGpsChecked(true);
+        return;
+      }
+    }
+
+    // 2. 실제 기기 GPS 위치 확인
+    if (navigator.geolocation && course.lat && course.lng) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          const dist = calculateDistanceMeters(latitude, longitude, course.lat!, course.lng!);
+          if (dist <= 3000) {
+            setGpsVerified(true);
+            setGpsDistance(dist);
+          } else {
+            setGpsVerified(false);
+            setGpsDistance(dist);
+          }
+          setGpsChecked(true);
+        },
+        (err) => {
+          console.warn('GPS location access failed:', err);
+          setGpsVerified(false);
+          setGpsChecked(true);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    } else {
+      setGpsChecked(true);
+    }
+  }, [course]);
+
   const [currentHole, setCurrentHole] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       const active = ParkOnStorage.getCurrentRound();
@@ -2198,7 +2247,7 @@ export default function RoundPlayPage() {
     const elapsedMinutes = Math.max(1, Math.round((eTime - sTime) / (1000 * 60)));
     const holesCount = currentConfirmed.length || session.totalHoles || 9;
     const isRealisticTime = elapsedMinutes >= (holesCount <= 9 ? 25 : 50);
-    const isFieldVerified = isOfficial && isRealisticTime && !session.isVirtual;
+    const isFieldVerified = isOfficial && isRealisticTime && !session.isVirtual && gpsVerified;
 
     const blocks = buildCourseBlocksFromSession({
       ...session,
@@ -2209,7 +2258,7 @@ export default function RoundPlayPage() {
     const finished: RoundSession = {
       ...session,
       status: 'COMPLETED',
-      isOfficial,
+      isOfficial: isOfficial && gpsVerified,
       totalHoles: currentConfirmed.length,
       selectedHoleNumbers: currentConfirmed,
       confirmedHoles: currentConfirmed,
@@ -2217,11 +2266,14 @@ export default function RoundPlayPage() {
       completedAt: new Date().toISOString(),
       durationMinutes: elapsedMinutes,
       isFieldVerified,
+      isGpsVerified: gpsVerified,
+      gpsDistanceMeters: gpsDistance ?? undefined,
+      gpsVerifiedAt: gpsVerified ? new Date().toISOString() : undefined,
       blocks,
     };
 
-    // 💎 유저 누적 9홀 완주 횟수 안전 반영 (공식 전적 및 9홀 이상 완주 시에만 누적)
-    if (isOfficial) {
+    // 💎 유저 누적 9홀 완주 횟수 안전 반영 (공식 전적 및 현장 GPS 인증 완료 시에만 누적)
+    if (isOfficial && gpsVerified) {
       const nineHolesCompleted = Math.floor(currentConfirmed.length / 9);
       if (nineHolesCompleted > 0) {
         updatedPlayers.forEach((p) => {
@@ -2668,6 +2720,21 @@ export default function RoundPlayPage() {
                       <span className="text-[11px] font-bold text-emerald-200/80 truncate">
                         {dual.secondary}
                       </span>
+                    )}
+                    {gpsChecked && (
+                      <div className="mt-1">
+                        {gpsVerified ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 shadow-2xs">
+                            <span>📍</span>
+                            <span>{isJapanese ? '現地GPS認証完了' : '현장 GPS 인증 완료'} ({gpsDistance !== null ? `${gpsDistance}m` : '0m'})</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/30 text-amber-300 border border-amber-400/60 shadow-2xs">
+                            <span>⚠️</span>
+                            <span>{isJapanese ? 'GPS未認証 (公式統計未反映)' : '현장 GPS 미인증 (공식 통계 미반영)'}</span>
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                   <span className="bg-yellow-400 text-stone-950 px-2.5 py-0.5 rounded-full text-[11px] font-black shadow-xs shrink-0 self-start">

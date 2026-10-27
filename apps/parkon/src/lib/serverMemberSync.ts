@@ -70,11 +70,25 @@ export function toHalfWidth(str: string): string {
 
 export function isMockOrCorruptedRound(r: any): boolean {
   if (!r) return true;
-  if (r.id === 'round_rec_1' || r.id === 'round_suseong_sample') return true;
+  if (
+    r.id === 'round_rec_1' || 
+    r.id === 'round_suseong_sample' || 
+    r.id === 'round_kim_gumi_20261002' ||
+    (typeof r.id === 'string' && (r.id.startsWith('mock_') || r.id.startsWith('sample_')))
+  ) {
+    return true;
+  }
+  if (r.isVirtual === true || r.isOfficial === false) {
+    return true;
+  }
   if (
     r.courseName === '수성파크골프장' &&
     r.players?.some((p: any) => (p.name === '김대희' || p.name?.includes('홍길동')) && p.totalStrokes === 54 && r.completedAt === '2026-10-02T10:00:00.000Z')
   ) {
+    return true;
+  }
+  // 🛡️ [대표님 절대 원칙]: 실제 구장 현장 GPS 인증(isGpsVerified: true)이 없는 게임은 100% 필터링 (가짜/더미/임의 입력 배제)
+  if (!r.isGpsVerified) {
     return true;
   }
   return false;
@@ -87,6 +101,8 @@ export function isMockOrCorruptedRound(r: any): boolean {
  */
 export async function saveCompletedRoundForAllPlayers(roundSession: any): Promise<void> {
   if (!roundSession || !roundSession.players || !Array.isArray(roundSession.players)) return;
+  // 🛡️ [대표님 절대 원칙]: 실제 구장 현장 GPS 인증이 없는 라운드는 클라우드 동기화 100% 차단
+  if (!roundSession.isGpsVerified) return;
   const map = getMembersMap();
   const supabase = getSupabaseClient();
 

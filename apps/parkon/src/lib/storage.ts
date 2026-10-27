@@ -1,3 +1,30 @@
+
+export function isMockOrCorruptedRound(r: any): boolean {
+  if (!r) return true;
+  if (
+    r.id === 'round_rec_1' || 
+    r.id === 'round_suseong_sample' || 
+    r.id === 'round_kim_gumi_20261002' ||
+    (typeof r.id === 'string' && (r.id.startsWith('mock_') || r.id.startsWith('sample_')))
+  ) {
+    return true;
+  }
+  if (r.isVirtual === true || r.isOfficial === false) {
+    return true;
+  }
+  if (
+    r.courseName === '수성파크골프장' &&
+    r.players?.some((p: any) => (p.name === '김대희' || p.name?.includes('홍길동')) && p.totalStrokes === 54 && r.completedAt === '2026-10-02T10:00:00.000Z')
+  ) {
+    return true;
+  }
+  // 🛡️ [대표님 절대 원칙]: 실제 구장 현장 GPS 인증(isGpsVerified: true)이 없는 게임은 100% 필터링 (가짜/더미/임의 입력 배제)
+  if (!r.isGpsVerified) {
+    return true;
+  }
+  return false;
+}
+
 import {
   RoundSession,
   Course,
@@ -672,52 +699,48 @@ export const ParkOnStorage = {
         return [];
       }
 
-      // 순수 첫 방문 초기 상태일 때만 로컬 기본 샘플 제공
-      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-        const defaultId = 'round_kim_gumi_20261002';
-        if (deletedIds.has(defaultId)) return [];
-
-        const defaultRealRound: RoundSession = {
-          id: defaultId,
-          courseName: '구미파크골프장',
-          courseId: 'course-3d43d16b-0a42-4a6f-b8d0-00a74a3bfb09',
-          totalHoles: 18,
-          currentHole: 18,
-          status: 'COMPLETED',
-          isOfficial: true,
-          startedAt: '2026-10-02T16:15:00.000Z',
-          completedAt: '2026-10-02T18:09:00.000Z',
-          selectedCourseLetters: ['A', 'B'],
-          durationMinutes: 114,
-          isFieldVerified: true,
-          players: [
-            {
-              id: 'p_kim',
-              name: '김대희',
-              isSelf: true,
-              isLeader: true,
-              totalStrokes: 74,
-              totalParDiff: 8,
-              scores: {
-                1: 4, 2: 3, 3: 5, 4: 4, 5: 4, 6: 5, 7: 3, 8: 4, 9: 5,
-                10: 4, 11: 5, 12: 4, 13: 3, 14: 6, 15: 4, 16: 3, 17: 5, 18: 3
-              },
-              obCount: { 3: 1, 6: 1 }
-            }
-          ]
-        };
-        return [defaultRealRound];
-      }
+      // 🛡️ [대표님 절대 원칙]: 더미/샘플 라운드 자동 주입 전면 차단. 실제 GPS 완주 라운드가 없으면 빈 배열 반환
       return [];
     } catch {
       return [];
     }
   },
 
+    /**
+   * 🛡️ [대표님 절대 원칙]: 실제 구장 현장 GPS 인증(isGpsVerified)이 없는 라운드 100% 영구 삭제 및 브라우저 클린업
+   */
+  purgeUnverifiedRounds(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.COMPLETED_ROUNDS);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          const clean = parsed.filter((r: any) => r && r.id && !isMockOrCorruptedRound(r) && r.isGpsVerified === true);
+          localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(clean));
+        }
+      }
+      localStorage.removeItem('parkon_safety_stash_rounds_v1');
+      localStorage.removeItem('parkon_completed_rounds_safety_stash_v1');
+
+      // 미인증 라운드로 인한 누적 9홀 완주 횟수 클린업
+      const valid = this.getCompletedRounds();
+      if (valid.length === 0) {
+        Object.keys(localStorage).forEach((k) => {
+          if (k.startsWith('parkon_user_completed_9holes')) {
+            localStorage.removeItem(k);
+          }
+        });
+      }
+    } catch (e) {
+      console.error('Failed to purge unverified rounds:', e);
+    }
+  },
+
   saveCompletedRound(session: RoundSession, skipSync = false): void {
     if (typeof window === 'undefined') return;
-    // 가상 라운딩(체험 모드)인 경우 영구 기록/전적에 저장하지 않고 종료 (기록 제로 보장)
-    if (session.isVirtual) {
+    // 🛡️ [대표님 절대 원칙]: 실제 구장 현장 GPS 인증(isGpsVerified: true)이 없거나 가상/비공식 라운드는 공식 완료 전적에 절대 미저장 (100% 배제)
+    if (!session.isGpsVerified || session.isVirtual || session.isOfficial === false) {
       this.clearCurrentRound();
       return;
     }
@@ -856,7 +879,24 @@ export const ParkOnStorage = {
     if (typeof window === 'undefined') return ALL_BASE_COURSES;
     try {
       const customData = localStorage.getItem(STORAGE_KEYS.CUSTOM_COURSES);
-      const customCourses: Course[] = customData ? JSON.parse(customData) : [];
+      let customCourses: Course[] = customData ? JSON.parse(customData) : [];
+      let dirtyCustom = false;
+      customCourses = customCourses.map((c) => {
+        if (c.id === 'course-90c7e293-e544-45b5-a8ad-6b240b63504e' || (c.name && c.name.includes('해병'))) {
+          dirtyCustom = true;
+          return {
+            ...c,
+            name: c.name.replace(/해병/g, '해평'),
+            nameKo: c.nameKo ? c.nameKo.replace(/해병/g, '해평') : '해평',
+            totalCourses: Math.max(c.totalCourses || 0, 3),
+            totalHoles: Math.max(c.totalHoles || 0, 27),
+          };
+        }
+        return c;
+      });
+      if (dirtyCustom) {
+        localStorage.setItem(STORAGE_KEYS.CUSTOM_COURSES, JSON.stringify(customCourses));
+      }
       const crowdSpecs = this.getCrowdsourcedHoleSpecs();
 
       // [대표님 지침]: 엉터리 더미 제원 방지 & 실제 공인 검증 구장 명단
@@ -1286,6 +1326,15 @@ export const ParkOnStorage = {
         list.push(updatedCourse);
       }
       localStorage.setItem(STORAGE_KEYS.CUSTOM_COURSES, JSON.stringify(list));
+
+      if (this.getHomeCourseId() === updatedCourse.id) {
+        try {
+          localStorage.setItem('parkon_home_course', JSON.stringify(updatedCourse));
+        } catch {}
+      }
+
+      window.dispatchEvent(new CustomEvent('parkon_course_updated', { detail: updatedCourse }));
+      window.dispatchEvent(new Event('storage'));
     } catch (e) {
       console.error('Failed to update course:', e);
     }

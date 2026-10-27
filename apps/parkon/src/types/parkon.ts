@@ -148,6 +148,10 @@ export interface RoundSession {
   durationMinutes?: number; // 총 소요 시간 (분 단위)
   holeTimestamps?: Record<number, string>; // 홀별 완료 시각 타임스탬프
   isFieldVerified?: boolean; // 🏅 실제 필드 정규 완주 검증 여부 (정상 소요시간 & 홀 진행 검증)
+  isGpsVerified?: boolean; // 📍 실제 구장 현장 GPS 위치 실측 검증 여부 (구장 반경 내 현장 라운드)
+  gpsDistanceMeters?: number; // 📍 구장 중심점과의 실측 거리 (단위: m)
+  gpsVerifiedAt?: string; // 📍 GPS 인증 확인 시각
+  gpsCoords?: { lat: number; lng: number }; // 📍 인증 당시 위경도 좌표
   holeStep?: 'TEE_SHOT' | 'SCORING'; // 1단계 코스안내 전광판 vs 2단계 4인 스코어보드
   roundSettings?: RoundSettings; // ⚙️ 라운드 환경 설정 (홀 정보 표기 모드 · 팝업 토글)
   roomId?: string; // 실시간 룸 동기화 ID

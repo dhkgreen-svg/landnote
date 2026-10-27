@@ -109,11 +109,28 @@ export const SAFETY_STASH_STORAGE_KEY = 'parkon_completed_rounds_safety_stash_v1
  */
 export function isMockOrCorruptedRound(r: any): boolean {
   if (!r) return true;
-  if (r.id === 'round_rec_1' || r.id === 'round_suseong_sample') return true;
+  // 1. 기존 알려진 더미/목업 ID
+  if (
+    r.id === 'round_rec_1' || 
+    r.id === 'round_suseong_sample' || 
+    r.id === 'round_kim_gumi_20261002' ||
+    (typeof r.id === 'string' && (r.id.startsWith('mock_') || r.id.startsWith('sample_')))
+  ) {
+    return true;
+  }
+  // 2. 가상 체험 라운드 또는 비공식 라운드
+  if (r.isVirtual === true || r.isOfficial === false) {
+    return true;
+  }
+  // 3. 더미 구장 및 하드코딩된 테스트 데이터 차단
   if (
     r.courseName === '수성파크골프장' &&
     r.players?.some((p: any) => (p.name === '김대희' || p.name?.includes('홍길동')) && p.totalStrokes === 54 && r.completedAt === '2026-10-02T10:00:00.000Z')
   ) {
+    return true;
+  }
+  // 4. 🛡️ [대표님 절대 원칙]: 실제 구장 현장 GPS 인증(isGpsVerified: true)이 없는 게임은 무조건 100% 가짜/더미로 영구 필터링!
+  if (!r.isGpsVerified) {
     return true;
   }
   return false;

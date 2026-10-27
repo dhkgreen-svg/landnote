@@ -13,6 +13,8 @@ import { PlayStartNoticeModal } from '@/components/PlayStartNoticeModal';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
 import { supabase } from '@/lib/supabase';
+import { CourseEditModal } from '@/components/CourseEditModal';
+import { CourseSearchModal } from '@/components/CourseSearchModal';
 
 const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
@@ -375,6 +377,8 @@ function NewRoundForm() {
 
   // Course correction/expansion modal state
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
+  const [showSearchModal, setShowSearchModal] = useState<boolean>(false);
+  const [customCourseToEdit, setCustomCourseToEdit] = useState<Course | null>(null);
   const [editHoles, setEditHoles] = useState<number>(18);
   const [editContributor, setEditContributor] = useState<string>('');
 
@@ -441,9 +445,11 @@ function NewRoundForm() {
     }
   }, [currentCourse]);
 
-  const openEditModal = () => {
-    if (currentCourse) {
-      setEditHoles(currentCourse.totalHoles || 18);
+  const openEditModal = (target?: Course | React.MouseEvent) => {
+    const c = (target && 'id' in target) ? target : currentCourse;
+    setCustomCourseToEdit(c);
+    if (c) {
+      setEditHoles(c.totalHoles || 18);
     }
     const currentUserName =
       playersList.find((p) => p.isSelf || p.isLeader)?.name?.trim() ||
@@ -1096,12 +1102,22 @@ function NewRoundForm() {
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <Link
-                    href="/courses"
-                    className="bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 font-bold py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px]"
+                  <button
+                    type="button"
+                    data-testid="edit-course-spec-btn"
+                    onClick={openEditModal}
+                    className="bg-emerald-700 hover:bg-emerald-600 text-white font-black py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px] cursor-pointer"
+                  >
+                    <span>✏️ {isJapanese ? 'コース名・諸元訂正' : '구장명·제원 수정'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="change-course-search-btn"
+                    onClick={() => setShowSearchModal(true)}
+                    className="bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 font-bold py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px] cursor-pointer"
                   >
                     <span>{isEnglish ? 'Change Course' : isJapanese ? 'コース変更' : '구장 변경'}</span>
-                  </Link>
+                  </button>
                 </div>
               </div>
             );
@@ -1345,90 +1361,51 @@ function NewRoundForm() {
       </button>
 
       {/* 5. Course Hole Expansion / Correction Modal */}
-      {showEditModal && currentCourse && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white w-full max-w-sm rounded-2xl p-4 shadow-2xl space-y-3.5 animate-scaleUp">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-              <div>
-                <h3 className="text-base font-black text-stone-900 flex items-center gap-1">
-                  <span>⛳ {currentCourse.name} {isJapanese ? 'コース/ホール数の訂正' : '코스/홀수 정정'}</span>
-                </h3>
-                <p className="text-[11px] text-stone-500 font-medium">
-                  {isJapanese ? '新規登録の手間なくコース拡張を即時反映します' : '새로 등록할 필요 없이 코스 확장을 바로 반영합니다'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowEditModal(false)}
-                className="p-1 text-stone-400 hover:text-stone-700 rounded-full"
-              >
-                ✕
-              </button>
-            </div>
+      <CourseEditModal
+        isOpen={showEditModal}
+        course={customCourseToEdit || currentCourse}
+        onClose={() => {
+          setShowEditModal(false);
+          setCustomCourseToEdit(null);
+        }}
+        onSave={(updatedCourse) => {
+          const all = ParkOnStorage.getAllCourses();
+          setCourses([...all]);
+          setSelectedCourseId(updatedCourse.id);
+          ParkOnStorage.setHomeCourseId(updatedCourse.id);
+          const coursesCount = updatedCourse.totalCourses || Math.max(1, Math.round(updatedCourse.totalHoles / 9));
+          const newLetters = COURSE_LETTERS.slice(0, coursesCount);
+          if (!newLetters.includes(selectedCourseLetter)) {
+            setSelectedCourseLetter(newLetters[0] || 'A');
+          }
+          setStartHoleIndex(1);
+          setShowEditModal(false);
+          setCustomCourseToEdit(null);
+        }}
+        isJapanese={isJapanese}
+      />
 
-            <div className="space-y-2.5">
-              <div>
-                <label className="block text-xs font-bold text-stone-800 mb-1">
-                  {isJapanese ? '現在の球場の実際コース数およびホール数を選択' : '현재 구장의 실제 총 코스 및 홀수 선택'}
-                </label>
-                <select
-                  value={editHoles}
-                  onChange={(e) => setEditHoles(Number(e.target.value))}
-                  className="w-full bg-stone-50 border-2 border-emerald-500 rounded-xl px-3 py-2.5 text-sm font-black text-stone-900 outline-none"
-                >
-                  <option value={9}>{isJapanese ? '計 1コース 9ホール (Aコース)' : '총 1코스 9홀 (A코스)'}</option>
-                  <option value={18}>{isJapanese ? '計 2コース 18ホール (A, Bコース)' : '총 2코스 18홀 (A, B코스)'}</option>
-                  <option value={27}>{isJapanese ? '計 3コース 27ホール (A, B, Cコース)' : '총 3코스 27홀 (A, B, C코스)'}</option>
-                  <option value={36}>{isJapanese ? '計 4コース 36ホール (A, B, C, Dコース)' : '총 4코스 36홀 (A, B, C, D코스)'}</option>
-                  <option value={45}>{isJapanese ? '計 5コース 45ホール (A~Eコース)' : '총 5코스 45홀 (A~E코스)'}</option>
-                  <option value={54}>{isJapanese ? '計 6コース 54ホール (A~Fコース)' : '총 6코스 54홀 (A~F코스)'}</option>
-                  <option value={63}>{isJapanese ? '計 7コース 63ホール (A~Gコース)' : '총 7코스 63홀 (A~G코스)'}</option>
-                  <option value={72}>{isJapanese ? '計 8コース 72ホール (A~Hコース)' : '총 8코스 72홀 (A~H코스)'}</option>
-                  <option value={108}>{isJapanese ? '計 12コース 108ホール (A~Lコース)' : '총 12코스 108홀 (A~L코스)'}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-stone-800 mb-1">
-                  {isJapanese ? '訂正者 (名誉の殿堂登録)' : '정정자 (명예의 전당 등록)'}
-                </label>
-                <input
-                  type="text"
-                  value={editContributor}
-                  onChange={(e) => setEditContributor(e.target.value)}
-                  placeholder={isJapanese ? '訂正者のお名前' : '정정자 성명'}
-                  className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-sm font-bold text-stone-900 outline-none focus:border-emerald-600"
-                />
-              </div>
-
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-[11px] text-emerald-950 font-medium leading-relaxed">
-                {isJapanese ? (
-                  <>💡 <b>新規登録を重複して行う必要はありません！</b> ここで変更すると球場の総コース数が拡張され、Aコース、Bコース等の選択が即座に可能になります。</>
-                ) : (
-                  <>💡 <b>신규 등록을 중복으로 하실 필요가 없습니다!</b> 여기서 변경하시면 구장의 총 코스 수가 확장되어 A코스, B코스 선택이 즉시 가능해집니다.</>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-1 border-t border-stone-100">
-              <button
-                type="button"
-                onClick={handleSaveCourseCorrection}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 rounded-xl text-sm shadow active:scale-95 transition"
-              >
-                {isJapanese ? '即時訂正して反映する ✓' : '즉시 정정 및 반영하기 ✓'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowEditModal(false)}
-                className="px-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-xl text-xs"
-              >
-                {isJapanese ? 'キャンセル' : '취소'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 🔍 구장 검색 & 변경 전용 모달 (대표님 지침: /courses로 넘어가지 않고 검색 팝업 즉시 호출) */}
+      <CourseSearchModal
+        isOpen={showSearchModal}
+        onClose={() => setShowSearchModal(false)}
+        onSelectCourse={(course) => {
+          const all = ParkOnStorage.getAllCourses();
+          setCourses([...all]);
+          setSelectedCourseId(course.id);
+          ParkOnStorage.setHomeCourseId(course.id);
+          const coursesCount = course.totalCourses || Math.max(1, Math.round(course.totalHoles / 9));
+          const newLetters = COURSE_LETTERS.slice(0, coursesCount);
+          setSelectedCourseLetter(newLetters[0] || 'A');
+          setStartHoleIndex(1);
+          setShowSearchModal(false);
+        }}
+        onEditCourse={(course) => {
+          setShowSearchModal(false);
+          openEditModal(course);
+        }}
+        isJapanese={isJapanese}
+      />
 
       {/* 6. QR Code Companion Auto-Invite Modal */}
       {showQrModal && (
