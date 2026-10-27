@@ -547,11 +547,11 @@ export function RoundScoreboardModal({
 
   return (
     <div
-      className="fixed inset-0 z-[80] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in"
+      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in"
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-md rounded-3xl p-4 space-y-3 shadow-2xl border border-stone-200 max-h-[92vh] flex flex-col animate-scaleUp"
+        className="bg-white w-full max-w-xl rounded-3xl p-3.5 sm:p-5 space-y-3 shadow-2xl border border-stone-200 max-h-[94vh] flex flex-col animate-scaleUp"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Toast Notifier */}
@@ -780,7 +780,7 @@ export function RoundScoreboardModal({
           {/* TAB 1: COURSES */}
           {modalActiveTab === 'COURSES' && (
             <div className="space-y-3">
-              {/* 📸 [방안 A 핵심]: 1번 탭 상단에 현장 사진 미니 프리뷰 칩 배치 (터치 시 3번 탭 직행) */}
+              {/* 📸 [방안 A 핵심]: 1번 탭 상단에 현장 사진 미니 프리뷰 칩 배치 */}
               {currentRound.photos && currentRound.photos.length > 0 ? (
                 <div
                   onClick={() => setModalActiveTab('PHOTOS')}
@@ -819,83 +819,151 @@ export function RoundScoreboardModal({
                   </label>
                 </div>
               )}
+
+              {/* 🎯 골프 공인 언더파 기호 안내 범례 */}
+              <ScoreBadgeLegend />
+
+              {/* 🏆 동반자 전원 최종 순위 및 총 타수 요약 전광판 (1인, 2인, 3인, 4인) */}
+              <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white p-3 sm:p-3.5 rounded-2xl shadow-md border border-emerald-800 space-y-2">
+                <div className="flex items-center justify-between text-xs border-b border-white/10 pb-1.5">
+                  <span className="font-black text-amber-300 flex items-center gap-1.5">
+                    <span>🏆</span>
+                    <span>{isJapanese ? '最終戦績電光掲示板' : '동반자 최종 성적 전광판'}</span>
+                  </span>
+                  <span className="text-[11px] text-emerald-200 font-medium">
+                    {activeConfirmedHoles.length}홀 완주 · 기준 Par {activeTotalPar}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {integratedSummary.map((item, idx) => {
+                    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : ' ';
+                    return (
+                      <div
+                        key={item.player.id}
+                        className={`p-2 rounded-xl border flex flex-col justify-between ${
+                          idx === 0
+                            ? 'bg-amber-500/20 border-amber-400/50 text-amber-200'
+                            : 'bg-white/5 border-white/10 text-stone-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-xs font-black truncate flex items-center gap-1">
+                            <span>{medal}</span>
+                            <span className="truncate">{item.player.name}</span>
+                          </span>
+                          {item.player.isLeader && (
+                            <span className="text-[8px] bg-amber-400 text-stone-950 px-1 rounded font-black shrink-0">조장</span>
+                          )}
+                        </div>
+                        <div className="mt-1 flex items-baseline justify-between">
+                          <span className="text-base font-black text-white">{item.strokes}타</span>
+                          <span className="text-[10px] font-bold text-emerald-300">
+                            ({item.diff === 0 ? 'E' : item.diff > 0 ? `+${item.diff}` : `${item.diff}`})
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 📋 코스별 공식 스코어보드 테이블 */}
               {activeSegments.map((seg) => (
-                <div key={seg.key} className="bg-stone-50 rounded-2xl p-3 border border-stone-200 shadow-2xs space-y-2">
+                <div key={seg.key} className="bg-stone-50 rounded-2xl p-3 border border-stone-200 shadow-2xs space-y-2.5">
                   <div className="flex items-center justify-between pb-1.5 border-b border-stone-200">
-                    <span className="text-xs font-black text-emerald-900">
-                      ⛳ {seg.title} (기준 Par {seg.segmentPar})
+                    <span className="text-xs font-black text-emerald-900 flex items-center gap-1">
+                      <span>⛳</span>
+                      <span>{seg.title} (기준 Par {seg.segmentPar})</span>
                     </span>
-                    <span className="text-[10px] font-bold text-stone-500">
+                    <span className="text-[11px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-lg">
                       {seg.playedCount}{isJapanese ? 'ホール完走' : '홀 완주'}
                     </span>
                   </div>
 
-                  <div className="space-y-1.5">
-                    {seg.playerSummaries.map((ps, pIdx) => {
-                      const medal = pIdx === 0 ? '🥇' : pIdx === 1 ? '🥈' : pIdx === 2 ? '🥉' : ' ';
-                      const isLeader = ps.player.isLeader || pIdx === 0;
-                      return (
-                        <div key={ps.player.id} className="p-2 bg-white rounded-xl border border-stone-200/80 space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-black text-stone-900 flex items-center gap-1">
-                              <span>{medal}</span>
-                              <span>{ps.player.name}</span>
-                              {isLeader && (
-                                <span className="text-[9px] bg-amber-100 text-amber-900 px-1 rounded font-bold">
-                                  {isJapanese ? '組長' : '조장'}
-                                </span>
-                              )}
-                              {ps.player.isSelf && (
-                                <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1 rounded font-bold">
-                                  {isJapanese ? '本人' : '본인'}
-                                </span>
-                              )}
-                            </span>
-                            <div className="text-right">
-                              <span className="text-xs font-black text-stone-900">{ps.strokes}타</span>
-                              <span className="text-[10px] text-stone-500 ml-1">
-                                ({ps.diff === 0 ? 'E' : ps.diff > 0 ? `+${ps.diff}` : `${ps.diff}`})
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* 9-Hole Mini Tile Grid */}
-                          <div className="grid grid-cols-9 gap-1 text-center">
-                            {seg.fullHoles.map((hNum) => {
-                              const base = ((hNum - 1) % 1000) + 1;
-                              const meta = activeCourse.holesMetadata?.find((m) => Number(m.hole) === base);
-                              const isVerified = Boolean(meta?.isVerified === true || meta?.contributedBy);
-                              const par = isVerified ? (Number(meta?.par) || 3) : 3;
-                              const s = ps.player.scores?.[hNum] || 0;
-                              const ob = ps.player.obCount?.[hNum] || 0;
-                              return (
-                                <div key={hNum} className="flex flex-col items-center">
-                                  <span className="text-[8px] text-stone-400 font-bold">{((base - 1) % 9) + 1}H</span>
-                                  <div className="my-0.5">
-                                    <HoleScoreBadge
-                                      score={s}
-                                      par={par}
-                                      isConfirmed={s > 0}
-                                      size="sm"
-                                    />
-                                  </div>
-                                  <span className="text-[7px] text-rose-600 font-bold h-2.5">
-                                    {ob > 0 ? `OB${ob}` : ''}
-                                  </span>
+                  {/* 4인 스코어보드 테이블 */}
+                  <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-2xs">
+                    <table className="w-full text-center text-xs">
+                      <thead>
+                        <tr className="bg-stone-100 text-stone-700 font-bold border-b border-stone-200 text-[11px]">
+                          <th className="py-2 px-2 text-left min-w-[70px] whitespace-nowrap">{isJapanese ? '選手' : '선수'}</th>
+                          {seg.fullHoles.map((hNum) => {
+                            const base = ((hNum - 1) % 1000) + 1;
+                            const meta = activeCourse.holesMetadata?.find((m) => Number(m.hole) === base);
+                            const par = meta?.par || 3;
+                            return (
+                              <th key={hNum} className="py-2 px-1 font-black text-stone-800 min-w-[34px]">
+                                <div>{((base - 1) % 9) + 1}H</div>
+                                <div className="text-[9px] font-normal text-stone-400">P{par}</div>
+                              </th>
+                            );
+                          })}
+                          <th className="py-2 px-2 bg-emerald-100 text-emerald-950 font-black min-w-[44px]">소계</th>
+                          <th className="py-2 px-1.5 bg-rose-50 text-rose-800 font-black min-w-[34px]">OB</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100 font-medium">
+                        {seg.playerSummaries.map((ps, pIdx) => {
+                          const medal = pIdx === 0 ? '🥇' : pIdx === 1 ? '🥈' : pIdx === 2 ? '🥉' : '';
+                          const totalOb = seg.fullHoles.reduce((sum, hNum) => sum + (ps.player.obCount?.[hNum] || 0), 0);
+                          return (
+                            <tr key={ps.player.id} className="hover:bg-stone-50/80">
+                              <td className="py-2.5 px-2 text-left font-black text-stone-900 text-xs">
+                                <div className="flex items-center gap-1">
+                                  {medal && <span className="shrink-0">{medal}</span>}
+                                  <span className="truncate max-w-[65px]">{ps.player.name}</span>
+                                  {ps.player.isLeader && (
+                                    <span className="text-[8px] bg-amber-100 text-amber-900 px-1 rounded font-bold shrink-0">조장</span>
+                                  )}
+                                  {ps.player.isSelf && (
+                                    <span className="text-[8px] bg-emerald-100 text-emerald-800 px-1 rounded font-bold shrink-0">본인</span>
+                                  )}
                                 </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
+                              </td>
+                              {seg.fullHoles.map((hNum) => {
+                                const base = ((hNum - 1) % 1000) + 1;
+                                const meta = activeCourse.holesMetadata?.find((m) => Number(m.hole) === base);
+                                const par = Number(meta?.par || 3);
+                                const s = ps.player.scores?.[hNum];
+                                const ob = ps.player.obCount?.[hNum] || 0;
+                                const isScored = s !== undefined && s > 0;
+                                return (
+                                  <td key={hNum} className="py-2 px-1 text-center">
+                                    <div className="flex flex-col items-center justify-center">
+                                      <HoleScoreBadge
+                                        score={s}
+                                        par={par}
+                                        isConfirmed={isScored}
+                                        size="sm"
+                                      />
+                                      {ob > 0 && (
+                                        <span className="text-[7.5px] text-rose-600 font-black leading-none mt-0.5">
+                                          OB{ob}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                              <td className="py-2 px-2 bg-emerald-50 text-emerald-950 font-black text-xs">
+                                <div>{ps.strokes}타</div>
+                                <div className="text-[9px] text-stone-500 font-normal">
+                                  ({ps.diff === 0 ? 'E' : ps.diff > 0 ? `+${ps.diff}` : `${ps.diff}`})
+                                </div>
+                              </td>
+                              <td className="py-2 px-1.5 bg-rose-50/40 text-rose-700 font-black text-[11px]">
+                                {totalOb > 0 ? totalOb : '-'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* TAB 2: INTEGRATED */}
           {modalActiveTab === 'INTEGRATED' && (
             <div className="space-y-3">
               <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-2.5 text-xs text-amber-950 font-bold flex items-center justify-between">

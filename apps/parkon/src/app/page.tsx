@@ -1891,6 +1891,19 @@ export default function HomePage() {
                               ? 'ラウンドを完了すると、あなたの全競技記録がタイムライン順に1行ずつ自動保存されます。'
                               : '라운드를 완료하시면 내가 플레이한 경기 기록이 시간 순서대로 한 줄씩 타임라인에 안전하게 보관됩니다.'}
                           </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const restored = ParkOnStorage.restoreHaepyeongRound();
+                              const all = ParkOnStorage.getCompletedRounds();
+                              setCompletedRounds([...all]);
+                              setSelectedRoundForPopup(restored);
+                            }}
+                            className="mt-3 px-4 py-2.5 bg-gradient-to-r from-emerald-700 to-teal-800 hover:from-emerald-800 hover:to-teal-900 text-white font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 mx-auto transition active:scale-95 cursor-pointer"
+                          >
+                            <span>⛳</span>
+                            <span>오늘 해평 공식 기록 1초 복원 & 스코어보드 보기</span>
+                          </button>
                         </div>
                       );
                     }
