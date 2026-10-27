@@ -117,8 +117,10 @@ const [showAddNickname, setShowAddNickname] = useState(false);
       setSentToKakaoNotice(false);
       setLookupResult(null);
       setLookupError('');
-      setInputPhone('');
-      setNewPhone('');
+      const profNowForPhone = ParkOnStorage.getUserProfile();
+      const existingPhone = profNowForPhone?.phoneNumber || (typeof window !== 'undefined' ? localStorage.getItem('parkon_user_phone') || '' : '');
+      setInputPhone(existingPhone);
+      setNewPhone(existingPhone);
 
       // 연대기 요약 및 닉네임 목록 로딩
       const rounds = ParkOnStorage.getCompletedRounds().filter((r) => !r.isVirtual && !isMockOrCorruptedRound(r));
@@ -152,7 +154,7 @@ const [showAddNickname, setShowAddNickname] = useState(false);
       } else if (hasRegisteredNow && initialMode !== 'login') {
         setViewMode('PROFILE');
       } else if (!hasRegisteredNow) {
-        setViewMode('NEW_USER');
+        setViewMode('LOOKUP');
       } else {
         setViewMode('PROFILE');
       }
@@ -212,7 +214,10 @@ const [showAddNickname, setShowAddNickname] = useState(false);
 
       setTimeout(() => {
         onClose();
-      }, 1500);
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
+      }, 800);
     } else {
       setSyncStatus({ success: false, message: res.message });
     }
@@ -374,12 +379,67 @@ const handleAddNewNickname = () => {
     }
   };
 
+  // 💾 📱 입력하신 휴대폰 번호로 현재 기기 모든 경기 기록/고유번호 클라우드 안전 보관
+  const handleBackupWithPhone = async () => {
+    const cleanDigits = inputPhone.replace(/\D/g, '');
+    if (cleanDigits.length < 4) {
+      setLookupError(isJapanese ? '携帯番号を4桁以上入力してください。' : '휴대폰 번호를 4자리 이상 입력해 주세요.');
+      return;
+    }
+    const formattedPhone = formatPhoneWithHyphen(inputPhone);
+    setIsBackingUp(true);
+    setLookupError('');
+    try {
+      const profile = ParkOnStorage.getUserProfile() || {};
+      const curName = (initialName && !isPlaceholderName(initialName))
+        ? initialName.trim()
+        : (ParkOnStorage.getUserDisplayName() || (isJapanese ? 'プレイヤー' : '회원'));
+
+      const updatedProfile = {
+        ...profile,
+        userName: curName,
+        realName: curName,
+        phoneNumber: formattedPhone,
+        clubName: profile.clubName || '파키 공식 클럽',
+      };
+      ParkOnStorage.saveUserProfile(updatedProfile);
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('parkon_user_phone', formattedPhone);
+        localStorage.setItem('parkon_player_name', curName);
+      }
+
+      const curCode = getSavedMemberCode() || getOrGenerateMemberCode();
+      setMemberCode(curCode);
+
+      await syncMemberDataToCloud();
+      setIsBackingUp(false);
+      setSyncStatus({
+        success: true,
+        message: isJapanese
+          ? `✓ 全ラウンド記録が携帯番号[${formattedPhone}]に安全に保管されました！`
+          : `✓ 회원님의 모든 경기 기록과 8자리 고유번호가 [${formattedPhone}] 번호로 안전하게 보관되었습니다!`
+      });
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: curName } }));
+      setTimeout(() => {
+        onClose();
+      }, 1600);
+    } catch (e: any) {
+      setIsBackingUp(false);
+      setLookupError(isJapanese ? '保管中にエラーが発生しました。' : '보관 처리 중 오류가 발생했습니다.');
+    }
+  };
+
   // 📱 미등록 번호: 새 평생 고유번호 즉시 발급받고 시작
   const handleRegisterNewWithPhone = async () => {
     setIsRegisteringNew(true);
     const cleanDigits = inputPhone.replace(/\D/g, '');
     const formattedPhone = formatPhoneWithHyphen(inputPhone);
-    const effectiveName = (initialName && !isPlaceholderName(initialName)) ? initialName.trim() : (isJapanese ? 'パークゴルファー' : '파크골퍼');
+    const existingName = ParkOnStorage.getUserDisplayName();
+    const effectiveName = (initialName && !isPlaceholderName(initialName)) 
+      ? initialName.trim() 
+      : (existingName && !isPlaceholderName(existingName) ? existingName : (isJapanese ? 'パークゴルファー' : '파크골퍼'));
 
     try {
       const profile = ParkOnStorage.getUserProfile() || {};
@@ -388,7 +448,7 @@ const handleAddNewNickname = () => {
         userName: effectiveName,
         phoneNumber: formattedPhone,
         nationalGrade: profile.nationalGrade && profile.nationalGrade !== '기록 준비중' ? profile.nationalGrade : '정회원',
-        clubName: profile.clubName || '',
+        clubName: profile.clubName || '파키 공식 클럽',
       });
 
       const guestUser: KakaoAuthUser = {
@@ -406,8 +466,8 @@ const handleAddNewNickname = () => {
         localStorage.setItem('parkon_user_phone', formattedPhone);
       }
 
-      // 8자리 회원번호 즉석 신규 발급
-      const newCode = getOrGenerateMemberCode(true);
+      // 8자리 회원번호 발급 (기존 발급된 코드가 있으면 유지)
+      const newCode = getSavedMemberCode() || getOrGenerateMemberCode();
       setMemberCode(newCode);
 
       // 클라우드 및 Supabase에 즉시 영구 백업
@@ -1130,20 +1190,28 @@ const handleAddNewNickname = () => {
                   </div>
                 </div>
 
-                {/* 메인 액션 버튼 */}
-                <button
-                  type="button"
-                  disabled={isLookingUp || inputPhone.replace(/\D/g, '').length < 4}
-                  onClick={handleLookupPhone}
-                  className="w-full py-2.5 sm:py-3 px-4 bg-emerald-700 hover:bg-emerald-800 active:scale-95 disabled:opacity-50 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer border border-emerald-800"
-                >
-                  <Search className="w-4 h-4 text-amber-300" />
-                  <span>
-                    {isLookingUp
-                      ? (isJapanese ? '記録照会中...' : '조회 중...')
-                      : (isJapanese ? '🔍 会員番号確認 ＆ 記録呼出' : '🔍 내 고유번호 확인 & 기록 불러오기')}
-                  </span>
-                </button>
+                {/* 2대 메인 액션: 1. 내 기록 찾기(불러오기), 2. 현재 기록 보관하기 */}
+                <div className="grid grid-cols-2 gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    disabled={isLookingUp || inputPhone.replace(/\D/g, '').length < 4}
+                    onClick={handleLookupPhone}
+                    className="py-2.5 sm:py-3 px-2 bg-emerald-700 hover:bg-emerald-800 active:scale-95 disabled:opacity-50 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer border border-emerald-800"
+                  >
+                    <Search className="w-4 h-4 text-amber-300 shrink-0" />
+                    <span>{isLookingUp ? (isJapanese ? '照会中...' : '조회 중...') : (isJapanese ? '🔍 記録呼出' : '🔍 내 기록 찾기')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isBackingUp || inputPhone.replace(/\D/g, '').length < 4}
+                    onClick={handleBackupWithPhone}
+                    className="py-2.5 sm:py-3 px-2 bg-amber-500 hover:bg-amber-400 active:scale-95 disabled:opacity-50 text-stone-950 font-black text-xs sm:text-sm rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer border border-amber-600"
+                  >
+                    <Cloud className="w-4 h-4 text-emerald-950 shrink-0" />
+                    <span>{isBackingUp ? (isJapanese ? '保管中...' : '보관 중...') : (isJapanese ? '💾 記録保管' : '💾 내 기록 보관')}</span>
+                  </button>
+                </div>
               </div>
 
               {/* 에러 문구 */}
@@ -1190,20 +1258,30 @@ const handleAddNewNickname = () => {
               )}
 
               {lookupResult?.status === 'NOT_FOUND' && (
-                <div className="bg-gradient-to-br from-amber-50 via-amber-100/60 to-emerald-50 border-2 border-amber-400 rounded-2xl p-3 text-center shadow-sm space-y-2 animate-scaleUp">
+                <div className="bg-gradient-to-br from-amber-50 via-amber-100/60 to-emerald-50 border-2 border-amber-400 rounded-2xl p-3 text-center shadow-sm space-y-2.5 animate-scaleUp">
                   <div className="text-amber-950 font-bold text-xs leading-relaxed">
-                    등록된 기록이 없습니다.<br />
-                    이 휴대폰 번호로 <strong className="text-amber-900 font-black underline underline-offset-2">새 평생 고유번호</strong>를 즉시 발급받으시겠습니까?
+                    서버에 등록된 기존 기록이 없습니다.<br />
+                    현재 스마트폰의 기록을 <strong className="text-emerald-900 font-black underline underline-offset-2">[{inputPhone}]</strong> 번호로 안전하게 보관하시겠습니까?
                   </div>
-                  <button
-                    type="button"
-                    disabled={isRegisteringNew}
-                    onClick={handleRegisterNewWithPhone}
-                    className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-amber-500 via-emerald-600 to-emerald-700 hover:from-amber-400 hover:to-emerald-600 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 border border-emerald-600"
-                  >
-                    <span className="text-sm">⛳</span>
-                    <span>{isRegisteringNew ? '발급 처리 중...' : '⛳ 새 고유번호 발급받고 시작'}</span>
-                  </button>
+                  <div className="grid grid-cols-1 gap-2 pt-0.5">
+                    <button
+                      type="button"
+                      disabled={isBackingUp}
+                      onClick={handleBackupWithPhone}
+                      className="w-full py-2.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 border border-emerald-700"
+                    >
+                      <Cloud className="w-4 h-4 text-amber-300" />
+                      <span>{isBackingUp ? (isJapanese ? '保管処理中...' : '보관 처리 중...') : (isJapanese ? '💾 現在の記録をこの番号で安全保管' : '💾 현재 기록을 이 번호로 안전 보관')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isRegisteringNew}
+                      onClick={handleRegisterNewWithPhone}
+                      className="w-full py-2 bg-white hover:bg-stone-50 text-stone-700 font-bold text-xs rounded-xl shadow-2xs transition active:scale-95 cursor-pointer border border-stone-300 flex items-center justify-center gap-1"
+                    >
+                      <span>{isJapanese ? '⛳ 新規8桁を発行してスタート' : '⛳ 새 고유번호 발급받고 시작'}</span>
+                    </button>
+                  </div>
                 </div>
               )}
 

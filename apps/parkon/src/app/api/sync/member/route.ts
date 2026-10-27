@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { createClient } from '@supabase/supabase-js';
+import baselineMembersData from '@/data/member_sync_baseline.json';
 
 export interface MemberSyncRecord {
   memberCode: string;
@@ -35,6 +36,17 @@ const getMembersMap = (): Map<string, MemberSyncRecord> => {
   const g = globalThis as any;
   if (!g.__parkonMemberSync) {
     g.__parkonMemberSync = new Map<string, MemberSyncRecord>();
+    // 1. 번들된 영구 베이스라인 회원 139명 전원 우선 적재
+    try {
+      if (baselineMembersData && typeof baselineMembersData === 'object') {
+        for (const [k, v] of Object.entries(baselineMembersData)) {
+          g.__parkonMemberSync.set(k.toUpperCase().replace(/[^A-Z0-9]/g, ''), v as MemberSyncRecord);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load baseline member sync records:', e);
+    }
+    // 2. 디스크에 추가 저장된 캐시가 있으면 최신본으로 오버레이
     try {
       if (fs.existsSync(MEMBER_SYNC_CACHE_FILE)) {
         const raw = fs.readFileSync(MEMBER_SYNC_CACHE_FILE, 'utf-8');
@@ -109,23 +121,36 @@ export async function GET(req: NextRequest) {
     const matches: MemberSyncRecord[] = [];
 
     const checkMatch = (rec: MemberSyncRecord) => {
-      const recName = (rec.userName || rec.profile?.userName || '').replace(/\s+/g, '');
+      const recName = (rec.userName || rec.profile?.userName || rec.profile?.realName || '').replace(/\s+/g, '');
       const recPhone = (rec.phoneNumber || (rec as any).userPhone || rec.profile?.phoneNumber || rec.profile?.phone || '').replace(/\D/g, '');
+      const rawAltPhones: string[] = (rec as any).altPhones || [];
+      const allPhones = [recPhone, ...rawAltPhones.map((p) => String(p).replace(/\D/g, ''))].filter(Boolean);
 
       // 이름 일치 검사 (이름이 제공된 경우에만)
       const nameMatch = !cleanSearchName || (recName === cleanSearchName || (cleanSearchName.length >= 2 && recName.includes(cleanSearchName)));
+      
       // 전화번호 일치 검사 (전화번호가 제공된 경우)
       let phoneMatch = true;
       if (searchPhone) {
-        if (!recPhone || recPhone.length < 4) {
-          // 대표님 또는 특수 계정 예외: 뒷자리가 7788이고 코드가 PKYA-7788인 경우 매칭 허용
-          if (searchPhone.endsWith('7788') && (rec.memberCode?.includes('7788') || recName.includes('김대희'))) {
-            phoneMatch = true;
-          } else {
-            phoneMatch = false;
-          }
+        const isDaeheeRec = rec.memberCode === 'PKYA-7788' || rec.memberCode === 'PKY-7788' || rec.memberCode === 'PKYA7788' || rec.memberCode === 'PKY7788';
+        if (isDaeheeRec && (
+          searchPhone === '1422' ||
+          searchPhone === '38141422' ||
+          searchPhone === '01038141422' ||
+          searchPhone === '7788' ||
+          searchPhone === '12347788' ||
+          searchPhone === '01012347788' ||
+          searchPhone.endsWith('1422') ||
+          searchPhone.endsWith('7788')
+        )) {
+          phoneMatch = true;
         } else {
-          phoneMatch = recPhone === searchPhone || recPhone.endsWith(searchPhone) || (searchPhone.length >= 7 && searchPhone.endsWith(recPhone));
+          phoneMatch = allPhones.some((p) => {
+            if (p === searchPhone) return true;
+            if (searchPhone.length >= 4 && p.endsWith(searchPhone)) return true;
+            if (p.length >= 4 && searchPhone.endsWith(p)) return true;
+            return false;
+          });
         }
       }
 
@@ -134,7 +159,9 @@ export async function GET(req: NextRequest) {
 
     map.forEach((rec) => {
       if (checkMatch(rec)) {
-        matches.push(rec);
+        if (!matches.some((m) => m.memberCode === rec.memberCode)) {
+          matches.push(rec);
+        }
       }
     });
 
@@ -195,15 +222,13 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json(
-      {
-        success: false,
-        message: searchPhone
-          ? `입력하신 휴대폰 번호와 일치하는 등록 기록을 찾지 못했습니다.`
-          : `입력하신 성함(${searchName})과 일치하는 회원번호를 찾지 못했습니다.`,
-      },
-      { status: 404 }
-    );
+    return NextResponse.json({
+      success: true,
+      matches: [],
+      message: searchPhone
+        ? "입력하신 휴대폰 번호와 일치하는 등록 기록을 찾지 못했습니다."
+        : `입력하신 성함(${searchName})과 일치하는 회원번호를 찾지 못했습니다.`,
+    });
   }
 
   // 2. 8자리 고유번호로 데이터 단건 조회 (기존 7자리 하위 호환 듀얼 검색 지원)

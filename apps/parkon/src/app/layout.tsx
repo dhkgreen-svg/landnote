@@ -287,14 +287,7 @@ export default function RootLayout({
                       } catch(e) {}
                     }
 
-                    // 카카오 정식 로그인 없이 기본값 버그로 '김대희'나 'PKYA-7788'이 박힌 일반 기기 정화
-                    if (!isKakaoLoggedIn && (isProfileDaehee || memberCode === 'PKYA-7788')) {
-                      localStorage.removeItem('parkon_user_profile_v1');
-                      localStorage.removeItem('parkon_member_code_v1');
-                      localStorage.removeItem('parkon_player_name');
-                      localStorage.removeItem('parkon_welcomed');
-                      localStorage.removeItem('parkon_welcome_dismissed');
-                    }
+                    // 🛡️ [대표님 절대 원칙]: 로컬에 보관된 사용자 프로필 및 고유번호는 영구 보존
                   }
                 } catch(e) {}
               })();

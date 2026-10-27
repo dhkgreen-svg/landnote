@@ -407,10 +407,12 @@ export function Header() {
         onClose={() => {
           setShowKakaoModal(false);
           setKakaoUser(ParkOnStorage.getKakaoUser());
+          setUserProfile(ParkOnStorage.getUserProfile());
           setMemberCode(getSavedMemberCode());
         }}
         onLoginSuccess={(user) => {
           setKakaoUser(user);
+          setUserProfile(ParkOnStorage.getUserProfile());
           setMemberCode(getSavedMemberCode());
         }}
       />
