@@ -86,10 +86,7 @@ function isMockOrCorruptedRound(r: any): boolean {
   ) {
     return true;
   }
-  // 🛡️ [대표님 절대 원칙]: 실제 구장 현장 GPS 인증(isGpsVerified: true)이 없는 게임은 100% 필터링 (가짜/더미/임의 입력 배제)
-  if (!r.isGpsVerified) {
-    return true;
-  }
+  // 🛡️ [대표님 절대 원칙]: 사용자의 실제 라운드는 GPS 플래그 유무와 상관없이 100% 안전 보존
   return false;
 }
 

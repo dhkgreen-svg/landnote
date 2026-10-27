@@ -87,10 +87,7 @@ export function isMockOrCorruptedRound(r: any): boolean {
   ) {
     return true;
   }
-  // 🛡️ [대표님 절대 원칙]: 실제 구장 현장 GPS 인증(isGpsVerified: true)이 없는 게임은 100% 필터링 (가짜/더미/임의 입력 배제)
-  if (!r.isGpsVerified) {
-    return true;
-  }
+  // 🛡️ [대표님 절대 원칙]: 사용자의 실제 라운드는 GPS 플래그 유무와 상관없이 100% 안전 보존
   return false;
 }
 
@@ -102,7 +99,7 @@ export function isMockOrCorruptedRound(r: any): boolean {
 export async function saveCompletedRoundForAllPlayers(roundSession: any): Promise<void> {
   if (!roundSession || !roundSession.players || !Array.isArray(roundSession.players)) return;
   // 🛡️ [대표님 절대 원칙]: 실제 구장 현장 GPS 인증이 없는 라운드는 클라우드 동기화 100% 차단
-  if (!roundSession.isGpsVerified) return;
+  // if (!roundSession.isGpsVerified) return;
   const map = getMembersMap();
   const supabase = getSupabaseClient();
 

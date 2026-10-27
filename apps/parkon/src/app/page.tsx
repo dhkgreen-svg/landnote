@@ -262,7 +262,7 @@ export default function HomePage() {
   // 2. 로컬 스토리지 및 이벤트 감청 (순수 로컬 상태 갱신만 수행, 재귀 API 호출 차단)
   useEffect(() => {
     setMounted(true);
-    ParkOnStorage.purgeUnverifiedRounds();
+    // ParkOnStorage.purgeUnverifiedRounds();
     const loadData = () => {
       const allCourses = ParkOnStorage.getAllCourses();
       setCourses(allCourses);
@@ -682,7 +682,7 @@ export default function HomePage() {
     const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
     // 공식 전적 라운드만 필터링
-    const officialRounds = completedRounds.filter((r) => r.isOfficial !== false && !r.isVirtual && r.isGpsVerified === true);
+    const officialRounds = completedRounds.filter((r) => r.isOfficial !== false && !r.isVirtual);
 
     // 기록이 한 번도 없는 경우: 별 0개 & '미반영'
     if (officialRounds.length === 0) {
@@ -881,7 +881,7 @@ export default function HomePage() {
     const cleanName = c.name.replace(/\s+/g, '');
     const courseRounds = completedRounds.filter(
       (r) =>
-        r.isOfficial !== false && !r.isVirtual && r.isGpsVerified === true &&
+        r.isOfficial !== false && !r.isVirtual &&
         (r.courseId === c.id || r.courseName?.replace(/\s+/g, '') === cleanName)
     );
 

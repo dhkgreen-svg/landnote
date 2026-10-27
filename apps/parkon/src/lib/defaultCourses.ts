@@ -2254,7 +2254,9 @@ export const DEFAULT_COURSES: Course[] = [
     totalHoles: 27,
     isVerified: true,
     description: '경북 구미시 해평면에 위치한 총 3코스 27홀(A, B, C코스) 공인 검증 파크골프장입니다. (운영: 08:30~17:30)',
-    address: '경북 구미시 해평면 낙산리',
+    address: '경북 구미시 해평면 낙산리 1095-34',
+    lat: 36.2495,
+    lng: 128.3394,
     fee: '무료',
     openHours: '08:30~17:30',
     holesMetadata: [
