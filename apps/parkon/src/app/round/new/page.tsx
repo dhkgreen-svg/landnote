@@ -591,11 +591,16 @@ function NewRoundForm() {
   const handleSimulateQrJoin = (guestName: string) => {
     if (!guestName) return;
     const cleanGuestName = guestName.trim();
-    if (!cleanGuestName || isDefaultCompanionName(cleanGuestName)) return;
+    if (!cleanGuestName) return;
+
+    // 게스트 등 임시 명칭이어도 누락 없이 정상 반영
+    const finalGuestName = (cleanGuestName === '게스트' || cleanGuestName === 'ゲスト')
+      ? (isJapanese ? '同伴ゲスト' : '동반 게스트')
+      : cleanGuestName;
 
     setPlayersList((prev) => {
       // 이미 같은 이름의 플레이어가 1번 이후 슬롯에 등록되어 있다면 유지
-      if (prev.some((p, idx) => idx > 0 && p.name && p.name.trim() === cleanGuestName)) {
+      if (prev.some((p, idx) => idx > 0 && p.name && p.name.trim() === finalGuestName)) {
         return prev;
       }
       // 사용자가 현재 포커스하여 직접 타이핑 중인 슬롯 및 조장이 수동 편집한 슬롯은 건너뛰고 빈 슬롯 찾기
@@ -604,11 +609,11 @@ function NewRoundForm() {
       );
       let nextList = [...prev];
       if (targetIdx !== -1) {
-        nextList[targetIdx] = { ...nextList[targetIdx], name: cleanGuestName };
+        nextList[targetIdx] = { ...nextList[targetIdx], name: finalGuestName };
       } else if (prev.length < 6) {
         nextList.push({
           id: `p_qr_${Date.now()}`,
-          name: cleanGuestName,
+          name: finalGuestName,
           isLeader: false,
           isSelf: false,
         });
@@ -618,8 +623,8 @@ function NewRoundForm() {
 
     setJoinSimulationToast(
       isJapanese
-        ? `🎉 '${cleanGuestName}' 様が参加しました！全員揃いましたのでゲームを開始できます！`
-        : `🎉 '${cleanGuestName}' 님이 입장하였습니다! (${playerCount}명 참여 완료, 바로 시작 가능)`
+        ? `🎉 '${finalGuestName}' 様が参加しました！全員揃いましたのでゲームを開始できます！`
+        : `🎉 '${finalGuestName}' 님이 입장하였습니다! (${playerCount}명 참여 완료, 바로 시작 가능)`
     );
     setTimeout(() => setJoinSimulationToast(null), 3500);
 
@@ -647,7 +652,7 @@ function NewRoundForm() {
     : 'https://www.parkgolfallinone.com';
 
   const inviteUrl = useMemo(() => {
-    return `${currentOrigin}/round/join?roomId=${encodeURIComponent(roomId)}&course=${encodeURIComponent(selectedCourseId || 'course_1')}&leader=${encodeURIComponent(leaderName)}&count=${playerCount}`;
+    return `${currentOrigin}/round/join?roomId=${encodeURIComponent(roomId)}&course=${encodeURIComponent(selectedCourseId || 'course_1')}&leader=${encodeURIComponent(leaderName)}&count=${playerCount}&kakaotalk_open_external=true`;
   }, [currentOrigin, roomId, selectedCourseId, leaderName, playerCount]);
 
   // QR 코드 중복 생성 방지용 캐시 Ref (동일 URL에 대해 중복 캔버스 연산 방지)
@@ -1487,6 +1492,49 @@ function NewRoundForm() {
                     <Share2 className={`w-4 h-4 ml-auto ${isJapanese ? 'text-white' : 'text-stone-700'}`} />
                   )}
                 </button>
+
+                {/* 지정 동반자가 있는 경우: 실명 1초 인증 전용 링크 버튼 */}
+                {(() => {
+                  const targetComp = playersList.find((p, idx) => idx > 0 && p.name && !isDefaultCompanionName(p.name))?.name;
+                  if (!targetComp) return null;
+                  const compInviteUrl = `${inviteUrl}&invited=${encodeURIComponent(targetComp)}`;
+                  const compShareText = isJapanese
+                    ? `[PARKY パキ]
+⛳ ${shareCourseName}
+ご招待者: ${targetComp} 様
+リーダー: ${leaderName}
+以下のリンクを開くと1秒で合流します:
+${compInviteUrl}`
+                    : `[파키 PARKY 라운딩 초대]
+⛳ ${shareCourseName} 함께 라운딩해요!
+초대 대상: ${targetComp} 님
+조장: ${leaderName}
+아래 링크를 누르면 '${targetComp}' 님으로 1초 만에 자동 입장됩니다:
+${compInviteUrl}`;
+                  return (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await copyToClipboardSafe(compShareText);
+                        setCopiedLink(true);
+                        setTimeout(() => setCopiedLink(false), 4000);
+                        if (typeof navigator !== 'undefined' && navigator.share && /mobile|android|iphone|ipad/i.test(navigator.userAgent || '')) {
+                          try {
+                            await navigator.share({
+                              title: `[파키] ${targetComp} 님 전용 초대`,
+                              text: compShareText,
+                              url: compInviteUrl,
+                            });
+                          } catch {}
+                        }
+                      }}
+                      className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-700 to-emerald-800 hover:from-emerald-800 text-white font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition active:scale-98 cursor-pointer border border-emerald-600"
+                    >
+                      <span>👑</span>
+                      <span>'{targetComp}' 님 전용 초대장 보내기 (실명 1초 인증)</span>
+                    </button>
+                  );
+                })()}
 
                 {/* 문자(SMS) 직접 발송 버튼 (스마트폰 기본 메시지 앱 즉시 연동) */}
                 <a

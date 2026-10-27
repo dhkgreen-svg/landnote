@@ -598,3 +598,5 @@ export async function findMemberCodeByPhone(phone: string) {
   return findMemberCodeByNameAndPhone(undefined, phone);
 }
 
+
+export const restoreMemberDataFromCloud = fetchAndRestoreMemberData;

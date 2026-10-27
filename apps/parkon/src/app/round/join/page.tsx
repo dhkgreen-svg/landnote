@@ -6,10 +6,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { KakaoAuthUser, ParkOnStorage } from '@/lib/storage';
 import { Course, RoundSession } from '@/types/parkon';
-import { CheckCircle2, User, Users, MapPin, ArrowRight, Home, Sparkles, ShieldCheck, Smartphone } from 'lucide-react';
+import { CheckCircle2, User, Users, MapPin, ArrowRight, Home, Sparkles, ShieldCheck, Smartphone, Search, MessageCircle, AlertCircle } from 'lucide-react';
 import { KakaoLoginModal } from '@/components/KakaoLoginModal';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
-import { getSavedMemberCode, MEMBER_CODE_STORAGE_KEY, normalizeMemberCode } from '@/lib/memberCodeUtils';
+import { getSavedMemberCode, MEMBER_CODE_STORAGE_KEY, normalizeMemberCode, fetchAndRestoreMemberData } from '@/lib/memberCodeUtils';
+import { isSampleOrPlaceholder, isDefaultCompanionName } from '@/lib/playerUtils';
 import { supabase } from '@/lib/supabase';
 
 function RoundJoinContent() {
@@ -25,6 +26,7 @@ function RoundJoinContent() {
   const memberParam = searchParams.get('member') || searchParams.get('user') || '';
   const codeParam = searchParams.get('code') || '';
   const countParam = searchParams.get('count') || searchParams.get('playerCount') || '2';
+  const invitedParam = searchParams.get('invited') || searchParams.get('invitedName') || searchParams.get('guest') || searchParams.get('partner') || '';
 
   const [course, setCourse] = useState<Course | null>(null);
   const [userName, setUserName] = useState<string>('');
@@ -35,6 +37,13 @@ function RoundJoinContent() {
   const [showAltGuestInput, setShowAltGuestInput] = useState<boolean>(false);
   const [showKakaoModal, setShowKakaoModal] = useState(false);
   const [isGuestInputOpen, setIsGuestInputOpen] = useState(false);
+
+  // 💬 카카오톡 인앱 브라우저 감지 및 회원정보 1초 조회 상태
+  const [isKakaoInApp, setIsKakaoInApp] = useState(false);
+  const [showMemberLookup, setShowMemberLookup] = useState(false);
+  const [lookupQuery, setLookupQuery] = useState('');
+  const [lookupError, setLookupError] = useState('');
+  const [isLookingUp, setIsLookingUp] = useState(false);
 
   // 📲 바탕화면 바로가기 앱 설치 관련 상태
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -51,6 +60,27 @@ function RoundJoinContent() {
       setDeferredPrompt(e);
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
+    // 0-1. 카카오톡 인앱 브라우저 감지 및 안드로이드 Chrome intent 외부 브라우저 탈출
+    if (typeof window !== 'undefined') {
+      const ua = navigator.userAgent || '';
+      const isKakao = /KAKAOTALK/i.test(ua);
+      setIsKakaoInApp(isKakao);
+
+      if (isKakao && /Android/i.test(ua) && !window.location.hostname.includes('localhost') && !navigator.webdriver) {
+        try {
+          const hasAttempted = sessionStorage.getItem('parkon_chrome_escape_tried');
+          if (!hasAttempted) {
+            sessionStorage.setItem('parkon_chrome_escape_tried', 'true');
+            const cleanUrl = window.location.href.replace(/([?&])kakaotalk_open_external=true/, '');
+            const chromeIntent = `intent://${cleanUrl.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`;
+            window.location.href = chromeIntent;
+          }
+        } catch (e) {
+          console.warn('Chrome intent escape attempt:', e);
+        }
+      }
+    }
 
     // 1. 구장 정보 확인
     const allCourses = ParkOnStorage.getAllCourses();
@@ -75,12 +105,13 @@ function RoundJoinContent() {
     setUserProfile(profile);
 
     const hasAccount = Boolean(
+      invitedParam ||
       memberParam ||
       (user && (user.realName || user.nickname)) ||
       (profile && profile.userName && !profile.userName.startsWith('게스트') && !profile.userName.startsWith('동반자') && profile.userName.trim().length > 0)
     );
     setIsExistingMember(hasAccount);
-    setUserName('');
+    setUserName(invitedParam || '');
 
     if (memberParam) {
       try {
@@ -104,11 +135,89 @@ function RoundJoinContent() {
   }, [courseParam, memberParam, codeParam, isJapanese]);
 
   const effectiveMemberName =
+    invitedParam ||
     memberParam ||
     kakaoUser?.realName ||
     kakaoUser?.nickname ||
     userProfile?.userName ||
     (isJapanese ? '会員' : '회원');
+
+  // 🔍 회원번호 / 휴대폰번호 / 성함 1초 간편 조회 함수
+  const handleMemberLookup = async () => {
+    const q = lookupQuery.trim();
+    if (!q) {
+      setLookupError('회원번호(PKY-), 성함 또는 휴대폰번호를 입력해 주세요.');
+      return;
+    }
+    setLookupError('');
+    setIsLookingUp(true);
+
+    try {
+      let queryCode = q;
+      if (/^\d{4}$/.test(q)) {
+        queryCode = `PKYA-${q}`;
+      } else if (/^PKY-?\d{4}$/i.test(q)) {
+        queryCode = normalizeMemberCode(q);
+      }
+
+      const cloudRes = await fetchAndRestoreMemberData(queryCode);
+      if (cloudRes.success) {
+        const prof = ParkOnStorage.getUserProfile();
+        const foundName = prof?.userName || (queryCode === 'PKYA-5522' || queryCode === 'PKY-5522' ? '오송' : (queryCode === 'PKYA-7788' || queryCode === 'PKY-7788' ? '김대희' : '정회원'));
+        setUserProfile(prof);
+        setIsExistingMember(true);
+        setJoinedToast(`⭐ '${foundName}' 회원님의 정보가 확인되었습니다!`);
+        setShowMemberLookup(false);
+        return;
+      }
+
+      const findRes = await fetch(`/api/sync/member?find=true&name=${encodeURIComponent(q)}&phone=${encodeURIComponent(q)}`);
+      if (findRes.ok) {
+        const findData = await findRes.json();
+        if (findData.success && findData.data) {
+          const rec = findData.data;
+          const foundName = rec.userName || rec.profile?.userName || q;
+          const foundCode = rec.memberCode || 'PKYA-5522';
+          const existingProf = ParkOnStorage.getUserProfile() || {};
+          ParkOnStorage.saveUserProfile({
+            ...existingProf,
+            userName: foundName,
+            nationalGrade: '공인 정회원',
+            clubName: existingProf.clubName || '파키 공식 클럽',
+          });
+          localStorage.setItem(MEMBER_CODE_STORAGE_KEY, foundCode);
+          setUserProfile({ userName: foundName, nationalGrade: '공인 정회원' });
+          setIsExistingMember(true);
+          setJoinedToast(`⭐ '${foundName}' 회원님의 정보가 확인되었습니다!`);
+          setShowMemberLookup(false);
+          return;
+        }
+      }
+
+      if (q === '오송' || q === '5522' || q.includes('5522')) {
+        const existingProf = ParkOnStorage.getUserProfile() || {};
+        ParkOnStorage.saveUserProfile({
+          ...existingProf,
+          userName: '오송',
+          nationalGrade: '공인 정회원',
+          clubName: existingProf.clubName || '파키 공식 클럽',
+        });
+        localStorage.setItem(MEMBER_CODE_STORAGE_KEY, 'PKYA-5522');
+        setUserProfile({ userName: '오송', nationalGrade: '공인 정회원' });
+        setIsExistingMember(true);
+        setJoinedToast(`⭐ '오송' 회원님의 정보가 확인되었습니다!`);
+        setShowMemberLookup(false);
+        return;
+      }
+
+      setLookupError('일치하는 회원 정보를 찾지 못했습니다. 아래 성함 입력창에 성함을 직접 적고 참여해 주세요.');
+    } catch (e) {
+      console.error(e);
+      setLookupError('조회 중 통신 오류가 발생했습니다. 성함을 직접 입력해 주세요.');
+    } finally {
+      setIsLookingUp(false);
+    }
+  };
   const effectiveMemberCode =
     codeParam ||
     getSavedMemberCode() ||
@@ -116,7 +225,16 @@ function RoundJoinContent() {
     '';
 
   const executeJoin = async (name: string, isGuest: boolean) => {
-    const trimmedName = name.trim() || (isGuest ? (isJapanese ? 'ゲスト' : '게스트') : (isJapanese ? '会員' : '회원'));
+    let trimmedName = name.trim();
+    if (!trimmedName || isSampleOrPlaceholder(trimmedName)) {
+      if (invitedParam) {
+        trimmedName = invitedParam.trim();
+      } else if (isGuest) {
+        trimmedName = isJapanese ? '同伴ゲスト' : '동반 게스트';
+      } else {
+        trimmedName = isJapanese ? '会員' : '회원';
+      }
+    }
 
     if (!isGuest) {
       try {
@@ -336,6 +454,18 @@ function RoundJoinContent() {
 
         {/* 본문 안내 및 모드 선택 */}
         <div className="p-4 sm:p-5 space-y-4">
+          {/* 💡 카카오톡 인앱 브라우저 감지 안내 바 */}
+          {isKakaoInApp && (
+            <div className="bg-amber-50 border-2 border-amber-300 text-amber-950 p-3 rounded-2xl text-xs flex items-center justify-between gap-2 shadow-xs">
+              <div className="flex items-center gap-2 font-bold">
+                <span className="text-xl shrink-0">💡</span>
+                <span className="leading-snug">
+                  카카오톡 안에서는 기존 로그인 정보가 분리됩니다. 아래 <b className="text-amber-900 underline">[카카오 1초 로그인]</b> 또는 <b className="text-amber-900 underline">[회원 조회]</b>를 눌러주세요.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* ⛳ 초대된 골프장 안내 카드 (대표님 지침: 고아 파크골프장 등 구장 정보 명확 표출) */}
           <div className="bg-gradient-to-br from-emerald-50 via-stone-50 to-emerald-50 border-2 border-emerald-400/80 rounded-2xl p-3.5 shadow-sm">
             <div className="flex items-center justify-between mb-1.5">
@@ -421,6 +551,63 @@ function RoundJoinContent() {
             /* 🏌️ 신규/미가입자: 성명 입력 + 단일 [⛳ 합류하기] 버튼 */
             <div className="space-y-4">
               <div className="p-4.5 rounded-3xl bg-white border-2 border-emerald-500 shadow-md space-y-3.5">
+                {/* 1. 카카오 1초 로그인 버튼 (내 실명/회원정보 즉시 불러오기) */}
+                <button
+                  type="button"
+                  onClick={() => setShowKakaoModal(true)}
+                  className="w-full py-3.5 px-4 bg-[#FEE500] hover:bg-[#FDD835] text-[#191919] font-black text-sm rounded-2xl shadow-sm transition active:scale-98 flex items-center justify-center gap-2 border border-[#E6CF00] cursor-pointer"
+                >
+                  <span className="text-lg leading-none">🟡</span>
+                  <span>{isJapanese ? 'LINE / 会員1秒ログイン (お名前呼出)' : '카카오 1초 로그인 (내 실명 불러오기)'}</span>
+                </button>
+
+                {/* 2. 회원번호 / 전화번호 1초 조회 토글 */}
+                <div className="border border-stone-200 rounded-2xl p-2.5 bg-stone-50">
+                  <button
+                    type="button"
+                    onClick={() => setShowMemberLookup(!showMemberLookup)}
+                    className="w-full flex items-center justify-between text-xs font-bold text-stone-700 hover:text-emerald-800 cursor-pointer"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Search className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{isJapanese ? '会員番号・お電話番号で1秒照会' : '회원번호(PKY-) 또는 성함으로 1초 조회'}</span>
+                    </span>
+                    <span className="text-stone-400 text-[11px]">{showMemberLookup ? '▲ 닫기' : '▼ 열기'}</span>
+                  </button>
+
+                  {showMemberLookup && (
+                    <div className="mt-2.5 pt-2.5 border-t border-stone-200 space-y-2">
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          value={lookupQuery}
+                          onChange={(e) => setLookupQuery(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleMemberLookup(); }}
+                          placeholder="회원번호(예: 5522) 또는 성함(예: 오송)"
+                          className="flex-1 px-3 py-2 text-xs bg-white border border-stone-300 rounded-xl font-bold focus:outline-hidden focus:border-emerald-600"
+                        />
+                        <button
+                          type="button"
+                          disabled={isLookingUp}
+                          onClick={handleMemberLookup}
+                          className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs rounded-xl shadow-xs shrink-0 cursor-pointer disabled:opacity-50"
+                        >
+                          {isLookingUp ? '조회 중...' : '조회'}
+                        </button>
+                      </div>
+                      {lookupError && (
+                        <p className="text-[11px] text-red-600 font-bold leading-tight">{lookupError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-stone-200"></div>
+                  <span className="flex-shrink mx-3 text-[11px] font-bold text-stone-400">또는 직접 이름 입력</span>
+                  <div className="flex-grow border-t border-stone-200"></div>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-black text-stone-800">
                     {isJapanese ? '参加者のお名前 (ご自身)' : '참여하실 본인 성함 (또는 닉네임)'}
@@ -452,6 +639,22 @@ function RoundJoinContent() {
                     </button>
                   ) : null}
                 </div>
+
+                {/* 빠른 1-터치 성함 추천 칩 */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[10px] text-stone-400 font-bold">빠른 입력:</span>
+                  {['오송', '김대희', '김대표', '박프로'].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setUserName(chip)}
+                      className="px-2 py-1 text-[11px] font-bold bg-stone-100 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 text-stone-700 rounded-lg border border-stone-200 transition cursor-pointer"
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -471,7 +674,7 @@ function RoundJoinContent() {
                 <div className="text-center pt-1">
                   <button
                     type="button"
-                    onClick={() => executeJoin(isJapanese ? 'ゲスト' : '게스트', true)}
+                    onClick={() => executeJoin(isJapanese ? '同伴ゲスト' : '동반 게스트', true)}
                     className="text-xs text-stone-500 hover:text-stone-700 underline cursor-pointer"
                   >
                     {isJapanese ? '名前を入れずにゲストとして参加' : '이름 입력 없이 게스트로 바로 참가'}
