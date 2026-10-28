@@ -120,6 +120,11 @@ export interface CrowdsourcedHoleSpec {
   contributorName?: string;
   isInitialRegistered?: boolean;
   proposals?: CrowdSpecProposal[];
+  // [과업 1]: 집단지성 연속 3명 변경 감지 자동 승격 필드
+  currentDefaultPar?: number;
+  pendingPar?: number;
+  consecutiveCount?: number;
+  lastChangedBy?: string;
 }
 
 export interface CrowdSpecSaveResult {
@@ -915,11 +920,46 @@ export const ParkOnStorage = {
         }
       } catch {}
 
-      // 4. 전역 동기화 이벤트 발생
+      // 4. [과업 3 - 대표님 절대 지침]: 삭제 시 통계(총 라운드 수, 누적 타수, 완주 횟수) 차감 롤백 복구!
+      this.rollbackStatsAfterRoundDelete(updated);
+
+      // 5. 전역 동기화 이벤트 발생
       window.dispatchEvent(new Event('parkon_member_synced'));
       window.dispatchEvent(new Event('storage'));
     } catch (e) {
       console.error('Failed to delete completed round:', e);
+    }
+  },
+
+  rollbackStatsAfterRoundDelete(remainingRounds: RoundSession[]): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const officialRounds = remainingRounds.filter((r) => r.isOfficial !== false && !r.isVirtual);
+      let total9Holes = 0;
+      officialRounds.forEach((r) => {
+        const myPlayer = r.players?.find((p) => p.isSelf) || r.players?.[0];
+        const scoredCount = myPlayer
+          ? Object.keys(myPlayer.scores || {}).filter((h) => Number(myPlayer.scores[Number(h)]) > 0).length
+          : 0;
+        const totalHolesCount = (r.selectedHoleNumbers?.length || r.confirmedHoles?.length || r.totalHoles || 0);
+        const effHoles = Math.max(scoredCount, totalHolesCount);
+        if (effHoles >= 9) {
+          total9Holes += Math.max(1, Math.round(effHoles / 9));
+        }
+      });
+
+      localStorage.setItem('parkon_user_completed_9holes', total9Holes.toString());
+      const memberCode = localStorage.getItem('parkon_member_code');
+      if (memberCode) {
+        localStorage.setItem(`parkon_user_completed_9holes_${memberCode.trim()}`, total9Holes.toString());
+      }
+
+      const profile = this.getUserProfile();
+      if (profile) {
+        this.saveUserProfile(profile);
+      }
+    } catch (e) {
+      console.error('Failed to rollback stats after round deletion:', e);
     }
   },
 
@@ -1133,6 +1173,40 @@ export const ParkOnStorage = {
         // [규칙 2] 이미 정립된 공식 제원이 존재하는 경우
         officialPar = existing.par;
         officialDist = existing.distanceMeter;
+
+        // [과업 1]: 집단지성 3명 연속 동일 Par 선택 시 자동 승격 로직 연동
+        if (!existing.currentDefaultPar) {
+          existing.currentDefaultPar = existing.par;
+        }
+        const effectiveUserId = (typeof window !== 'undefined' ? (localStorage.getItem('parkon_member_code') || localStorage.getItem('parkon_guest_id') || 'user_anon') : 'user_anon');
+
+        if (numPar !== existing.par) {
+          if (existing.pendingPar === numPar) {
+            if (existing.lastChangedBy !== effectiveUserId) {
+              existing.consecutiveCount = (existing.consecutiveCount || 1) + 1;
+              existing.lastChangedBy = effectiveUserId;
+            }
+          } else {
+            existing.pendingPar = numPar;
+            existing.consecutiveCount = 1;
+            existing.lastChangedBy = effectiveUserId;
+          }
+
+          if (existing.consecutiveCount && existing.consecutiveCount >= 3) {
+            existing.par = numPar;
+            existing.currentDefaultPar = numPar;
+            existing.pendingPar = undefined;
+            existing.consecutiveCount = 0;
+            isOfficialUpdated = true;
+            officialPar = numPar;
+            message = `🎉 집단지성 3명 연속 일치! ${holeInCourse}번 홀 공식 제원이 Par ${numPar}로 자동 승격되었습니다!`;
+          } else {
+            message = `💡 Par ${numPar} 변경 제안 (${existing.consecutiveCount}/3명 연속 일치 시 공식 승격)`;
+          }
+        } else {
+          existing.pendingPar = undefined;
+          existing.consecutiveCount = 0;
+        }
 
         const isSameAsOfficial = existing.par === numPar && existing.distanceMeter === numDist;
 

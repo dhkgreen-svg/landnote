@@ -11,6 +11,7 @@ import { BusinessCardStorage } from '@/lib/businessCardStorage';
 import { BusinessCardModal } from '@/components/BusinessCardModal';
 import { WatermarkPhotoCardModal } from '@/components/WatermarkPhotoCardModal';
 import { ChroniclePhotoUploadModal } from '@/components/ChroniclePhotoUploadModal';
+import { PaperScorecardModal } from '@/components/PaperScorecardModal';
 import { PRESCRIPTIONS } from '@/lib/defaultCourses';
 import { AdSenseSlot } from '@/components/AdSenseSlot';
 import { HoleScoreBadge, ScoreBadgeLegend } from '@/components/HoleScoreBadge';
@@ -71,6 +72,7 @@ function ResultContent() {
   const [showPhotoCardModal, setShowPhotoCardModal] = useState<boolean>(false);
   const [showPostRoundPhotoPrompt, setShowPostRoundPhotoPrompt] = useState<boolean>(false);
   const [showPhotoUploadModal, setShowPhotoUploadModal] = useState<boolean>(false);
+  const [showPaperScorecardModal, setShowPaperScorecardModal] = useState<boolean>(false);
   const [showBusinessCardModal, setShowBusinessCardModal] = useState<boolean>(false);
   const [exchangeCardToast, setExchangeCardToast] = useState<string | null>(null);
   const [kakaoUser, setKakaoUser] = useState<KakaoAuthUser | null>(null);
@@ -181,7 +183,10 @@ function ResultContent() {
       );
       const cPlayedStr = invCourses.map((l) => `${l}코스`).join(' + ');
 
-      if (is9HoleCompleted) {
+      const isOfficialVerified = session.isOfficial !== false && (session.isGpsVerified !== false);
+
+      if (is9HoleCompleted && isOfficialVerified) {
+        // [과업 2 버그 수정]: '전적 미반영' 또는 'GPS 미인증' 라운드는 뱃지 발급 및 완주 누적 차단
         const badgeResult = BadgeStorage.recordCompletion(
           found.id,
           found.name,
@@ -199,7 +204,7 @@ function ResultContent() {
           setShowPostRoundPhotoPrompt(true);
           sessionStorage.setItem(photoPromptKey, 'true');
         } else {
-          // 첫 진입 시 완주 뱃지 자동 팝업
+          // 첫 진입 시 완주 뱃지 자동 팝업 (정식 공인 완주에 한함)
           const seenKey = `parkon_badge_seen_${session.id}`;
           if (!sessionStorage.getItem(seenKey)) {
             setShowBadgeModal(true);
@@ -207,6 +212,8 @@ function ResultContent() {
           }
         }
       } else {
+        // 전적 미반영 / 연습 / GPS 미인증 시 뱃지 팝업 차단
+        setShowBadgeModal(false);
         const existing = BadgeStorage.getBadge(found.id);
         if (existing) setBadgeRecord(existing);
       }
@@ -536,6 +543,21 @@ function ResultContent() {
           );
         })()}
 
+        {/* [과업 2]: '전적 미반영' 전용 심플 종료 요약 안내창 */}
+        {(session.isOfficial === false || !session.isGpsVerified) && (
+          <div className="mt-2.5 p-3 rounded-2xl bg-amber-950/70 border-2 border-amber-400/80 text-center space-y-1 shadow-md">
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black bg-amber-400 text-stone-950">
+              <span>⚠️</span>
+              <span>{isJapanese ? '戦績未反映ラウンド (公式集計除外)' : '전적 미반영 라운드 (공식 통계 제외)'}</span>
+            </div>
+            <p className="text-[11px] text-amber-200 font-bold leading-relaxed pt-0.5">
+              {isJapanese
+                ? '現地GPS未認証または練習ラウンドとして保存されたため、完走バッジおよび名誉ランク・公式戦績には反映されません。'
+                : '현장 GPS 미인증 또는 연습 라운드로 진행되어 완주 뱃지 발급 및 명예 등급·공식 전적에 반영되지 않습니다.'}
+            </p>
+          </div>
+        )}
+
         {/* Official vs Practice Status Badge & Switcher */}
         <div className="mt-2.5 flex flex-col items-center justify-center gap-1.5">
           <div className="flex items-center gap-2">
@@ -633,6 +655,16 @@ function ResultContent() {
         </div>
       </div>
 
+      {/* 📸 [과업 4]: 종이 스코어카드 AI 촬영 & 교차 검증 버튼 */}
+      <button
+        type="button"
+        onClick={() => setShowPaperScorecardModal(true)}
+        className="w-full bg-[#0d2137] hover:bg-[#132f4c] text-emerald-300 font-black px-4 py-3 rounded-2xl border border-emerald-500/40 flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.99] cursor-pointer"
+      >
+        <span className="text-lg">📷</span>
+        <span>{isJapanese ? '紙のスコアカード AI自動入力・交差検証' : '실물 종이 스코어카드 AI 사진 판독 & 교차 검증'}</span>
+      </button>
+
       {/* 1.5. [최우선 노출] 오늘의 동반 사진 남기기 & 공유 CTA */}
       <div className="bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-500 p-1 rounded-2xl shadow-md">
         <button
@@ -649,7 +681,8 @@ function ResultContent() {
         </button>
       </div>
 
-      {/* 2. Leaderboard Table */}
+      {/* 2. Leaderboard Table (과업 3: 상시 열람 앵커) */}
+      <div id="final-scorecard-section" className="scroll-mt-4" />
       <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm space-y-3">
         <h3 className="font-extrabold text-base text-stone-900 flex items-center justify-between">
           <span>{isEnglish ? 'Overall Leaderboard' : isJapanese ? '同伴者 総合順位表' : '동반자 종합 순위표'}</span>
@@ -1258,6 +1291,13 @@ function ResultContent() {
             setShowBadgeModal(false);
             setShowNationalTourModal(true);
           }}
+          onViewScorecard={() => {
+            setShowBadgeModal(false);
+            const el = document.getElementById('final-scorecard-section');
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
         />
       )}
 
@@ -1343,7 +1383,8 @@ function ResultContent() {
                 onClick={() => {
                   setShowPostRoundPhotoPrompt(false);
                   const seenKey = `parkon_badge_seen_${session.id}`;
-                  if (!sessionStorage.getItem(seenKey) && isFull18Completed) {
+                  const isOfficialVerified = session.isOfficial !== false && (session.isGpsVerified !== false);
+                  if (!sessionStorage.getItem(seenKey) && isFull18Completed && isOfficialVerified) {
                     setShowBadgeModal(true);
                     sessionStorage.setItem(seenKey, 'true');
                   }
@@ -1357,13 +1398,22 @@ function ResultContent() {
         </div>
       )}
 
+      {/* 📸 [과업 4]: 종이 스코어카드 AI 촬영 & 교차 검증 모달 */}
+      <PaperScorecardModal
+        isOpen={showPaperScorecardModal}
+        onClose={() => setShowPaperScorecardModal(false)}
+        targetRound={session}
+        onMergedSuccess={(up) => setSession(up)}
+      />
+
       {/* 📷 라운드 현장 사진 업로드 모달 */}
       <ChroniclePhotoUploadModal
         isOpen={showPhotoUploadModal}
         onClose={() => {
           setShowPhotoUploadModal(false);
           const seenKey = `parkon_badge_seen_${session.id}`;
-          if (!sessionStorage.getItem(seenKey) && isFull18Completed) {
+          const isOfficialVerified = session.isOfficial !== false && (session.isGpsVerified !== false);
+          if (!sessionStorage.getItem(seenKey) && isFull18Completed && isOfficialVerified) {
             setShowBadgeModal(true);
             sessionStorage.setItem(seenKey, 'true');
           }

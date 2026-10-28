@@ -56,6 +56,11 @@ export function RoundScoreboardModal({
   const [selectedPhotoForZoom, setSelectedPhotoForZoom] = useState<string | null>(null);
   const [shareToast, setShareToast] = useState<string | null>(null);
   const [pruneToast, setPruneToast] = useState<string | null>(null);
+  // [과업 3]: 상단 4대 기능 팝업 상태 (코스별 관리, 통합 요약, 현장 사진, 공인 완주증)
+  const [showCourseManagePopup, setShowCourseManagePopup] = useState<boolean>(false);
+  const [showIntegratedPopup, setShowIntegratedPopup] = useState<boolean>(false);
+  const [showPhotosPopup, setShowPhotosPopup] = useState<boolean>(false);
+  const [showCertPopup, setShowCertPopup] = useState<boolean>(false);
 
   useEffect(() => {
     setCurrentRound(round);
@@ -605,153 +610,36 @@ export function RoundScoreboardModal({
           </button>
         </div>
 
-        {/* ⛳ [대표님 지시] 코스 선택 & 개별 삭제 필터 바 (예: A, B는 치고 C는 미플레이 시 C 제외 또는 C 단독 영구 삭제) */}
-        {courseSegments.length > 1 && (
-          <div className="bg-emerald-50/80 border-2 border-emerald-300 rounded-2xl p-3 space-y-2.5 shrink-0 shadow-2xs">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
-                  <span>⛳ 코스 선택 및 개별 삭제:</span>
-                </span>
-                <p className="text-[10px] text-emerald-800/80 font-medium mt-0.5">
-                  터치하여 스코어카드에서 <b>[제외]</b>하거나, <b>[🗑️]</b>를 눌러 해당 코스만 완전히 삭제할 수 있습니다.
-                </p>
-              </div>
-              <span className="text-[10.5px] text-emerald-900 font-black bg-white px-2 py-0.5 rounded-lg border border-emerald-300 shrink-0">
-                {activeSegments.length}개 코스 ({activeConfirmedHoles.length}홀 · Par {activeTotalPar})
-              </span>
-            </div>
-
-            {/* 개별 코스 토글 체크 & 단독 1클릭 삭제 버튼들 */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {courseSegments.map((seg) => {
-                const isChecked = activeSegments.some((s) => s.key === seg.key);
-                return (
-                  <div
-                    key={seg.key}
-                    className={`inline-flex items-center rounded-xl text-xs font-black transition border shadow-2xs overflow-hidden ${
-                      isChecked
-                        ? 'bg-emerald-700 text-white border-emerald-800 ring-2 ring-emerald-500/30'
-                        : 'bg-stone-100 text-stone-400 border-stone-300 opacity-75'
-                    }`}
-                  >
-                    {/* 포함/제외 토글 영역 */}
-                    <button
-                      type="button"
-                      onClick={() => toggleCourseSelection(seg.key)}
-                      className="py-1.5 pl-2.5 pr-2 flex items-center gap-1.5 cursor-pointer active:scale-95"
-                      title={isChecked ? '클릭 시 이번 스코어카드에서 임시 제외' : '클릭 시 스코어카드에 다시 포함'}
-                    >
-                      {isChecked ? (
-                        <CheckSquare className="w-3.5 h-3.5 text-yellow-300 stroke-[2.5]" />
-                      ) : (
-                        <Square className="w-3.5 h-3.5 text-stone-400" />
-                      )}
-                      <span className={isChecked ? '' : 'line-through'}>
-                        {seg.title} ({seg.confirmedInSeg.length}H)
-                      </span>
-                      <span
-                        className={`text-[9px] px-1 py-0.2 rounded font-black ${
-                          isChecked ? 'bg-white/20 text-white' : 'bg-stone-200 text-stone-500'
-                        }`}
-                      >
-                        {isChecked ? '포함' : '제외됨'}
-                      </span>
-                    </button>
-
-                    {/* 개별 코스 단독 영구 삭제 버튼 (1클릭 삭제) */}
-                    {courseSegments.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteSingleCourse(seg.key);
-                        }}
-                        className={`py-1.5 px-2 border-l transition cursor-pointer flex items-center justify-center active:scale-90 ${
-                          isChecked
-                            ? 'border-emerald-600/70 hover:bg-rose-600 text-emerald-200 hover:text-white'
-                            : 'border-stone-200 hover:bg-rose-100 text-stone-400 hover:text-rose-600'
-                        }`}
-                        title={`${seg.title} 기록만 이 경기에서 영구 삭제`}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* 전체 선택 빠른 복귀 버튼 */}
-              {isFiltered && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedCourseKeys([])}
-                  className="py-1 px-2.5 bg-white hover:bg-stone-100 text-emerald-800 border border-emerald-300 rounded-xl text-[10.5px] font-black cursor-pointer transition active:scale-95 ml-auto"
-                >
-                  🔄 전체 다시 선택
-                </button>
-              )}
-            </div>
-
-            {/* 제외된 코스 일괄 영구 삭제 버튼 */}
-            {isFiltered && (
-              <div className="pt-2 border-t border-emerald-200 flex items-center justify-between">
-                <span className="text-[10px] text-stone-600 font-medium">
-                  * 제외된 코스는 스코어카드 및 완주증에서 자동 제외됩니다.
-                </span>
-                <button
-                  type="button"
-                  onClick={handlePruneUnselected}
-                  className="py-1 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-lg text-[10.5px] font-black flex items-center gap-1 cursor-pointer transition active:scale-95"
-                  title="체크 해제된 모든 코스를 한 번에 영구 삭제"
-                >
-                  <Scissors className="w-3 h-3" />
-                  <span>제외 코스 일괄 영구 삭제</span>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ⛳ [대표님 핵심 지시 - 방안 A]: 4-Mode Tabs (코스별, 통합, 현장 사진(N장), 공인 완주증) */}
+        {/* [과업 3]: 상단 4개 미니 탭 바 팝업화 ([코스별 관리], [통합], [현장 사진], [완주증]) */}
         <div className="grid grid-cols-4 gap-1 p-1 bg-stone-100 rounded-2xl shrink-0">
           <button
             type="button"
-            onClick={() => setModalActiveTab('COURSES')}
-            className={`py-2 px-0.5 rounded-xl font-black text-[11px] sm:text-xs transition flex items-center justify-center gap-0.5 shadow-xs cursor-pointer ${
-              modalActiveTab === 'COURSES'
-                ? 'bg-emerald-700 text-white shadow-sm ring-1 ring-emerald-500'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
-            }`}
+            onClick={() => setShowCourseManagePopup(true)}
+            className="py-2 px-0.5 rounded-xl font-black text-[11px] sm:text-xs transition flex items-center justify-center gap-0.5 bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs cursor-pointer active:scale-95"
+            title="코스 선택/체크 해제/개별 휴지통 삭제"
           >
-            <span>{isJapanese ? '📋 コース' : '📋 코스별'}</span>
-            <span className="text-[9px] px-1 py-0.2 rounded-full bg-white/20">
-              {activeSegments.length}
-            </span>
+            <span>⚙️</span>
+            <span>{isJapanese ? 'コース管理' : '코스별 관리'}</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setModalActiveTab('INTEGRATED')}
-            className={`py-2 px-0.5 rounded-xl font-black text-[11px] sm:text-xs transition flex items-center justify-center gap-0.5 shadow-xs cursor-pointer ${
-              modalActiveTab === 'INTEGRATED'
-                ? 'bg-amber-600 text-white shadow-sm ring-1 ring-amber-400'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
-            }`}
+            onClick={() => setShowIntegratedPopup(true)}
+            className="py-2 px-0.5 rounded-xl font-black text-[11px] sm:text-xs transition flex items-center justify-center gap-0.5 bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs cursor-pointer active:scale-95"
+            title="코스 통합 성적 요약 모달"
           >
-            <span>{isJapanese ? '📊 統合' : '📊 통합'}</span>
+            <span>📊</span>
+            <span>{isJapanese ? '統合' : '통합'}</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setModalActiveTab('PHOTOS')}
-            className={`py-2 px-0.5 rounded-xl font-black text-[11px] sm:text-xs transition flex items-center justify-center gap-0.5 shadow-xs cursor-pointer ${
-              modalActiveTab === 'PHOTOS'
-                ? 'bg-stone-900 text-amber-300 shadow-sm ring-1 ring-amber-400/50'
-                : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
-            }`}
+            onClick={() => setShowPhotosPopup(true)}
+            className="py-2 px-0.5 rounded-xl font-black text-[11px] sm:text-xs transition flex items-center justify-center gap-0.5 bg-white hover:bg-stone-50 text-stone-800 border border-stone-300 shadow-2xs cursor-pointer active:scale-95"
+            title="현장 사진 갤러리 팝업"
           >
-            <span>{isJapanese ? '📸 写真' : '📸 현장 사진'}</span>
+            <span>📸</span>
+            <span>{isJapanese ? '写真' : '현장 사진'}</span>
             {currentRound.photos && currentRound.photos.length > 0 && (
               <span className="text-[9px] px-1 py-0.2 rounded-full bg-amber-400 text-stone-950 font-black">
                 {currentRound.photos.length}
@@ -761,17 +649,12 @@ export function RoundScoreboardModal({
 
           <button
             type="button"
-            onClick={() => setModalActiveTab('CERTIFICATE')}
-            className={`py-2 px-0.5 rounded-xl font-black text-[11px] sm:text-xs transition flex items-center justify-center gap-0.5 shadow-xs cursor-pointer ${
-              modalActiveTab === 'CERTIFICATE'
-                ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-stone-950 shadow-sm ring-1 ring-amber-400'
-                : 'text-amber-900 hover:text-amber-950 hover:bg-amber-100/60 font-black'
-            }`}
+            onClick={() => setShowCertPopup(true)}
+            className="py-2 px-0.5 rounded-xl font-black text-[11px] sm:text-xs transition flex items-center justify-center gap-0.5 bg-white hover:bg-yellow-50 text-amber-900 border border-yellow-400 shadow-2xs cursor-pointer active:scale-95"
+            title="완주 디지털 뱃지 모달"
           >
-            <span>{isJapanese ? '📜 認定書' : '📜 완주증'}</span>
-            <span className="text-[8.5px] px-1 py-0.2 rounded bg-amber-400/40 text-amber-950 font-black">
-              공인
-            </span>
+            <span>📜</span>
+            <span>{isJapanese ? '認定書' : '완주증'}</span>
           </button>
         </div>
 
@@ -1365,6 +1248,309 @@ export function RoundScoreboardModal({
             </div>
           </div>
         )}
+
+        {/* ========================================================================= */}
+        {/* 팝업 1: [ 코스별 관리 ] 팝업 모달 */}
+        {/* ========================================================================= */}
+        {showCourseManagePopup && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 animate-fadeIn">
+            <div className="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl border-2 border-emerald-400 space-y-3.5 animate-scaleUp">
+              <div className="flex items-center justify-between pb-2 border-b border-stone-200">
+                <span className="text-sm font-black text-emerald-950 flex items-center gap-1.5">
+                  <span>⚙️</span>
+                  <span>{isJapanese ? 'コース管理 (選択および個別削除)' : '코스별 관리 (선택 및 개별 삭제)'}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowCourseManagePopup(false)}
+                  className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="text-xs text-stone-600 font-medium">
+                터치하여 스코어카드에서 <b>[제외]</b>하거나, <b>[🗑️]</b>를 눌러 해당 코스만 완전히 삭제할 수 있습니다.
+              </p>
+
+              {/* 개별 코스 토글 체크 & 단독 1클릭 삭제 버튼들 */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                {courseSegments.map((seg) => {
+                  const isChecked = activeSegments.some((s) => s.key === seg.key);
+                  return (
+                    <div
+                      key={seg.key}
+                      className={`inline-flex items-center rounded-xl text-xs font-black transition border shadow-2xs overflow-hidden ${
+                        isChecked
+                          ? 'bg-emerald-700 text-white border-emerald-800 ring-2 ring-emerald-500/30'
+                          : 'bg-stone-100 text-stone-400 border-stone-300 opacity-75'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleCourseSelection(seg.key)}
+                        className="py-1.5 pl-2.5 pr-2 flex items-center gap-1.5 cursor-pointer active:scale-95"
+                        title={isChecked ? '클릭 시 이번 스코어카드에서 임시 제외' : '클릭 시 스코어카드에 다시 포함'}
+                      >
+                        {isChecked ? (
+                          <CheckSquare className="w-3.5 h-3.5 text-yellow-300 stroke-[2.5]" />
+                        ) : (
+                          <Square className="w-3.5 h-3.5 text-stone-400" />
+                        )}
+                        <span className={isChecked ? '' : 'line-through'}>
+                          {seg.title} ({seg.confirmedInSeg.length}H)
+                        </span>
+                        <span
+                          className={`text-[9px] px-1 py-0.2 rounded font-black ${
+                            isChecked ? 'bg-white/20 text-white' : 'bg-stone-200 text-stone-500'
+                          }`}
+                        >
+                          {isChecked ? '포함' : '제외됨'}
+                        </span>
+                      </button>
+
+                      {courseSegments.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteSingleCourse(seg.key);
+                          }}
+                          className={`py-1.5 px-2 border-l transition cursor-pointer flex items-center justify-center active:scale-90 ${
+                            isChecked
+                              ? 'border-emerald-600/70 hover:bg-rose-600 text-emerald-200 hover:text-white'
+                              : 'border-stone-200 hover:bg-rose-100 text-stone-400 hover:text-rose-600'
+                          }`}
+                          title={`${seg.title} 기록만 이 경기에서 영구 삭제`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {isFiltered && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCourseKeys([])}
+                    className="py-1 px-2.5 bg-white hover:bg-stone-100 text-emerald-800 border border-emerald-300 rounded-xl text-[10.5px] font-black cursor-pointer transition active:scale-95 ml-auto"
+                  >
+                    🔄 전체 다시 선택
+                  </button>
+                )}
+              </div>
+
+              {isFiltered && (
+                <div className="pt-2 border-t border-stone-200 flex items-center justify-between">
+                  <span className="text-[10px] text-stone-500 font-medium">
+                    * 제외된 코스는 스코어카드 및 완주증에서 자동 제외됩니다.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handlePruneUnselected}
+                    className="py-1 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-lg text-[10.5px] font-black flex items-center gap-1 cursor-pointer transition active:scale-95"
+                  >
+                    <Scissors className="w-3 h-3" />
+                    <span>제외 코스 일괄 영구 삭제</span>
+                  </button>
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowCourseManagePopup(false)}
+                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-xs cursor-pointer active:scale-98"
+                >
+                  확인 완료 (스코어보드로 돌아가기)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 팝업 2: [ 통합 ] 코스 통합 성적 요약 모달 */}
+        {/* ========================================================================= */}
+        {showIntegratedPopup && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 animate-fadeIn">
+            <div className="bg-white rounded-3xl p-5 max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl border-2 border-amber-400 space-y-3.5 animate-scaleUp">
+              <div className="flex items-center justify-between pb-2 border-b border-stone-200">
+                <span className="text-sm font-black text-amber-950 flex items-center gap-1.5">
+                  <span>📊</span>
+                  <span>{isJapanese ? 'コース統合 成績要約' : '코스 통합 성적 요약'}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowIntegratedPopup(false)}
+                  className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* 동반자 전원 최종 순위 및 총 타수 요약 전광판 */}
+              <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white p-3.5 rounded-2xl shadow-md border border-emerald-800 space-y-2">
+                <div className="flex items-center justify-between text-xs border-b border-white/10 pb-1.5">
+                  <span className="font-black text-amber-300 flex items-center gap-1.5">
+                    <span>🏆</span>
+                    <span>동반자 최종 순위표</span>
+                  </span>
+                  <span className="text-[11px] text-emerald-200 font-medium">
+                    {activeConfirmedHoles.length}홀 완주 · 기준 Par {activeTotalPar}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {integratedSummary.map((item, idx) => {
+                    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : ' ';
+                    return (
+                      <div
+                        key={item.player.id}
+                        className={`p-2.5 rounded-xl border flex flex-col justify-between ${
+                          idx === 0
+                            ? 'bg-amber-500/20 border-amber-400/50 text-amber-200'
+                            : 'bg-white/5 border-white/10 text-stone-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-xs font-black truncate flex items-center gap-1">
+                            <span>{medal}</span>
+                            <span>{item.player.name}</span>
+                          </span>
+                          <span className="text-[11px] font-black text-white">
+                            {item.strokes}타
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-stone-300 font-bold mt-1">
+                          기준 대비: {item.diff === 0 ? 'E' : item.diff > 0 ? `+${item.diff}` : item.diff}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowIntegratedPopup(false)}
+                  className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-xs cursor-pointer active:scale-98"
+                >
+                  확인 (닫기)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 팝업 3: [ 현장 사진 ] 갤러리 팝업 모달 */}
+        {/* ========================================================================= */}
+        {showPhotosPopup && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 animate-fadeIn">
+            <div className="bg-white rounded-3xl p-5 max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl border-2 border-stone-800 space-y-3.5 animate-scaleUp">
+              <div className="flex items-center justify-between pb-2 border-b border-stone-200">
+                <span className="text-sm font-black text-stone-900 flex items-center gap-1.5">
+                  <span>📸</span>
+                  <span>{isJapanese ? '現場記念写真ギャラリー' : '현장 기념사진 갤러리'}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowPhotosPopup(false)}
+                  className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {currentRound.photos && currentRound.photos.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2.5">
+                  {currentRound.photos.map((imgUrl, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => setSelectedPhotoForZoom(imgUrl)}
+                      className="aspect-square rounded-2xl overflow-hidden bg-stone-900 border border-stone-200 relative group cursor-pointer shadow-xs"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={imgUrl} alt={`기념사진 ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-bold text-xs gap-1">
+                        <span>🔍 크게 보기</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 text-center text-xs text-stone-500 font-medium">
+                  📸 등록된 현장 사진이 없습니다.
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-between items-center">
+                <label className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs">
+                  <Camera className="w-4 h-4" />
+                  <span>+ 새 사진 추가</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleAddPhoto} />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowPhotosPopup(false)}
+                  className="py-2 px-4 bg-stone-800 hover:bg-stone-700 text-stone-200 font-black text-xs rounded-xl cursor-pointer"
+                >
+                  확인 (닫기)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 팝업 4: [ 완주증 ] 공인 완주 디지털 뱃지 모달 */}
+        {/* ========================================================================= */}
+        {showCertPopup && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 animate-fadeIn">
+            <div className="bg-white rounded-3xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto shadow-2xl border-2 border-yellow-400 space-y-3.5 animate-scaleUp text-center">
+              <div className="flex items-center justify-between pb-2 border-b border-stone-200">
+                <span className="text-sm font-black text-amber-950 flex items-center gap-1.5">
+                  <span>📜</span>
+                  <span>{isJapanese ? '公認 完走認定書' : '공인 완주 증명서'}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowCertPopup(false)}
+                  className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* 완주증 본문 카드 */}
+              <div className="bg-gradient-to-b from-amber-50 to-yellow-100 p-5 rounded-2xl border-2 border-amber-300 space-y-2.5">
+                <span className="text-4xl block">🏆</span>
+                <h4 className="text-base font-black text-amber-950">
+                  {currentRound.courseName} 공식 완주
+                </h4>
+                <p className="text-xs text-amber-900 font-bold">
+                  {activeSegments.map((s) => s.title).join(' + ')} ({activeConfirmedHoles.length}홀 · 기준 Par {activeTotalPar})
+                </p>
+                <div className="pt-2 text-[11px] text-stone-600 font-medium">
+                  {new Date(currentRound.startedAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowCertPopup(false)}
+                  className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black text-xs rounded-xl shadow-xs cursor-pointer active:scale-98"
+                >
+                  확인 (닫기)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

@@ -156,6 +156,9 @@ export interface RoundSession {
   roundSettings?: RoundSettings; // ⚙️ 라운드 환경 설정 (홀 정보 표기 모드 · 팝업 토글)
   roomId?: string; // 실시간 룸 동기화 ID
   customHolesMetadata?: HoleMetadata[]; // 🏌️ 실시간 팀 공유 현장 실측 제원 (Par, 거리m 등)
+  isSpecsVerified?: boolean;
+  isPaperVerified?: boolean; // 📸 실물 종이 스코어카드 AI 검증 완료 여부
+  paperScorecardPhoto?: string; // 📸 공인 실물 증빙 종이 카드 사진
   courseCompletedModal?: CourseCompletionModalInfo | null; // 🎉 9홀 코스 완주 시 다음 코스 이동/종료 선택 모달
   blocks?: CourseBlock[]; // 🧱 9홀 모듈형 코스 블록 목록 (누적 순환 보존)
 }

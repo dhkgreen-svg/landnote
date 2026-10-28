@@ -55,6 +55,7 @@ import { formatPlayerDisplayName } from '@/lib/playerUtils';
 import { PILGRIMAGE_COURSES, PilgrimageStorage, PilgrimageCourse } from '@/lib/pilgrimageStorage';
 import { PilgrimageDetailModal } from '@/components/PilgrimageDetailModal';
 import { RoundScoreboardModal } from '@/components/RoundScoreboardModal';
+import { PaperScorecardModal } from '@/components/PaperScorecardModal';
 import { RestaurantStorage } from '@/lib/restaurantStorage';
 import { ParShotAnalyticsWidget } from '@/components/ParShotAnalyticsWidget';
 
@@ -81,6 +82,7 @@ function ChronicleContent() {
   const [selectedMedalModal, setSelectedMedalModal] = useState<'HIO' | 'EAGLE' | 'ALBATROSS' | null>(null);
   const [selectedPilgrimCourse, setSelectedPilgrimCourse] = useState<PilgrimageCourse | null>(null);
   const [selectedRoundForPopup, setSelectedRoundForPopup] = useState<RoundSession | null>(null);
+  const [showPaperScorecardModal, setShowPaperScorecardModal] = useState<boolean>(false);
   const [timelineFilter, setTimelineFilter] = useState<'OFFICIAL' | 'ALL'>('OFFICIAL');
   const [gourmetBadgeCount, setGourmetBadgeCount] = useState<number>(0);
 
@@ -439,6 +441,33 @@ function ChronicleContent() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 📸 [과업 4]: 종이 스코어카드 AI 사진 자동 입력 및 하이브리드 교차 검증 배너 */}
+      <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 p-0.5 rounded-3xl shadow-md">
+        <button
+          type="button"
+          onClick={() => setShowPaperScorecardModal(true)}
+          className="w-full bg-[#0a1826] hover:bg-[#0f2338] text-white p-3.5 sm:p-4 rounded-[22px] flex items-center justify-between transition active:scale-[0.99] cursor-pointer group"
+        >
+          <div className="flex items-center gap-3 text-left">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-stone-950 flex items-center justify-center font-black text-xl shadow-xs group-hover:scale-110 transition">
+              📷
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5 font-black text-sm sm:text-base text-yellow-300">
+                <span>종이 스코어카드 AI 자동 입력</span>
+                <span className="text-[10px] bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 px-1.5 py-0.2 rounded-full font-bold">
+                  Vision AI
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-300 font-medium mt-0.5">
+                클럽전·대회 다중 조(최대 10팀) 연속 촬영 시 36홀 통합 순위표 및 교차 검증 자동 생성
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-amber-300 group-hover:translate-x-1 transition shrink-0" />
+        </button>
       </div>
 
       {/* 👑 VIP 평생 고유번호 카드 & PC 연동 배너 (대표님 지침: 7자리 번호로 비밀번호 없이 연동) */}
@@ -2375,6 +2404,15 @@ function ChronicleContent() {
         onClose={() => {
           setShowLoginModal(false);
           setMemberCode(getSavedMemberCode());
+        }}
+      />
+
+      {/* 📸 [과업 4]: 종이 스코어카드 AI 자동 입력 & 교차 검증 모달 */}
+      <PaperScorecardModal
+        isOpen={showPaperScorecardModal}
+        onClose={() => setShowPaperScorecardModal(false)}
+        onMergedSuccess={() => {
+          setSyncVersion((v) => v + 1);
         }}
       />
 

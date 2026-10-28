@@ -154,6 +154,8 @@ export default function RoundPlayPage() {
   const [editPlayersDraft, setEditPlayersDraft] = useState<RoundPlayer[]>([]);
   const [shareFeedbackToast, setShareFeedbackToast] = useState<string | null>(null);
   const [showWatchConnectModal, setShowWatchConnectModal] = useState<boolean>(false);
+  // [과업 1]: 상단 헤더 인라인 Par 변경 칩 팝업 상태
+  const [showInlineParChips, setShowInlineParChips] = useState<boolean>(false);
 
   // 🏌️ [5대 마스터 아키텍처 1] 2단계 경기 동선: 'TEE_SHOT' (1단계 코스안내 전광판) | 'SCORING' (2단계 스코어 기입창)
   const [holeStep, setHoleStep] = useState<'TEE_SHOT' | 'SCORING'>(() => {
@@ -2093,13 +2095,13 @@ export default function RoundPlayPage() {
           setTransitionBannerInfo(null);
         }, 1500);
       }
-      // OFF (기본값) 및 ON 공통: 홀 전환 시 팝업 없이 즉시 다음 홀 스코어보드 유지 (초고속 진행)
-      setHoleStep('SCORING');
+      // [과업 1]: 매 홀(1~9번 홀) 전환 시 검증 루틴 고정! 홀 이동 시마다 반드시 1단 일체형 안내판을 거쳐 팻말 확인 후 넘어가도록 프로세스 고정
+      setHoleStep('TEE_SHOT');
       setRestingPlayerIds([]);
       updateSession({
         ...session,
         currentHole: nextH,
-        holeStep: 'SCORING',
+        holeStep: 'TEE_SHOT',
         confirmedHoles: currentConfirmed,
         players: playersForNextHole,
       });
@@ -2701,16 +2703,17 @@ export default function RoundPlayPage() {
       {/* ========================================================================= */}
       {holeStep === 'TEE_SHOT' && (
         <div className="space-y-3 animate-fadeIn">
-          {/* 1. 초대형 전광판 (홀 번호 A-3, Par, 거리m 고대비 표출) */}
-          <div className={`rounded-3xl p-5 shadow-xl text-center border-2 transition ${
+          {/* ⛳ [과업 1]: 티샷 전 [1단 일체형 카드] - 전광판 + Par 3-Way + 알약형 확인 버튼 완전 일체화 */}
+          <div className={`rounded-3xl p-5 sm:p-6 shadow-2xl text-center border-2 transition ${
             sunlightMode
-              ? 'bg-black text-white border-yellow-400'
-              : 'bg-gradient-to-b from-emerald-950 via-emerald-900 to-teal-950 text-white border-emerald-500/60'
+              ? 'bg-black text-white border-yellow-400 ring-4 ring-yellow-400/20'
+              : 'bg-gradient-to-b from-emerald-950 via-emerald-900 to-teal-950 text-white border-emerald-500/70 ring-4 ring-emerald-500/20'
           }`}>
+            {/* 상단 코스 및 구장명 */}
             {(() => {
               const dual = getCourseDualName(course || session.courseName, isJapanese);
               return (
-                <div className="flex items-center justify-between text-xs font-black pb-2.5 border-b border-white/20">
+                <div className="flex items-center justify-between text-xs font-black pb-3 border-b border-white/15">
                   <div className="flex flex-col text-left min-w-0 pr-2">
                     <span className={`text-sm font-black truncate flex items-center gap-1.5 ${sunlightMode ? 'text-yellow-300' : 'text-emerald-300'}`}>
                       {dual.flag && <span>{dual.flag}</span>}
@@ -2722,328 +2725,202 @@ export default function RoundPlayPage() {
                       </span>
                     )}
                     {gpsChecked && (
-                      <div className="mt-1">
+                      <div className="mt-0.5">
                         {gpsVerified ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 shadow-2xs">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/30 text-emerald-300 border border-emerald-400/50">
                             <span>📍</span>
-                            <span>{isJapanese ? '現地GPS認証完了' : '현장 GPS 인증 완료'} ({gpsDistance !== null ? `${gpsDistance}m` : '0m'})</span>
+                            <span>{isJapanese ? '現地GPS認証完了' : '현장 GPS 인증 완료'}</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/30 text-amber-300 border border-amber-400/60 shadow-2xs">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/30 text-amber-300 border border-amber-400/60">
                             <span>⚠️</span>
-                            <span>{isJapanese ? 'GPS未認証 (公式統計未反映)' : '현장 GPS 미인증 (공식 통계 미반영)'}</span>
+                            <span>{isJapanese ? 'GPS未認証' : '현장 GPS 미인증'}</span>
                           </span>
                         )}
                       </div>
                     )}
                   </div>
                   <span className="bg-yellow-400 text-stone-950 px-2.5 py-0.5 rounded-full text-[11px] font-black shadow-xs shrink-0 self-start">
-                    {isJapanese ? '⛳ ステップ1: ティーショット前 案内' : isEnglish ? '⛳ Step 1: Pre-Tee Billboard' : '⛳ 1단계: 티샷 전 안내판'}
+                    {isJapanese ? '⛳ ティーショット前 案内' : isEnglish ? '⛳ Step 1: Pre-Tee' : '⛳ 1단계: 티샷 전 안내판'}
                   </span>
                 </div>
               );
             })()}
 
-            {/* 초대형 홀 번호 표출 (상단 시원한 전광판) */}
-            <div className="py-3">
-              <div className="text-xs font-extrabold tracking-wider text-emerald-200/90 mb-0.5">
+            {/* 1. 상단: [ A-1 번홀 ] (특대형 굵은 폰트) */}
+            <div className="py-4">
+              <div className="text-xs font-extrabold tracking-wider text-emerald-200/90 mb-1">
                 {currentRoundNumber > 1 ? (isJapanese ? `[${currentRoundNumber}周目 巡回プレー]` : `[${currentRoundNumber}회차 순환 플레이]`) : (isJapanese ? '現在攻略ホール' : '현재 공략 홀')}
               </div>
-              <div className={`text-6xl font-black tracking-tight ${
+              <div className={`text-6xl sm:text-7xl font-black tracking-tight ${
                 sunlightMode ? 'text-yellow-300' : 'text-yellow-300 drop-shadow-md'
               }`}>
                 {courseLetter}-{holeInCourse}
-                <span className="text-2xl font-bold ml-1.5 text-white">{isJapanese ? '番ホール' : '번 홀'}</span>
+                <span className="text-2xl sm:text-3xl font-bold ml-1.5 text-white">{isJapanese ? '番ホール' : '번 홀'}</span>
               </div>
             </div>
 
-            {/* 초대형 Par & 거리m 제원 카드 (대표님 지침: 미확인 시 가짜 더미 숫자 4/77m 완전 블라인드 가림) */}
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/20">
-              {/* Par 카드 */}
-              <div 
-                onClick={openHoleSpecModal}
-                className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center cursor-pointer active:scale-95 transition ${
-                  !isHoleVerified
-                    ? 'border-amber-400/60 bg-amber-950/30 hover:bg-amber-900/40 shadow-inner'
-                    : sunlightMode
-                    ? 'bg-zinc-900 border-yellow-400'
-                    : 'bg-black/35 border-emerald-400/40 shadow-inner'
-                }`}
-                title={isJapanese ? 'タップしてPar入力' : '터치하여 Par 입력'}
-              >
-                <div className="flex items-center gap-1 mb-1">
-                  <span className="text-[11px] font-bold text-stone-300">{isJapanese ? '基準打数' : isEnglish ? 'Standard Par' : '기준 타수'}</span>
-                  {isHoleVerified ? (
-                    <span className="text-[9px] bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 px-1 py-0.2 rounded font-extrabold">
-                      {isJapanese ? '公認' : '공인'}
-                    </span>
-                  ) : (
-                    <span className="text-[9px] bg-amber-500/30 text-yellow-300 border border-amber-400/50 px-1.5 py-0.2 rounded font-bold">
-                      {isJapanese ? '基本設定' : '기본값'}
-                    </span>
-                  )}
-                </div>
-                {isHoleVerified ? (
-                  <span className={`text-4xl font-black ${
-                    sunlightMode ? 'text-yellow-300' : 'text-yellow-400'
-                  }`}>
-                    Par {holeMetadata.par}
-                  </span>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-0.5">
-                    <span className="text-4xl font-black text-yellow-400 tracking-wider">
-                      Par 3
-                    </span>
-                    <span className="text-[10px] text-amber-200 font-bold mt-1">
-                      {isJapanese ? '(基本Par3 · 変更可)' : '(기본 Par 3 · 변경가능)'}
-                    </span>
-                  </div>
-                )}
+            {/* 2. 중앙: 기준 타수 3-Way 원터치 버튼 (현재 Par 하이라이트 활성화, 터치 시 즉시 변경) */}
+            <div className="py-3 px-3 bg-black/30 rounded-2xl border border-white/10 mb-4 max-w-sm mx-auto">
+              <div className="text-xs font-extrabold text-stone-300 mb-2 flex items-center justify-center gap-1.5">
+                <span>⛳ {isJapanese ? '現地看板 基準打数' : '현장 팻말 기준 타수'}</span>
+                <span className="text-[10px] text-amber-300 font-bold">{isJapanese ? '(タップで即時変更)' : '(터치 시 즉시 변경)'}</span>
               </div>
-
-              {/* 거리 카드 */}
-              <div 
-                onClick={openHoleSpecModal}
-                className={`p-3.5 rounded-2xl border flex flex-col items-center justify-center cursor-pointer active:scale-95 transition ${
-                  !isHoleVerified ? 'border-amber-400/60 bg-amber-950/30 hover:bg-amber-900/40 shadow-inner' :
-                  sunlightMode ? 'bg-zinc-900 border-yellow-400' : 'bg-black/35 border-emerald-400/40 shadow-inner'
-                }`}
-                title={isJapanese ? 'タップして距離入力' : '터치하여 거리 입력'}
-              >
-                <div className="flex items-center gap-1 mb-1">
-                  <span className="text-[11px] font-bold text-stone-300">{isJapanese ? '公式距離' : isEnglish ? 'Distance' : '공식 거리'}</span>
-                  {isHoleVerified ? (
-                    <span className="text-[9px] bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 px-1 py-0.2 rounded font-extrabold">
-                      {isJapanese ? '実測済' : '실측'}
-                    </span>
-                  ) : (
-                    <span className="text-[9px] bg-stone-600/50 text-stone-300 border border-stone-500/50 px-1.5 py-0.2 rounded font-bold">
-                      {isJapanese ? '未確認' : '미확인'}
-                    </span>
-                  )}
-                </div>
-                {isHoleVerified ? (
-                  <span className="text-4xl font-black text-white">
-                    {holeMetadata.distanceMeter}<span className="text-2xl font-bold ml-0.5">m</span>
-                  </span>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-0.5">
-                    <span className="text-4xl font-black text-stone-300 tracking-wider">
-                      - <span className="text-2xl font-bold">m</span>
-                    </span>
-                    <span className="text-[10px] text-stone-300 font-bold mt-1">
-                      {isJapanese ? '現地距離未確認' : '현장 거리 미확인'}
-                    </span>
-                  </div>
-                )}
+              <div className="grid grid-cols-3 gap-2">
+                {[3, 4, 5].map((pVal) => {
+                  const isSelected = (Number(holeMetadata.par) || 3) === pVal;
+                  return (
+                    <button
+                      key={pVal}
+                      type="button"
+                      onClick={() => {
+                        handleSaveHoleSpec(pVal, holeMetadata.distanceMeter || 50);
+                      }}
+                      className={`py-2.5 rounded-xl font-black text-base sm:text-lg transition active:scale-95 cursor-pointer flex flex-col items-center justify-center ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-yellow-400 to-amber-400 text-stone-950 font-black shadow-lg ring-2 ring-yellow-200 scale-105'
+                          : 'bg-white/10 hover:bg-white/20 text-stone-300 border border-white/15'
+                      }`}
+                    >
+                      <span>{isJapanese ? `Par ${pVal}` : `파${pVal}`}</span>
+                      <span className={`text-[10px] font-bold ${isSelected ? 'text-stone-900' : 'text-stone-400'}`}>
+                        Par {pVal}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* 제원 수정 버튼 & 카운트 모드 미니 토글 */}
-            <div className="flex items-center justify-between pt-3.5 mt-1 text-xs">
-              <button
-                type="button"
-                onClick={openHoleSpecModal}
-                className={`${
-                  !isHoleVerified
-                    ? 'bg-gradient-to-r from-amber-600 to-yellow-600 text-stone-950 border-2 border-yellow-300 font-black text-xs px-3.5 py-2 shadow-lg animate-pulse'
-                    : 'bg-emerald-800 hover:bg-emerald-700 text-emerald-100 hover:text-white px-3 py-1.5 border border-emerald-500 font-black text-xs shadow-sm'
-                } rounded-xl flex items-center gap-1.5 transition active:scale-95 cursor-pointer`}
-                title={isJapanese ? '現地の案内看板と異なる場合は修正' : '현장 팻말과 다를 경우 수정'}
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                <span>
-                  {!isHoleVerified
-                    ? (isJapanese ? '✏️ 現地看板の諸元を入力' : '✏️ 현장 팻말 제원 입력')
-                    : (isJapanese ? '✏️ 現地諸元を修正' : isEnglish ? '✏️ Edit Spec' : '✏️ 현장 제원 수정')}
-                </span>
-              </button>
+            {/* 3. 하단 확인 버튼: 카드 내부 중앙에 약 60~70% 너비의 단정한 알약형(Pill/Rounded) 버튼 */}
+            <div className="flex justify-center pt-1 pb-1">
+              {isFirstHole || isCurrentUserLeader ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    lastLocalActionTimeRef.current = Date.now();
+                    const nextStep: 'SCORING' = 'SCORING';
+                    setHoleStep(nextStep);
+                    const updated: RoundSession = {
+                      ...session,
+                      holeStep: nextStep,
+                      status: 'IN_PROGRESS',
+                      updatedAt: new Date().toISOString(),
+                    };
+                    updateSession(updated);
 
-              {/* 카운트 방식 2분할 토글 (localStorage 영구 연동) */}
-              <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/20">
-                <span className="text-[10px] text-stone-300 font-bold px-1">{isJapanese ? '方式:' : '방식:'}</span>
-                <button
-                  type="button"
-                  onClick={() => selectCountingMode('PAR_BASE')}
-                  className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
-                    countingMode === 'PAR_BASE'
-                      ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
-                      : 'text-stone-300 hover:text-white'
+                    if (typeof window !== 'undefined') {
+                      const effRoomId = session?.roomId || roundId || '';
+                      try {
+                        const bc = new BroadcastChannel('parkon_round_channel');
+                        bc.postMessage({
+                          type: 'TEE_SHOT_STARTED',
+                          roomId: effRoomId,
+                          roundId: updated.id,
+                          holeStep: 'SCORING',
+                          currentHole: updated.currentHole,
+                          session: updated,
+                        });
+                        bc.close();
+                      } catch (e) {}
+
+                      try {
+                        if (updated.clubRoomId && updated.clubGroupNumber) {
+                          localStorage.setItem(
+                            `parkon_group_active_${updated.clubRoomId}_g${updated.clubGroupNumber}`,
+                            JSON.stringify({
+                              active: true,
+                              holeStep: 'SCORING',
+                              currentHole: updated.currentHole,
+                              roundId: updated.id,
+                              timestamp: Date.now(),
+                            })
+                          );
+                        }
+                      } catch (e) {}
+                    }
+
+                    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+                      try { navigator.vibrate?.(40); } catch (e) {}
+                    }
+                  }}
+                  className={`w-[68%] min-w-[200px] max-w-[280px] h-12 sm:h-13 rounded-full font-black text-base sm:text-lg shadow-xl border-2 transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
+                    sunlightMode
+                      ? 'bg-yellow-400 text-black border-white hover:bg-yellow-300'
+                      : 'bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-500 text-white border-emerald-300 hover:from-emerald-400 hover:to-teal-400 ring-2 ring-white/30'
                   }`}
                 >
-                  {t.round.score_mode_par}
+                  <span className="text-xl">✅</span>
+                  <span>{isJapanese ? '確認 (ティーショット開始)' : '확인 (티샷 시작)'}</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => selectCountingMode('ZERO_BASE')}
-                  className={`px-2 py-0.5 rounded-lg text-[11px] font-black transition cursor-pointer ${
-                    countingMode === 'ZERO_BASE'
-                      ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
-                      : 'text-stone-300 hover:text-white'
-                  }`}
-                >
-                  {t.round.score_mode_zero}
-                </button>
-              </div>
+              ) : (
+                <div className="w-[75%] py-2.5 px-3 rounded-full bg-amber-500/20 border border-amber-400/50 text-amber-300 text-center flex items-center justify-center gap-1.5 text-xs font-bold animate-pulse">
+                  <span>👑</span>
+                  <span>{currentLeaderPlayer?.name || '조장'}님이 티샷을 시작하면 전환됩니다</span>
+                </div>
+              )}
             </div>
           </div>
 
           {/* 2. 상단 로컬룰 주의 띠 (로컬룰 등록 시만 표시) */}
           <LocalRuleBanner hole={actualHoleNumber} localRule={holeMetadata.localRule} />
 
-          {/* 3. [최상단 배치] 단일 대형 버튼: [ 🏌️ 확인 완료 (티샷 시작) ] (1번 홀은 누구나 시작 가능, 2번 홀부터는 조장 통제) */}
-          <div className="pt-2 space-y-2.5">
-            {isFirstHole || isCurrentUserLeader ? (
-              <button
-                type="button"
-                onClick={() => {
-                  lastLocalActionTimeRef.current = Date.now();
-                  const nextStep: 'SCORING' = 'SCORING';
-                  setHoleStep(nextStep);
-                  const updated: RoundSession = {
-                    ...session,
-                    holeStep: nextStep,
-                    status: 'IN_PROGRESS',
-                    updatedAt: new Date().toISOString(),
-                  };
-                  updateSession(updated);
+          {/* 코스 공략 제공 */}
+          <TipCard
+            hole={actualHoleNumber}
+            courseLabel={`${courseLetter}-${holeInCourse}번 홀`}
+            tip={currentEffectiveTip}
+            onSaveTip={handleSaveHoleTip}
+          />
 
-                  if (typeof window !== 'undefined') {
-                    const effRoomId = session?.roomId || roundId || '';
-                    try {
-                      const bc = new BroadcastChannel('parkon_round_channel');
-                      bc.postMessage({
-                        type: 'TEE_SHOT_STARTED',
-                        roomId: effRoomId,
-                        roundId: updated.id,
-                        holeStep: 'SCORING',
-                        currentHole: updated.currentHole,
-                        session: updated,
-                      });
-                      bc.close();
-                    } catch (e) {}
-
-                    try {
-                      if (updated.clubRoomId && updated.clubGroupNumber) {
-                        localStorage.setItem(
-                          `parkon_group_active_${updated.clubRoomId}_g${updated.clubGroupNumber}`,
-                          JSON.stringify({
-                            active: true,
-                            holeStep: 'SCORING',
-                            currentHole: updated.currentHole,
-                            roundId: updated.id,
-                            timestamp: Date.now(),
-                          })
-                        );
-                      }
-                    } catch (e) {}
-                  }
-
-                  if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-                    try { navigator.vibrate?.(50); } catch (e) {}
-                  }
-                }}
-                className={`w-full h-16 rounded-2xl font-black text-lg sm:text-xl shadow-xl border-2 transition flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer ${
-                  sunlightMode
-                    ? 'bg-yellow-400 text-black border-white ring-4 ring-yellow-400/40 hover:bg-yellow-300'
-                    : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white border-emerald-400 ring-4 ring-emerald-500/20 hover:from-emerald-500 hover:to-teal-500'
-                }`}
-              >
-                <span className="text-2xl">🏌️</span>
-                <span>
-                  {isCurrentUserLeader
-                    ? t.round.tee_shot_start
-                    : isFirstHole
-                    ? (isJapanese ? '確認完了 (ティーショット開始)' : '확인 완료 (티샷 시작)')
-                    : (isJapanese ? '確認完了 (ティーショット開始)' : '확인 완료 (티샷 시작)')}
-                </span>
-                <ChevronRight className="w-6 h-6 ml-1" />
-              </button>
-            ) : (
-              <div className="w-full py-4 px-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/40 text-amber-300 text-center flex flex-col items-center justify-center gap-1.5 shadow-lg animate-pulse">
-                <div className="flex items-center gap-2 font-black text-sm sm:text-base">
-                  <span>👑</span>
-                  <span>{currentLeaderPlayer?.name || '조장'}님이 티샷을 시작하면 자동으로 전환됩니다</span>
-                </div>
-                <div className="text-xs text-amber-400/80 flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                  <span>{isJapanese ? 'リアルタイム同期待機中 (コース諸元を先にご確認ください)' : '실시간 동기화 대기 중 (코스 제원을 먼저 확인하세요)'}</span>
-                </div>
+          {/* [2. 실시간 스코어판 메인 버튼] */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowTotalScoreModal(true)}
+              className="w-full min-h-[48px] py-3 px-4 rounded-2xl font-black text-sm sm:text-base flex items-center justify-between shadow-lg border-2 transition active:scale-[0.98] cursor-pointer bg-[#0f1d31] hover:bg-[#182d4b] text-white border-slate-600 ring-2 ring-blue-500/20"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="text-xl shrink-0">📊</span>
+                <span className="tracking-tight truncate">{isJapanese ? 'スコアボードを見る' : isEnglish ? 'Live Scoreboard' : '현재 실시간 스코어판 보기'}</span>
               </div>
-            )}
-
-            {/* 코스 공략 제공 (확인 완료 버튼 밑으로 배치): 스마트 2단계 및 고수 꿀팁 등록 연동 */}
-            <TipCard
-              hole={actualHoleNumber}
-              courseLabel={`${courseLetter}-${holeInCourse}번 홀`}
-              tip={currentEffectiveTip}
-              onSaveTip={handleSaveHoleTip}
-            />
-
-            {/* [2. 실시간 스코어판 메인 버튼 (중앙 집중형: 너비 100%, 52px 이상, 다크 네이비 포인트)] */}
-            <div className="pt-1">
-              <button
-                type="button"
-                onClick={() => setShowTotalScoreModal(true)}
-                className="w-full min-h-[52px] py-3.5 px-4 rounded-2xl font-black text-sm sm:text-base flex items-center justify-between shadow-lg border-2 transition active:scale-[0.98] cursor-pointer bg-[#0f1d31] hover:bg-[#182d4b] text-white border-slate-600 ring-2 ring-blue-500/20"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="text-xl shrink-0">📊</span>
-                  <span className="tracking-tight truncate">{isJapanese ? 'スコアボードを見る' : isEnglish ? 'Live Scoreboard' : '현재 실시간 스코어판 보기'}</span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="shrink-0 whitespace-nowrap bg-emerald-500 text-stone-950 font-black text-xs px-2.5 py-1 rounded-full shadow-xs">
-                    {isJapanese ? `${confirmedHoles.length}H累計` : isEnglish ? `${confirmedHoles.length}H Total` : `${confirmedHoles.length}홀 누적`}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-stone-300 shrink-0" />
-                </div>
-              </button>
-            </div>
-
-            {/* [3. 서브 기능 액션 바 (하단 보조 메뉴: 12px 간격 mt-3, 톤다운 3대 보조 버튼)] */}
-            <div className="mt-3 grid grid-cols-3 gap-2 pb-1">
-              {/* 1. [ 🔄 다른 코스 이동 ] */}
-              <button
-                type="button"
-                onClick={() => setIsSwitchCourseModalOpen(true)}
-                className="py-2.5 px-1.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 shadow-2xs"
-              >
-                <span className="text-sm">🔄</span>
-                <span className="truncate">{isJapanese ? '他のコース' : '다른 코스 이동'}</span>
-              </button>
-
-              {/* 2. [ ☕ 잠시 빠지기 ] */}
-              <button
-                type="button"
-                onClick={() => handleTriggerRest()}
-                className="py-2.5 px-1.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer bg-stone-100 hover:bg-amber-50 text-stone-700 hover:text-amber-900 border border-stone-300 hover:border-amber-300 shadow-2xs"
-              >
-                <span className="text-sm">☕</span>
-                <span className="truncate">{isJapanese ? '一時退出' : '잠시 빠지기'}</span>
-              </button>
-
-              {/* 3. [ ⏹️ 경기 종료 ] - 차분한 톤다운 레드 */}
-              <button
-                type="button"
-                onClick={() => setIsExitModalOpen(true)}
-                className="py-2.5 px-1.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs"
-              >
-                <span className="text-sm">⏹️</span>
-                <span className="truncate font-black">{isJapanese ? 'ラウンド終了' : '경기 종료'}</span>
-              </button>
-            </div>
-
-            {/* [대표님 지침]: 조장 진행 안내 바 - 제일 밑으로 배치 */}
-            {!isCurrentUserLeader && (
-              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center gap-1.5 text-xs text-amber-900 dark:text-amber-200 font-bold shadow-xs text-center">
-                <span className="text-base">👑</span>
-                <span>
-                  {isJapanese
-                    ? `代表(${currentLeaderPlayer?.name || '代表'})がティーショットを開始するとスコア入力画面に自動切替されます。`
-                    : `조장(${currentLeaderPlayer?.name || '조장'})님이 티샷을 진행하면 전원 스코어 입력창으로 자동 전환됩니다.`}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="shrink-0 whitespace-nowrap bg-emerald-500 text-stone-950 font-black text-xs px-2.5 py-1 rounded-full shadow-xs">
+                  {isJapanese ? `${confirmedHoles.length}H累計` : `${confirmedHoles.length}홀 누적`}
                 </span>
+                <ChevronRight className="w-4 h-4 text-stone-300 shrink-0" />
               </div>
-            )}
+            </button>
+          </div>
+
+          {/* [3. 서브 기능 액션 바] */}
+          <div className="mt-3 grid grid-cols-3 gap-2 pb-1">
+            <button
+              type="button"
+              onClick={() => setIsSwitchCourseModalOpen(true)}
+              className="py-2.5 px-1.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 shadow-2xs"
+            >
+              <span className="text-base sm:text-sm">🔄</span>
+              <span>{isJapanese ? 'コース移動' : '다른 코스 이동'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTriggerRest()}
+              className="py-2.5 px-1.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs"
+            >
+              <span className="text-base sm:text-sm">☕</span>
+              <span>{isJapanese ? '一時休憩' : '잠시 빠지기'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsExitModalOpen(true)}
+              className="py-2.5 px-1.5 rounded-xl font-bold text-xs flex flex-col sm:flex-row items-center justify-center gap-1 transition active:scale-95 cursor-pointer bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-2xs"
+            >
+              <span className="text-base sm:text-sm">🏁</span>
+              <span>{isJapanese ? 'ゲーム終了' : '경기 종료'}</span>
+            </button>
           </div>
         </div>
       )}
@@ -3053,143 +2930,74 @@ export default function RoundPlayPage() {
       {/* ========================================================================= */}
       {holeStep === 'SCORING' && (
         <div className="space-y-2.5 animate-fadeIn">
-          {/* 동반자 실시간 뷰어 상태 띠 */}
-          {!isCurrentUserLeader && (
-            <div className="p-2.5 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-between text-xs text-teal-900 dark:text-teal-200 font-bold shadow-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
-                <span>👤 {isJapanese ? '同伴者リアルタイムビューア (代表入力同期中 🟢)' : '동반자 실시간 뷰어 (조장 입력 실시간 연동 중 🟢)'}</span>
-              </div>
-              <span className="text-[10px] text-teal-700 dark:text-teal-300 font-extrabold bg-teal-100 dark:bg-teal-900/60 px-2 py-0.5 rounded-full shrink-0">
-                👑 {isJapanese ? '代表' : '조장'}: {currentLeaderPlayer?.name || '조장'}
-              </span>
-            </div>
-          )}
-
-          {/* 상단 미니 바: [ ◀ 코스 제원 다시보기 ] + 홀 정보 + 카운트 방식 표시 */}
-          <div className={`flex items-center justify-between p-2.5 sm:p-3 gap-1.5 sm:gap-2 rounded-2xl border transition ${
-            sunlightMode
-              ? 'bg-black text-white border-yellow-400 shadow-md'
-              : 'bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 text-white border-emerald-600 shadow-xs'
-          }`}>
+          {/* 상단 통합 제어 바 */}
+          <div className="bg-gradient-to-r from-emerald-950 via-teal-950 to-emerald-950 text-white p-3 rounded-2xl flex items-center justify-between shadow-lg border border-emerald-500/40 relative">
             <button
               type="button"
               onClick={() => {
-                lastLocalActionTimeRef.current = Date.now();
                 const prevStep: 'TEE_SHOT' = 'TEE_SHOT';
                 setHoleStep(prevStep);
                 const updated: RoundSession = { ...session, holeStep: prevStep, updatedAt: new Date().toISOString() };
                 updateSession(updated);
               }}
-              className="bg-white/20 hover:bg-white/30 text-white text-[11px] sm:text-xs font-black px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl transition active:scale-95 flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
+              className="bg-white/20 hover:bg-white/30 text-white text-[11px] sm:text-xs font-black px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1 transition active:scale-95 cursor-pointer shrink-0"
+              title={isJapanese ? 'コース案内に戻る' : '코스 안내판으로 돌아가기'}
             >
               <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span>{isJapanese ? 'コース諸元' : isEnglish ? 'Course Spec' : '코스 제원'}</span>
+              <span>{isJapanese ? '案内板' : '안내판'}</span>
             </button>
 
-            <div className="text-center flex items-center justify-center gap-1.5 sm:gap-2 shrink-0">
-              {effectiveHoleDisplayMode === 'HOLE_ONLY' ? (
-                /* (○) 1. 홀명만: 헤더에 'A-1 홀'만 표기 (연필 ✏️ 숨김 / 내부 타수·공식 Par 연산은 100% 정상 작동) */
-                <span className="font-black text-sm sm:text-base text-yellow-300 drop-shadow-xs whitespace-nowrap">
-                  {courseLetter}-{holeInCourse}{isJapanese ? '番ホール' : '번 홀'}
+            {/* [과업 1]: 상단 헤더 중앙에 거리/기타 라벨 없이 A-1 번홀 · Par 3만 특대형 표출 및 Par 터치 시 인라인 정정 칩 팝업 */}
+            <div className="relative flex flex-col items-center justify-center shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowInlineParChips(!showInlineParChips)}
+                className="flex items-center gap-1.5 bg-black/40 hover:bg-black/60 px-3 py-1 rounded-2xl border border-white/20 transition cursor-pointer active:scale-95"
+                title="터치하여 기준 타수(Par) 정정"
+              >
+                <span className="font-black text-base sm:text-lg text-yellow-300 drop-shadow-xs whitespace-nowrap">
+                  {courseLetter}-{holeInCourse} 번홀 · Par {holeMetadata.par || 3}
                 </span>
-              ) : effectiveHoleDisplayMode === 'DISTANCE' ? (
-                /* (○) 3. 거리까지: 헤더에 'A-1 홀 · Par 3 60m ✏️' 표기 (조장 전용 연필) */
-                isCurrentUserLeader ? (
-                  <button
-                    type="button"
-                    onClick={openHoleSpecModal}
-                    className="bg-black/30 hover:bg-black/50 text-white border border-white/20 hover:border-emerald-400 px-2.5 py-0.5 rounded-xl text-[11px] sm:text-xs font-black flex items-center gap-1.5 transition active:scale-95 cursor-pointer whitespace-nowrap shadow-xs"
-                    title={isJapanese ? '諸元修正' : '제원 수정'}
-                  >
-                    <span className="font-black text-sm sm:text-base text-yellow-300 drop-shadow-xs">
-                      {courseLetter}-{holeInCourse}{isJapanese ? '番ホール' : '번 홀'}
-                    </span>
-                    <span className="text-stone-300 text-xs font-bold">·</span>
-                    <span className="text-emerald-300 font-black">
-                      Par {holeMetadata.par || 3}
-                    </span>
-                    <span className="text-white font-bold">
-                      {holeMetadata.distanceMeter ? `${holeMetadata.distanceMeter}m` : (isHoleVerified ? '' : '-m')}
-                    </span>
-                    <Pencil className="w-2.5 h-2.5 text-amber-300 ml-0.5" />
-                  </button>
-                ) : (
-                  <div
-                    className="bg-black/30 text-white border border-white/20 px-2.5 py-0.5 rounded-xl text-[11px] sm:text-xs font-black flex items-center gap-1.5 whitespace-nowrap shadow-xs"
-                  >
-                    <span className="font-black text-sm sm:text-base text-yellow-300 drop-shadow-xs">
-                      {courseLetter}-{holeInCourse}{isJapanese ? '番ホール' : '번 홀'}
-                    </span>
-                    <span className="text-stone-300 text-xs font-bold">·</span>
-                    <span className="text-emerald-300 font-black">
-                      Par {holeMetadata.par || 3}
-                    </span>
-                    <span className="text-white font-bold">
-                      {holeMetadata.distanceMeter ? `${holeMetadata.distanceMeter}m` : (isHoleVerified ? '' : '-m')}
-                    </span>
-                  </div>
-                )
-              ) : (
-                /* (●) 2. 파까지 (기본): 헤더에 'A-1 홀 · Par 3 ✏️' 표기 (조장 전용 연필) */
-                isCurrentUserLeader ? (
-                  <button
-                    type="button"
-                    onClick={openHoleSpecModal}
-                    className="bg-black/30 hover:bg-black/50 text-white border border-white/20 hover:border-emerald-400 px-2.5 py-0.5 rounded-xl text-[11px] sm:text-xs font-black flex items-center gap-1.5 transition active:scale-95 cursor-pointer whitespace-nowrap shadow-xs"
-                    title={isJapanese ? '諸元修正' : '제원 수정'}
-                  >
-                    <span className="font-black text-sm sm:text-base text-yellow-300 drop-shadow-xs">
-                      {courseLetter}-{holeInCourse}{isJapanese ? '番ホール' : '번 홀'}
-                    </span>
-                    <span className="text-stone-300 text-xs font-bold">·</span>
-                    <span className="text-emerald-300 font-black">
-                      Par {holeMetadata.par || 3}
-                    </span>
-                    <Pencil className="w-2.5 h-2.5 text-amber-300 ml-0.5" />
-                  </button>
-                ) : (
-                  <div
-                    className="bg-black/30 text-white border border-white/20 px-2.5 py-0.5 rounded-xl text-[11px] sm:text-xs font-black flex items-center gap-1.5 whitespace-nowrap shadow-xs"
-                  >
-                    <span className="font-black text-sm sm:text-base text-yellow-300 drop-shadow-xs">
-                      {courseLetter}-{holeInCourse}{isJapanese ? '番ホール' : '번 홀'}
-                    </span>
-                    <span className="text-stone-300 text-xs font-bold">·</span>
-                    <span className="text-emerald-300 font-black">
-                      Par {holeMetadata.par || 3}
-                    </span>
-                  </div>
-                )
+                <Pencil className="w-3 h-3 text-amber-300 opacity-80" />
+              </button>
+
+              {/* 인라인 파3/파4/파5 정정 칩 팝업 */}
+              {showInlineParChips && (
+                <div className="absolute top-full mt-1.5 z-40 bg-stone-900/95 backdrop-blur-md border border-amber-400 p-1 rounded-full shadow-2xl flex items-center gap-1 animate-scaleUp">
+                  {[3, 4, 5].map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => {
+                        handleSaveHoleSpec(p, holeMetadata.distanceMeter || 50);
+                        setShowInlineParChips(false);
+                      }}
+                      className={`px-3 py-0.5 rounded-full text-xs font-black transition cursor-pointer ${
+                        (Number(holeMetadata.par) || 3) === p
+                          ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
+                          : 'text-stone-300 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      파{p}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 
-            {/* 카운트 방식 2분할 세그먼트 토글 & 라운드 환경 설정 ⚙️ */}
-            <div className="flex items-center gap-1 shrink-0">
-              <div className="flex items-center gap-0.5 sm:gap-1 bg-black/40 p-0.5 sm:p-1 rounded-xl border border-white/20 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => selectCountingMode('PAR_BASE')}
-                  className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-black transition cursor-pointer whitespace-nowrap ${
-                    countingMode === 'PAR_BASE'
-                      ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
-                      : 'text-stone-300 hover:text-white'
-                  }`}
-                >
-                  {t.round.score_mode_par}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectCountingMode('ZERO_BASE')}
-                  className={`px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-black transition cursor-pointer whitespace-nowrap ${
-                    countingMode === 'ZERO_BASE'
-                      ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
-                      : 'text-stone-300 hover:text-white'
-                  }`}
-                >
-                  {t.round.score_mode_zero}
-                </button>
-              </div>
+            {/* [과업 3]: 타수 입력 화면 상단 우측에 [ 📋 전체 스코어 ] 버튼 상시 배치 */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowTotalScoreModal(true)}
+                className="bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-700 hover:border-amber-400/60 text-[11px] sm:text-xs font-black px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1 transition active:scale-95 cursor-pointer shrink-0 shadow-sm"
+                title="전체 스코어카드 상시 열람"
+              >
+                <span>📋</span>
+                <span className="hidden xs:inline">전체 스코어</span>
+                <span className="xs:hidden">스코어</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent('parkon_open_round_settings'))}
@@ -3200,7 +3008,6 @@ export default function RoundPlayPage() {
               </button>
             </div>
           </div>
-
           {/* 4인 스코어 기입 그리드 */}
           <div className="space-y-2 pt-0.5">
             {/* 플레이어 목록 안내 및 조장/동반자 설정 버튼 */}

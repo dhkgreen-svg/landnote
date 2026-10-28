@@ -17,6 +17,7 @@ interface DigitalBadgeModalProps {
   coursesPlayedStr?: string;
   onOpenHallOfFame?: () => void;
   onOpenNationalTourMap?: () => void;
+  onViewScorecard?: () => void;
 }
 
 export function DigitalBadgeModal({
@@ -29,6 +30,7 @@ export function DigitalBadgeModal({
   coursesPlayedStr,
   onOpenHallOfFame,
   onOpenNationalTourMap,
+  onViewScorecard,
 }: DigitalBadgeModalProps) {
   const { isJapanese, isEnglish } = useTranslation();
   const [copiedToast, setCopiedToast] = useState(false);
@@ -258,6 +260,18 @@ ${
 
         {/* 하단 액션 버튼 목록 */}
         <div className="space-y-2 pt-1">
+          {/* [과업 3]: 완주증 모달 하단에 [ 📋 최종 스코어카드 보기 ] 버튼 배치 */}
+          {onViewScorecard && (
+            <button
+              type="button"
+              onClick={onViewScorecard}
+              className="w-full py-3 bg-[#0f1d31] hover:bg-[#182d4b] text-emerald-300 font-black text-sm rounded-2xl flex items-center justify-center gap-2 border-2 border-slate-600 transition active:scale-98 cursor-pointer shadow-md mb-1"
+            >
+              <span>📋</span>
+              <span>{isJapanese ? '最終スコアカードを確認' : '📋 최종 스코어카드 보기'}</span>
+            </button>
+          )}
+
           {/* 버튼 1: 카카오톡 / LINE으로 자랑하기 */}
           <button
             type="button"

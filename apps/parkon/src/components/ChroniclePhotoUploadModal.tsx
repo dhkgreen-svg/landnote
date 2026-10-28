@@ -23,7 +23,9 @@ export function ChroniclePhotoUploadModal({
   onPhotoUploaded,
 }: ChroniclePhotoUploadModalProps) {
   const { isJapanese, isEnglish } = useTranslation();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // [과업 2]: 후면 카메라 다이렉트 및 앨범 분리 인풋 Ref
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const albumInputRef = useRef<HTMLInputElement | null>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -181,9 +183,18 @@ export function ChroniclePhotoUploadModal({
 
         {/* 본문 스크롤 영역 */}
         <div className="p-4 space-y-3.5 overflow-y-auto flex-1 overscroll-contain">
-          {/* 숨겨진 파일 인풋 */}
+          {/* [과업 2]: 기기 후면 카메라 뷰파인더 다이렉트 호출 인풋 */}
           <input
-            ref={fileInputRef}
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          {/* 보조: 앨범(갤러리) 사진 선택 인풋 */}
+          <input
+            ref={albumInputRef}
             type="file"
             accept="image/*"
             className="hidden"
@@ -192,35 +203,55 @@ export function ChroniclePhotoUploadModal({
 
           {/* 사진 선택 / 미리보기 영역 */}
           {previewUrl ? (
-            <div className="relative rounded-2xl overflow-hidden bg-stone-900 border border-stone-300 aspect-video flex items-center justify-center group">
-              <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
+            <div className="space-y-2">
+              <div className="relative rounded-2xl overflow-hidden bg-stone-900 border border-stone-300 aspect-video flex items-center justify-center group">
+                <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="absolute inset-0 bg-black/40 text-white font-black text-xs flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition cursor-pointer backdrop-blur-xs"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>{isJapanese ? '写真を再撮影する' : '카메라로 다시 촬영하기'}</span>
+                </button>
+              </div>
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute inset-0 bg-black/40 text-white font-black text-xs flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition cursor-pointer backdrop-blur-xs"
+                onClick={() => albumInputRef.current?.click()}
+                className="w-full py-1.5 text-stone-500 hover:text-stone-800 font-bold text-xs underline decoration-stone-300 text-center cursor-pointer"
               >
-                <Camera className="w-4 h-4" />
-                <span>{isJapanese ? '写真を変更する' : '사진 변경하기'}</span>
+                {isJapanese ? '🖼️ アルバムから写真を選び直す' : '🖼️ 앨범에서 사진 가져오기'}
               </button>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full aspect-video rounded-2xl border-2 border-dashed border-emerald-400 bg-emerald-50/60 hover:bg-emerald-100/60 flex flex-col items-center justify-center gap-2 transition cursor-pointer text-emerald-800 p-4"
-            >
-              <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md">
-                <Camera className="w-6 h-6" />
-              </div>
-              <div className="text-center">
-                <span className="font-black text-xs block">
-                  {isJapanese ? '写真を選択または撮影' : '사진 선택 또는 바로 촬영'}
-                </span>
-                <span className="text-[11px] text-emerald-700/80 mt-0.5 block">
-                  {isJapanese ? 'ギャラリーから選択できます' : '카메라 또는 앨범에서 사진을 불러옵니다'}
-                </span>
-              </div>
-            </button>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="w-full aspect-video rounded-2xl border-2 border-dashed border-emerald-500 bg-emerald-50/80 hover:bg-emerald-100/80 flex flex-col items-center justify-center gap-2 transition cursor-pointer text-emerald-900 p-4 shadow-sm active:scale-[0.99]"
+              >
+                <div className="w-14 h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-md animate-pulse">
+                  <Camera className="w-7 h-7" />
+                </div>
+                <div className="text-center">
+                  <span className="font-black text-sm block">
+                    {isJapanese ? '📷 カメラを即時起動して撮影' : '📷 후면 카메라 즉시 촬영하기'}
+                  </span>
+                  <span className="text-[11px] text-emerald-700 mt-0.5 block font-bold">
+                    {isJapanese ? 'タップでリアカメラが直接開きます' : '터치 시 갤러리 탐색창 없이 후면 카메라 즉시 구동'}
+                  </span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => albumInputRef.current?.click()}
+                className="w-full py-2.5 px-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-bold border border-stone-300 flex items-center justify-center gap-2 cursor-pointer transition active:scale-95"
+              >
+                <span>🖼️</span>
+                <span>{isJapanese ? 'ギャラリー／アルバムから写真を選択' : '🖼️ 앨범에서 사진 가져오기'}</span>
+              </button>
+            </div>
           )}
 
           {/* 라운드 경기 연동 선택 */}
