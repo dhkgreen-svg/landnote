@@ -2257,25 +2257,27 @@ export default function RoundPlayPage() {
       players: updatedPlayers,
     }, course || undefined);
 
+    const isActuallyOfficial = isOfficial === true && gpsVerified === true && !session.isVirtual;
+
     const finished: RoundSession = {
       ...session,
       status: 'COMPLETED',
-      isOfficial: isOfficial && gpsVerified,
+      isOfficial: isActuallyOfficial,
       totalHoles: currentConfirmed.length,
       selectedHoleNumbers: currentConfirmed,
       confirmedHoles: currentConfirmed,
       players: updatedPlayers,
       completedAt: new Date().toISOString(),
       durationMinutes: elapsedMinutes,
-      isFieldVerified,
-      isGpsVerified: gpsVerified,
+      isFieldVerified: isActuallyOfficial && isRealisticTime,
+      isGpsVerified: gpsVerified === true,
       gpsDistanceMeters: gpsDistance ?? undefined,
       gpsVerifiedAt: gpsVerified ? new Date().toISOString() : undefined,
       blocks,
     };
 
     // 💎 유저 누적 9홀 완주 횟수 안전 반영 (공식 전적 및 현장 GPS 인증 완료 시에만 누적)
-    if (isOfficial && gpsVerified) {
+    if (isActuallyOfficial) {
       const nineHolesCompleted = Math.floor(currentConfirmed.length / 9);
       if (nineHolesCompleted > 0) {
         updatedPlayers.forEach((p) => {

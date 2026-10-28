@@ -183,7 +183,7 @@ function ResultContent() {
       );
       const cPlayedStr = invCourses.map((l) => `${l}코스`).join(' + ');
 
-      const isOfficialVerified = session.isOfficial !== false && (session.isGpsVerified !== false);
+      const isOfficialVerified = session.isOfficial === true && session.isGpsVerified === true && !session.isVirtual;
 
       if (is9HoleCompleted && isOfficialVerified) {
         // [과업 2 버그 수정]: '전적 미반영' 또는 'GPS 미인증' 라운드는 뱃지 발급 및 완주 누적 차단
@@ -1383,7 +1383,7 @@ function ResultContent() {
                 onClick={() => {
                   setShowPostRoundPhotoPrompt(false);
                   const seenKey = `parkon_badge_seen_${session.id}`;
-                  const isOfficialVerified = session.isOfficial !== false && (session.isGpsVerified !== false);
+                  const isOfficialVerified = session.isOfficial === true && session.isGpsVerified === true && !session.isVirtual;
                   if (!sessionStorage.getItem(seenKey) && isFull18Completed && isOfficialVerified) {
                     setShowBadgeModal(true);
                     sessionStorage.setItem(seenKey, 'true');
@@ -1412,7 +1412,7 @@ function ResultContent() {
         onClose={() => {
           setShowPhotoUploadModal(false);
           const seenKey = `parkon_badge_seen_${session.id}`;
-          const isOfficialVerified = session.isOfficial !== false && (session.isGpsVerified !== false);
+          const isOfficialVerified = session.isOfficial === true && session.isGpsVerified === true && !session.isVirtual;
           if (!sessionStorage.getItem(seenKey) && isFull18Completed && isOfficialVerified) {
             setShowBadgeModal(true);
             sessionStorage.setItem(seenKey, 'true');

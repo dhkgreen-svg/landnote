@@ -390,6 +390,61 @@ export const BadgeStorage = {
   },
 
   // 4. 9홀 모듈형 정상 완주 기록 & 뱃지 갱신 + 17개 시도 퍼즐 조각 자동 해금
+    // 5. [긴급 데이터 무결성]: 경기 삭제 시 해당 구장 누적 완주 횟수(visitCount) 및 뱃지 티어 자동 롤백
+  recalculateBadgesAfterDeletion(remainingRounds: any[]): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const officialRounds = (remainingRounds || []).filter((r) => r && r.isOfficial === true && !r.isVirtual);
+      const allBadges = this.getAllBadges();
+
+      Object.keys(allBadges).forEach((courseId) => {
+        const courseRounds = officialRounds.filter(
+          (r) => r.courseId === courseId || r.courseName === allBadges[courseId].courseName
+        );
+        let visitCount = 0;
+        let lastDateStr = '';
+        let lastCompletedAt = '';
+        let lastCompletedHoles = 0;
+        let lastCompletedBlocks = 0;
+
+        courseRounds.forEach((r) => {
+          const hCount = r.confirmedHoles?.length || r.totalHoles || 0;
+          if (hCount >= 9) {
+            const blocks = Math.max(1, Math.round(hCount / 9));
+            visitCount += blocks;
+            if (r.completedAt) {
+              const d = new Date(r.completedAt);
+              const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+              if (!lastDateStr || dateStr > lastDateStr) {
+                lastDateStr = dateStr;
+                lastCompletedAt = `${dateStr} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                lastCompletedHoles = hCount;
+                lastCompletedBlocks = blocks;
+              }
+            }
+          }
+        });
+
+        const tierInfo = getBadgeTierInfo(visitCount);
+        allBadges[courseId] = {
+          ...allBadges[courseId],
+          visitCount,
+          tier: tierInfo.tier,
+          tierTitle: tierInfo.title,
+          hasInstantSpecAccess: tierInfo.canBypassTwoStrike,
+          lastDateStr,
+          lastCompletedAt,
+          lastCompletedHoles,
+          lastCompletedBlocks,
+        };
+      });
+
+      localStorage.setItem(STORAGE_KEYS.COURSE_BADGES, JSON.stringify(allBadges));
+    } catch (e) {
+      console.error('Failed to recalculate badges after deletion:', e);
+    }
+  },
+
   recordCompletion(
     courseId: string,
     courseName: string,

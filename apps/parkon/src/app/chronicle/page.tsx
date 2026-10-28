@@ -103,6 +103,16 @@ function ChronicleContent() {
   }, [addFriendParam]);
 
   const [syncVersion, setSyncVersion] = useState(0);
+  const modalRoundIdParam = searchParams.get('modalRoundId');
+  useEffect(() => {
+    if (modalRoundIdParam) {
+      const rounds = ParkOnStorage.getCompletedRounds();
+      const targetRound = rounds.find((r) => r.id === modalRoundIdParam);
+      if (targetRound) {
+        setSelectedRoundForPopup(targetRound);
+      }
+    }
+  }, [modalRoundIdParam, syncVersion]);
   const hasRestoredMemberRef = useRef(false);
 
   // 1. 최초 마운트 시 1회만 클라우드 연동 복원 수행 (무한 루프 방지)
@@ -123,6 +133,7 @@ function ChronicleContent() {
   // 2. 로컬 스토리지 및 이벤트 감청 (순수 로컬 상태 갱신만 수행)
   useEffect(() => {
     setMounted(true);
+    if (typeof window !== "undefined") { (window as any).ParkOnStorage = ParkOnStorage; }
     // ParkOnStorage.purgeUnverifiedRounds();
     const load = () => {
       const raw = ParkOnStorage.getUserDisplayName();
@@ -983,6 +994,7 @@ function ChronicleContent() {
                     return (
                       <div
                         key={r.id}
+                        data-round-card={r.id}
                         onClick={() => setSelectedRoundForPopup(r)}
                         className="p-3 bg-stone-50 hover:bg-emerald-50/60 rounded-2xl border border-stone-200 hover:border-emerald-300 space-y-1.5 cursor-pointer transition shadow-2xs group"
                       >
@@ -2424,6 +2436,7 @@ function ChronicleContent() {
         onClose={() => setSelectedRoundForPopup(null)}
         onDelete={(roundId) => {
           ParkOnStorage.deleteCompletedRound(roundId);
+          setSelectedRoundForPopup(null);
           setSyncVersion((v) => v + 1);
         }}
         onUpdate={(updated) => {

@@ -540,10 +540,10 @@ export function RoundScoreboardModal({
   const isFastTest = !isRealisticTime && durationMin < 15;
 
   const handleDelete = () => {
-    if (!onDelete) return;
+    if (!onDelete || !currentRound) return;
     const msg = isJapanese
-      ? `本当にこの試合全体（${currentRound.courseName} · ${dateFormatted} · ${activeConfirmedHoles.length}ホール）の記録を削除しますか？\n\n※ すべてのコース記録が完全に削除され、復元できません。`
-      : `정말 이 경기 전체(${currentRound.courseName} · ${dateFormatted} · ${activeConfirmedHoles.length}홀) 기록을 완전히 삭제하시겠습니까?\n\n※ 모든 코스 기록이 영구 삭제되며 복구할 수 없습니다. (특정 코스만 지우시려면 상단 코스 목록의 [🗑️] 버튼을 이용해 주세요)`;
+      ? 'このラウンド記録を年代記から完全に削除しますか？ 削除すると累積完走回数や統計からも差し引かれます。'
+      : '해당 라운드 기록을 연대기에서 완전히 삭제하시겠습니까? 삭제 시 누적 완주 횟수 및 통계에서도 차감됩니다.';
     if (window.confirm(msg)) {
       onDelete(currentRound.id);
       onClose();
@@ -1093,55 +1093,23 @@ export function RoundScoreboardModal({
           )}
         </div>
 
-        {/* 🔥 [대표님 핵심 지시]: 스코어카드/완주증 이미지 파일 다운로드 단일 메인 버튼 */}
-        <div className="pt-2 border-t shrink-0 space-y-1.5">
-          {courseSegments.length > 1 && (
-            <div className="text-[11px] font-bold text-center text-emerald-950 bg-emerald-100/90 py-1.5 px-3 rounded-xl border border-emerald-300 flex items-center justify-center gap-1 shadow-2xs">
-              <span>👉</span>
-              <span>
-                위에서 선택된 <strong className="text-emerald-900 font-black underline">[{activeSegments.map((s) => s.title).join(', ')}] ({activeConfirmedHoles.length}홀)</strong> 제원으로 저장됩니다.
-              </span>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleDownloadScorecardImage}
-            disabled={isGeneratingImage}
-            className={`w-full min-h-[48px] font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-98 transition cursor-pointer border ${
-              modalActiveTab === 'CERTIFICATE'
-                ? 'bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-600 hover:to-yellow-600 border-amber-400 text-stone-950'
-                : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 border-emerald-500 text-white'
-            }`}
-          >
-            <Download className={`w-4 h-4 ${modalActiveTab === 'CERTIFICATE' ? 'text-stone-950' : 'text-amber-300'}`} />
-            <span>
-              {isGeneratingImage
-                ? (isJapanese ? '高画質画像生成中...' : '고화질 공식 이미지 생성 중...')
-                : modalActiveTab === 'CERTIFICATE'
-                ? (isJapanese ? `📥 [${activeSegments.map((s) => s.title).join(', ')}] 公式認定書＆スコア画像を保存` : `📥 [${activeSegments.map((s) => s.title).join(', ')}] 공식 완주 인증서 & 스코어카드 저장`)
-                : (isJapanese ? `📥 [${activeSegments.map((s) => s.title).join(', ')}] スコアカード画像を保存 (ダウンロード)` : `📥 [${activeSegments.map((s) => s.title).join(', ')}] 스코어카드 이미지 저장 (다운로드)`)}
-            </span>
-          </button>
-        </div>
-
-        {/* Modal Bottom Actions */}
-        <div className="pt-2 border-t flex items-center gap-2 shrink-0">
+        {/* 스코어보드 바로 밑 하단 액션 버튼 ([ 🗑️ 전체 경기 삭제 ]  [ 확인 (닫기) ]) */}
+        <div className="pt-3 border-t flex items-center gap-2.5 shrink-0 mt-2">
           {onDelete && (
             <button
               type="button"
               onClick={handleDelete}
-              className="py-3 px-3.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl text-xs transition active:scale-95 border border-rose-200 flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-              title={isJapanese ? 'この試合全体の記録を完全に削除' : '이 경기 전체(모든 코스) 기록을 완전히 삭제'}
+              className="py-3.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-2xl text-xs sm:text-sm transition active:scale-95 border border-rose-200 flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+              title={isJapanese ? 'この試合全体の記録を完全に削除' : '이 경기 전체 기록을 완전히 삭제'}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-4 h-4 text-rose-600" />
               <span>{isJapanese ? '全試合削除' : '전체 경기 삭제'}</span>
             </button>
           )}
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 bg-emerald-800 hover:bg-emerald-700 text-white font-black py-3 rounded-xl text-sm transition active:scale-[0.98] shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+            className="flex-1 bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-700 hover:to-teal-700 text-white font-black py-3.5 rounded-2xl text-sm sm:text-base transition active:scale-[0.98] shadow-md cursor-pointer flex items-center justify-center gap-1.5"
           >
             <span>{isJapanese ? '確認 (閉じる)' : '확인 (닫기)'}</span>
           </button>

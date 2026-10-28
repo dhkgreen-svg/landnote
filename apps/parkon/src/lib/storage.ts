@@ -903,10 +903,11 @@ export const ParkOnStorage = {
       deletedSet.add(roundId);
       localStorage.setItem(STORAGE_KEYS.DELETED_ROUND_IDS, JSON.stringify(Array.from(deletedSet)));
 
-      // 2. 완료 라운드 목록에서 즉시 제거
+      // 2. 완료 라운드 목록에서 즉시 제거 (v1 및 레거시 키 모두 동시 동기화)
       const existing = this.getCompletedRounds();
-      const updated = existing.filter((r) => r.id !== roundId);
+      const updated = existing.filter((r) => r && r.id !== roundId);
       localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(updated));
+      localStorage.setItem('parkon_completed_rounds', JSON.stringify(updated));
 
       // 3. 브라우저 안전 보관함(Safety Stash)에서도 영구 삭제
       try {
@@ -920,11 +921,17 @@ export const ParkOnStorage = {
         }
       } catch {}
 
-      // 4. [과업 3 - 대표님 절대 지침]: 삭제 시 통계(총 라운드 수, 누적 타수, 완주 횟수) 차감 롤백 복구!
+      // 4. [긴급 데이터 무결성]: 삭제 시 구장별 누적 완주 횟수, 유저 완주 카운트, 평균 타수, 총 라운드 롤백 차감
       this.rollbackStatsAfterRoundDelete(updated);
 
-      // 5. 전역 동기화 이벤트 발생
+      // 5. 클라우드 회원 DB에도 즉시 삭제 반영 동기화
+      try {
+        import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud()).catch(() => {});
+      } catch {}
+
+      // 6. 전역 동기화 이벤트 발생
       window.dispatchEvent(new Event('parkon_member_synced'));
+      window.dispatchEvent(new Event('parkon_badge_updated'));
       window.dispatchEvent(new Event('storage'));
     } catch (e) {
       console.error('Failed to delete completed round:', e);
@@ -934,7 +941,7 @@ export const ParkOnStorage = {
   rollbackStatsAfterRoundDelete(remainingRounds: RoundSession[]): void {
     if (typeof window === 'undefined') return;
     try {
-      const officialRounds = remainingRounds.filter((r) => r.isOfficial !== false && !r.isVirtual);
+      const officialRounds = (remainingRounds || []).filter((r) => r && r.isOfficial === true && !r.isVirtual);
       let total9Holes = 0;
       officialRounds.forEach((r) => {
         const myPlayer = r.players?.find((p) => p.isSelf) || r.players?.[0];
@@ -948,11 +955,31 @@ export const ParkOnStorage = {
         }
       });
 
+      // 1) 유저 총 9홀 완주 카운트 갱신
       localStorage.setItem('parkon_user_completed_9holes', total9Holes.toString());
       const memberCode = localStorage.getItem('parkon_member_code');
       if (memberCode) {
         localStorage.setItem(`parkon_user_completed_9holes_${memberCode.trim()}`, total9Holes.toString());
       }
+
+      // 2) [핵심]: 해당 구장의 '누적 완주 횟수(visitCount)' 차감 롤백
+      try {
+        const { BadgeStorage } = require('./badgeStorage');
+        if (BadgeStorage && typeof BadgeStorage.recalculateBadgesAfterDeletion === 'function') {
+          BadgeStorage.recalculateBadgesAfterDeletion(remainingRounds);
+        }
+      } catch (err) {
+        import('./badgeStorage').then((m) => {
+          m.BadgeStorage.recalculateBadgesAfterDeletion(remainingRounds);
+        }).catch(() => {});
+      }
+
+      // 3) Supabase 원격 티어 통계 동기화 (차감된 완주수로 동기화)
+      const activeCode = memberCode?.trim();
+      const userName = this.getUserDisplayName() || '회원';
+      import('./courseBlockTier').then((m) => {
+        m.syncUserTierToSupabase(activeCode || userName, total9Holes).catch(() => {});
+      }).catch(() => {});
 
       const profile = this.getUserProfile();
       if (profile) {
@@ -2400,4 +2427,8 @@ export function setupRoundWakeLockGuard(options?: {
       window.removeEventListener(evt, handleInteraction);
     });
   };
+}
+
+if (typeof window !== "undefined") {
+  (window as any).ParkOnStorage = ParkOnStorage;
 }
