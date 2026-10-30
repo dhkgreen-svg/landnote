@@ -198,7 +198,7 @@ export function BusinessCardModal({
                 <div className="flex items-start justify-between border-b border-amber-400/30 pb-3">
                   <div>
                     <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> ParkOn Certified Golfer Card
+                      <Sparkles className="w-3 h-3" /> PARKY APP Certified Golfer Card
                     </span>
                     <h4 className="text-xl font-black text-white mt-1">{myCard.company}</h4>
                     <p className="text-xs text-amber-200/90 font-bold">{myCard.industry}</p>
@@ -278,7 +278,7 @@ export function BusinessCardModal({
                         type="text"
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
-                        placeholder="예: 홍길동"
+                        placeholder="성명 입력"
                         required
                         className="w-full bg-stone-900 border border-stone-700 text-white rounded-lg px-2.5 py-1.5 text-xs focus:border-amber-400 outline-hidden"
                       />

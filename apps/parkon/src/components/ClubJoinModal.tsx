@@ -212,7 +212,7 @@ export function ClubJoinModal({
                   required
                   value={applicantName}
                   onChange={(e) => setApplicantName(e.target.value)}
-                  placeholder="예: 홍길동"
+                  placeholder="성명 입력"
                   className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-xs font-bold text-stone-900 outline-none focus:border-emerald-600 focus:bg-white"
                 />
               </div>

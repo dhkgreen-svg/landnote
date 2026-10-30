@@ -335,11 +335,11 @@ export function NationalRankingDetailModal({
                           { userName: '伊藤 (仙台)', clubName: '青葉杜の会', score: 55, region: '宮城県' },
                         ]
                       : [
-                          { userName: '김철수 (구미)', clubName: '구미 에이스 클럽', score: 52, region: '경북 구미' },
-                          { userName: '박영희 (대구)', clubName: '대구 수성 파크회', score: 53, region: '대구 수성' },
-                          { userName: '이민호 (서울)', clubName: '서울 한강 클럽', score: 53, region: '서울 송파' },
+                          { userName: '김대희 (구미)', clubName: '구미 에이스 클럽', score: 52, region: '경북 구미' },
+                          { userName: '오송 (구미)', clubName: '구미 해평 클럽', score: 53, region: '경북 구미' },
+                          { userName: '박상훈 (대구)', clubName: '대구 수성 파크회', score: 53, region: '대구 수성' },
+                          { userName: '이민호 (서울)', clubName: '서울 한강 클럽', score: 54, region: '서울 송파' },
                           { userName: '정수진 (부산)', clubName: '부산 해운대회', score: 54, region: '부산 해운대' },
-                          { userName: '강호동 (춘천)', clubName: '춘천 소양강 클럽', score: 54, region: '강원 춘천' },
                           { userName: '최동원 (광주)', clubName: '광주 무등 파크회', score: 55, region: '광주 북구' },
                         ]
                     )

@@ -173,7 +173,7 @@ export function CompanionQRModal({ isOpen, onClose, onCompanionAdded }: Companio
                   type="text"
                   value={manualName}
                   onChange={(e) => setManualName(e.target.value)}
-                  placeholder="예: 홍길동, 박회장님"
+                  placeholder="성명 입력"
                   className="w-full min-h-[52px] px-4 rounded-2xl border-2 border-stone-300 focus:border-emerald-600 bg-stone-50 text-base font-bold text-stone-900 focus:outline-none"
                   autoFocus
                 />

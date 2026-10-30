@@ -145,7 +145,7 @@ export const ParkOnStorage = {
       const data = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
       if (!data) {
         const playerName = typeof localStorage !== 'undefined' ? localStorage.getItem('parkon_player_name')?.trim() : null;
-        const isDummy = !playerName || [
+        const isDummy = !playerName || /[ㄱ-ㅎㅏ-ㅣ]/.test(playerName) || (playerName.length < 2 && !/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(playerName)) || [
           '손오공', '홍길동', '홍길동(본인)', '플레이어', '본인(조장)', '조장(본인)', '조장', '본인',
           '회원', '파크골퍼', '골퍼', '게스트', '선수', 'パークゴルファー', 'ゴルファー', '山田太郎',
           'ゲスト', 'プレイヤー', 'リーダー', '選手', '孫悟空', 'パーク達人', 'パークの達人', '同伴者', '代表'
@@ -161,7 +161,7 @@ export const ParkOnStorage = {
       const parsed: UserGolfProfile = JSON.parse(data);
       // 더미 이름(손오공, 홍길동, 플레이어, 본인 등)은 빈 문자열로 정화하여 완전한 제로 베이스 유지
       const rawName = (parsed.userName || '').trim();
-      if (!rawName || [
+      if (!rawName || /[ㄱ-ㅎㅏ-ㅣ]/.test(rawName) || (rawName.length < 2 && !/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(rawName)) || [
         '손오공', '홍길동', '홍길동(본인)', '플레이어', '본인(조장)', '조장(본인)', '조장', '본인',
         '회원', '파크골퍼', '골퍼', '게스트', '선수', 'パークゴルファー', 'ゴルファー', '山田太郎',
         'ゲスト', 'プレイヤー', 'リーダー', '選手', '孫悟空', 'パーク達人', 'パークの達人', '同伴者', '代表'
@@ -366,6 +366,7 @@ export const ParkOnStorage = {
     const isSample = (val?: string | null) => {
       if (!val) return true;
       const c = val.trim();
+      if (!c || /[ㄱ-ㅎㅏ-ㅣ]/.test(c) || (c.length < 2 && !/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(c))) return true;
       return (
         !c ||
         c === '홍길동' ||

@@ -4,15 +4,15 @@ import { ClubEventRoom, ClubPlayer, ClubGroup } from '@/types/club';
 // 10인 모의 정기전 데이터
 const MEMBERS = [
   { id: 'mem_1', name: '김총무', role: 'MANAGER', gender: 'M' as const },
-  { id: 'mem_2', name: '강호동(조장1)', role: 'MEMBER', gender: 'M' as const },
-  { id: 'mem_3', name: '유재석', role: 'MEMBER', gender: 'M' as const },
-  { id: 'mem_4', name: '송지효', role: 'MEMBER', gender: 'F' as const },
-  { id: 'mem_5', name: '하동훈(조장2)', role: 'MEMBER', gender: 'M' as const },
-  { id: 'mem_6', name: '신동엽', role: 'MEMBER', gender: 'M' as const },
-  { id: 'mem_7', name: '이수근', role: 'MEMBER', gender: 'M' as const },
-  { id: 'mem_8', name: '서장훈(조장3)', role: 'MEMBER', gender: 'M' as const },
-  { id: 'mem_9', name: '김희철', role: 'MEMBER', gender: 'M' as const },
-  { id: 'mem_10', name: '조세호', role: 'MEMBER', gender: 'M' as const },
+  { id: 'mem_2', name: '오송(조장1)', role: 'MEMBER', gender: 'M' as const },
+  { id: 'mem_3', name: '박상훈', role: 'MEMBER', gender: 'M' as const },
+  { id: 'mem_4', name: '정수진', role: 'MEMBER', gender: 'F' as const },
+  { id: 'mem_5', name: '이민호(조장2)', role: 'MEMBER', gender: 'M' as const },
+  { id: 'mem_6', name: '최동원', role: 'MEMBER', gender: 'M' as const },
+  { id: 'mem_7', name: '한지민', role: 'MEMBER', gender: 'M' as const },
+  { id: 'mem_8', name: '장성호(조장3)', role: 'MEMBER', gender: 'M' as const },
+  { id: 'mem_9', name: '윤태영', role: 'MEMBER', gender: 'M' as const },
+  { id: 'mem_10', name: '송유진', role: 'MEMBER', gender: 'M' as const },
 ];
 
 const HOLE_PARS: Record<number, number> = {
@@ -77,7 +77,7 @@ function getRoomStateForStep(step: number): ClubEventRoom {
   const group1Players: ClubPlayer[] = MEMBERS.slice(0, 4).map((m) => ({
     id: m.id,
     name: m.name,
-    isLeader: m.name.includes('강호동'),
+    isLeader: m.name.includes('오송'),
     scores: {},
     totalStrokes: 0,
     parDiff: 0,
@@ -89,7 +89,7 @@ function getRoomStateForStep(step: number): ClubEventRoom {
   const group2Players: ClubPlayer[] = MEMBERS.slice(4, 7).map((m) => ({
     id: m.id,
     name: m.name,
-    isLeader: m.name.includes('하동훈'),
+    isLeader: m.name.includes('이민호'),
     scores: {},
     totalStrokes: 0,
     parDiff: 0,
@@ -101,7 +101,7 @@ function getRoomStateForStep(step: number): ClubEventRoom {
   const group3Players: ClubPlayer[] = MEMBERS.slice(7, 10).map((m) => ({
     id: m.id,
     name: m.name,
-    isLeader: m.name.includes('서장훈'),
+    isLeader: m.name.includes('장성호'),
     scores: {},
     totalStrokes: 0,
     parDiff: 0,
@@ -111,9 +111,9 @@ function getRoomStateForStep(step: number): ClubEventRoom {
   }));
 
   const groups: ClubGroup[] = [
-    { groupNumber: 1, name: '1조 (4인)', startCourseLetter: 'A', leaderName: '강호동(조장1)', players: group1Players, status: 'WAITING' },
-    { groupNumber: 2, name: '2조 (3인)', startCourseLetter: 'A', leaderName: '하동훈(조장2)', players: group2Players, status: 'WAITING' },
-    { groupNumber: 3, name: '3조 (3인)', startCourseLetter: 'A', leaderName: '서장훈(조장3)', players: group3Players, status: 'WAITING' }
+    { groupNumber: 1, name: '1조 (4인)', startCourseLetter: 'A', leaderName: '오송(조장1)', players: group1Players, status: 'WAITING' },
+    { groupNumber: 2, name: '2조 (3인)', startCourseLetter: 'A', leaderName: '이민호(조장2)', players: group2Players, status: 'WAITING' },
+    { groupNumber: 3, name: '3조 (3인)', startCourseLetter: 'A', leaderName: '장성호(조장3)', players: group3Players, status: 'WAITING' }
   ];
 
   baseRoom.groups = groups;
@@ -143,11 +143,11 @@ function getRoomStateForStep(step: number): ClubEventRoom {
     groups.forEach((grp, gIdx) => {
       grp.players.forEach((p) => {
         let stroke = par;
-        if (p.name === '하동훈(조장2)') {
+        if (p.name === '이민호(조장2)') {
           stroke = hole === 9 ? par - 1 : par; // 9번홀 버디
-        } else if (p.name === '서장훈(조장3)') {
+        } else if (p.name === '장성호(조장3)') {
           stroke = hole === 8 ? par - 1 : par; // 8번홀 버디
-        } else if (p.name === '강호동') {
+        } else if (p.name === '오송') {
           stroke = hole === 1 ? par - 1 : par; // 1번홀 버디
         } else {
           const delta = ((p.name.charCodeAt(0) * hole + gIdx) % 3) - 1;

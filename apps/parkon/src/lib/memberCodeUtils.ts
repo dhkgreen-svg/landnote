@@ -113,7 +113,7 @@ export function isMockOrCorruptedRound(r: any): boolean {
   if (
     r.id === 'round_rec_1' || 
     r.id === 'round_suseong_sample' || 
-    r.id === 'round_kim_gumi_20261002' ||
+    r.id === 'round_kim_gumi_20261002' || r.id === 'round_live_1791117870020' || r.id === 'round_chronicle_4players_test' || r.id === 'round_plana_test_1' || r.id === 'round_ceo_photo_download_01' || r.id === 'round_verified_field_01' || r.id === 'round_fast_mock_02' || r.id === 'round_to_delete_03' || r.id === 'round_1791008874732' || r.id === 'round_1791008230171' || r.id === 'round_27h_abc_field' || r.id === 'round_27h_abc_test' || r.id === 'round_test_abc_multicourse' || r.id === 'round_1791111047887' ||
     (typeof r.id === 'string' && (r.id.startsWith('mock_') || r.id.startsWith('sample_')))
   ) {
     return true;
@@ -328,7 +328,7 @@ export async function syncMemberDataToCloud(): Promise<{ success: boolean; membe
     }
 
     const json = await res.json();
-    return { success: true, memberCode, message: json.message || '백업 성공' };
+    return { success: true, memberCode: json.memberCode || memberCode, message: json.message || '백업 성공' };
   } catch (err: any) {
     console.warn('Cloud sync error (fallback to local):', err?.message || err);
     return { success: false, memberCode: getOrGenerateMemberCode(), message: err?.message };

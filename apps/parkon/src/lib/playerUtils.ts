@@ -7,6 +7,8 @@ import { ParkOnStorage, KakaoAuthUser } from './storage';
 export function isSampleOrPlaceholder(name?: string | null): boolean {
   if (!name) return true;
   const clean = name.trim();
+  if (!clean || /[ㄱ-ㅎㅏ-ㅣ]/.test(clean)) return true;
+  if (clean.length < 2 && !/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(clean)) return true;
   return (
     !clean ||
     clean === '홍길동' ||

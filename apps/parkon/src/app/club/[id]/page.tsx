@@ -62,15 +62,15 @@ import { ClubAnalyticsHub } from '@/components/ClubAnalyticsHub';
 
 const MEMBERS_10P: ClubPlayer[] = [
   { id: 'mem_1', name: '김총무', isLeader: false, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'ADVANCED' },
-  { id: 'mem_2', name: '강호동(조장1)', isLeader: true, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
-  { id: 'mem_3', name: '유재석', isLeader: false, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
-  { id: 'mem_4', name: '송지효', isLeader: false, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'F', handicapTier: 'INTERMEDIATE' },
-  { id: 'mem_5', name: '하동훈(조장2)', isLeader: true, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
-  { id: 'mem_6', name: '신동엽', isLeader: false, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
-  { id: 'mem_7', name: '이수근', isLeader: false, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
-  { id: 'mem_8', name: '서장훈(조장3)', isLeader: true, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
-  { id: 'mem_9', name: '김희철', isLeader: false, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
-  { id: 'mem_10', name: '조세호', isLeader: false, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
+  { id: 'mem_2', name: '오송(조장1)', isLeader: true, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
+  { id: 'mem_3', name: '박상훈', isLeader: false, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
+  { id: 'mem_4', name: '정수진', isLeader: false, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'F', handicapTier: 'INTERMEDIATE' },
+  { id: 'mem_5', name: '이민호(조장2)', isLeader: true, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
+  { id: 'mem_6', name: '최동원', isLeader: false, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
+  { id: 'mem_7', name: '한지민', isLeader: false, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
+  { id: 'mem_8', name: '장성호(조장3)', isLeader: true, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
+  { id: 'mem_9', name: '윤태영', isLeader: false, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
+  { id: 'mem_10', name: '송유진', isLeader: false, scores: {}, totalStrokes: 0, parDiff: 0, holesCompleted: 0, gender: 'M', handicapTier: 'INTERMEDIATE' },
 ];
 
 const PRE_CONFIGURED_10P_GROUPS: ClubGroup[] = [
@@ -78,7 +78,7 @@ const PRE_CONFIGURED_10P_GROUPS: ClubGroup[] = [
     groupNumber: 1,
     name: '1조 (4인)',
     startCourseLetter: 'A',
-    leaderName: '강호동(조장1)',
+    leaderName: '오송(조장1)',
     status: 'WAITING',
     players: MEMBERS_10P.slice(0, 4),
   },
@@ -86,7 +86,7 @@ const PRE_CONFIGURED_10P_GROUPS: ClubGroup[] = [
     groupNumber: 2,
     name: '2조 (3인)',
     startCourseLetter: 'A',
-    leaderName: '하동훈(조장2)',
+    leaderName: '이민호(조장2)',
     status: 'WAITING',
     players: MEMBERS_10P.slice(4, 7),
   },
@@ -94,7 +94,7 @@ const PRE_CONFIGURED_10P_GROUPS: ClubGroup[] = [
     groupNumber: 3,
     name: '3조 (3인)',
     startCourseLetter: 'A',
-    leaderName: '서장훈(조장3)',
+    leaderName: '장성호(조장3)',
     status: 'WAITING',
     players: MEMBERS_10P.slice(7, 10),
   },
@@ -482,13 +482,13 @@ function ClubRoomDetailContent() {
     if (found) return found;
 
     // 2) 10인 모의 방일 경우 1:1 완벽 확정 매핑 (Fail-Safe)
-    if (['김총무', '강호동', '유재석', '송지효'].some((k) => cleanUser.includes(k))) {
+    if (['김총무', '오송', '박상훈', '정수진'].some((k) => cleanUser.includes(k))) {
       return room.groups.find((g) => g.groupNumber === 1) || room.groups[0] || null;
     }
-    if (['하동훈', '신동엽', '이수근'].some((k) => cleanUser.includes(k))) {
+    if (['이민호', '최동원', '한지민'].some((k) => cleanUser.includes(k))) {
       return room.groups.find((g) => g.groupNumber === 2) || room.groups[1] || null;
     }
-    if (['서장훈', '김희철', '조세호'].some((k) => cleanUser.includes(k))) {
+    if (['장성호', '윤태영', '송유진'].some((k) => cleanUser.includes(k))) {
       return room.groups.find((g) => g.groupNumber === 3) || room.groups[2] || null;
     }
 
@@ -518,7 +518,7 @@ function ClubRoomDetailContent() {
     });
   }, [myGroup, currentUser]);
 
-  // 👑 [대표님 절대 원칙] 내 조의 조장 여부 엄격 판정 (1조=강호동, 2조=하동훈, 3조=서장훈)
+  // 👑 [대표님 절대 원칙] 내 조의 조장 여부 엄격 판정 (1조=오송, 2조=이민호, 3조=장성호)
   const isLeaderOfMyGroup = React.useMemo(() => {
     if (!myGroup || !currentUser) return false;
     const cleanUser = currentUser.replace(/\(.*?\)/g, '').trim().toLowerCase();
@@ -4974,7 +4974,7 @@ function ClubRoomDetailContent() {
                     type="button"
                     onClick={() => {
                       const user = ParkOnStorage.getKakaoUser();
-                      setNewPlayerName(user?.realName || (isJapanese ? '山田太郎' : '홍길동'));
+                      setNewPlayerName(user?.realName || '');
                     }}
                     className={`flex-1 py-1.5 px-2 rounded-lg border text-[11px] font-black transition cursor-pointer text-center ${
                       newPlayerName === (ParkOnStorage.getKakaoUser()?.realName || (isJapanese ? '山田太郎' : '홍길동'))
@@ -4982,7 +4982,7 @@ function ClubRoomDetailContent() {
                         : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800'
                     }`}
                   >
-                    🔘 {isJapanese ? '本名' : '실명'} ({ParkOnStorage.getKakaoUser()?.realName || (isJapanese ? '山田太郎' : '홍길동')})
+                    🔘 {isJapanese ? '本名' : '실명'} ({ParkOnStorage.getKakaoUser()?.realName || (isJapanese ? '未登録' : '미등록')})
                   </button>
                   <button
                     type="button"
@@ -5017,7 +5017,7 @@ function ClubRoomDetailContent() {
                   type="text"
                   value={newPlayerName}
                   onChange={(e) => setNewPlayerName(e.target.value)}
-                  placeholder={isJapanese ? '例: 山田太郎 または ゲスト1' : '예: 홍길동 또는 게스트1'}
+                  placeholder={isJapanese ? '氏名を入力' : '성명 입력'}
                   autoFocus
                   required
                   className="w-full px-3 py-2 border border-stone-300 rounded-xl text-xs font-black focus:ring-2 focus:ring-purple-500 focus:outline-none"
@@ -5421,7 +5421,7 @@ function ClubRoomDetailContent() {
                       type="text"
                       value={cfgLastWinnerNames}
                       onChange={(e) => setCfgLastWinnerNames(e.target.value)}
-                      placeholder={isJapanese ? '例: 山田太郎, 佐藤健' : '예: 박찬호, 홍길동'}
+                      placeholder={isJapanese ? '氏名を入力' : '성명 입력'}
                       className="w-full px-3 py-2 bg-white border border-purple-300 rounded-xl text-xs font-bold focus:outline-none focus:border-purple-600"
                     />
                     <p className="text-[10px] text-purple-800 font-medium">

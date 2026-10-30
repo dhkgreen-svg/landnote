@@ -251,7 +251,7 @@ export function ClubRegisterModal({
                 required
                 value={managerName}
                 onChange={(e) => setManagerName(e.target.value)}
-                placeholder="예: 김총무"
+                placeholder="성명 입력"
                 className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2.5 text-xs font-bold text-stone-900 outline-none focus:border-emerald-600 focus:bg-white"
               />
             </div>

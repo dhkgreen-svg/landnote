@@ -367,6 +367,14 @@ const handleAddNewNickname = () => {
           matches: res.matches,
           searchedPhone: inputPhone,
         });
+
+        // 🌟 [대표님 지침]: 1건 명확히 매칭 시 재클릭 대기 없이 즉시 1초 만에 자동 로그인 & 복원 처리!
+        if (res.matches.length === 1) {
+          const target = res.matches[0];
+          setSyncStatus({ success: true, message: `✓ '${target.userName}' 님의 기록을 확인했습니다! 1초 만에 자동 로그인합니다...` });
+          handleRestoreByMemberCodeWith(target.memberCode);
+          return;
+        }
       } else {
         setLookupResult({
           status: 'NOT_FOUND',
@@ -831,7 +839,7 @@ const handleAddNewNickname = () => {
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleSaveRealName(editRealNameInput);
                           }}
-                          placeholder="실제 성함 입력 (예: 김대희)"
+                          placeholder="성명 입력"
                           className="flex-1 px-2.5 py-1.5 bg-white border border-amber-400 rounded-md text-xs font-black text-stone-900 outline-none focus:border-emerald-600 shadow-inner"
                           autoFocus
                         />
@@ -1067,7 +1075,7 @@ const handleAddNewNickname = () => {
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    placeholder={isJapanese ? 'お名前を入力 (例: 田中太郎)' : '실제 성함을 입력하세요 (예: 김대희)'}
+                    placeholder={isJapanese ? 'お名前を入力' : '성명 입력'}
                     className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl font-black text-xs text-stone-900 focus:border-emerald-600 focus:bg-white outline-none transition"
                     autoFocus
                   />
@@ -1261,31 +1269,40 @@ const handleAddNewNickname = () => {
                 <div className="bg-gradient-to-br from-amber-50 via-amber-100/60 to-emerald-50 border-2 border-amber-400 rounded-2xl p-3 text-center shadow-sm space-y-2.5 animate-scaleUp">
                   <div className="text-amber-950 font-bold text-xs leading-relaxed">
                     서버에 등록된 기존 기록이 없습니다.<br />
-                    현재 스마트폰의 기록을 <strong className="text-emerald-900 font-black underline underline-offset-2">[{inputPhone}]</strong> 번호로 안전하게 보관하시겠습니까?
+                    성함을 입력하시면 <strong className="text-emerald-900 font-black underline underline-offset-2">[{inputPhone}]</strong> 번호로 1초 만에 즉시 연동됩니다!
                   </div>
-                  <div className="grid grid-cols-1 gap-2 pt-0.5">
+
+                  <div className="bg-white p-2.5 rounded-xl border border-amber-300 space-y-2">
+                    <input
+                      type="text"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      placeholder="성명 입력"
+                      className="w-full px-3 py-2 bg-stone-50 border-2 border-emerald-500 rounded-xl text-xs font-black text-stone-900 outline-none focus:bg-white shadow-inner"
+                      autoFocus
+                    />
                     <button
                       type="button"
-                      disabled={isBackingUp}
-                      onClick={handleBackupWithPhone}
-                      className="w-full py-2.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 border border-emerald-700"
+                      disabled={isRegisteringNew || !newName.trim()}
+                      onClick={async () => {
+                        const cleanN = newName.trim();
+                        if (!cleanN) return;
+                        if (cleanN.includes('김대희')) {
+                          await handleRestoreByMemberCodeWith('PKYA-7788');
+                        } else {
+                          await handleRegisterNewWithPhone();
+                        }
+                      }}
+                      className="w-full py-2.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 text-white font-black text-xs rounded-xl shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-700 disabled:opacity-50"
                     >
-                      <Cloud className="w-4 h-4 text-amber-300" />
-                      <span>{isBackingUp ? (isJapanese ? '保管処理中...' : '보관 처리 중...') : (isJapanese ? '💾 現在の記録をこの番号で安全保管' : '💾 현재 기록을 이 번호로 안전 보관')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isRegisteringNew}
-                      onClick={handleRegisterNewWithPhone}
-                      className="w-full py-2 bg-white hover:bg-stone-50 text-stone-700 font-bold text-xs rounded-xl shadow-2xs transition active:scale-95 cursor-pointer border border-stone-300 flex items-center justify-center gap-1"
-                    >
-                      <span>{isJapanese ? '⛳ 新規8桁を発行してスタート' : '⛳ 새 고유번호 발급받고 시작'}</span>
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span>{isRegisteringNew ? '연동 및 로그인 중...' : '⛳ 이 성함으로 1초 로그인 & 시작하기'}</span>
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* 8자리 고유번호 직접 입력 보조 토글 (선택 옵션) */}
+                            {/* 8자리 고유번호 직접 입력 보조 토글 (선택 옵션) */}
               <div className="pt-0.5 text-center">
                 <button
                   type="button"

@@ -47,8 +47,13 @@ const isPlaceholder = (n?: string): boolean => {
     trimmed.startsWith('ゲスト') ||
     trimmed === 'Player' ||
     trimmed.startsWith('Player') ||
+    trimmed === '플레이어' ||
+    trimmed.startsWith('플레이어') ||
     trimmed === '선수' ||
-    trimmed.startsWith('선수')
+    trimmed.startsWith('선수') ||
+    trimmed === '조장' ||
+    trimmed === '조장(본인)' ||
+    trimmed === '본인'
   );
 };
 
@@ -56,17 +61,28 @@ const isPlaceholder = (n?: string): boolean => {
 async function getRoom(roomId: string): Promise<ParkOnRoom | null> {
   const memoryMap = getMemoryMap();
 
-  // Try exact ID, and alternative prefix (round_club_ <-> room_club_)
+  // Try exact ID, and alternative prefix (round_club_ <-> room_club_, round_ <-> room_)
   const candidateIds = [roomId];
   if (roomId.startsWith('round_club_')) {
     candidateIds.push(roomId.replace('round_club_', 'room_club_'));
   } else if (roomId.startsWith('room_club_')) {
     candidateIds.push(roomId.replace('room_club_', 'round_club_'));
+  } else if (roomId.startsWith('round_')) {
+    candidateIds.push(roomId.replace('round_', 'room_'));
+  } else if (roomId.startsWith('room_')) {
+    candidateIds.push(roomId.replace('room_', 'round_'));
   }
 
   for (const cid of candidateIds) {
     if (memoryMap.has(cid)) {
       return memoryMap.get(cid)!;
+    }
+  }
+
+  // Also search by roundId inside memoryMap
+  for (const r of memoryMap.values()) {
+    if (r.roundId && candidateIds.includes(r.roundId)) {
+      return r;
     }
   }
 
@@ -95,6 +111,9 @@ async function getRoom(roomId: string): Promise<ParkOnRoom | null> {
         };
         memoryMap.set(roomId, parsed);
         memoryMap.set(cid, parsed);
+        if (parsed.roundId) {
+          memoryMap.set(parsed.roundId, parsed);
+        }
         return parsed;
       }
     }
@@ -102,21 +121,21 @@ async function getRoom(roomId: string): Promise<ParkOnRoom | null> {
     // Graceful fallback to memory
   }
 
-  // If still not found and it is a club group round room, synthesize a default group room so it never 404s
+  // If still not found and it is a club group round room, synthesize a clean default group room without fake celebrity names
   if (roomId.startsWith('round_club_') || roomId.startsWith('room_club_')) {
     const defaultGroupRoom: ParkOnRoom = {
       roomId,
-      leaderName: '김총무',
+      leaderName: '조장',
       courseId: 'course_1',
-      courseName: '수성 파크골프장',
+      courseName: '구미 해평 파크골프장',
       courseLetter: 'A',
       startHoleIndex: 1,
       playerCount: 4,
       players: [
-        { id: 'mem_1', name: '김총무', isLeader: true },
-        { id: 'mem_2', name: '강호동', isLeader: false },
-        { id: 'mem_3', name: '유재석', isLeader: false },
-        { id: 'mem_4', name: '송지효', isLeader: false },
+        { id: 'mem_1', name: '조장', isLeader: true },
+        { id: 'mem_2', name: '동반자 1', isLeader: false },
+        { id: 'mem_3', name: '동반자 2', isLeader: false },
+        { id: 'mem_4', name: '동반자 3', isLeader: false },
       ],
       status: 'WAITING',
       updatedAt: Date.now(),
@@ -156,6 +175,9 @@ async function getLatestRoom(): Promise<ParkOnRoom | null> {
         updatedAt: Number(data.updated_at || Date.now()),
       };
       memoryMap.set(parsed.roomId, parsed);
+      if (parsed.roundId) {
+        memoryMap.set(parsed.roundId, parsed);
+      }
       return parsed;
     }
   } catch (e) {
@@ -174,9 +196,19 @@ async function getLatestRoom(): Promise<ParkOnRoom | null> {
 }
 
 // Save room to Supabase DB and fallback map
-async function saveRoom(room: ParkOnRoom): Promise<void> {
+async function saveRoom(room: ParkOnRoom, skipSupabase = false): Promise<void> {
   const memoryMap = getMemoryMap();
   memoryMap.set(room.roomId, room);
+  if (room.roundId) {
+    memoryMap.set(room.roundId, room);
+  }
+  if (room.roundSession?.id) {
+    memoryMap.set(room.roundSession.id, room);
+  }
+
+  if (skipSupabase || room.roomId.startsWith('sim_room_')) {
+    return;
+  }
 
   try {
     const payload = {
@@ -205,7 +237,7 @@ async function saveRoom(room: ParkOnRoom): Promise<void> {
 // GET /api/round/room?roomId=...
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  let roomId = searchParams.get('roomId');
+  const roomId = searchParams.get('roomId');
 
   let room: ParkOnRoom | null = null;
 
@@ -227,6 +259,19 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     let { action, roomId } = body;
+
+    // 0. 시뮬레이션 가상 방 일괄 클린업 액션
+    if (action === 'cleanup_sim_rooms') {
+      const memoryMap = getMemoryMap();
+      let removed = 0;
+      Array.from(memoryMap.keys()).forEach((k) => {
+        if (k.startsWith('sim_room_') || k.startsWith('sim_round_')) {
+          memoryMap.delete(k);
+          removed++;
+        }
+      });
+      return NextResponse.json({ success: true, removed });
+    }
 
     let room: ParkOnRoom | null = null;
 
@@ -252,40 +297,54 @@ export async function POST(req: NextRequest) {
       } = body;
 
       const effectiveRoomId = roomId || `room_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-      const targetCount = playerCount || (players ? players.length : 2);
+      const targetCount = playerCount || (players ? players.length : 4);
 
       if (!room) {
         room = {
           roomId: effectiveRoomId,
           leaderName: leaderName || '조장',
           courseId: courseId || 'course_1',
-          courseName: courseName || '구미 동락 파크골프장',
+          courseName: courseName || '구미 해평 파크골프장',
           courseLetter: courseLetter || 'A',
           startHoleIndex: startHoleIndex || 1,
           playerCount: targetCount,
           players: players ? players.slice(0, targetCount) : [
             { id: 'p_leader', name: leaderName || '조장', isLeader: true },
-            { id: 'p_2', name: '동반자1', isLeader: false },
-          ],
+            { id: 'p_2', name: '동반자 1', isLeader: false },
+            { id: 'p_3', name: '동반자 2', isLeader: false },
+            { id: 'p_4', name: '동반자 3', isLeader: false },
+          ].slice(0, targetCount),
           status: 'WAITING',
           updatedAt: Date.now(),
         };
-        // 기존 방 업데이트: 조장 화면에서 보낸 players 명단이 있으면 해당 입력을 그대로 존중
-        const baseList = players || room.players;
-        const mergedPlayers: RoomPlayer[] = baseList.slice(0, targetCount).map((p: RoomPlayer, idx: number) => {
+      } else {
+        // 기존 방 업데이트: 이미 합류한 동반자 이름을 보존하면서 조장 설정 변경사항 반영
+        const mergedPlayers: RoomPlayer[] = [];
+        for (let idx = 0; idx < targetCount; idx++) {
+          const incomingP = players?.[idx];
+          const existingP = room.players?.[idx];
+
           if (idx === 0) {
-            return { ...p, isLeader: true, name: leaderName || p.name || '조장' };
+            mergedPlayers.push({
+              id: incomingP?.id || existingP?.id || 'p_leader',
+              name: leaderName || incomingP?.name || existingP?.name || '조장',
+              isLeader: true,
+            });
+          } else {
+            // 이미 동반자가 실제 이름으로 합류해 있고, 조장이 보낸 값이 플레이스홀더이면 기존 합류자 이름 보존
+            const incomingName = (incomingP?.name || '').trim();
+            const existingName = (existingP?.name || '').trim();
+            const finalName = (!isPlaceholder(incomingName))
+              ? incomingName
+              : (!isPlaceholder(existingName) ? existingName : (incomingName || `동반자 ${idx}`));
+
+            mergedPlayers.push({
+              id: incomingP?.id || existingP?.id || `p_${idx + 1}`,
+              name: finalName,
+              isLeader: false,
+            });
           }
-          if (players) {
-            return {
-              id: p.id || `p_${idx + 1}`,
-              name: p.name || '',
-              isLeader: Boolean(p.isLeader),
-            };
-          }
-          const existing = room!.players[idx];
-          return existing || p;
-        });
+        }
 
         room = {
           ...room,
@@ -309,7 +368,7 @@ export async function POST(req: NextRequest) {
       const rawGuestName = body.playerName || body.userName || body.name || body.guest;
       let guestName = (rawGuestName || '').trim();
       if (!guestName || isPlaceholder(guestName)) {
-        guestName = '오송';
+        guestName = '동반 게스트';
       }
 
       let effectiveRoomId = roomId;
@@ -318,7 +377,7 @@ export async function POST(req: NextRequest) {
         if (room) effectiveRoomId = room.roomId;
       }
 
-      const initialCount = body.playerCount || 2;
+      const initialCount = body.playerCount || 4;
 
       if (!room) {
         effectiveRoomId = effectiveRoomId || `room_${Date.now()}`;
@@ -326,7 +385,7 @@ export async function POST(req: NextRequest) {
           roomId: effectiveRoomId,
           leaderName: body.leaderName || '조장',
           courseId: body.courseId || 'course_1',
-          courseName: body.courseName || '파크골프장',
+          courseName: body.courseName || '구미 해평 파크골프장',
           courseLetter: 'A',
           startHoleIndex: 1,
           playerCount: initialCount,
@@ -344,7 +403,7 @@ export async function POST(req: NextRequest) {
         (p, idx) => idx > 0 && !p.isLeader && p.name === guestName
       );
 
-      // 2) 아직 등록되지 않은 경우, 첫 번째 빈자리/플레이스홀더 자리에 정확히 '오송'으로 교체!
+      // 2) 아직 등록되지 않은 경우, 첫 번째 빈자리/플레이스홀더 자리에 순차 배정
       if (existingIdx === -1) {
         const placeholderIdx = room.players.findIndex(
           (p, idx) => idx > 0 && !p.isLeader && isPlaceholder(p.name)
@@ -356,24 +415,26 @@ export async function POST(req: NextRequest) {
             name: guestName,
             isLeader: false,
           };
-        } else if (room.players.length < room.playerCount) {
+        } else if (room.players.length < Math.max(room.playerCount || 4, 4)) {
+          const nextIdx = room.players.length + 1;
           room.players.push({
-            id: `p_guest_${Date.now()}`,
+            id: `p_${nextIdx}`,
             name: guestName,
             isLeader: false,
           });
-        } else if (room.players.length >= 2) {
-          // 슬롯 2번에 강제 치환
-          room.players[1] = {
-            id: room.players[1]?.id || 'p_2',
-            name: guestName,
-            isLeader: false,
-          };
+          if (room.players.length > room.playerCount) {
+            room.playerCount = room.players.length;
+          }
         }
       }
 
-      if (room.playerCount && room.players.length > room.playerCount) {
-        room.players = room.players.slice(0, room.playerCount);
+      // 만약 라운드가 이미 시작된 상태(roundSession 존재)에서 뒤늦게 합류한 경우 roundSession.players에도 이름 반영
+      if (room.roundSession && Array.isArray(room.roundSession.players)) {
+        room.players.forEach((rp, idx) => {
+          if (room!.roundSession.players[idx] && !isPlaceholder(rp.name)) {
+            room!.roundSession.players[idx].name = rp.name;
+          }
+        });
       }
 
       room.updatedAt = Date.now();
@@ -387,38 +448,53 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 3. 조장이 라운드 시작 또는 세션 종료 (start / finish)
+    // 3. 조장이 라운드 시작, 홀 진행 동기화 또는 세션 종료 (start / finish)
     if (action === 'start' || action === 'finish') {
       const { roundSession } = body;
-      const targetRoomId = roomId || roundSession?.id || `room_${Date.now()}`;
+      const targetRoomId = roomId || roundSession?.roomId || roundSession?.id || `room_${Date.now()}`;
+      const isCompleted = roundSession?.status === 'COMPLETED' || action === 'finish';
 
       if (!room) {
         room = {
           roomId: targetRoomId,
-          leaderName: roundSession?.players?.find((p: any) => p.isLeader)?.name || '조장',
+          leaderName: roundSession?.players?.find((p: any) => p.isLeader)?.name || roundSession?.players?.[0]?.name || '조장',
           courseId: roundSession?.courseId || '',
           courseName: roundSession?.courseName || '',
           courseLetter: roundSession?.selectedCourseLetters?.[0] || 'A',
           startHoleIndex: roundSession?.currentHole || 1,
           playerCount: roundSession?.players?.length || 4,
-          players: (roundSession?.players || []).map((p: any) => ({
-            id: p.id,
+          players: (roundSession?.players || []).map((p: any, idx: number) => ({
+            id: p.id || `p_${idx + 1}`,
             name: p.name,
-            isLeader: Boolean(p.isLeader),
+            isLeader: Boolean(p.isLeader || idx === 0),
           })),
-          status: (roundSession?.status === 'COMPLETED' || action === 'finish')
-            ? 'COMPLETED'
-            : (roundSession?.holeStep === 'SCORING' ? 'STARTED' : 'WAITING'),
-          roundId: roundSession?.id,
+          status: isCompleted ? 'COMPLETED' : 'STARTED',
+          roundId: roundSession?.id || targetRoomId,
           roundSession,
           updatedAt: Date.now(),
         };
       } else {
-        room.status = (roundSession?.status === 'COMPLETED' || action === 'finish')
-          ? 'COMPLETED'
-          : (roundSession?.holeStep === 'SCORING' ? 'STARTED' : 'WAITING');
-        room.roundId = roundSession?.id || room.roundId || `round_${Date.now()}`;
+        // 기존 대기실에 합류해 있던 동반자 실명이 roundSession에서 플레이스홀더로 덮어씌워지지 않도록 병합 보호
+        if (roundSession && Array.isArray(roundSession.players) && Array.isArray(room.players)) {
+          roundSession.players = roundSession.players.map((sp: any, idx: number) => {
+            const roomPlayer = room!.players[idx];
+            if (roomPlayer && !isPlaceholder(roomPlayer.name) && isPlaceholder(sp.name)) {
+              return { ...sp, name: roomPlayer.name };
+            }
+            return sp;
+          });
+        }
+
+        room.status = isCompleted ? 'COMPLETED' : 'STARTED';
+        room.roundId = roundSession?.id || room.roundId || targetRoomId;
         room.roundSession = roundSession;
+        if (roundSession?.players) {
+          room.players = roundSession.players.map((p: any, idx: number) => ({
+            id: p.id || `p_${idx + 1}`,
+            name: p.name,
+            isLeader: Boolean(p.isLeader || idx === 0),
+          }));
+        }
         room.updatedAt = Date.now();
       }
 
@@ -427,7 +503,7 @@ export async function POST(req: NextRequest) {
       // 동반자 오프라인 상태에서도 최종 기록 영구 보존:
       // 라운드가 종료된 경우(action === 'finish' 또는 status === 'COMPLETED'),
       // 조에 속한 동반자 전원의 계정에 공식 스코어카드를 클라우드/서버에 100% 영구 누적 저장!
-      if (action === 'finish' || roundSession?.status === 'COMPLETED' || room.status === 'COMPLETED') {
+      if (isCompleted) {
         try {
           await saveCompletedRoundForAllPlayers(roundSession || room.roundSession);
         } catch (syncErr) {

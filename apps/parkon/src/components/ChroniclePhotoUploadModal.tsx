@@ -340,7 +340,7 @@ export function ChroniclePhotoUploadModal({
               type="text"
               value={companionsText}
               onChange={(e) => setCompanionsText(e.target.value)}
-              placeholder={isJapanese ? '例: 私、佐藤、田中' : '예: 나, 홍길동, 김파크'}
+              placeholder={isJapanese ? '同伴者名を入力' : '동반자 성명 입력'}
               className="w-full text-xs p-2.5 rounded-xl border border-stone-300 focus:outline-none focus:border-emerald-500"
             />
           </div>

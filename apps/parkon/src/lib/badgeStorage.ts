@@ -275,7 +275,7 @@ function getMyDisplayName(): string {
       const rawKakao = localStorage.getItem('parkon_kakao_user');
       if (rawKakao) {
         const parsed = JSON.parse(rawKakao);
-        return parsed.realName || parsed.nickname || '홍길동';
+        return parsed.realName || parsed.nickname || '골퍼';
       }
       const rawProfile = localStorage.getItem('parkon_user_profile');
       if (rawProfile) {
@@ -286,7 +286,7 @@ function getMyDisplayName(): string {
       // ignore
     }
   }
-  return '홍길동';
+  return '골퍼';
 }
 
 export const BadgeStorage = {

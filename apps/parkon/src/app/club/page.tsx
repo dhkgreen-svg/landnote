@@ -4267,7 +4267,7 @@ ${shareUrl}`;
                   type="text"
                   value={applicantName}
                   onChange={(e) => setApplicantName(e.target.value)}
-                  placeholder={isJapanese ? '例: 山田太郎' : '예: 홍길동'}
+                  placeholder={isJapanese ? '氏名を入力' : '성명 입력'}
                   required
                   className="w-full px-3 py-2.5 bg-stone-50 border border-stone-300 rounded-xl font-bold"
                 />
@@ -7404,7 +7404,7 @@ ${shareUrl}`;
                   type="text"
                   value={hostName}
                   onChange={(e) => setHostName(e.target.value)}
-                  placeholder="예: 김총무"
+                  placeholder="성명 입력"
                   required
                   className="w-full px-3 py-2.5 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold"
                 />
@@ -8656,7 +8656,7 @@ ${shareUrl}`;
                     type="button"
                     onClick={() => {
                       const kakaoUser = ParkOnStorage.getKakaoUser();
-                      setAliasInputName(kakaoUser?.realName || (isJapanese ? '田中太郎' : '홍길동'));
+                      setAliasInputName(kakaoUser?.realName || '');
                     }}
                     className="p-2.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-left transition cursor-pointer"
                   >
@@ -8689,7 +8689,7 @@ ${shareUrl}`;
                   type="text"
                   value={aliasInputName}
                   onChange={(e) => setAliasInputName(e.target.value)}
-                  placeholder={isJapanese ? '例: 田中太郎 または ゴルファー' : '예: 홍길동 또는 골퍼'}
+                  placeholder={isJapanese ? '氏名またはニックネームを入力' : '성명 입력'}
                   maxLength={15}
                   className="w-full px-3 py-2.5 border-2 border-stone-300 focus:border-emerald-600 rounded-xl text-sm font-black focus:outline-none"
                 />

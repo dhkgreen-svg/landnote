@@ -2,11 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { createClient } from '@supabase/supabase-js';
+import baselineMembersData from '@/data/member_sync_baseline.json';
 
 export interface MemberSyncRecord {
   memberCode: string;
   userName?: string;
   phoneNumber?: string;
+  altPhones?: string[];
   profile?: any;
   kakaoUser?: any;
   completedRounds?: any[];
@@ -20,6 +22,25 @@ export interface MemberSyncRecord {
 
 export const MEMBER_SYNC_CACHE_FILE = path.join(os.tmpdir(), 'parkon_member_sync_cache.json');
 
+export const FAKE_TEST_ROUND_IDS = new Set([
+  'round_rec_1',
+  'round_suseong_sample',
+  'round_kim_gumi_20261002',
+  'round_live_1791117870020',
+  'round_chronicle_4players_test',
+  'round_plana_test_1',
+  'round_ceo_photo_download_01',
+  'round_verified_field_01',
+  'round_fast_mock_02',
+  'round_to_delete_03',
+  'round_1791008874732',
+  'round_1791008230171',
+  'round_27h_abc_field',
+  'round_27h_abc_test',
+  'round_test_abc_multicourse',
+  'round_1791111047887',
+]);
+
 // Supabase client helper
 export const getSupabaseClient = () => {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://aoucvlpmhrqymziktevu.supabase.co';
@@ -32,23 +53,87 @@ export const getSupabaseClient = () => {
   }
 };
 
+export function isMockOrCorruptedRound(r: any): boolean {
+  if (!r) return true;
+  if (typeof r.id === 'string' && (FAKE_TEST_ROUND_IDS.has(r.id) || r.id.startsWith('mock_') || r.id.startsWith('sample_'))) {
+    return true;
+  }
+  if (r.isVirtual === true || r.isOfficial === false) {
+    return true;
+  }
+  if (
+    r.courseName === '수성파크골프장' &&
+    r.players?.some((p: any) => (p.name === '김대희' || p.name?.includes('홍길동')) && p.totalStrokes === 54 && r.completedAt === '2026-10-02T10:00:00.000Z')
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function isInvalidOrPlaceholderPlayerName(name?: string | null): boolean {
+  if (!name) return true;
+  const clean = name.trim();
+  if (clean.length < 2 || /[ㄱ-ㅎㅏ-ㅣ]/.test(clean) || /^\d+$/.test(clean)) return true;
+  const lower = clean.toLowerCase();
+  if (
+    lower === '플레이스홀더' ||
+    lower === '플레이어' ||
+    lower === '홍길동' ||
+    lower === '손오공' ||
+    lower === '조장' ||
+    lower === '본인' ||
+    lower === '회원' ||
+    lower === '파크골퍼' ||
+    lower === '골퍼' ||
+    lower === '게스트' ||
+    lower === '동반 게스트' ||
+    lower === '선수' ||
+    lower.startsWith('동반자') ||
+    lower.startsWith('게스트') ||
+    lower.startsWith('조장 ') ||
+    lower.startsWith('player') ||
+    lower.startsWith('同伴') ||
+    lower.startsWith('ゲスト')
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export const getMembersMap = (): Map<string, MemberSyncRecord> => {
   const g = globalThis as any;
-  if (!g.__parkonMemberSync) {
-    g.__parkonMemberSync = new Map<string, MemberSyncRecord>();
+  if (!g.__parkonMemberSyncV3) {
+    g.__parkonMemberSyncV3 = new Map<string, MemberSyncRecord>();
+    try {
+      if (baselineMembersData && typeof baselineMembersData === 'object') {
+        for (const [k, v] of Object.entries(baselineMembersData)) {
+          const rec = v as MemberSyncRecord;
+          if (rec && Array.isArray(rec.completedRounds)) {
+            rec.completedRounds = rec.completedRounds.filter((r) => !isMockOrCorruptedRound(r));
+          }
+          g.__parkonMemberSyncV3.set(k.toUpperCase().replace(/[^A-Z0-9]/g, ''), rec);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load baseline member sync records:', e);
+    }
     try {
       if (fs.existsSync(MEMBER_SYNC_CACHE_FILE)) {
         const raw = fs.readFileSync(MEMBER_SYNC_CACHE_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
         for (const [k, v] of Object.entries(parsed)) {
-          g.__parkonMemberSync.set(k.toUpperCase().replace(/[^A-Z0-9]/g, ''), v as MemberSyncRecord);
+          const rec = v as MemberSyncRecord;
+          if (rec && Array.isArray(rec.completedRounds)) {
+            rec.completedRounds = rec.completedRounds.filter((r) => !isMockOrCorruptedRound(r));
+          }
+          g.__parkonMemberSyncV3.set(k.toUpperCase().replace(/[^A-Z0-9]/g, ''), rec);
         }
       }
     } catch (e) {
       console.error('Failed to load member sync records from disk:', e);
     }
   }
-  return g.__parkonMemberSync;
+  return g.__parkonMemberSyncV3;
 };
 
 export const persistMembers = (members: Map<string, MemberSyncRecord>) => {
@@ -68,63 +153,46 @@ export function toHalfWidth(str: string): string {
   return str.replace(/[！-～]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).replace(/　/g, ' ');
 }
 
-export function isMockOrCorruptedRound(r: any): boolean {
-  if (!r) return true;
-  if (
-    r.id === 'round_rec_1' || 
-    r.id === 'round_suseong_sample' || 
-    r.id === 'round_kim_gumi_20261002' ||
-    (typeof r.id === 'string' && (r.id.startsWith('mock_') || r.id.startsWith('sample_')))
-  ) {
-    return true;
-  }
-  if (r.isVirtual === true || r.isOfficial === false) {
-    return true;
-  }
-  if (
-    r.courseName === '수성파크골프장' &&
-    r.players?.some((p: any) => (p.name === '김대희' || p.name?.includes('홍길동')) && p.totalStrokes === 54 && r.completedAt === '2026-10-02T10:00:00.000Z')
-  ) {
-    return true;
-  }
-  // 🛡️ [대표님 절대 원칙]: 사용자의 실제 라운드는 GPS 플래그 유무와 상관없이 100% 안전 보존
-  return false;
-}
-
 /**
  * 4인 조별 라운드 종료 시(조장의 최종 스코어 제출),
- * 조에 속한 동반자 전원의 계정에 공식 스코어카드를 무손실 영구 저장
- * (동반자 기기가 종료/방전 상태여도 서버/클라우드에 100% 기록 누적)
+ * 조에 속한 기존 등록 정회원 동반자들의 계정에 공식 스코어카드를 무손실 영구 저장
+ * (미가입 임시 이름 '동반자 1', '게스트' 등으로 유령 회원이 생성되는 현상 원천 차단)
  */
-export async function saveCompletedRoundForAllPlayers(roundSession: any): Promise<void> {
+export async function saveCompletedRoundForAllPlayers(roundSession: any, skipPersist = false): Promise<void> {
   if (!roundSession || !roundSession.players || !Array.isArray(roundSession.players)) return;
-  // 🛡️ [대표님 절대 원칙]: 실제 구장 현장 GPS 인증이 없는 라운드는 클라우드 동기화 100% 차단
-  // if (!roundSession.isGpsVerified) return;
+  if (roundSession.isVirtual || roundSession.isOfficial === false) return;
+
   const map = getMembersMap();
-  const supabase = getSupabaseClient();
+  let updatedAny = false;
 
   for (const player of roundSession.players) {
     if (!player) continue;
     const playerName = (player.name || '').trim();
-    if (!playerName || playerName === '플레이스홀더') continue;
+    if (isInvalidOrPlaceholderPlayerName(playerName)) continue;
 
     // 해당 선수 본인(isSelf: true) 관점의 스코어카드 생성
     const playerSpecificRound = {
       ...roundSession,
       status: 'COMPLETED',
-      isOfficial: roundSession.isOfficial !== false,
+      isOfficial: true,
       players: roundSession.players.map((p: any) => ({
         ...p,
         isSelf: p.id === player.id || (playerName && p.name === playerName),
       })),
     };
 
-    // 1) 고유 회원번호 매핑 확인 (player.id 또는 성함 일치 검색)
+    // 기존 등록된 정회원 매핑 확인 (player.memberCode, player.id 또는 성함 일치 검색)
     let foundKey: string | null = null;
     let record: MemberSyncRecord | undefined = undefined;
 
+    const normMemberCode = toHalfWidth(player.memberCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (normMemberCode && map.has(normMemberCode)) {
+      foundKey = normMemberCode;
+      record = map.get(normMemberCode);
+    }
+
     const normPlayerId = toHalfWidth(player.id || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (normPlayerId && (normPlayerId.startsWith('PKY') || normPlayerId.length >= 7)) {
+    if (!record && normPlayerId && normPlayerId.startsWith('PKY') && map.has(normPlayerId)) {
       foundKey = normPlayerId;
       record = map.get(normPlayerId);
     }
@@ -140,26 +208,11 @@ export async function saveCompletedRoundForAllPlayers(roundSession: any): Promis
       });
     }
 
-    // 2) 아직 동기화 레코드가 없는 동반자인 경우, 신규 레코드 생성
-    if (!record) {
-      const genCode = normPlayerId && normPlayerId.startsWith('PKY')
-        ? normPlayerId
-        : `PKYA${Math.floor(1000 + Math.random() * 9000)}`;
-      foundKey = genCode;
-      const formattedCode = genCode.length >= 8 ? `${genCode.slice(0, 4)}-${genCode.slice(4)}` : genCode;
-      record = {
-        memberCode: formattedCode,
-        userName: playerName,
-        profile: { userName: playerName },
-        completedRounds: [],
-        companions: [],
-        badges: {},
-        updatedAt: new Date().toISOString(),
-      };
-      map.set(genCode, record);
+    // 정회원으로 등록된 계정이 있는 경우에만 완주 기록 병합 (유령 계정 자동 생성 금지)
+    if (!record || !foundKey) {
+      continue;
     }
 
-    // 3) 완주 기록 무손실 병합 (중복 방지)
     const existingRounds = (record.completedRounds || []).filter((r: any) => !isMockOrCorruptedRound(r));
     const roundKey = playerSpecificRound.id || `${playerSpecificRound.courseName}_${playerSpecificRound.completedAt}`;
     const roundMap = new Map<string, any>();
@@ -171,33 +224,17 @@ export async function saveCompletedRoundForAllPlayers(roundSession: any): Promis
       }
     });
 
-    const roundList: any[] = [];
-    roundMap.forEach((val) => {
-      roundList.push(val);
-    });
-
-    record.completedRounds = roundList.sort((a: any, b: any) => {
+    record.completedRounds = Array.from(roundMap.values()).sort((a: any, b: any) => {
       const tA = new Date(a.completedAt || 0).getTime();
       const tB = new Date(b.completedAt || 0).getTime();
       return tB - tA;
     });
     record.updatedAt = new Date().toISOString();
-    if (foundKey) {
-      map.set(foundKey, record);
-    }
-
-    // 4) Supabase 클라우드 동기화 (백그라운드)
-    if (supabase && foundKey) {
-      try {
-        await supabase.from('parkon_analytics_logs').insert({
-          event_type: 'member_cloud_sync',
-          path: `member_sync:${foundKey}`,
-          referrer: JSON.stringify(record),
-          timestamp: new Date().toISOString(),
-        });
-      } catch (e) {}
-    }
+    map.set(foundKey, record);
+    updatedAny = true;
   }
 
-  persistMembers(map);
+  if (updatedAny && !skipPersist) {
+    persistMembers(map);
+  }
 }

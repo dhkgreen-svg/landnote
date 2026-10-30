@@ -90,7 +90,7 @@ export const CompanionStorage = {
           c.id !== 'comp_1' &&
           c.id !== 'comp_2' &&
           c.id !== 'comp_3' &&
-          !c.id.startsWith('mock_comp_')
+          !c.id.startsWith('mock_comp_') && c.companionName && c.companionName.trim().length >= 2 && !/[ㄱ-ㅎㅏ-ㅣ]/.test(c.companionName) && !/^\d+$/.test(c.companionName.trim()) && !c.companionName.trim().startsWith('동반자') && !c.companionName.trim().startsWith('게스트') && c.companionName.trim() !== '동반 게스트' && c.companionName.trim() !== '플레이어' && c.companionName.trim() !== '조장'
       );
     } catch {
       return [];
@@ -171,7 +171,7 @@ export const CompanionStorage = {
       if (p.isSelf) return false;
       const pName = p.name.trim();
       if (pName === selfName.trim()) return false;
-      if (pName === '본인' || pName === '본인(조장)') return false;
+      if (!pName || pName.length < 2 || /[ㄱ-ㅎㅏ-ㅣ]/.test(pName) || /^\d+$/.test(pName) || pName === '본인' || pName === '본인(조장)' || pName === '조장' || pName === '플레이어' || pName === '게스트' || pName === '동반 게스트' || pName.startsWith('동반자') || pName.startsWith('게스트') || pName.startsWith('同伴') || pName.startsWith('ゲスト')) return false;
       return true;
     });
 

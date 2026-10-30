@@ -186,8 +186,8 @@ const CompanionSlotRow = React.memo(function CompanionSlotRow({
           onBlur={handleBlur}
           placeholder={
             isSelf
-              ? (isJapanese ? '代表のお名前 (例: 山田)' : '성명을 적어주세요 (조장/본인)')
-              : (isJapanese ? 'お名前を入力 (例: 田中)' : `동반자 ${slotIndex + 1} (예: 이총무, 박회장)`)
+              ? (isJapanese ? 'お名前入力 (代表/本人)' : '성명 입력 (조장/본인)')
+              : (isJapanese ? 'お名前入力' : `성명 입력 (동반자 ${slotIndex + 1})`)
           }
           className="w-full bg-white border border-stone-300 rounded-lg pl-3 pr-8 py-1.5 text-sm font-bold text-stone-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none placeholder:text-stone-400"
         />
@@ -318,6 +318,27 @@ function NewRoundForm() {
   };
 
   const leaderParam = searchParams.get('leader') || searchParams.get('member') || searchParams.get('user');
+
+  // 회원 로그인 또는 프로필 동기화 시 1번 조장 슬롯 실시간 리액티브 갱신
+  useEffect(() => {
+    const handleProfileSync = () => {
+      const selfName = getDefaultSelfName(isJapanese);
+      if (selfName && !isSampleOrPlaceholder(selfName)) {
+        setPlayersList((prev) =>
+          prev.map((p, idx) => ((idx === 0 || p.isSelf) ? { ...p, name: selfName.trim(), isSelf: true } : p))
+        );
+      }
+    };
+    window.addEventListener('parkon_profile_updated', handleProfileSync);
+    window.addEventListener('parkon_member_synced', handleProfileSync);
+    window.addEventListener('storage', handleProfileSync);
+    return () => {
+      window.removeEventListener('parkon_profile_updated', handleProfileSync);
+      window.removeEventListener('parkon_member_synced', handleProfileSync);
+      window.removeEventListener('storage', handleProfileSync);
+    };
+  }, [isJapanese]);
+
 
   useEffect(() => {
     const selfName = getDefaultSelfName(isJapanese);
@@ -919,6 +940,7 @@ function NewRoundForm() {
 
     const newSession: RoundSession = {
       id: newId,
+      roomId,
       courseId: currentCourse.id,
       courseName: currentCourse.name,
       startedAt: new Date().toISOString(),
@@ -1113,15 +1135,7 @@ function NewRoundForm() {
                     onClick={openEditModal}
                     className="bg-emerald-700 hover:bg-emerald-600 text-white font-black py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px] cursor-pointer"
                   >
-                    <span>✏️ {isJapanese ? 'コース名・諸元訂正' : '구장명·제원 수정'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="change-course-search-btn"
-                    onClick={() => setShowSearchModal(true)}
-                    className="bg-white hover:bg-stone-100 text-stone-700 border border-stone-300 font-bold py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px] cursor-pointer"
-                  >
-                    <span>{isEnglish ? 'Change Course' : isJapanese ? 'コース変更' : '구장 변경'}</span>
+                    <span>✏️ {isJapanese ? 'コース名訂正' : '구장명 수정'}</span>
                   </button>
                 </div>
               </div>

@@ -624,7 +624,7 @@ function RoundJoinContent() {
                     placeholder={
                       isJapanese
                         ? 'お名前を入力 (例: 山田)'
-                        : '성명을 적어주세요 (예: 오송, 박회장)'
+                        : '성명 입력'
                     }
                     className="w-full pl-3.5 pr-10 py-3.5 text-base bg-stone-50 text-stone-900 border-2 border-stone-200 rounded-xl font-bold focus:outline-hidden focus:border-emerald-600 focus:bg-white transition placeholder:text-stone-400"
                   />

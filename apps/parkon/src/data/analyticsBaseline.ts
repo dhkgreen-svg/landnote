@@ -635,7 +635,7 @@ export const baselineAnalytics: any = {
       "timeStr": "10:33:27",
       "userRegion": "경북 구미시",
       "homeCourse": "경북 구미시 인근 구장",
-      "userName": "홍길동"
+      "userName": "일반 골퍼"
     },
     {
       "id": "vcnv5rr",

@@ -1465,7 +1465,7 @@ export default function RoundPlayPage() {
 
     // 2. Lock in score for current hole for active players (preserve departed isOut players)
     const updatedPlayers = session.players.map((p) => {
-      if (p.isOut) return p;
+      if (p.isOut || restingPlayerIds.includes(p.id)) return p;
       const defaultVal = countingMode === 'ZERO_BASE' ? 0 : currentPar;
       const currentVal = p.scores?.[actualHoleNumber] ?? defaultVal;
       const newScores = { ...(p.scores || {}), [actualHoleNumber]: currentVal };
@@ -1569,7 +1569,7 @@ export default function RoundPlayPage() {
 
     // 현재 활성 상태인 모든 플레이어의 타수 및 휴식 상태 검증
     const warningList = session.players
-      .filter((p) => !p.isOut && (restingPlayerIds.includes(p.id) || p.scores?.[actualHoleNumber] === undefined || p.scores?.[actualHoleNumber] === null || p.scores?.[actualHoleNumber] === 0))
+      .filter((p) => !p.isOut && (restingPlayerIds.includes(p.id) || (p.scores?.[actualHoleNumber] ?? (countingMode === 'ZERO_BASE' ? 0 : currentPar)) <= 0))
       .map((p) => `${p.name}(${restingPlayerIds.includes(p.id) ? (isJapanese ? '休憩' : isEnglish ? 'Rest' : '휴식') : (isJapanese ? '未入力' : isEnglish ? 'Unentered' : '미입력')})`)
       .join(', ');
 
@@ -1744,7 +1744,7 @@ export default function RoundPlayPage() {
 
       const currentConfirmed = session.confirmedHoles || [];
       const updatedPlayers = session.players.map((p) => {
-        if (p.isOut) return p;
+        if (p.isOut || restingPlayerIds.includes(p.id)) return p;
         if (!currentConfirmed.includes(targetActualHole)) {
           return {
             ...p,
@@ -2067,7 +2067,7 @@ export default function RoundPlayPage() {
       const nextDefaultStroke = countingMode === 'ZERO_BASE' ? 0 : nextHolePar;
 
       const playersForNextHole = updatedPlayers.map((p) => {
-        if (p.isOut) return p;
+        if (p.isOut || restingPlayerIds.includes(p.id)) return p;
         if (!currentConfirmed.includes(nextActualHole)) {
           return {
             ...p,
@@ -2257,7 +2257,7 @@ export default function RoundPlayPage() {
       players: updatedPlayers,
     }, course || undefined);
 
-    const isActuallyOfficial = isOfficial === true && gpsVerified === true && !session.isVirtual;
+    const isActuallyOfficial = isOfficial === true && !session.isVirtual;
 
     const finished: RoundSession = {
       ...session,
