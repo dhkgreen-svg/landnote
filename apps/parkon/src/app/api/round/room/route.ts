@@ -80,7 +80,7 @@ async function getRoom(roomId: string): Promise<ParkOnRoom | null> {
   }
 
   // Also search by roundId inside memoryMap
-  for (const r of memoryMap.values()) {
+  for (const r of Array.from(memoryMap.values())) {
     if (r.roundId && candidateIds.includes(r.roundId)) {
       return r;
     }

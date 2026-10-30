@@ -332,7 +332,7 @@ export async function GET(req: NextRequest) {
       let foundByFullPhone = false;
       let foundByNameAndLast4 = false;
 
-      for (const rec of map.values()) {
+      for (const rec of Array.from(map.values())) {
         if (!foundByFullPhone && checkMemberMatch(rec, '', u.cleanPhone) && rec.memberCode === u.memberCode) {
           foundByFullPhone = true;
         }
