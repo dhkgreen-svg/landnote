@@ -539,6 +539,64 @@ export function RoundScoreboardModal({
   const isFieldVerified = currentRound.isFieldVerified ?? (isOfficial && isRealisticTime && !currentRound.isVirtual);
   const isFastTest = !isRealisticTime && durationMin < 15;
 
+  // Helper to resolve photo classification metadata (Hole-in-One / Eagle / Regular)
+  const getPhotoMetaForIndex = (idx: number) => {
+    const explicitMeta = currentRound.photoMetadata?.[idx];
+    const dStr = `${startDObj.getFullYear()}.${String(startDObj.getMonth() + 1).padStart(2, '0')}.${String(startDObj.getDate()).padStart(2, '0')}`;
+    const shortCourse = (currentRound.courseName || '해평').replace('파크골프장', '').replace('파크골프', '').trim();
+
+    if (explicitMeta && explicitMeta.photoType) {
+      const hLbl = (explicitMeta.holeLabel || 'A-1홀').replace('번홀', '홀');
+      const ach = explicitMeta.achieverName || currentRound.players?.[0]?.name || '김대희';
+      return {
+        photoType: explicitMeta.photoType,
+        achieverName: ach,
+        holeLabel: hLbl,
+        dateStr: explicitMeta.dateStr || dStr,
+        shortCourse,
+        caption:
+          explicitMeta.photoType === 'hole_in_one'
+            ? `${explicitMeta.dateStr || dStr} ${shortCourse} ${hLbl} ${ach} 님 홀인원`
+            : explicitMeta.photoType === 'eagle'
+            ? `${explicitMeta.dateStr || dStr} ${shortCourse} ${hLbl} ${ach} 님 이글 달성`
+            : `${explicitMeta.dateStr || dStr} ${shortCourse} ${hLbl} 라운드 추억`,
+      };
+    }
+
+    // Fallback: auto-detect if any player in currentRound has 1 stroke (Hole-in-One)
+    for (const pl of currentRound.players || []) {
+      for (const [hKey, strokeVal] of Object.entries(pl.scores || {})) {
+        if (Number(strokeVal) === 1) {
+          const baseNum = ((Number(hKey) - 1) % 1000) + 1;
+          const cIdx = Math.floor((baseNum - 1) / 9);
+          const letter = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][cIdx] || 'A';
+          const hInCourse = ((baseNum - 1) % 9) + 1;
+          const hLbl = `${letter}-${hInCourse}홀`;
+          const ach = pl.name || '김대희';
+          if (idx === 0) {
+            return {
+              photoType: 'hole_in_one' as const,
+              achieverName: ach,
+              holeLabel: hLbl,
+              dateStr: dStr,
+              shortCourse,
+              caption: `${dStr} ${shortCourse} ${hLbl} ${ach} 님 홀인원`,
+            };
+          }
+        }
+      }
+    }
+
+    return {
+      photoType: 'regular' as const,
+      achieverName: currentRound.players?.[0]?.name || '김대희',
+      holeLabel: 'A-1홀',
+      dateStr: dStr,
+      shortCourse,
+      caption: `${dStr} ${shortCourse} 라운드 추억`,
+    };
+  };
+
   const handleDelete = () => {
     if (!onDelete || !currentRound) return;
     const msg = isJapanese
@@ -658,99 +716,12 @@ export function RoundScoreboardModal({
           </button>
         </div>
 
-        {/* Modal Scrollable Body */}
-        <div className="overflow-y-auto flex-1 pr-0.5 space-y-3">
-          {/* TAB 1: COURSES */}
+        {/* Modal Scrollable Body: 홀별 타수 스코어보드 테이블(전체 점수표) 메인 즉시 표출 */}
+        <div className="overflow-y-auto flex-1 pr-0.5 space-y-3" data-testid="chronicle-scoreboard-main-body">
+          {/* TAB 1: COURSES (홀별 타수 스코어보드 테이블 메인 표출) */}
           {modalActiveTab === 'COURSES' && (
             <div className="space-y-3">
-              {/* 📸 [방안 A 핵심]: 1번 탭 상단에 현장 사진 미니 프리뷰 칩 배치 */}
-              {currentRound.photos && currentRound.photos.length > 0 ? (
-                <div
-                  onClick={() => setModalActiveTab('PHOTOS')}
-                  className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300/80 rounded-2xl p-2.5 flex items-center justify-between shadow-2xs hover:border-amber-400 cursor-pointer transition active:scale-98"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="flex -space-x-2 shrink-0">
-                      {currentRound.photos.slice(0, 3).map((imgUrl, i) => (
-                        <div key={i} className="w-8 h-8 rounded-full border-2 border-white overflow-hidden shadow-xs bg-stone-900">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={imgUrl} alt="사진" className="w-full h-full object-cover" />
-                        </div>
-                      ))}
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-xs font-black text-amber-950 flex items-center gap-1 truncate">
-                        <span>📸 현장 기념사진 {currentRound.photos.length}장 등록됨</span>
-                      </span>
-                      <span className="text-[10px] text-amber-700 block truncate">
-                        터치 시 전체 갤러리 및 확대 보기 ➔
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-black bg-amber-500 text-stone-950 px-2 py-1 rounded-xl shrink-0 shadow-2xs">
-                    사진 보기
-                  </span>
-                </div>
-              ) : (
-                <div className="bg-stone-50 border border-dashed border-stone-300 rounded-2xl p-2 px-3 flex items-center justify-between text-xs">
-                  <span className="text-[11px] text-stone-500 font-medium">
-                    📸 함께 찍은 현장 사진을 등록해보세요
-                  </span>
-                  <label className="text-[10px] font-black text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2 py-1 rounded-lg border border-emerald-300 cursor-pointer transition">
-                    <span>+ 사진 추가</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleAddPhoto} />
-                  </label>
-                </div>
-              )}
-
-              {/* 🎯 골프 공인 언더파 기호 안내 범례 */}
-              <ScoreBadgeLegend />
-
-              {/* 🏆 동반자 전원 최종 순위 및 총 타수 요약 전광판 (1인, 2인, 3인, 4인) */}
-              <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white p-3 sm:p-3.5 rounded-2xl shadow-md border border-emerald-800 space-y-2">
-                <div className="flex items-center justify-between text-xs border-b border-white/10 pb-1.5">
-                  <span className="font-black text-amber-300 flex items-center gap-1.5">
-                    <span>🏆</span>
-                    <span>{isJapanese ? '最終戦績電光掲示板' : '동반자 최종 성적 전광판'}</span>
-                  </span>
-                  <span className="text-[11px] text-emerald-200 font-medium">
-                    {activeConfirmedHoles.length}홀 완주 · 기준 Par {activeTotalPar}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                  {integratedSummary.map((item, idx) => {
-                    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : ' ';
-                    return (
-                      <div
-                        key={item.player.id}
-                        className={`p-2 rounded-xl border flex flex-col justify-between ${
-                          idx === 0
-                            ? 'bg-amber-500/20 border-amber-400/50 text-amber-200'
-                            : 'bg-white/5 border-white/10 text-stone-200'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-1">
-                          <span className="text-xs font-black truncate flex items-center gap-1">
-                            <span>{medal}</span>
-                            <span className="truncate">{item.player.name}</span>
-                          </span>
-                          {item.player.isLeader && (
-                            <span className="text-[8px] bg-amber-400 text-stone-950 px-1 rounded font-black shrink-0">조장</span>
-                          )}
-                        </div>
-                        <div className="mt-1 flex items-baseline justify-between">
-                          <span className="text-base font-black text-white">{item.strokes}타</span>
-                          <span className="text-[10px] font-bold text-emerald-300">
-                            ({item.diff === 0 ? 'E' : item.diff > 0 ? `+${item.diff}` : `${item.diff}`})
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 📋 코스별 공식 스코어보드 테이블 */}
+              {/* 📋 코스별 공식 홀별 타수 스코어보드 테이블 (불필요한 상단/하단 안내 바 제거 후 메인 즉시 표출) */}
               {activeSegments.map((seg) => (
                 <div key={seg.key} className="bg-stone-50 rounded-2xl p-3 border border-stone-200 shadow-2xs space-y-2.5">
                   <div className="flex items-center justify-between pb-1.5 border-b border-stone-200">
@@ -764,7 +735,7 @@ export function RoundScoreboardModal({
                   </div>
 
                   {/* 4인 스코어보드 테이블 */}
-                  <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-2xs">
+                  <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-2xs" data-testid="chronicle-hole-scoreboard-table">
                     <table className="w-full text-center text-xs">
                       <thead>
                         <tr className="bg-stone-100 text-stone-700 font-bold border-b border-stone-200 text-[11px]">
@@ -844,6 +815,9 @@ export function RoundScoreboardModal({
                   </div>
                 </div>
               ))}
+
+              {/* 🎯 골프 공인 언더파 기호 안내 범례 */}
+              <ScoreBadgeLegend />
             </div>
           )}
 
@@ -932,22 +906,49 @@ export function RoundScoreboardModal({
 
               {currentRound.photos && currentRound.photos.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {currentRound.photos.map((imgUrl, i) => (
-                    <div
-                      key={i}
-                      onClick={() => setSelectedPhotoForZoom(imgUrl)}
-                      className="aspect-square rounded-2xl overflow-hidden border-2 border-amber-300 relative cursor-pointer shadow-xs hover:border-amber-500 hover:scale-[1.02] transition group bg-stone-900"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={imgUrl} alt={`기념사진 ${i + 1}`} className="w-full h-full object-cover" />
-                      <div className="absolute top-1.5 left-1.5 bg-black/70 backdrop-blur-xs text-white text-[10px] font-black px-1.5 py-0.5 rounded-md">
-                        #{i + 1} {i === 0 ? '대표' : ''}
+                  {currentRound.photos.map((imgUrl, i) => {
+                    const pMeta = getPhotoMetaForIndex(i);
+                    const isHio = pMeta.photoType === 'hole_in_one';
+                    const isEagle = pMeta.photoType === 'eagle';
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => setSelectedPhotoForZoom(imgUrl)}
+                        className={`aspect-square rounded-2xl overflow-hidden relative cursor-pointer shadow-sm hover:scale-[1.02] transition group bg-stone-900 ${
+                          isHio
+                            ? 'border-3 border-amber-400 ring-2 ring-yellow-300 shadow-amber-300/40'
+                            : isEagle
+                            ? 'border-2 border-sky-400 ring-1 ring-sky-200'
+                            : 'border border-stone-300'
+                        }`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imgUrl} alt={`기념사진 ${i + 1}`} className="w-full h-full object-cover" />
+                        {isHio ? (
+                          <div
+                            data-testid="photo-badge-hole-in-one"
+                            className="absolute top-1.5 left-1.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md border border-yellow-100"
+                          >
+                            🏆 공식 홀인원 기념
+                          </div>
+                        ) : isEagle ? (
+                          <div
+                            data-testid="photo-badge-eagle"
+                            className="absolute top-1.5 left-1.5 bg-sky-500 text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md border border-sky-200"
+                          >
+                            🦅 이글 달성 기념
+                          </div>
+                        ) : (
+                          <div
+                            data-testid="photo-badge-regular"
+                            className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg"
+                          >
+                            📸 라운드 추억
+                          </div>
+                        )}
                       </div>
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold">
-                        🔍 확대 보기
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="p-8 text-center bg-stone-50 border-2 border-dashed border-stone-300 rounded-3xl space-y-3">
@@ -1093,23 +1094,26 @@ export function RoundScoreboardModal({
           )}
         </div>
 
-        {/* 스코어보드 바로 밑 하단 액션 버튼 ([ 🗑️ 전체 경기 삭제 ]  [ 확인 (닫기) ]) */}
-        <div className="pt-3 border-t flex items-center gap-2.5 shrink-0 mt-2">
-          {onDelete && (
+        {/* 스코어보드 직하단 1열 액션 버튼 ([ 🗑️ 전체 경기 삭제 ]  [ 확인 (닫기) ]) */}
+        <div className="pt-3 border-t grid grid-cols-2 gap-2.5 shrink-0 mt-2">
+          {onDelete ? (
             <button
               type="button"
+              data-testid="chronicle-modal-delete-all-btn"
               onClick={handleDelete}
-              className="py-3.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-2xl text-xs sm:text-sm transition active:scale-95 border border-rose-200 flex items-center justify-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
-              title={isJapanese ? 'この試合全体の記録を完全に削除' : '이 경기 전체 기록을 완전히 삭제'}
+              className="w-full py-3.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-black rounded-2xl text-xs sm:text-sm transition active:scale-95 border border-rose-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
             >
               <Trash2 className="w-4 h-4 text-rose-600" />
-              <span>{isJapanese ? '全試合削除' : '전체 경기 삭제'}</span>
+              <span>{isJapanese ? '🗑️ 全試合削除' : '🗑️ 전체 경기 삭제'}</span>
             </button>
+          ) : (
+            <div />
           )}
           <button
             type="button"
+            data-testid="chronicle-modal-confirm-close-btn"
             onClick={onClose}
-            className="flex-1 bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-700 hover:to-teal-700 text-white font-black py-3.5 rounded-2xl text-sm sm:text-base transition active:scale-[0.98] shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+            className="w-full bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-700 hover:to-teal-700 text-white font-black py-3.5 px-3 rounded-2xl text-xs sm:text-sm transition active:scale-[0.98] shadow-md cursor-pointer flex items-center justify-center gap-1.5"
           >
             <span>{isJapanese ? '確認 (閉じる)' : '확인 (닫기)'}</span>
           </button>
@@ -1170,52 +1174,77 @@ export function RoundScoreboardModal({
         )}
 
         {/* 🔍 사진 썸네일 터치 시 원본 확대 모달 */}
-        {selectedPhotoForZoom && (
-          <div className="fixed inset-0 z-60 bg-black/90 flex items-center justify-center p-3 animate-in fade-in">
-            <div className="max-w-md w-full bg-stone-900 rounded-3xl p-4 space-y-3 relative border border-stone-800 shadow-2xl flex flex-col max-h-[92vh]">
-              <div className="flex items-center justify-between text-white pb-2 border-b border-stone-800">
-                <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
-                  <Camera className="w-4 h-4 text-amber-400" />
-                  <span>{isJapanese ? '現地写真の拡大表示' : '현장 기념사진 원본 확대'}</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedPhotoForZoom(null)}
-                  className="w-7 h-7 rounded-full bg-stone-800 text-stone-400 hover:text-white flex items-center justify-center text-xs font-bold cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
+        {selectedPhotoForZoom && (() => {
+          const zoomIdx = Math.max(0, (currentRound.photos || []).indexOf(selectedPhotoForZoom));
+          const zoomMeta = getPhotoMetaForIndex(zoomIdx);
+          return (
+            <div className="fixed inset-0 z-[120] bg-black/90 flex items-center justify-center p-3 animate-in fade-in">
+              <div className="max-w-md w-full bg-stone-900 rounded-3xl p-4 space-y-3 relative border border-stone-800 shadow-2xl flex flex-col max-h-[92vh]">
+                <div className="flex items-center justify-between text-white pb-2 border-b border-stone-800">
+                  <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-amber-400" />
+                    <span>
+                      {zoomMeta.photoType === 'hole_in_one'
+                        ? '🏆 공식 홀인원 기념 사진'
+                        : zoomMeta.photoType === 'eagle'
+                        ? '🦅 이글 달성 기념 사진'
+                        : '📸 라운드 추억 사진'}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPhotoForZoom(null)}
+                    className="w-7 h-7 rounded-full bg-stone-800 text-stone-400 hover:text-white flex items-center justify-center text-xs font-bold cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
 
-              <div className="flex-1 overflow-auto rounded-2xl bg-black flex items-center justify-center p-1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={selectedPhotoForZoom}
-                  alt="현장 사진 원본"
-                  className="w-full h-auto max-h-[62vh] object-contain rounded-xl"
-                />
-              </div>
+                <div className="flex-1 overflow-auto rounded-2xl bg-black flex items-center justify-center p-1">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selectedPhotoForZoom}
+                    alt="현장 사진 원본"
+                    className="w-full h-auto max-h-[56vh] object-contain rounded-xl"
+                  />
+                </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <a
-                  href={selectedPhotoForZoom}
-                  download={`파크골프_기념사진_${Date.now()}.jpg`}
-                  className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 text-center shadow-xs"
+                {/* 확대 뷰 하단 축하 캡션 선명 노출 */}
+                <div
+                  data-testid="zoomed-photo-celebration-caption"
+                  className={`p-3 rounded-2xl text-center text-xs font-black border ${
+                    zoomMeta.photoType === 'hole_in_one'
+                      ? 'bg-amber-950/90 border-amber-400 text-amber-300'
+                      : zoomMeta.photoType === 'eagle'
+                      ? 'bg-sky-950/90 border-sky-400 text-sky-200'
+                      : 'bg-stone-800 border-stone-700 text-stone-200'
+                  }`}
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>{isJapanese ? '写真を保存' : '사진 다운로드'}</span>
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setSelectedPhotoForZoom(null)}
-                  className="py-2.5 px-3 bg-stone-800 hover:bg-stone-700 text-stone-200 font-black text-xs rounded-xl transition active:scale-95 text-center cursor-pointer"
-                >
-                  <span>{isJapanese ? '閉じる' : '확인 (닫기)'}</span>
-                </button>
+                  {zoomMeta.caption}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <a
+                    href={selectedPhotoForZoom}
+                    download={`파크골프_기념사진_${Date.now()}.jpg`}
+                    className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 text-center shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>{isJapanese ? '写真を保存' : '사진 다운로드'}</span>
+                  </a>
+                  <button
+                    type="button"
+                    data-testid="zoomed-photo-close-btn"
+                    onClick={() => setSelectedPhotoForZoom(null)}
+                    className="py-2.5 px-3 bg-stone-800 hover:bg-stone-700 text-stone-200 font-black text-xs rounded-xl transition active:scale-95 text-center cursor-pointer"
+                  >
+                    <span>{isJapanese ? '閉じる' : '확인 (닫기)'}</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ========================================================================= */}
         {/* 팝업 1: [ 코스별 관리 ] 팝업 모달 */}
@@ -1434,19 +1463,53 @@ export function RoundScoreboardModal({
 
               {currentRound.photos && currentRound.photos.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2.5">
-                  {currentRound.photos.map((imgUrl, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => setSelectedPhotoForZoom(imgUrl)}
-                      className="aspect-square rounded-2xl overflow-hidden bg-stone-900 border border-stone-200 relative group cursor-pointer shadow-xs"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={imgUrl} alt={`기념사진 ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-bold text-xs gap-1">
-                        <span>🔍 크게 보기</span>
+                  {currentRound.photos.map((imgUrl, idx) => {
+                    const pMeta = getPhotoMetaForIndex(idx);
+                    const isHio = pMeta.photoType === 'hole_in_one';
+                    const isEagle = pMeta.photoType === 'eagle';
+                    return (
+                      <div
+                        key={idx}
+                        data-testid={`chronicle-photo-card-${idx}`}
+                        onClick={() => setSelectedPhotoForZoom(imgUrl)}
+                        className={`aspect-square rounded-2xl overflow-hidden bg-stone-900 relative group cursor-pointer shadow-sm ${
+                          isHio
+                            ? 'border-3 border-amber-400 ring-2 ring-yellow-300 shadow-amber-300/40'
+                            : isEagle
+                            ? 'border-2 border-sky-400 ring-1 ring-sky-200'
+                            : 'border border-stone-200'
+                        }`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imgUrl} alt={`기념사진 ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                        {isHio ? (
+                          <div
+                            data-testid="chronicle-photo-badge-hole_in_one"
+                            className="absolute top-2 left-2 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md border border-yellow-100"
+                          >
+                            🏆 공식 홀인원 기념
+                          </div>
+                        ) : isEagle ? (
+                          <div
+                            data-testid="chronicle-photo-badge-eagle"
+                            className="absolute top-2 left-2 bg-sky-500 text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md border border-sky-200"
+                          >
+                            🦅 이글 달성 기념
+                          </div>
+                        ) : (
+                          <div
+                            data-testid="chronicle-photo-badge-regular"
+                            className="absolute top-2 left-2 bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg"
+                          >
+                            📸 라운드 추억
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent p-2 text-[10px] font-bold text-white truncate">
+                          {pMeta.caption}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="py-8 text-center text-xs text-stone-500 font-medium">
@@ -1462,6 +1525,7 @@ export function RoundScoreboardModal({
                 </label>
                 <button
                   type="button"
+                  data-testid="photos-popup-close-btn"
                   onClick={() => setShowPhotosPopup(false)}
                   className="py-2 px-4 bg-stone-800 hover:bg-stone-700 text-stone-200 font-black text-xs rounded-xl cursor-pointer"
                 >

@@ -38,7 +38,6 @@ export function BottomNav() {
       label: isJapanese ? '掲示板・情報' : isEnglish ? 'Board' : '게시판·뉴스',
       icon: Newspaper,
       isActive: pathname?.startsWith('/board'),
-      badge: isJapanese ? '大会' : isEnglish ? 'Tour' : '대회',
     },
     {
       href: '/chronicle',
@@ -74,11 +73,6 @@ export function BottomNav() {
                     active ? 'stroke-[2.6] scale-110 text-emerald-700' : 'stroke-[2] text-stone-500'
                   }`}
                 />
-                {item.badge && !active && (
-                  <span className="absolute -top-1.5 -right-3 bg-rose-500 text-white text-[8px] font-black px-1 rounded-full animate-pulse shadow-xs">
-                    {item.badge}
-                  </span>
-                )}
                 {active && (
                   <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-600 ring-2 ring-white" />
                 )}

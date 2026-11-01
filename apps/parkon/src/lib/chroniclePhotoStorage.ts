@@ -8,6 +8,9 @@ export interface ChroniclePhotoItem {
   courseName: string; // 구장명
   date: string; // 라운드/촬영 날짜 (예: 2026-10-07)
   holeInfo?: string; // 홀 정보 (예: 'A코스 3번홀', '18홀 완주')
+  photoType?: 'hole_in_one' | 'eagle' | 'regular'; // 홀인원 / 이글 / 일반 라운드 기념 분류
+  achieverName?: string; // 홀인원/이글 달성자명
+  holeLabel?: string; // 홀 라벨 (예: 'A-3홀')
   companions: string[]; // 동반자 목록 (예: ['나', '홍길동', '김파크'])
   scoreSummary?: string; // 타수 요약 (예: '74타 (1위, -2)')
   memo?: string; // 한줄 소감/메모

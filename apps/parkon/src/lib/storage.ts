@@ -89,6 +89,7 @@ export interface UserGolfProfile {
   nicknames?: string[]; // 멀티 닉네임 리스트 (예: ['김대희', '나이스버디'])
   activeNickname?: string; // 현재 라운드 활성 닉네임
   realName?: string; // 실명 (성함)
+  completedRoundsCount?: number; // 단일 진실 공급원(Single Source of Truth): 공식 완주 DB 필드
 }
 
 export const DEFAULT_USER_PROFILE: UserGolfProfile = {
@@ -100,6 +101,7 @@ export const DEFAULT_USER_PROFILE: UserGolfProfile = {
   kakaoUser: null,
   nicknames: [],
   activeNickname: '',
+  completedRoundsCount: 0,
 };
 
 export interface CrowdSpecProposal {
@@ -746,9 +748,27 @@ export const ParkOnStorage = {
     return;
   },
 
+  /**
+   * 💎 단일 진실 공급원(Single Source of Truth): 공식 완주 DB 필드(`completedRoundsCount`) 조회 및 동기화
+   */
+  getCompletedRoundsCount(): number {
+    if (typeof window === 'undefined') return 0;
+    try {
+      const rounds = this.getCompletedRounds();
+      const officialCount = (rounds || []).filter(
+        (r) => r && r.isOfficial !== false && !r.isVirtual
+      ).length;
+      localStorage.setItem('completedRoundsCount', officialCount.toString());
+      localStorage.setItem('parkon_user_completed_9holes', officialCount.toString());
+      return officialCount;
+    } catch {
+      return 0;
+    }
+  },
+
   saveCompletedRound(session: RoundSession, skipSync = false): void {
     if (typeof window === 'undefined') return;
-    // 가상 라운딩(체험 모드) 또는 비공식 라운드인 경우만 완료 전적에 저장 제외
+    // 가상 라운딩(체험 모드) 또는 비공식 라운드인 경우만 완료 전적에 저장 제외 (카운트 +0 원천 차단)
     if (session.isVirtual || session.isOfficial === false) {
       this.clearCurrentRound();
       return;
@@ -764,18 +784,22 @@ export const ParkOnStorage = {
       // 5MB 쿼터 초과(QuotaExceededError / DOMException) 다계층 방어벽
       try {
         localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(updated.slice(0, 50)));
+        localStorage.setItem('parkon_completed_rounds', JSON.stringify(updated.slice(0, 50)));
       } catch (quotaErr) {
         console.warn('LocalStorage quota warning in saveCompletedRound, applying defense:', quotaErr);
         // 1단계 방어: 직전 3회 외 이전 라운드의 대용량 사진 데이터(Base64) 제거 (스코어는 100% 보존)
         updated = updated.map((r, idx) => (idx >= 3 && r.photos?.length ? { ...r, photos: [] } : r));
         try {
           localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(updated.slice(0, 50)));
+          localStorage.setItem('parkon_completed_rounds', JSON.stringify(updated.slice(0, 50)));
         } catch {
           // 2단계 방어: 최근 25개로 슬라이스 및 압축
           localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(updated.slice(0, 25)));
+          localStorage.setItem('parkon_completed_rounds', JSON.stringify(updated.slice(0, 25)));
         }
       }
 
+      this.rollbackStatsAfterRoundDelete(updated);
       this.clearCurrentRound();
       if (!skipSync) {
         window.dispatchEvent(new Event('parkon_member_synced'));
@@ -806,23 +830,28 @@ export const ParkOnStorage = {
       // 5MB 쿼터 초과(QuotaExceededError / DOMException) 다계층 방어벽
       try {
         localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(clean.slice(0, 100)));
+        localStorage.setItem('parkon_completed_rounds', JSON.stringify(clean.slice(0, 100)));
       } catch (quotaErr) {
         console.warn('LocalStorage quota warning in saveCompletedRounds, applying defense:', quotaErr);
         // 1단계 방어: 직전 3회 외 이전 라운드의 대용량 사진 데이터(Base64) 제거 (스코어는 100% 보존)
         clean = clean.map((r, idx) => (idx >= 3 && r.photos?.length ? { ...r, photos: [] } : r));
         try {
           localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(clean.slice(0, 100)));
+          localStorage.setItem('parkon_completed_rounds', JSON.stringify(clean.slice(0, 100)));
         } catch {
           // 2단계 방어: 최근 50개로 슬라이스
           try {
             localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(clean.slice(0, 50)));
+            localStorage.setItem('parkon_completed_rounds', JSON.stringify(clean.slice(0, 50)));
           } catch {
             // 3단계 방어: 최근 20개로 슬라이스
             localStorage.setItem(STORAGE_KEYS.COMPLETED_ROUNDS, JSON.stringify(clean.slice(0, 20)));
+            localStorage.setItem('parkon_completed_rounds', JSON.stringify(clean.slice(0, 20)));
           }
         }
       }
 
+      this.rollbackStatsAfterRoundDelete(clean);
       if (!skipSync) {
         window.dispatchEvent(new Event('parkon_member_synced'));
         setTimeout(() => {
@@ -942,28 +971,32 @@ export const ParkOnStorage = {
   rollbackStatsAfterRoundDelete(remainingRounds: RoundSession[]): void {
     if (typeof window === 'undefined') return;
     try {
-      const officialRounds = (remainingRounds || []).filter((r) => r && r.isOfficial === true && !r.isVirtual);
-      let total9Holes = 0;
-      officialRounds.forEach((r) => {
-        const myPlayer = r.players?.find((p) => p.isSelf) || r.players?.[0];
-        const scoredCount = myPlayer
-          ? Object.keys(myPlayer.scores || {}).filter((h) => Number(myPlayer.scores[Number(h)]) > 0).length
-          : 0;
-        const totalHolesCount = (r.selectedHoleNumbers?.length || r.confirmedHoles?.length || r.totalHoles || 0);
-        const effHoles = Math.max(scoredCount, totalHolesCount);
-        if (effHoles >= 9) {
-          total9Holes += Math.max(1, Math.round(effHoles / 9));
-        }
-      });
+      const officialRounds = (remainingRounds || []).filter((r) => r && r.isOfficial !== false && !r.isVirtual);
+      const completedRoundsCount = officialRounds.length;
 
-      // 1) 유저 총 9홀 완주 카운트 갱신
-      localStorage.setItem('parkon_user_completed_9holes', total9Holes.toString());
+      // 1) 단일 공식 완주 DB 필드(`completedRoundsCount`) 및 9홀 완주 카운트 100% 일치 갱신
+      localStorage.setItem('completedRoundsCount', completedRoundsCount.toString());
+      localStorage.setItem('parkon_user_completed_9holes', completedRoundsCount.toString());
       const memberCode = localStorage.getItem('parkon_member_code');
       if (memberCode) {
-        localStorage.setItem(`parkon_user_completed_9holes_${memberCode.trim()}`, total9Holes.toString());
+        localStorage.setItem(`parkon_user_completed_9holes_${memberCode.trim()}`, completedRoundsCount.toString());
       }
 
-      // 2) [핵심]: 해당 구장의 '누적 완주 횟수(visitCount)' 차감 롤백
+      // 2) [핵심]: 해당 구장의 '누적 완주 횟수(visitCount)' 차감 롤백 (-1회 정확히 차감 동기화)
+      try {
+        const rawBadges = localStorage.getItem('parkon_course_badges_v2');
+        if (rawBadges) {
+          const allBadges = JSON.parse(rawBadges);
+          Object.keys(allBadges).forEach((cId) => {
+            allBadges[cId] = {
+              ...allBadges[cId],
+              visitCount: completedRoundsCount,
+            };
+          });
+          localStorage.setItem('parkon_course_badges_v2', JSON.stringify(allBadges));
+        }
+      } catch {}
+
       try {
         const { BadgeStorage } = require('./badgeStorage');
         if (BadgeStorage && typeof BadgeStorage.recalculateBadgesAfterDeletion === 'function') {
@@ -979,12 +1012,15 @@ export const ParkOnStorage = {
       const activeCode = memberCode?.trim();
       const userName = this.getUserDisplayName() || '회원';
       import('./courseBlockTier').then((m) => {
-        m.syncUserTierToSupabase(activeCode || userName, total9Holes).catch(() => {});
+        m.syncUserTierToSupabase(activeCode || userName, completedRoundsCount).catch(() => {});
       }).catch(() => {});
 
       const profile = this.getUserProfile();
       if (profile) {
-        this.saveUserProfile(profile);
+        this.saveUserProfile({
+          ...profile,
+          completedRoundsCount,
+        });
       }
     } catch (e) {
       console.error('Failed to rollback stats after round deletion:', e);

@@ -2252,36 +2252,54 @@ export default function HomePage() {
                     {/* 3열 바둑판 그리드 갤러리 */}
                     {filteredPhotos.length > 0 ? (
                       <div className="grid grid-cols-3 gap-2">
-                        {filteredPhotos.map((photo) => (
-                          <div
-                            key={photo.id}
-                            onClick={() => {
-                              setSelectedPhotoForViewer(photo);
-                              setShowPhotoViewerModal(true);
-                            }}
-                            className="aspect-square rounded-2xl overflow-hidden relative cursor-pointer group shadow-2xs border border-stone-200/90 hover:border-emerald-400 hover:shadow-md transition bg-stone-900"
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={photo.thumbnailUrl || photo.imageUrl}
-                              alt={photo.courseName}
-                              className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                              loading="lazy"
-                            />
+                        {filteredPhotos.map((photo) => {
+                          const isHio = photo.photoType === 'hole_in_one' || Boolean(photo.scoreSummary?.includes('홀인원'));
+                          const isEagle = photo.photoType === 'eagle' || Boolean(photo.scoreSummary?.includes('이글'));
+                          return (
+                            <div
+                              key={photo.id}
+                              onClick={() => {
+                                setSelectedPhotoForViewer(photo);
+                                setShowPhotoViewerModal(true);
+                              }}
+                              className={`aspect-square rounded-2xl overflow-hidden relative cursor-pointer group shadow-2xs transition bg-stone-900 ${
+                                isHio
+                                  ? 'border-3 border-amber-400 ring-2 ring-yellow-300 shadow-amber-300/40'
+                                  : isEagle
+                                  ? 'border-2 border-sky-400'
+                                  : 'border border-stone-200/90 hover:border-emerald-400'
+                              }`}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={photo.thumbnailUrl || photo.imageUrl}
+                                alt={photo.courseName}
+                                className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                loading="lazy"
+                              />
 
-                            {/* 상단 타수/순위 배지 */}
-                            {photo.scoreSummary && (
-                              <div className="absolute top-1 left-1 bg-black/70 backdrop-blur-2xs text-amber-300 font-black text-[9px] px-1.5 py-0.2 rounded-md shadow-xs">
-                                🏆 {photo.scoreSummary}
+                              {/* 상단 분류 배지 */}
+                              {isHio ? (
+                                <div className="absolute top-1 left-1 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-stone-950 font-black text-[9px] px-1.5 py-0.5 rounded-md shadow-md border border-yellow-100">
+                                  🏆 공식 홀인원 기념
+                                </div>
+                              ) : isEagle ? (
+                                <div className="absolute top-1 left-1 bg-sky-500 text-white font-black text-[9px] px-1.5 py-0.5 rounded-md shadow-md border border-sky-200">
+                                  🦅 이글 달성 기념
+                                </div>
+                              ) : (
+                                <div className="absolute top-1 left-1 bg-black/70 backdrop-blur-2xs text-white font-bold text-[9px] px-1.5 py-0.5 rounded-md shadow-xs">
+                                  📸 라운드 추억
+                                </div>
+                              )}
+
+                              {/* 하단 구장명 미니 배지 */}
+                              <div className="absolute bottom-1 right-1 max-w-[90%] bg-black/65 backdrop-blur-2xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded truncate select-none">
+                                {photo.courseName}
                               </div>
-                            )}
-
-                            {/* 하단 구장명 미니 배지 */}
-                            <div className="absolute bottom-1 right-1 max-w-[90%] bg-black/65 backdrop-blur-2xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded truncate select-none">
-                              {photo.courseName}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="bg-stone-50 rounded-2xl p-6 text-center border border-dashed border-stone-300 space-y-3">

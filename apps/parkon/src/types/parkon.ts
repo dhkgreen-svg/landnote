@@ -120,6 +120,15 @@ export interface RoundPlayer {
   totalParDiff: number;
 }
 
+export interface PhotoCardMeta {
+  photoUrl?: string;
+  photoType: 'hole_in_one' | 'eagle' | 'regular';
+  achieverName?: string;
+  holeLabel?: string;
+  courseName?: string;
+  dateStr?: string;
+}
+
 export interface RoundSession {
   id: string;
   courseId: string;
@@ -145,6 +154,7 @@ export interface RoundSession {
   clubRoomId?: string;
   clubGroupNumber?: number;
   photos?: string[]; // 현장 인증샷 및 워터마크 포토카드 목록
+  photoMetadata?: PhotoCardMeta[]; // 현장 사진별 분류 메타데이터 (홀인원/이글/일반, 달성자, 홀 번호)
   durationMinutes?: number; // 총 소요 시간 (분 단위)
   holeTimestamps?: Record<number, string>; // 홀별 완료 시각 타임스탬프
   isFieldVerified?: boolean; // 🏅 실제 필드 정규 완주 검증 여부 (정상 소요시간 & 홀 진행 검증)

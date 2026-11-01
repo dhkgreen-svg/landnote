@@ -100,12 +100,42 @@ export function ChroniclePhotoViewerModal({
               alt={photo.courseName}
               className="w-full h-auto max-h-[420px] object-contain"
             />
+            {photo.photoType === 'hole_in_one' || photo.scoreSummary?.includes('홀인원') ? (
+              <div className="absolute top-2.5 left-2.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-stone-950 font-black text-xs px-3 py-1 rounded-xl shadow-lg border border-yellow-100 flex items-center gap-1">
+                <span>🏆 공식 홀인원 기념</span>
+              </div>
+            ) : photo.photoType === 'eagle' || photo.scoreSummary?.includes('이글') ? (
+              <div className="absolute top-2.5 left-2.5 bg-sky-500 text-white font-black text-xs px-3 py-1 rounded-xl shadow-lg border border-sky-200 flex items-center gap-1">
+                <span>🦅 이글 달성 기념</span>
+              </div>
+            ) : (
+              <div className="absolute top-2.5 left-2.5 bg-black/75 text-white font-bold text-xs px-3 py-1 rounded-xl shadow-md flex items-center gap-1">
+                <span>📸 라운드 추억</span>
+              </div>
+            )}
             {photo.scoreSummary && (
               <div className="absolute bottom-2.5 right-2.5 bg-black/75 backdrop-blur-md text-amber-300 font-black text-xs px-2.5 py-1 rounded-xl shadow-md border border-amber-400/30 flex items-center gap-1">
                 <span>🏆</span>
                 <span>{photo.scoreSummary}</span>
               </div>
             )}
+          </div>
+
+          {/* 확대 뷰 하단 축하 캡션 선명 노출 */}
+          <div
+            data-testid="chronicle-viewer-celebration-caption"
+            className={`px-4 py-2.5 text-center text-xs font-black border-b ${
+              photo.photoType === 'hole_in_one' || photo.scoreSummary?.includes('홀인원')
+                ? 'bg-amber-950 text-amber-300 border-amber-400'
+                : photo.photoType === 'eagle' || photo.scoreSummary?.includes('이글')
+                ? 'bg-sky-950 text-sky-200 border-sky-400'
+                : 'bg-stone-900 text-stone-200 border-stone-800'
+            }`}
+          >
+            {photo.memo ||
+              `${(photo.date || '').replace(/-/g, '.')} ${(photo.courseName || '해평').replace('파크골프장', '').replace('파크골프', '').trim()} ${photo.holeLabel || photo.holeInfo || 'A-3홀'} ${photo.achieverName || photo.companions?.[0] || '김대희'} 님 ${
+                photo.photoType === 'hole_in_one' ? '홀인원' : photo.photoType === 'eagle' ? '이글 달성' : '라운드 추억'
+              }`}
           </div>
 
           <div className="p-4 space-y-3.5 bg-stone-50">

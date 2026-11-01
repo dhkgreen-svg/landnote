@@ -491,33 +491,33 @@ function ResultContent() {
 
       {/* 1. Header Trophy Card */}
       <div className="bg-gradient-to-br from-emerald-800 to-emerald-950 text-white rounded-3xl p-5 shadow-xl text-center relative overflow-hidden">
-        {/* 파키의 완주 응원 배너 */}
-        <div className="inline-flex items-center gap-2.5 bg-emerald-900/80 border border-amber-300/60 px-3.5 py-1.5 rounded-2xl mb-3 shadow-md">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/parky.jpg"
-            alt="마스코트 파키"
-            className="w-10 h-10 rounded-full object-cover border-2 border-amber-400 shrink-0"
-          />
-          <div className="text-left">
-            <span className="text-[10px] bg-amber-400 text-emerald-950 font-black px-1.5 py-0.2 rounded-md">
-              {isJapanese ? 'スマートAIコーチ パキの一言' : isEnglish ? 'AI Coach PARKY' : '스마트 AI 코치 파키의 한마디'}
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <h2 data-testid="result-main-title" className="text-2xl font-black tracking-tight">
+            {isEnglish ? 'Final Round Scorecard' : isJapanese ? 'ラウンド最終成績表' : '라운드 최종 성적표'}
+          </h2>
+          {(session.isOfficial === false || !session.isGpsVerified) ? (
+            <span
+              data-testid="practice-round-inline-badge"
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-amber-400 text-stone-950 shadow-xs"
+            >
+              <span>📝</span>
+              <span>{isJapanese ? '練習ラウンド (戦績未反映)' : '연습 라운드 (전적 미반영)'}</span>
             </span>
-            <p className="text-xs font-bold text-amber-200 mt-0.5">
-              {isJapanese
-                ? '“本日の素晴らしいラウンド完走、心よりお祝い申し上げます！ナイスショット！🎉”'
-                : isEnglish
-                ? '“Congratulations on finishing a great round today! Nice shot! 🎉”'
-                : '“오늘 멋진 라운드 완주를 진심으로 축하드려요! 굿샷! 🎉”'}
-            </p>
-          </div>
+          ) : (
+            <span
+              data-testid="official-round-inline-badge"
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-emerald-400 text-emerald-950 shadow-xs"
+            >
+              <span>🏅</span>
+              <span>{isJapanese ? '公式戦績反映' : '공식 전적 반영'}</span>
+            </span>
+          )}
         </div>
 
-        <h2 className="text-2xl font-black tracking-tight">{isEnglish ? 'Final Round Scorecard' : isJapanese ? 'ラウンド最終成績表' : '라운드 최종 성적표'}</h2>
         {(() => {
           const dual = getCourseDualName(course || session.courseName, isJapanese);
           return (
-            <div className="mt-1 flex flex-col items-center">
+            <div className="mt-1.5 flex flex-col items-center">
               <span className="text-base font-black text-white flex items-center gap-1.5">
                 {dual.flag && <span>{dual.flag}</span>}
                 <span>{dual.primary}</span>
@@ -529,113 +529,74 @@ function ResultContent() {
           );
         })()}
 
-        {/* 공식 9홀 이상 완주 시에만 누적 완주 횟수 표출 (1홀/2홀 등 미완주 시에는 불필요한 뱃지 전면 미표출) */}
+        {/* 단일 진실 공급원(Single Source of Truth): completedRoundsCount 기반 공식 9홀 누적 완주 횟수 표출 */}
         {totalHolesCount >= 9 && (() => {
-          const myPlayer = session.players.find((p) => p.isSelf) || rankedPlayers[0];
-          const completed9H = getUserCompleted9Holes(myPlayer?.name);
+          const completedRoundsCount = ParkOnStorage.getCompletedRoundsCount();
           return (
             <div className="mt-2.5 flex items-center justify-center">
-              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-emerald-900/90 text-amber-300 border border-amber-400/50 shadow-sm">
+              <span
+                data-testid="official-completed-rounds-badge"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-emerald-900/90 text-amber-300 border border-amber-400/50 shadow-sm"
+              >
                 <span>⛳</span>
-                <span>{isJapanese ? `公式9ホール完走累計: ${completed9H}回` : `공식 9홀 누적 완주: ${completed9H}회`}</span>
+                <span>{isJapanese ? `公式9ホール完走累計: ${completedRoundsCount}回` : `공식 9홀 누적 완주: ${completedRoundsCount}회`}</span>
               </span>
             </div>
           );
         })()}
 
-        {/* [과업 2]: '전적 미반영' 전용 심플 종료 요약 안내창 */}
-        {(session.isOfficial === false || !session.isGpsVerified) && (
-          <div className="mt-2.5 p-3 rounded-2xl bg-amber-950/70 border-2 border-amber-400/80 text-center space-y-1 shadow-md">
-            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black bg-amber-400 text-stone-950">
-              <span>⚠️</span>
-              <span>{isJapanese ? '戦績未反映ラウンド (公式集計除外)' : '전적 미반영 라운드 (공식 통계 제외)'}</span>
-            </div>
-            <p className="text-[11px] text-amber-200 font-bold leading-relaxed pt-0.5">
-              {isJapanese
-                ? '現地GPS未認証または練習ラウンドとして保存されたため、完走バッジおよび名誉ランク・公式戦績には反映されません。'
-                : '현장 GPS 미인증 또는 연습 라운드로 진행되어 완주 뱃지 발급 및 명예 등급·공식 전적에 반영되지 않습니다.'}
-            </p>
-          </div>
-        )}
+        {/* 구장 명예의 전당 & 완주 뱃지 (단일 공식 완주 DB 필드 completedRoundsCount 100% 일치 동기화) */}
+        {(() => {
+          const completedRoundsCount = ParkOnStorage.getCompletedRoundsCount();
+          return (
+            <div className={`mt-3.5 pt-3 border-t border-emerald-700/60 ${isFull18Completed ? 'grid grid-cols-2 gap-2' : 'flex justify-center'}`}>
+              {isFull18Completed && (
+                <button
+                  type="button"
+                  data-testid="completion-badge-btn"
+                  onClick={() => {
+                    if (badgeRecord) setShowBadgeModal(true);
+                  }}
+                  className="p-2.5 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
+                >
+                  <Award className="w-4 h-4 fill-current text-stone-950" />
+                  <span className="truncate">
+                    {isJapanese ? `🎖️ 完走バッジ (${completedRoundsCount}回)` : `🎖️ 완주 뱃지 (${completedRoundsCount}회)`}
+                  </span>
+                </button>
+              )}
 
-        {/* Official vs Practice Status Badge & Switcher */}
-        <div className="mt-2.5 flex flex-col items-center justify-center gap-1.5">
-          <div className="flex items-center gap-2">
-            {session.isGpsVerified ? (
-              <span className="inline-flex items-center gap-1 bg-emerald-400 text-emerald-950 font-black px-2.5 py-1 rounded-full text-xs shadow-xs">
-                <span>📍</span>
-                <span>{isJapanese ? '現地GPS認証済み (公式戦績反映)' : '현장 GPS 인증 완료 (공식 전적 반영됨)'}</span>
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 bg-amber-400 text-stone-950 font-black px-2.5 py-1 rounded-full text-xs shadow-xs">
-                <span>⚠️</span>
-                <span>{isJapanese ? 'GPS未認証 (代表者原則: 公式統計未反映)' : '현장 GPS 미인증 (대표님 원칙: 공식 통계 100% 미반영)'}</span>
-              </span>
-            )}
-            {session.isGpsVerified && (
               <button
                 type="button"
-                onClick={handleToggleOfficial}
-                className="text-[11px] underline text-emerald-200 hover:text-white font-bold cursor-pointer"
-                title={isJapanese ? '状態切り替え' : '상태 전환'}
+                onClick={() => setShowHallOfFameModal(true)}
+                className={`p-2.5 rounded-2xl bg-emerald-900/90 hover:bg-emerald-800/90 border border-emerald-400/50 text-emerald-100 hover:text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer ${
+                  isFull18Completed ? '' : 'w-full'
+                }`}
               >
-                {session.isOfficial === false ? (isJapanese ? '戦績反映に変更' : '전적 반영으로 변경') : (isJapanese ? '연습으로 변경' : '연습으로 변경')}
+                <Trophy className="w-4 h-4 text-amber-300" />
+                <span className="truncate">{isJapanese ? '🏆 コース名誉の殿堂' : '🏆 구장 명예의 전당'}</span>
               </button>
-            )}
-          </div>
-          {!session.isGpsVerified && (
-            <p className="text-[10px] text-amber-200/90 font-bold">
-              {isJapanese ? '※ 実際のコースでGPS認証を行って完走したゲームのみが年代記・ランク統計に反映されます。' : '※ 실제 구장에서 GPS 인증과 함께 완주한 게임만 연대기·스타 랭킹 통계에 100% 반영됩니다.'}
-            </p>
-          )}
-        </div>
+            </div>
+          );
+        })()}
 
-        {/* 구장 명예의 전당 & 완주 뱃지 (실타수 증서 전면 삭제: 9홀 이상 정규 완주 시에만 완주 뱃지 노출) */}
-        <div className={`mt-3.5 pt-3 border-t border-emerald-700/60 ${isFull18Completed ? 'grid grid-cols-2 gap-2' : 'flex justify-center'}`}>
-          {isFull18Completed && (
-            <button
-              type="button"
-              onClick={() => {
-                if (badgeRecord) setShowBadgeModal(true);
-              }}
-              className="p-2.5 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
-            >
-              <Award className="w-4 h-4 fill-current text-stone-950" />
-              <span className="truncate">
-                {isJapanese ? `🎖️ 完走バッジ (${badgeRecord?.visitCount || 1}回)` : `🎖️ 완주 뱃지 (${badgeRecord?.visitCount || 1}회)`}
-              </span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setShowHallOfFameModal(true)}
-            className={`p-2.5 rounded-2xl bg-emerald-900/90 hover:bg-emerald-800/90 border border-emerald-400/50 text-emerald-100 hover:text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer ${
-              isFull18Completed ? '' : 'w-full'
-            }`}
-          >
-            <Trophy className="w-4 h-4 text-amber-300" />
-            <span className="truncate">{isJapanese ? '🏆 コース名誉の殿堂' : '🏆 구장 명예의 전당'}</span>
-          </button>
-        </div>
-
-        {/* 📖 나의 연대기 보관 안내 배너 (카톡 전송 및 사진 저장 탭 삭제, 연대기 단독 안내로 간소화) */}
+        {/* 📖 나의 연대기 보관 안내 배너 (공식 vs 연습 라운드 분기 표출) */}
         <div className="mt-3 pt-3 border-t border-emerald-700/60 flex flex-col gap-2">
-          {session.isOfficial !== false ? (
+          {session.isOfficial !== false && session.isGpsVerified ? (
             <Link
               href="/chronicle"
+              data-testid="official-round-storage-notice"
               className="py-2.5 px-3 rounded-xl bg-emerald-900/90 hover:bg-emerald-800 border border-emerald-500/50 text-emerald-100 font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer"
-              title="나의 연대기에서 공식 전적과 완주 뱃지 확인"
             >
               <span>📖 {isJapanese ? '私の年代記に公式戦績として永久保管されました (記録確認 ➔)' : '나의 연대기에 공식 전적으로 영구 보관되었습니다 (기록 확인 ➔)'}</span>
             </Link>
           ) : (
             <Link
               href="/chronicle"
+              data-testid="practice-round-storage-notice"
               className="py-2.5 px-3 rounded-xl bg-stone-900/90 hover:bg-stone-800 border border-amber-500/40 text-amber-200 font-bold text-xs flex items-center justify-center gap-1 transition cursor-pointer"
-              title="나의 연대기에서 전체 기록 확인"
             >
-              <span>📖 {isJapanese ? '私の年代記には正式ラウンドのみ永久保管されます (記録確認 ➔)' : '나의 연대기에는 정식 라운딩만 영구 보관됩니다 (기록 확인 ➔)'}</span>
+              <span>📝 {isJapanese ? '練習ラウンドとして保管されました' : '연습 라운드로 보관되었습니다'}</span>
             </Link>
           )}
         </div>

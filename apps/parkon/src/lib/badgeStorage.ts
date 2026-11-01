@@ -1,5 +1,7 @@
 'use client';
 
+import { getOfficialCompletedRoundsCount } from './courseBlockTier';
+
 export type BadgeTier = 'ROOKIE' | 'REGULAR' | 'MASTER' | 'HONORARY_MASTER' | 'GUARDIAN';
 
 export interface BadgeTierInfo {
@@ -301,10 +303,18 @@ export const BadgeStorage = {
     }
   },
 
-  // 2. 특정 구장 뱃지 가져오기
+  // 2. 특정 구장 뱃지 가져오기 (단일 진실 공급원 `completedRoundsCount`와 100% 일치 동기화)
   getBadge(courseId: string): CourseBadgeRecord | null {
     const all = this.getAllBadges();
-    return all[courseId] || null;
+    const badge = all[courseId] || null;
+    const syncedCount = getOfficialCompletedRoundsCount();
+    if (badge) {
+      return {
+        ...badge,
+        visitCount: syncedCount,
+      };
+    }
+    return null;
   },
 
   // 3. 100회 이상 터줏대감 2-Strike 검증 면제 여부 확인
@@ -390,18 +400,18 @@ export const BadgeStorage = {
   },
 
   // 4. 9홀 모듈형 정상 완주 기록 & 뱃지 갱신 + 17개 시도 퍼즐 조각 자동 해금
-    // 5. [긴급 데이터 무결성]: 경기 삭제 시 해당 구장 누적 완주 횟수(visitCount) 및 뱃지 티어 자동 롤백
+  // 5. [긴급 데이터 무결성]: 경기 삭제 시 해당 구장 누적 완주 횟수(visitCount) 및 뱃지 티어 자동 롤백 (-1회 차감 동기화)
   recalculateBadgesAfterDeletion(remainingRounds: any[]): void {
     if (typeof window === 'undefined') return;
     try {
-      const officialRounds = (remainingRounds || []).filter((r) => r && r.isOfficial === true && !r.isVirtual);
+      const officialRounds = (remainingRounds || []).filter((r) => r && r.isOfficial !== false && !r.isVirtual);
+      const syncedTotalCount = officialRounds.length;
       const allBadges = this.getAllBadges();
 
       Object.keys(allBadges).forEach((courseId) => {
         const courseRounds = officialRounds.filter(
           (r) => r.courseId === courseId || r.courseName === allBadges[courseId].courseName
         );
-        let visitCount = 0;
         let lastDateStr = '';
         let lastCompletedAt = '';
         let lastCompletedHoles = 0;
@@ -411,7 +421,6 @@ export const BadgeStorage = {
           const hCount = r.confirmedHoles?.length || r.totalHoles || 0;
           if (hCount >= 9) {
             const blocks = Math.max(1, Math.round(hCount / 9));
-            visitCount += blocks;
             if (r.completedAt) {
               const d = new Date(r.completedAt);
               const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -425,6 +434,7 @@ export const BadgeStorage = {
           }
         });
 
+        const visitCount = syncedTotalCount;
         const tierInfo = getBadgeTierInfo(visitCount);
         allBadges[courseId] = {
           ...allBadges[courseId],
@@ -440,6 +450,8 @@ export const BadgeStorage = {
       });
 
       localStorage.setItem(STORAGE_KEYS.COURSE_BADGES, JSON.stringify(allBadges));
+      localStorage.setItem('completedRoundsCount', syncedTotalCount.toString());
+      localStorage.setItem('parkon_user_completed_9holes', syncedTotalCount.toString());
     } catch (e) {
       console.error('Failed to recalculate badges after deletion:', e);
     }
@@ -463,8 +475,6 @@ export const BadgeStorage = {
     unlockedProvince?: ProvinceInfo;
     nationalSummary: NationalTourSummary;
   } {
-    // [대표님 핵심 원칙]: 9홀 모듈형 기준
-    // 9홀 1개 코스 = 1회 완주, 18홀 = 2회 완주, 27홀 = 3회 완주
     const isCompleted = playedHolesCount >= 9;
     const blocksCompleted = isCompleted ? Math.max(1, Math.round(playedHolesCount / 9)) : 0;
     const isFull18 = playedHolesCount >= 18;
@@ -485,14 +495,13 @@ export const BadgeStorage = {
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const timeStr = `${todayStr} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    // 당일 N차전 연타석 계산
     let todayCount = 1;
     if (existing.lastDateStr === todayStr) {
-      todayCount = (existing.todayRoundCount || 1) + 1;
+      todayCount = existing.todayRoundCount || 1;
     }
 
-    // 9홀 단위 완주 횟수 누적 반영 (9홀 1개 코스 = +1, 18홀 = +2, 27홀 = +3)
-    const newVisitCount = isCompleted ? existing.visitCount + blocksCompleted : existing.visitCount;
+    // 단일 진실 공급원(`completedRoundsCount`)과 100% 일치 동기화
+    const newVisitCount = getOfficialCompletedRoundsCount();
     const tierInfo = getBadgeTierInfo(newVisitCount);
     const isNewTier = tierInfo.tier !== existing.tier;
 

@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { Camera, Sparkles } from 'lucide-react';
+import { Camera } from 'lucide-react';
 import { WatermarkPhotoCardModal } from '@/components/WatermarkPhotoCardModal';
-import { RoundSession } from '@/types/parkon';
+import { RoundSession, PhotoCardMeta } from '@/types/parkon';
 
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 
@@ -11,13 +11,17 @@ interface FloatingCameraFABProps {
   session?: RoundSession | null;
   currentHoleNumber?: number;
   currentCourseName?: string;
-  onSaveAndReturn?: (photoUrl: string) => void;
+  currentHoleLabel?: string;
+  currentHolePar?: number;
+  onSaveAndReturn?: (photoUrl: string, meta?: PhotoCardMeta) => void;
 }
 
 export function FloatingCameraFAB({
   session,
   currentHoleNumber,
   currentCourseName,
+  currentHoleLabel,
+  currentHolePar,
   onSaveAndReturn,
 }: FloatingCameraFABProps) {
   const { isJapanese, isEnglish } = useTranslation();
@@ -32,13 +36,12 @@ export function FloatingCameraFAB({
       setCapturedImage(url);
       setShowPhotoModal(true);
     }
-    // reset input so same file can be selected again
     if (e.target) e.target.value = '';
   };
 
   return (
     <>
-      {/* 네이티브 후면 카메라 다이렉트 호출용 숨김 input (PWA 앱 이탈 없이 0.1초 구동) */}
+      {/* 네이티브 후면 카메라 다이렉트 호출용 숨김 input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -52,7 +55,8 @@ export function FloatingCameraFAB({
       <div className="fixed bottom-24 right-4 z-40 flex flex-col items-center gap-1 animate-in fade-in zoom-in duration-300">
         <button
           type="button"
-          onClick={() => fileInputRef.current?.click()}
+          data-testid="floating-camera-fab"
+          onClick={() => setShowPhotoModal(true)}
           aria-label={isJapanese ? '記念写真の撮影' : isEnglish ? 'Take photo' : '현장 인증샷 촬영'}
           className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 text-stone-950 shadow-2xl flex flex-col items-center justify-center border-2 border-white/90 active:scale-90 transition-transform cursor-pointer group hover:shadow-amber-500/50"
         >
@@ -71,12 +75,16 @@ export function FloatingCameraFAB({
           setCapturedImage(null);
         }}
         session={session}
+        currentHoleNumber={currentHoleNumber}
+        currentCourseName={currentCourseName}
+        currentHoleLabel={currentHoleLabel}
+        currentHolePar={currentHolePar}
         initialImage={capturedImage}
-        onSaveAndReturn={(cardDataUrl) => {
+        onSaveAndReturn={(cardDataUrl, meta) => {
           setShowPhotoModal(false);
           setCapturedImage(null);
           if (onSaveAndReturn) {
-            onSaveAndReturn(cardDataUrl);
+            onSaveAndReturn(cardDataUrl, meta);
           }
         }}
       />

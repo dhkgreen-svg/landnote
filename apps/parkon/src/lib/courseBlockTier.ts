@@ -265,49 +265,64 @@ export function buildCourseBlocksFromSession(
 }
 
 /**
- * 💾 로컬 스토리지에 유저 누적 9홀 완주 횟수 저장 및 조회
+ * 💾 단일 진실 공급원(Single Source of Truth): 공식 완주 DB 필드(`completedRoundsCount`) 통합 조회 및 동기화
  */
 const TIER_STORAGE_KEY = 'parkon_user_completed_9holes';
+const SINGLE_SOURCE_COMPLETED_KEY = 'completedRoundsCount';
 
-export function getUserCompleted9Holes(userNameOrCode?: string): number {
+export function getOfficialCompletedRoundsCount(): number {
   if (typeof window === 'undefined') return 0;
   try {
-    const key = userNameOrCode ? `${TIER_STORAGE_KEY}_${userNameOrCode.trim()}` : TIER_STORAGE_KEY;
-    const val = localStorage.getItem(key);
-    if (val) {
-      const parsed = parseInt(val, 10);
-      if (!isNaN(parsed)) return parsed;
-    }
-    // Fallback: calculate from completed rounds history (only official rounds with 9+ holes)
-    const roundsStr = localStorage.getItem('parkon_completed_rounds');
-    if (roundsStr) {
-      const records = JSON.parse(roundsStr);
+    const deletedRaw = localStorage.getItem('parkon_deleted_round_ids_v1');
+    const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+    const roundsRaw =
+      localStorage.getItem('parkon_completed_rounds_v1') ??
+      localStorage.getItem('parkon_completed_rounds');
+
+    if (roundsRaw) {
+      const records = JSON.parse(roundsRaw);
       if (Array.isArray(records)) {
-        let total9Holes = 0;
-        records.forEach((r: any) => {
-          if (r && !r.isVirtual && r.isOfficial !== false) {
-            const hasPlayer = !userNameOrCode || r.players?.some((p: any) => p.name === userNameOrCode.trim());
-            if (hasPlayer) {
-              const holes = (r.confirmedHoles?.length) || r.totalHoles || 0;
-              total9Holes += Math.floor(holes / 9);
-            }
-          }
-        });
-        return total9Holes;
+        const officialCount = records.filter((r: any) => {
+          if (!r || !r.id) return false;
+          if (deletedSet.has(r.id)) return false;
+          if (r.isVirtual === true || r.isOfficial === false) return false;
+          return true;
+        }).length;
+
+        localStorage.setItem(SINGLE_SOURCE_COMPLETED_KEY, officialCount.toString());
+        localStorage.setItem(TIER_STORAGE_KEY, officialCount.toString());
+        return officialCount;
       }
+    }
+
+    const storedSingle = localStorage.getItem(SINGLE_SOURCE_COMPLETED_KEY);
+    if (storedSingle !== null) {
+      const parsed = parseInt(storedSingle, 10);
+      if (!isNaN(parsed)) return Math.max(0, parsed);
     }
   } catch {}
   return 0;
 }
 
-export function incrementUserCompleted9Holes(userNameOrCode?: string, count: number = 1): number {
-  if (typeof window === 'undefined' || count <= 0) return 0;
+export function getUserCompleted9Holes(userNameOrCode?: string): number {
+  if (typeof window === 'undefined') return 0;
+  const count = getOfficialCompletedRoundsCount();
   try {
-    const current = getUserCompleted9Holes(userNameOrCode);
-    const updated = current + count;
+    if (userNameOrCode?.trim()) {
+      localStorage.setItem(`${TIER_STORAGE_KEY}_${userNameOrCode.trim()}`, count.toString());
+    }
+  } catch {}
+  return count;
+}
+
+export function incrementUserCompleted9Holes(userNameOrCode?: string, count: number = 1): number {
+  if (typeof window === 'undefined' || count <= 0) return getOfficialCompletedRoundsCount();
+  try {
+    const updated = getOfficialCompletedRoundsCount();
     const key = userNameOrCode ? `${TIER_STORAGE_KEY}_${userNameOrCode.trim()}` : TIER_STORAGE_KEY;
     localStorage.setItem(key, updated.toString());
-    localStorage.setItem(TIER_STORAGE_KEY, updated.toString()); // default user key also sync
+    localStorage.setItem(TIER_STORAGE_KEY, updated.toString());
+    localStorage.setItem(SINGLE_SOURCE_COMPLETED_KEY, updated.toString());
 
     // 🌐 Supabase 클라우드 원격 영구 백업 비동기 발동 (오프라인 Fail-Safe)
     if (userNameOrCode) {

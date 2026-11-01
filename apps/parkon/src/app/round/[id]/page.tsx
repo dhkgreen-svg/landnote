@@ -1024,21 +1024,6 @@ export default function RoundPlayPage() {
   // 라운드 최초 시작 시 심플 안내 1회만 표시:
   // "제원이 비어있는 홀은 라운드 중 상단 제원을 눌러 등록해주시면 감사하겠습니다."
   const hasShownSpecToastRef = useRef<boolean>(false);
-  useEffect(() => {
-    if (!session || !course) return;
-    if (hasShownSpecToastRef.current) return;
-
-    const activeMeta = session.customHolesMetadata || course.holesMetadata || [];
-    const hasUnverified = activeMeta.some((m) => !m.isVerified && !m.contributedBy) || activeMeta.length === 0;
-
-    if (hasUnverified) {
-      hasShownSpecToastRef.current = true;
-      setSpecSavedToast('UNVERIFIED_NOTICE');
-      setTimeout(() => {
-        setSpecSavedToast(null);
-      }, 5000);
-    }
-  }, [session, course, isJapanese]);
 
   if (!mounted || !session || !course) {
     return (
@@ -2380,25 +2365,7 @@ export default function RoundPlayPage() {
     const validatedPar = Math.max(3, Math.min(5, Number(parVal) || 3));
     const targetHoleNum = Number(baseHoleNumber);
 
-    // 대표님 원칙 2단계: 100회 이상 '명예 터줏대감 👑' 유저는 2-Strike 검증 면제! 1회 즉시 공식 DB 반영
-    const isHonoraryMaster = BadgeStorage.hasInstantSpecAccess(course.id);
-    const shouldForce = forceConsensus || isHonoraryMaster;
-
-    // 1. Persist in Big Data crowdsourced storage with 10-person consensus & initial registrant logic
-    const crowdResult = ParkOnStorage.saveCrowdsourcedHoleSpec(
-      course.id,
-      course.name,
-      targetHoleNum,
-      validatedPar,
-      validatedDist,
-      shouldForce
-    );
-
-    if (isHonoraryMaster) {
-      crowdResult.message = '👑 명예 터줏대감(100회 완주) 특권! 2-Strike 검증 없이 즉시 공식 DB에 반영되었습니다.';
-    }
-
-    // 2. Update hole metadata in current course (replace or add)
+    // 1. Update hole metadata in current course immediately (0ms delay, zero UI layout shift)
     let found = false;
     const contributor = (session.players.find((p) => p.isSelf)?.name) || session.players[0]?.name || '골퍼 실측';
     const existingMetadata = session.customHolesMetadata || course.holesMetadata || [];
@@ -2433,9 +2400,8 @@ export default function RoundPlayPage() {
       specContributorName: course.specContributorName || contributor,
     };
     setCourse(updatedCourse);
-    ParkOnStorage.updateCourse(updatedCourse);
 
-    // 3. Recalculate total par for selected holes
+    // 2. Recalculate total par for selected holes
     let totalParSoFar = 0;
     if (session.selectedHoleNumbers && session.selectedHoleNumbers.length > 0) {
       session.selectedHoleNumbers.forEach((hNum) => {
@@ -2452,7 +2418,7 @@ export default function RoundPlayPage() {
       }
     }
 
-    // 4. Update player scores on this hole to match new par UNCONDITIONALLY (위가 파3이면 밑에도 숫자 3, 파5면 5로 100% 일치)
+    // 3. Update player scores on this hole to match new par UNCONDITIONALLY
     const curConfirmed = session.confirmedHoles || [];
     const updatedPlayers = session.players.map((p) => {
       const isConfirmed = curConfirmed.includes(actualHoleNumber);
@@ -2473,14 +2439,26 @@ export default function RoundPlayPage() {
       players: updatedPlayers,
     };
     setSession(updatedSession);
-    updateSession(updatedSession);
-
     setShowHoleSpecModal(false);
     setShowSpecConfirmStep(false);
-    setSpecSavedToast(crowdResult.message);
+
+    // 4. Perform Big Data validation and storage persistence asynchronously in background (Zero UI Shift)
     setTimeout(() => {
-      setSpecSavedToast(null);
-    }, 4500);
+      try {
+        const isHonoraryMaster = BadgeStorage.hasInstantSpecAccess(course.id);
+        const shouldForce = forceConsensus || isHonoraryMaster;
+        ParkOnStorage.saveCrowdsourcedHoleSpec(
+          course.id,
+          course.name,
+          targetHoleNum,
+          validatedPar,
+          validatedDist,
+          shouldForce
+        );
+        ParkOnStorage.updateCourse(updatedCourse);
+        updateSession(updatedSession);
+      } catch (e) {}
+    }, 0);
   };
 
   // [대표님 지침]: 고수들의 현장 실전 팁(노하우) 등록 및 즉시 반영
@@ -2643,30 +2621,6 @@ export default function RoundPlayPage() {
         </div>
       )}
 
-      {/* Crowdsourced Spec Toast Banner */}
-      {specSavedToast && (
-        <div className="bg-gradient-to-r from-emerald-700 to-teal-800 text-white text-xs font-black p-2.5 rounded-xl shadow-lg border border-emerald-400 flex items-center justify-between animate-fadeIn">
-          <div className="flex items-center gap-2">
-            <Database className="w-4 h-4 text-yellow-300 shrink-0" />
-            <span>
-              {specSavedToast === 'UNVERIFIED_NOTICE' || (typeof specSavedToast === 'string' && (specSavedToast.includes('제원이 비어있는') || specSavedToast.includes('諸元が空いている')))
-                ? (isJapanese
-                    ? '諸元が空いているホールは、ラウンド中に上部の諸元をタップしてご登録いただけます。'
-                    : isEnglish
-                    ? 'For holes without course specs, please tap the top spec button to register.'
-                    : '제원이 비어있는 홀은 라운드 중 상단 제원을 눌러 등록해주시면 감사하겠습니다.')
-                : specSavedToast}
-            </span>
-          </div>
-          <button
-            onClick={() => setSpecSavedToast(null)}
-            className="text-emerald-200 hover:text-white ml-2 text-sm font-bold"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
       {/* Offline Toast Banner */}
       {offlineToast && (
         <div className="bg-amber-600 text-white text-xs font-black p-2.5 rounded-xl shadow-md flex items-center justify-between animate-fadeIn">
@@ -2775,13 +2729,14 @@ export default function RoundPlayPage() {
                     <button
                       key={pVal}
                       type="button"
+                      data-testid={`tee-shot-par-${pVal}`}
                       onClick={() => {
                         handleSaveHoleSpec(pVal, holeMetadata.distanceMeter || 50);
                       }}
-                      className={`py-2.5 rounded-xl font-black text-base sm:text-lg transition active:scale-95 cursor-pointer flex flex-col items-center justify-center ${
+                      className={`py-2.5 rounded-xl font-black text-base sm:text-lg transition-colors cursor-pointer flex flex-col items-center justify-center border ${
                         isSelected
-                          ? 'bg-gradient-to-r from-yellow-400 to-amber-400 text-stone-950 font-black shadow-lg ring-2 ring-yellow-200 scale-105'
-                          : 'bg-white/10 hover:bg-white/20 text-stone-300 border border-white/15'
+                          ? 'bg-gradient-to-r from-yellow-400 to-amber-400 text-stone-950 font-black shadow-lg border-yellow-200 ring-2 ring-yellow-200'
+                          : 'bg-white/10 hover:bg-white/20 text-stone-300 border-white/15'
                       }`}
                     >
                       <span>{isJapanese ? `Par ${pVal}` : `파${pVal}`}</span>
@@ -5572,13 +5527,24 @@ export default function RoundPlayPage() {
       <FloatingCameraFAB
         session={session}
         currentHoleNumber={actualHoleNumber}
-        currentCourseName={course?.name}
-        onSaveAndReturn={(photoUrl) => {
+        currentCourseName={course?.name || session?.courseName}
+        currentHoleLabel={`${courseLetter}-${holeInCourse}번홀`}
+        currentHolePar={Number(holeMetadata?.par) || 4}
+        onSaveAndReturn={(photoUrl, meta) => {
           if (session) {
             const currentPhotos = session.photos || [];
+            const currentMeta = session.photoMetadata || [];
+            const fallbackMeta = meta || {
+              photoUrl,
+              photoType: 'regular' as const,
+              achieverName: session.players?.[0]?.name || '김대희',
+              holeLabel: `${courseLetter}-${holeInCourse}번홀`,
+              courseName: course?.name || session.courseName,
+            };
             const updated: RoundSession = {
               ...session,
               photos: [...currentPhotos, photoUrl],
+              photoMetadata: [...currentMeta, fallbackMeta],
             };
             setSession(updated);
             ParkOnStorage.saveCurrentRound(updated);

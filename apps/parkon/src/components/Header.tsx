@@ -98,24 +98,16 @@ export function Header() {
     };
     checkUser();
 
-    const handleShowTip = (e: any) => {
-      const name = e.detail?.name || ParkOnStorage.getUserDisplayName();
-      setTipUserName(name);
-      setShowLoginTip(true);
-    };
-
     window.addEventListener('storage', checkUser);
     window.addEventListener('parkon_profile_updated', checkUser);
     window.addEventListener('parkon_round_player_sync', checkUser);
     window.addEventListener('parkon_member_synced', checkUser);
-    window.addEventListener('parkon_show_header_login_tip', handleShowTip);
 
     return () => {
       window.removeEventListener('storage', checkUser);
       window.removeEventListener('parkon_profile_updated', checkUser);
       window.removeEventListener('parkon_round_player_sync', checkUser);
       window.removeEventListener('parkon_member_synced', checkUser);
-      window.removeEventListener('parkon_show_header_login_tip', handleShowTip);
     };
   }, []);
 
@@ -187,14 +179,13 @@ export function Header() {
             href="/"
             onClick={(e) => handleNavClick(e, '/', 'HOME')}
             className="flex items-center group shrink-0 active:scale-95 transition"
-            title={isJapanese ? 'パークゴルフ オールインワン ホームへ' : '파크골프 올인원 홈으로 이동'}
           >
             {/* 공식 마스코트 파키 (원터치 홈 이동) */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <div className="relative shrink-0">
               <img
                 src="/parky.jpg"
-                alt="파크골프 올인원 공식 마스코트 파키"
+                alt="파키 앱 홈"
                 className="w-10 h-10 rounded-full shadow-md border-2 border-amber-300 object-cover group-hover:scale-105 transition"
               />
               <span className="absolute -bottom-1 -right-1 bg-amber-400 text-emerald-950 rounded-full px-1.5 text-[8.5px] font-black shadow-xs tracking-tight">
@@ -213,7 +204,6 @@ export function Header() {
                 suppressHydrationWarning
                 onClick={() => handleOpenModal('login')}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-black bg-amber-400 hover:bg-amber-300 text-stone-950 shadow-sm border border-amber-500 transition active:scale-95 shrink-0 cursor-pointer"
-                title={isJapanese ? '会員番号または電話番号でログイン' : isEnglish ? 'Login / Find Records' : '8자리 고유번호 또는 전화번호로 1초 로그인'}
               >
                 <span className="text-xs leading-none">👤</span>
                 <span className="font-black text-[11px] sm:text-xs tracking-tight">
@@ -226,7 +216,6 @@ export function Header() {
                 suppressHydrationWarning
                 onClick={() => handleOpenModal('profile')}
                 className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-black bg-emerald-800/90 hover:bg-emerald-900 text-amber-300 border border-amber-300/60 shadow-sm transition active:scale-95 shrink-0 cursor-pointer"
-                title={isJapanese ? `${currentDisplayName} 様 プロフィール・活動名切替` : isEnglish ? `${currentDisplayName} Profile & Name Switch` : `${currentDisplayName} 님 프로필 & 활동명 전환`}
               >
                 <span className="text-xs leading-none">👑</span>
                 <span className="font-black text-[11px] sm:text-xs tracking-tight truncate max-w-[85px] sm:max-w-[125px]">
@@ -240,7 +229,6 @@ export function Header() {
             <Link
               href="/chronicle"
               className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
-              title={isJapanese ? '私のパークゴルフ年代記 ＆ 仲間名簿' : isEnglish ? 'Chronicle & Friends' : '나의 파크골프 연대기 & 1촌 명부'}
             >
               <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 stroke-[2.5]" />
             </Link>
@@ -249,12 +237,8 @@ export function Header() {
             <Link
               href="/board"
               className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
-              title={isJapanese ? '掲示板 ＆ パークゴルフニュース' : isEnglish ? 'Board & News' : '게시판 & 파크골프 뉴스 (전국 시합 공고·열린 신문고)'}
             >
               <Newspaper className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-700 stroke-[2.5]" />
-              <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[7px] font-black px-1 rounded-full animate-pulse shadow-xs">
-                N
-              </span>
             </Link>
 
             {/* 1. 가이드 & 룰 센터 (물음표 3단 허브 모달) 버튼 */}
@@ -262,7 +246,6 @@ export function Header() {
               type="button"
               onClick={() => setShowHelpRulesModal(true)}
               className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer"
-              title={isJapanese ? 'ガイド ＆ ルールセンター' : isEnglish ? 'Rules & Guide Hub' : '가이드 & 룰 센터 (초간단 설명서 · 공식 룰북 · Q&A)'}
             >
               <HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
             </button>
@@ -272,7 +255,6 @@ export function Header() {
               href="/courses"
               onClick={(e) => handleNavClick(e, '/courses', 'COURSES')}
               className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0"
-              title={isJapanese ? '全国パークゴルフ場検索' : isEnglish ? 'Find Courses' : '전국 파크골프장 찾기'}
             >
               <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
             </Link>
@@ -283,59 +265,11 @@ export function Header() {
               data-testid="header-round-settings-btn"
               onClick={() => setShowRoundSettingsModal(true)}
               className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white hover:bg-amber-100 text-emerald-800 hover:text-amber-950 border border-amber-300 shadow-md flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer"
-              title="⚙️ 라운드 환경 설정 (홀 정보 표기 · 팝업 토글)"
             >
               <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]" />
             </button>
           </div>
         </div>
-
-        {/* 핑키의 1초 카카오 자동가입 안내 말풍선 팝업 */}
-        {showLoginTip && (
-          <div className="max-w-md mx-auto px-4 relative">
-            <div className="absolute right-4 top-1 z-50 w-72 bg-amber-50 border-2 border-amber-400 rounded-2xl p-3.5 shadow-2xl animate-scaleUp text-stone-900">
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <div className="flex items-center gap-1.5 font-black text-xs text-amber-950">
-                  <span className="text-sm leading-none">🐰</span>
-                  <span>{isJapanese ? 'ピンキーの簡単案内' : '핑키의 1초 꿀팁 안내'}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowLoginTip(false)}
-                  className="text-stone-400 hover:text-stone-700 font-bold text-xs p-0.5 cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="text-xs space-y-1 font-bold text-stone-800 leading-relaxed">
-                <p>
-                  <span className="text-emerald-700 font-black">'{tipUserName || (isJapanese ? '会員' : '회원')}'</span> {isJapanese ? '様として登録されました！' : '님으로 등록되었습니다!'}
-                </p>
-                <p className="text-[11px] text-stone-700">
-                  {isJapanese ? (
-                    '上部のお名前をタップするとプロフィール確認と簡単ログインが可能です。パスワード不要で便利にご利用いただけます！'
-                  ) : (
-                    <>
-                      위에 내 이름을 누르시면 <strong>카카오톡 창</strong>이 뜹니다. <span className="text-amber-900 underline decoration-amber-500 font-black">[확인]만 누르시면</span> 비밀번호 없이 <strong>자동으로 가입 완료</strong>됩니다!
-                    </>
-                  )}
-                </p>
-                <p className="text-[10px] text-stone-500 font-medium">
-                  {isJapanese
-                    ? '※ ずっと無料利用 ＆ スコア記録は安全に自動保管されます。'
-                    : '※ 평생 무료 이용 & 내 경기 타수가 안전하게 자동 보관됩니다.'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowLoginTip(false)}
-                className="mt-2 w-full py-1.5 bg-amber-400 hover:bg-amber-500 active:scale-95 text-stone-950 font-black text-xs rounded-xl shadow-xs transition cursor-pointer"
-              >
-                {isJapanese ? '👍 確認 (わかりました)' : '👍 확인 (알겠습니다)'}
-              </button>
-            </div>
-          </div>
-        )}
       </header>
 
       {/* ⚠️ 라운드 진행 중 오터치/주머니 방지 안내 모달 */}
