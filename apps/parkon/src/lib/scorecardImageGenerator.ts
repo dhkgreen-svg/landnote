@@ -200,7 +200,7 @@ export async function generateScorecardImage(
   const primaryCompleted9Holes = typeof window !== 'undefined' ? getUserCompleted9Holes(primaryName) : 0;
   const primaryTier = calculateTier(primaryCompleted9Holes);
 
-  // Top Title Badge (파크골프 올인원 공식 인증 스코어카드)
+  // Top Title Badge (파키 앱 (PARKY APP) 공식 인증 스코어카드)
   ctx.fillStyle = 'rgba(251, 191, 36, 0.18)';
   ctx.beginPath();
   ctx.roundRect(70, 56, 420, 44, 22);
@@ -213,7 +213,7 @@ export async function generateScorecardImage(
   ctx.font = 'bold 19px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText(
-    isJapanese ? '⛳ パークゴルフ オールインワン 公式認定' : '⛳ 파크골프 올인원 공식 인증 스코어카드',
+    isJapanese ? '⛳ パークゴルフ オールインワン 公式認定' : '⛳ 파키 앱 (PARKY APP) 공식 인증 스코어카드',
     88,
     85
   );

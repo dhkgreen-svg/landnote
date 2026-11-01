@@ -22,6 +22,7 @@ import {
   generateSealedNewPerioHolesSync,
   verifyAndUnsealHolesSync,
   calculateDynamicNewPerio,
+  getDesignatedCourseHoleBlocks,
 } from './newPerioSealer';
 import { BoardStorage } from './boardStorage';
 
@@ -1077,7 +1078,13 @@ export const ClubStorage = {
   }): ClubEventRoom {
     const id = `club-${Date.now().toString(36)}`;
     const groups: ClubGroup[] = [];
-    const letters = params.selectedCourseLetters.length > 0 ? params.selectedCourseLetters : ['A', 'B'];
+    // 시합 90% 표준은 18홀(['A', 'B'], 기준 66타)을 기본으로 하되,
+    // 9홀 단일(['A'] 또는 ['C']) 및 3~4개 코스 중 특정 2~3개 시합 코스 핀셋 지정(['C','D'], ['A','C'], ['A','B','C'] 등)도 100% 수용
+    const letters = params.selectedCourseLetters && params.selectedCourseLetters.length > 0 ? params.selectedCourseLetters : ['A', 'B'];
+    const totalHolesCount = letters.length * 9;
+    // 대표님 지침: 시합의 90% 이상은 정상 타수를 체크하는 '정통 스트로크(STROKE)'가 무조건 기본값! (신페리오 등은 총무 선택 옵션)
+    const effectiveGameMode = params.gameMode || 'STROKE';
+    const sealedPerio = effectiveGameMode === 'NEW_PERIO' ? generateSealedNewPerioHolesSync(totalHolesCount, letters) : null;
     const cnt = params.groupCount || (params.targetTotalPlayers ? Math.ceil(params.targetTotalPlayers / 4) : 4);
 
     for (let i = 1; i <= cnt; i++) {
@@ -1092,9 +1099,9 @@ export const ClubStorage = {
       });
     }
 
-    const defaultRuleNotes = params.gameMode === 'NEW_PERIO'
-      ? '신페리오 방식(12개 숨은 홀 핸디캡 산출), 컨시드 1클럽 샤프트 길이 이내 인정, OB 시 2벌타 후 특설티 진행'
-      : '정통 스트로크 최저타수 순위, 컨시드 1클럽 샤프트 길이 이내 인정, OB 시 2벌타 후 특설티 진행';
+    const defaultRuleNotes = effectiveGameMode === 'NEW_PERIO'
+      ? `신페리오 방식(${totalHolesCount}홀 중 ${(totalHolesCount / 9) * 6}개 숨은 홀 핸디캡 산출 / 기준 Par ${(totalHolesCount / 9) * 33}), 컨시드 1클럽 샤프트 길이 이내 인정, OB 시 2벌타 후 특설티 진행`
+      : `정통 스트로크 최저타수 순위(${totalHolesCount}홀 / 기준 Par ${(totalHolesCount / 9) * 33}), 동타 시 마지막 9홀 백카운트 우선, 컨시드 1클럽 샤프트 길이 이내 인정, OB 시 2벌타 후 특설티 진행`;
 
     const newRoom: ClubEventRoom = {
       id,
@@ -1111,18 +1118,18 @@ export const ClubStorage = {
       courseName: params.courseName,
       hostName: params.hostName.trim() || '총무',
       selectedCourseLetters: letters,
-      totalHoles: letters.length * 9,
+      totalHoles: totalHolesCount,
       targetTotalPlayers: params.targetTotalPlayers || cnt * 4,
       entryFee: params.entryFee ?? 10000,
       bankAccount: params.bankAccount?.trim() || '농협 352-1234-5678 김대희(총무)',
-      gameMode: params.gameMode || 'NEW_PERIO',
-      gameModeTitle: params.gameModeTitle || (params.gameMode === 'STROKE' ? '정통 스트로크 (최저타수)' : '신페리오 방식 (핸디캡 적용)'),
+      gameMode: effectiveGameMode,
+      gameModeTitle: params.gameModeTitle || (effectiveGameMode === 'NEW_PERIO' ? '신페리오 방식 (핸디캡 옵션)' : '정통 스트로크 (정상 타수 최저타순)'),
       gameRuleNotes: params.gameRuleNotes?.trim() || defaultRuleNotes,
       nearPinHole: params.nearPinHole,
       longestHole: params.longestHole,
-      // 🔒 [NEW] 신페리오 사전 무작위 봉인 필드 자동 생성
-      hiddenHolesHash: params.gameMode !== 'STROKE' ? generateSealedNewPerioHolesSync(letters.length * 9).hiddenHolesHash : undefined,
-      sealedSecret: params.gameMode !== 'STROKE' ? generateSealedNewPerioHolesSync(letters.length * 9).sealedSecret : undefined,
+      // 🔒 [NEW] 신페리오 사전 무작위 봉인 필드 자동 생성 (동일 봉인 인스턴스 보장)
+      hiddenHolesHash: sealedPerio?.hiddenHolesHash,
+      sealedSecret: sealedPerio?.sealedSecret,
       isUnsealed: false,
       unsealedHoles: [],
       groupingMethod: params.groupingMethod || 'RANDOM',
@@ -1339,42 +1346,42 @@ export const ClubStorage = {
     return list;
   },
 
-  // 9-1. 경기 방식 메타데이터 안내
+  // 9-1. 경기 방식 메타데이터 안내 (90% 이상 표준인 '정통 스트로크'가 무조건 기본값, 신페리오 등은 총무 선택 옵션)
   getGameModeInfo(mode?: 'STROKE' | 'NEW_PERIO' | 'SCRAMBLE' | 'STABLEFORD' | 'CASUAL') {
     switch (mode) {
       case 'NEW_PERIO':
         return {
           key: 'NEW_PERIO',
-          title: '신페리오 방식 (핸디캡 적용)',
-          badge: '🎯 신페리오',
-          shortDesc: '12개 숨은 홀 기반 핸디캡 자동 계산 · 초보자도 우승 가능',
+          title: '신페리오 방식 (핸디캡 옵션)',
+          badge: '🎯 신페리오(옵션)',
+          shortDesc: '총무 선택 옵션 · 숨은 홀 기반 핸디캡 차감 산출 방식',
           ruleDetail:
-            '18홀 중 12개 숨은 홀 타수를 집계하여 핸디캡을 산출한 뒤, [총타수 - 핸디캡 = 네트스코어]로 순위를 결정합니다. 당일 샷 감각이 좋은 초보 회원도 실력자와 공평하게 우승을 겨룰 수 있는 가장 인기 있는 방식입니다.',
+            '숨은 홀 타수를 집계하여 핸디캡을 산출한 뒤 [총타수 - 핸디캡 = 네트스코어]로 순위를 결정하는 선택형 이벤트 방식입니다.',
         };
       case 'SCRAMBLE':
         return {
           key: 'SCRAMBLE',
-          title: '팀 스크램블 (단체 베스트볼)',
-          badge: '🤝 팀 스크램블',
-          shortDesc: '팀원 전원 티샷 후 가장 좋은 공 위치에서 다음 샷 진행',
+          title: '팀 스크램블 (단체 베스트볼 옵션)',
+          badge: '🤝 팀 스크램블(옵션)',
+          shortDesc: '총무 선택 옵션 · 팀원 전원 티샷 후 베스트볼 위치에서 진행',
           ruleDetail:
-            '조원 모두가 티샷한 후 가장 좋은 위치의 공을 선택하여 전원이 그 위치에서 다음 샷을 합니다. 초보자의 부담을 덜고 팀원 간의 협동과 친목을 극대화하는 즐거운 경기입니다.',
+            '조원 모두가 티샷한 후 가장 좋은 위치의 공을 선택하여 전원이 그 위치에서 다음 샷을 하는 협동 옵션 방식입니다.',
         };
       case 'STABLEFORD':
         return {
           key: 'STABLEFORD',
-          title: '스테이블포드 (승점제)',
-          badge: '🎖️ 스테이블포드',
-          shortDesc: '홀별 타수에 따른 승점 합산 방식 · 공격적인 플레이 유도',
+          title: '스테이블포드 (승점제 옵션)',
+          badge: '🎖️ 스테이블포드(옵션)',
+          shortDesc: '총무 선택 옵션 · 홀별 타수에 따른 승점 합산 방식',
           ruleDetail:
-            '알바트로스 5점, 이글 4점, 버디 3점, 파 2점, 보기 1점 등 홀별 성적에 따라 승점을 부여하고, 최종 승점이 가장 높은 선수가 우승하는 경기 방식입니다.',
+            '알바트로스 5점, 이글 4점, 버디 3점, 파 2점, 보기 1점 등 홀별 성적에 따라 승점을 부여하여 합산하는 옵션 방식입니다.',
         };
       case 'CASUAL':
         return {
           key: 'CASUAL',
-          title: '친선 명랑 라운드 (친목)',
-          badge: '⛳ 친선 명랑',
-          shortDesc: '순위 경쟁 없이 건강과 친목에 집중하는 자유 라운드',
+          title: '친선 명랑 라운드 (친목 옵션)',
+          badge: '⛳ 친선 명랑(옵션)',
+          shortDesc: '총무 선택 옵션 · 순위 경쟁 없이 건강과 친목에 집중',
           ruleDetail:
             '승패나 순위의 부담 없이 동호인 간의 매너와 친목, 건강 증진에 집중하는 자유로운 라운드입니다.',
         };
@@ -1382,11 +1389,11 @@ export const ClubStorage = {
       default:
         return {
           key: 'STROKE',
-          title: '정통 스트로크 플레이 (최저타수)',
-          badge: '🏆 정통 스트로크',
-          shortDesc: '18홀 총 타수가 가장 적은 선수가 우승하는 정석 챔피언십',
+          title: '정통 스트로크 (정상 타수 최저타순 · 90% 기본)',
+          badge: '🏆 정통 스트로크(기본)',
+          shortDesc: '90% 공식 표준 기본값 · 실제 정상 타수(최저타순)로 순위 결정',
           ruleDetail:
-            '규정된 18홀의 총 타수가 가장 적은 순서대로 순위를 매기는 가장 정통적이고 공인된 경기 방식입니다. 동타 시 후반 9홀(백카운트) 최저타순으로 순위를 결정합니다.',
+            '규정 홀수의 실제 정상 타수 합계가 가장 적은 순서대로 순위를 매기는 대한민국 파크골프 90% 이상 공식 표준 방식입니다. 동타 시 지정 마지막 코스 백카운트 최저타순으로 순위를 결정합니다.',
         };
     }
   },
@@ -1400,19 +1407,44 @@ export const ClubStorage = {
       ? room.unsealedHoles
       : [];
 
+    const designatedBlocks = getDesignatedCourseHoleBlocks(
+      room.selectedCourseLetters,
+      room.totalHoles || 18
+    );
+    const designatedFlatHoles = designatedBlocks.flat();
+    const STANDARD_9_PARS = [4, 3, 4, 3, 4, 4, 3, 3, 5];
+
     room.groups.forEach((g) => {
       g.players.forEach((p) => {
         let handicap: number | undefined;
         let netScore: number | undefined;
 
-        if (isNewPerio && p.holesCompleted > 0) {
+        // 3~4개 코스를 라운드하더라도 시합 지정 코스(예: ['C','D'] 또는 ['A','C'] 또는 ['B'])의 점수만 핀셋 추출 지원
+        let designatedStrokes = 0;
+        let designatedParSum = 0;
+        let designatedCompleted = 0;
+        designatedFlatHoles.forEach((hNum, seqIdx) => {
+          const val = typeof p.scores[hNum] === 'number' ? p.scores[hNum] : p.scores[seqIdx + 1];
+          if (typeof val === 'number' && val > 0) {
+            designatedStrokes += val;
+            designatedParSum += STANDARD_9_PARS[(hNum - 1) % 9] || 3;
+            designatedCompleted++;
+          }
+        });
+
+        const effectiveStrokes = designatedCompleted > 0 ? designatedStrokes : (p.totalStrokes || 0);
+        const effectiveParDiff = designatedCompleted > 0 ? (designatedStrokes - designatedParSum) : (p.parDiff || 0);
+        const effectiveCompleted = designatedCompleted > 0 ? designatedCompleted : (p.holesCompleted || 0);
+
+        if (isNewPerio && effectiveCompleted > 0) {
           if (isUnsealed && activeHiddenHoles.length > 0) {
-            // 🔓 [공개 완료] 암호 해제된 숨은 홀 기반 공정 정밀 계산
+            // 🔓 [공개 완료] 암호 해제된 숨은 홀 기반 공정 정밀 계산 (지정 시합 코스 매핑 포함)
             const calc = calculateDynamicNewPerio(
               p.scores,
-              p.totalStrokes,
+              effectiveStrokes,
               activeHiddenHoles,
-              room.totalHoles || 18
+              room.totalHoles || designatedFlatHoles.length || 18,
+              room.selectedCourseLetters
             );
             handicap = calc.handicap;
             netScore = calc.netScore;
@@ -1423,31 +1455,28 @@ export const ClubStorage = {
           }
         }
 
-        // 파크골프 공식 백카운트(18홀: 후반 10~18번홀 / 9홀: 후반 7~9번홀 타수 합계) 산출
+        // 파크골프 공식 백카운트: 지정된 시합 코스 중 마지막 코스(9홀 시합은 후반 3홀, 18/27/36홀 시합은 마지막 지정 9홀 코스) 합계 산출
         let backCountScore = 0;
-        const totalHoles = room.totalHoles || 18;
-        if (totalHoles <= 9) {
-          for (let h = 7; h <= 9; h++) {
-            if (typeof p.scores[h] === 'number') {
-              backCountScore += p.scores[h];
-            }
+        const lastBlock = designatedBlocks[designatedBlocks.length - 1] || [];
+        const backCountHoles = designatedBlocks.length === 1 ? lastBlock.slice(-3) : lastBlock;
+        backCountHoles.forEach((hNum) => {
+          const seqIdx = designatedFlatHoles.indexOf(hNum);
+          const val = typeof p.scores[hNum] === 'number'
+            ? p.scores[hNum]
+            : (seqIdx >= 0 ? p.scores[seqIdx + 1] : undefined);
+          if (typeof val === 'number') {
+            backCountScore += val;
           }
-        } else {
-          for (let h = 10; h <= 18; h++) {
-            if (typeof p.scores[h] === 'number') {
-              backCountScore += p.scores[h];
-            }
-          }
-        }
+        });
 
         list.push({
           rank: 0,
           playerId: p.id,
           playerName: p.name,
           groupNumber: g.groupNumber,
-          totalStrokes: p.totalStrokes || 0,
-          parDiff: p.parDiff || 0,
-          holesCompleted: p.holesCompleted || 0,
+          totalStrokes: effectiveStrokes,
+          parDiff: effectiveParDiff,
+          holesCompleted: effectiveCompleted,
           isLeader: p.isLeader,
           handicap,
           netScore,
@@ -1528,7 +1557,7 @@ export const ClubStorage = {
       const isDirect = room.matchInviteType !== 'OPEN_CHALLENGE';
 
       if (isJapanese) {
-        return `⚔️ [ParkOn クラブ対抗戦 公式${isDirect ? '挑戦状' : 'オープンチャレンジ'}]
+        return `⚔️ [PARKY (パキ) クラブ対抗戦 公式${isDirect ? '挑戦状' : 'オープンチャレンジ'}]
 
 🏆 ${room.title}
 🏛️ 対戦カード: [${hostClub}] ⚔️ VS ⚔️ [${oppClubs}]
@@ -1541,7 +1570,7 @@ export const ClubStorage = {
 ${link}`;
       }
 
-      return `⚔️ [파크골프 올인원 클럽 대항전 공식 ${isDirect ? '도전장' : '오픈 챌린지'}]
+      return `⚔️ [파키 앱 (PARKY APP) 클럽 대항전 공식 ${isDirect ? '도전장' : '오픈 챌린지'}]
 
 🏆 ${room.title}
 🏛️ 대결 매치: [${hostClub}] ⚔️ VS ⚔️ [${oppClubs}]
@@ -1572,21 +1601,39 @@ ${link}`;
     }
 
     if (isJapanese) {
-      return `⛳ [パークゴルフ オールインワン クラブ招集招待]\n\n🏆 ${room.title}\n📍 コース: ${room.courseName}\n👥 参加人数: ${totalCurrentPlayers}名 / ${room.targetTotalPlayers}名 (${room.groups.length}組 編成)${feeInfo}${rulesInfo}\n\n以下のリンクから自分の組を確認し、リアルタイム電光掲示板へご参加ください:\n${link}`;
+      return `⛳ [PARKY (パキ) クラブ招集招待]\n\n🏆 ${room.title}\n📍 コース: ${room.courseName}\n👥 参加人数: ${totalCurrentPlayers}名 / ${room.targetTotalPlayers}名 (${room.groups.length}組 編成)${feeInfo}${rulesInfo}\n\n以下のリンクから自分の組を確認し、リアルタイム電光掲示板へご参加ください:\n${link}`;
     }
 
-    return `⛳ [파크골프 올인원 클럽 모임 초대]\n\n🏆 ${room.title}\n📍 구장: ${room.courseName}\n👥 참가 인원: ${totalCurrentPlayers}명 / ${room.targetTotalPlayers}명 (${room.groups.length}개 조 편성)${feeInfo}${rulesInfo}\n\n아래 링크를 누르면 본인 조 확인 및 실시간 스코어보드로 입장합니다:\n${link}`;
+    return `⛳ [파키 앱 (PARKY APP) 클럽 모임 초대]\n\n🏆 ${room.title}\n📍 구장: ${room.courseName}\n👥 참가 인원: ${totalCurrentPlayers}명 / ${room.targetTotalPlayers}명 (${room.groups.length}개 조 편성)${feeInfo}${rulesInfo}\n\n아래 링크를 누르면 본인 조 확인 및 실시간 스코어보드로 입장합니다:\n${link}`;
   },
 
   // 12. 대회 최종 결과 텍스트 리포트 생성 (총무 복사용)
   generateTournamentResultReport(room: ClubEventRoom, isJapanese?: boolean): string {
-    const teams = this.getTeamLeaderboard(room);
-    const individuals = this.getIndividualLeaderboard(room);
-    const modeInfo = this.getGameModeInfo(room.gameMode);
+    const designatedBlocks = getDesignatedCourseHoleBlocks(room.selectedCourseLetters, room.totalHoles || 18);
+    const totalHolesCount = designatedBlocks.flat().length || room.totalHoles || 18;
+    const baseParCount = designatedBlocks.length * 33;
+    const designatedLabel =
+      room.selectedCourseLetters && room.selectedCourseLetters.length > 0
+        ? `${room.selectedCourseLetters.join('·')}코스 / `
+        : '';
+    const defaultHiddenForBlocks = designatedBlocks
+      .map((block) => [0, 1, 3, 5, 6, 8].map((idx) => block[idx]).filter(Boolean))
+      .flat();
+    const effectiveRoom: ClubEventRoom =
+      room.gameMode === 'NEW_PERIO' && (!room.isUnsealed || !room.unsealedHoles || room.unsealedHoles.length === 0)
+        ? {
+            ...room,
+            isUnsealed: true,
+            unsealedHoles: defaultHiddenForBlocks,
+          }
+        : room;
+    const teams = this.getTeamLeaderboard(effectiveRoom);
+    const individuals = this.getIndividualLeaderboard(effectiveRoom);
+    const modeInfo = this.getGameModeInfo(effectiveRoom.gameMode);
 
     if (isJapanese) {
       let report = `🏆 [${room.title} 大会最終結果]\n`;
-      report += `📍 コース: ${room.courseName} (${room.totalHoles}ホール)\n`;
+      report += `📍 コース: ${room.courseName} (${designatedLabel}${totalHolesCount}ホール / 基準 Par ${baseParCount})\n`;
       const gameModeLabelJa =
         room.gameModeTitle ||
         (room.gameMode === 'NEW_PERIO'
@@ -1605,7 +1652,7 @@ ${link}`;
         report += `${medal} ${t.rank}位 ${t.groupName} (組長: ${t.leaderName}) : 平均 ${t.avgStrokes}打\n`;
       });
       if (teams.length > 5) {
-        report += `  (※ 他 ${teams.length - 5}組の全順位はParkOn電光掲示板リンクで確認)\n`;
+        report += `  (※ 他 ${teams.length - 5}組の全順位はPARKY電光掲示板リンクで確認)\n`;
       }
 
       const getPlayerTagJa = (playerId: string, defaultName: string, groupNum?: number): string => {
@@ -1672,12 +1719,12 @@ ${link}`;
       report += `• 賞金およびトロフィー・賞品は本人確認のうえ現地受領または指定口座へ送金されます。\n`;
       report += `• お問い合わせ: 幹事 (${room.hostName || 'クラブ事務局'})\n`;
       report += `══════════════════════════════\n`;
-      report += `⛳ パークゴルフ オールインワン 公式大会管制センター リアルタイム集計\n`;
+      report += `⛳ PARKY (パキ) 公式大会管制センター リアルタイム集計\n`;
       return report;
     }
 
     let report = `🏆 [${room.title} 대회 최종 결과]\n`;
-    report += `📍 구장: ${room.courseName} (${room.totalHoles}홀)\n`;
+    report += `📍 구장: ${room.courseName} (${designatedLabel}${totalHolesCount}홀 / 기준 Par ${baseParCount})\n`;
     report += `🎯 경기 방식: ${room.gameModeTitle || modeInfo.title}\n\n`;
 
     report += `🥇 [팀 대항전 단체 순위]\n`;
@@ -1687,7 +1734,7 @@ ${link}`;
       report += `${medal} ${t.rank}위 ${t.groupName} (조장: ${t.leaderName}) : 평균 ${t.avgStrokes}타\n`;
     });
     if (teams.length > 5) {
-      report += `  (※ 외 ${teams.length - 5}개 조 전체 순위는 파크골프 올인원 전광판 링크에서 확인)\n`;
+      report += `  (※ 외 ${teams.length - 5}개 조 전체 순위는 파키 앱 (PARKY APP) 전광판 링크에서 확인)\n`;
     }
 
     // [대표님 지시] 5만명 전국망 대비 동명이인 방지 3중 식별 태그 (이름 + 소속클럽 + 전화뒷자리/조)
@@ -1772,7 +1819,7 @@ ${link}`;
     report += `• 수령 확인: 수상자 전원 서명 또는 확인 완료 시 클럽 공식 연대기에 영구 등재됩니다.\n`;
     report += `• 문의 및 수령 확인: 총무 (${room.hostName || '클럽 집행부'})\n`;
     report += `══════════════════════════════\n`;
-    report += `⛳ 파크골프 올인원 (ParkGolf All-in-One) 공식 대회 관제 센터 실시간 집계\n`;
+    report += `⛳ 파키 앱 (PARKY APP) 공식 대회 관제 센터 실시간 집계\n`;
 
     return report;
   },
@@ -2597,14 +2644,14 @@ ${link}`;
         ? `${window.location.origin}/club/join?clubId=${club.id}`
         : `https://www.parkgolfallinone.com/club/join?clubId=${club.id}`;
 
-    return `[파크골프 올인원 공식 클럽 가입 초청장 ⛳]
+    return `[파키 앱 (PARKY APP) 공식 클럽 가입 초청장 ⛳]
 "${club.name}"에서 ${club.managerName || '총무'}님이 귀하를 정회원으로 초대합니다!
 
 📍 홈 구장: ${club.homeCourseName} (${club.region})
 👥 회원 수: ${club.memberCount}명 활동 중
 💬 클럽 소개: ${club.description}
 
-👇 아래 링크를 터치하여 파크골프 올인원에서 1초 만에 가입 신청하세요!
+👇 아래 링크를 터치하여 파키 앱 (PARKY APP)에서 1초 만에 가입 신청하세요!
 ${shareUrl}`;
   },
 
@@ -3115,7 +3162,7 @@ ${shareUrl}`;
           ctx.fillStyle = '#fef08a';
           ctx.font = `bold ${Math.max(12, Math.round(barH * 0.42))}px sans-serif`;
           ctx.textAlign = 'right';
-          ctx.fillText(`파크골프 올인원 공식 실록 | ${watermarkText}`, w - 16, h - Math.round(barH * 0.32));
+          ctx.fillText(`파키 앱 (PARKY APP) 공식 실록 | ${watermarkText}`, w - 16, h - Math.round(barH * 0.32));
 
           const compressed = canvas.toDataURL('image/jpeg', 0.7);
           resolve(compressed);
@@ -3523,8 +3570,8 @@ ${shareUrl}`;
     const clubBadge = flash.clubName
       ? `[${flash.clubName}]`
       : isJapanese
-      ? '[ParkOn 招集マッチ]'
-      : '[파크골프 올인원 번개]';
+      ? '[PARKY (パキ) 招集マッチ]'
+      : '[파키 앱 (PARKY APP) 번개]';
     const isMultiOpen = flash.lightningScope === 'MULTI_OPEN' || flash.targetCount >= 999;
     const capacityText = isMultiOpen
       ? (isJapanese ? `4人以上 人数無制限 (現在 ${flash.currentParticipants.length}名参加中!)` : `4인 이상 인원 무제한 (현재 ${flash.currentParticipants.length}명 참여 중!)`)
@@ -3539,7 +3586,7 @@ ${shareUrl}`;
 👥 募集: ${capacityText}
 👤 参加者: ${flash.currentParticipants.map((p) => p.name).join(', ')}
 ${flash.notes ? `💬 メッセージ: "${flash.notes}"\n` : ''}
-👇 下のParkOnリンクをタップしてワンタップで参加！
+👇 下のPARKYリンクをタップしてワンタップで参加！
 ${shareUrl}`;
     }
 
@@ -3551,7 +3598,7 @@ ${shareUrl}`;
 👥 모집: ${capacityText}
 👤 현재 참가: ${flash.currentParticipants.map((p) => p.name).join(', ')}
 ${flash.notes ? `💬 안내: "${flash.notes}"\n` : ''}
-👇 아래 파크골프 올인원 링크를 눌러 1초 만에 바로 조인하세요!
+👇 아래 파키 앱 (PARKY APP) 링크를 눌러 1초 만에 바로 조인하세요!
 ${shareUrl}`;
   },
 
@@ -3565,8 +3612,8 @@ ${shareUrl}`;
     const totalPlayers = room.groups.reduce((sum, g) => sum + g.players.length, 0);
 
     let text = isJapanese
-      ? `📢 [パークゴルフ オールインワン] ${room.courseName} 組編成結果\n`
-      : `📢 [파크골프 올인원] ${room.courseName} 라운드 조 편성 결과\n`;
+      ? `📢 [PARKY (パキ)] ${room.courseName} 組編成結果\n`
+      : `📢 [파키 앱 (PARKY APP)] ${room.courseName} 라운드 조 편성 결과\n`;
     text += `🏆 ${room.title}\n`;
     text += isJapanese
       ? `👥 計 ${room.groups.length}組 (${totalPlayers}名 割当完了)\n`

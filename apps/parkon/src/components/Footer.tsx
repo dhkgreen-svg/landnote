@@ -19,7 +19,7 @@ export function Footer() {
         <div className="flex flex-col items-center gap-1">
           <div className="flex items-center gap-1.5 font-black text-sm text-stone-900">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-            <span>{isJapanese ? 'パークゴルフ オールインワン' : '파크골프 올인원 (ParkGolf All-in-One)'}</span>
+            <span>{isJapanese ? 'パークゴルフ オールインワン' : '파키 앱 (PARKY APP) (ParkGolf All-in-One)'}</span>
             <span className="text-[10px] text-amber-800 bg-amber-100 font-bold px-2 py-0.5 rounded-full border border-amber-300">
               {isJapanese ? '公式ポータル' : isEnglish ? 'Official Portal' : '대한민국 No.1 포털'}
             </span>
@@ -99,13 +99,13 @@ export function Footer() {
               • <strong>{isJapanese ? '免責事項:' : '면책 고지:'}</strong>{' '}
               {isJapanese
                 ? '本サービスが提供するコース情報、リアルタイム天気、AIルール案内は競技利便性のための参考情報であり、実際の競技判定は各主催者および審判委員会の決定を最優先とします。'
-                : '파크골프 올인원에서 제공하는 전국 구장 상태, 실시간 날씨, AI 룰 솔로몬의 경기 규칙 안내는 경기 편의를 돕기 위한 참고 정보이며, 실제 대회 현장 판정은 해당 주최측 및 심판위원회의 결정을 최우선으로 따릅니다.'}
+                : '파키 앱 (PARKY APP)에서 제공하는 전국 구장 상태, 실시간 날씨, AI 룰 솔로몬의 경기 규칙 안내는 경기 편의를 돕기 위한 참고 정보이며, 실제 대회 현장 판정은 해당 주최측 및 심판위원회의 결정을 최우선으로 따릅니다.'}
             </p>
             <p>
               • <strong>{isJapanese ? 'Google AdSense 広告及びCookieポリシー:' : 'Google AdSense 광고 및 쿠키 정책:'}</strong>{' '}
               {isJapanese
                 ? '当サイトは持続可能な無料サービス提供のためGoogle AdSense広告を掲載しており、第三者配信事業者はCookieを使用して適切な広告を配信します。'
-                : '파크골프 올인원은 지속 가능한 무료 서비스 제공을 위해 Google AdSense를 이용하며, Google 및 제3자 제공업체는 쿠키를 통해 맞춤형 광고를 제공합니다. 사용자는いつでも '}
+                : '파키 앱 (PARKY APP)은 지속 가능한 무료 서비스 제공을 위해 Google AdSense를 이용하며, Google 및 제3자 제공업체는 쿠키를 통해 맞춤형 광고를 제공합니다. 사용자는いつでも '}
               <a
                 href="https://adssettings.google.com"
                 target="_blank"

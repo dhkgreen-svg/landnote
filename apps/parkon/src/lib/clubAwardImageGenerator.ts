@@ -1,13 +1,13 @@
 /**
  * ============================================================================
  * clubAwardImageGenerator.ts
- * 파크골프 올인원 (ParkGolf All-in-One) 클럽 공식 대회 1080p 시상 카드 생성기
+ * 파키 앱 (PARKY APP) (ParkGolf All-in-One) 클럽 공식 대회 1080p 시상 카드 생성기
  *
  * 🏆 1080x1440 초고해상도 Canvas 렌더러
  * - 신페리오 종합 우승, 준우승, 3위
  * - 최저 실타수 메달리스트
  * - 롱기스트(장타상), 니어핀(정밀상)
- * - 황금빛 테두리 & 파크골프 올인원 공식 인증 마크
+ * - 황금빛 테두리 & 파키 앱 (PARKY APP) 공식 인증 마크
  * ============================================================================
  */
 
@@ -117,7 +117,7 @@ export async function generateClubAwardCardImage(
   drawCorner(52, height - 52, (Math.PI * 3) / 2);
   ctx.restore();
 
-  // 3. 상단 헤더: 파크골프 올인원 로고 & 인증 마크
+  // 3. 상단 헤더: 파키 앱 (PARKY APP) 로고 & 인증 마크
   ctx.textAlign = 'center';
   ctx.font = 'bold 24px sans-serif';
   ctx.fillStyle = '#34d399';
@@ -364,14 +364,14 @@ export async function generateClubAwardCardImage(
   ctx.textAlign = 'center';
   ctx.font = 'bold 22px sans-serif';
   ctx.fillStyle = '#34d399';
-  ctx.fillText(isJp ? '日本・韓国 統合公認 · パークゴルフ オールインワン (ParkGolf All-in-One)' : '대한민국 대표 파크골프 포털 · 파크골프 올인원 (ParkGolf All-in-One)', width / 2, footerY + 40);
+  ctx.fillText(isJp ? '日本・韓国 統合公認 · パークゴルフ オールインワン (ParkGolf All-in-One)' : '대한민국 대표 파크골프 포털 · 파키 앱 (PARKY APP) (ParkGolf All-in-One)', width / 2, footerY + 40);
 
   ctx.font = '500 17px sans-serif';
   ctx.fillStyle = '#94a3b8';
   ctx.fillText(
     isJp
       ? `本大会記録はパークゴルフ オールインワン公式検証およびハッシュ(SHA-256)により永久保存されます。 | 認証番号: PKY-AWD-${Date.now().toString(36).toUpperCase()}`
-      : `본 대회 기록은 파크골프 올인원 공식 검증 및 블록체인급 무결성 해시(SHA-256)로 영구 보존됩니다. | 인증번호: PKY-AWD-${Date.now().toString(36).toUpperCase()}`,
+      : `본 대회 기록은 파키 앱 (PARKY APP) 공식 검증 및 블록체인급 무결성 해시(SHA-256)로 영구 보존됩니다. | 인증번호: PKY-AWD-${Date.now().toString(36).toUpperCase()}`,
     width / 2,
     footerY + 75
   );

@@ -1105,9 +1105,9 @@ export const ParkOnStorage = {
           }
           return {
             ...h,
-            par: 3,
-            distanceMeter: 0,
-            isVerified: false,
+            par: (Number(h.par) as 3 | 4 | 5) || 3,
+            distanceMeter: Number(h.distanceMeter) || 0,
+            isVerified: Boolean(c.isVerified || h.isVerified),
           };
         });
         const hasAnyVerified = holes.some((h) => h.isVerified);
@@ -1954,7 +1954,7 @@ export const ParkOnStorage = {
       }
       const data = JSON.parse(jsonStr);
       if (!data || !Array.isArray(data.completedRounds)) {
-        return { success: false, message: '올바른 파크골프 올인원 백업 데이터 형식이 아닙니다.', count: 0 };
+        return { success: false, message: '올바른 파키 앱 (PARKY APP) 백업 데이터 형식이 아닙니다.', count: 0 };
       }
 
       // Merge completed rounds by ID

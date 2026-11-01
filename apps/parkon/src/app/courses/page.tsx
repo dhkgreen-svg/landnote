@@ -744,7 +744,7 @@ export default function CoursesPage() {
       totalHoles: newHoles,
       holesMetadata: generateStandardHoles(newHoles),
       isVerified: false,
-      contributorName: newContributor.trim() || '파크골프 올인원 골퍼',
+      contributorName: newContributor.trim() || '파키 앱 (PARKY APP) 골퍼',
       contributedAt: new Date().toISOString().split('T')[0],
       createdAt: new Date().toISOString(),
     };

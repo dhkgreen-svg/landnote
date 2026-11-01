@@ -184,7 +184,7 @@ function ClubJoinContent() {
           <div className="relative w-28 h-28 rounded-2xl overflow-hidden shadow-md border-2 border-emerald-400/40 bg-emerald-800 mb-3">
             <Image
               src="/mascot/사진저장고_사진_20260913_28.jpg"
-              alt="파크골프 올인원 공식 마스코트 파키"
+              alt="파키 앱 (PARKY APP) 공식 마스코트 파키"
               fill
               className="object-cover"
               priority

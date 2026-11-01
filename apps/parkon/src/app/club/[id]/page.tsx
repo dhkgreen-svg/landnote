@@ -40,6 +40,7 @@ import {
   Search,
   Download,
   Image as ImageIcon,
+  Camera,
   BarChart3,
 } from 'lucide-react';
 import {
@@ -104,13 +105,13 @@ const DEFAULT_10P_ROOM: ClubEventRoom = {
   id: 'tourney-10p-live',
   title: '2026 가을맞이 클럽 10인 친선 정기전',
   courseId: 'course-gumi-dongrak',
-  courseName: '구미 동락 파크골프장 A코스',
+  courseName: '구미 동락 파크골프장 A·B코스',
   hostName: '김총무',
-  selectedCourseLetters: ['A'],
-  totalHoles: 9,
+  selectedCourseLetters: ['A', 'B'],
+  totalHoles: 18,
   targetTotalPlayers: 10,
-  gameMode: 'NEW_PERIO',
-  gameModeTitle: '신페리오 방식 (핸디캡 적용)',
+  gameMode: 'STROKE',
+  gameModeTitle: '정통 스트로크 (정상 타수 최저타순 · 90% 기본)',
   hiddenHolesHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
   sealedSecret: 'eyJob2xlcyI6WzMsNiw4XSwic2FsdCI6InBhcmtpMjAyNiJ9',
   isUnsealed: false,
@@ -231,7 +232,7 @@ function ClubRoomDetailContent() {
 
   // ⚙️ 경기 방식 & 시상 룰 맞춤 마법사 모달 상태
   const [showAwardConfigModal, setShowAwardConfigModal] = useState<boolean>(false);
-  const [cfgGameMode, setCfgGameMode] = useState<'STROKE' | 'NEW_PERIO' | 'SCRAMBLE' | 'STABLEFORD' | 'CASUAL'>('NEW_PERIO');
+  const [cfgGameMode, setCfgGameMode] = useState<'STROKE' | 'NEW_PERIO' | 'SCRAMBLE' | 'STABLEFORD' | 'CASUAL'>('STROKE');
   const [cfgRuleNotes, setCfgRuleNotes] = useState<string>('');
   const [cfgWinnerGraceMonths, setCfgWinnerGraceMonths] = useState<number>(0);
   const [cfgLastWinnerNames, setCfgLastWinnerNames] = useState<string>('');
@@ -266,6 +267,12 @@ function ClubRoomDetailContent() {
     return '김총무';
   });
   const [showManagerDrawer, setShowManagerDrawer] = useState<boolean>(false); // 총무 전용 관리 메뉴(수납/시상) 접이식 서랍
+  // 📸 [총무 업무 본능] 현장 사진 촬영 (출발 단체사진 / 홀인원·이글 / 시상식 / 뒤풀이) & 단톡방/LINE 즉시 공지 스튜디오
+  const [showManagerPhotoModal, setShowManagerPhotoModal] = useState<boolean>(false);
+  const [managerPhotoTag, setManagerPhotoTag] = useState<'GROUP_START' | 'HOLE_IN_ONE' | 'AWARD_WINNER' | 'AFTER_PARTY'>('GROUP_START');
+  const [managerPhotoCaption, setManagerPhotoCaption] = useState<string>('');
+  const [managerPhotoDataUrl, setManagerPhotoDataUrl] = useState<string>('');
+  const [managerPhotoSaved, setManagerPhotoSaved] = useState<boolean>(false);
 
   const loadRoom = useCallback(async () => {
     if (!roomId) return;
@@ -303,7 +310,7 @@ function ClubRoomDetailContent() {
     }
     if (found) {
       setRoom(found);
-      setCfgGameMode(found.gameMode || 'NEW_PERIO');
+      setCfgGameMode(found.gameMode || 'STROKE');
       setCfgRuleNotes(found.gameRuleNotes || '');
       setCfgWinnerGraceMonths(found.awardConfig?.winnerGraceMonths || 0);
       setCfgLastWinnerNames((found.awardConfig?.lastWinnerNames || []).join(', '));
@@ -803,6 +810,203 @@ function ClubRoomDetailContent() {
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text);
       showToast(isJapanese ? '🏆 [表彰式および受領確認] 結果要約がコピーされました！LINEグループに共有してください。' : '🏆 [시상식 및 수령 확인] 결과 요약 공지가 복사되었습니다! 카톡 단체방에 공유하세요.');
+    }
+  };
+
+  // 🟢 LINE(라인) 즉시 전송 (한국어/일본어 모드 모두 1초 원터치 지원)
+  const handleShareClubToLine = (mode: 'INVITE' | 'GROUPING' | 'RESULT' = 'RESULT') => {
+    if (!room) return;
+    const text =
+      mode === 'INVITE'
+        ? ClubStorage.generateKakaoShareText(room, isJapanese)
+        : mode === 'GROUPING'
+        ? ClubStorage.generateGroupFormationKakaoShareText(room, isJapanese)
+        : ClubStorage.generateTournamentResultReport(room, isJapanese);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).catch(() => {});
+    }
+    if (typeof window !== 'undefined') {
+      window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank');
+    }
+    showToast('🟢 LINE(라인) 공유 메시지 창이 열렸으며 클립보드에도 복사되었습니다!');
+  };
+
+  // 📸 총무 전용 현장 인증샷 1초 캔버스 생성 (단체사진 / 홀인원 / 시상식 / 뒤풀이)
+  const handleGenerateManagerSamplePhoto = (tagOverride?: 'GROUP_START' | 'HOLE_IN_ONE' | 'AWARD_WINNER' | 'AFTER_PARTY') => {
+    if (!room || typeof document === 'undefined') return;
+    const activeTag = tagOverride || managerPhotoTag;
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 520;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // 배경 그라데이션 (필드 에메랄드 + 골드 테마)
+    const grad = ctx.createLinearGradient(0, 0, 800, 520);
+    if (activeTag === 'HOLE_IN_ONE') {
+      grad.addColorStop(0, '#451a03');
+      grad.addColorStop(0.5, '#78350f');
+      grad.addColorStop(1, '#064e3b');
+    } else if (activeTag === 'AWARD_WINNER') {
+      grad.addColorStop(0, '#1e1b4b');
+      grad.addColorStop(0.5, '#312e81');
+      grad.addColorStop(1, '#064e3b');
+    } else {
+      grad.addColorStop(0, '#022c22');
+      grad.addColorStop(0.55, '#065f46');
+      grad.addColorStop(1, '#0f172a');
+    }
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 800, 520);
+
+    // 골드 이중 프레임 테두리
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(18, 18, 764, 484);
+
+    // 상단 태그 배지
+    const tagLabels: Record<string, string> = {
+      GROUP_START: '👥 클럽 출발 단체 기념사진 (총무 공식 촬영)',
+      HOLE_IN_ONE: '🌟 홀인원 · 이글 달성 주인공 현장 인증샷',
+      AWARD_WINNER: '🏆 시상식 우승자 & 메달리스트 기념 촬영',
+      AFTER_PARTY: '🍲 라운드 종료 후 화합 뒤풀이 만찬 인증',
+    };
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(40, 42, 430, 40);
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(tagLabels[activeTag] || tagLabels.GROUP_START, 54, 68);
+
+    // 메인 대회 타이틀 및 구장 정보
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.fillText(room.title.slice(0, 26), 40, 132);
+
+    ctx.fillStyle = '#a7f3d0';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(`📍 ${room.courseName} (${room.totalHoles}홀) · 참가 ${totalAllPlayers}명 (${room.groups.length}개 조)`, 40, 172);
+
+    // 중앙 하이라이트 보드
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.fillRect(40, 200, 720, 195);
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(40, 200, 720, 195);
+
+    const top1 = individuals[0];
+    const top2 = individuals[1];
+    const top3 = individuals[2];
+    ctx.fillStyle = '#fde68a';
+    ctx.font = 'bold 22px sans-serif';
+    const headline =
+      managerPhotoCaption.trim() ||
+      (activeTag === 'HOLE_IN_ONE'
+        ? `🎉 현장 홀인원/이글 주인공 탄생! 전 회원 축하 기념 촬영`
+        : activeTag === 'AWARD_WINNER'
+        ? `🥇 1위: ${top1?.playerName || '오송(조장1)'} / 🥈 2위: ${top2?.playerName || '이민호(조장2)'} / 🥉 3위: ${top3?.playerName || '장성호(조장3)'}`
+        : `⛳ 총무(${room.hostName || '김총무'}) 현장 공식 촬영 · 전 조 활기찬 티샷 출발!`);
+    ctx.fillText(headline.slice(0, 36), 60, 252);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 18px sans-serif';
+    const groupSummary = room.groups
+      .slice(0, 3)
+      .map((g) => `${g.name}: ${g.players.map((p) => p.name.replace(/\(.*?\)/g, '')).join(', ')}`)
+      .join('  |  ');
+    ctx.fillText(groupSummary.slice(0, 48) || '참가 회원 전원 출석 및 조 편성 완료', 60, 300);
+
+    const todayStr = new Date().toLocaleDateString('ko-KR');
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText(`📅 촬영 일시: ${todayStr} · 촬영자: 총무 ${room.hostName || '김총무'} (클럽 실록 자동 등재)`, 60, 355);
+
+    // 하단 골드 워터마크 바
+    ctx.fillStyle = 'rgba(6, 40, 30, 0.92)';
+    ctx.fillRect(18, 440, 764, 62);
+    ctx.fillStyle = '#fef08a';
+    ctx.font = 'bold 19px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`⛳ 파키 앱 (PARKY APP) 공식 클럽 실록 | ${room.title}`, 760, 478);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    setManagerPhotoDataUrl(dataUrl);
+    setManagerPhotoSaved(false);
+  };
+
+  // 📸 총무 스마트폰 카메라/갤러리 사진 업로드 시 워터마크 각인
+  const handleManagerPhotoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !room) return;
+    const stamped = await ClubStorage.compressAndWatermarkPhoto(file, `${room.title} (${room.courseName})`);
+    if (stamped) {
+      setManagerPhotoDataUrl(stamped);
+      setManagerPhotoSaved(false);
+      showToast('📸 사진에 파키 앱 (PARKY APP) 공식 실록 워터마크가 각인되었습니다!');
+    }
+  };
+
+  // 📸 총무 현장 사진 클럽 실록/연대기 영구 저장 및 카톡/LINE 즉시 공지
+  const handleSaveAndShareManagerPhoto = async (channel: 'KAKAO' | 'LINE' | 'SAVE_ONLY') => {
+    if (!room) return;
+    let photoUrl = managerPhotoDataUrl;
+    if (!photoUrl) {
+      handleGenerateManagerSamplePhoto();
+    }
+    // 1. 클럽 공식 연대기(실록)에 단체/현장 사진 영구 보존
+    ClubStorage.archiveEventRoomToClubChronicle(room, {
+      groupPhotoUrl: photoUrl || 'data:image/jpeg;base64,PARKY_OFFICIAL_PHOTO',
+    });
+
+    // 2. 개인/클럽 포토 실록 스토리지(parkon_chronicle_photos_v1)에도 동시 보존
+    if (typeof window !== 'undefined' && photoUrl) {
+      try {
+        const raw = localStorage.getItem('parkon_chronicle_photos_v1');
+        const list = raw ? JSON.parse(raw) : [];
+        list.unshift({
+          id: `mgr_photo_${Date.now()}`,
+          roundId: room.id,
+          courseName: room.courseName,
+          dateStr: new Date().toLocaleDateString('ko-KR'),
+          tag: managerPhotoTag,
+          caption: managerPhotoCaption.trim() || `[${room.title}] 총무 현장 공식 기념사진`,
+          dataUrl: photoUrl,
+          createdAt: new Date().toISOString(),
+        });
+        localStorage.setItem('parkon_chronicle_photos_v1', JSON.stringify(list.slice(0, 30)));
+      } catch {}
+    }
+
+    setManagerPhotoSaved(true);
+
+    const tagTitleMap: Record<string, string> = {
+      GROUP_START: '👥 출발 단체 기념사진',
+      HOLE_IN_ONE: '🌟 홀인원·이글 주인공 인증샷',
+      AWARD_WINNER: '🏆 시상식 우승자 기념사진',
+      AFTER_PARTY: '🍲 뒤풀이 만찬 기념사진',
+    };
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkgolfallinone.com';
+    const shareText = `📸 [파키 앱 (PARKY APP) 총무 현장 포토 & 대회 공지]
+🏆 대회명: ${room.title}
+📍 구장: ${room.courseName} (${room.totalHoles}홀)
+🏷️ 사진 분류: ${tagTitleMap[managerPhotoTag] || '현장 기념사진'}
+💬 총무 한마디: "${managerPhotoCaption.trim() || '오늘 참석해주신 회원님들 모두 나이스샷 하세요!'}"
+👥 참가 현황: 총 ${totalAllPlayers}명 (${room.groups.length}개 조)
+
+👇 아래 파키 앱 (PARKY APP) 링크에서 우리 클럽 사진첩과 실시간 전광판을 확인하세요!
+${origin}/club/${room.id}`;
+
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(shareText).catch(() => {});
+    }
+
+    if (channel === 'LINE' && typeof window !== 'undefined') {
+      window.open(`https://line.me/R/msg/text/?${encodeURIComponent(shareText)}`, '_blank');
+      showToast('🟢 총무 현장 사진이 클럽 실록에 저장되고 LINE(라인) 공지창이 열렸습니다!');
+    } else if (channel === 'KAKAO') {
+      showToast('💬 총무 현장 사진이 클럽 실록에 저장되고 카카오톡 공지 문구가 복사되었습니다!');
+    } else {
+      showToast('📸 총무 현장 사진이 클럽 공식 실록(연대기)에 영구 저장되었습니다!');
     }
   };
 
@@ -2150,7 +2354,7 @@ function ClubRoomDetailContent() {
                             <span>
                               {hasScores
                                 ? (isJapanese ? `⛳ [${group.name}] スコアボード記録を続ける ▶` : `⛳ [${group.name}] 스코어보드 계속 기록하기 ▶`)
-                                : (isJapanese ? `⛳ [${group.name}] 18ホールラウンド開始 (スコア記録)` : `⛳ [${group.name}] 18홀 라운드 시작 (스코어 기록)`)}
+                                : (isJapanese ? `⛳ [${group.name}] ${room.totalHoles || 18}ホールラウンド開始 (スコア記録)` : `⛳ [${group.name}] ${room.totalHoles || 18}홀 라운드 시작 (스코어 기록)`)}
                             </span>
                           </button>
                         </div>
@@ -2618,7 +2822,7 @@ function ClubRoomDetailContent() {
                   <Award className="w-4 h-4 text-emerald-600" />
                   <span>{isJapanese ? 'ユニーク特別賞 受賞現況' : '이색 특별상 수상 현황'}</span>
                 </div>
-                <span className="text-[10px] text-stone-500 font-bold">{isJapanese ? '18ホール電算自動集計' : '18홀 전산 자동 집계'}</span>
+                <span className="text-[10px] text-stone-500 font-bold">{isJapanese ? `${room.totalHoles || 18}ホール(Par ${Math.max(1, Math.round((room.totalHoles || 18) / 9)) * 33})自動集計` : `${room.totalHoles || 18}홀(기준 Par ${Math.max(1, Math.round((room.totalHoles || 18) / 9)) * 33}) 전산 자동 집계`}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -2890,15 +3094,24 @@ function ClubRoomDetailContent() {
                     </div>
                   </div>
 
-                  {/* 1초 시상식 및 1080p 카드 발급 버튼 2열 배치 */}
-                  <div className="grid grid-cols-2 gap-2 pt-1">
+                  {/* 1초 시상식, 1080p 카드 발급, LINE 즉시 공유 버튼 */}
+                  <div className="grid grid-cols-3 gap-1.5 pt-1">
                     <button
                       type="button"
+                      data-testid="btn-copy-tournament-report"
                       onClick={handleCopyTournamentReport}
                       className="w-full bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs py-2 rounded-xl border border-amber-300 shadow-xs transition active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
                     >
-                      <Trophy className="w-4 h-4 text-stone-950 shrink-0" />
+                      <Trophy className="w-3.5 h-3.5 text-stone-950 shrink-0" />
                       <span>{isJapanese ? '📋 1秒表彰式' : '📋 1초 시상식'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="btn-club-line-share"
+                      onClick={() => handleShareClubToLine('RESULT')}
+                      className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white font-black text-xs py-2 rounded-xl shadow-xs transition active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <span>🟢 LINE 공지</span>
                     </button>
                     <button
                       type="button"
@@ -2906,11 +3119,30 @@ function ClubRoomDetailContent() {
                       disabled={generatingAwardCard}
                       className="w-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:from-amber-600 hover:to-yellow-500 text-stone-950 font-black text-xs py-2 rounded-xl shadow-xs transition active:scale-95 flex items-center justify-center gap-1 cursor-pointer border border-yellow-300"
                     >
-                      <Award className="w-4 h-4 text-stone-950 shrink-0" />
-                      <span>{generatingAwardCard ? '생성 중...' : (isJapanese ? '🏆 1080pカード' : '🏆 1080p 카드')}</span>
-                      <Download className="w-3 h-3 text-stone-900" />
+                      <Award className="w-3.5 h-3.5 text-stone-950 shrink-0" />
+                      <span>{generatingAwardCard ? '생성 중...' : (isJapanese ? '🏆 1080p' : '🏆 1080p 카드')}</span>
                     </button>
                   </div>
+
+                  {/* 📸 [총무 업무 본능] 현장 사진 찍기 (출발 단체사진 / 홀인원 / 시상식) & 단톡방/LINE 즉시 공지 */}
+                  <button
+                    type="button"
+                    data-testid="btn-manager-photo-studio"
+                    onClick={() => {
+                      setShowManagerPhotoModal(true);
+                      if (!managerPhotoDataUrl) {
+                        setTimeout(() => handleGenerateManagerSamplePhoto('GROUP_START'), 50);
+                      }
+                    }}
+                    className="w-full text-xs font-black bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 hover:from-emerald-700 hover:to-teal-700 text-amber-300 border border-amber-400/50 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm"
+                  >
+                    <Camera className="w-4 h-4 text-amber-300 shrink-0" />
+                    <span>
+                      {isJapanese
+                        ? '📸 幹事現場写真撮影 (団体・ホールインワン・表彰式) ＆ 共有 ▶'
+                        : '📸 총무 현장 사진 찍기 (단체·홀인원·시상식) & 카톡/LINE 공지 ▶'}
+                    </span>
+                  </button>
 
                   {/* 행운상 추첨기 버튼 */}
                   {room.awardConfig?.enableLuckyDraw !== false && (
@@ -3940,15 +4172,24 @@ function ClubRoomDetailContent() {
                     </div>
                   </div>
 
-                  {/* 1초 시상식 및 1080p 카드 발급 버튼 2열 배치 */}
-                  <div className="grid grid-cols-2 gap-2 pt-1">
+                  {/* 1초 시상식, 1080p 카드 발급, LINE 즉시 공유 버튼 */}
+                  <div className="grid grid-cols-3 gap-1.5 pt-1">
                     <button
                       type="button"
+                      data-testid="btn-copy-tournament-report"
                       onClick={handleCopyTournamentReport}
                       className="w-full bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs py-2 rounded-xl border border-amber-300 shadow-xs transition active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
                     >
-                      <Trophy className="w-4 h-4 text-stone-950 shrink-0" />
+                      <Trophy className="w-3.5 h-3.5 text-stone-950 shrink-0" />
                       <span>{isJapanese ? '📋 1秒表彰式' : '📋 1초 시상식'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="btn-club-line-share"
+                      onClick={() => handleShareClubToLine('RESULT')}
+                      className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white font-black text-xs py-2 rounded-xl shadow-xs transition active:scale-95 flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <span>🟢 LINE 공지</span>
                     </button>
                     <button
                       type="button"
@@ -3956,11 +4197,30 @@ function ClubRoomDetailContent() {
                       disabled={generatingAwardCard}
                       className="w-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:from-amber-600 hover:to-yellow-500 text-stone-950 font-black text-xs py-2 rounded-xl shadow-xs transition active:scale-95 flex items-center justify-center gap-1 cursor-pointer border border-yellow-300"
                     >
-                      <Award className="w-4 h-4 text-stone-950 shrink-0" />
-                      <span>{generatingAwardCard ? '생성 중...' : (isJapanese ? '🏆 1080pカード' : '🏆 1080p 카드')}</span>
-                      <Download className="w-3 h-3 text-stone-900" />
+                      <Award className="w-3.5 h-3.5 text-stone-950 shrink-0" />
+                      <span>{generatingAwardCard ? '생성 중...' : (isJapanese ? '🏆 1080p' : '🏆 1080p 카드')}</span>
                     </button>
                   </div>
+
+                  {/* 📸 [총무 업무 본능] 현장 사진 찍기 (출발 단체사진 / 홀인원 / 시상식) & 단톡방/LINE 즉시 공지 */}
+                  <button
+                    type="button"
+                    data-testid="btn-manager-photo-studio"
+                    onClick={() => {
+                      setShowManagerPhotoModal(true);
+                      if (!managerPhotoDataUrl) {
+                        setTimeout(() => handleGenerateManagerSamplePhoto('GROUP_START'), 50);
+                      }
+                    }}
+                    className="w-full text-xs font-black bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 hover:from-emerald-700 hover:to-teal-700 text-amber-300 border border-amber-400/50 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm"
+                  >
+                    <Camera className="w-4 h-4 text-amber-300 shrink-0" />
+                    <span>
+                      {isJapanese
+                        ? '📸 幹事現場写真撮影 (団体・ホールインワン・表彰式) ＆ 共有 ▶'
+                        : '📸 총무 현장 사진 찍기 (단체·홀인원·시상식) & 카톡/LINE 공지 ▶'}
+                    </span>
+                  </button>
 
                   {/* 행운상 추첨기 버튼 */}
                   {room.awardConfig?.enableLuckyDraw !== false && (
@@ -5352,10 +5612,11 @@ function ClubRoomDetailContent() {
                 </label>
                 <div className="grid grid-cols-2 gap-1.5">
                   {[
-                    { mode: 'NEW_PERIO', title: isJapanese ? '🎯 新ペリア方式' : '🎯 신페리오 방식', desc: isJapanese ? '12ホールHDCP (おすすめ)' : '12홀 핸디캡 (추천)' },
-                    { mode: 'STROKE', title: isJapanese ? '🏆 正統ストローク' : '🏆 정통 스트로크', desc: isJapanese ? '18ホールスクラッチ順位' : '18홀 스크래치 순위' },
-                    { mode: 'SCRAMBLE', title: isJapanese ? '🤝 チームスクランブル' : '🤝 팀 스크램블', desc: isJapanese ? '4人1組ベストボール' : '4인 1조 베스트볼' },
-                    { mode: 'CASUAL', title: isJapanese ? '⛳ 親善エンジョイ' : '⛳ 친선 명랑 라운드', desc: isJapanese ? '順位プレッシャーなし' : '순위 부담 제로' },
+                    { mode: 'STROKE', title: isJapanese ? '🏆 正統ストローク (90%基本)' : '🏆 정통 스트로크 (90% 기본)', desc: isJapanese ? '実打数(グロス)最少打数順' : '정상 타수 최저타순 (기본 표준)' },
+                    { mode: 'NEW_PERIO', title: isJapanese ? '🎯 新ペリア方式 (オプション)' : '🎯 신페리오 방식 (선택 옵션)', desc: isJapanese ? '隠しホールHDCP適用' : '숨은 홀 핸디캡 차감 옵션' },
+                    { mode: 'SCRAMBLE', title: isJapanese ? '🤝 スクランブル (オプション)' : '🤝 팀 스크램블 (선택 옵션)', desc: isJapanese ? '4人1組ベストボール' : '4인 1조 베스트볼 옵션' },
+                    { mode: 'STABLEFORD', title: isJapanese ? '🎖️ ステーブルフォード (オプション)' : '🎖️ 스테이블포드 (선택 옵션)', desc: isJapanese ? 'ホール別勝点換算' : '홀별 타수 승점제 옵션' },
+                    { mode: 'CASUAL', title: isJapanese ? '⛳ 親善エンジョイ (オプション)' : '⛳ 친선 명랑 라운드 (선택 옵션)', desc: isJapanese ? '順位プレッシャーなし' : '순위 부담 없는 화합 모임' },
                   ].map((m) => (
                     <button
                       key={m.mode}
@@ -5782,15 +6043,34 @@ function ClubRoomDetailContent() {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            data-testid="btn-open-manager-console"
-            onClick={() => setShowManagerConsoleModal(true)}
-            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs px-3.5 py-2 rounded-xl shadow-md transition active:scale-95 flex items-center gap-1 cursor-pointer shrink-0 border border-purple-400/50"
-          >
-            <span>⚙️</span>
-            <span>{isJapanese ? '管制センター開く ▲' : '관제 센터 열기 ▲'}</span>
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              data-testid="btn-bottom-manager-photo"
+              onClick={() => {
+                setShowManagerPhotoModal(true);
+                if (!managerPhotoDataUrl) {
+                  setTimeout(() => handleGenerateManagerSamplePhoto('GROUP_START'), 50);
+                }
+              }}
+              className="bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-stone-950 font-black text-xs px-3 py-2 rounded-xl shadow-md transition active:scale-95 flex items-center gap-1 cursor-pointer border border-yellow-300"
+            >
+              <Camera className="w-3.5 h-3.5 text-stone-950" />
+              <span>{isJapanese ? '📸 現場写真' : '📸 총무 사진촬영'}</span>
+            </button>
+            <button
+              type="button"
+              data-testid="btn-open-manager-console"
+              onClick={() => {
+                setShowManagerDrawer(true);
+                setShowManagerConsoleModal(true);
+              }}
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs px-3 py-2 rounded-xl shadow-md transition active:scale-95 flex items-center gap-1 cursor-pointer border border-purple-400/50"
+            >
+              <span>⚙️</span>
+              <span>{isJapanese ? '管制 ▲' : '관제 센터 ▲'}</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -5838,6 +6118,167 @@ function ClubRoomDetailContent() {
                 <span>✕</span>
                 <span>{isJapanese ? '管制センターを閉じる (ゲーム画面に戻る)' : '관제 센터 닫기 (내 게임 화면으로 복귀)'}</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📸 [총무 업무 본능] 현장 사진 촬영 (단체·홀인원·시상식·뒤풀이) & 클럽 실록/카톡/LINE 공지 모달 */}
+      {showManagerPhotoModal && (
+        <div
+          data-testid="manager-photo-studio-modal"
+          className="fixed inset-0 z-50 bg-stone-950/85 backdrop-blur-xs flex items-center justify-center p-3 animate-fadeIn"
+        >
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border-2 border-amber-400">
+            {/* 헤더 */}
+            <div className="p-4 bg-gradient-to-r from-emerald-950 via-teal-900 to-stone-900 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="w-9 h-9 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center font-black text-base shadow-xs">
+                  📸
+                </span>
+                <div>
+                  <div className="text-sm font-black text-amber-300 flex items-center gap-1.5">
+                    <span>총무 전용 현장 사진 스튜디오</span>
+                    <span className="text-[10px] bg-amber-400 text-stone-950 px-2 py-0.5 rounded-full font-black">실록 자동등재</span>
+                  </div>
+                  <p className="text-[11px] text-stone-300">
+                    단체·홀인원·시상식 촬영 ➔ 워터마크 각인 ➔ 카톡·LINE 즉시 공지
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowManagerPhotoModal(false)}
+                className="text-stone-300 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-xl text-xs font-black transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 바디 */}
+            <div className="p-4 overflow-y-auto space-y-3.5 flex-1">
+              {/* 1. 사진 분류 태그 선택 */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-extrabold text-stone-800 block">
+                  1. 총무 촬영 테마 선택 (워터마크 자동 반영)
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { id: 'GROUP_START', label: '👥 출발 단체사진' },
+                    { id: 'HOLE_IN_ONE', label: '🌟 홀인원·이글 주인공' },
+                    { id: 'AWARD_WINNER', label: '🏆 시상식·우승자' },
+                    { id: 'AFTER_PARTY', label: '🍲 뒤풀이 화합 만찬' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      data-testid={`photo-tag-${item.id}`}
+                      onClick={() => {
+                        setManagerPhotoTag(item.id as any);
+                        handleGenerateManagerSamplePhoto(item.id as any);
+                      }}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-black border text-left transition cursor-pointer ${
+                        managerPhotoTag === item.id
+                          ? 'bg-emerald-900 text-amber-300 border-amber-400 shadow-xs'
+                          : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2. 카메라 직접 촬영 / 앨범 선택 또는 현장 프리뷰 */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-stone-800">
+                    2. 카메라 촬영 또는 현장 인증샷 미리보기
+                  </label>
+                  <button
+                    type="button"
+                    data-testid="btn-generate-manager-sample-photo"
+                    onClick={() => handleGenerateManagerSamplePhoto()}
+                    className="text-[11px] font-black text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-lg cursor-pointer transition"
+                  >
+                    🔄 현장 인증샷 1초 갱신
+                  </button>
+                </div>
+
+                <label className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition">
+                  <Camera className="w-4 h-4 text-stone-950" />
+                  <span>📷 스마트폰 카메라로 직접 찍기 / 사진첩 선택</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleManagerPhotoFileUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                {managerPhotoDataUrl && (
+                  <div className="rounded-2xl overflow-hidden border-2 border-amber-400 shadow-md bg-stone-950 relative">
+                    <img
+                      src={managerPhotoDataUrl}
+                      alt="총무 현장 공식 기념사진"
+                      data-testid="manager-photo-preview-img"
+                      className="w-full h-auto object-cover"
+                    />
+                    {managerPhotoSaved && (
+                      <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow">
+                        ✅ 클럽 실록 영구 등재됨
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 3. 총무 한 줄 코멘트 */}
+              <div className="space-y-1">
+                <label className="text-xs font-extrabold text-stone-800 block">
+                  3. 단톡방/LINE 공지용 총무 한마디 (선택)
+                </label>
+                <input
+                  type="text"
+                  data-testid="input-manager-photo-caption"
+                  value={managerPhotoCaption}
+                  onChange={(e) => setManagerPhotoCaption(e.target.value)}
+                  placeholder="예: 1조 오송 조장님 3번홀 홀인원 축하드립니다! 🎉"
+                  className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-bold text-stone-900 focus:outline-none focus:border-emerald-700"
+                />
+              </div>
+
+              {/* 4. 원터치 저장 & 카카오톡 / LINE 공지 전송 */}
+              <div className="space-y-2 pt-1">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    data-testid="btn-manager-photo-kakao"
+                    onClick={() => handleSaveAndShareManagerPhoto('KAKAO')}
+                    className="w-full py-3 bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black text-xs rounded-xl shadow-sm transition active:scale-95 cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    <span>💬 카톡 사진+공지 복사</span>
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="btn-manager-photo-line"
+                    onClick={() => handleSaveAndShareManagerPhoto('LINE')}
+                    className="w-full py-3 bg-[#06C755] hover:bg-[#05b34c] text-white font-black text-xs rounded-xl shadow-sm transition active:scale-95 cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    <span>🟢 LINE 즉시 전송</span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  data-testid="btn-manager-photo-save-only"
+                  onClick={() => handleSaveAndShareManagerPhoto('SAVE_ONLY')}
+                  className="w-full py-2.5 bg-emerald-900 hover:bg-emerald-800 text-amber-300 font-black text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 border border-amber-400/40"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-amber-300" />
+                  <span>📜 클럽 공식 실록(연대기) 사진첩에 영구 보존하기</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

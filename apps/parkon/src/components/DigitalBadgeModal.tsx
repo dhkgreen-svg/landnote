@@ -91,17 +91,17 @@ export function DigitalBadgeModal({
       ? `[PARKY APP 公式認定 🎖️]\n⛳ '${displayCourseName}' ${badgeRoundDesc} 完走達成！\n• 9ホール累計完走: ${badge.visitCount}回 (${localizedTierTitle})\n${
           badge.todayRoundCount > 1 ? `• 🔥 本日 ${badge.todayRoundCount}連続ラウンド達成！\n` : ''
         }• 完走日時: ${badge.lastCompletedAt}\n\n👉 PARKY APPで全国パークゴルフ制覇に挑戦！\nhttps://www.parkgolfallinone.com`
-      : `[파크골프 올인원 공식 인증 🎖️]\n⛳ '${badge.courseName}' ${badgeRoundDesc} 완주 달성!\n• 나의 9홀 누적 완주: ${badge.visitCount}회 (${tierInfo.title})
+      : `[파키 앱 (PARKY APP) 공식 인증 🎖️]\n⛳ '${badge.courseName}' ${badgeRoundDesc} 완주 달성!\n• 나의 9홀 누적 완주: ${badge.visitCount}회 (${tierInfo.title})
 ${
           badge.todayRoundCount > 1 ? `• 🔥 오늘 ${badge.todayRoundCount}차전 연속 라운드 달성!\n` : ''
-        }• 완주 일자: ${badge.lastCompletedAt}\n\n👉 지금 파크골프 올인원에서 함께 도장 깨기 도전하세요!\nhttps://www.parkgolfallinone.com`;
+        }• 완주 일자: ${badge.lastCompletedAt}\n\n👉 지금 파키 앱 (PARKY APP)에서 함께 도장 깨기 도전하세요!\nhttps://www.parkgolfallinone.com`;
 
     if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
           title: isJapanese
             ? `[PARKY APP] ${displayCourseName} ${badgeRoundDesc} 完走バッジ獲得！`
-            : `[파크골프 올인원] ${badge.courseName} ${badgeRoundDesc} 완주 뱃지 획득!`,
+            : `[파키 앱 (PARKY APP)] ${badge.courseName} ${badgeRoundDesc} 완주 뱃지 획득!`,
           text: shareText,
           url: 'https://www.parkgolfallinone.com',
         });

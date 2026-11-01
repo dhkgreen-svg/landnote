@@ -172,7 +172,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/mascot/사진저장고_사진_20260913_28.jpg"
-              alt="파크골프 올인원 공식 마스코트 파키 환영인사"
+              alt="파키 앱 (PARKY APP) 공식 마스코트 파키 환영인사"
               className="w-full h-full object-cover"
             />
             <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-emerald-950/85 via-emerald-950/40 to-transparent p-1 text-white">

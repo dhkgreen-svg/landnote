@@ -1,6 +1,6 @@
 /**
  * 카카오톡 및 SNS 인앱 브라우저 탈출 및 정규 브라우저(크롬, 삼성인터넷, 사파리) 전환 엔진
- * ParkGolf All-in-One (파크골프 올인원) 공식 유틸리티
+ * ParkGolf All-in-One (파키 앱 (PARKY APP)) 공식 유틸리티
  */
 
 export interface KakaoEscapeResult {

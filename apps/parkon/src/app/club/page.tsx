@@ -283,7 +283,7 @@ export default function ClubGatheringHomePage() {
   const [editStatus, setEditStatus] = useState<'RECRUITING' | 'GROUPED' | 'PLAYING' | 'FINISHED'>('PLAYING');
   const [editEntryFee, setEditEntryFee] = useState<number>(10000);
   const [editBankAccount, setEditBankAccount] = useState('');
-  const [editGameMode, setEditGameMode] = useState<'STROKE' | 'NEW_PERIO' | 'SCRAMBLE' | 'STABLEFORD' | 'CASUAL'>('NEW_PERIO');
+  const [editGameMode, setEditGameMode] = useState<'STROKE' | 'NEW_PERIO' | 'SCRAMBLE' | 'STABLEFORD' | 'CASUAL'>('STROKE');
   const [editGameRuleNotes, setEditGameRuleNotes] = useState('');
   const [roomToDelete, setRoomToDelete] = useState<ClubEventRoom | null>(null);
 
@@ -367,6 +367,13 @@ export default function ClubGatheringHomePage() {
       if (hub === 'FLASH' || hub === 'flash') setActiveHubTab('FLASH');
       else if (hub === 'TOURNAMENTS' || hub === 'tournaments') setActiveHubTab('TOURNAMENTS');
       else if (hub === 'CLUBS' || hub === 'clubs') setActiveHubTab('CLUBS');
+
+      if (urlParams.get('create') === '1') {
+        setActiveHubTab('TOURNAMENTS');
+        setTournamentViewMode('CREATE');
+        setSelectedLetters(['A', 'B']);
+        setShowCreateModal(true);
+      }
 
       const joinId = urlParams.get('join');
       if (joinId) {
@@ -573,9 +580,8 @@ export default function ClubGatheringHomePage() {
   const handleCourseChange = (courseId: string) => {
     setSelectedCourseId(courseId);
     const c = allCourses.find((x) => x.id === courseId) || allCourses[0] || DEFAULT_COURSES[0];
-    const n = c.totalCourses || Math.max(1, Math.round(c.totalHoles / 9));
-    const letters = COURSE_LETTERS.slice(0, n);
-    setSelectedLetters(letters.slice(0, Math.min(2, letters.length)));
+    // 공식 시합은 90%가 18홀(A·B코스, 기준 66타) 이상이므로 기본값을 무조건 ['A', 'B'] (18홀)로 설정
+    setSelectedLetters(['A', 'B']);
     if (!title || title.includes('파크골프') || title.includes('월례회') || title.includes('정기 모임')) {
       setTitle(`${c.name} 정기 대회`);
     }
@@ -782,7 +788,8 @@ export default function ClubGatheringHomePage() {
     setPlayersPerTeam(16);
     setTargetPlayers(32);
     setGroupCount(8);
-    setSelectedLetters(['A', 'B', 'C', 'D']);
+    // 시합 90% 표준인 18홀(['A', 'B'], 기준 66타)을 기본값으로 세팅 (위자드에서 9/18/27/36홀 및 코스 자유 변경 가능)
+    setSelectedLetters(['A', 'B']);
     // 대표님 지시: 임의로 상대 클럽을 지정하지 않고 완전한 백지 상태([])로 시작
     setParticipatingClubIds([]);
     const hostClub = myClubs[0] || clubs[0];
@@ -932,8 +939,8 @@ export default function ClubGatheringHomePage() {
       selectedCourseLetters: letters,
       totalHoles: 18,
       targetTotalPlayers: playerList.length,
-      gameMode: 'NEW_PERIO',
-      gameModeTitle: '신페리오 방식 (핸디캡 적용)',
+      gameMode: 'STROKE',
+      gameModeTitle: '정통 스트로크 (정상 타수 최저타순)',
       gameRuleNotes: '1촌 단체 번개 라운드 (실시간 조별 전광판 및 조 편성)',
       groups,
       status: 'PLAYING',
@@ -957,7 +964,7 @@ export default function ClubGatheringHomePage() {
       ? `4인 이상 인원 무제한 (현재 ${acceptedCount}명 수락, 2인 이상 출발 가능)`
       : `4인 번개 (현재 ${acceptedCount}/4명 수락, 2인 이상 출발 가능)`;
 
-    const text = `⚡ [파크골프 올인원 1촌 번개 호출]
+    const text = `⚡ [파키 앱 (PARKY APP) 1촌 번개 호출]
 ⛳ 장소: ${round.courseName}
 📅 일시: ${round.dateStr} ${round.timeStr}
 👥 모집: ${capacityText}
@@ -1110,8 +1117,8 @@ ${shareUrl}`;
       selectedCourseLetters: letters,
       totalHoles: 18,
       targetTotalPlayers: participants.length,
-      gameMode: 'NEW_PERIO',
-      gameModeTitle: '신페리오 방식 (핸디캡 적용)',
+      gameMode: 'STROKE',
+      gameModeTitle: '정통 스트로크 (정상 타수 최저타순)',
       gameRuleNotes: `${participants.length}인 클럽 번개 라운드 (실시간 조별 전광판 및 순위)`,
       groups,
       status: 'PLAYING',
@@ -1650,7 +1657,7 @@ ${shareUrl}`;
     setEditStatus(room.status || 'PLAYING');
     setEditEntryFee(typeof room.entryFee === 'number' ? room.entryFee : 10000);
     setEditBankAccount(room.bankAccount || '');
-    setEditGameMode(room.gameMode || 'NEW_PERIO');
+    setEditGameMode(room.gameMode || 'STROKE');
     setEditGameRuleNotes(room.gameRuleNotes || '');
   };
 
@@ -1736,12 +1743,12 @@ ${shareUrl}`;
         </div>
       )}
 
-      {/* 파크골프 올인원 3대 소셜 & 대회 통합 관제 센터 타이틀 바 (군더더기 텍스트 완전 제거) */}
+      {/* 파키 앱 (PARKY APP) 3대 소셜 & 대회 통합 관제 센터 타이틀 바 (군더더기 텍스트 완전 제거) */}
       <div className="px-4 py-3 bg-gradient-to-r from-emerald-950 via-purple-950 to-stone-900 border-2 border-emerald-400/40 rounded-2xl shadow-sm text-white flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-lg shrink-0">⛳</span>
           <h1 className="text-xs sm:text-sm font-black text-amber-300 tracking-tight truncate">
-            {isJapanese ? 'パークゴルフ オールインワン クラブ・大会・交流統合センター' : '파크골프 올인원 3대 소셜 & 대회 통합 관제 센터'}
+            {isJapanese ? 'PARKY (パキ) クラブ・大会・交流統合センター' : '파키 앱 (PARKY APP) 3대 소셜 & 대회 통합 관제 센터'}
           </h1>
         </div>
         <button
@@ -2643,7 +2650,7 @@ ${shareUrl}`;
                         <span className="text-purple-900">
                           {isJapanese
                             ? `✅ '${browseConfirmedSearch || clubBrowseSearch}' 検索結果: 全${filtered.length}クラブ (👑 パークゴルフ オールインワン加盟クラブ優先)`
-                            : `✅ '${browseConfirmedSearch || clubBrowseSearch}' 검색 결과: 총 ${filtered.length}개 클럽 (👑 파크골프 올인원 가입 클럽 1순위)`}
+                            : `✅ '${browseConfirmedSearch || clubBrowseSearch}' 검색 결과: 총 ${filtered.length}개 클럽 (👑 파키 앱 (PARKY APP) 가입 클럽 1순위)`}
                         </span>
                       ) : (
                         <span className="text-rose-600">
@@ -2656,7 +2663,7 @@ ${shareUrl}`;
                       <span className="text-stone-500 font-bold">
                         {isJapanese
                           ? `全クラブ一覧 (全${clubs.length}ヶ所 · 👑 パークゴルフ オールインワン加盟クラブ優先表示)`
-                          : `전체 클럽 목록 (총 ${clubs.length}곳 · 👑 파크골프 올인원 가입 클럽 최우선 정렬)`}
+                          : `전체 클럽 목록 (총 ${clubs.length}곳 · 👑 파키 앱 (PARKY APP) 가입 클럽 최우선 정렬)`}
                       </span>
                     )}
                   </div>
@@ -2709,13 +2716,13 @@ ${shareUrl}`;
                               : 'bg-stone-50 hover:bg-stone-100/80 border-stone-200'
                           }`}
                         >
-                          {/* 클럽 구분 배지 (파크골프 올인원 가입 클럽 최우선 강조 & 단원 모집 상태) */}
+                          {/* 클럽 구분 배지 (파키 앱 (PARKY APP) 가입 클럽 최우선 강조 & 단원 모집 상태) */}
                           <div className="flex items-center justify-between gap-1 flex-wrap">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               {isParkOn ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-stone-950 font-black text-[10px] shadow-xs border border-amber-600/40">
                                   <span>👑</span>
-                                  <span>{isJapanese ? 'パークゴルフ オールインワン加盟クラブ' : '파크골프 올인원 가입 클럽'}</span>
+                                  <span>{isJapanese ? 'パークゴルフ オールインワン加盟クラブ' : '파키 앱 (PARKY APP) 가입 클럽'}</span>
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-200 text-stone-600 font-bold text-[10px]">
@@ -3941,7 +3948,7 @@ ${shareUrl}`;
             );
           })
           .sort((a, b) => {
-            // 1순위: 파크골프 올인원 공식 가입 클럽 최우선 상단 정렬
+            // 1순위: 파키 앱 (PARKY APP) 공식 가입 클럽 최우선 상단 정렬
             const aIsParkOn = a.isParkOnClub !== false ? 1 : 0;
             const bIsParkOn = b.isParkOnClub !== false ? 1 : 0;
             if (aIsParkOn !== bIsParkOn) return bIsParkOn - aIsParkOn;
@@ -3969,7 +3976,7 @@ ${shareUrl}`;
                       <span>{isJapanese ? '全国クラブ検索＆加入申請' : '전국 클럽 찾아보기 및 가입'}</span>
                     </h3>
                     <p className="text-[11px] text-amber-300 font-bold">
-                      {isJapanese ? '地域またはクラブ名を検索してパークゴルフ オールインワン加入クラブを見つけましょう' : '지역 또는 클럽명을 검색하여 파크골프 올인원 가입 클럽을 우선 찾아보세요'}
+                      {isJapanese ? '地域またはクラブ名を検索してパークゴルフ オールインワン加入クラブを見つけましょう' : '지역 또는 클럽명을 검색하여 파키 앱 (PARKY APP) 가입 클럽을 우선 찾아보세요'}
                     </p>
                   </div>
                 </div>
@@ -4048,7 +4055,7 @@ ${shareUrl}`;
                     filtered.length > 0 ? (
                       <span className="font-black text-purple-900 flex items-center gap-1">
                         <span>✅</span>
-                        <span>{isJapanese ? `「${browseConfirmedSearch || clubBrowseSearch}」検索結果: 計 ${filtered.length}クラブ (👑 パークゴルフ オールインワン加入クラブ最優先)` : `'${browseConfirmedSearch || clubBrowseSearch}' 검색 결과: 총 ${filtered.length}개 클럽 (👑 파크골프 올인원 가입 클럽 1순위)`}</span>
+                        <span>{isJapanese ? `「${browseConfirmedSearch || clubBrowseSearch}」検索結果: 計 ${filtered.length}クラブ (👑 パークゴルフ オールインワン加入クラブ最優先)` : `'${browseConfirmedSearch || clubBrowseSearch}' 검색 결과: 총 ${filtered.length}개 클럽 (👑 파키 앱 (PARKY APP) 가입 클럽 1순위)`}</span>
                       </span>
                     ) : (
                       <span className="font-black text-rose-600 flex items-center gap-1">
@@ -4058,7 +4065,7 @@ ${shareUrl}`;
                     )
                   ) : (
                     <span className="font-bold text-stone-500">
-                      {isJapanese ? `全国登録クラブ一覧 (計 ${clubs.length}か所 · 👑 パークゴルフ オールインワン加入クラブ最優先)` : `전국 등록 클럽 전체보기 (총 ${clubs.length}곳 · 👑 파크골프 올인원 가입 클럽 최우선 정렬)`}
+                      {isJapanese ? `全国登録クラブ一覧 (計 ${clubs.length}か所 · 👑 パークゴルフ オールインワン加入クラブ最優先)` : `전국 등록 클럽 전체보기 (총 ${clubs.length}곳 · 👑 파키 앱 (PARKY APP) 가입 클럽 최우선 정렬)`}
                     </span>
                   )}
                 </div>
@@ -4104,13 +4111,13 @@ ${shareUrl}`;
                             : 'bg-stone-50 border-stone-200'
                         }`}
                       >
-                        {/* 클럽 구분 배지 (파크골프 올인원 가입 클럽 최우선 강조 & 단원 모집 상태) */}
+                        {/* 클럽 구분 배지 (파키 앱 (PARKY APP) 가입 클럽 최우선 강조 & 단원 모집 상태) */}
                         <div className="flex items-center justify-between gap-1 flex-wrap">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {isParkOn ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-stone-950 font-black text-[10px] shadow-xs border border-amber-600/40">
                                 <span>👑</span>
-                                <span>{isJapanese ? 'パークゴルフ オールインワン加入クラブ' : '파크골프 올인원 가입 클럽'}</span>
+                                <span>{isJapanese ? 'パークゴルフ オールインワン加入クラブ' : '파키 앱 (PARKY APP) 가입 클럽'}</span>
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-200 text-stone-600 font-bold text-[10px]">
@@ -5887,7 +5894,7 @@ ${shareUrl}`;
                                                     />
                                                     <div className="bg-stone-900/80 text-amber-200 text-[10px] font-black px-2.5 py-1 flex items-center justify-between">
                                                       <span>{isJapanese ? '📸 公式団体記念写真' : '📸 공식 단체 기념사진'}</span>
-                                                      <span className="text-[9px] text-amber-300">{isJapanese ? 'パークゴルフ オールインワン 公式実録' : '파크골프 올인원 공식 실록'}</span>
+                                                      <span className="text-[9px] text-amber-300">{isJapanese ? 'パークゴルフ オールインワン 公式実録' : '파키 앱 (PARKY APP) 공식 실록'}</span>
                                                     </div>
                                                   </div>
                                                 ) : (
@@ -6766,7 +6773,7 @@ ${shareUrl}`;
                         {isJapanese ? (
                           <>ルーム開設時にParkOn全国ラウンジに<strong>「[挑戦チーム募集] 親善交流戦」</strong>告知が自動登録され、他クラブが[挑戦申請]を押し主催者が承認すると対抗戦が成立します！</>
                         ) : (
-                          <>방 개설 시 파크골프 올인원 전국 라운지에 <strong>'[도전팀 구함] 친선 교류전'</strong> 공지가 자동 등록되며, 다른 클럽이 [도전 신청]을 누르고 주최자가 승낙하면 대항전이 성립됩니다!</>
+                          <>방 개설 시 파키 앱 (PARKY APP) 전국 라운지에 <strong>'[도전팀 구함] 친선 교류전'</strong> 공지가 자동 등록되며, 다른 클럽이 [도전 신청]을 누르고 주최자가 승낙하면 대항전이 성립됩니다!</>
                         )}
                       </p>
                     </div>
@@ -6889,9 +6896,48 @@ ${shareUrl}`;
                 </div>
               </div>
 
-              {/* 진행 코스 선택 */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-extrabold text-stone-800">{isJapanese ? '進行コース選択 (重複選択可能)' : '진행 코스 선택 (중복 선택 가능)'}</label>
+              {/* 진행 홀수 프리셋 & 시합 지정 코스 핀셋 선택 (9홀 단일 / 18홀 90% 표준 / 27홀 / 36홀 & 특정 코스 핀셋 조합) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-stone-800">
+                    {isJapanese ? '競技規定ホール数 & 試合指定コース選択' : '시합 홀수 & 시합 지정 코스 선택 (핀셋 조합 가능)'}
+                  </label>
+                  <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    {isJapanese ? '90%標準: 18H(66打)' : '90% 표준: 18홀(66타)'}
+                  </span>
+                </div>
+
+                {/* 원터치 시합 홀수 프리셋 버튼 (9홀 단일 / 18홀 표준 / 27홀 / 36홀) */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { holes: 9, letters: ['A'], labelKo: '⚡ 9홀 단일', subKo: '1코스(33타)', labelJa: '⚡ 9H 単一', subJa: 'Par 33' },
+                    { holes: 18, letters: ['A', 'B'], labelKo: '⭐ 18홀(90%)', subKo: '2코스(66타)', labelJa: '⭐ 18H 標準', subJa: 'Par 66' },
+                    { holes: 27, letters: ['A', 'B', 'C'], labelKo: '⛳ 27홀 시합', subKo: '3코스(99타)', labelJa: '⛳ 27H 競技', subJa: 'Par 99' },
+                    { holes: 36, letters: ['A', 'B', 'C', 'D'], labelKo: '🏆 36홀 대회', subKo: '4코스(132타)', labelJa: '🏆 36H 大会', subJa: 'Par 132' },
+                  ].map((preset) => {
+                    const isActive = selectedLetters.length * 9 === preset.holes;
+                    return (
+                      <button
+                        key={preset.holes}
+                        type="button"
+                        data-testid={`btn-preset-holes-${preset.holes}`}
+                        onClick={() => setSelectedLetters(preset.letters)}
+                        className={`py-2 px-1 rounded-xl border text-center transition active:scale-95 cursor-pointer flex flex-col items-center justify-center ${
+                          isActive
+                            ? 'bg-purple-700 text-white border-purple-800 shadow-sm ring-2 ring-purple-300'
+                            : 'bg-stone-50 hover:bg-stone-100 text-stone-800 border-stone-300'
+                        }`}
+                      >
+                        <span className="text-[11px] font-black leading-tight whitespace-nowrap">{isJapanese ? preset.labelJa : preset.labelKo}</span>
+                        <span className={`text-[10px] font-bold mt-0.5 ${isActive ? 'text-amber-200' : 'text-stone-500'}`}>
+                          {isJapanese ? preset.subJa : preset.subKo}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 개별 시합 코스 핀셋 조합 (예: 3~4코스를 돌더라도 C·D코스 18홀이나 A·C코스 18홀, B코스 9홀만 시합 코스로 지정 가능) */}
                 <div className="grid grid-cols-4 gap-1.5">
                   {['A', 'B', 'C', 'D'].map((letStr) => {
                     const isSelected = selectedLetters.includes(letStr);
@@ -6899,11 +6945,15 @@ ${shareUrl}`;
                       <button
                         key={letStr}
                         type="button"
+                        data-testid={`btn-course-letter-${letStr}`}
                         onClick={() => {
                           let updated = [...selectedLetters];
                           if (isSelected) {
                             if (updated.length > 1) {
                               updated = updated.filter((l) => l !== letStr);
+                            } else {
+                              showToast('⛳ 최소 1개 코스(9홀, 기준 33타) 이상 시합 코스로 지정해야 합니다.');
+                              return;
                             }
                           } else {
                             updated.push(letStr);
@@ -6924,11 +6974,86 @@ ${shareUrl}`;
                   })}
                 </div>
 
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-xs font-black text-emerald-950 flex items-center justify-between">
-                  <span>{isJapanese ? '⛳ 指定競技コース:' : '⛳ 지정 경기 코스:'}</span>
-                  <span className="text-emerald-800 font-black text-sm">
-                    {selectedLetters.join('-')} 코스 (총 {selectedLetters.length * 9}홀)
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 space-y-1">
+                  <div className="text-xs font-black text-emerald-950 flex items-center justify-between">
+                    <span>{isJapanese ? '⛳ 公式試合集計コース:' : '⛳ 공식 시합 집계 코스:'}</span>
+                    <span className="text-emerald-800 font-black text-sm">
+                      {selectedLetters.join('·')} 코스 (총 {selectedLetters.length * 9}홀 · 기준 Par {selectedLetters.length * 33})
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-bold text-stone-600 leading-snug">
+                    {isJapanese
+                      ? '💡 3〜4コースを回っても、上で指定した試合コース(例: C·Dコース18Hや単一9H)の記録のみ公式順位に集計されます。'
+                      : '💡 구장 3~4개 코스를 돌더라도 위에서 지정한 시합 코스(예: C·D코스 18홀, A·C코스 18홀, 단일 9홀 등) 기록만 공식 순위에 집계됩니다.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* 경기 방식 선택: 기본값 무조건 '정통 스트로크(정상 타수 최저타순 · 90% 표준)', 신페리오/기타 방식은 총무 선택 옵션 */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-extrabold text-stone-800">
+                    {isJapanese ? '競技集計方式 (基本: 正統ストローク / オプション選択)' : '경기 집계 방식 (기본: 정통 스트로크 / 총무 선택 옵션)'}
+                  </label>
+                  <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                    {isJapanese ? '90%以上: 正統ストローク' : '90% 기본: 정상 타수 체크'}
                   </span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    data-testid="btn-wizard-mode-STROKE"
+                    onClick={() => {
+                      setGameMode('STROKE');
+                      setGameRuleNotes('정통 스트로크(정상 타수 최저타순), 동타 시 지정 마지막 코스 백카운트 우선, 컨시드 1클럽 샤프트 이내, OB 2벌타');
+                    }}
+                    className={`col-span-2 py-2.5 px-3 rounded-xl border-2 text-left transition active:scale-98 cursor-pointer flex items-center justify-between ${
+                      gameMode === 'STROKE'
+                        ? 'bg-indigo-900 text-white border-indigo-950 shadow-sm ring-2 ring-indigo-300'
+                        : 'bg-white hover:bg-stone-50 text-stone-800 border-stone-300'
+                    }`}
+                  >
+                    <div>
+                      <div className="text-xs font-black flex items-center gap-1.5">
+                        <span>🏆 정통 스트로크 방식 (정상 타수 최저타순)</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-black ${gameMode === 'STROKE' ? 'bg-amber-400 text-stone-950' : 'bg-indigo-100 text-indigo-800'}`}>
+                          90% 기본 표준
+                        </span>
+                      </div>
+                      <div className={`text-[10px] font-bold mt-0.5 ${gameMode === 'STROKE' ? 'text-stone-200' : 'text-stone-500'}`}>
+                        실제 친 정상 타수 합계가 가장 적은 순서로 순위 결정 (동타 시 백카운트)
+                      </div>
+                    </div>
+                    {gameMode === 'STROKE' && <span className="text-sm font-black text-amber-300">✓ 기본선택</span>}
+                  </button>
+
+                  {[
+                    { mode: 'NEW_PERIO' as const, label: '🎯 신페리오 (옵션)', sub: '숨은 홀 핸디캡 차감' },
+                    { mode: 'SCRAMBLE' as const, label: '🤝 팀 스크램블 (옵션)', sub: '단체 베스트볼 합산' },
+                    { mode: 'STABLEFORD' as const, label: '🎖️ 스테이블포드 (옵션)', sub: '홀별 타수 승점제' },
+                    { mode: 'CASUAL' as const, label: '⛳ 친선 명랑 (옵션)', sub: '순위 무관 화합 라운드' },
+                  ].map((opt) => {
+                    const active = gameMode === opt.mode;
+                    return (
+                      <button
+                        key={opt.mode}
+                        type="button"
+                        data-testid={`btn-wizard-mode-${opt.mode}`}
+                        onClick={() => setGameMode(opt.mode)}
+                        className={`py-2 px-2.5 rounded-xl border text-left transition active:scale-95 cursor-pointer flex items-center justify-between ${
+                          active
+                            ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
+                            : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+                        }`}
+                      >
+                        <div>
+                          <div className="text-[11px] font-black">{opt.label}</div>
+                          <div className={`text-[9px] font-bold ${active ? 'text-amber-200' : 'text-stone-500'}`}>{opt.sub}</div>
+                        </div>
+                        {active && <span className="text-xs font-black">✓</span>}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -8538,8 +8663,8 @@ ${shareUrl}`;
                   onChange={(e) => setEditGameMode(e.target.value as any)}
                   className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl font-bold"
                 >
-                  <option value="NEW_PERIO">{isJapanese ? '🎯 新ペリア方式 (12個隠しホールハンディ)' : '🎯 신페리오 방식 (12개 숨은 홀 핸디캡)'}</option>
-                  <option value="STROKE">{isJapanese ? '🏆 正統ストローク (18ホール最少打数順位)' : '🏆 정통 스트로크 (18홀 최저타수 순위)'}</option>
+                  <option value="STROKE">{isJapanese ? '🏆 正統ストローク (実打数最少打数順 · 90%基本)' : '🏆 정통 스트로크 (정상 타수 최저타순 · 90% 기본 표준)'}</option>
+                  <option value="NEW_PERIO">{isJapanese ? '🎯 新ペリア方式 (オプション · 隠しホールHDCP)' : '🎯 신페리오 방식 (선택 옵션 · 숨은 홀 핸디캡)'}</option>
                   <option value="SCRAMBLE">{isJapanese ? '🤝 チームスクランブル (団体ベストボール)' : '🤝 팀 스크램블 (단체 베스트볼)'}</option>
                   <option value="CASUAL">{isJapanese ? '⛳ 親善エンジョイラウンド (親睦)' : '⛳ 친선 명랑 라운드 (친목)'}</option>
                   <option value="STABLEFORD">{isJapanese ? '🎖️ ステーブルフォード (ホール別勝点制)' : '🎖️ 스테이블포드 (홀별 승점제)'}</option>
@@ -9682,7 +9807,7 @@ ${shareUrl}`;
                     </>
                   ) : (
                     <>
-                      <li><strong>회원 신청</strong>: 회원들이 카톡 링크를 누르거나 파크골프 올인원에 접속하면 본인 이름으로 1초 만에 신청되어 대기 명단에 쌓입니다.</li>
+                      <li><strong>회원 신청</strong>: 회원들이 카톡 링크를 누르거나 파키 앱 (PARKY APP)에 접속하면 본인 이름으로 1초 만에 신청되어 대기 명단에 쌓입니다.</li>
                       <li><strong>게스트 추가</strong>: 관리실에서 <code>[➕ 게스트/현장 추가]</code>로 외부 초청자나 현장 방문객을 즉시 명단에 추가할 수 있습니다.</li>
                       <li><strong>조 편성</strong>: 접수 마감 후 관리실에서 <code>[🎲 스마트 조 편성]</code>을 누르면 30명 기준 8개 조(4인 6개 + 3인 2개)로 가장 공정하게 자동 분배됩니다.</li>
                     </>

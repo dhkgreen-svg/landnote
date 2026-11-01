@@ -257,7 +257,7 @@ const [showAddNickname, setShowAddNickname] = useState(false);
   // 3-1. 폰 변경 대비: 내 카톡 / 클립보드로 번호 전송 보관
   const handleSendToKakao = () => {
     const displayName = realName || ParkOnStorage.getUserDisplayName();
-    const backupText = `[파크골프 올인원 평생 고유회원번호]\n👤 회원 성명: ${displayName}\n🔑 고유번호: ${memberCode}\n\n💡 스마트폰을 교체하시거나 컴퓨터(PC)에서 로그인하실 때 이 번호 8자리만 입력하시면 비밀번호 없이 모든 경기 기록과 연대기가 1초 만에 그대로 복원됩니다!\nhttps://www.parkgolfallinone.com`;
+    const backupText = `[파키 앱 (PARKY APP) 평생 고유회원번호]\n👤 회원 성명: ${displayName}\n🔑 고유번호: ${memberCode}\n\n💡 스마트폰을 교체하시거나 컴퓨터(PC)에서 로그인하실 때 이 번호 8자리만 입력하시면 비밀번호 없이 모든 경기 기록과 연대기가 1초 만에 그대로 복원됩니다!\nhttps://www.parkgolfallinone.com`;
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(backupText);

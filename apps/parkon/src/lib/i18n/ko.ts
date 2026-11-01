@@ -1,10 +1,10 @@
 import { TranslationDictionary } from './types';
 
 export const ko: TranslationDictionary = {
-  app_name: '파크골프 올인원',
+  app_name: '파키 앱 (PARKY APP)',
   slogan: '전국 400개 구장 포털 & 1초 모바일 스코어보드',
   header: {
-    title: '파크골프 올인원',
+    title: '파키 앱 (PARKY APP)',
     subtitle: '전국 400개 구장 실시간 포털 & 1초 스코어링',
     lang_toggle_label: '언어 변경',
   },
@@ -20,13 +20,13 @@ export const ko: TranslationDictionary = {
     weather: '실시간 날씨',
   },
   pwa: {
-    add_to_home: '스마트폰 · PC 바탕화면에 파크골프 올인원 추가',
+    add_to_home: '스마트폰 · PC 바탕화면에 파키 앱 (PARKY APP) 추가',
     add_to_home_sub: '앱 설치 없이 1초 원터치 즉시 실행',
     installed: '바탕화면 바로가기 추가 완료',
   },
   hero: {
-    tutorial_badge: '파크골프 올인원 튜토리얼',
-    share_with_friends: '동반자에게 파크골프 올인원 소개하기',
+    tutorial_badge: '파키 앱 (PARKY APP) 튜토리얼',
+    share_with_friends: '동반자에게 파키 앱 (PARKY APP) 소개하기',
     copy_url: 'URL 복사',
     copied: '복사 완료!',
     start_free_round: '무제한 자유 라운드 시작',

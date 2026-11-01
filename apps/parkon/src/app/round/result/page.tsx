@@ -85,6 +85,7 @@ function ResultContent() {
   const [newlyUnlockedProvince, setNewlyUnlockedProvince] = useState<ProvinceInfo | null>(null);
   const [isFull18Completed, setIsFull18Completed] = useState<boolean>(false);
   const [showRestaurantModal, setShowRestaurantModal] = useState<boolean>(false);
+  const [seniorLargeMode, setSeniorLargeMode] = useState<boolean>(false);
 
   const handleExchangeCards = () => {
     if (!session) return;
@@ -256,22 +257,40 @@ function ResultContent() {
     }
   });
 
-  // Calculate total course par for ONLY played holes
+  // Use session.customHolesMetadata first (player-confirmed hole specs during round), fallback to course.holesMetadata
+  const effectiveHolesMetadata =
+    session.customHolesMetadata && session.customHolesMetadata.length > 0
+      ? session.customHolesMetadata
+      : course.holesMetadata || [];
+
+  const STANDARD_9HOLE_PARS = [4, 3, 4, 3, 4, 4, 3, 3, 5];
+  const getEffectiveHolePar = (hNum: number): number => {
+    const exact =
+      effectiveHolesMetadata.find((m) => Number(m.hole) === Number(hNum)) ||
+      course.holesMetadata?.find((m) => Number(m.hole) === Number(hNum));
+    if (exact?.par) return Number(exact.par);
+    const cyclicHole = ((Number(hNum) - 1) % 9) + 1;
+    const cyclic =
+      effectiveHolesMetadata.find((m) => Number(m.hole) === cyclicHole) ||
+      course.holesMetadata?.find((m) => Number(m.hole) === cyclicHole);
+    if (cyclic?.par) return Number(cyclic.par);
+    return STANDARD_9HOLE_PARS[(Number(hNum) - 1) % 9] || 3;
+  };
+
+  // Calculate total course par for ONLY played holes (9홀=33타, 18홀=66타, 27홀=99타, 36홀=132타)
   let totalCoursePar = 0;
   effectivePlayedHoles.forEach((hNum) => {
-    const hMeta = course.holesMetadata?.find((m) => Number(m.hole) === Number(hNum));
-    totalCoursePar += hMeta?.par || 3;
+    totalCoursePar += getEffectiveHolePar(hNum);
   });
 
-  // Group course section data (A, B, C...)
+  // Group course section data (A, B, C, D...)
   const courseSections = involvedCourses.map((cLetter) => {
     const cIdx = Math.max(0, COURSE_LETTERS.indexOf(cLetter));
     const startHole = cIdx * 9 + 1;
     const full9Holes = Array.from({ length: 9 }, (_, i) => startHole + i);
     const playedInCourse = full9Holes.filter((hNum) => effectivePlayedHoles.includes(hNum));
     const coursePlayedPar = playedInCourse.reduce((acc, hNum) => {
-      const hMeta = course.holesMetadata?.find((m) => Number(m.hole) === Number(hNum));
-      return acc + (hMeta?.par || 3);
+      return acc + getEffectiveHolePar(hNum);
     }, 0);
 
     return {
@@ -316,13 +335,13 @@ function ResultContent() {
 
     const lines = isJapanese
       ? [
-          `⛳ [パークゴルフ オールインワン] ${session.courseName} (${coursesPlayedStr}) ラウンド最終成績表`,
+          `⛳ [PARKY (パキ)] ${session.courseName} (${coursesPlayedStr}) ラウンド最終成績表`,
           `👑 ${topPlayer?.name || 'プレーヤー'}様の[${topTier.nameJa}] (${topCompleted}回完走) 公式成績`,
           `📅 日時: ${dateStr} (計 ${totalHolesCount}ホール進行 / 基準 Par ${totalCoursePar})`,
           `━━━━━━━━━━━━━━━━`,
         ]
       : [
-          `⛳ [파크골프 올인원] ${session.courseName} (${coursesPlayedStr}) 라운드 최종 성적표`,
+          `⛳ [파키 앱 (PARKY APP)] ${session.courseName} (${coursesPlayedStr}) 라운드 최종 성적표`,
           `👑 ${topPlayer?.name || '골퍼'}님의 [${topTier.nameKo}] (${topCompleted}회 완주) 공식 성적`,
           `📅 일시: ${dateStr} (총 ${totalHolesCount}홀 진행 / 기준 Par ${totalCoursePar})`,
           `━━━━━━━━━━━━━━━━`,
@@ -383,7 +402,7 @@ function ResultContent() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: isJapanese ? `[パークゴルフ オールインワン] ${session.courseName} ラウンド成績表` : `[파크골프 올인원] ${session.courseName} 라운드 성적표`,
+          title: isJapanese ? `[PARKY (パキ)] ${session.courseName} ラウンド成績表` : `[파키 앱 (PARKY APP)] ${session.courseName} 라운드 성적표`,
           text: text,
         });
       } catch (err) {
@@ -761,13 +780,24 @@ function ResultContent() {
 
       {/* 3. Detailed Course-by-Course Scorecards */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between px-1">
+        <div className="flex items-center justify-between px-1 flex-wrap gap-2">
           <h3 className="font-extrabold text-base text-stone-900 flex items-center gap-2">
             <span>{isJapanese ? '📊 コース別詳細スコアカード' : '📊 코스별 상세 스코어카드'}</span>
           </h3>
-          <span className="text-[11px] text-stone-500 font-medium">
-            {isJapanese ? '未プレー: ' : '미진행 홀: '}<span className="text-stone-400 font-bold">{isJapanese ? '- (未プレー)' : '- (미진행)'}</span>
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              data-testid="result-senior-view-toggle"
+              onClick={() => setSeniorLargeMode((prev) => !prev)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black border transition cursor-pointer flex items-center gap-1 shadow-xs ${
+                seniorLargeMode
+                  ? 'bg-stone-950 text-yellow-300 border-yellow-400 ring-2 ring-yellow-300/60'
+                  : 'bg-amber-50 hover:bg-amber-100 text-stone-900 border-amber-300'
+              }`}
+            >
+              <span>{seniorLargeMode ? '☀️ 고대비 큰글씨 켜짐' : '🔍 시니어 큰글씨·햇빛 고대비'}</span>
+            </button>
+          </div>
         </div>
 
         {/* 🎯 골프 공인 언더파 기호 안내 범례 */}
@@ -776,18 +806,22 @@ function ResultContent() {
         {courseSections.map((c) => (
           <div
             key={c.letter}
-            className="bg-white rounded-2xl p-4 border border-stone-200 shadow-sm space-y-3"
+            className={`rounded-2xl p-4 border shadow-sm space-y-3 transition ${
+              seniorLargeMode ? 'bg-stone-950 text-white border-yellow-400 border-2' : 'bg-white border-stone-200'
+            }`}
           >
-            <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
+            <div className={`flex items-center justify-between border-b pb-2.5 ${seniorLargeMode ? 'border-stone-800' : 'border-stone-100'}`}>
               <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-xl bg-emerald-700 text-white font-black text-sm flex items-center justify-center shadow-sm">
+                <span className={`w-7 h-7 rounded-xl font-black text-sm flex items-center justify-center shadow-sm ${
+                  seniorLargeMode ? 'bg-yellow-400 text-stone-950' : 'bg-emerald-700 text-white'
+                }`}>
                   {c.letter}
                 </span>
                 <div>
-                  <h4 className="font-extrabold text-stone-900 text-base">
+                  <h4 className={`font-extrabold ${seniorLargeMode ? 'text-yellow-300 text-lg' : 'text-stone-900 text-base'}`}>
                     {c.letter}{isJapanese ? 'コース スコア' : '코스 스코어'}
                   </h4>
-                  <p className="text-[11px] text-stone-500 font-medium">
+                  <p className={`font-medium ${seniorLargeMode ? 'text-xs text-stone-200 font-bold' : 'text-[11px] text-stone-500'}`}>
                     {c.playedInCourse.length === 9
                       ? (isJapanese ? '全9ホール完走' : '전체 9홀 완주')
                       : (isJapanese ? `${c.playedInCourse.length}ホール進行 (${9 - c.playedInCourse.length}ホール未プレー)` : `${c.playedInCourse.length}홀 진행 (${9 - c.playedInCourse.length}홀 미진행)`)}
@@ -810,36 +844,35 @@ function ResultContent() {
 
             {/* Horizontal Scrollable Table */}
             <div className="overflow-x-auto -mx-1 pb-1">
-              <table className="w-full text-center text-xs border-collapse min-w-[520px]">
+              <table className={`w-full text-center border-collapse min-w-[520px] ${seniorLargeMode ? 'text-sm font-black' : 'text-xs'}`}>
                 <thead>
-                  <tr className="bg-stone-50 text-stone-600 font-bold border-y border-stone-200">
-                    <th className="py-2.5 px-2 text-left pl-3 sticky left-0 bg-stone-50 z-10 w-24 whitespace-nowrap">
+                  <tr className={`font-bold border-y ${seniorLargeMode ? 'bg-stone-900 text-yellow-300 border-stone-700' : 'bg-stone-50 text-stone-600 border-stone-200'}`}>
+                    <th className={`py-2.5 px-2 text-left pl-3 sticky left-0 z-10 w-24 whitespace-nowrap ${seniorLargeMode ? 'bg-stone-900 text-yellow-300' : 'bg-stone-50'}`}>
                       {isJapanese ? '選手名' : '선수명'}
                     </th>
                     {c.full9Holes.map((hNum, i) => {
-                      const hMeta = course.holesMetadata?.find((m) => Number(m.hole) === Number(hNum));
-                      const par = hMeta?.par || 3;
+                      const par = getEffectiveHolePar(hNum);
                       const isHolePlayed = c.playedInCourse.includes(hNum);
                       return (
                         <th
                           key={hNum}
                           className={`py-2 px-1.5 font-bold ${
-                            !isHolePlayed ? 'text-stone-300' : 'text-stone-700'
+                            !isHolePlayed ? 'text-stone-400' : seniorLargeMode ? 'text-white' : 'text-stone-700'
                           }`}
                         >
                           <div>{c.letter}-{i + 1}</div>
-                          <div className={`text-[10px] ${!isHolePlayed ? 'text-stone-300' : 'text-stone-400'} font-normal`}>
+                          <div className={`text-[10px] ${!isHolePlayed ? 'text-stone-400' : seniorLargeMode ? 'text-yellow-300 font-black' : 'text-stone-400'} font-normal`}>
                             P{par}
                           </div>
                         </th>
                       );
                     })}
-                    <th className="py-2 px-2.5 font-extrabold text-stone-900 bg-stone-100/90 whitespace-nowrap">
+                    <th className={`py-2 px-2.5 font-extrabold whitespace-nowrap ${seniorLargeMode ? 'text-yellow-300 bg-stone-900' : 'text-stone-900 bg-stone-100/90'}`}>
                       {isJapanese ? 'コース合計' : '코스합계'}
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-100 font-medium">
+                <tbody className={`divide-y font-medium ${seniorLargeMode ? 'divide-stone-800' : 'divide-stone-100'}`}>
                   {rankedPlayers.map((player) => {
                     const courseSubtotal = c.playedInCourse.reduce(
                       (sum, h) => sum + (player.scores?.[h] || 0),
@@ -850,16 +883,17 @@ function ResultContent() {
                       courseDiff === 0 ? 'E' : courseDiff > 0 ? `+${courseDiff}` : `${courseDiff}`;
 
                     return (
-                      <tr key={player.id} className="hover:bg-stone-50/60 transition">
-                        <td className="py-2.5 px-2 text-left pl-3 font-bold text-stone-900 sticky left-0 bg-white z-10 whitespace-nowrap shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)]">
+                      <tr key={player.id} className={seniorLargeMode ? 'hover:bg-stone-900 transition' : 'hover:bg-stone-50/60 transition'}>
+                        <td className={`py-2.5 px-2 text-left pl-3 font-bold sticky left-0 z-10 whitespace-nowrap shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] ${
+                          seniorLargeMode ? 'bg-stone-950 text-yellow-200 text-sm font-black' : 'bg-white text-stone-900'
+                        }`}>
                           {formatPlayerDisplayName(player.name, player.isSelf, isJapanese)}
                         </td>
                         {c.full9Holes.map((hNum) => {
                           const score = player.scores?.[hNum];
                           const isPlayed =
                             score !== undefined && score > 0 && c.playedInCourse.includes(hNum);
-                          const hMeta = course.holesMetadata?.find((m) => Number(m.hole) === Number(hNum));
-                          const par = hMeta?.par || 3;
+                          const par = getEffectiveHolePar(hNum);
 
                           if (!isPlayed) {
                             return (
@@ -876,17 +910,17 @@ function ResultContent() {
                                   score={score}
                                   par={par}
                                   isConfirmed={isPlayed}
-                                  size="sm"
+                                  size={seniorLargeMode ? 'md' : 'sm'}
                                 />
                               </div>
                             </td>
                           );
                         })}
-                        <td className="py-2.5 px-2.5 font-black text-stone-900 bg-stone-50/80 whitespace-nowrap">
+                        <td className={`py-2.5 px-2.5 font-black whitespace-nowrap ${seniorLargeMode ? 'text-yellow-300 bg-stone-900 text-base' : 'text-stone-900 bg-stone-50/80'}`}>
                           {c.playedInCourse.length > 0 ? (
                             <span>
                               {courseSubtotal}{isJapanese ? '打' : '타'}
-                              <span className="text-[10px] text-stone-500 font-semibold ml-1">
+                              <span className={`text-[10px] font-semibold ml-1 ${seniorLargeMode ? 'text-stone-300' : 'text-stone-500'}`}>
                                 ({courseDiffStr})
                               </span>
                             </span>
@@ -909,18 +943,19 @@ function ResultContent() {
         <div>
           <div className="text-xs font-bold text-amber-800 flex items-center gap-1">
             <Share2 className="w-4 h-4 text-amber-700" />
-            <span>{isJapanese ? 'LINEグループ共有 ＆ スコア保存' : '카카오톡 · 네이버 밴드 단체방 결과 공유 & 소장'}</span>
+            <span>{isJapanese ? 'LINEグループ共有 ＆ スコア保存' : '카카오톡 · LINE · 네이버 밴드 결과 공유 & 소장'}</span>
           </div>
           <p className="text-xs text-amber-900 mt-1 leading-snug">
             {isJapanese
               ? '代表がLINEグループに結果を共有すると、同伴者がワンタップで自分のスマホにスコアを永久保存できます。'
-              : '조장이 카톡이나 밴드에 결과를 공유하면, 동반자가 터치 한 번으로 본인 스마트폰에 성적표를 영구 저장할 수 있습니다.'}
+              : '조장이 카톡·LINE·밴드에 결과를 공유하면, 동반자가 터치 한 번으로 본인 스마트폰에 성적표를 영구 저장할 수 있습니다.'}
           </p>
         </div>
 
         {isJapanese ? (
           <div className="grid grid-cols-2 gap-2">
             <button
+              data-testid="btn-share-line-top"
               onClick={handleShareToLine}
               className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white font-black py-3 px-3 rounded-xl text-sm flex items-center justify-center gap-1.5 shadow active:scale-95 transition"
             >
@@ -928,6 +963,7 @@ function ResultContent() {
             </button>
 
             <button
+              data-testid="btn-copy-kakao-top"
               onClick={handleCopyKakao}
               className="w-full bg-white border border-amber-400 hover:bg-amber-100 text-amber-950 font-black py-3 px-3 rounded-xl text-sm flex items-center justify-center gap-1.5 active:scale-95 transition"
             >
@@ -946,14 +982,25 @@ function ResultContent() {
           </div>
         ) : (
           <div className="space-y-2">
-            <button
-              onClick={handleShare}
-              className="w-full bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black py-3.5 px-3 rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm active:scale-95 transition cursor-pointer"
-            >
-              <span>💬 카카오톡으로 동반자에게 성적표 보내기</span>
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                data-testid="btn-share-kakao-top"
+                onClick={handleShare}
+                className="w-full bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] font-black py-3.5 px-2.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer"
+              >
+                <span>💬 카카오톡 성적표 전송</span>
+              </button>
+              <button
+                data-testid="btn-share-line-top"
+                onClick={handleShareToLine}
+                className="w-full bg-[#06C755] hover:bg-[#05b34c] text-white font-black py-3.5 px-2.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer"
+              >
+                <span>🟢 LINE(라인) 성적표 전송</span>
+              </button>
+            </div>
 
             <button
+              data-testid="btn-copy-kakao-top"
               onClick={handleCopyKakao}
               className="w-full bg-white border border-amber-400 hover:bg-amber-100 text-amber-950 font-black py-2.5 px-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
             >
@@ -965,7 +1012,7 @@ function ResultContent() {
               ) : (
                 <>
                   <Copy className="w-4 h-4 text-amber-700" />
-                  <span>📋 성적 텍스트 복사 (문자·카페 붙여넣기용)</span>
+                  <span>📋 성적 텍스트 복사 (카톡·밴드·라인 붙여넣기용)</span>
                 </>
               )}
             </button>
@@ -1040,7 +1087,7 @@ function ResultContent() {
         <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 text-stone-950 p-4 sm:p-5 rounded-2xl shadow-xl border-2 border-amber-300 space-y-3 text-center">
           <div className="inline-flex items-center gap-1.5 bg-stone-950 text-amber-300 px-3 py-1 rounded-full text-xs font-black shadow-xs">
             <Sparkles className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
-            <span>{isJapanese ? '👑 パークゴルフ オールインワン 公式戦績登録' : '👑 파크골프 올인원 공식 전적 등록'}</span>
+            <span>{isJapanese ? '👑 PARKY (パキ) 公式戦績登録' : '👑 파키 앱 (PARKY APP) 공식 전적 등록'}</span>
           </div>
           <div>
             <h3 className="text-lg sm:text-xl font-black text-stone-950 leading-tight">

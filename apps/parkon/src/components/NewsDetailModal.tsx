@@ -64,7 +64,7 @@ export function NewsDetailModal({
   };
 
   const handleShare = async () => {
-    const shareText = `📰 [${isJapanese ? 'パークゴルフ オールインワン ニュース' : '파크골프 올인원 뉴스'}]\n${title}\n- ${isJapanese ? '出処' : '출처'}: ${source}\n- ${isJapanese ? '日付' : '일자'}: ${dateStr}\n\n👉 ${isJapanese ? '記事を開く' : '기사 보기'}: ${news.linkUrl || window.location.href}`;
+    const shareText = `📰 [${isJapanese ? 'パークゴルフ オールインワン ニュース' : '파키 앱 (PARKY APP) 뉴스'}]\n${title}\n- ${isJapanese ? '出処' : '출처'}: ${source}\n- ${isJapanese ? '日付' : '일자'}: ${dateStr}\n\n👉 ${isJapanese ? '記事を開く' : '기사 보기'}: ${news.linkUrl || window.location.href}`;
     if (navigator.share) {
       try {
         await navigator.share({

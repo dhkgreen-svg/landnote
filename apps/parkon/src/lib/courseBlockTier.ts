@@ -27,7 +27,7 @@ export interface UserDiamondTier {
 }
 
 /**
- * 👑 파크골프 올인원 공식 9홀 누적 완주 기반 컬러 다이아몬드 티어 계산 순수 함수
+ * 👑 파키 앱 (PARKY APP) 공식 9홀 누적 완주 기반 컬러 다이아몬드 티어 계산 순수 함수
  * @param completedCount 누적 9홀 완주 횟수 (18홀 완주 시 2회)
  */
 export function calculateTier(completedCount: number): UserDiamondTier {

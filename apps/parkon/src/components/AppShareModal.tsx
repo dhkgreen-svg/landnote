@@ -27,13 +27,13 @@ export function AppShareModal({ isOpen, onClose }: AppShareModalProps) {
     ? 'パークゴルフ・オールインワン (ParkGolf All-in-One)'
     : isEnglish
     ? 'ParkGolf All-in-One'
-    : '파크골프 올인원 (ParkGolf All-in-One)';
+    : '파키 앱 (PARKY APP) (ParkGolf All-in-One)';
 
   const shareText = isJapanese
     ? `全国のパークゴルフ場案内、リアルタイム天気、1秒スコア記録、公認ルールAIまで！パークゴルフ・オールインワンで一緒にプレーしましょう。\n\n${shareUrl}`
     : isEnglish
     ? `Live weather for park golf courses, 1-sec scorecard, and official rules AI! Let's play together on ParkGolf All-in-One.\n\n${shareUrl}`
-    : `전국 400개 파크골프장 실시간 날씨, 1초 스코어카드, 공인 룰 AI까지! 파크골프 올인원에서 함께 라운드해요.\n\n${shareUrl}`;
+    : `전국 400개 파크골프장 실시간 날씨, 1초 스코어카드, 공인 룰 AI까지! 파키 앱 (PARKY APP)에서 함께 라운드해요.\n\n${shareUrl}`;
 
   const copyToClipboard = async (customToastMsg?: string) => {
     try {

@@ -15,8 +15,12 @@ const MEMBERS = [
   { id: 'mem_10', name: '송유진', role: 'MEMBER', gender: 'M' as const },
 ];
 
+// 18홀 (A코스 33타 + B코스 33타 = 기준 Par 66) 표준 홀별 기준타 (36홀까지 확장 지원)
 const HOLE_PARS: Record<number, number> = {
-  1: 3, 2: 4, 3: 3, 4: 5, 5: 3, 6: 4, 7: 3, 8: 4, 9: 4
+  1: 4, 2: 3, 3: 4, 4: 3, 5: 4, 6: 4, 7: 3, 8: 3, 9: 5,
+  10: 4, 11: 3, 12: 4, 13: 3, 14: 4, 15: 4, 16: 3, 17: 3, 18: 5,
+  19: 4, 20: 3, 21: 4, 22: 3, 23: 4, 24: 4, 25: 3, 26: 3, 27: 5,
+  28: 4, 29: 3, 30: 4, 31: 3, 32: 4, 33: 4, 34: 3, 35: 3, 36: 5,
 };
 
 function getRoomStateForStep(step: number): ClubEventRoom {
@@ -24,15 +28,15 @@ function getRoomStateForStep(step: number): ClubEventRoom {
     id: 'tourney-10p-live',
     title: '2026 가을맞이 클럽 10인 친선 정기전',
     courseId: 'course-gumi-dongrak',
-    courseName: '구미 동락 파크골프장 A코스',
+    courseName: '구미 동락 파크골프장 A·B코스',
     hostName: '김총무',
-    selectedCourseLetters: ['A'],
-    totalHoles: 9,
+    selectedCourseLetters: ['A', 'B'],
+    totalHoles: 18,
     targetTotalPlayers: 10,
-    gameMode: 'NEW_PERIO',
-    gameModeTitle: '신페리오 방식 (핸디캡 적용)',
+    gameMode: 'STROKE',
+    gameModeTitle: '정통 스트로크 (정상 타수 최저타순 · 90% 기본)',
     hiddenHolesHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-    sealedSecret: 'eyJob2xlcyI6WzMsNiw4XSwic2FsdCI6InBhcmtpMjAyNiJ9',
+    sealedSecret: 'eyJob2xlcyI6WzEsMiw0LDYsNyw5LDEwLDEyLDEzLDE1LDE2LDE4XSwic2FsdCI6InBhcmtpMjAyNiJ9',
     isUnsealed: false,
     unsealedHoles: [],
     waitingPool: [],
@@ -138,7 +142,7 @@ function getRoomStateForStep(step: number): ClubEventRoom {
 
   // 4단계 & 5단계: 타수 입력 진행 (1~9번 홀)
   // 박진감 넘치는 점수 분포 (동타 백카운트 검증 포함)
-  for (let hole = 1; hole <= 9; hole++) {
+  for (let hole = 1; hole <= 18; hole++) {
     const par = HOLE_PARS[hole];
     groups.forEach((grp, gIdx) => {
       grp.players.forEach((p) => {
@@ -168,7 +172,7 @@ function getRoomStateForStep(step: number): ClubEventRoom {
 
   // 5단계: 신페리오 봉인 해제 및 최종 시상 확정
   baseRoom.isUnsealed = true;
-  baseRoom.unsealedHoles = [3, 6, 8];
+  baseRoom.unsealedHoles = [1, 2, 4, 6, 7, 9, 10, 12, 13, 15, 16, 18];
   baseRoom.status = 'FINISHED';
   return baseRoom;
 }

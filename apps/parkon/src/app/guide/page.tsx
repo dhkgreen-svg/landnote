@@ -5,16 +5,16 @@ import { BookOpen, Sparkles, Clock, ArrowRight, ShieldCheck, Tag, ArrowLeft } fr
 import { PARK_GOLF_GUIDES } from '@/data/parkGolfGuides';
 
 export const metadata: Metadata = {
-  title: '파크골프 전문 가이드 & 실전 칼럼 10선 | 파크골프 올인원 (ParkGolf All-in-One)',
+  title: '파크골프 전문 가이드 & 실전 칼럼 10선 | 파키 앱 (PARKY APP) (ParkGolf All-in-One)',
   description: '입문부터 장비 선택, 그립과 장타 스윙, 숏게임, 퍼팅 라이 읽기, OB 벌타 규정, 이븐파 코스 매니지먼트까지 공인 전문가가 엄선한 고품질 파크골프 가이드 칼럼 모음.',
   alternates: {
     canonical: 'https://www.parkgolfallinone.com/guide',
   },
   openGraph: {
-    title: '파크골프 전문 가이드 & 실전 칼럼 | 파크골프 올인원',
+    title: '파크골프 전문 가이드 & 실전 칼럼 | 파키 앱 (PARKY APP)',
     description: '입문 요령부터 룰 판정, 클럽 선택법, 장타 스윙까지 완벽 정리한 공인 가이드 10선',
     url: 'https://www.parkgolfallinone.com/guide',
-    siteName: '파크골프 올인원',
+    siteName: '파키 앱 (PARKY APP)',
     type: 'website',
   },
 };
@@ -125,7 +125,7 @@ export default function GuideIndexPage() {
             </h4>
           </div>
           <p className="text-xs text-amber-900 leading-relaxed font-medium">
-            동반자와의 실랑이나 OB 판정, 해저드 구제 등 현장 분쟁은 <strong>파크골프 올인원 AI 룰 솔로몬</strong>을 통해 1초 만에 공인 판정 기준을 확인하실 수 있습니다.
+            동반자와의 실랑이나 OB 판정, 해저드 구제 등 현장 분쟁은 <strong>파키 앱 (PARKY APP) AI 룰 솔로몬</strong>을 통해 1초 만에 공인 판정 기준을 확인하실 수 있습니다.
           </p>
           <div className="pt-2 flex items-center gap-2 flex-wrap">
             <Link

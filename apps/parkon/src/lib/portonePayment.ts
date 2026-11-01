@@ -1,4 +1,4 @@
-// PortOne V2 Payment Integration for ParkGolf All-in-One (파크골프 올인원)
+// PortOne V2 Payment Integration for ParkGolf All-in-One (파키 앱 (PARKY APP))
 
 export const PORTONE_CONFIG = {
   storeId: 'store-dc14565c-d386-4d90-86ea-52cc5810dd25',
@@ -19,15 +19,15 @@ export interface MembershipPlan {
 export const MEMBERSHIP_PLANS: Record<MembershipPlanId, MembershipPlan> = {
   COFFEE_SUPPORT: {
     id: 'COFFEE_SUPPORT',
-    name: '[파크골프 올인원] 따뜻한 커피 1잔 응원 후원',
+    name: '[파키 앱 (PARKY APP)] 따뜻한 커피 1잔 응원 후원',
     price: 3000,
     badge: '따뜻한 마음',
     description: '전국 400개 구장 정보와 룰북의 무료 공익 서비스를 응원해 주세요.',
-    features: ['개발진 커피 한 잔 후원', '파크골프 올인원 감사 배지 제공', '전국 무료 서비스 운영 지원'],
+    features: ['개발진 커피 한 잔 후원', '파키 앱 (PARKY APP) 감사 배지 제공', '전국 무료 서비스 운영 지원'],
   },
   VIP_PASS_MONTH: {
     id: 'VIP_PASS_MONTH',
-    name: '[파크골프 올인원] VIP 프리미엄 1개월 이용권',
+    name: '[파키 앱 (PARKY APP)] VIP 프리미엄 1개월 이용권',
     price: 9900,
     badge: '인기 추천',
     description: '광고 없는 클린 화면, 전국 시합 실시간 알림, VIP 스코어보드 테마를 이용하세요.',
@@ -35,7 +35,7 @@ export const MEMBERSHIP_PLANS: Record<MembershipPlanId, MembershipPlan> = {
   },
   LIFETIME_FOUNDER: {
     id: 'LIFETIME_FOUNDER',
-    name: '[파크골프 올인원] 평생 프리미엄 마스터 멤버십',
+    name: '[파키 앱 (PARKY APP)] 평생 프리미엄 마스터 멤버십',
     price: 49000,
     badge: '최고 등급',
     description: '한 번 결제로 평생 모든 프리미엄 기능과 명예의 전당 골드 마크를 부여받습니다.',

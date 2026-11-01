@@ -94,7 +94,7 @@ export default function HomePage() {
   const [showQuickGuideModal, setShowQuickGuideModal] = useState<boolean>(false);
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const [showShareToast, setShowShareToast] = useState<boolean>(false);
-  const [shareToastMessage, setShareToastMessage] = useState<string>('✓ 파크골프 올인원 주소(https://www.parkgolfallinone.com)가 복사되었습니다!');
+  const [shareToastMessage, setShareToastMessage] = useState<string>('✓ 파키 앱 (PARKY APP) 주소(https://www.parkgolfallinone.com)가 복사되었습니다!');
 
   const getLocalizedCourseName = (c: Course | null | undefined): string => {
     if (!c) return isJapanese ? 'まくべつ つつじが丘' : '구미 동락';
@@ -120,10 +120,10 @@ export default function HomePage() {
 
     const shareTitle = isJapanese
       ? 'パークゴルフ・オールインワン (ParkGolf All-in-One)'
-      : '파크골프 올인원 (ParkGolf All-in-One)';
+      : '파키 앱 (PARKY APP) (ParkGolf All-in-One)';
     const shareText = isJapanese
       ? `全国のパークゴルフ場案内、リアルタイム天気、1秒スコア記録、公認ルールAIまで！パークゴルフ・オールインワンで一緒にプレーしましょう。\n\n${shareUrl}`
-      : `전국 400개 파크골프장 실시간 날씨, 1초 스코어카드, 공인 룰 AI까지! 파크골프 올인원에서 함께 라운드해요.\n\n${shareUrl}`;
+      : `전국 400개 파크골프장 실시간 날씨, 1초 스코어카드, 공인 룰 AI까지! 파키 앱 (PARKY APP)에서 함께 라운드해요.\n\n${shareUrl}`;
 
     // 1. 클립보드에 우선 복사 (문자, 밴드, 카톡 등 어디서든 바로 붙여넣기 가능)
     try {
@@ -1497,7 +1497,7 @@ export default function HomePage() {
         </span>
       </a>
 
-      {/* 4-2. 파크골프 올인원 소개하기 & 바탕화면 추가 2대 핵심 액션 버튼 세트 */}
+      {/* 4-2. 파키 앱 (PARKY APP) 소개하기 & 바탕화면 추가 2대 핵심 액션 버튼 세트 */}
       <div className="pt-0.5 space-y-2">
         {/* ① 파키(PARKY) 앱 추천하기 (카톡·라인·URL 공유 모달 연동) */}
         <button
@@ -3568,7 +3568,7 @@ export default function HomePage() {
                         현재 등록된 공인 실력 순위 기록이 없습니다
                       </div>
                       <p className="text-xs text-stone-500 max-w-xs mx-auto leading-relaxed">
-                        파크골프 올인원은 가짜·예시 선수 정보를 일절 표출하지 않습니다.<br/>
+                        파키 앱 (PARKY APP)은 가짜·예시 선수 정보를 일절 표출하지 않습니다.<br/>
                         실제 필드에서 공식 클럽전 또는 대회(18홀)를 완주하시면 100% 팩트 기반 공인 순위표에 실시간 등록됩니다.
                       </p>
                     </div>
@@ -3581,7 +3581,7 @@ export default function HomePage() {
                       <span>{isJapanese ? '公認実力順位 100%ファクト集計基準' : '공인 실력 순위 100% 팩트 집계 기준'}</span>
                     </div>
                     <p className="text-stone-600 font-medium leading-relaxed">
-                      공인 실력 랭킹은 <strong>파크골프 올인원이 인증한 공인 클럽전 또는 공식 대회 18홀 완주 기록만</strong> 정직하게 반영됩니다. 개인 친선 라운드는 등외 점수로 안전하게 분리 평가됩니다.
+                      공인 실력 랭킹은 <strong>파키 앱 (PARKY APP)이 인증한 공인 클럽전 또는 공식 대회 18홀 완주 기록만</strong> 정직하게 반영됩니다. 개인 친선 라운드는 등외 점수로 안전하게 분리 평가됩니다.
                     </p>
                   </div>
                 </div>
@@ -3671,7 +3671,7 @@ export default function HomePage() {
                         현재 등록된 필드 활동 순위 기록이 없습니다
                       </div>
                       <p className="text-xs text-stone-500 max-w-xs mx-auto leading-relaxed">
-                        파크골프 올인원은 가짜 예시 활동 데이터를 생성하지 않습니다.<br/>
+                        파키 앱 (PARKY APP)은 가짜 예시 활동 데이터를 생성하지 않습니다.<br/>
                         해당 구장에서 라운드를 완주하시면 실제 완주 횟수(최근 30일)에 따라 활동 순위표에 실시간 반영됩니다.
                       </p>
                     </div>
@@ -4133,7 +4133,7 @@ export default function HomePage() {
         activeLeaderboard100={activeLeaderboard100}
       />
 
-      {/* 파크골프 올인원 소개 URL 복사 완료 토스트 */}
+      {/* 파키 앱 (PARKY APP) 소개 URL 복사 완료 토스트 */}
       {showShareToast && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-stone-900/95 text-white px-4 py-2.5 rounded-full text-xs font-bold shadow-xl border border-stone-700/60 flex items-center gap-2 animate-fadeIn whitespace-nowrap pointer-events-none">
           <Check className="w-4 h-4 text-emerald-400 shrink-0" />

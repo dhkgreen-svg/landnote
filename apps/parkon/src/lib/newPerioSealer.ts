@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * newPerioSealer.ts
- * 파크골프 올인원 (ParkGolf All-in-One) 공식 암호학적 신페리오(New Perio) 봉인 엔진
+ * 파키 앱 (PARKY APP) (ParkGolf All-in-One) 공식 암호학적 신페리오(New Perio) 봉인 엔진
  * 
  * 🔒 기능:
  * 1. 대회 개설/시작 시 18홀 중 12개(전반 6, 후반 6) 숨은 홀을 암호학적 난수로 공정 추첨
@@ -90,30 +90,58 @@ export function sha256Sync(ascii: string): string {
   return result;
 }
 
+const COURSE_LETTERS_MAP = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+
+/**
+ * ⛳ 지정된 시합 코스(예: ['A','B'], ['C','D'], ['A','C'], ['B'], ['A','B','C','D'])의
+ * 코스별 9홀 실제 홀 번호 블록 배열을 반환합니다.
+ * - 3~4개 코스가 있는 구장에서 특정 1~2개 코스만 시합 코스로 지정하더라도 정확한 홀 번호 매핑 보장!
+ */
+export function getDesignatedCourseHoleBlocks(
+  selectedCourseLetters?: string[],
+  totalHoles: number = 18
+): number[][] {
+  const numBlocks = Math.max(1, Math.round(totalHoles / 9));
+  if (selectedCourseLetters && selectedCourseLetters.length > 0) {
+    // 만약 9홀 단일 구장(['A'])에서 2회 순환(18홀) 시합을 하는 경우 블록 수만큼 확장
+    if (selectedCourseLetters.length === 1 && numBlocks > 1) {
+      return Array.from({ length: numBlocks }, (_, bIdx) =>
+        Array.from({ length: 9 }, (__, i) => bIdx * 9 + i + 1)
+      );
+    }
+    return selectedCourseLetters.map((letter, idx) => {
+      const cIdx = COURSE_LETTERS_MAP.indexOf(letter.toUpperCase());
+      const effectiveIdx = cIdx >= 0 ? cIdx : idx;
+      const startHole = effectiveIdx * 9 + 1;
+      return Array.from({ length: 9 }, (_, i) => startHole + i);
+    });
+  }
+  return Array.from({ length: numBlocks }, (_, bIdx) =>
+    Array.from({ length: 9 }, (__, i) => bIdx * 9 + i + 1)
+  );
+}
+
 /**
  * 🎲 동기식 암호학적 무작위 숨은 홀 추첨 및 SHA-256 봉인 토큰 생성
- * @param totalHoles 18홀 또는 9홀
+ * @param totalHoles 9홀(단일), 18홀(90% 표준), 27홀, 36홀
+ * @param selectedCourseLetters 시합 지정 코스 (예: ['A','B'], ['C','D'], ['A','C'], ['B'])
  */
 export function generateSealedNewPerioHolesSync(
-  totalHoles: number = 18
+  totalHoles: number = 18,
+  selectedCourseLetters?: string[]
 ): SealedNewPerioResult {
-  const is18Holes = totalHoles >= 18;
+  const blocks = getDesignatedCourseHoleBlocks(selectedCourseLetters, totalHoles);
+  const selectedHoles: number[] = [];
 
-  // 1. 전반(1~9번 홀) 중 무작위 6개(18홀일 때) 또는 3개(9홀일 때)
-  const outHoles = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-  const outPickCount = is18Holes ? 6 : 3;
-  shuffleArray(outHoles);
-  const selectedOut = outHoles.slice(0, outPickCount).sort((a, b) => a - b);
-
-  let selectedIn: number[] = [];
-  if (is18Holes) {
-    // 2. 후반(10~18번 홀) 중 무작위 6개
-    const inHoles = [10, 11, 12, 13, 14, 15, 16, 17, 18];
-    shuffleArray(inHoles);
-    selectedIn = inHoles.slice(0, 6).sort((a, b) => a - b);
+  for (const blockHoles of blocks) {
+    const copy = [...blockHoles];
+    // 각 지정된 9홀 코스마다 6개씩 숨은 홀 추첨 (9홀=6개, 18홀=12개, 27홀=18개, 36홀=24개)
+    const pickCount = 6;
+    shuffleArray(copy);
+    const picked = copy.slice(0, pickCount).sort((a, b) => a - b);
+    selectedHoles.push(...picked);
   }
-
-  const selectedHoles = [...selectedOut, ...selectedIn].sort((a, b) => a - b);
+  selectedHoles.sort((a, b) => a - b);
 
   // 3. 임의의 32바이트 솔트(Salt) 생성
   const salt = generateRandomSalt(32);
@@ -182,46 +210,81 @@ export function verifyAndUnsealHolesSync(
 
 /**
  * 🎯 동적 신페리오 핸디캡 및 네트 스코어 계산 순수 함수
+ * - 9홀(33타), 18홀(66타, 90% 표준), 27홀(99타), 36홀(132타) 완벽 지원
+ * - 3~4개 코스를 돌더라도 시합 지정 코스(selectedCourseLetters, 예: ['C','D'] 또는 ['A','C'])가 설정된 경우
+ *   지정된 시합 코스 홀 번호와 순차 홀 번호를 모두 호환하여 100% 정확히 산출합니다.
  */
 export function calculateDynamicNewPerio(
   scores: Record<number, number>,
   totalStrokes: number,
   unsealedHoles: number[],
-  totalHoles: number = 18
-): { handicap: number; netScore: number; countedHoles: number; hiddenSum: number } {
+  totalHoles: number = 18,
+  selectedCourseLetters?: string[]
+): { handicap: number; netScore: number; countedHoles: number; hiddenSum: number; effectiveGross: number } {
   if (!unsealedHoles || unsealedHoles.length === 0) {
-    return { handicap: 0, netScore: totalStrokes, countedHoles: 0, hiddenSum: 0 };
+    return { handicap: 0, netScore: totalStrokes, countedHoles: 0, hiddenSum: 0, effectiveGross: totalStrokes };
   }
+
+  const designatedBlocks = getDesignatedCourseHoleBlocks(selectedCourseLetters, totalHoles);
+  const designatedFlatHoles = designatedBlocks.flat();
+
+  // 만약 플레이어가 3~4개 코스를 돌았더라도 시합 지정 코스 점수가 존재하면 시합 지정 코스 총타수만 추출
+  let designatedGross = 0;
+  let designatedCount = 0;
+  designatedFlatHoles.forEach((hNum, seqIdx) => {
+    const val = typeof scores[hNum] === 'number' ? scores[hNum] : scores[seqIdx + 1];
+    if (typeof val === 'number' && val > 0) {
+      designatedGross += val;
+      designatedCount++;
+    }
+  });
+  const effectiveGross = designatedCount > 0 ? designatedGross : totalStrokes;
 
   let hiddenSum = 0;
   let countedHoles = 0;
 
   unsealedHoles.forEach((hNum) => {
-    if (typeof scores[hNum] === 'number') {
+    if (typeof scores[hNum] === 'number' && scores[hNum] > 0) {
       hiddenSum += scores[hNum];
       countedHoles++;
+    } else {
+      // 시합 지정 코스가 ['C','D'](19~36)인데 숨은 홀이 1~18로 들어왔거나 그 반대인 경우 양방향 자동 매핑
+      const idxInDesignated = designatedFlatHoles.indexOf(hNum);
+      if (idxInDesignated >= 0 && typeof scores[idxInDesignated + 1] === 'number') {
+        hiddenSum += scores[idxInDesignated + 1];
+        countedHoles++;
+      } else if (hNum >= 1 && hNum <= designatedFlatHoles.length) {
+        const mappedGlobalHole = designatedFlatHoles[hNum - 1];
+        if (typeof scores[mappedGlobalHole] === 'number') {
+          hiddenSum += scores[mappedGlobalHole];
+          countedHoles++;
+        }
+      }
     }
   });
 
   if (countedHoles === 0) {
-    return { handicap: 0, netScore: totalStrokes, countedHoles: 0, hiddenSum: 0 };
+    return { handicap: 0, netScore: effectiveGross, countedHoles: 0, hiddenSum: 0, effectiveGross };
   }
 
+  const effectiveTotalHoles = designatedFlatHoles.length || totalHoles || 18;
   const targetHiddenCount = unsealedHoles.length;
-  const basePar = totalHoles <= 9 ? 33 : 66;
+  const numNineHoleBlocks = Math.max(1, Math.round(effectiveTotalHoles / 9));
+  const basePar = numNineHoleBlocks * 33; // 9홀=33타, 18홀=66타(90% 표준), 27홀=99타, 36홀=132타
 
   const scale = targetHiddenCount / countedHoles;
   const estimatedHiddenSum = hiddenSum * scale;
-  const multiplier = targetHiddenCount > 0 ? totalHoles / targetHiddenCount : 1.5;
+  const multiplier = targetHiddenCount > 0 ? effectiveTotalHoles / targetHiddenCount : 1.5;
   const rawHandicap = (estimatedHiddenSum * multiplier - basePar) * 0.8;
   const handicap = Math.max(0, Math.round(rawHandicap * 10) / 10);
-  const netScore = Math.round((totalStrokes - handicap) * 10) / 10;
+  const netScore = Math.round((effectiveGross - handicap) * 10) / 10;
 
   return {
     handicap,
     netScore,
     countedHoles,
     hiddenSum,
+    effectiveGross,
   };
 }
 

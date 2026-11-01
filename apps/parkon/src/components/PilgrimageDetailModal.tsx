@@ -36,7 +36,7 @@ export function PilgrimageDetailModal({
   const handleShare = async () => {
     const text = isJapanese
       ? `[PARKY 聖地巡礼公認] 「${course.nameJa}」${userRecord.isVisited ? '完走達成！' : '巡礼挑戦中！'}\n全世界パークゴルフ公式プラットフォーム PARKY`
-      : `[PARKY 공식 성지순례] 「${course.nameKo}」 ${userRecord.isVisited ? '공식 완주 달성!' : '성지순례 도전 중!'}\n전국 파크골프 올인원 PARKY`;
+      : `[PARKY 공식 성지순례] 「${course.nameKo}」 ${userRecord.isVisited ? '공식 완주 달성!' : '성지순례 도전 중!'}\n전국 파키 앱 (PARKY APP) PARKY`;
 
     if (navigator.share) {
       try {

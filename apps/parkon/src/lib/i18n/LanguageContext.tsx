@@ -111,7 +111,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       } else if (language === 'en') {
         document.title = 'ParkGolf All-in-One - Korea & Japan Official Portal';
       } else {
-        document.title = '파크골프 올인원 (ParkGolf All-in-One) | 전국 400여 개 파크골프장 실시간 날씨·코스·스마트스코어';
+        document.title = '파키 앱 (PARKY APP) (ParkGolf All-in-One) | 전국 400여 개 파크골프장 실시간 날씨·코스·스마트스코어';
       }
     }
   }, [language]);

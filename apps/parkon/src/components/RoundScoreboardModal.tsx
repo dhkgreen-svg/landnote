@@ -1079,7 +1079,7 @@ export function RoundScoreboardModal({
                     <span>{isJapanese ? 'GPS現場認証·改ざん防止' : 'GPS 현장 위치 인증 완료 · 위변조 방지 블록체인'}</span>
                   </div>
                   <div className="text-xs font-black text-stone-900 tracking-wider">
-                    {isJapanese ? 'パークゴルフ オールインワン 運営委員会' : '파크골프 올인원 (ParkGolf All-in-One)'}
+                    {isJapanese ? 'パークゴルフ オールインワン 運営委員会' : '파키 앱 (PARKY APP) (ParkGolf All-in-One)'}
                   </div>
                 </div>
 

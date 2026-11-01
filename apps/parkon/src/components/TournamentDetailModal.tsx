@@ -62,7 +62,7 @@ export function TournamentDetailModal({
   const targetCount = isTranslated ? resolved.targetCount : (notice.targetCount || '');
 
   const handleShare = async () => {
-    const shareText = `📢 [${isJapanese ? 'パークゴルフ オールインワン 大会公示' : '파크골프 올인원 시합 공고'}]\n${title}\n- ${isJapanese ? '日程' : '일시'}: ${eventDateStr}\n- ${isJapanese ? '場所' : '장소'}: ${courseName}\n- ${isJapanese ? '受付' : '접수'}: ${periodStr}\n\n👉 ${isJapanese ? '公式公示' : '공식 공고'}: ${notice.linkUrl}`;
+    const shareText = `📢 [${isJapanese ? 'パークゴルフ オールインワン 大会公示' : '파키 앱 (PARKY APP) 시합 공고'}]\n${title}\n- ${isJapanese ? '日程' : '일시'}: ${eventDateStr}\n- ${isJapanese ? '場所' : '장소'}: ${courseName}\n- ${isJapanese ? '受付' : '접수'}: ${periodStr}\n\n👉 ${isJapanese ? '公式公示' : '공식 공고'}: ${notice.linkUrl}`;
     if (navigator.share) {
       try {
         await navigator.share({

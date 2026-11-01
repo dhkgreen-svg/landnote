@@ -76,7 +76,7 @@ export const CourseStampModal: React.FC<CourseStampModalProps> = ({
           <div className="inline-block relative my-1 transform -rotate-6 transition-transform hover:scale-105 duration-300">
             <div className="border-4 border-double border-rose-600 rounded-2xl px-5 py-2.5 bg-rose-50/90 text-rose-700 shadow-md">
               <div className="text-[10px] font-extrabold tracking-widest text-rose-500 uppercase">
-                {isJapanese ? 'PARKGOLF ALL-IN-ONE 公認' : '파크골프 올인원 公認'}
+                {isJapanese ? 'PARKGOLF ALL-IN-ONE 公認' : '파키 앱 (PARKY APP) 公認'}
               </div>
               <div className="text-xl sm:text-2xl font-black tracking-tight text-rose-700 flex items-center justify-center gap-1.5 py-0.5">
                 <span>🏅</span>

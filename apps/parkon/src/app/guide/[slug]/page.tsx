@@ -21,14 +21,14 @@ export function generateMetadata({ params }: PageProps): Metadata {
   const guide = PARK_GOLF_GUIDES.find((g) => g.slug === params.slug);
   if (!guide) {
     return {
-      title: '가이드를 찾을 수 없습니다 | 파크골프 올인원',
+      title: '가이드를 찾을 수 없습니다 | 파키 앱 (PARKY APP)',
     };
   }
 
   const url = `https://www.parkgolfallinone.com/guide/${guide.slug}`;
 
   return {
-    title: `${guide.title} | 파크골프 올인원 (ParkGolf All-in-One)`,
+    title: `${guide.title} | 파키 앱 (PARKY APP) (ParkGolf All-in-One)`,
     description: guide.summary,
     keywords: guide.keywords,
     alternates: {
@@ -38,7 +38,7 @@ export function generateMetadata({ params }: PageProps): Metadata {
       title: guide.title,
       description: guide.summary,
       url,
-      siteName: '파크골프 올인원',
+      siteName: '파키 앱 (PARKY APP)',
       type: 'article',
       publishedTime: guide.publishedAt,
       modifiedTime: guide.updatedAt,
@@ -76,7 +76,7 @@ export default function GuideDetailPage({ params }: PageProps) {
     },
     publisher: {
       '@type': 'Organization',
-      name: '파크골프 올인원 (ParkGolf All-in-One)',
+      name: '파키 앱 (PARKY APP) (ParkGolf All-in-One)',
       url: 'https://www.parkgolfallinone.com',
       logo: {
         '@type': 'ImageObject',

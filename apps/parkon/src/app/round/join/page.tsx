@@ -690,7 +690,7 @@ function RoundJoinContent() {
             className="w-full py-2.5 px-4 bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold text-xs rounded-xl text-center flex items-center justify-center gap-1.5 transition"
           >
             <Home className="w-3.5 h-3.5" />
-            <span>{isJapanese ? 'パークゴルフ オールインワン ホームへ移動' : '파크골프 올인원 홈으로 이동'}</span>
+            <span>{isJapanese ? 'パークゴルフ オールインワン ホームへ移動' : '파키 앱 (PARKY APP) 홈으로 이동'}</span>
           </Link>
         </div>
 
@@ -699,7 +699,7 @@ function RoundJoinContent() {
           <p className="text-[10px] text-stone-600 font-medium">
             {isJapanese
               ? 'パークゴルフ オールインワンはアプリのインストール不要で、スマートフォンのブラウザですぐにご利用いただけます。'
-              : '파크골프 올인원은 별도 앱 설치 없이 스마트폰 브라우저에서 바로 사용하실 수 있습니다.'}
+              : '파키 앱 (PARKY APP)은 별도 앱 설치 없이 스마트폰 브라우저에서 바로 사용하실 수 있습니다.'}
           </p>
         </div>
       </div>

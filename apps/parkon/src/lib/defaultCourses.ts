@@ -1,12 +1,16 @@
 import { Course, HoleMetadata, DisputeRule } from '@/types/parkon';
 
 export function generateStandardHoles(totalHoles: number = 18): HoleMetadata[] {
+  // 대한파크골프협회 공인 9홀 33타(3-3-1 / 4-4-1: Par3 4개, Par4 4개, Par5 1개 = 33타) 표준 제원 패턴
+  const STANDARD_9HOLE_PARS: (3 | 4 | 5)[] = [4, 3, 4, 3, 4, 4, 3, 3, 5];
+  const STANDARD_9HOLE_DISTANCES: number[] = [75, 50, 80, 55, 70, 85, 45, 60, 130];
   const holes: HoleMetadata[] = [];
   for (let i = 1; i <= totalHoles; i++) {
+    const idxIn9 = (i - 1) % 9;
     holes.push({
       hole: i,
-      par: 3,
-      distanceMeter: 0,
+      par: STANDARD_9HOLE_PARS[idxIn9] || 3,
+      distanceMeter: STANDARD_9HOLE_DISTANCES[idxIn9] || 65,
       isVerified: false,
       localRule: undefined,
       tip: undefined,

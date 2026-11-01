@@ -177,7 +177,7 @@ export function InstallPrompt() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/parky.jpg"
-                alt={isJapanese ? 'パークゴルフ オールインワン マスコット パーキー' : '파크골프 올인원 마스코트 파키'}
+                alt={isJapanese ? 'パークゴルフ オールインワン マスコット パーキー' : '파키 앱 (PARKY APP) 마스코트 파키'}
                 className="w-16 h-16 rounded-2xl shadow-xl border-2 border-amber-300 bg-emerald-950 object-cover"
               />
               <span className="absolute -bottom-1 -right-1 bg-amber-400 text-emerald-950 rounded-full px-1.5 py-0.2 text-[9px] font-black shadow-xs">
@@ -188,7 +188,7 @@ export function InstallPrompt() {
             {/* 2. 대문 타이틀 */}
             <div className="flex items-center justify-center gap-2">
               <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-sm">
-                {isJapanese ? 'パークゴルフ オールインワン' : '파크골프 올인원'}
+                {isJapanese ? 'パークゴルフ オールインワン' : '파키 앱 (PARKY APP)'}
               </h2>
               <span className="bg-gradient-to-r from-amber-400 to-yellow-300 text-emerald-950 text-xs font-black px-2 py-0.5 rounded-md shadow-xs">
                 ParkGolf All-in-One
@@ -235,7 +235,7 @@ export function InstallPrompt() {
               <div className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-amber-300 font-bold bg-emerald-950/70 px-3 py-1 rounded-full border border-amber-400/30">
                 <CheckCircle className="w-3.5 h-3.5 text-amber-400" />
                 <span>
-                  {isJapanese ? 'パークゴルフ オールインワン公式アプリ実行中' : '파크골프 올인원 공식 앱 모드 실행 중'}
+                  {isJapanese ? 'パークゴルフ オールインワン公式アプリ実行中' : '파키 앱 (PARKY APP) 공식 앱 모드 실행 중'}
                 </span>
               </div>
             )}

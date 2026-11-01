@@ -169,7 +169,7 @@ function InstallPageContent() {
           <p className="text-xs text-emerald-200 font-bold mt-1">
             {isJapanese
               ? 'パークゴルフ オールインワン (ParkGolf All-in-One)'
-              : '파크골프 올인원 (ParkGolf All-in-One)'}
+              : '파키 앱 (PARKY APP) (ParkGolf All-in-One)'}
           </p>
           <p className="text-[11px] text-emerald-200 mt-0.5 font-medium">
             {isJapanese
@@ -239,7 +239,7 @@ function InstallPageContent() {
               <Smartphone className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
               <span>
                 {isStandalone || installSuccessToast
-                  ? (isJapanese ? '⛳ パークゴルフを始める (入場) ➔' : '⛳ 파크골프 올인원 바로 시작하기 (입장) ➔')
+                  ? (isJapanese ? '⛳ パークゴルフを始める (入場) ➔' : '⛳ 파키 앱 (PARKY APP) 바로 시작하기 (입장) ➔')
                   : (isJapanese ? '📲 1秒でホーム画面にアプリ追加' : '📲 1초 만에 바탕화면에 앱 깔기')}
               </span>
             </button>

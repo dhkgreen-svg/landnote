@@ -5366,8 +5366,8 @@ export default function RoundPlayPage() {
                       const handoffUrl = `${window.location.origin}/round/${roundId}?handoff=${encodeURIComponent(JSON.stringify(session))}`;
                       if (typeof navigator !== 'undefined' && navigator.share) {
                         await navigator.share({
-                          title: isJapanese ? `[パークゴルフ オールインワン] ${course.name} パークゴルフ試合引継ぎ` : `[파크골프 올인원] ${course.name} 파크골프 경기 이어받기`,
-                          text: isJapanese ? `[パークゴルフ オールインワン] ${course.name} 試合スコアカード引継ぎリンクです。タップすると現在の${actualHoleNumber}番ホールからそのまま記録を継続できます。` : `[파크골프 올인원] ${course.name} 경기 스코어카드 이어받기 링크입니다. 터치하시면 현재 ${actualHoleNumber}번 홀부터 그대로 이어서 기록하실 수 있습니다.`,
+                          title: isJapanese ? `[パークゴルフ オールインワン] ${course.name} パークゴルフ試合引継ぎ` : `[파키 앱 (PARKY APP)] ${course.name} 파크골프 경기 이어받기`,
+                          text: isJapanese ? `[パークゴルフ オールインワン] ${course.name} 試合スコアカード引継ぎリンクです。タップすると現在の${actualHoleNumber}番ホールからそのまま記録を継続できます。` : `[파키 앱 (PARKY APP)] ${course.name} 경기 스코어카드 이어받기 링크입니다. 터치하시면 현재 ${actualHoleNumber}번 홀부터 그대로 이어서 기록하실 수 있습니다.`,
                           url: handoffUrl,
                         });
                         setShareFeedbackToast(isJapanese ? '✓ 新代表へ試合引継ぎリンクを送信しました！' : '✓ 새 조장에게 경기 넘겨주기 링크가 전송되었습니다!');

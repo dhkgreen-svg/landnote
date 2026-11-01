@@ -11,8 +11,8 @@ import Script from 'next/script';
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.parkgolfallinone.com'),
   title: {
-    default: '파크골프 올인원 (ParkGolf All-in-One) - 한·일 파크골프 공식 포털',
-    template: '%s | 파크골프 올인원 (ParkGolf All-in-One)',
+    default: '파키 앱 (PARKY APP) (ParkGolf All-in-One) - 한·일 파크골프 공식 포털',
+    template: '%s | 파키 앱 (PARKY APP) (ParkGolf All-in-One)',
   },
   description: '한·일 파크골프 공식 포털: 전국 400+ 구장 및 일본 코스 안내, 실시간 날씨, 1초 스코어보드, 공인 룰북 AI (100% 무료)',
   alternates: {
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   },
   keywords: [
     '파크골프',
-    '파크골프 올인원',
+    '파키 앱 (PARKY APP)',
     'ParkGolf All-in-One',
     'パークゴルフ',
     'パークゴルフ オールインワン',
@@ -48,10 +48,10 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: '파크골프 올인원',
+    title: '파키 앱 (PARKY APP)',
   },
   openGraph: {
-    title: '파크골프 올인원 (ParkGolf All-in-One) | Korea & Japan Official Portal',
+    title: '파키 앱 (PARKY APP) (ParkGolf All-in-One) | Korea & Japan Official Portal',
     description: '한·일 파크골프 공식 포털: 전국 400+ 구장 및 일본 코스 안내, 실시간 날씨, 1초 스코어보드, 공인 룰북 AI (100% 무료)',
     url: 'https://www.parkgolfallinone.com',
     siteName: 'ParkGolf All-in-One',
@@ -62,14 +62,14 @@ export const metadata: Metadata = {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: '파크골프 올인원 (ParkGolf All-in-One)',
+        alt: '파키 앱 (PARKY APP) (ParkGolf All-in-One)',
       },
     ],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: '파크골프 올인원 (ParkGolf All-in-One) | 日韓パークゴルフ',
+    title: '파키 앱 (PARKY APP) (ParkGolf All-in-One) | 日韓パークゴルフ',
     description: '한·일 파크골프 공식 포털: 전국 400+ 구장 및 일본 코스 안내, 실시간 날씨, 1초 스코어보드, 공인 룰북 AI (100% 무료)',
     images: ['/og-image.jpg'],
   },
@@ -103,9 +103,9 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="파크골프 올인원" />
-        <meta name="application-name" content="파크골프 올인원" />
-        <meta property="og:title" content="파크골프 올인원 (ParkGolf All-in-One) | 日韓パークゴルフ" />
+        <meta name="apple-mobile-web-app-title" content="파키 앱 (PARKY APP)" />
+        <meta name="application-name" content="파키 앱 (PARKY APP)" />
+        <meta property="og:title" content="파키 앱 (PARKY APP) (ParkGolf All-in-One) | 日韓パークゴルフ" />
         <meta property="og:description" content="한·일 파크골프 공식 포털: 전국 400+ 구장 및 일본 코스 안내, 실시간 날씨, 1초 스코어보드, 공인 룰북 AI (100% 무료)" />
         <meta property="og:url" content="https://www.parkgolfallinone.com" />
         <meta property="og:site_name" content="ParkGolf All-in-One" />
@@ -125,20 +125,20 @@ export default function RootLayout({
                   '@type': 'WebSite',
                   '@id': 'https://www.parkgolfallinone.com/#website',
                   'url': 'https://www.parkgolfallinone.com',
-                  'name': '파크골프 올인원 (ParkGolf All-in-One)',
+                  'name': '파키 앱 (PARKY APP) (ParkGolf All-in-One)',
                   'alternateName': ['ParkGolf All-in-One', 'パークゴルフ オールインワン', '파크골프올인원'],
                   'description': '한·일 파크골프 공식 포털: 전국 400+ 구장 및 일본 코스 안내, 실시간 날씨, 1초 스코어보드, 공인 룰북 AI (100% 무료)',
                   'inLanguage': ['ko-KR', 'ja-JP'],
                   'publisher': {
                     '@type': 'Organization',
-                    'name': '파크골프 올인원',
+                    'name': '파키 앱 (PARKY APP)',
                     'url': 'https://www.parkgolfallinone.com'
                   }
                 },
                 {
                   '@type': 'SportsApplication',
                   '@id': 'https://www.parkgolfallinone.com/#app',
-                  'name': '파크골프 올인원 (ParkGolf All-in-One)',
+                  'name': '파키 앱 (PARKY APP) (ParkGolf All-in-One)',
                   'operatingSystem': 'All (Web, PWA)',
                   'applicationCategory': 'SportsApplication',
                   'offers': {
