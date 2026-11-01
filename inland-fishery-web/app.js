@@ -2813,70 +2813,193 @@ function switchReportViewMode(mode) {
   }
 }
 
-function renderActivityExecutiveReport(item) {
-  const rawContent = item.content || item.desc || '';
-  if (!rawContent || rawContent === '현안토의') {
-    return `
-      <div style="line-height: 1.8; color: #334155; font-size: 0.95rem; margin-bottom: 14px; background: #FFF; padding: 16px 20px; border-radius: 12px; border: 1px solid #E2E8F0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
-        <i class="fa-solid fa-circle-info" style="color: #0284C7; margin-right: 6px;"></i> ${rawContent || '해당 날짜에 실시된 주요 현장 활동 및 사업 집행 결과 보고 내용입니다.'}
-      </div>
-    `;
+
+// ==========================================================================
+// Smart PT/PDF Report Generator & Universal Parser (100% Auto-Formatting)
+// ==========================================================================
+window.insertPtTemplate = function(textareaId) {
+  const el = document.getElementById(textareaId);
+  if (!el) return;
+  const isBranch = (textareaId === 'branch-entry-desc');
+  const titleEl = document.getElementById(isBranch ? 'branch-entry-title' : 'entry-title');
+  const title = (titleEl && titleEl.value.trim()) ? titleEl.value.trim() : (isBranch ? '시·도 지회 현장 활동' : '연합회 주요 활동');
+
+  const template = `사)전국내수면어업연합회 ${title} 주요 보고 및 의결 사항
+
+1. [첫 번째 주요 안건명 입력]
+추진 경과 및 상세 협의: 현장에서 진행된 주요 협의 내용, 참석자 의견 및 추진 경과를 작성해 주세요.
+의결 결과 및 성과: 이사회 또는 지회에서 의결된 결과 및 핵심 추진 성과를 작성해 주세요.
+
+2. [두 번째 주요 안건명 입력]
+추진 경과 및 상세 협의: 당면 과제에 대한 논의 및 실무 협력 사항을 작성해 주세요.
+의결 결과 및 성과: 향후 추진 일정 및 확정된 실행 방안을 작성해 주세요.`;
+
+  el.value = template;
+  el.focus();
+};
+
+window.autoFormatPtText = function(textareaId) {
+  const el = document.getElementById(textareaId);
+  if (!el || !el.value.trim()) {
+    alert('정리할 내용을 먼저 입력창에 적어주세요.');
+    return;
+  }
+  const isBranch = (textareaId === 'branch-entry-desc');
+  const titleEl = document.getElementById(isBranch ? 'branch-entry-title' : 'entry-title');
+  const title = (titleEl && titleEl.value.trim()) ? titleEl.value.trim() : '연합회 주요 활동';
+  let raw = el.value.trim();
+
+  // If already starts with 1. or 사), skip
+  if (/^사\)/.test(raw) && /1\./.test(raw)) {
+    alert('이미 표준 PT 보고서 양식으로 정렬되어 있습니다.');
+    return;
   }
 
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  let formatted = `사)전국내수면어업연합회 ${title} 주요 보고 및 의결 사항\n\n`;
+
+  let secNum = 1;
+  lines.forEach((line) => {
+    // If line starts with a number or bullet
+    let cleaned = line.replace(/^(?:[0-9]+[\.\)]|\([0-9]+\)|[-•*])\s*/, '').trim();
+    if (cleaned.length > 2) {
+      if (cleaned.includes(':')) {
+        const parts = cleaned.split(':');
+        formatted += `${secNum}. ${parts[0].trim()}\n추진 경과 및 상세 협의: ${parts.slice(1).join(':').trim()}\n의결 결과 및 성과: 원안 가결 및 추진 확정\n\n`;
+      } else {
+        formatted += `${secNum}. ${cleaned}\n추진 경과 및 상세 협의: ${cleaned} 관련 현장 협의 및 의견 수렴 진행\n의결 결과 및 성과: 세부 실행 계획 수립 및 가결 완료\n\n`;
+      }
+      secNum++;
+    }
+  });
+
+  el.value = formatted.trim();
+  alert('✨ 작성하신 내용이 행과 열이 정렬된 PT 표준 보고서 양식으로 100% 자동 변환되었습니다!');
+};
+
+function universalParseSections(rawText, docTitle) {
+  const plainText = (rawText || '').replace(/<[^>]*>/g, '').trim();
+  if (!plainText) return [];
+
+  // Check if numbered sections (1. or (1) or 1))
+  const numRegex = /(?:^|\n)\s*(?:[0-9]+[\.\)]|\([0-9]+\))\s+/;
+  if (numRegex.test(plainText)) {
+    let bodyText = plainText;
+    const firstMatch = plainText.match(numRegex);
+    if (firstMatch) {
+      bodyText = plainText.substring(firstMatch.index);
+    }
+    const rawSections = bodyText.split(/(?=(?:^|\n|\s+)(?:[0-9]+[\.\)]|\([0-9]+\))\s+)/).map(s => s.trim()).filter(Boolean);
+    return rawSections.map((sec, idx) => {
+      const lines = sec.split('\n').map(l => l.trim()).filter(Boolean);
+      let secTitle = lines[0] || ('안건 0' + (idx + 1));
+      secTitle = secTitle.replace(/^(?:[0-9]+[\.\)]|\([0-9]+\))\s*/, '').trim();
+      const subText = lines.slice(1).join('\n');
+      return parseSubItems(secTitle, subText, idx);
+    });
+  }
+
+  // Check if bullet points
+  const bulletRegex = /(?:^|\n)\s*[-•*]\s+/;
+  if (bulletRegex.test(plainText)) {
+    const rawSections = plainText.split(/(?=(?:^|\n)\s*[-•*]\s+)/).map(s => s.trim()).filter(Boolean);
+    return rawSections.map((sec, idx) => {
+      const lines = sec.split('\n').map(l => l.trim()).filter(Boolean);
+      let secTitle = lines[0] ? lines[0].replace(/^[-•*]\s*/, '').trim() : ('안건 0' + (idx + 1));
+      const subText = lines.slice(1).join('\n');
+      return parseSubItems(secTitle, subText, idx);
+    });
+  }
+
+  // If multiple paragraphs
+  const paragraphs = plainText.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  if (paragraphs.length > 1) {
+    return paragraphs.map((para, idx) => {
+      const lines = para.split('\n').map(l => l.trim()).filter(Boolean);
+      let secTitle = lines[0] || ('안건 0' + (idx + 1));
+      const subText = lines.slice(1).join('\n') || secTitle;
+      return parseSubItems(secTitle, subText, idx);
+    });
+  }
+
+  // Single paragraph or line
+  return [parseSubItems(docTitle || '주요 현장 활동 및 보고 내용', plainText, 0)];
+}
+
+function parseSubItems(secTitle, subText, idx) {
+  const splitItems = [];
+  const subParts = (subText || '').split(/(?=(?:^|\n)[^\n:]{2,35}:\s*)/);
+  subParts.forEach(part => {
+    const trimmed = part.trim();
+    if (!trimmed) return;
+    const cIdx = trimmed.indexOf(':');
+    if (cIdx !== -1 && cIdx < 40) {
+      splitItems.push({
+        label: trimmed.substring(0, cIdx).trim(),
+        desc: trimmed.substring(cIdx + 1).trim()
+      });
+    } else {
+      splitItems.push({
+        label: '추진 세부내용',
+        desc: trimmed
+      });
+    }
+  });
+
+  if (splitItems.length === 0) {
+    splitItems.push({ label: '주요 보고 내용', desc: subText || secTitle });
+  }
+
+  return { secTitle, splitItems, idx };
+}
+
+function generateAgendaFromContent(desc, title, date) {
+  const sections = universalParseSections(desc, title);
+  if (sections && sections.length > 0) {
+    return sections.map(s => {
+      const detailItem = s.splitItems.find(it => it.label.includes('협의') || it.label.includes('경과') || it.label.includes('세부') || it.label.includes('내용'));
+      const decisionItem = s.splitItems.find(it => it.label.includes('의결') || it.label.includes('결과') || it.label.includes('성과') || it.label.includes('가결'));
+      const detail = detailItem ? detailItem.desc : (s.splitItems[0] ? s.splitItems[0].desc : '해당 안건에 대한 현장 검토 및 논의가 진행되었습니다.');
+      const decision = decisionItem ? decisionItem.desc : '원안대로 의결 및 추진 확정';
+      return {
+        title: s.secTitle,
+        detail: detail,
+        decision: decision,
+        hasAccounting: s.secTitle.includes('회계') || s.secTitle.includes('예산') || s.secTitle.includes('비용') || s.secTitle.includes('정산')
+      };
+    });
+  }
+  return [
+    {
+      title: `${title} 관련 주요 추진 안건`,
+      detail: desc || '해당 날짜에 실시된 주요 사업 및 현장 활동 세부 협의 내용입니다.',
+      decision: '원안 가결 및 세부 추진 계획 승인',
+      hasAccounting: false
+    }
+  ];
+}
+
+function renderActivityExecutiveReport(item) {
+  const rawContent = item.content || item.desc || '';
   if (rawContent.includes('report-executive-container')) {
     return rawContent;
   }
 
   const plainText = rawContent.replace(/<[^>]*>/g, '').trim();
-  const hasNumberedSections = /1\.\s+[^\n]+/.test(plainText) && /2\.\s+[^\n]+/.test(plainText);
 
-  if (!hasNumberedSections) {
-    return `
-      <div style="line-height: 1.85; color: #334155; font-size: 0.95rem; margin-bottom: 14px; background: #FFF; padding: 18px 20px; border-radius: 12px; border: 1px solid #E2E8F0; box-shadow: 0 2px 8px rgba(0,0,0,0.03); white-space: pre-line;">
-        ${plainText}
-      </div>
-    `;
-  }
-
-  // Parse Title & Body
-  let docTitle = item.title ? `${item.title} 주요 보고 및 의결 사항` : '연합회 주요 보고 및 의결 사항';
-  let bodyText = plainText;
-  const firstMatch = plainText.match(/1\.\s+/);
+  // Parse Title
+  let docTitle = item.title ? `${item.title} 주요 보고 및 의결 사항` : '사단법인 연합회 주요 보고 및 의결 사항';
+  const firstMatch = plainText.match(/(?:^|\n)\s*1\.\s+/);
   if (firstMatch) {
     const rawTitle = plainText.substring(0, firstMatch.index).trim();
     if (rawTitle.length > 5) docTitle = rawTitle;
-    bodyText = plainText.substring(firstMatch.index);
   }
 
-  const rawSections = bodyText.split(/(?=(?:^|\n|\s+)\d+\.\s+)/).map(s => s.trim()).filter(Boolean);
+  // 100% Universal Parse into Sections
+  const parsedSections = universalParseSections(plainText, docTitle);
 
-  const sectionsHtml = rawSections.map((sec, idx) => {
-    const lines = sec.split('\n').map(l => l.trim()).filter(Boolean);
-    let secTitle = lines[0] || `안건 0${idx + 1}`;
-    secTitle = secTitle.replace(/^\d+\.\s*/, '').trim();
-
-    const subText = lines.slice(1).join('\n');
-    const subParts = subText.split(/(?=(?:^|\n)[^\n:]{2,35}:\s*)/);
-    const splitItems = [];
-
-    subParts.forEach(part => {
-      const trimmed = part.trim();
-      if (!trimmed) return;
-      const cIdx = trimmed.indexOf(':');
-      if (cIdx !== -1 && cIdx < 40) {
-        splitItems.push({
-          label: trimmed.substring(0, cIdx).trim(),
-          desc: trimmed.substring(cIdx + 1).trim()
-        });
-      } else {
-        splitItems.push({
-          label: '추진 세부내용',
-          desc: trimmed
-        });
-      }
-    });
-
-    const rowsHtml = splitItems.map(it => `
+  const sectionsHtml = parsedSections.map((sec, idx) => {
+    const rowsHtml = sec.splitItems.map(it => `
       <tr style="border-bottom: 1px solid #E2E8F0; transition: background 0.15s ease;">
         <td style="width: 28%; min-width: 140px; background: #F8FAFC; padding: 12px 14px; font-weight: 800; color: #0F172A; font-size: 0.85rem; border-right: 1px solid #E2E8F0; vertical-align: middle;">
           <span style="display: inline-block; width: 6px; height: 6px; background: #0284C7; border-radius: 50%; margin-right: 6px; vertical-align: middle;"></span>
@@ -2893,7 +3016,7 @@ function renderActivityExecutiveReport(item) {
         <div style="background: linear-gradient(90deg, #0A2540 0%, #1E3A8A 100%); color: #FFFFFF; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <span style="background: #F59E0B; color: #000; font-weight: 900; font-size: 0.74rem; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.3px;">안건 0${idx + 1}</span>
-            <span style="font-size: 0.94rem; font-weight: 800; letter-spacing: -0.3px; color: #FFFFFF;">${secTitle}</span>
+            <span style="font-size: 0.94rem; font-weight: 800; letter-spacing: -0.3px; color: #FFFFFF;">${sec.secTitle}</span>
           </div>
           <span style="font-size: 0.72rem; color: #BAE6FD; font-weight: 600;"><i class="fa-solid fa-circle-check" style="color: #38BDF8;"></i> 의결/추진 확정</span>
         </div>
@@ -3761,10 +3884,7 @@ async function handleBranchSubmit(e) {
     image: finalImg,
     images: finalImages,
     summary: desc.substring(0, 60),
-    agenda: [
-      `${title} 현장 개최 안내`,
-      `${region} 어가 현장 애로사항 청취 및 활동 지원`
-    ],
+    agenda: generateAgendaFromContent(desc, title, new Date().toISOString().slice(0, 10)),
     accountingBreakdown: [],
     content: `<p style="line-height: 1.75; color: #334155;">${desc}</p>`
   };
@@ -3860,10 +3980,7 @@ async function handleUnifiedSubmit(e) {
     image: finalImg,
     images: finalImages,
     summary: desc.substring(0, 60),
-    agenda: [
-      `${title} 관련 주요 추진 성과`,
-      `해당 날짜(${date}) 예산 집행 및 수입/지출 내역`
-    ],
+    agenda: generateAgendaFromContent(desc, title, date),
     accountingBreakdown: breakdown,
     content: `<p style="line-height: 1.75; color: #334155;">${desc}</p>`
   };
