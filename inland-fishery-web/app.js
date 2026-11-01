@@ -2778,6 +2778,178 @@ function closeNoticeModalFull() {
 }
 window.closeNoticeModalFull = closeNoticeModalFull;
 
+
+// ==========================================================================
+// Executive Briefing & PT/PDF Report Formatter
+// ==========================================================================
+function switchReportViewMode(mode) {
+  const ptWrap = document.getElementById('report-view-pt');
+  const rawWrap = document.getElementById('report-view-raw');
+  const btnPt = document.getElementById('btn-report-view-pt');
+  const btnRaw = document.getElementById('btn-report-view-raw');
+
+  if (mode === 'pt') {
+    if (ptWrap) ptWrap.style.display = 'block';
+    if (rawWrap) rawWrap.style.display = 'none';
+    if (btnPt) {
+      btnPt.style.background = '#0284C7';
+      btnPt.style.color = '#FFF';
+    }
+    if (btnRaw) {
+      btnRaw.style.background = 'transparent';
+      btnRaw.style.color = '#94A3B8';
+    }
+  } else {
+    if (ptWrap) ptWrap.style.display = 'none';
+    if (rawWrap) rawWrap.style.display = 'block';
+    if (btnPt) {
+      btnPt.style.background = 'transparent';
+      btnPt.style.color = '#94A3B8';
+    }
+    if (btnRaw) {
+      btnRaw.style.background = '#0284C7';
+      btnRaw.style.color = '#FFF';
+    }
+  }
+}
+
+function renderActivityExecutiveReport(item) {
+  const rawContent = item.content || item.desc || '';
+  if (!rawContent || rawContent === '현안토의') {
+    return `
+      <div style="line-height: 1.8; color: #334155; font-size: 0.95rem; margin-bottom: 14px; background: #FFF; padding: 16px 20px; border-radius: 12px; border: 1px solid #E2E8F0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+        <i class="fa-solid fa-circle-info" style="color: #0284C7; margin-right: 6px;"></i> ${rawContent || '해당 날짜에 실시된 주요 현장 활동 및 사업 집행 결과 보고 내용입니다.'}
+      </div>
+    `;
+  }
+
+  if (rawContent.includes('report-executive-container')) {
+    return rawContent;
+  }
+
+  const plainText = rawContent.replace(/<[^>]*>/g, '').trim();
+  const hasNumberedSections = /1\.\s+[^\n]+/.test(plainText) && /2\.\s+[^\n]+/.test(plainText);
+
+  if (!hasNumberedSections) {
+    return `
+      <div style="line-height: 1.85; color: #334155; font-size: 0.95rem; margin-bottom: 14px; background: #FFF; padding: 18px 20px; border-radius: 12px; border: 1px solid #E2E8F0; box-shadow: 0 2px 8px rgba(0,0,0,0.03); white-space: pre-line;">
+        ${plainText}
+      </div>
+    `;
+  }
+
+  // Parse Title & Body
+  let docTitle = item.title ? `${item.title} 주요 보고 및 의결 사항` : '연합회 주요 보고 및 의결 사항';
+  let bodyText = plainText;
+  const firstMatch = plainText.match(/1\.\s+/);
+  if (firstMatch) {
+    const rawTitle = plainText.substring(0, firstMatch.index).trim();
+    if (rawTitle.length > 5) docTitle = rawTitle;
+    bodyText = plainText.substring(firstMatch.index);
+  }
+
+  const rawSections = bodyText.split(/(?=(?:^|\n|\s+)\d+\.\s+)/).map(s => s.trim()).filter(Boolean);
+
+  const sectionsHtml = rawSections.map((sec, idx) => {
+    const lines = sec.split('\n').map(l => l.trim()).filter(Boolean);
+    let secTitle = lines[0] || `안건 0${idx + 1}`;
+    secTitle = secTitle.replace(/^\d+\.\s*/, '').trim();
+
+    const subText = lines.slice(1).join('\n');
+    const subParts = subText.split(/(?=(?:^|\n)[^\n:]{2,35}:\s*)/);
+    const splitItems = [];
+
+    subParts.forEach(part => {
+      const trimmed = part.trim();
+      if (!trimmed) return;
+      const cIdx = trimmed.indexOf(':');
+      if (cIdx !== -1 && cIdx < 40) {
+        splitItems.push({
+          label: trimmed.substring(0, cIdx).trim(),
+          desc: trimmed.substring(cIdx + 1).trim()
+        });
+      } else {
+        splitItems.push({
+          label: '추진 세부내용',
+          desc: trimmed
+        });
+      }
+    });
+
+    const rowsHtml = splitItems.map(it => `
+      <tr style="border-bottom: 1px solid #E2E8F0; transition: background 0.15s ease;">
+        <td style="width: 28%; min-width: 140px; background: #F8FAFC; padding: 12px 14px; font-weight: 800; color: #0F172A; font-size: 0.85rem; border-right: 1px solid #E2E8F0; vertical-align: middle;">
+          <span style="display: inline-block; width: 6px; height: 6px; background: #0284C7; border-radius: 50%; margin-right: 6px; vertical-align: middle;"></span>
+          ${it.label}
+        </td>
+        <td style="padding: 12px 16px; color: #334155; font-size: 0.88rem; line-height: 1.7; vertical-align: middle; background: #FFFFFF;">
+          ${it.desc.replace(/\n+/g, '<br>')}
+        </td>
+      </tr>
+    `).join('');
+
+    return `
+      <div style="background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 12px; margin-bottom: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);">
+        <div style="background: linear-gradient(90deg, #0A2540 0%, #1E3A8A 100%); color: #FFFFFF; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="background: #F59E0B; color: #000; font-weight: 900; font-size: 0.74rem; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.3px;">안건 0${idx + 1}</span>
+            <span style="font-size: 0.94rem; font-weight: 800; letter-spacing: -0.3px; color: #FFFFFF;">${secTitle}</span>
+          </div>
+          <span style="font-size: 0.72rem; color: #BAE6FD; font-weight: 600;"><i class="fa-solid fa-circle-check" style="color: #38BDF8;"></i> 의결/추진 확정</span>
+        </div>
+        <div style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; min-width: 480px;">
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="report-executive-container">
+      <!-- 공식 보고서 상단 브리핑 배너 -->
+      <div style="background: linear-gradient(135deg, #0A2540 0%, #1E293B 100%); border-radius: 12px; padding: 14px 18px; color: #FFFFFF; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(10, 37, 64, 0.12); border-left: 5px solid #0284C7; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <div style="font-size: 0.73rem; color: #38BDF8; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 3px; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-file-shield"></i> <span>사단법인 공식 브리핑 요약 보고서 (PT/PDF 행·열 정렬)</span>
+          </div>
+          <h4 style="font-size: 1.05rem; font-weight: 900; margin: 0; color: #FFFFFF; line-height: 1.35;">
+            ${docTitle}
+          </h4>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <!-- 뷰 모드 전환 탭 -->
+          <div style="display: flex; background: rgba(0,0,0,0.3); padding: 2px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);">
+            <button id="btn-report-view-pt" onclick="switchReportViewMode('pt')" style="background: #0284C7; color: #FFF; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+              <i class="fa-solid fa-table-columns"></i> PT/표 요약
+            </button>
+            <button id="btn-report-view-raw" onclick="switchReportViewMode('raw')" style="background: transparent; color: #94A3B8; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+              <i class="fa-solid fa-align-left"></i> 원문 줄글
+            </button>
+          </div>
+          <!-- 인쇄 / PDF 저장 -->
+          <button onclick="window.print()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #FFFFFF; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'" title="이 보고서를 PDF로 저장하거나 인쇄합니다">
+            <i class="fa-solid fa-print"></i> PDF/인쇄
+          </button>
+        </div>
+      </div>
+
+      <!-- 1) PT/표 요약 뷰 -->
+      <div id="report-view-pt" class="report-sections-wrap">
+        ${sectionsHtml}
+      </div>
+
+      <!-- 2) 원문 텍스트 뷰 (초기 숨김) -->
+      <div id="report-view-raw" style="display: none; background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 12px; padding: 18px 20px; line-height: 1.85; color: #334155; font-size: 0.92rem; white-space: pre-line; box-shadow: 0 2px 8px rgba(15,23,42,0.04);">
+        ${plainText}
+      </div>
+    </div>
+  `;
+}
+
 function openGalleryDetailModal(id) {
   const user = getCurrentUser();
   const item = galleryItems.find(i => i.id === id) || accountingItems.find(i => i.id === id) || {
@@ -2878,9 +3050,7 @@ function openGalleryDetailModal(id) {
       </div>
     `}
 
-    <div style="line-height: 1.8; color: #334155; font-size: 0.95rem; margin-bottom: 14px; background: #FFF; padding: 14px; border-radius: 10px; border: 1px solid #E2E8F0;">
-      ${item.content || item.desc || '해당 날짜에 실시된 주요 현장 활동 및 사업 집행 결과 보고 내용입니다.'}
-    </div>
+    ${renderActivityExecutiveReport(item)}
 
     ${agendaHtml}
 

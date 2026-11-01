@@ -1551,3 +1551,60 @@ html, body {
 
   .form-row { flex-direction: column; gap: 0; }
 }
+
+
+/* ==========================================================================
+   Executive Briefing & PT Report Styles
+   ========================================================================== */
+.report-executive-container {
+  font-family: inherit;
+  margin-bottom: 20px;
+}
+.report-executive-container table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.report-executive-container tr:last-child {
+  border-bottom: none !important;
+}
+.report-executive-container tr:hover td {
+  background-color: #F8FAFC !important;
+}
+@media (max-width: 640px) {
+  .report-executive-container table, 
+  .report-executive-container tbody, 
+  .report-executive-container tr, 
+  .report-executive-container td {
+    display: block !important;
+    width: 100% !important;
+    min-width: unset !important;
+  }
+  .report-executive-container td:first-child {
+    border-right: none !important;
+    border-bottom: 1px dashed #E2E8F0 !important;
+    padding: 10px 14px 6px !important;
+    background: #F1F5F9 !important;
+  }
+  .report-executive-container td:last-child {
+    padding: 8px 14px 12px !important;
+  }
+}
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #detail-modal, #detail-modal * {
+    visibility: visible;
+  }
+  #detail-modal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .modal-close-btn, .btn-edit-action, .btn-delete-action, button, .carousel-nav-btn {
+    display: none !important;
+  }
+}
