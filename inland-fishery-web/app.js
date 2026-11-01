@@ -2999,7 +2999,10 @@ function renderActivityExecutiveReport(item) {
   const parsedSections = universalParseSections(plainText, docTitle);
 
   const sectionsHtml = parsedSections.map((sec, idx) => {
-    const rowsHtml = sec.splitItems.map(it => `
+    const matchingAgenda = (item.agenda && item.agenda[idx]) ? item.agenda[idx] : null;
+    const hasDecisionInItems = sec.splitItems.some(it => it.label.includes('의결') || it.label.includes('결과') || it.label.includes('성과'));
+
+    let rowsHtml = sec.splitItems.map(it => `
       <tr style="border-bottom: 1px solid #E2E8F0; transition: background 0.15s ease;">
         <td style="width: 28%; min-width: 140px; background: #F8FAFC; padding: 12px 14px; font-weight: 800; color: #0F172A; font-size: 0.85rem; border-right: 1px solid #E2E8F0; vertical-align: middle;">
           <span style="display: inline-block; width: 6px; height: 6px; background: #0284C7; border-radius: 50%; margin-right: 6px; vertical-align: middle;"></span>
@@ -3010,6 +3013,36 @@ function renderActivityExecutiveReport(item) {
         </td>
       </tr>
     `).join('');
+
+    // If agenda has a distinct decision result, integrate it as an official resolution row
+    if (!hasDecisionInItems && matchingAgenda && matchingAgenda.decision) {
+      rowsHtml += `
+        <tr style="border-bottom: 1px solid #E2E8F0; background: #F0FDF4;">
+          <td style="width: 28%; min-width: 140px; background: #ECFDF5; padding: 12px 14px; font-weight: 800; color: #065F46; font-size: 0.85rem; border-right: 1px solid #A7F3D0; vertical-align: middle;">
+            <i class="fa-solid fa-circle-check" style="color: #10B981; margin-right: 6px;"></i> 의결 결과 및 성과
+          </td>
+          <td style="padding: 12px 16px; color: #065F46; font-size: 0.88rem; line-height: 1.7; vertical-align: middle; font-weight: 700; background: #F0FDF4;">
+            ${matchingAgenda.decision}
+          </td>
+        </tr>
+      `;
+    }
+
+    // If agenda is tied to accounting, integrate shortcut button right into the table row
+    if (matchingAgenda && matchingAgenda.hasAccounting) {
+      rowsHtml += `
+        <tr style="border-bottom: 1px solid #E2E8F0; background: #FFFBEB;">
+          <td style="width: 28%; min-width: 140px; background: #FEF3C7; padding: 12px 14px; font-weight: 800; color: #92400E; font-size: 0.85rem; border-right: 1px solid #FDE68A; vertical-align: middle;">
+            <i class="fa-solid fa-receipt" style="color: #D97706; margin-right: 6px;"></i> 관련 회계 결산
+          </td>
+          <td style="padding: 10px 16px; vertical-align: middle; background: #FFFBEB;">
+            <button type="button" onclick="document.getElementById('accounting-section-wrap')?.scrollIntoView({behavior: 'smooth'})" style="background: #0284C7; color: #FFF; border: none; padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(2,132,199,0.2);">
+              <i class="fa-solid fa-calculator"></i> 해당 활동 세부 지출·수입 회계 장부 확인 &darr;
+            </button>
+          </td>
+        </tr>
+      `;
+    }
 
     return `
       <div style="background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 12px; margin-bottom: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);">
@@ -3181,7 +3214,7 @@ function openGalleryDetailModal(id) {
     content: '등록된 활동 세부 내용입니다.'
   };
 
-  const agendaHtml = renderInteractiveAgendaSection(item);
+  // Agenda unified into renderActivityExecutiveReport(item)
 
   let accTableHtml = '';
   if (user) {
@@ -3262,8 +3295,6 @@ function openGalleryDetailModal(id) {
     `}
 
     ${renderActivityExecutiveReport(item)}
-
-    ${agendaHtml}
 
     ${accTableHtml}
 
