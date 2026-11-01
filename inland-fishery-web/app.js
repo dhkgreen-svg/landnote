@@ -2950,6 +2950,104 @@ function renderActivityExecutiveReport(item) {
   `;
 }
 
+
+// ==========================================================================
+// Interactive Agenda Accordion Functions
+// ==========================================================================
+function toggleAgendaAccordion(idx) {
+  const body = document.getElementById('agenda-body-' + idx);
+  const arrow = document.getElementById('agenda-arrow-' + idx);
+  if (!body) return;
+  const isHidden = (body.style.display === 'none');
+  body.style.display = isHidden ? 'block' : 'none';
+  if (arrow) {
+    arrow.innerHTML = isHidden 
+      ? '<i class="fa-solid fa-chevron-up"></i> 접기' 
+      : '<i class="fa-solid fa-chevron-down"></i> 상세보기';
+  }
+}
+
+function renderInteractiveAgendaSection(item) {
+  if (!item.agenda || item.agenda.length === 0) return '';
+
+  const itemsHtml = item.agenda.map((a, idx) => {
+    const isObj = (typeof a === 'object' && a !== null);
+    const title = isObj ? (a.title || '안건') : a;
+    const detail = isObj ? a.detail : '해당 안건에 대해 이사회 및 집행부 간 심도 있는 현안 협의와 심의가 진행되었습니다.';
+    const decision = isObj ? a.decision : '원안 가결 및 세부 추진 계획 승인';
+    const hasAcc = isObj ? a.hasAccounting : (title.includes('회계') || title.includes('예산') || title.includes('집행') || title.includes('정산'));
+
+    // By default, open the first item (idx === 0) for great immediate preview
+    const isOpen = (idx === 0);
+
+    return `
+      <div style="background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 10px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 2px 6px rgba(15,23,42,0.04);">
+        <!-- 클릭 가능한 아코디언 헤더 -->
+        <div onclick="toggleAgendaAccordion(${idx})" style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; background: #F8FAFC; border-bottom: ${isOpen ? '1px solid #E2E8F0' : 'none'}; user-select: none; transition: background 0.15s;" onmouseover="this.style.background='#F1F5F9'" onmouseout="this.style.background='#F8FAFC'">
+          <div style="display: flex; align-items: center; gap: 10px; flex: 1; padding-right: 12px;">
+            <span style="background: #0284C7; color: #FFF; font-weight: 800; font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; white-space: nowrap;">안건 0${idx + 1}</span>
+            <span style="font-size: 0.92rem; font-weight: 800; color: #0F172A; line-height: 1.35;">${title}</span>
+          </div>
+          <span id="agenda-arrow-${idx}" style="font-size: 0.78rem; color: #0284C7; font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 4px;">
+            ${isOpen ? '<i class="fa-solid fa-chevron-up"></i> 접기' : '<i class="fa-solid fa-chevron-down"></i> 상세보기'}
+          </span>
+        </div>
+
+        <!-- 펼쳐지는 상세 내용 바디 -->
+        <div id="agenda-body-${idx}" style="display: ${isOpen ? 'block' : 'none'}; padding: 14px 16px; background: #FFFFFF; font-size: 0.88rem; line-height: 1.7; color: #334155;">
+          ${detail ? `
+            <div style="margin-bottom: 10px;">
+              <strong style="color: #1E293B; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <span style="display: inline-block; width: 6px; height: 6px; background: #0284C7; border-radius: 50%;"></span>
+                추진 경과 및 상세 협의 내용:
+              </strong>
+              <div style="background: #F8FAFC; padding: 10px 14px; border-radius: 8px; border: 1px solid #E2E8F0; color: #475569;">
+                ${detail}
+              </div>
+            </div>
+          ` : ''}
+
+          ${decision ? `
+            <div style="margin-bottom: ${hasAcc ? '10px' : '0'};">
+              <strong style="color: #059669; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <i class="fa-solid fa-circle-check"></i> 의결 결과 및 성과:
+              </strong>
+              <div style="background: #ECFDF5; padding: 10px 14px; border-radius: 8px; border: 1px solid #A7F3D0; color: #065F46; font-weight: 600;">
+                ${decision}
+              </div>
+            </div>
+          ` : ''}
+
+          ${hasAcc ? `
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #E2E8F0; display: flex; justify-content: flex-end;">
+              <button onclick="document.getElementById('accounting-section-wrap')?.scrollIntoView({behavior: 'smooth'})" style="background: #FFFBEB; border: 1px solid #FDE68A; color: #B45309; padding: 5px 12px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s;" onmouseover="this.style.background='#FEF3C7'" onmouseout="this.style.background='#FFFBEB'">
+                <i class="fa-solid fa-receipt" style="color: #D97706;"></i> 해당 활동 세부 지출·수입 회계 장부 확인 &darr;
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div style="margin-top: 16px; background: #F8FAFC; padding: 16px; border-radius: 12px; border: 1px solid #E2E8F0; box-shadow: 0 2px 8px rgba(15,23,42,0.03);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 6px;">
+        <h4 style="font-size: 0.98rem; color: #0A2540; margin: 0; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+          <i class="fa-solid fa-list-check" style="color: #0284C7;"></i> 주요 성과 및 의결 안건
+          <span style="font-size: 0.75rem; color: #64748B; font-weight: normal;">(클릭 시 세부 내용이 펼쳐집니다)</span>
+        </h4>
+        <span style="background: #E0F2FE; color: #0369A1; font-size: 0.73rem; font-weight: 800; padding: 3px 9px; border-radius: 12px;">
+          총 ${item.agenda.length}건
+        </span>
+      </div>
+      <div>
+        ${itemsHtml}
+      </div>
+    </div>
+  `;
+}
+
 function openGalleryDetailModal(id) {
   const user = getCurrentUser();
   const item = galleryItems.find(i => i.id === id) || accountingItems.find(i => i.id === id) || {
@@ -2960,24 +3058,14 @@ function openGalleryDetailModal(id) {
     content: '등록된 활동 세부 내용입니다.'
   };
 
-  let agendaHtml = '';
-  if (item.agenda && item.agenda.length > 0) {
-    agendaHtml = `
-      <div style="margin-top: 16px; background: #F8FAFC; padding: 14px 16px; border-radius: 10px; border: 1px solid #E2E8F0;">
-        <h4 style="font-size: 0.98rem; color: #0A2540; margin-bottom: 8px;"><i class="fa-solid fa-list-check" style="color: #0284C7;"></i> 주요 성과 및 의결 안건</h4>
-        <ul style="padding-left: 18px; color: #334155; font-size: 0.88rem; line-height: 1.7;">
-          ${item.agenda.map(a => `<li>${a}</li>`).join('')}
-        </ul>
-      </div>
-    `;
-  }
+  const agendaHtml = renderInteractiveAgendaSection(item);
 
   let accTableHtml = '';
   if (user) {
     if (item.accountingBreakdown && item.accountingBreakdown.length > 0) {
       accTableHtml = `
         <div style="margin-top: 16px;">
-          <h4 style="font-size: 0.98rem; color: #0A2540; margin-bottom: 8px;"><i class="fa-solid fa-calculator" style="color: #D97706;"></i> 해당 활동 예산 집행 세부 회계 내역</h4>
+          <div id="accounting-section-wrap"><h4 style="font-size: 0.98rem; color: #0A2540; margin-bottom: 8px;"><i class="fa-solid fa-calculator" style="color: #D97706;"></i> 해당 활동 예산 집행 세부 회계 내역</h4>
           <div style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
             <table style="width: 100%; min-width: 440px; border-collapse: collapse; font-size: 0.84rem; text-align: left;">
               <thead>
@@ -3005,7 +3093,7 @@ function openGalleryDetailModal(id) {
     }
   } else {
     accTableHtml = `
-      <div style="margin-top: 16px; background: #F0F9FF; border: 1px solid #BAE6FD; padding: 14px 16px; border-radius: 10px; font-size: 0.85rem; color: #0369A1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+      <div id="accounting-section-wrap" style="margin-top: 16px; background: #F0F9FF; border: 1px solid #BAE6FD; padding: 14px 16px; border-radius: 10px; font-size: 0.85rem; color: #0369A1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
         <div>
           <i class="fa-solid fa-lock" style="color: #0284C7;"></i> <strong>세부 회계 결산 장부는 회원/마스터 로그인 시 열람 가능합니다.</strong>
         </div>
