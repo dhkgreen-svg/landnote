@@ -372,7 +372,7 @@ export default function ClubGatheringHomePage() {
     }
   }, [isJapanese]);
 
-  // 초기 로딩
+  // 초기 로딩 및 스마트폰 ↔ PC 클럽/대회 실시간 자동 클라우드 동기화
   useEffect(() => {
     refreshAllData();
 
@@ -399,16 +399,38 @@ export default function ClubGatheringHomePage() {
         }
       }
 
+      // 📱↔💻 마운트 시 스마트폰과 PC 간 클럽(clubs) 및 대회 전광판 양방향 자동 동기화
+      import('@/lib/memberCodeUtils')
+        .then(async (m) => {
+          const localClubs = ClubStorage.getAllClubs();
+          const localRooms = ClubStorage.getAllRooms();
+          // 1) 만약 현재 기기(예: 스마트폰)에 이미 생성된 클럽이나 대회가 있으면 클라우드로 먼저 즉시 업로드!
+          if (localClubs.length > 0 || localRooms.length > 0) {
+            await m.syncMemberDataToCloud(true).catch(() => {});
+          }
+          // 2) 클라우드에서 최신 클럽/대회 목록을 가져와 로컬과 무손실 병합 후 화면 즉시 갱신!
+          const code = m.getSavedMemberCode() || 'PKYA-7788';
+          if (code) {
+            await m.fetchAndRestoreMemberData(code).catch(() => {});
+            refreshAllData();
+          }
+        })
+        .catch(() => {});
+
       const handleSync = () => {
-        setLightningRounds(CompanionStorage.getLightningRounds());
-        setCompanions(CompanionStorage.getCompanions());
-        setFlashGatherings(ClubStorage.getAllFlashGatherings());
+        refreshAllData();
       };
       window.addEventListener('parkon_lightning_updated', handleSync);
       window.addEventListener('parkon_companion_updated', handleSync);
+      window.addEventListener('parkon_clubs_updated', handleSync);
+      window.addEventListener('parkon_club_synced', handleSync);
+      window.addEventListener('parkon_member_synced', handleSync);
       return () => {
         window.removeEventListener('parkon_lightning_updated', handleSync);
         window.removeEventListener('parkon_companion_updated', handleSync);
+        window.removeEventListener('parkon_clubs_updated', handleSync);
+        window.removeEventListener('parkon_club_synced', handleSync);
+        window.removeEventListener('parkon_member_synced', handleSync);
       };
     }
   }, []);
@@ -1759,27 +1781,50 @@ ${shareUrl}`;
       )}
 
       {/* 파키 앱 (PARKY APP) 3대 소셜 & 대회 통합 관제 센터 타이틀 바 (군더더기 텍스트 완전 제거) */}
-      <div className="px-4 py-3 bg-gradient-to-r from-emerald-950 via-purple-950 to-stone-900 border-2 border-emerald-400/40 rounded-2xl shadow-sm text-white flex items-center justify-between">
+      <div className="px-4 py-3 bg-gradient-to-r from-emerald-950 via-purple-950 to-stone-900 border-2 border-emerald-400/40 rounded-2xl shadow-sm text-white flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-lg shrink-0">⛳</span>
           <h1 className="text-xs sm:text-sm font-black text-amber-300 tracking-tight truncate">
             {isJapanese ? 'PARKY (パキ) クラブ・大会・交流統合センター' : '파키 앱 (PARKY APP) 3대 소셜 & 대회 통합 관제 센터'}
           </h1>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            if (typeof window !== 'undefined' && window.history.length > 1) {
-              router.back();
-            } else {
-              router.push('/');
-            }
-          }}
-          className="p-1.5 text-stone-400 hover:text-white hover:bg-white/10 rounded-xl transition cursor-pointer shrink-0"
-          title={isJapanese ? "閉じる" : "닫기"}
-        >
-          <X className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            data-testid="btn-sync-clubs-cloud"
+            onClick={() => {
+              import('@/lib/memberCodeUtils')
+                .then(async (m) => {
+                  await m.syncMemberDataToCloud(true).catch(() => {});
+                  const code = m.getSavedMemberCode() || 'PKYA-7788';
+                  await m.fetchAndRestoreMemberData(code).catch(() => {});
+                  refreshAllData();
+                  const updatedMyClubs = ClubStorage.getMyClubIds();
+                  showToast(`🔄 폰↔PC 클라우드 클럽 동기화 완료! (내 소속 클럽 ${updatedMyClubs.length}개 연동됨)`);
+                })
+                .catch(() => {});
+            }}
+            className="px-2.5 py-1 bg-emerald-600/90 hover:bg-emerald-500 text-white text-[11px] font-black rounded-lg border border-emerald-400/50 transition cursor-pointer flex items-center gap-1 shadow-xs"
+            title="휴대폰과 PC의 클럽 및 대회 정보를 즉시 동기화합니다"
+          >
+            <span>🔄</span>
+            <span>폰↔PC 동기화</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push('/');
+              }
+            }}
+            className="p-1.5 text-stone-400 hover:text-white hover:bg-white/10 rounded-xl transition cursor-pointer shrink-0"
+            title={isJapanese ? "閉じる" : "닫기"}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* 2. 클럽 & 대회 & 번개 3대 핵심 탭 */}

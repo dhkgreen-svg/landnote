@@ -17,6 +17,12 @@ export interface MemberSyncRecord {
   tour?: any;
   customCourses?: any[];
   crowdSpecs?: any;
+  clubs?: any[];
+  myClubIds?: string[];
+  clubEvents?: any[];
+  flashGatherings?: any[];
+  deletedClubIds?: string[];
+  deletedClubEventIds?: string[];
   updatedAt: string;
 }
 

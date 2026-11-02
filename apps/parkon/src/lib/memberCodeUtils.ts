@@ -273,12 +273,12 @@ let lastSyncTimestamp = 0;
 /**
  * 현재 기기의 모든 경기 기록, 연대기, 프로필, 1촌 명부를 클라우드에 자동 백업
  */
-export async function syncMemberDataToCloud(): Promise<{ success: boolean; memberCode: string; message?: string }> {
+export async function syncMemberDataToCloud(forceImmediate = false): Promise<{ success: boolean; memberCode: string; message?: string }> {
   if (typeof window === 'undefined') return { success: false, memberCode: '' };
 
   // 1. 이미 동기화 중이거나 최근 3초 이내에 동기화가 수행된 경우 중복 호출 차단
   const now = Date.now();
-  if (isSyncingMemberData || now - lastSyncTimestamp < 3000) {
+  if (!forceImmediate && (isSyncingMemberData || now - lastSyncTimestamp < 3000)) {
     return { success: true, memberCode: getSavedMemberCode(), message: '최신 동기화 유지 중' };
   }
 
@@ -297,6 +297,12 @@ export async function syncMemberDataToCloud(): Promise<{ success: boolean; membe
 
     const customCourses = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_custom_courses_v1') || '[]') : [];
     const crowdSpecs = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_crowd_hole_specs_v1') || '{}') : {};
+    const clubs = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_clubs_v2') || '[]') : [];
+    const myClubIds = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_my_club_ids_v1') || '[]') : [];
+    const clubEvents = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_club_rooms_v1') || localStorage.getItem('parkon_club_events_v2') || '[]') : [];
+    const flashGatherings = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_flash_gatherings_v1') || '[]') : [];
+    const deletedClubIds = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_deleted_club_ids_v1') || '[]') : [];
+    const deletedClubEventIds = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_deleted_club_event_ids_v1') || '[]') : [];
     const userPhone = profile?.phoneNumber || (typeof window !== 'undefined' ? localStorage.getItem('parkon_user_phone') || '' : '');
 
     const payload = {
@@ -314,6 +320,12 @@ export async function syncMemberDataToCloud(): Promise<{ success: boolean; membe
       tour,
       customCourses,
       crowdSpecs,
+      clubs,
+      myClubIds,
+      clubEvents,
+      flashGatherings,
+      deletedClubIds,
+      deletedClubEventIds,
       updatedAt: new Date().toISOString(),
     };
 
@@ -400,7 +412,22 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
       };
     }
 
-    const { memberCode, userName, profile, kakaoUser, completedRounds, companions, badges, tour, customCourses, crowdSpecs } = result.data;
+    const {
+      memberCode,
+      userName,
+      profile,
+      kakaoUser,
+      completedRounds,
+      companions,
+      badges,
+      tour,
+      customCourses,
+      crowdSpecs,
+      clubs: cloudClubs,
+      myClubIds: cloudMyClubIds,
+      clubEvents: cloudClubEvents,
+      flashGatherings: cloudFlashGatherings,
+    } = result.data;
 
     // 1. 고유 회원번호 저장
     localStorage.setItem(MEMBER_CODE_STORAGE_KEY, memberCode);
@@ -517,9 +544,131 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
       localStorage.setItem('parkon_crowd_hole_specs_v1', JSON.stringify(crowdSpecs));
     }
 
+    // 7-B. 📱↔💻 스마트폰 ↔ PC 클럽(clubs), 내 소속 클럽(myClubIds), 대회 전광판(clubEvents), 번개(flashGatherings) 무손실 양방향 동기화!
+    let hasUnsyncedLocalClubData = false;
+    try {
+      const localClubsRaw = JSON.parse(localStorage.getItem('parkon_clubs_v2') || '[]');
+      const localMyClubIdsRaw = JSON.parse(localStorage.getItem('parkon_my_club_ids_v1') || '[]');
+      const localEventsRaw = JSON.parse(localStorage.getItem('parkon_club_rooms_v1') || localStorage.getItem('parkon_club_events_v2') || '[]');
+      const localFlashRaw = JSON.parse(localStorage.getItem('parkon_flash_gatherings_v1') || '[]');
+      const deletedClubIdsSet = new Set<string>(JSON.parse(localStorage.getItem('parkon_deleted_club_ids_v1') || '[]'));
+      const deletedEventIdsSet = new Set<string>(JSON.parse(localStorage.getItem('parkon_deleted_club_event_ids_v1') || '[]'));
+
+      const cloudClubIds = new Set(Array.isArray(cloudClubs) ? cloudClubs.map((c: any) => c?.id).filter(Boolean) : []);
+      const clubMap = new Map<string, any>();
+
+      if (Array.isArray(cloudClubs)) {
+        cloudClubs.forEach((c: any) => {
+          if (c && c.id && !deletedClubIdsSet.has(c.id)) {
+            clubMap.set(c.id, c);
+          }
+        });
+      }
+      if (Array.isArray(localClubsRaw)) {
+        localClubsRaw.forEach((c: any) => {
+          if (c && c.id && !deletedClubIdsSet.has(c.id)) {
+            if (!cloudClubIds.has(c.id)) {
+              hasUnsyncedLocalClubData = true;
+            }
+            const prev = clubMap.get(c.id);
+            if (!prev) {
+              clubMap.set(c.id, c);
+            } else {
+              clubMap.set(c.id, {
+                ...prev,
+                ...c,
+                members: Array.isArray(c.members) && c.members.length >= (prev.members?.length || 0) ? c.members : prev.members || c.members,
+                accountingEntries:
+                  Array.isArray(c.accountingEntries) && c.accountingEntries.length >= (prev.accountingEntries?.length || 0)
+                    ? c.accountingEntries
+                    : prev.accountingEntries || c.accountingEntries,
+                chronicleEvents:
+                  Array.isArray(c.chronicleEvents) && c.chronicleEvents.length >= (prev.chronicleEvents?.length || 0)
+                    ? c.chronicleEvents
+                    : prev.chronicleEvents || c.chronicleEvents,
+              });
+            }
+          }
+        });
+      }
+      const mergedClubs = Array.from(clubMap.values());
+      if (mergedClubs.length > 0) {
+        localStorage.setItem('parkon_clubs_v2', JSON.stringify(mergedClubs));
+      }
+
+      const activeSelfName = (userName || ParkOnStorage.getUserDisplayName() || '').trim();
+      const mergedMyClubIds = Array.from(
+        new Set([
+          ...(Array.isArray(cloudMyClubIds) ? cloudMyClubIds : []),
+          ...(Array.isArray(localMyClubIdsRaw) ? localMyClubIdsRaw : []),
+          ...mergedClubs
+            .filter(
+              (c: any) =>
+                (activeSelfName &&
+                  (c.presidentName?.includes(activeSelfName) ||
+                    c.managerName?.includes(activeSelfName) ||
+                    (Array.isArray(c.members) && c.members.some((m: any) => m?.name?.includes(activeSelfName))))) ||
+                c.managerName?.includes('본인')
+            )
+            .map((c: any) => c.id),
+        ])
+      ).filter((id) => !deletedClubIdsSet.has(id));
+
+      if (mergedMyClubIds.length > 0) {
+        localStorage.setItem('parkon_my_club_ids_v1', JSON.stringify(mergedMyClubIds));
+      }
+
+      const cloudEventIds = new Set(Array.isArray(cloudClubEvents) ? cloudClubEvents.map((ev: any) => ev?.id).filter(Boolean) : []);
+      const eventMap = new Map<string, any>();
+      if (Array.isArray(cloudClubEvents)) {
+        cloudClubEvents.forEach((ev: any) => {
+          if (ev && ev.id && !deletedEventIdsSet.has(ev.id)) eventMap.set(ev.id, ev);
+        });
+      }
+      if (Array.isArray(localEventsRaw)) {
+        localEventsRaw.forEach((ev: any) => {
+          if (ev && ev.id && !deletedEventIdsSet.has(ev.id)) {
+            if (!cloudEventIds.has(ev.id)) hasUnsyncedLocalClubData = true;
+            eventMap.set(ev.id, { ...(eventMap.get(ev.id) || {}), ...ev });
+          }
+        });
+      }
+      const mergedEvents = Array.from(eventMap.values());
+      if (mergedEvents.length > 0) {
+        localStorage.setItem('parkon_club_rooms_v1', JSON.stringify(mergedEvents));
+      }
+
+      const flashMap = new Map<string, any>();
+      if (Array.isArray(cloudFlashGatherings)) {
+        cloudFlashGatherings.forEach((fg: any) => {
+          if (fg && fg.id) flashMap.set(fg.id, fg);
+        });
+      }
+      if (Array.isArray(localFlashRaw)) {
+        localFlashRaw.forEach((fg: any) => {
+          if (fg && fg.id) flashMap.set(fg.id, { ...(flashMap.get(fg.id) || {}), ...fg });
+        });
+      }
+      const mergedFlash = Array.from(flashMap.values());
+      if (mergedFlash.length > 0) {
+        localStorage.setItem('parkon_flash_gatherings_v1', JSON.stringify(mergedFlash));
+      }
+    } catch (clubErr) {
+      console.warn('Club merge during restore failed:', clubErr);
+    }
+
+    // 만약 스마트폰 등 현재 기기에만 있던 클럽/대회 데이터가 있었다면, 복원 직후 즉시 클라우드로 자동 업로드!
+    if (hasUnsyncedLocalClubData) {
+      setTimeout(() => {
+        syncMemberDataToCloud(true).catch(() => {});
+      }, 300);
+    }
+
     // 8. 전용 커스텀 이벤트만 안전하게 발송 (브라우저 가짜 storage 이벤트 중복 트리거 차단)
     window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: userName } }));
     window.dispatchEvent(new CustomEvent('parkon_companion_updated'));
+    window.dispatchEvent(new CustomEvent('parkon_clubs_updated'));
+    window.dispatchEvent(new CustomEvent('parkon_club_synced', { detail: { memberCode, userName } }));
     window.dispatchEvent(new CustomEvent('parkon_member_synced', { detail: { memberCode, userName } }));
 
     return {
@@ -527,7 +676,7 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
       memberCode,
       userName: userName || '골퍼',
       roundCount: restoredRoundsCount,
-      message: `🎉 '${userName || '회원'}' 님 환영합니다! 총 ${restoredRoundsCount}회의 경기 기록과 연대기가 성공적으로 복원되었습니다.`,
+      message: `🎉 '${userName || '회원'}' 님 환영합니다! 총 ${restoredRoundsCount}회의 경기 기록과 클럽/연대기가 성공적으로 복원되었습니다.`,
     };
   } catch (e: any) {
     console.error('Failed to restore member data:', e);

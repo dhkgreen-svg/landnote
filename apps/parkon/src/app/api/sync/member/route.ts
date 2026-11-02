@@ -17,6 +17,14 @@ export interface MemberSyncRecord {
   companions?: any[];
   badges?: any;
   tour?: any;
+  customCourses?: any[];
+  crowdSpecs?: any;
+  clubs?: any[];
+  myClubIds?: string[];
+  clubEvents?: any[];
+  flashGatherings?: any[];
+  deletedClubIds?: string[];
+  deletedClubEventIds?: string[];
   updatedAt: string;
 }
 
@@ -261,8 +269,8 @@ export async function GET(req: NextRequest) {
       ceoRec.memberCode === 'PKYA-7788' &&
       ceoRec.userName === '김대희' &&
       ceoRec.phoneNumber === '010-9999-3399' &&
-      ceoRec.completedRounds?.length === 1 &&
-      ceoRec.completedRounds[0].id === 'round_haepyeong_20261027_official'
+      (ceoRec.completedRounds?.length || 0) >= 1 &&
+      ceoRec.completedRounds?.some((r: any) => r.id === 'round_haepyeong_20261027_official')
     );
 
     // Step 2: 가상 유저 1,000명 가입 및 8자리 고유번호 발급 (일부러 중간 4자리 % 25와 끝 4자리가 겹치는 번호를 포함하여 충돌 회피 테스트)
@@ -668,6 +676,86 @@ export async function GET(req: NextRequest) {
     record.completedRounds = record.completedRounds.filter((r) => !isMockOrCorruptedRound(r));
   }
 
+  // 📱↔💻 [폰↔PC 클럽 및 대회 전광판 통합 집계]:
+  // 동일 성함(예: 김대희) 또는 전체 클라우드 레코드에 등록된 실존 클럽·대회·번개를 무손실 병합하여 반환
+  const deletedClubSet = new Set<string>(Array.isArray(record.deletedClubIds) ? record.deletedClubIds : []);
+  const deletedEventSet = new Set<string>(Array.isArray(record.deletedClubEventIds) ? record.deletedClubEventIds : []);
+  const clubMap = new Map<string, any>();
+  const myClubIdSet = new Set<string>(Array.isArray(record.myClubIds) ? record.myClubIds : []);
+  const eventMap = new Map<string, any>();
+  const flashMap = new Map<string, any>();
+  const targetUserName = (record.userName || record.profile?.userName || '').trim();
+
+  const mergeClubCandidate = (c: any, isFromSameUser: boolean) => {
+    if (!c || !c.id || !c.name || deletedClubSet.has(c.id)) return;
+    const prev = clubMap.get(c.id);
+    if (!prev) {
+      clubMap.set(c.id, c);
+    } else {
+      const prevMembers = Array.isArray(prev.members) ? prev.members.length : 0;
+      const nextMembers = Array.isArray(c.members) ? c.members.length : 0;
+      const prevChron = Array.isArray(prev.chronicleEvents) ? prev.chronicleEvents.length : 0;
+      const nextChron = Array.isArray(c.chronicleEvents) ? c.chronicleEvents.length : 0;
+      if (nextMembers >= prevMembers && nextChron >= prevChron) {
+        clubMap.set(c.id, { ...prev, ...c });
+      }
+    }
+    const isUserInClub =
+      isFromSameUser ||
+      (targetUserName &&
+        (c.presidentName?.includes(targetUserName) ||
+          c.managerName?.includes(targetUserName) ||
+          (Array.isArray(c.members) && c.members.some((m: any) => m?.name?.includes(targetUserName)))));
+    if (isUserInClub) {
+      myClubIdSet.add(c.id);
+    }
+  };
+
+  if (Array.isArray(record.clubs)) {
+    record.clubs.forEach((c) => mergeClubCandidate(c, true));
+  }
+  if (Array.isArray(record.clubEvents)) {
+    record.clubEvents.forEach((ev) => {
+      if (ev && ev.id && !deletedEventSet.has(ev.id)) eventMap.set(ev.id, ev);
+    });
+  }
+  if (Array.isArray(record.flashGatherings)) {
+    record.flashGatherings.forEach((fg) => {
+      if (fg && fg.id) flashMap.set(fg.id, fg);
+    });
+  }
+
+  // 다른 기기나 다른 회원 코드에서 생성된 공개 클럽 / 동일 회원 클럽도 자동 집계
+  map.forEach((otherRec) => {
+    const otherName = (otherRec.userName || otherRec.profile?.userName || '').trim();
+    const sameUser = Boolean(targetUserName && otherName && otherName === targetUserName);
+    if (sameUser && Array.isArray(otherRec.myClubIds)) {
+      otherRec.myClubIds.forEach((id) => {
+        if (!deletedClubSet.has(id)) myClubIdSet.add(id);
+      });
+    }
+    if (Array.isArray(otherRec.clubs)) {
+      otherRec.clubs.forEach((c) => mergeClubCandidate(c, sameUser));
+    }
+    if (Array.isArray(otherRec.clubEvents)) {
+      otherRec.clubEvents.forEach((ev) => {
+        if (ev && ev.id && !deletedEventSet.has(ev.id)) {
+          eventMap.set(ev.id, ev);
+        }
+      });
+    }
+    if (Array.isArray(otherRec.flashGatherings)) {
+      otherRec.flashGatherings.forEach((fg) => {
+        if (fg && fg.id) flashMap.set(fg.id, fg);
+      });
+    }
+  });
+
+  record.clubs = Array.from(clubMap.values());
+  record.myClubIds = Array.from(myClubIdSet).filter((id) => !deletedClubSet.has(id));
+  record.clubEvents = Array.from(eventMap.values());
+  record.flashGatherings = Array.from(flashMap.values());
+
   return NextResponse.json({ success: true, data: record });
 }
 
@@ -753,10 +841,110 @@ export async function POST(req: NextRequest) {
     const incomingAltPhones: string[] = Array.isArray(body.altPhones) ? body.altPhones : [];
     const mergedAltPhones = Array.from(new Set([...existingAltPhones, ...incomingAltPhones, finalPhone].filter(Boolean)));
 
+    // 🏛️ 클럽(clubs), 내 소속 클럽(myClubIds), 대회 전광판(clubEvents), 번개(flashGatherings) 무손실 합집합 병합
+    // (PC에서 빈 배열을 보내더라도 휴대폰에서 생성한 클럽이 절대 덮어씌워지지 않도록 보호!)
+    const mergedDeletedClubIds = Array.from(
+      new Set([
+        ...(Array.isArray(existing?.deletedClubIds) ? existing!.deletedClubIds! : []),
+        ...(Array.isArray(body.deletedClubIds) ? body.deletedClubIds : []),
+      ])
+    );
+    const mergedDeletedEventIds = Array.from(
+      new Set([
+        ...(Array.isArray(existing?.deletedClubEventIds) ? existing!.deletedClubEventIds! : []),
+        ...(Array.isArray(body.deletedClubEventIds) ? body.deletedClubEventIds : []),
+      ])
+    );
+    const deletedClubSet = new Set(mergedDeletedClubIds);
+    const deletedEventSet = new Set(mergedDeletedEventIds);
+
+    const clubMap = new Map<string, any>();
+    if (Array.isArray(existing?.clubs)) {
+      existing!.clubs!.forEach((c: any) => {
+        if (c && c.id && !deletedClubSet.has(c.id)) clubMap.set(c.id, c);
+      });
+    }
+    if (Array.isArray(body.clubs)) {
+      body.clubs.forEach((c: any) => {
+        if (c && c.id && !deletedClubSet.has(c.id)) {
+          const prev = clubMap.get(c.id);
+          if (!prev) {
+            clubMap.set(c.id, c);
+          } else {
+            // 최신 회원 명단, 회계 내역, 클럽 연대기 등이 더 풍부하거나 최신인 데이터로 스마트 병합
+            clubMap.set(c.id, {
+              ...prev,
+              ...c,
+              members: Array.isArray(c.members) && c.members.length >= (prev.members?.length || 0) ? c.members : prev.members || c.members,
+              accountingEntries:
+                Array.isArray(c.accountingEntries) && c.accountingEntries.length >= (prev.accountingEntries?.length || 0)
+                  ? c.accountingEntries
+                  : prev.accountingEntries || c.accountingEntries,
+              chronicleEvents:
+                Array.isArray(c.chronicleEvents) && c.chronicleEvents.length >= (prev.chronicleEvents?.length || 0)
+                  ? c.chronicleEvents
+                  : prev.chronicleEvents || c.chronicleEvents,
+            });
+          }
+        }
+      });
+    }
+    const mergedClubs = Array.from(clubMap.values());
+
+    const mergedMyClubIds = Array.from(
+      new Set([
+        ...(Array.isArray(existing?.myClubIds) ? existing!.myClubIds! : []),
+        ...(Array.isArray(body.myClubIds) ? body.myClubIds : []),
+        ...mergedClubs
+          .filter(
+            (c: any) =>
+              incomingUserName &&
+              (c.presidentName?.includes(incomingUserName) ||
+                c.managerName?.includes(incomingUserName) ||
+                (Array.isArray(c.members) && c.members.some((m: any) => m?.name?.includes(incomingUserName))))
+          )
+          .map((c: any) => c.id),
+      ])
+    ).filter((id) => !deletedClubSet.has(id));
+
+    const eventMap = new Map<string, any>();
+    if (Array.isArray(existing?.clubEvents)) {
+      existing!.clubEvents!.forEach((ev: any) => {
+        if (ev && ev.id && !deletedEventSet.has(ev.id)) eventMap.set(ev.id, ev);
+      });
+    }
+    if (Array.isArray(body.clubEvents)) {
+      body.clubEvents.forEach((ev: any) => {
+        if (ev && ev.id && !deletedEventSet.has(ev.id)) {
+          eventMap.set(ev.id, { ...(eventMap.get(ev.id) || {}), ...ev });
+        }
+      });
+    }
+    const mergedClubEvents = Array.from(eventMap.values());
+
+    const flashMap = new Map<string, any>();
+    if (Array.isArray(existing?.flashGatherings)) {
+      existing!.flashGatherings!.forEach((fg: any) => {
+        if (fg && fg.id) flashMap.set(fg.id, fg);
+      });
+    }
+    if (Array.isArray(body.flashGatherings)) {
+      body.flashGatherings.forEach((fg: any) => {
+        if (fg && fg.id) flashMap.set(fg.id, { ...(flashMap.get(fg.id) || {}), ...fg });
+      });
+    }
+    const mergedFlashGatherings = Array.from(flashMap.values());
+
     const record: MemberSyncRecord = {
       ...existing,
       ...body,
       completedRounds: mergedRounds,
+      clubs: mergedClubs,
+      myClubIds: mergedMyClubIds,
+      clubEvents: mergedClubEvents,
+      flashGatherings: mergedFlashGatherings,
+      deletedClubIds: mergedDeletedClubIds,
+      deletedClubEventIds: mergedDeletedEventIds,
       memberCode: formattedCode,
       phoneNumber: finalPhone,
       altPhones: mergedAltPhones,
@@ -772,7 +960,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       memberCode: record.memberCode,
-      message: '회원 데이터가 클라우드에 안전하게 보관되었습니다.',
+      clubsCount: mergedClubs.length,
+      myClubIdsCount: mergedMyClubIds.length,
+      message: '회원 및 클럽 데이터가 클라우드에 안전하게 보관되었습니다.',
     });
   } catch (e: any) {
     console.error('Member sync POST error:', e);

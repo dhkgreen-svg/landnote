@@ -38,6 +38,20 @@ const STORAGE_KEYS = {
   CLUB_CHRONICLES: 'parkon_club_chronicles_v1',
 };
 
+// 📱↔💻 스마트폰 ↔ PC 클럽/대회 변경 사항 즉시 클라우드 자동 업로드 헬퍼
+function triggerCloudClubSync(): void {
+  if (typeof window === 'undefined') return;
+  setTimeout(() => {
+    import('./memberCodeUtils')
+      .then((m) => {
+        if (m && typeof m.syncMemberDataToCloud === 'function') {
+          m.syncMemberDataToCloud(true).catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, 50);
+}
+
 // 기본 번개 데이터 (사용자 직접 개설 전에는 빈 목록 유지)
 function generateDefaultSeedFlash(): FlashGathering[] {
   return [];
@@ -108,6 +122,7 @@ export const ClubStorage = {
       if (room.clubId || (room.groups && room.groups.some((g) => g.players.length > 0))) {
         this.archiveEventRoomToClubChronicle(room);
       }
+      triggerCloudClubSync();
     } catch (e) {
       console.error('Failed to save club room:', e);
     }
@@ -121,6 +136,14 @@ export const ClubStorage = {
       const rooms: ClubEventRoom[] = data ? JSON.parse(data) : [];
       const updated = rooms.filter((r) => r.id !== roomId);
       localStorage.setItem(STORAGE_KEYS.CLUB_ROOMS, JSON.stringify(updated));
+      try {
+        const delEvents = JSON.parse(localStorage.getItem('parkon_deleted_club_event_ids_v1') || '[]');
+        if (!delEvents.includes(roomId)) {
+          delEvents.push(roomId);
+          localStorage.setItem('parkon_deleted_club_event_ids_v1', JSON.stringify(delEvents));
+        }
+      } catch {}
+      triggerCloudClubSync();
     } catch (e) {
       console.error('Failed to delete club room:', e);
     }
@@ -136,6 +159,7 @@ export const ClubStorage = {
       if (idx === -1) return null;
       rooms[idx] = { ...rooms[idx], ...updates };
       localStorage.setItem(STORAGE_KEYS.CLUB_ROOMS, JSON.stringify(rooms));
+      triggerCloudClubSync();
       return rooms[idx];
     } catch (e) {
       console.error('Failed to update club room:', e);
@@ -2253,6 +2277,7 @@ ${link}`;
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed)) {
           // 혹시라도 남아있을 수 있는 가상 더미 데이터 패턴(club-gumi-, club-seoul-, 회장: 최한강 등) 전면 차단
+          // 단, 실제 사용자가 생성한 클럽(isParkOnClub === true 또는 club-17...)은 절대 필터링하지 않도록 보호!
           userClubs = parsed.filter((c) => {
             if (!c || !c.id || !c.name) return false;
             if (
@@ -2263,13 +2288,19 @@ ${link}`;
               c.id.startsWith('club-seed-') ||
               c.id.startsWith('club-miryang-') ||
               c.id.startsWith('club-changwon-') ||
-              c.id.startsWith('club-test-') ||
-              c.presidentName === '최한강' ||
-              c.managerName === '조총무' ||
-              c.presidentName === '박회장' ||
-              c.managerName === '김총무'
+              c.id.startsWith('club-test-')
             ) {
               return false;
+            }
+            if (!c.isParkOnClub && !c.id.startsWith('club-17')) {
+              if (
+                c.presidentName === '최한강' ||
+                c.managerName === '조총무' ||
+                c.presidentName === '박회장' ||
+                c.managerName === '김총무'
+              ) {
+                return false;
+              }
             }
             return true;
           });
@@ -2324,6 +2355,7 @@ ${link}`;
         userClubs.unshift(updated);
       }
       localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(userClubs));
+      triggerCloudClubSync();
       return updated;
     } catch (e) {
       console.error('Failed to update club recruitment:', e);
@@ -2349,6 +2381,24 @@ ${link}`;
   }): ParkGolfClub {
     const list = this.getAllClubs();
     const newId = `club-${Date.now()}`;
+    let currentSelfName = '김대희';
+    if (typeof window !== 'undefined') {
+      try {
+        const rawProfile = localStorage.getItem('parkon_user_profile_v1');
+        if (rawProfile) {
+          const prof = JSON.parse(rawProfile);
+          if (prof?.userName) currentSelfName = prof.userName.trim();
+        }
+      } catch {}
+    }
+    const rawMgr = (clubData.managerName || '').trim();
+    const resolvedManagerName =
+      !rawMgr || rawMgr === '총무(본인)' || rawMgr === '김총무(본인)' || rawMgr === '총무'
+        ? `${currentSelfName}(본인)`
+        : rawMgr;
+    const rawPres = (clubData.presidentName || '').trim();
+    const resolvedPresidentName = !rawPres || rawPres === '회장' ? currentSelfName : rawPres;
+
     const newClub: ParkGolfClub = {
       id: newId,
       name: clubData.name,
@@ -2356,14 +2406,14 @@ ${link}`;
       homeCourseId: clubData.homeCourseId,
       homeCourseName: clubData.homeCourseName,
       description: clubData.description,
-      presidentName: clubData.presidentName || '회장',
-      managerName: clubData.managerName || '김총무(본인)',
+      presidentName: resolvedPresidentName,
+      managerName: resolvedManagerName,
       contactPhone: clubData.contactPhone || '',
       memberCount: 1,
       members: [
         {
           id: `m_${Date.now()}`,
-          name: clubData.managerName || '김총무(본인)',
+          name: resolvedManagerName,
           role: 'MANAGER',
           joinedAt: new Date().toISOString().slice(0, 10),
           phone: clubData.contactPhone,
@@ -2388,6 +2438,8 @@ ${link}`;
         myClubs.push(newId);
         localStorage.setItem(STORAGE_KEYS.MY_CLUB_IDS, JSON.stringify(myClubs));
       }
+      this.syncClubToSupabase(newClub);
+      triggerCloudClubSync();
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('parkon_clubs_updated', { detail: newClub }));
       }
@@ -2401,14 +2453,33 @@ ${link}`;
     if (typeof window === 'undefined') return [];
     try {
       const data = localStorage.getItem(STORAGE_KEYS.MY_CLUB_IDS);
-      if (data === null) {
-        return [];
+      const savedIds: string[] = data ? (Array.isArray(JSON.parse(data)) ? JSON.parse(data) : []) : [];
+      const allClubs = this.getAllClubs();
+      let selfName = '김대희';
+      try {
+        const rawProfile = localStorage.getItem('parkon_user_profile_v1');
+        if (rawProfile) {
+          const prof = JSON.parse(rawProfile);
+          if (prof?.userName) selfName = prof.userName.trim();
+        }
+      } catch {}
+
+      const autoMatchedIds = allClubs
+        .filter(
+          (c) =>
+            c.managerName?.includes('본인') ||
+            (selfName &&
+              (c.presidentName?.includes(selfName) ||
+                c.managerName?.includes(selfName) ||
+                c.members?.some((m) => m.name?.includes(selfName) || m.name?.includes('본인'))))
+        )
+        .map((c) => c.id);
+
+      const merged = Array.from(new Set([...savedIds, ...autoMatchedIds]));
+      if (merged.length !== savedIds.length) {
+        localStorage.setItem(STORAGE_KEYS.MY_CLUB_IDS, JSON.stringify(merged));
       }
-      const parsed = JSON.parse(data);
-      if (!Array.isArray(parsed)) {
-        return [];
-      }
-      return parsed;
+      return merged;
     } catch {
       return [];
     }
@@ -2539,9 +2610,10 @@ ${link}`;
     }
   },
 
-  // 3-1. ☁️ Supabase 원격 동기화 (오프라인 Fail-Safe 2-Way 연동)
+  // 3-1. ☁️ Supabase 및 클라우드 서버 원격 동기화 (오프라인 Fail-Safe 2-Way 연동)
   async syncClubToSupabase(club: ParkGolfClub): Promise<boolean> {
     if (!club || !club.id) return false;
+    triggerCloudClubSync();
     try {
       // 1. clubs 마스터 테이블 Upsert
       const { error: clubErr } = await supabase.from('clubs').upsert(
