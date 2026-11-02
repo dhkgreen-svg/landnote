@@ -2,10 +2,13 @@ export type ScorePrivacyLevel = 'PUBLIC' | 'TOTAL_ONLY' | 'PRIVATE';
 
 export interface ClubAccountingEntry {
   id: string;
-  type: 'DUES' | 'ENTRY_FEE' | 'SPONSOR' | 'EXPENSE';
+  type: 'DUES' | 'ENTRY_FEE' | 'SPONSOR' | 'EXPENSE' | 'INCOME_DUES' | 'INCOME_ENTRY_FEE' | 'INCOME_SPONSOR';
+  category?: string;
   title: string;
   amount: number;
   date: string;
+  storeName?: string;
+  notes?: string;
   authorName?: string;
   receiptImageUrl?: string;
   isAiParsed?: boolean;
@@ -96,7 +99,7 @@ export interface LuckyDrawWinner {
   drawnAt: string;
 }
 
-export type SpecialAwardType = 'PAR_MASTER' | 'DUCK_22' | 'LUCKY_7' | 'LAST_PLACE' | 'NEAR_MISS';
+export type SpecialAwardType = 'PAR_MASTER' | 'DUCK_22' | 'LUCKY_7' | 'LAST_PLACE' | 'NEAR_MISS' | 'HOLE_IN_ONE';
 
 export interface AwardRuleConfig {
   winnerGraceMonths?: number; // 0 = 미적용, 1 = 직전 1회 우승자 제외, 2 = 최근 2회, 3 = 최근 3개월
@@ -113,7 +116,9 @@ export interface SpecialAwardWinner {
   badge: string;
   winnerName: string;
   groupNumber?: number;
-  description: string;
+  description?: string;
+  detailText?: string;
+  holeNumber?: number;
   valueInfo?: string; // e.g. "파(Par) 14개 달성", "22위 (72타)"
 }
 
@@ -123,6 +128,8 @@ export interface ClubMember {
   name: string;
   role: 'PRESIDENT' | 'VICE_PRESIDENT' | 'MANAGER' | 'AUDITOR' | 'DIRECTOR' | 'CAPTAIN' | 'MEMBER' | string; // 회장 / 부회장 / 총무 / 감사 / 이사 / 경기위원장 / 회원 / 맞춤직책
   customRoleName?: string; // [NEW] 맞춤 직책명 직접 수정 (예: '수석부회장', '여성부회장', '고문' 등)
+  avgStrokes?: number;
+  roundsPlayed?: number;
   joinedAt: string;
   phone?: string;
   duesPaid?: boolean; // [NEW] 연회비 납부 여부 (완납 / 미납)
