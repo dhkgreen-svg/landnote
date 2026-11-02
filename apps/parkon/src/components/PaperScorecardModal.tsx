@@ -164,7 +164,7 @@ export function PaperScorecardModal({
     if (isOpen) {
       setStep('UPLOAD');
       try {
-        const comps = CompanionStorage.getAllCompanions().map((c) => c.name).filter(Boolean);
+        const comps = CompanionStorage.getCompanions().map((c: any) => c.companionName || c.name).filter(Boolean);
         setSavedCompanionNames(Array.from(new Set(['오송', '박상훈', '정수진', ...comps])).slice(0, 8));
         const completed = ParkOnStorage.getCompletedRounds();
         const usedCourses = Array.from(new Set(completed.map((r) => r.courseName).filter(Boolean)));
@@ -261,7 +261,7 @@ export function PaperScorecardModal({
     }));
 
     const profile = ParkOnStorage.getUserProfile();
-    const myName = profile?.nickname || '김대희';
+    const myName = profile?.userName || '김대희';
 
     const validCompanions = manualCompanions.filter((c) => c.name.trim().length > 0);
     const players: RoundPlayer[] = [
@@ -333,7 +333,7 @@ export function PaperScorecardModal({
     // 동반자 1촌 명부에 자동 반영
     validCompanions.forEach((comp) => {
       try {
-        CompanionStorage.addOrUpdateCompanion(comp.name.trim(), finalCourseName, Number(comp.score) || undefined, manualMemo.trim() || '외부 스코어보드 동반 라운드');
+        CompanionStorage.addOrUpdateCompanion(comp.name.trim(), finalCourseName, undefined, manualMemo.trim() || '외부 스코어보드 동반 라운드');
       } catch {}
     });
 
