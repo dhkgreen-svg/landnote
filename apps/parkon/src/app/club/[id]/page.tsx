@@ -273,6 +273,49 @@ function ClubRoomDetailContent() {
   const [managerPhotoCaption, setManagerPhotoCaption] = useState<string>('');
   const [managerPhotoDataUrl, setManagerPhotoDataUrl] = useState<string>('');
   const [managerPhotoSaved, setManagerPhotoSaved] = useState<boolean>(false);
+  const [photoCommentDraft, setPhotoCommentDraft] = useState<Record<string, string>>({});
+  const [fieldPhotoFeed, setFieldPhotoFeed] = useState<
+    Array<{
+      id: string;
+      tag: 'GROUP_START' | 'HOLE_IN_ONE' | 'AWARD_WINNER' | 'AFTER_PARTY';
+      badgeText: string;
+      authorName: string;
+      groupLabel: string;
+      caption: string;
+      timeStr: string;
+      dataUrl?: string;
+      reactions: { clap: number; fire: number; party: number };
+      comments: Array<{ id: string; user: string; group: string; text: string; time: string }>;
+    }>
+  >([
+    {
+      id: 'feed_hio_3g',
+      tag: 'HOLE_IN_ONE',
+      badgeText: '🌟 3조 A-5홀 홀인원 달성!',
+      authorName: '오송 (3조 조장)',
+      groupLabel: '3조 · A코스 5번홀 (Par 3 / 55m)',
+      caption: '3조 박상훈 회원님 A-5홀 짜릿한 홀인원 달성!! 현장 동반자 전원 황금 인증샷 남깁니다 🎉⛳',
+      timeStr: '방금 전',
+      reactions: { clap: 34, fire: 28, party: 19 },
+      comments: [
+        { id: 'c1', user: '김총무', group: '본부석', text: '와!! 3조 박상훈님 홀인원 진심으로 축하드립니다! 시상식 특별상 즉시 등재 완료했습니다 🏆', time: '1분 전' },
+        { id: 'c2', user: '이민호', group: '2조 조장', text: '옆 홀에서 환호성 들렸는데 홀인원이었군요!! 오늘 뒤풀이 만찬 기대합니다 👏👏', time: '방금 전' },
+      ],
+    },
+    {
+      id: 'feed_start_1g',
+      tag: 'GROUP_START',
+      badgeText: '👥 1~12조 대항전 출발 단체사진',
+      authorName: '김총무 (대회 본부)',
+      groupLabel: '전체 12개 조 (48명 출전)',
+      caption: '구미 동락 A·B코스 18홀 클럽 대항전 출발 전 화이팅 단체 기념촬영! 다치지 말고 즐거운 라운드 되세요!',
+      timeStr: '15분 전',
+      reactions: { clap: 42, fire: 21, party: 31 },
+      comments: [
+        { id: 'c3', user: '장성호', group: '7조 조장', text: '총무님 48명 12개 조 조편성이랑 회비 수납을 파키 앱 하나로 1초 만에 정리해주셔서 출발이 너무 쾌적합니다 👍', time: '10분 전' },
+      ],
+    },
+  ]);
 
   const loadRoom = useCallback(async () => {
     if (!roomId) return;
@@ -284,7 +327,7 @@ function ClubRoomDetailContent() {
         const res = await fetch(`/api/club/live-room?id=${roomId}`);
         if (res.ok) {
           const data = await res.json();
-          if (data && data.room) {
+          if (data && data.room && data.room.id === roomId) {
             found = data.room;
             ClubStorage.saveRoom(data.room);
           }
@@ -301,7 +344,7 @@ function ClubRoomDetailContent() {
         const res = await fetch(`/api/club/live-room?id=${roomId}`);
         if (res.ok) {
           const data = await res.json();
-          if (data && data.room) {
+          if (data && data.room && data.room.id === roomId) {
             found = data.room;
             ClubStorage.saveRoom(data.room);
           }
@@ -358,16 +401,18 @@ function ClubRoomDetailContent() {
   useEffect(() => {
     if (!roomId) return;
     const interval = setInterval(async () => {
-      try {
-        const liveRes = await fetch(`/api/club/live-room?id=${roomId}`);
-        if (liveRes.ok) {
-          const liveData = await liveRes.json();
-          if (liveData && liveData.room) {
-            setRoom(liveData.room);
-            ClubStorage.saveRoom(liveData.room);
+      if (roomId.includes('tourney-10p-live') || roomId.includes('live')) {
+        try {
+          const liveRes = await fetch(`/api/club/live-room?id=${roomId}`);
+          if (liveRes.ok) {
+            const liveData = await liveRes.json();
+            if (liveData && liveData.room && liveData.room.id === roomId) {
+              setRoom(liveData.room);
+              ClubStorage.saveRoom(liveData.room);
+            }
           }
-        }
-      } catch {}
+        } catch {}
+      }
 
       const res = await ClubStorage.syncTournamentScoresFromRoundRooms(roomId);
       if (res.success && res.room && res.updatedGroupsCount > 0) {
@@ -737,6 +782,56 @@ function ClubRoomDetailContent() {
     }
   };
 
+  // 미납자 전원 1초 일괄 완납 처리 (40~50명 대규모 대회 총무 편의)
+  const handleBulkPayAll = () => {
+    if (!room) return;
+    const updated = ClubStorage.markAllPlayersPaid(room.id);
+    if (updated) {
+      setRoom({ ...updated });
+      showToast(`✅ 미납 회원 전원 입금 완료(수납률 100%)로 일괄 처리되었습니다!`);
+    }
+  };
+
+  // 현장 포토 피드 리액션 (박수/나이스샷/최고) 원터치 증가
+  const handleReactFieldPhoto = (photoId: string, type: 'clap' | 'fire' | 'party') => {
+    setFieldPhotoFeed((prev) =>
+      prev.map((item) =>
+        item.id === photoId
+          ? { ...item, reactions: { ...item.reactions, [type]: item.reactions[type] + 1 } }
+          : item
+      )
+    );
+    showToast('👏 현장 포토에 응원 리액션을 보냈습니다!');
+  };
+
+  // 현장 포토 피드 실시간 댓글 등록
+  const handleAddFieldPhotoComment = (photoId: string) => {
+    const text = (photoCommentDraft[photoId] || '').trim();
+    if (!text) return;
+    setFieldPhotoFeed((prev) =>
+      prev.map((item) =>
+        item.id === photoId
+          ? {
+              ...item,
+              reactions: { ...item.reactions, clap: item.reactions.clap + 1 },
+              comments: [
+                ...item.comments,
+                {
+                  id: `cmt_${Date.now()}`,
+                  user: currentUser,
+                  group: myGroup ? `${myGroup.groupNumber}조` : '대회본부',
+                  text,
+                  time: '방금 전',
+                },
+              ],
+            }
+          : item
+      )
+    );
+    setPhotoCommentDraft((prev) => ({ ...prev, [photoId]: '' }));
+    showToast('💬 현장 포토에 실시간 축하 댓글이 등록되었습니다!');
+  };
+
   // 참가비 수납 현황 카카오톡/LINE 리포트 복사
   const handleCopyPaymentReport = async () => {
     if (!room) return;
@@ -985,6 +1080,30 @@ function ClubRoomDetailContent() {
       AWARD_WINNER: '🏆 시상식 우승자 기념사진',
       AFTER_PARTY: '🍲 뒤풀이 만찬 기념사진',
     };
+    const newFeedId = `mgr_feed_${Date.now()}`;
+    setFieldPhotoFeed((prev) => [
+      {
+        id: newFeedId,
+        tag: managerPhotoTag,
+        badgeText: tagTitleMap[managerPhotoTag] || '📸 총무 현장 인증샷',
+        authorName: `${currentUser} (총무)`,
+        groupLabel: `전체 ${room.groups.length}개 조 (${totalAllPlayers}명)`,
+        caption: managerPhotoCaption.trim() || `[${room.title}] 현장 공식 기념사진 등록 완료!`,
+        timeStr: '방금 전',
+        dataUrl: photoUrl || undefined,
+        reactions: { clap: 12, fire: 9, party: 8 },
+        comments: [
+          {
+            id: `auto_c_${Date.now()}`,
+            user: '오송',
+            group: '1조 조장',
+            text: '총무님 현장 사진 바로 올려주셔서 단톡방이랑 전광판 분위기가 최고입니다! 👏🎉',
+            time: '방금 전',
+          },
+        ],
+      },
+      ...prev,
+    ]);
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkgolfallinone.com';
     const shareText = `📸 [파키 앱 (PARKY APP) 총무 현장 포토 & 대회 공지]
 🏆 대회명: ${room.title}
@@ -2066,6 +2185,7 @@ ${origin}/club/${room.id}`;
         </button>
         <button
           type="button"
+          data-testid="tab-individual-leaderboard"
           onClick={() => setActiveTab('individual')}
           className={`py-2 text-xs font-black rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${
             activeTab === 'individual'
@@ -2923,6 +3043,129 @@ ${origin}/club/${room.id}`;
         </div>
       )}
 
+      {/* 📸 [현장 실시간 포토 피드 & 동호인 반응 보드] 모든 탭(조편성/단체/개인)에서 상시 노출 */}
+      <div
+        data-testid="live-tournament-photo-feed"
+        className="bg-white rounded-2xl border-2 border-emerald-200 shadow-sm p-3.5 space-y-3"
+      >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Camera className="w-4 h-4 text-emerald-700" />
+                <span className="text-xs font-black text-stone-900">
+                  📸 현장 실시간 포토 피드 & 회원 반응 ({fieldPhotoFeed.length}건)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowManagerPhotoModal(true);
+                  if (!managerPhotoDataUrl) {
+                    setTimeout(() => handleGenerateManagerSamplePhoto('HOLE_IN_ONE'), 50);
+                  }
+                }}
+                className="bg-emerald-700 hover:bg-emerald-800 text-amber-300 text-[11px] font-black px-2.5 py-1 rounded-xl shadow-2xs transition active:scale-95 cursor-pointer flex items-center gap-1"
+              >
+                <Camera className="w-3 h-3" />
+                <span>+ 사진 올리기</span>
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              {fieldPhotoFeed.map((item, idx) => (
+                <div
+                  key={item.id}
+                  data-testid={`photo-feed-card-${idx}`}
+                  className="bg-stone-50 rounded-2xl border border-stone-200/90 p-3 space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="bg-amber-400 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-full">
+                      {item.badgeText}
+                    </span>
+                    <span className="text-[10px] text-stone-500 font-bold">
+                      {item.authorName} · {item.timeStr}
+                    </span>
+                  </div>
+
+                  {item.dataUrl && (
+                    <div className="rounded-xl overflow-hidden border border-amber-400/60 max-h-44 bg-stone-950">
+                      <img src={item.dataUrl} alt={item.caption} className="w-full h-36 object-cover" />
+                    </div>
+                  )}
+
+                  <div className="text-xs font-black text-stone-900 leading-snug">
+                    {item.caption}
+                  </div>
+                  <div className="text-[10px] font-bold text-emerald-800">
+                    📍 {item.groupLabel} · ⛳ 파키 앱 (PARKY APP) 공식 클럽 실록 자동 등재됨
+                  </div>
+
+                  {/* 원터치 회원 리액션 버튼 3종 */}
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      data-testid={`btn-react-clap-${idx}`}
+                      onClick={() => handleReactFieldPhoto(item.id, 'clap')}
+                      className="flex-1 py-1.5 px-2 bg-white hover:bg-amber-50 border border-stone-200 rounded-xl text-[11px] font-black text-stone-800 flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
+                    >
+                      <span>👏 축하박수</span>
+                      <span className="text-amber-700">{item.reactions.clap}</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-testid={`btn-react-fire-${idx}`}
+                      onClick={() => handleReactFieldPhoto(item.id, 'fire')}
+                      className="flex-1 py-1.5 px-2 bg-white hover:bg-rose-50 border border-stone-200 rounded-xl text-[11px] font-black text-stone-800 flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
+                    >
+                      <span>🔥 나이스샷</span>
+                      <span className="text-rose-600">{item.reactions.fire}</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-testid={`btn-react-party-${idx}`}
+                      onClick={() => handleReactFieldPhoto(item.id, 'party')}
+                      className="flex-1 py-1.5 px-2 bg-white hover:bg-emerald-50 border border-stone-200 rounded-xl text-[11px] font-black text-stone-800 flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
+                    >
+                      <span>🎉 최고예요</span>
+                      <span className="text-emerald-700">{item.reactions.party}</span>
+                    </button>
+                  </div>
+
+                  {/* 실시간 회원 댓글 피드백 목록 */}
+                  <div className="bg-white rounded-xl p-2 border border-stone-200/80 space-y-1.5">
+                    {item.comments.map((c) => (
+                      <div key={c.id} className="text-[11px] leading-snug flex items-start justify-between gap-2">
+                        <div>
+                          <span className="font-black text-emerald-900">[{c.group} {c.user}]</span>{' '}
+                          <span className="font-semibold text-stone-700">{c.text}</span>
+                        </div>
+                        <span className="text-[9px] text-stone-400 shrink-0">{c.time}</span>
+                      </div>
+                    ))}
+
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <input
+                        type="text"
+                        data-testid={`input-photo-comment-${idx}`}
+                        value={photoCommentDraft[item.id] || ''}
+                        onChange={(e) => setPhotoCommentDraft((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                        placeholder="축하 한마디 남기기 (예: 홀인원 축하드립니다! 🎉)"
+                        className="flex-1 px-2.5 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-[11px] font-bold text-stone-800 focus:outline-none focus:border-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        data-testid={`btn-submit-photo-comment-${idx}`}
+                        onClick={() => handleAddFieldPhotoComment(item.id)}
+                        className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-black rounded-lg transition active:scale-95 cursor-pointer shrink-0"
+                      >
+                        등록
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
       {/* TAB 4: 📊 클럽 통계 Hub */}
       {activeTab === 'stats' && (
         <div className="space-y-3 animate-fadeIn">
@@ -3064,6 +3307,42 @@ ${origin}/club/${room.id}`;
                         <div className="text-[9px] text-amber-700 font-bold">{paymentSummary.uncollectedAmount.toLocaleString()}{isJapanese ? '円' : '원'}</div>
                       </div>
                     </div>
+
+                    {/* ⏳ [40~50인 대규모 대회 총무 전용] 미납 회원 핀셋 명단 & 원터치 입금확인 바 */}
+                    {paymentSummary.unpaidCount > 0 && (
+                      <div className="pt-1.5 border-t border-amber-200/80 space-y-1.5" data-testid="unpaid-quick-check-bar">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-rose-700">
+                            ⏳ 미납자 빠른 입금확인 ({paymentSummary.unpaidCount}명 · 이름 터치 시 즉시 완납)
+                          </span>
+                          <button
+                            type="button"
+                            data-testid="btn-bulk-pay-all"
+                            onClick={handleBulkPayAll}
+                            className="bg-emerald-700 hover:bg-emerald-800 text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-2xs transition active:scale-95 cursor-pointer"
+                          >
+                            ✅ 미납 전원 일괄 완납
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                          {paymentSummary.unpaidPlayers.map((up) => {
+                            const grp = room.groups.find((g) => g.players.some((p) => p.id === up.id));
+                            return (
+                              <button
+                                key={up.id}
+                                type="button"
+                                data-testid={`btn-quick-pay-${up.id}`}
+                                onClick={() => handleTogglePayment(up.id, up.name)}
+                                className="shrink-0 bg-rose-50 hover:bg-emerald-50 text-rose-900 hover:text-emerald-900 border border-rose-300 hover:border-emerald-400 px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                              >
+                                <span>{grp ? `${grp.groupNumber}조 ` : ''}{up.name}</span>
+                                <span className="text-emerald-700 font-black">✓확인</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -4142,6 +4421,42 @@ ${origin}/club/${room.id}`;
                         <div className="text-[9px] text-amber-700 font-bold">{paymentSummary.uncollectedAmount.toLocaleString()}{isJapanese ? '円' : '원'}</div>
                       </div>
                     </div>
+
+                    {/* ⏳ [40~50인 대규모 대회 총무 전용] 미납 회원 핀셋 명단 & 원터치 입금확인 바 */}
+                    {paymentSummary.unpaidCount > 0 && (
+                      <div className="pt-1.5 border-t border-amber-200/80 space-y-1.5" data-testid="unpaid-quick-check-bar">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-rose-700">
+                            ⏳ 미납자 빠른 입금확인 ({paymentSummary.unpaidCount}명 · 이름 터치 시 즉시 완납)
+                          </span>
+                          <button
+                            type="button"
+                            data-testid="btn-bulk-pay-all"
+                            onClick={handleBulkPayAll}
+                            className="bg-emerald-700 hover:bg-emerald-800 text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-2xs transition active:scale-95 cursor-pointer"
+                          >
+                            ✅ 미납 전원 일괄 완납
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                          {paymentSummary.unpaidPlayers.map((up) => {
+                            const grp = room.groups.find((g) => g.players.some((p) => p.id === up.id));
+                            return (
+                              <button
+                                key={up.id}
+                                type="button"
+                                data-testid={`btn-quick-pay-${up.id}`}
+                                onClick={() => handleTogglePayment(up.id, up.name)}
+                                className="shrink-0 bg-rose-50 hover:bg-emerald-50 text-rose-900 hover:text-emerald-900 border border-rose-300 hover:border-emerald-400 px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                              >
+                                <span>{grp ? `${grp.groupNumber}조 ` : ''}{up.name}</span>
+                                <span className="text-emerald-700 font-black">✓확인</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -4320,6 +4635,129 @@ ${origin}/club/${room.id}`;
         <Trophy className="w-5 h-5 text-amber-300" />
         <span>{isJapanese ? '📊 大会全組現況＆リアルタイム順位表 (電光掲示板を見る ▶)' : '📊 대회 전체 현황 & 실시간 순위표 (전광판 보기 ▶)'}</span>
       </button>
+
+      {/* 📸 [현장 실시간 포토 피드 & 동호인 반응 보드] 대회방 메인 화면 상시 노출 */}
+      <div
+        data-testid="live-tournament-photo-feed"
+        className="bg-white rounded-2xl border-2 border-emerald-200 shadow-sm p-3.5 space-y-3"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Camera className="w-4 h-4 text-emerald-700" />
+            <span className="text-xs font-black text-stone-900">
+              📸 현장 실시간 포토 피드 & 회원 반응 ({fieldPhotoFeed.length}건)
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setShowManagerPhotoModal(true);
+              if (!managerPhotoDataUrl) {
+                setTimeout(() => handleGenerateManagerSamplePhoto('HOLE_IN_ONE'), 50);
+              }
+            }}
+            className="bg-emerald-700 hover:bg-emerald-800 text-amber-300 text-[11px] font-black px-2.5 py-1 rounded-xl shadow-2xs transition active:scale-95 cursor-pointer flex items-center gap-1"
+          >
+            <Camera className="w-3 h-3" />
+            <span>+ 사진 올리기</span>
+          </button>
+        </div>
+
+        <div className="space-y-2.5">
+          {fieldPhotoFeed.map((item, idx) => (
+            <div
+              key={item.id}
+              data-testid={`photo-feed-card-${idx}`}
+              className="bg-stone-50 rounded-2xl border border-stone-200/90 p-3 space-y-2"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="bg-amber-400 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-full">
+                  {item.badgeText}
+                </span>
+                <span className="text-[10px] text-stone-500 font-bold">
+                  {item.authorName} · {item.timeStr}
+                </span>
+              </div>
+
+              {item.dataUrl && (
+                <div className="rounded-xl overflow-hidden border border-amber-400/60 max-h-44 bg-stone-950">
+                  <img src={item.dataUrl} alt={item.caption} className="w-full h-36 object-cover" />
+                </div>
+              )}
+
+              <div className="text-xs font-black text-stone-900 leading-snug">
+                {item.caption}
+              </div>
+              <div className="text-[10px] font-bold text-emerald-800">
+                📍 {item.groupLabel} · ⛳ 파키 앱 (PARKY APP) 공식 클럽 실록 자동 등재됨
+              </div>
+
+              {/* 원터치 회원 리액션 버튼 3종 */}
+              <div className="flex items-center gap-1.5 pt-1">
+                <button
+                  type="button"
+                  data-testid={`btn-react-clap-${idx}`}
+                  onClick={() => handleReactFieldPhoto(item.id, 'clap')}
+                  className="flex-1 py-1.5 px-2 bg-white hover:bg-amber-50 border border-stone-200 rounded-xl text-[11px] font-black text-stone-800 flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
+                >
+                  <span>👏 축하박수</span>
+                  <span className="text-amber-700">{item.reactions.clap}</span>
+                </button>
+                <button
+                  type="button"
+                  data-testid={`btn-react-fire-${idx}`}
+                  onClick={() => handleReactFieldPhoto(item.id, 'fire')}
+                  className="flex-1 py-1.5 px-2 bg-white hover:bg-rose-50 border border-stone-200 rounded-xl text-[11px] font-black text-stone-800 flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
+                >
+                  <span>🔥 나이스샷</span>
+                  <span className="text-rose-600">{item.reactions.fire}</span>
+                </button>
+                <button
+                  type="button"
+                  data-testid={`btn-react-party-${idx}`}
+                  onClick={() => handleReactFieldPhoto(item.id, 'party')}
+                  className="flex-1 py-1.5 px-2 bg-white hover:bg-emerald-50 border border-stone-200 rounded-xl text-[11px] font-black text-stone-800 flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer"
+                >
+                  <span>🎉 최고예요</span>
+                  <span className="text-emerald-700">{item.reactions.party}</span>
+                </button>
+              </div>
+
+              {/* 실시간 회원 댓글 피드백 목록 */}
+              <div className="bg-white rounded-xl p-2 border border-stone-200/80 space-y-1.5">
+                {item.comments.map((c) => (
+                  <div key={c.id} className="text-[11px] leading-snug flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-black text-emerald-900">[{c.group} {c.user}]</span>{' '}
+                      <span className="font-semibold text-stone-700">{c.text}</span>
+                    </div>
+                    <span className="text-[9px] text-stone-400 shrink-0">{c.time}</span>
+                  </div>
+                ))}
+
+                <div className="flex items-center gap-1.5 pt-1">
+                  <input
+                    type="text"
+                    data-testid={`input-photo-comment-${idx}`}
+                    value={photoCommentDraft[item.id] || ''}
+                    onChange={(e) => setPhotoCommentDraft((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                    placeholder="축하 한마디 남기기 (예: 홀인원 축하드립니다! 🎉)"
+                    className="flex-1 px-2.5 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-[11px] font-bold text-stone-800 focus:outline-none focus:border-emerald-500"
+                  />
+                  <button
+                    type="button"
+                    data-testid={`btn-submit-photo-comment-${idx}`}
+                    onClick={() => handleAddFieldPhotoComment(item.id)}
+                    className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-black rounded-lg transition active:scale-95 cursor-pointer shrink-0"
+                  >
+                    등록
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       
 

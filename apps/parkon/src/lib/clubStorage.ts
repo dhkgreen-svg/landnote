@@ -2046,6 +2046,32 @@ ${link}`;
     return null;
   },
 
+  // 12-1-b. 미납 참가자 전원 1초 일괄 완납 처리 (40~50명 대규모 대회 총무 편의)
+  markAllPlayersPaid(roomId: string): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+    const now = new Date();
+    const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    room.groups.forEach((g) => {
+      g.players.forEach((p) => {
+        if (p.paymentStatus !== 'PAID') {
+          p.paymentStatus = 'PAID';
+          p.paidAt = timeStr;
+        }
+      });
+    });
+    if (room.waitingPool) {
+      room.waitingPool.forEach((p) => {
+        if (p.paymentStatus !== 'PAID') {
+          p.paymentStatus = 'PAID';
+          p.paidAt = timeStr;
+        }
+      });
+    }
+    this.saveRoom(room);
+    return room;
+  },
+
   // 12-2. 참가비 & 입금계좌 설정 업데이트
   updatePaymentConfig(
     roomId: string,
