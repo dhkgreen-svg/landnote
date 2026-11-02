@@ -721,6 +721,39 @@ export function RoundScoreboardModal({
           {/* TAB 1: COURSES (홀별 타수 스코어보드 테이블 메인 표출) */}
           {modalActiveTab === 'COURSES' && (
             <div className="space-y-3">
+              {/* [대표님 지시] 외부 스코어보드 사진 / 촬영 스코어보드가 있을 경우 상세보기 최상단에 큼직하고 선명하게 즉시 표출 */}
+              {(currentRound.paperScorecardPhoto || (currentRound.photos && currentRound.photos.length > 0)) && (
+                <div
+                  data-testid="chronicle-original-scoreboard-photo-banner"
+                  className="bg-stone-950 rounded-2xl p-2.5 border-2 border-amber-400 shadow-md space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-2 px-1">
+                    <span className="text-xs font-black text-amber-300 flex items-center gap-1 whitespace-nowrap truncate">
+                      <span>📸</span>
+                      <span>등록된 스코어보드 원본 (터치 확대)</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowPhotosPopup(true)}
+                      className="text-[10px] font-black bg-white/15 hover:bg-white/25 text-white px-2 py-0.5 rounded-lg cursor-pointer transition whitespace-nowrap shrink-0"
+                    >
+                      사진 보기 ({currentRound.photos?.length || 1}장) ❯
+                    </button>
+                  </div>
+                  <div
+                    onClick={() => setSelectedPhotoForZoom(currentRound.paperScorecardPhoto || currentRound.photos![0])}
+                    className="relative w-full rounded-xl overflow-hidden bg-black cursor-pointer group"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={currentRound.paperScorecardPhoto || currentRound.photos![0]}
+                      alt="등록된 스코어보드 원본"
+                      className="w-full max-h-64 object-contain mx-auto block group-hover:scale-[1.01] transition"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* 📋 코스별 공식 홀별 타수 스코어보드 테이블 (불필요한 상단/하단 안내 바 제거 후 메인 즉시 표출) */}
               {activeSegments.map((seg) => (
                 <div key={seg.key} className="bg-stone-50 rounded-2xl p-3 border border-stone-200 shadow-2xs space-y-2.5">

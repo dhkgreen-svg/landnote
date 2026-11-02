@@ -32,7 +32,7 @@
         "김대희",
         "김대표"
       ],
-      "completedRoundsCount": 1
+      "completedRoundsCount": 4
     },
     "kakaoUser": {
       "id": "member_PKYA7788",
@@ -1445,11 +1445,11 @@
       }
     ],
     "badges": {
-      "course-21dfd137-62f7-44c4-996a-e2e827c1eddb": {
-        "courseId": "course-21dfd137-62f7-44c4-996a-e2e827c1eddb",
-        "courseName": "고아파크골프장",
-        "visitCount": 1,
-        "todayRoundCount": 3,
+      "course-gumi-okseong": {
+        "courseId": "course-gumi-okseong",
+        "courseName": "옥성파크골프장",
+        "visitCount": 4,
+        "todayRoundCount": 1,
         "lastDateStr": "",
         "lastCompletedAt": "",
         "tier": "ROOKIE",
@@ -1459,22 +1459,22 @@
         "lastCompletedBlocks": 0,
         "lastCoursesPlayedStr": "A코스"
       },
-      "course-90c7e293-e544-45b5-a8ad-6b240b63504e": {
-        "courseId": "course-90c7e293-e544-45b5-a8ad-6b240b63504e",
-        "courseName": "해평파크골프장",
-        "visitCount": 1,
-        "todayRoundCount": 2,
-        "lastDateStr": "2026-10-27",
-        "lastCompletedAt": "2026-10-27 15:57",
+      "course-gumi-dongrak": {
+        "courseId": "course-gumi-dongrak",
+        "courseName": "동락파크골프장",
+        "visitCount": 4,
+        "todayRoundCount": 1,
+        "lastDateStr": "",
+        "lastCompletedAt": "",
         "tier": "ROOKIE",
         "tierTitle": "루키 골퍼 🌱",
         "hasInstantSpecAccess": false,
-        "lastCompletedHoles": 27,
-        "lastCompletedBlocks": 3,
+        "lastCompletedHoles": 0,
+        "lastCompletedBlocks": 0,
         "lastCoursesPlayedStr": "A코스"
       }
     },
-    "updatedAt": "2026-11-02T08:17:49.670Z",
+    "updatedAt": "2026-11-02T08:52:16.261Z",
     "companions": [
       {
         "id": "comp_rec_1793109941627_0bj1",
@@ -1507,21 +1507,21 @@
         "isUnlocked": true,
         "coursesVisited": [
           {
-            "courseId": "course-21dfd137-62f7-44c4-996a-e2e827c1eddb",
-            "courseName": "고아파크골프장",
-            "roundCount": 3,
-            "lastVisitedAt": "2026-10-22 23:38"
+            "courseId": "course-gumi-okseong",
+            "courseName": "옥성파크골프장",
+            "roundCount": 1,
+            "lastVisitedAt": "2026-10-09 20:54"
           },
           {
-            "courseId": "course-90c7e293-e544-45b5-a8ad-6b240b63504e",
-            "courseName": "해병파크골프장",
-            "roundCount": 12,
-            "lastVisitedAt": "2026-10-28 05:44"
+            "courseId": "course-gumi-dongrak",
+            "courseName": "동락파크골프장",
+            "roundCount": 1,
+            "lastVisitedAt": "2026-10-22 20:50"
           }
         ],
-        "totalRounds": 15,
+        "totalRounds": 2,
         "trophyTier": "BRONZE",
-        "unlockedAt": "2026-10-22 16:36"
+        "unlockedAt": "2026-10-09 20:54"
       }
     },
     "customCourses": [
@@ -2116,7 +2116,204 @@
         "consecutiveCount": 1,
         "lastChangedBy": "user_anon"
       }
-    }
+    },
+    "clubs": [
+      {
+        "id": "club-1793553520999",
+        "name": "나우골프",
+        "region": "경북 구미",
+        "homeCourseId": "course-90c7e293-e544-45b5-a8ad-6b240b63504e",
+        "homeCourseName": "해평파크골프장",
+        "description": "ㄱ",
+        "presidentName": "김서연",
+        "managerName": "김대희",
+        "contactPhone": "01099993399",
+        "memberCount": 1,
+        "members": [
+          {
+            "id": "m_1793553520999",
+            "name": "김대희",
+            "role": "MANAGER",
+            "joinedAt": "2026-11-01",
+            "phone": "01099993399"
+          }
+        ],
+        "pendingMembers": [],
+        "isPublic": true,
+        "badgeColor": "emerald",
+        "isParkOnClub": true,
+        "recruitStatus": "RECRUITING",
+        "annualDuesAmount": 50000,
+        "createdAt": "2026-11-01",
+        "chronicles": [
+          {
+            "id": "chronicle_club-mvy3lqxn",
+            "roomId": "club-mvy3lqxn",
+            "clubId": "club-1793553520999",
+            "clubName": "나우골프",
+            "title": "해평파크골프장 정기 대회",
+            "heldAt": "2026-11-01",
+            "courseId": "course-90c7e293-e544-45b5-a8ad-6b240b63504e",
+            "courseName": "해평파크골프장",
+            "totalHoles": 18,
+            "gameMode": "정통 스트로크 (정상 타수 최저타순)",
+            "totalParticipants": 0,
+            "winnerName": "대회 진행중",
+            "winnerScore": 0,
+            "longestDistance": "장타 1위",
+            "nearPinDistance": "핀 밀착 1위",
+            "luckyDrawWinners": [],
+            "rankings": [],
+            "groupResults": [
+              {
+                "groupNumber": 1,
+                "groupName": "1조",
+                "leaderName": "미지정",
+                "avgScore": 0,
+                "totalScore": 0,
+                "playersCount": 0
+              },
+              {
+                "groupNumber": 2,
+                "groupName": "2조",
+                "leaderName": "미지정",
+                "avgScore": 0,
+                "totalScore": 0,
+                "playersCount": 0
+              },
+              {
+                "groupNumber": 3,
+                "groupName": "3조",
+                "leaderName": "미지정",
+                "avgScore": 0,
+                "totalScore": 0,
+                "playersCount": 0
+              },
+              {
+                "groupNumber": 4,
+                "groupName": "4조",
+                "leaderName": "미지정",
+                "avgScore": 0,
+                "totalScore": 0,
+                "playersCount": 0
+              },
+              {
+                "groupNumber": 5,
+                "groupName": "5조",
+                "leaderName": "미지정",
+                "avgScore": 0,
+                "totalScore": 0,
+                "playersCount": 0
+              }
+            ],
+            "notes": "정통 스트로크(18홀 최저타순), 동타 시 백카운트(후반 9홀 합산) 우선, 컨시드 1클럽 샤프트 이내, OB 2벌타",
+            "archivedAt": "2026-11-01T17:22:46.046Z"
+          }
+        ]
+      }
+    ],
+    "myClubIds": [
+      "club-1793553520999"
+    ],
+    "clubEvents": [
+      {
+        "id": "club-mvy3lqxn",
+        "clubId": "club-1793553520999",
+        "clubName": "나우골프",
+        "tournamentType": "CLUB_INTERNAL",
+        "title": "해평파크골프장 정기 대회",
+        "courseId": "course-90c7e293-e544-45b5-a8ad-6b240b63504e",
+        "courseName": "해평파크골프장",
+        "hostName": "김대희",
+        "selectedCourseLetters": [
+          "B",
+          "C"
+        ],
+        "totalHoles": 18,
+        "targetTotalPlayers": 17,
+        "entryFee": 10000,
+        "bankAccount": "농협 352-1234-5678 김대희(총무)",
+        "gameMode": "STROKE",
+        "gameModeTitle": "정통 스트로크 (정상 타수 최저타순)",
+        "gameRuleNotes": "정통 스트로크(18홀 최저타순), 동타 시 백카운트(후반 9홀 합산) 우선, 컨시드 1클럽 샤프트 이내, OB 2벌타",
+        "isUnsealed": false,
+        "unsealedHoles": [],
+        "groupingMethod": "RANDOM",
+        "groups": [
+          {
+            "groupNumber": 1,
+            "name": "1조",
+            "startCourseLetter": "B",
+            "leaderName": "",
+            "players": [],
+            "status": "WAITING"
+          },
+          {
+            "groupNumber": 2,
+            "name": "2조",
+            "startCourseLetter": "C",
+            "leaderName": "",
+            "players": [],
+            "status": "WAITING"
+          },
+          {
+            "groupNumber": 3,
+            "name": "3조",
+            "startCourseLetter": "B",
+            "leaderName": "",
+            "players": [],
+            "status": "WAITING"
+          },
+          {
+            "groupNumber": 4,
+            "name": "4조",
+            "startCourseLetter": "C",
+            "leaderName": "",
+            "players": [],
+            "status": "WAITING"
+          },
+          {
+            "groupNumber": 5,
+            "name": "5조",
+            "startCourseLetter": "B",
+            "leaderName": "",
+            "players": [],
+            "status": "WAITING"
+          }
+        ],
+        "waitingPool": [],
+        "status": "RECRUITING",
+        "createdAt": "2026-11-01"
+      }
+    ],
+    "flashGatherings": [
+      {
+        "id": "flash-1793553830057",
+        "title": "오늘 번개 치실 분! (2인 이상 출발)",
+        "type": "CLUB_ONLY",
+        "clubId": "club-1793553520999",
+        "clubName": "나우골프",
+        "courseId": "course-90c7e293-e544-45b5-a8ad-6b240b63504e",
+        "courseName": "해평파크골프장",
+        "playDate": "오늘",
+        "playTime": "14:00",
+        "targetCount": 999,
+        "lightningScope": "MULTI_OPEN",
+        "currentParticipants": [
+          {
+            "id": "p_1793553830058",
+            "name": "김대희 (개설자)",
+            "joinedAt": "2026-11-01T17:23:50.058Z"
+          }
+        ],
+        "hostName": "김대희",
+        "notes": "2인 이상 모이면 언제든 바로 출발합니다!",
+        "status": "RECRUITING",
+        "createdAt": "2026-11-01T17:23:50.058Z"
+      }
+    ],
+    "deletedClubIds": [],
+    "deletedClubEventIds": []
   },
   "PKY7788": {
     "memberCode": "PKYA-7788",
