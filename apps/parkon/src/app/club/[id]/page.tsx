@@ -1844,7 +1844,8 @@ ${origin}/club/${room.id}`;
     };
     setRoom(resetRoom);
     ClubStorage.saveRoom(resetRoom);
-    showToast('🔄 1단계(모집 및 출석 대기실)로 초기화되었습니다.');
+    ClubStorage.rollbackTournamentFromPersonalChronicles(room.id);
+    showToast('🔄 1단계(모집 및 출석 대기실)로 초기화되었으며 연동된 개인 연대기 기록도 롤백되었습니다.');
 
     try {
       await fetch('/api/club/live-room', {
@@ -2895,34 +2896,74 @@ ${origin}/club/${room.id}`;
                               </div>
                             </div>
 
-                            <div className="text-right shrink-0">
-                              {room.gameMode === 'NEW_PERIO' && typeof p.netScore === 'number' ? (
-                                <>
-                                  <div className="text-sm font-black text-indigo-900">
-                                    {isJapanese ? 'ネット' : '네트'} {p.netScore}{isJapanese ? '打' : '타'}
-                                  </div>
-                                  <div className="text-[10px] font-bold text-stone-500">
-                                    {isJapanese ? 'グロス' : '실타수'} {p.totalStrokes}{isJapanese ? '打' : '타'} ({isJapanese ? 'ハンディ' : '핸디'} -{p.handicap})
-                                  </div>
-                                </>
-                              ) : (
-                                <>
-                                  <div className="text-sm font-black text-stone-900">
-                                    {p.totalStrokes > 0 ? `${p.totalStrokes}${isJapanese ? '打' : '타'}` : '-'}
-                                  </div>
-                                  <div
-                                    className={`text-[10px] font-black ${
-                                      p.parDiff < 0
-                                        ? 'text-red-600'
-                                        : p.parDiff > 0
-                                        ? 'text-blue-600'
-                                        : 'text-stone-500'
-                                    }`}
-                                  >
-                                    {p.totalStrokes > 0 ? diffStr : ''}
-                                  </div>
-                                </>
-                              )}
+                            <div className="text-right shrink-0" data-testid={`score-cell-${p.playerName}`}>
+                              {(() => {
+                                const playerPrivacy = p.scorePrivacy || ClubStorage.getPlayerScorePrivacy(p.playerName);
+                                const cleanCur = currentUser.replace(/\(.*?\)/g, '').trim();
+                                const cleanTarget = p.playerName.replace(/\(.*?\)/g, '').trim();
+                                const isSelfPlayer = Boolean(cleanCur && cleanTarget === cleanCur);
+                                const isMaskedPrivate = playerPrivacy === 'PRIVATE' && !isManager && !isSelfPlayer;
+                                const isMaskedTotalOnly = playerPrivacy === 'TOTAL_ONLY' && !isManager && !isSelfPlayer;
+
+                                if (isMaskedPrivate) {
+                                  return (
+                                    <div data-testid={`masked-private-${p.playerName}`}>
+                                      <div className="text-sm font-black text-stone-500 flex items-center justify-end gap-1">
+                                        <span>🔒 - 타</span>
+                                        <span className="text-[10px] bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded font-black">완주</span>
+                                      </div>
+                                      <div className="text-[10px] font-bold text-stone-400">
+                                        비공개 보호 (홀별: * * *)
+                                      </div>
+                                    </div>
+                                  );
+                                }
+
+                                return (
+                                  <>
+                                    {room.gameMode === 'NEW_PERIO' && typeof p.netScore === 'number' ? (
+                                      <>
+                                        <div className="text-sm font-black text-indigo-900">
+                                          {isJapanese ? 'ネット' : '네트'} {p.netScore}{isJapanese ? '打' : '타'}
+                                        </div>
+                                        <div className="text-[10px] font-bold text-stone-500">
+                                          {isJapanese ? 'グロス' : '실타수'} {p.totalStrokes}{isJapanese ? '打' : '타'} ({isJapanese ? 'ハンディ' : '핸디'} -{p.handicap})
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <div className="text-sm font-black text-stone-900">
+                                          {p.totalStrokes > 0 ? `${p.totalStrokes}${isJapanese ? '打' : '타'}` : '-'}
+                                        </div>
+                                        <div
+                                          className={`text-[10px] font-black ${
+                                            p.parDiff < 0
+                                              ? 'text-red-600'
+                                              : p.parDiff > 0
+                                              ? 'text-blue-600'
+                                              : 'text-stone-500'
+                                          }`}
+                                        >
+                                          {p.totalStrokes > 0 ? diffStr : ''}
+                                        </div>
+                                      </>
+                                    )}
+                                    {isMaskedTotalOnly && (
+                                      <div className="text-[9px] font-black text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 mt-0.5">
+                                        🔒 홀별 상세: * * * (총타수만 공개)
+                                      </div>
+                                    )}
+                                    {isManager && playerPrivacy === 'PRIVATE' && (
+                                      <div
+                                        data-testid={`manager-unmasked-${p.playerName}`}
+                                        className="text-[9px] font-black text-purple-800 bg-purple-100 px-1.5 py-0.2 rounded border border-purple-300 mt-0.5"
+                                      >
+                                        🔓 총무 정산용 실타수 열람 (일반회원 비공개)
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </div>
                           </div>
                         );
@@ -3455,6 +3496,7 @@ ${origin}/club/${room.id}`;
 
                     <button
                       type="button"
+                      data-testid="btn-finalize-tournament"
                       onClick={handleFinalizeTournament}
                       className="bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 active:scale-95 text-amber-950 font-black text-xs px-3 py-1.5 rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1"
                     >
@@ -3579,6 +3621,92 @@ ${origin}/club/${room.id}`;
           </button>
         </div>
       )}
+
+      {/* 🔒 [마스터 명세 #1] 클럽 회원 스코어 프라이버시 (내 점수 공개 범위 & 권한별 열람 분리) 제어 바 */}
+      <div
+        data-testid="score-privacy-control-bar"
+        className="bg-white rounded-2xl p-3 border border-stone-200 shadow-xs space-y-2"
+      >
+        <div className="flex items-center justify-between flex-wrap gap-1.5">
+          <div className="flex items-center gap-1.5 text-xs font-black text-stone-900">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>내 점수 공개 범위 ({currentUser})</span>
+          </div>
+          <span
+            data-testid="viewer-role-privacy-badge"
+            className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+              isManager
+                ? 'bg-purple-100 text-purple-900 border-purple-300'
+                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+            }`}
+          >
+            {isManager
+              ? '👑 총무/관리자 정산 모드 (전 회원 실타수 열람 가능)'
+              : '👤 일반 회원 열람 모드 (비공개 회원 점수 블라인드 보호)'}
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-1.5">
+          {([
+            { key: 'PUBLIC', label: '🌐 전체 공개 (기본)' },
+            { key: 'TOTAL_ONLY', label: '🔒 총타수만 공개 (*)' },
+            { key: 'PRIVATE', label: '🛡️ 비공개 (- 타/완주)' },
+          ] as const).map((opt) => {
+            const curPrivacy = ClubStorage.getPlayerScorePrivacy(currentUser);
+            const isSelected = curPrivacy === opt.key;
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                data-testid={`btn-privacy-${opt.key}`}
+                onClick={() => {
+                  const updated = ClubStorage.setPlayerScorePrivacy(currentUser, opt.key, room.id);
+                  if (updated) {
+                    setRoom({ ...updated });
+                  } else {
+                    setRoom({ ...room });
+                  }
+                  showToast(
+                    opt.key === 'PRIVATE'
+                      ? `🛡️ '${currentUser}' 님의 점수가 [비공개(- 타 / 완주)]로 설정되었습니다! (총무만 정산용 확인 가능)`
+                      : opt.key === 'TOTAL_ONLY'
+                      ? `🔒 '${currentUser}' 님의 점수가 [총타수만 공개(홀별 * 마스킹)]로 설정되었습니다!`
+                      : `🌐 '${currentUser}' 님의 점수가 [전체 공개]로 설정되었습니다!`
+                  );
+                }}
+                className={`py-1.5 px-2 rounded-xl text-[11px] font-black border transition cursor-pointer ${
+                  isSelected
+                    ? 'bg-emerald-800 text-white border-emerald-900 shadow-2xs'
+                    : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                }`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        {isManager && (
+          <div className="pt-1 border-t border-stone-100 flex items-center justify-between gap-2">
+            <span className="text-[10px] font-bold text-purple-800">
+              🏛️ 대회 종료 시 참가 회원 전원의 개인 연대기로 공식 기록이 자동 배포됩니다.
+            </span>
+            <button
+              type="button"
+              data-testid="btn-finalize-tournament-quick"
+              onClick={() => {
+                const res = ClubStorage.finalizeTournament(room.id);
+                if (res.success && res.room) {
+                  setRoom({ ...res.room });
+                  showToast(res.message);
+                  handleCopyTournamentReport();
+                }
+              }}
+              className="px-3 py-1.5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-amber-950 font-black text-[11px] rounded-xl shadow-2xs cursor-pointer shrink-0"
+            >
+              🏆 대회 공식 마감 & 연대기 배포
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* 📊 [신설] 상단 메인 탭: [ ⛳ 대회 진행 / 관제 ] vs [ 📊 클럽 통계 Hub ] */}
       <div className="grid grid-cols-2 gap-1.5 bg-stone-200/80 p-1 rounded-2xl shadow-xs">
@@ -4259,7 +4387,10 @@ ${origin}/club/${room.id}`;
               <div className="space-y-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => setActiveTab('individual')}
+                  onClick={() => {
+                    setActiveTab('individual');
+                    setShowLeaderboardModal(true);
+                  }}
                   className="w-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-sm py-3.5 rounded-2xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer border-2 border-yellow-200"
                 >
                   <Trophy className="w-5 h-5 text-stone-950" />
@@ -4569,6 +4700,7 @@ ${origin}/club/${room.id}`;
 
                     <button
                       type="button"
+                      data-testid="btn-finalize-tournament"
                       onClick={handleFinalizeTournament}
                       className="bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 active:scale-95 text-amber-950 font-black text-xs px-3 py-1.5 rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1"
                     >

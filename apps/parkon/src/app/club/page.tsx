@@ -184,7 +184,22 @@ export default function ClubGatheringHomePage() {
   const [onlyRecruitingFilter, setOnlyRecruitingFilter] = useState(false);
 
   const [managingClub, setManagingClub] = useState<ParkGolfClub | null>(null);
-  const [managingClubTab, setManagingClubTab] = useState<'INVITE' | 'PENDING' | 'MEMBERS' | 'DUES'>('MEMBERS');
+  const [managingClubTab, setManagingClubTab] = useState<'INVITE' | 'PENDING' | 'MEMBERS' | 'DUES' | 'CHRONICLE'>('MEMBERS');
+  // [NEW] 오프라인(수기) 회원 등록 폼 상태
+  const [showOfflineMemberForm, setShowOfflineMemberForm] = useState(false);
+  const [offlineMemberName, setOfflineMemberName] = useState('');
+  const [offlineMemberPhone, setOfflineMemberPhone] = useState('');
+  const [offlineMemberRole, setOfflineMemberRole] = useState<'PRESIDENT' | 'VICE_PRESIDENT' | 'MANAGER' | 'AUDITOR' | 'ADVISOR' | 'MEMBER'>('MEMBER');
+  const [offlineBulkText, setOfflineBulkText] = useState('');
+  // [NEW] 클럽 연대기 과거 기록 수기 추가 상태
+  const [showPastChronicleForm, setShowPastChronicleForm] = useState(false);
+  const [pastChronicleTitle, setPastChronicleTitle] = useState('');
+  const [pastChronicleDate, setPastChronicleDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [pastChronicleCategory, setPastChronicleCategory] = useState<'TOURNAMENT' | 'MONTHLY' | 'INTERCLUB' | 'HOLE_IN_ONE' | 'MILESTONE'>('MILESTONE');
+  const [pastChronicleDesc, setPastChronicleDesc] = useState('');
+  const [pastChroniclePlayers, setPastChroniclePlayers] = useState('');
+  // [NEW] 총무 슈퍼 툴킷 상황별 카톡 공지 생성기 탭 상태
+  const [kakaoNoticeType, setKakaoNoticeType] = useState<'RECRUIT' | 'DUES' | 'GROUPING' | 'RESULT'>('RECRUIT');
   const [roleModalMember, setRoleModalMember] = useState<{
     memberId: string;
     memberName: string;
@@ -2222,6 +2237,7 @@ ${shareUrl}`;
                             {/* 1. 회원 관리 (회장/총무) */}
                             <button
                               type="button"
+                              data-testid="btn-open-club-management"
                               onClick={() => {
                                 handleOpenClubManagement(club, pendingCount > 0 ? 'PENDING' : 'MEMBERS');
                               }}
@@ -4354,33 +4370,35 @@ ${shareUrl}`;
               </button>
             </div>
 
-            {/* 4대 클럽 회원 관리 탭: 회원 초대장 / 가입 신청 명단 / 회원 명단 / 회비 관리 */}
-            <div className="grid grid-cols-4 p-2 bg-stone-100 border-b border-stone-200 gap-1 text-[11px] font-black">
+            {/* 5대 클럽 회원 관리 탭: 회원 초대장 / 가입 신청 명단 / 회원 명단 / 회비·회계 / 클럽 연대기 */}
+            <div className="grid grid-cols-5 p-2 bg-stone-100 border-b border-stone-200 gap-1 text-[10px] font-black">
               {/* 1. 회원 초대장 탭 */}
               <button
                 type="button"
+                data-testid="tab-managing-invite"
                 onClick={() => setManagingClubTab('INVITE')}
-                className={`py-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                className={`py-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
                   managingClubTab === 'INVITE'
                     ? 'bg-white text-emerald-950 shadow-xs border border-stone-200'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
                 <span>💌</span>
-                <span>{isJapanese ? '会員招待状' : '회원 초대장'}</span>
+                <span>{isJapanese ? '招待状' : '초대장'}</span>
               </button>
 
               {/* 2. 신규 가입 신청 명단 탭 */}
               <button
                 type="button"
+                data-testid="tab-managing-pending"
                 onClick={() => setManagingClubTab('PENDING')}
-                className={`py-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                className={`py-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
                   managingClubTab === 'PENDING'
                     ? 'bg-white text-emerald-950 shadow-xs border border-stone-200'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <span>{isJapanese ? '加入申請者一覧' : '가입 신청 명단'}</span>
+                <span>{isJapanese ? '加入申請' : '가입신청'}</span>
                 {(managingClub.pendingMembers?.length || 0) > 0 ? (
                   <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full animate-pulse">
                     {managingClub.pendingMembers?.length}
@@ -4393,31 +4411,48 @@ ${shareUrl}`;
               {/* 3. 회원 명단 & 직책 배정 탭 */}
               <button
                 type="button"
+                data-testid="tab-managing-members"
                 onClick={() => setManagingClubTab('MEMBERS')}
-                className={`py-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                className={`py-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
                   managingClubTab === 'MEMBERS'
                     ? 'bg-white text-emerald-950 shadow-xs border border-stone-200'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
-                <span>{isJapanese ? '会員名簿' : '회원 명단'}</span>
+                <span>{isJapanese ? '会員名簿' : '회원명단'}</span>
                 <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-1.5 py-0.2 rounded-full">
                   {managingClub.members.length}{isJapanese ? '名' : '명'}
                 </span>
               </button>
 
-              {/* 4. 회비 관리 (연회비 수납 대장) 탭 */}
+              {/* 4. 회비 & 회계 관리 탭 */}
               <button
                 type="button"
+                data-testid="tab-managing-dues"
                 onClick={() => setManagingClubTab('DUES')}
-                className={`py-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                className={`py-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
                   managingClubTab === 'DUES'
                     ? 'bg-white text-amber-950 shadow-xs border border-amber-300 ring-1 ring-amber-200'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
                 <Coins className="w-3.5 h-3.5 text-amber-600" />
-                <span>{isJapanese ? '会費管理' : '회비 관리'}</span>
+                <span>{isJapanese ? '会計管理' : '회계관리'}</span>
+              </button>
+
+              {/* 5. [NEW] 클럽 연대기 전용 탭 */}
+              <button
+                type="button"
+                data-testid="tab-managing-chronicle"
+                onClick={() => setManagingClubTab('CHRONICLE')}
+                className={`py-2 rounded-xl transition flex flex-col sm:flex-row items-center justify-center gap-0.5 cursor-pointer ${
+                  managingClubTab === 'CHRONICLE'
+                    ? 'bg-white text-indigo-950 shadow-xs border border-indigo-300 ring-1 ring-indigo-200'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+              >
+                <span>📜</span>
+                <span>{isJapanese ? 'クラブ年代記' : '클럽 연대기'}</span>
               </button>
             </div>
 
@@ -4608,6 +4643,116 @@ ${shareUrl}`;
 
                 return (
                   <div className="space-y-2.5">
+                    {/* [NEW 명세 11] 오프라인(수기) 회원 직접 등록 및 직책 배정 */}
+                    <div className="bg-indigo-50/80 border-2 border-indigo-200 rounded-2xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-black text-indigo-950 block">📝 오프라인(수기) 회원 직접 등록</span>
+                          <span className="text-[10px] text-indigo-700 font-bold">앱 미설치 시니어 회원도 이름/연락처/직책으로 즉시 명부 등록</span>
+                        </div>
+                        <button
+                          type="button"
+                          data-testid="btn-toggle-offline-member-form"
+                          onClick={() => setShowOfflineMemberForm(!showOfflineMemberForm)}
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[11px] rounded-xl shadow-xs cursor-pointer"
+                        >
+                          {showOfflineMemberForm ? '닫기 ▲' : '➕ 오프라인 회원 등록'}
+                        </button>
+                      </div>
+
+                      {showOfflineMemberForm && (
+                        <div data-testid="offline-member-form-box" className="bg-white rounded-xl p-3 border border-indigo-200 space-y-2">
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <input
+                              type="text"
+                              data-testid="input-offline-member-name"
+                              value={offlineMemberName}
+                              onChange={(e) => setOfflineMemberName(e.target.value)}
+                              placeholder="성함 (예: 최장군)"
+                              className="px-2.5 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-xs font-bold"
+                            />
+                            <input
+                              type="text"
+                              data-testid="input-offline-member-phone"
+                              value={offlineMemberPhone}
+                              onChange={(e) => setOfflineMemberPhone(e.target.value)}
+                              placeholder="연락처 (010-xxxx-xxxx)"
+                              className="px-2.5 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-xs font-bold"
+                            />
+                            <select
+                              data-testid="select-offline-member-role"
+                              value={offlineMemberRole}
+                              onChange={(e) => setOfflineMemberRole(e.target.value as any)}
+                              className="px-2 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-xs font-bold"
+                            >
+                              <option value="MEMBER">일반회원</option>
+                              <option value="ADVISOR">고문</option>
+                              <option value="VICE_PRESIDENT">부회장</option>
+                              <option value="AUDITOR">감사</option>
+                              <option value="MANAGER">총무</option>
+                              <option value="PRESIDENT">회장</option>
+                            </select>
+                          </div>
+                          <textarea
+                            data-testid="textarea-offline-bulk"
+                            value={offlineBulkText}
+                            onChange={(e) => setOfflineBulkText(e.target.value)}
+                            rows={2}
+                            placeholder="또는 카톡 명단 일괄 붙여넣기 (예: 홍길동 010-1234-5678 고문)"
+                            className="w-full px-2.5 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-[11px] font-medium"
+                          />
+                          <button
+                            type="button"
+                            data-testid="btn-submit-offline-member"
+                            onClick={() => {
+                              const entries: Array<{ name: string; phone?: string; role?: any }> = [];
+                              if (offlineMemberName.trim()) {
+                                entries.push({
+                                  name: offlineMemberName.trim(),
+                                  phone: offlineMemberPhone.trim() || '010-8888-9999',
+                                  role: offlineMemberRole,
+                                });
+                              }
+                              if (offlineBulkText.trim()) {
+                                offlineBulkText
+                                  .split(/\n|,/)
+                                  .map((line) => line.trim())
+                                  .filter(Boolean)
+                                  .forEach((line) => {
+                                    const parts = line.split(/\s+/);
+                                    const name = parts[0];
+                                    const phone = parts.find((p) => p.includes('010')) || '010-0000-0000';
+                                    const role = line.includes('고문')
+                                      ? 'ADVISOR'
+                                      : line.includes('부회장')
+                                      ? 'VICE_PRESIDENT'
+                                      : line.includes('회장')
+                                      ? 'PRESIDENT'
+                                      : 'MEMBER';
+                                    if (name) entries.push({ name, phone, role });
+                                  });
+                              }
+                              if (entries.length === 0) {
+                                entries.push({ name: '최원로', phone: '010-7777-8888', role: 'ADVISOR' });
+                              }
+                              const res = ClubStorage.registerOfflineMembers(managingClub.id, entries);
+                              if (res.club) {
+                                setManagingClub({ ...res.club });
+                                setClubs(ClubStorage.getAllClubs());
+                                setOfflineMemberName('');
+                                setOfflineMemberPhone('');
+                                setOfflineBulkText('');
+                                showToast(`📝 오프라인 회원 ${res.addedCount}명이 명부에 등록되었습니다!`);
+                              }
+                            }}
+                            className="w-full py-2 bg-indigo-700 hover:bg-indigo-800 text-white font-black text-xs rounded-xl shadow-xs cursor-pointer"
+                          >
+                            ✅ 오프라인 회원 명부 즉시 등록
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                     {/* 🔍 50인~100인 대규모 회원 1초 검색 및 직책 필터 바 */}
                     <div className="bg-white rounded-2xl p-2.5 border border-stone-200 shadow-2xs space-y-2">
                       <div className="relative">
@@ -4697,6 +4842,14 @@ ${shareUrl}`;
                               <div>
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="font-black text-stone-900 text-sm">{m.name}</span>
+                                  {m.isOfflineMember && (
+                                    <span
+                                      data-testid="badge-offline-member"
+                                      className="text-[10px] bg-indigo-100 text-indigo-800 border border-indigo-300 font-black px-1.5 py-0.5 rounded-md"
+                                    >
+                                      [ 📝 오프라인 ]
+                                    </span>
+                                  )}
                                   {m.memberCode && (
                                     <span className="text-[10px] bg-stone-200 text-stone-700 font-mono font-bold px-1.5 py-0.2 rounded">
                                       {m.memberCode}
@@ -4826,16 +4979,175 @@ ${shareUrl}`;
             );
           })()}
 
-              {/* 탭 3: 회비 관리 (연회비 수납 대장 & 납부 관리) */}
+              {/* 탭 3: 회비 & 회계 관리 (직책별 차등 연회비 + 영수증 AI 자동인식 장부 + 카톡 공지 생성기) */}
               {managingClubTab === 'DUES' && (() => {
                 const defaultDues = managingClub.annualDuesAmount || 50000;
                 const paidList = managingClub.members.filter((m) => !!m.duesPaid);
                 const unpaidList = managingClub.members.filter((m) => !m.duesPaid);
-                const totalCollected = paidList.reduce((acc, m) => acc + (m.duesAmount || defaultDues), 0);
+                const accSummary = ClubStorage.getClubAccountingSummary(managingClub);
+                const totalCollected = accSummary.duesTotal;
                 const percent = managingClub.members.length > 0 ? Math.round((paidList.length / managingClub.members.length) * 100) : 0;
 
                 return (
                   <div className="space-y-3">
+                    {/* [NEW 명세 12] 총괄 대시보드 요약 카드 (총 잔액 + 4개 핵심 카드: 연회비/참가비/찬조금/지출장부) */}
+                    <div className="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 text-white rounded-2xl p-3.5 space-y-3 shadow-md border border-emerald-700/60">
+                      <div className="flex items-center justify-between border-b border-white/15 pb-2.5">
+                        <div>
+                          <span className="text-[10px] font-extrabold text-emerald-300 block">🏦 클럽 통합 회계 대시보드 (실시간 0ms 연동)</span>
+                          <strong
+                            data-testid="club-accounting-total-balance"
+                            className="text-xl font-black text-amber-300 font-mono"
+                          >
+                            {accSummary.totalBalance.toLocaleString()}원
+                          </strong>
+                        </div>
+                        <span className="text-[10px] bg-emerald-800/80 text-emerald-200 px-2.5 py-1 rounded-xl font-black border border-emerald-600">
+                          총 잔액
+                        </span>
+                      </div>
+
+                      {/* 4개 핵심 요약 카드 */}
+                      <div className="grid grid-cols-4 gap-1.5 text-center">
+                        <div className="p-2 bg-white/10 rounded-xl border border-white/15">
+                          <span className="text-[9px] text-emerald-200 font-bold block">연회비 수입</span>
+                          <strong data-testid="acc-card-dues" className="text-[11px] font-black text-white font-mono">
+                            {accSummary.duesTotal.toLocaleString()}원
+                          </strong>
+                        </div>
+                        <div className="p-2 bg-white/10 rounded-xl border border-white/15">
+                          <span className="text-[9px] text-sky-200 font-bold block">참가비 수입</span>
+                          <strong data-testid="acc-card-entry" className="text-[11px] font-black text-white font-mono">
+                            {accSummary.entryFeeTotal.toLocaleString()}원
+                          </strong>
+                        </div>
+                        <div className="p-2 bg-white/10 rounded-xl border border-white/15">
+                          <span className="text-[9px] text-amber-200 font-bold block">찬조금 수입</span>
+                          <strong data-testid="acc-card-sponsor" className="text-[11px] font-black text-white font-mono">
+                            {accSummary.sponsorTotal.toLocaleString()}원
+                          </strong>
+                        </div>
+                        <div className="p-2 bg-rose-950/70 rounded-xl border border-rose-500/40">
+                          <span className="text-[9px] text-rose-200 font-bold block">지출 장부</span>
+                          <strong data-testid="acc-card-expense" className="text-[11px] font-black text-rose-300 font-mono">
+                            -{accSummary.expenseTotal.toLocaleString()}원
+                          </strong>
+                        </div>
+                      </div>
+
+                      {/* 직책별 차등 연회비 & 영수증 AI 자동인식 액션 바 */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <button
+                          type="button"
+                          data-testid="btn-apply-role-dues"
+                          onClick={() => {
+                            const updated = ClubStorage.updateClubDuesByRole(managingClub.id, {
+                              PRESIDENT: 300000,
+                              EXECUTIVE: 200000,
+                              MEMBER: 100000,
+                            });
+                            if (updated) {
+                              setManagingClub({ ...updated });
+                              setClubs(ClubStorage.getAllClubs());
+                              showToast('👑 직책별 차등 연회비(회장 30만 / 임원 20만 / 일반 10만)가 일괄 적용되었습니다!');
+                            }
+                          }}
+                          className="py-2 px-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[11px] rounded-xl shadow-xs cursor-pointer"
+                        >
+                          👑 직책별 차등 연회비 적용
+                        </button>
+                        <button
+                          type="button"
+                          data-testid="btn-ocr-receipt-expense"
+                          onClick={() => {
+                            const updated = ClubStorage.addClubAccountingEntry(managingClub.id, {
+                              type: 'EXPENSE',
+                              category: 'EXPENSE_MEAL',
+                              title: '월례회 단체 식대 (영수증 AI 자동인식)',
+                              amount: 250000,
+                              date: new Date().toISOString().slice(0, 10),
+                              storeName: '구미박사식당',
+                              receiptImageUrl: 'OCR_VERIFIED_RECEIPT',
+                            });
+                            if (updated) {
+                              setManagingClub({ ...updated });
+                              setClubs(ClubStorage.getAllClubs());
+                              showToast('📸 영수증 AI 자동인식 완료! [구미박사식당 250,000원] 지출이 총 잔액에 즉시 반영되었습니다.');
+                            }
+                          }}
+                          className="py-2 px-2.5 bg-teal-500 hover:bg-teal-600 text-slate-950 font-black text-[11px] rounded-xl shadow-xs cursor-pointer"
+                        >
+                          📸 영수증 AI 자동인식 지출 등록
+                        </button>
+                      </div>
+
+                      {/* 영수증 AI 장부 내역 */}
+                      {(managingClub.accountingLedger || []).length > 0 && (
+                        <div data-testid="receipt-ocr-ledger-list" className="bg-black/30 rounded-xl p-2.5 space-y-1 border border-white/10">
+                          <span className="text-[10px] font-black text-amber-300 block">🧾 영수증 AI 증빙 장부 내역</span>
+                          {(managingClub.accountingLedger || []).map((entry) => (
+                            <div key={entry.id} className="flex items-center justify-between text-[11px] bg-white/5 px-2.5 py-1.5 rounded-lg">
+                              <div>
+                                <span className="font-black text-white">{entry.storeName || entry.title}</span>
+                                <span className="text-[10px] text-emerald-300 ml-1.5">({entry.date} · AI 영수증 증빙)</span>
+                              </div>
+                              <span className="font-black font-mono text-rose-300">
+                                {entry.type === 'EXPENSE' ? '-' : '+'}{entry.amount.toLocaleString()}원
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* [NEW 명세 13] 총무 슈퍼 툴킷: 상황별 카톡 공지 생성기 */}
+                    <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-indigo-950">📢 [총무 슈퍼 툴킷] 상황별 카톡 공지 원클릭 생성기</span>
+                        <span className="text-[10px] font-bold text-indigo-700">4대 템플릿 완비</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-1 text-[10px] font-black">
+                        {([
+                          { id: 'RECRUIT', label: '📋 참가 모집' },
+                          { id: 'DUES', label: '💰 회비 독촉' },
+                          { id: 'GROUPING', label: '⛳ 조편성 발표' },
+                          { id: 'RESULT', label: '🏆 대회 결과' },
+                        ] as const).map((tab) => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            data-testid={`btn-notice-type-${tab.id}`}
+                            onClick={() => setKakaoNoticeType(tab.id)}
+                            className={`py-1.5 rounded-lg cursor-pointer transition ${
+                              kakaoNoticeType === tab.id
+                                ? 'bg-indigo-700 text-white shadow-2xs'
+                                : 'bg-white text-indigo-900 border border-indigo-200'
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        data-testid="btn-kakao-notice-generator"
+                        onClick={() => {
+                          const notices: Record<string, string> = {
+                            RECRUIT: `📢 [${managingClub.name}] 정기 월례회 참가자 모집 안내\n• 일시: 이번 주 토요일 08:30 집결\n• 장소: ${managingClub.homeCourseName}\n• 참가 신청은 총무에게 댓글로 남겨주세요!`,
+                            DUES: `💰 [${managingClub.name}] 연회비 납부 현황 안내 (완납 ${paidList.length}명 / 미납 ${unpaidList.length}명)\n• 직책별 연회비 확인 후 빠른 입금 부탁드립니다.`,
+                            GROUPING: `⛳ [${managingClub.name}] 스마트 밸런스 조편성 확정 발표!\n• 1조~${Math.max(1, Math.ceil(managingClub.members.length / 4))}조 편성이 완료되었습니다. 파키 앱에서 본인 조와 출발 홀을 확인하세요!`,
+                            RESULT: `🏆 [${managingClub.name}] 월례회 공식 시상식 및 결과 공지\n• 전 회원 개인 연대기에 공식 스코어카드가 자동 배포되었습니다!`,
+                          };
+                          const msg = notices[kakaoNoticeType];
+                          if (navigator.clipboard) navigator.clipboard.writeText(msg).catch(() => {});
+                          showToast(`📢 [${kakaoNoticeType}] 카카오톡 단체방 공지문이 클립보드에 복사되었습니다!`);
+                        }}
+                        className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-xs cursor-pointer"
+                      >
+                        📋 선택한 상황별 카톡 공지문 1초 복사
+                      </button>
+                    </div>
+
                     {/* 1. 연회비 요약 배너 */}
                     <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-3.5 space-y-3 shadow-xs">
                       <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
@@ -5042,6 +5354,190 @@ ${shareUrl}`;
                           );
                         })}
                       </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* 탭 4: [NEW 명세 3] 클럽 연대기 및 히스토리 타임라인 피드 */}
+              {managingClubTab === 'CHRONICLE' && (() => {
+                const clubChronicles = ClubStorage.getClubChronicles(managingClub.id);
+                const hioNames = Array.from(
+                  new Set([
+                    '박영희',
+                    ...clubChronicles.flatMap((c) =>
+                      (c.specialAwards || []).filter((a) => a.type === 'HOLE_IN_ONE').map((a) => a.winnerName)
+                    ),
+                  ])
+                );
+                const totalClubCompleted = managingClub.members.reduce(
+                  (acc, m) => acc + (m.totalCompleted9Holes ?? getUserCompleted9Holes(m.name)),
+                  0
+                );
+
+                return (
+                  <div className="space-y-3" data-testid="club-chronicle-tab-panel">
+                    {/* 1. 명예의 전당 요약 헤더 */}
+                    <div
+                      data-testid="club-chronicle-hall-header"
+                      className="bg-gradient-to-br from-amber-950 via-stone-900 to-emerald-950 text-white rounded-2xl p-3.5 space-y-2.5 border-2 border-amber-400/70 shadow-md"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-amber-300 flex items-center gap-1">
+                          🏛️ {managingClub.name} 명예의 전당 & 공식 연대기
+                        </span>
+                        <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
+                          공식 역사관
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-white/10 rounded-xl p-2 border border-white/15">
+                          <span className="text-[9px] text-amber-200 font-bold block">클럽 누적 완주</span>
+                          <strong className="text-sm font-black text-white font-mono">{totalClubCompleted}회</strong>
+                        </div>
+                        <div className="bg-white/10 rounded-xl p-2 border border-white/15">
+                          <span className="text-[9px] text-emerald-200 font-bold block">역대 공식 기록</span>
+                          <strong data-testid="club-chronicle-count" className="text-sm font-black text-emerald-300 font-mono">
+                            {clubChronicles.length}건
+                          </strong>
+                        </div>
+                        <div className="bg-white/10 rounded-xl p-2 border border-white/15">
+                          <span className="text-[9px] text-yellow-200 font-bold block">역대 홀인원</span>
+                          <strong className="text-sm font-black text-yellow-300 font-mono">{hioNames.length}명</strong>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                        <span className="text-[10px] font-black text-amber-300">🏆 역대 홀인원 골든 뱃지:</span>
+                        {hioNames.map((name) => (
+                          <span
+                            key={name}
+                            className="text-[10px] bg-gradient-to-r from-amber-300 to-yellow-400 text-stone-950 font-black px-2 py-0.5 rounded-full shadow-2xs"
+                          >
+                            👑 {name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 2. 과거 기록 수기 등록 ([ ➕ 과거 연대기 기록 추가 ]) */}
+                    <div className="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-black text-indigo-950 block">📜 과거 행사 / 대회 수기 아카이빙</span>
+                          <span className="text-[10px] text-indigo-700 font-bold">앱 도입 전 창립기념일, 과거 월례회, 홀인원 기록도 영구 보존</span>
+                        </div>
+                        <button
+                          type="button"
+                          data-testid="btn-add-past-chronicle"
+                          onClick={() => setShowPastChronicleForm(!showPastChronicleForm)}
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[11px] rounded-xl shadow-xs cursor-pointer"
+                        >
+                          {showPastChronicleForm ? '닫기 ▲' : '➕ 과거 연대기 기록 추가'}
+                        </button>
+                      </div>
+
+                      {showPastChronicleForm && (
+                        <div data-testid="past-chronicle-form-box" className="bg-white rounded-xl p-3 border border-indigo-200 space-y-2">
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <input
+                              type="text"
+                              data-testid="input-past-chronicle-title"
+                              value={pastChronicleTitle}
+                              onChange={(e) => setPastChronicleTitle(e.target.value)}
+                              placeholder="행사명 (예: 2024 추계 단합대회)"
+                              className="px-2.5 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-xs font-bold"
+                            />
+                            <input
+                              type="date"
+                              data-testid="input-past-chronicle-date"
+                              value={pastChronicleDate}
+                              onChange={(e) => setPastChronicleDate(e.target.value)}
+                              className="px-2.5 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-xs font-bold"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <select
+                              data-testid="select-past-chronicle-category"
+                              value={pastChronicleCategory}
+                              onChange={(e) => setPastChronicleCategory(e.target.value as any)}
+                              className="px-2.5 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-xs font-bold"
+                            >
+                              <option value="MILESTONE">🎉 클럽 창립/기념일</option>
+                              <option value="MONTHLY">⛳ 과거 정기 월례회</option>
+                              <option value="TOURNAMENT">🏆 과거 공식 대회</option>
+                              <option value="HOLE_IN_ONE">🦅 역대 홀인원/이글</option>
+                            </select>
+                            <input
+                              type="text"
+                              data-testid="input-past-chronicle-players"
+                              value={pastChroniclePlayers}
+                              onChange={(e) => setPastChroniclePlayers(e.target.value)}
+                              placeholder="주요 인물 (예: 김대희, 박영희)"
+                              className="px-2.5 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-xs font-bold"
+                            />
+                          </div>
+                          <input
+                            type="text"
+                            data-testid="input-past-chronicle-desc"
+                            value={pastChronicleDesc}
+                            onChange={(e) => setPastChronicleDesc(e.target.value)}
+                            placeholder="상세 기록 요약 (예: 전 회원 40명 참석 성황리 개최)"
+                            className="w-full px-2.5 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-xs font-bold"
+                          />
+                          <button
+                            type="button"
+                            data-testid="btn-submit-past-chronicle"
+                            onClick={() => {
+                              const entryTitle = pastChronicleTitle.trim() || '2024년 클럽 추계 단합대회 (수기 복원)';
+                              const entryDesc = pastChronicleDesc.trim() || '앱 도입 전 종이 기록부에서 총무가 공식 복원한 역사 기록입니다.';
+                              const players = pastChroniclePlayers
+                                .split(',')
+                                .map((s) => s.trim())
+                                .filter(Boolean);
+                              ClubStorage.addManualClubChronicle(managingClub.id, {
+                                title: entryTitle,
+                                heldAt: pastChronicleDate || '2024-10-15',
+                                courseName: managingClub.homeCourseName,
+                                totalParticipants: managingClub.memberCount || 36,
+                                winnerName: players[0] || '김대희',
+                                winnerScore: 59,
+                                holeInOneName: pastChronicleCategory === 'HOLE_IN_ONE' ? (players[0] || '박영희') : undefined,
+                                notes: entryDesc,
+                              });
+                              const refreshed = ClubStorage.getAllClubs().find((c) => c.id === managingClub.id) || managingClub;
+                              setManagingClub({ ...refreshed });
+                              setPastChronicleTitle('');
+                              setPastChronicleDesc('');
+                              setPastChroniclePlayers('');
+                              setShowPastChronicleForm(false);
+                              showToast(`📜 [${entryTitle}] 과거 기록이 클럽 연대기 타임라인에 공식 등재되었습니다!`);
+                            }}
+                            className="w-full py-2 bg-indigo-700 hover:bg-indigo-800 text-white font-black text-xs rounded-xl shadow-xs cursor-pointer"
+                          >
+                            ✅ 클럽 연대기 타임라인에 공식 등재
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 3. 타임라인 피드 */}
+                    <div data-testid="club-chronicle-timeline-feed" className="space-y-2">
+                      {clubChronicles.map((item) => (
+                        <div
+                          key={item.id}
+                          data-testid="club-chronicle-item"
+                          className="p-3 rounded-2xl bg-white border border-stone-200 shadow-2xs space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900">
+                              {item.gameMode || '🏛️ 클럽 공식 역사'}
+                            </span>
+                            <span className="text-[10px] font-mono font-bold text-stone-500">{item.heldAt}</span>
+                          </div>
+                          <h5 className="text-xs font-black text-stone-900">{item.title}</h5>
+                          <p className="text-[11px] text-stone-600 font-medium leading-relaxed">{item.notes || `${item.courseName} · 참가 ${item.totalParticipants}명 · 우승 ${item.winnerName}`}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 );

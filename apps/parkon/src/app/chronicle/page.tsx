@@ -458,6 +458,7 @@ function ChronicleContent() {
       <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 p-0.5 rounded-3xl shadow-md">
         <button
           type="button"
+          data-testid="btn-open-paper-scorecard"
           onClick={() => setShowPaperScorecardModal(true)}
           className="w-full bg-[#0a1826] hover:bg-[#0f2338] text-white p-3.5 sm:p-4 rounded-[22px] flex items-center justify-between transition active:scale-[0.99] cursor-pointer group"
         >
@@ -467,13 +468,13 @@ function ChronicleContent() {
             </div>
             <div>
               <div className="flex items-center gap-1.5 font-black text-sm sm:text-base text-yellow-300">
-                <span>종이 스코어카드 AI 자동 입력</span>
+                <span>📸 종이 스코어카드 사진으로 연대기 등록</span>
                 <span className="text-[10px] bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 px-1.5 py-0.2 rounded-full font-bold">
                   Vision AI
                 </span>
               </div>
               <p className="text-[11px] text-stone-300 font-medium mt-0.5">
-                클럽전·대회 다중 조(최대 10팀) 연속 촬영 시 36홀 통합 순위표 및 교차 검증 자동 생성
+                종이 스코어카드 사후 촬영 자동 파싱 · 클럽 다중 조 집계 및 1초 시상 전광판 지원
               </p>
             </div>
           </div>
@@ -1044,6 +1045,15 @@ function ChronicleContent() {
                                 ) : (
                                   <span className="text-[9px] bg-stone-100 text-stone-600 font-medium px-1.5 py-0.5 rounded-full">
                                     {isJapanese ? '一般記録' : '일반 기록'}
+                                  </span>
+                                )}
+                                {/* 🏛️ [마스터 명세 #2]: 클럽 대회 종료 시 자동 배포된 공식 대회 뱃지 */}
+                                {(r as any).clubMatchBadge && (
+                                  <span
+                                    data-testid="club-match-pushed-badge"
+                                    className="text-[9.5px] bg-gradient-to-r from-purple-800 to-indigo-800 text-amber-200 font-black px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1 border border-purple-400"
+                                  >
+                                    <span>[ {(r as any).clubMatchBadge} ]</span>
                                   </span>
                                 )}
                                 {/* 📸 [대표님 핵심 지시]: 사진 유무 확인 배지 */}

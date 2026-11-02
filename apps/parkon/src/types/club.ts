@@ -1,3 +1,16 @@
+export type ScorePrivacyLevel = 'PUBLIC' | 'TOTAL_ONLY' | 'PRIVATE';
+
+export interface ClubAccountingEntry {
+  id: string;
+  type: 'DUES' | 'ENTRY_FEE' | 'SPONSOR' | 'EXPENSE';
+  title: string;
+  amount: number;
+  date: string;
+  authorName?: string;
+  receiptImageUrl?: string;
+  isAiParsed?: boolean;
+}
+
 export interface ClubPlayer {
   id: string;
   name: string;
@@ -14,6 +27,8 @@ export interface ClubPlayer {
   netScore?: number; // [NEW] 핸디캡 적용 네트 스코어 (totalStrokes - handicap)
   waitNumber?: number; // [NEW] 정원 초과 시 대기 번호 (예: 1, 2)
   phone?: string; // [NEW] 동명이인 식별 및 연락용 번호
+  scorePrivacy?: ScorePrivacyLevel; // [NEW] 점수 프라이버시 ('PUBLIC' | 'TOTAL_ONLY' | 'PRIVATE')
+  isOfflineMember?: boolean; // [NEW] 오프라인(수기) 회원 여부
 }
 
 export interface ClubGroup {
@@ -117,6 +132,8 @@ export interface ClubMember {
   memberCode?: string; // [NEW] 7자리 고유 회원번호 (e.g. 'PKY-7788')
   diamondTier?: string; // [NEW] 컬러 다이아몬드 티어 코드 (e.g. 'GOLDEN_HALL', 'BLUE_DIA')
   totalCompleted9Holes?: number; // [NEW] 누적 9홀 완주 횟수
+  scorePrivacy?: ScorePrivacyLevel; // [NEW] 점수 공개 범위 ('PUBLIC' | 'TOTAL_ONLY' | 'PRIVATE')
+  isOfflineMember?: boolean; // [NEW] 오프라인(수기) 등록 회원 여부
 }
 
 // 🔐 탈퇴 회원 비밀 보관소 (영구 보존 & 복귀 시 원상 회복)
@@ -216,6 +233,8 @@ export interface ParkGolfClub {
   recruitTargetDate?: string;        // [NEW] 모집 예정 시기 (예: '2026년 10월 모집 예정')
   recruitNotes?: string;             // [NEW] 모집 요강 안내
   annualDuesAmount?: number;         // [NEW] 클럽 기준 연회비 금액 (기본값: 50,000원)
+  duesByRole?: { PRESIDENT: number; EXECUTIVE: number; MEMBER: number }; // [NEW] 직책별 차등 연회비
+  accountingLedger?: ClubAccountingEntry[]; // [NEW] 클럽 회계 수입/지출 장부
   createdAt: string;
 }
 
@@ -265,6 +284,7 @@ export interface ClubLeaderboardIndividual {
   netScore?: number; // [NEW] 핸디캡 적용 네트 스코어
   backCountScore?: number; // [NEW] 파크골프 공식 후반 9홀(10~18홀) 합산 타수
   tieBreakerReason?: string; // [NEW] 파크골프 공식 동타 판정 근거 (예: 백카운트 24타 우선 등)
+  scorePrivacy?: ScorePrivacyLevel; // [NEW] 개인 점수 공개 범위
 }
 
 // 3. 클럽 가입 초청장 인터페이스
@@ -279,4 +299,3 @@ export interface ClubInvitation {
   message?: string;
   createdAt: string;
 }
-

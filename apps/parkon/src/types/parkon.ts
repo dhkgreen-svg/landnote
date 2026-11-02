@@ -153,6 +153,10 @@ export interface RoundSession {
   matchType?: 'CLUB_MATCH' | 'TOURNAMENT' | 'CASUAL'; // 클럽전 | 정규대회 | 개인친선
   clubRoomId?: string;
   clubGroupNumber?: number;
+  clubId?: string;
+  clubName?: string;
+  clubMatchBadge?: string; // 예: '[ 🏛️ 나우골프 11월 월례회 ]'
+  scorePrivacy?: 'PUBLIC' | 'TOTAL_ONLY' | 'PRIVATE'; // 점수 프라이버시 공개 범위
   photos?: string[]; // 현장 인증샷 및 워터마크 포토카드 목록
   photoMetadata?: PhotoCardMeta[]; // 현장 사진별 분류 메타데이터 (홀인원/이글/일반, 달성자, 홀 번호)
   durationMinutes?: number; // 총 소요 시간 (분 단위)

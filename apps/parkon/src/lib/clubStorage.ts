@@ -15,6 +15,8 @@ import {
   SpecialAwardWinner,
   SpecialAwardType,
   ClubRecruitStatus,
+  ScorePrivacyLevel,
+  ClubAccountingEntry,
 } from '@/types/club';
 import { supabase } from './supabase';
 import { calculateTier, getUserCompleted9Holes, UserDiamondTier } from './courseBlockTier';
@@ -945,12 +947,14 @@ export const ClubStorage = {
     }
 
     this.saveRoom(room);
+    this.archiveEventRoomToClubChronicle(room);
+    this.pushTournamentToPersonalChronicles(room);
     this.syncEventToSupabase(room).catch(() => {});
 
     return {
       success: true,
       room,
-      message: `'${room.title}' 대회가 공식 마감되어 클럽 연대기에 영구 보존되었습니다! 🏆`,
+      message: `'${room.title}' 대회가 공식 마감되어 클럽 연대기 및 전 참가 회원 개인 연대기에 자동 배포/보존되었습니다! 🏆`,
     };
   },
 
@@ -1481,6 +1485,7 @@ export const ClubStorage = {
           handicap,
           netScore,
           backCountScore,
+          scorePrivacy: p.scorePrivacy || this.getPlayerScorePrivacy(p.name),
         });
       });
     });
@@ -3686,5 +3691,526 @@ ${shareUrl}`;
     const waveSuffix = wave > 0 ? ` (${wave + 1}부)` : '';
     return `${courseLetter}-${holeNumber}홀${waveSuffix}`;
   },
+
+  // ==========================================
+  // 🔒 [마스터 명세 #1] 클럽 회원 스코어 프라이버시 (비공개 / 마스킹) 보호 시스템
+  // ==========================================
+  getPlayerScorePrivacy(playerName: string): ScorePrivacyLevel {
+    if (typeof window === 'undefined' || !playerName) return 'PUBLIC';
+    try {
+      const cleanName = playerName.replace('(본인)', '').trim();
+      const rawMap = localStorage.getItem('parkon_score_privacy_map_v1');
+      if (rawMap) {
+        const map = JSON.parse(rawMap);
+        if (map[playerName]) return map[playerName];
+        if (map[cleanName]) return map[cleanName];
+      }
+      // 시니어/초보 프라이버시 기본 시드: 박영희님은 PRIVATE(비공개), 이철수님은 TOTAL_ONLY(총타수만 공개) 지원 가능
+      return 'PUBLIC';
+    } catch {
+      return 'PUBLIC';
+    }
+  },
+
+  setPlayerScorePrivacy(
+    playerName: string,
+    level: ScorePrivacyLevel,
+    roomId?: string
+  ): ClubEventRoom | null {
+    if (typeof window === 'undefined' || !playerName) return null;
+    try {
+      const cleanName = playerName.replace('(본인)', '').trim();
+      const rawMap = localStorage.getItem('parkon_score_privacy_map_v1');
+      const map: Record<string, ScorePrivacyLevel> = rawMap ? JSON.parse(rawMap) : {};
+      map[playerName] = level;
+      map[cleanName] = level;
+      localStorage.setItem('parkon_score_privacy_map_v1', JSON.stringify(map));
+
+      // 클럽 멤버 엔티티에도 반영
+      const clubs = this.getAllClubs();
+      let clubModified = false;
+      clubs.forEach((club) => {
+        (club.members || []).forEach((m) => {
+          if (m.name === playerName || m.name.replace('(본인)', '').trim() === cleanName) {
+            m.scorePrivacy = level;
+            clubModified = true;
+          }
+        });
+      });
+      if (clubModified) {
+        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+      }
+
+      // 특정 대회 방 또는 전체 대회 방 내 해당 플레이어에 즉시 반영
+      if (roomId) {
+        const room = this.getRoom(roomId);
+        if (room) {
+          (room.groups || []).forEach((g) => {
+            (g.players || []).forEach((p) => {
+              if (p.name === playerName || p.name.replace('(본인)', '').trim() === cleanName) {
+                p.scorePrivacy = level;
+              }
+            });
+          });
+          this.saveRoom(room);
+          return room;
+        }
+      }
+    } catch {}
+    return null;
+  },
+
+  // ==========================================
+  // 🔄 [마스터 명세 #2] 개인 연대기 ↔ 클럽 연대기 양방향 스마트 연동 엔진
+  // ==========================================
+  // 원리 1: 클럽 대회 종료 시 전 참가 회원 개인 연대기 자동 배포 (Push Sync)
+  pushTournamentToPersonalChronicles(room: ClubEventRoom): number {
+    if (typeof window === 'undefined' || !room) return 0;
+    try {
+      const completedKey = 'parkon_completed_rounds_v1';
+      const rawCompleted = localStorage.getItem(completedKey);
+      const completedList: any[] = rawCompleted ? JSON.parse(rawCompleted) : [];
+      const badgeLabel = `🏛️ ${room.clubName || '나우골프'} ${room.title}`;
+      const recordId = `club_push_${room.id}`;
+
+      const allPlayers: any[] = [];
+      (room.groups || []).forEach((g) => {
+        (g.players || []).forEach((p) => {
+          if (p.totalStrokes > 0 || Object.keys(p.scores || {}).length > 0) {
+            allPlayers.push({
+              id: p.id,
+              name: p.name,
+              isLeader: !!p.isLeader,
+              scores: p.scores || {},
+              obCount: {},
+              obCounts: {},
+              totalStrokes: p.totalStrokes || 0,
+              totalParDiff: p.parDiff || 0,
+              parDiff: p.parDiff || 0,
+            });
+          }
+        });
+      });
+
+      if (allPlayers.length === 0) return 0;
+
+      const totalHoles = room.totalHoles || 18;
+      const holes = Array.from({ length: totalHoles }, (_, idx) => {
+        const stdPars = [4, 3, 4, 3, 4, 4, 3, 3, 5];
+        return {
+          hole: idx + 1,
+          holeNumber: idx + 1,
+          par: stdPars[idx % 9] || 3,
+          distance: 65,
+        };
+      });
+      const isoDate = room.createdAt ? new Date(room.createdAt).toISOString() : new Date().toISOString();
+
+      const pushedSession = {
+        id: recordId,
+        courseId: room.courseId || 'course-club',
+        courseName: room.courseName || '공식 클럽 대회 구장',
+        subCourseName: `${(room.selectedCourseLetters || ['A', 'B']).join('+')} 코스 (${totalHoles}홀)`,
+        startedAt: isoDate,
+        completedAt: new Date().toISOString(),
+        date: isoDate,
+        currentHole: totalHoles,
+        totalHoles,
+        selectedCourseLetters: room.selectedCourseLetters || ['A', 'B'],
+        selectedHoleNumbers: Array.from({ length: totalHoles }, (_, i) => i + 1),
+        holes,
+        players: allPlayers.slice(0, 4),
+        status: 'COMPLETED',
+        isOfficial: true,
+        isFinished: true,
+        isPractice: false,
+        countInStats: true,
+        clubId: room.clubId || 'club-default',
+        clubName: room.clubName || '나우골프',
+        clubRoomId: room.id,
+        clubMatchBadge: badgeLabel,
+      };
+
+      const existingIdx = completedList.findIndex((h) => h.id === recordId);
+      if (existingIdx !== -1) {
+        completedList[existingIdx] = pushedSession;
+      } else {
+        completedList.unshift(pushedSession);
+      }
+
+      localStorage.setItem(completedKey, JSON.stringify(completedList));
+      localStorage.setItem('parkon_round_history', JSON.stringify(completedList));
+      const officialCount = completedList.filter((r) => r && r.isOfficial !== false && !r.isVirtual && !r.isPractice).length;
+      localStorage.setItem('completedRoundsCount', String(officialCount));
+      localStorage.setItem('parkon_user_completed_9holes', String(officialCount));
+      return allPlayers.length;
+    } catch {
+      return 0;
+    }
+  },
+
+  // 원리 3: 총무가 경기 초기화/취소 시 개인 연대기 데이터도 일치 롤백
+  rollbackTournamentFromPersonalChronicles(roomId: string): boolean {
+    if (typeof window === 'undefined' || !roomId) return false;
+    try {
+      const recordId = `club_push_${roomId}`;
+      const completedKey = 'parkon_completed_rounds_v1';
+      const rawCompleted = localStorage.getItem(completedKey);
+      if (rawCompleted) {
+        const list: any[] = JSON.parse(rawCompleted);
+        const filtered = list.filter((h) => h.id !== recordId && h.clubRoomId !== roomId);
+        localStorage.setItem(completedKey, JSON.stringify(filtered));
+        localStorage.setItem('parkon_round_history', JSON.stringify(filtered));
+        const officialCount = filtered.filter((r) => r && r.isOfficial !== false && !r.isVirtual && !r.isPractice).length;
+        localStorage.setItem('completedRoundsCount', String(officialCount));
+        localStorage.setItem('parkon_user_completed_9holes', String(officialCount));
+      }
+
+      // 클럽 연대기에서도 해당 경기 롤백
+      const chronicleId = `chronicle_${roomId}`;
+      const allChronicles = this.getAllGlobalChronicles().filter((c) => c.id !== chronicleId && c.roomId !== roomId);
+      localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(allChronicles));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  // 원리 2: 개인 홀인원/이글 달성 시 소속 클럽 타임라인 피드 자동 공유 & 명예의 전당 가산
+  rollupPersonalAchievementToClubTimeline(params: {
+    clubId?: string;
+    playerName: string;
+    achievementType: 'HOLE_IN_ONE' | 'EAGLE';
+    courseName: string;
+    holeNumber: number;
+    heldAt?: string;
+  }): ClubChronicleTournament | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const clubs = this.getAllClubs();
+      const targetClub = params.clubId
+        ? clubs.find((c) => c.id === params.clubId) || clubs[0]
+        : clubs[0];
+      const clubId = targetClub?.id || 'club-default';
+      const clubName = targetClub?.name || '나우골프 클럽';
+      const typeLabel = params.achievementType === 'HOLE_IN_ONE' ? '🏆 공식 홀인원 달성' : '🦅 공식 이글 달성';
+      const scoreVal = params.achievementType === 'HOLE_IN_ONE' ? 1 : 2;
+      const chrId = `chronicle_hio_${Date.now()}`;
+
+      const record: ClubChronicleTournament = {
+        id: chrId,
+        roomId: chrId,
+        clubId,
+        clubName,
+        title: `[경축] ${params.playerName} 회원님 ${params.courseName} ${params.holeNumber}번홀 ${typeLabel}!`,
+        heldAt: params.heldAt || new Date().toISOString().slice(0, 10),
+        courseId: 'course-hio',
+        courseName: params.courseName,
+        totalHoles: 18,
+        gameMode: typeLabel,
+        totalParticipants: 4,
+        winnerName: params.playerName,
+        winnerScore: scoreVal,
+        specialAwards: [
+          {
+            type: 'HOLE_IN_ONE',
+            title: typeLabel,
+            badge: params.achievementType === 'HOLE_IN_ONE' ? '🏆' : '🦅',
+            winnerName: params.playerName,
+            groupNumber: 1,
+            detailText: `${params.courseName} ${params.holeNumber}번홀 ${scoreVal}타 기록 (자동 연동)`,
+            holeNumber: params.holeNumber,
+          },
+        ],
+        rankings: [
+          {
+            rank: 1,
+            playerId: `p_${Date.now()}`,
+            playerName: params.playerName,
+            groupNumber: 1,
+            totalStrokes: scoreVal,
+            parDiff: -3,
+            isWinner: true,
+            awards: [typeLabel],
+          },
+        ],
+        groupResults: [],
+        notes: `개인 라운드 중 ${typeLabel} 달성으로 클럽 연대기 타임라인에 자동 공유되었습니다.`,
+        archivedAt: new Date().toISOString(),
+      };
+
+      const allChronicles = this.getAllGlobalChronicles();
+      allChronicles.unshift(record);
+      localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(allChronicles.slice(0, 150)));
+
+      if (targetClub) {
+        if (!targetClub.chronicles) targetClub.chronicles = [];
+        targetClub.chronicles.unshift(record);
+        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+      }
+      return record;
+    } catch {
+      return null;
+    }
+  },
+
+  // ==========================================
+  // 📜 [마스터 명세 #3] 클럽 연대기 과거 기록 수기 등록 (`[ ➕ 과거 연대기 기록 추가 ]`)
+  // ==========================================
+  addManualClubChronicle(
+    clubId: string,
+    params: {
+      title: string;
+      heldAt: string;
+      courseName: string;
+      totalParticipants: number;
+      winnerName: string;
+      winnerScore: number;
+      runnerUpName?: string;
+      medalistName?: string;
+      holeInOneName?: string;
+      notes?: string;
+    }
+  ): ClubChronicleTournament | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const clubs = this.getAllClubs();
+      const club = clubs.find((c) => c.id === clubId) || clubs[0];
+      const chrId = `chronicle_manual_${Date.now()}`;
+      const specialAwards: SpecialAwardWinner[] = [];
+      if (params.holeInOneName?.trim()) {
+        specialAwards.push({
+          type: 'HOLE_IN_ONE',
+          title: '역대 홀인원 기록',
+          badge: '🏆',
+          winnerName: params.holeInOneName.trim(),
+          groupNumber: 1,
+          detailText: `${params.courseName} 공식 홀인원 (수기 아카이빙)`,
+        });
+      }
+
+      const record: ClubChronicleTournament = {
+        id: chrId,
+        roomId: chrId,
+        clubId: club?.id || clubId,
+        clubName: club?.name || '공식 클럽',
+        title: params.title.trim() || '과거 클럽 공식 행사 기록',
+        heldAt: params.heldAt || new Date().toISOString().slice(0, 10),
+        courseId: 'manual-course',
+        courseName: params.courseName.trim() || '지역 파크골프장',
+        totalHoles: 18,
+        gameMode: '수기 등록 아카이브 (과거 실록)',
+        totalParticipants: params.totalParticipants || 20,
+        winnerName: params.winnerName.trim() || '클럽 챔피언',
+        winnerScore: params.winnerScore || 62,
+        runnerUpName: params.runnerUpName?.trim() || undefined,
+        medalistName: params.medalistName?.trim() || undefined,
+        specialAwards: specialAwards.length > 0 ? specialAwards : undefined,
+        rankings: [
+          {
+            rank: 1,
+            playerId: `m_${Date.now()}`,
+            playerName: params.winnerName.trim() || '클럽 챔피언',
+            groupNumber: 1,
+            totalStrokes: params.winnerScore || 62,
+            parDiff: (params.winnerScore || 62) - 66,
+            isWinner: true,
+            awards: ['우승 🏆'],
+          },
+        ],
+        groupResults: [],
+        notes: params.notes?.trim() || '앱 도입 전 과거 클럽 역사를 총무가 수기로 등재한 공식 기록입니다.',
+        archivedAt: new Date().toISOString(),
+      };
+
+      const allChronicles = this.getAllGlobalChronicles();
+      allChronicles.unshift(record);
+      localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(allChronicles.slice(0, 150)));
+
+      if (club) {
+        if (!club.chronicles) club.chronicles = [];
+        club.chronicles.unshift(record);
+        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+      }
+      return record;
+    } catch {
+      return null;
+    }
+  },
+
+  // ==========================================
+  // 📝 [마스터 명세 #11] 오프라인(수기) 회원 직접 등록 및 `[ 📝 오프라인 ]` 뱃지 부여
+  // ==========================================
+  registerOfflineMembers(
+    clubId: string,
+    entries: { name: string; phone?: string; role?: string; customRoleName?: string }[]
+  ): { addedCount: number; club?: ParkGolfClub } {
+    if (typeof window === 'undefined') return { addedCount: 0 };
+    const clubs = this.getAllClubs();
+    const club = clubs.find((c) => c.id === clubId);
+    if (!club) return { addedCount: 0 };
+
+    let addedCount = 0;
+    const today = new Date().toISOString().slice(0, 10);
+
+    entries.forEach((entry, idx) => {
+      const cleanName = entry.name.trim();
+      if (!cleanName) return;
+      const exists = (club.members || []).some((m) => m.name.replace('(본인)', '').trim() === cleanName);
+      if (exists) return;
+
+      const roleVal = entry.role || 'MEMBER';
+      const roleDues = club.duesByRole
+        ? roleVal === 'PRESIDENT'
+          ? club.duesByRole.PRESIDENT
+          : roleVal !== 'MEMBER'
+          ? club.duesByRole.EXECUTIVE
+          : club.duesByRole.MEMBER
+        : club.annualDuesAmount || 100000;
+
+      const newMember: ClubMember = {
+        id: `offline_${Date.now()}_${idx}`,
+        name: cleanName,
+        memberCode: `OFF-${Math.floor(1000 + Math.random() * 9000)}`,
+        role: roleVal,
+        customRoleName: entry.customRoleName,
+        avgStrokes: 66,
+        roundsPlayed: 0,
+        totalCompleted9Holes: 0,
+        joinedAt: today,
+        phone: entry.phone?.trim() || '010-0000-0000',
+        duesPaid: false,
+        duesAmount: roleDues,
+        isOfflineMember: true,
+        scorePrivacy: 'PUBLIC',
+      };
+      club.members.push(newMember);
+      addedCount++;
+    });
+
+    if (addedCount > 0) {
+      club.memberCount = club.members.length;
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+    }
+    return { addedCount, club };
+  },
+
+  // ==========================================
+  // 💰 [마스터 명세 #12] 클럽 회계 관리: 직책별 차등 연회비 + 영수증 AI 자동인식 장부 + 총잔액 실시간 동기화
+  // ==========================================
+  updateClubDuesByRole(
+    clubId: string,
+    duesByRole: { PRESIDENT: number; EXECUTIVE: number; MEMBER: number }
+  ): ParkGolfClub | null {
+    if (typeof window === 'undefined') return null;
+    const clubs = this.getAllClubs();
+    const club = clubs.find((c) => c.id === clubId);
+    if (!club) return null;
+
+    club.duesByRole = duesByRole;
+    club.annualDuesAmount = duesByRole.MEMBER;
+
+    // 직책에 따라 각 회원의 기준 연회비 금액 자동 매핑
+    (club.members || []).forEach((m) => {
+      if (m.role === 'PRESIDENT' || m.customRoleName === '회장') {
+        m.duesAmount = duesByRole.PRESIDENT;
+      } else if (m.role !== 'MEMBER' || (m.customRoleName && m.customRoleName !== '일반회원')) {
+        m.duesAmount = duesByRole.EXECUTIVE;
+      } else {
+        m.duesAmount = duesByRole.MEMBER;
+      }
+    });
+
+    localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+    return club;
+  },
+
+  addClubAccountingEntry(
+    clubId: string,
+    entry: {
+      type: 'INCOME_DUES' | 'INCOME_ENTRY_FEE' | 'INCOME_SPONSOR' | 'EXPENSE';
+      category: string;
+      title: string;
+      amount: number;
+      date?: string;
+      storeName?: string;
+      receiptImageUrl?: string;
+      notes?: string;
+    }
+  ): ParkGolfClub | null {
+    if (typeof window === 'undefined') return null;
+    const clubs = this.getAllClubs();
+    const club = clubs.find((c) => c.id === clubId);
+    if (!club) return null;
+
+    if (!club.accountingLedger) club.accountingLedger = [];
+    const newEntry: ClubAccountingEntry = {
+      id: `acc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      type: entry.type,
+      category: entry.category,
+      title: entry.title,
+      amount: entry.amount,
+      date: entry.date || new Date().toISOString().slice(0, 10),
+      storeName: entry.storeName,
+      receiptImageUrl: entry.receiptImageUrl,
+      notes: entry.notes,
+    };
+    club.accountingLedger.unshift(newEntry);
+    localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+    return club;
+  },
+
+  getClubAccountingSummary(club: ParkGolfClub): {
+    duesTotal: number;
+    entryFeeTotal: number;
+    sponsorTotal: number;
+    expenseTotal: number;
+    totalBalance: number;
+    ledger: ClubAccountingEntry[];
+  } {
+    const duesByRole = club.duesByRole || {
+      PRESIDENT: 300000,
+      EXECUTIVE: 200000,
+      MEMBER: club.annualDuesAmount || 100000,
+    };
+    const memberDuesPaidSum = (club.members || [])
+      .filter((m) => m.duesPaid)
+      .reduce((sum, m) => {
+        const fallbackAmt =
+          m.role === 'PRESIDENT'
+            ? duesByRole.PRESIDENT
+            : m.role !== 'MEMBER'
+            ? duesByRole.EXECUTIVE
+            : duesByRole.MEMBER;
+        return sum + (m.duesAmount || fallbackAmt);
+      }, 0);
+
+    const ledger = club.accountingLedger || [];
+    const extraDues = ledger
+      .filter((e) => e.type === 'INCOME_DUES')
+      .reduce((s, e) => s + e.amount, 0);
+    const entryFeeTotal = ledger
+      .filter((e) => e.type === 'INCOME_ENTRY_FEE')
+      .reduce((s, e) => s + e.amount, 0);
+    const sponsorTotal = ledger
+      .filter((e) => e.type === 'INCOME_SPONSOR')
+      .reduce((s, e) => s + e.amount, 0);
+    const expenseTotal = ledger
+      .filter((e) => e.type === 'EXPENSE')
+      .reduce((s, e) => s + e.amount, 0);
+
+    const duesTotal = memberDuesPaidSum + extraDues;
+    const totalBalance = duesTotal + entryFeeTotal + sponsorTotal - expenseTotal;
+
+    return {
+      duesTotal,
+      entryFeeTotal,
+      sponsorTotal,
+      expenseTotal,
+      totalBalance,
+      ledger,
+    };
+  },
 };
+
 

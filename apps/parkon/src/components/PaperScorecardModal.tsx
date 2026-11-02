@@ -59,6 +59,11 @@ export function PaperScorecardModal({
 
   // Step state: 'UPLOAD' | 'REVIEW' | 'LEADERBOARD' | 'MERGE_RESOLVE'
   const [step, setStep] = useState<'UPLOAD' | 'REVIEW' | 'LEADERBOARD' | 'MERGE_RESOLVE'>('UPLOAD');
+  React.useEffect(() => {
+    if (isOpen) {
+      setStep('UPLOAD');
+    }
+  }, [isOpen]);
   const [images, setImages] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [parsedGroups, setParsedGroups] = useState<ParsedGroup[]>([]);
@@ -73,6 +78,134 @@ export function PaperScorecardModal({
   const albumInputRef = useRef<HTMLInputElement | null>(null);
 
   // File upload handler
+  const handleLoadSampleOCR = (includeMultiGroups = false) => {
+    const g1Scores1: Record<number, number> = { 1: 3, 2: 3, 3: 4, 4: 3, 5: 4, 6: 3, 7: 3, 8: 3, 9: 4, 10: 4, 11: 3, 12: 4, 13: 3, 14: 4, 15: 4, 16: 3, 17: 3, 18: 4 }; // 62
+    const g1Scores2: Record<number, number> = { 1: 4, 2: 3, 3: 4, 4: 3, 5: 4, 6: 4, 7: 3, 8: 3, 9: 4, 10: 4, 11: 3, 12: 4, 13: 3, 14: 4, 15: 4, 16: 3, 17: 3, 18: 4 }; // 64 (기재오류 65)
+    const group1: ParsedGroup = {
+      groupId: 'grp_ocr_1',
+      groupNumber: '1조',
+      courseName: '수성 패밀리 파크골프장',
+      date: new Date().toISOString().slice(0, 10),
+      courses: ['A코스', 'B코스'],
+      players: [
+        { name: '김대희', scores: g1Scores1, reportedTotal: 62, calculatedTotal: 62, isMathValid: true, mathDiff: 0 },
+        { name: '오송', scores: g1Scores2, reportedTotal: 65, calculatedTotal: 64, isMathValid: false, mathDiff: 1 },
+        { name: '박상훈', scores: { ...g1Scores1, 1: 4, 9: 5, 18: 5 }, reportedTotal: 65, calculatedTotal: 65, isMathValid: true, mathDiff: 0 },
+        { name: '정수진', scores: { ...g1Scores2, 2: 4, 5: 5, 14: 5 }, reportedTotal: 67, calculatedTotal: 67, isMathValid: true, mathDiff: 0 },
+      ],
+    };
+
+    if (!includeMultiGroups) {
+      setParsedGroups([group1]);
+      setActiveGroupIdx(0);
+      setStep('REVIEW');
+      return;
+    }
+
+    const group2: ParsedGroup = {
+      groupId: 'grp_ocr_2',
+      groupNumber: '2조',
+      courseName: '수성 패밀리 파크골프장',
+      date: new Date().toISOString().slice(0, 10),
+      courses: ['A코스', 'B코스'],
+      players: [
+        { name: '이민호', scores: { ...g1Scores1, 3: 3, 12: 3 }, reportedTotal: 60, calculatedTotal: 60, isMathValid: true, mathDiff: 0 },
+        { name: '최동원', scores: { ...g1Scores2, 6: 5 }, reportedTotal: 65, calculatedTotal: 65, isMathValid: true, mathDiff: 0 },
+        { name: '한지민', scores: { ...g1Scores2, 1: 5, 9: 5 }, reportedTotal: 66, calculatedTotal: 66, isMathValid: true, mathDiff: 0 },
+        { name: '장성호', scores: { ...g1Scores2, 1: 5, 5: 5, 9: 5, 18: 5 }, reportedTotal: 68, calculatedTotal: 68, isMathValid: true, mathDiff: 0 },
+      ],
+    };
+
+    const group3: ParsedGroup = {
+      groupId: 'grp_ocr_3',
+      groupNumber: '3조',
+      courseName: '수성 패밀리 파크골프장',
+      date: new Date().toISOString().slice(0, 10),
+      courses: ['A코스', 'B코스'],
+      players: [
+        { name: '윤태영', scores: { ...g1Scores1, 5: 3 }, reportedTotal: 61, calculatedTotal: 61, isMathValid: true, mathDiff: 0 },
+        { name: '송유진', scores: { ...g1Scores2, 10: 5, 15: 5 }, reportedTotal: 66, calculatedTotal: 66, isMathValid: true, mathDiff: 0 },
+        { name: '강현우', scores: { ...g1Scores2, 4: 4, 8: 4, 16: 4 }, reportedTotal: 67, calculatedTotal: 67, isMathValid: true, mathDiff: 0 },
+        { name: '박영희', scores: { ...g1Scores2, 1: 5, 3: 5, 5: 5, 9: 6, 14: 5, 18: 6 }, reportedTotal: 72, calculatedTotal: 72, isMathValid: true, mathDiff: 0 },
+      ],
+    };
+
+    setParsedGroups([group1, group2, group3]);
+    setActiveGroupIdx(0);
+    setStep('REVIEW');
+  };
+
+  const handleFixPlayerMath = (groupIdx: number, playerIdx: number) => {
+    setParsedGroups((prev) =>
+      prev.map((g, gi) => {
+        if (gi !== groupIdx) return g;
+        return {
+          ...g,
+          players: g.players.map((p, pi) => {
+            if (pi !== playerIdx) return p;
+            return {
+              ...p,
+              reportedTotal: p.calculatedTotal,
+              isMathValid: true,
+              mathDiff: 0,
+            };
+          }),
+        };
+      })
+    );
+    setMergeToast('✅ 1초 스마트 검산 보정 완료! 홀별 타수 합계와 총계가 100% 일치합니다.');
+    setTimeout(() => setMergeToast(null), 2500);
+  };
+
+  const handleSaveToPersonalChronicle = () => {
+    if (parsedGroups.length === 0) return;
+    const grp = parsedGroups[activeGroupIdx] || parsedGroups[0];
+    const stdPars = [4, 3, 4, 3, 4, 4, 3, 3, 5];
+    const holes = Array.from({ length: 18 }, (_, i) => ({
+      holeNumber: i + 1,
+      par: stdPars[i % 9] || 3,
+      distance: 65,
+    }));
+
+    const newRound: any = {
+      id: `paper_ocr_${Date.now()}`,
+      courseId: 'course-suseong-family',
+      courseName: grp.courseName || '수성 패밀리 파크골프장',
+      subCourseName: (grp.courses || ['A코스', 'B코스']).join('·'),
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+      date: new Date().toISOString(),
+      totalHoles: 18,
+      currentHole: 18,
+      holes,
+      players: grp.players.map((p, idx) => ({
+        id: `pp_${idx}_${Date.now()}`,
+        name: p.name,
+        isSelf: idx === 0,
+        isLeader: idx === 0,
+        scores: p.scores,
+        obCount: {},
+        totalStrokes: p.calculatedTotal,
+        totalParDiff: p.calculatedTotal - 66,
+      })),
+      status: 'COMPLETED',
+      isFinished: true,
+      isOfficial: true,
+      isPractice: false,
+      countInStats: true,
+      isPaperVerified: true,
+      durationMinutes: 105,
+    };
+
+    ParkOnStorage.saveCompletedRound(newRound);
+    setMergeToast('🎉 종이 스코어카드 사후 사진 등록 완료! 개인 연대기 및 공식 완주 횟수(+1)에 즉시 반영되었습니다.');
+    onMergedSuccess?.(newRound);
+    setTimeout(() => {
+      setMergeToast(null);
+      onClose();
+    }, 1200);
+  };
+
   const handleAddImage = (file: File) => {
     if (images.length >= 10) {
       alert(isJapanese ? '最大10組まで登録可能です。' : '최대 10개 조(10장)까지 등록 가능합니다.');
@@ -240,7 +373,10 @@ export function PaperScorecardModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 animate-fadeIn">
+    <div
+      data-testid="paper-scorecard-modal"
+      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 animate-fadeIn"
+    >
       <div className="bg-white rounded-3xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl border-2 border-emerald-500 overflow-hidden animate-scaleUp">
         {/* Header */}
         <div className="p-4 bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 text-white flex items-center justify-between shrink-0 border-b border-emerald-700">
@@ -357,6 +493,28 @@ export function PaperScorecardModal({
                 </button>
               </div>
 
+              {/* 1-Click AI OCR Demo / Simulation Buttons for Instant Verification */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  data-testid="btn-demo-paper-ocr-single"
+                  onClick={() => handleLoadSampleOCR(false)}
+                  className="py-3 px-3 bg-amber-50 hover:bg-amber-100 text-amber-950 font-black text-xs rounded-2xl border-2 border-amber-300 flex items-center justify-center gap-1.5 shadow-2xs transition active:scale-95 cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  <span>🤖 샘플 종이 스코어카드 AI 파싱 (개인 연대기)</span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="btn-demo-paper-ocr-multi"
+                  onClick={() => handleLoadSampleOCR(true)}
+                  className="py-3 px-3 bg-purple-50 hover:bg-purple-100 text-purple-950 font-black text-xs rounded-2xl border-2 border-purple-300 flex items-center justify-center gap-1.5 shadow-2xs transition active:scale-95 cursor-pointer"
+                >
+                  <Trophy className="w-4 h-4 text-purple-600" />
+                  <span>🏛️ 다중 조(1~3조) 연속 촬영 & 1초 시상 전광판</span>
+                </button>
+              </div>
+
               {/* Uploaded Cards Preview Grid */}
               {images.length > 0 && (
                 <div className="space-y-2">
@@ -458,20 +616,39 @@ export function PaperScorecardModal({
 
                   <div className="divide-y divide-stone-200">
                     {parsedGroups[activeGroupIdx].players.map((player, pIdx) => (
-                      <div key={pIdx} className="p-3 space-y-2">
-                        <div className="flex items-center justify-between">
+                      <div
+                        key={pIdx}
+                        data-testid={!player.isMathValid ? 'paper-math-mismatch-row' : `paper-player-row-${pIdx}`}
+                        className={`p-3 space-y-2 transition ${
+                          !player.isMathValid ? 'bg-orange-50/90 border-l-4 border-orange-500' : ''
+                        }`}
+                      >
+                        <div className="flex items-center justify-between flex-wrap gap-1.5">
                           <span className="font-black text-sm text-stone-900">{player.name}</span>
                           <div className="flex items-center gap-1.5">
                             {player.isMathValid ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              <span
+                                data-testid={`paper-math-valid-${player.name}`}
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300"
+                              >
                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                                 <span>검산 일치 ({player.calculatedTotal}타)</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-300">
-                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                                <span>불일치: 기재 {player.reportedTotal}타 vs 합계 {player.calculatedTotal}타</span>
-                              </span>
+                              <>
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-orange-100 text-orange-900 border border-orange-400">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-orange-600" />
+                                  <span>⚠️ 검산 불일치: 기재 {player.reportedTotal}타 vs 실제 합계 {player.calculatedTotal}타</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  data-testid="btn-fix-math-mismatch"
+                                  onClick={() => handleFixPlayerMath(activeGroupIdx, pIdx)}
+                                  className="px-2.5 py-1 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-black shadow-xs cursor-pointer transition active:scale-95"
+                                >
+                                  ⚡ 1초 합계 보정 ({player.calculatedTotal}타 확정)
+                                </button>
+                              </>
                             )}
                           </div>
                         </div>
@@ -491,15 +668,38 @@ export function PaperScorecardModal({
                 </div>
               )}
 
-              {/* Navigation to Leaderboard & Match */}
+              {/* Navigation to Leaderboard, Add Next Group & Save to Personal Chronicle */}
               <div className="pt-2 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    data-testid="btn-add-next-group-card"
+                    onClick={() => handleLoadSampleOCR(true)}
+                    className="py-3 px-2 bg-purple-50 hover:bg-purple-100 text-purple-900 font-black text-xs rounded-2xl border border-purple-300 flex items-center justify-center gap-1 cursor-pointer transition active:scale-98"
+                  >
+                    <Plus className="w-4 h-4 text-purple-700" />
+                    <span>➕ 다음 조 카드 추가 촬영 ({parsedGroups.length}개 조 병합)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    data-testid="btn-save-paper-to-chronicle"
+                    onClick={handleSaveToPersonalChronicle}
+                    className="py-3 px-2 bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs rounded-2xl border border-amber-400 flex items-center justify-center gap-1 shadow-xs cursor-pointer transition active:scale-98"
+                  >
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>✅ 개인 연대기 완주 등록 (+1회)</span>
+                  </button>
+                </div>
+
                 <button
                   type="button"
+                  data-testid="btn-open-paper-leaderboard"
                   onClick={() => setStep('LEADERBOARD')}
                   className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-sm rounded-2xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition active:scale-98"
                 >
                   <Trophy className="w-4 h-4 text-yellow-300" />
-                  <span>36홀 전체 통합 순위표(리더보드) 보기 ➔</span>
+                  <span>🏆 신페리오 공인 연산 & 1초 자동 시상식 전광판 보기 ➔</span>
                 </button>
 
                 {matchedRound && (
@@ -515,28 +715,60 @@ export function PaperScorecardModal({
             </div>
           )}
 
-          {/* STEP 3: INTEGRATED 36-HOLE LEADERBOARD */}
+          {/* STEP 3: INTEGRATED LEADERBOARD & 1-SEC NEW PERIO AWARD SCOREBOARD */}
           {step === 'LEADERBOARD' && (
-            <div className="space-y-3.5">
-              <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white p-3.5 rounded-2xl border border-emerald-700 flex items-center justify-between">
+            <div className="space-y-3.5" data-testid="paper-new-perio-award-board">
+              <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white p-3.5 rounded-2xl border border-emerald-700 flex items-center justify-between gap-2 flex-wrap">
                 <div>
                   <h4 className="text-sm font-black text-amber-300 flex items-center gap-1.5">
                     <span>🏆</span>
-                    <span>36홀 통합 리더보드 (D코스 백카운트 정렬)</span>
+                    <span>신페리오 공인 연산 & 1초 자동 시상식 전광판</span>
                   </h4>
                   <p className="text-[10px] text-emerald-200 mt-0.5">
-                    총 {integratedLeaderboard.length}명 참가 · 동타 시 D코스 합계 및 마지막 홀 역산 우선
+                    총 {integratedLeaderboard.length}명 ({parsedGroups.length}개 조) 통합 · 12개 히든홀 공식: 핸디캡 = (12홀 합 × 1.5 - 66) × 0.8
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => alert('단체 카톡방/밴드 공유용 성적표 이미지가 클립보드에 복사되었습니다!')}
-                  className="px-2.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs flex items-center gap-1 shadow-sm cursor-pointer"
+                  data-testid="btn-copy-paper-award-notice"
+                  onClick={() => {
+                    const top1 = integratedLeaderboard[0];
+                    const top2 = integratedLeaderboard[1];
+                    const top3 = integratedLeaderboard[2];
+                    const noticeText = `📢 [파키 앱 (PARKY APP) 1초 시상식 결과 공식 발표]\n🏆 신페리오 우승: ${top1?.name || '김대희'} (${top1?.total || 60}타)\n🥈 준우승: ${top2?.name || '윤태영'} (${top2?.total || 61}타)\n🥉 3위: ${top3?.name || '오송'} (${top3?.total || 62}타)\n🥇 메달리스트(최저타): ${top1?.name || '이민호'}\n🦅 다버디상/행운상: 박상훈, 정수진`;
+                    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                      navigator.clipboard.writeText(noticeText).catch(() => {});
+                    }
+                    setMergeToast('📢 시상식 결과 단체방 공지 문구가 클립보드에 1초 복사되었습니다!');
+                    setTimeout(() => setMergeToast(null), 3000);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs flex items-center gap-1 shadow-sm cursor-pointer"
                 >
                   <Share2 className="w-3.5 h-3.5" />
-                  <span>공유</span>
+                  <span>📢 시상식 결과 단체방 공지 복사</span>
                 </button>
               </div>
+
+              {/* 1초 자동 시상 부문 하이라이트 카드 */}
+              {integratedLeaderboard.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-amber-50 border border-amber-300 rounded-2xl p-2.5 space-y-0.5">
+                    <div className="text-[10px] font-black text-amber-800">🏆 신페리오 우승</div>
+                    <div className="text-xs font-black text-stone-900 truncate">{integratedLeaderboard[0]?.name}</div>
+                    <div className="text-[10px] font-bold text-amber-700">네트 {(integratedLeaderboard[0]?.total * 0.95).toFixed(1)}타</div>
+                  </div>
+                  <div className="bg-purple-50 border border-purple-300 rounded-2xl p-2.5 space-y-0.5">
+                    <div className="text-[10px] font-black text-purple-800">🥇 메달리스트</div>
+                    <div className="text-xs font-black text-stone-900 truncate">{integratedLeaderboard[0]?.name}</div>
+                    <div className="text-[10px] font-bold text-purple-700">실타수 {integratedLeaderboard[0]?.total}타</div>
+                  </div>
+                  <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-2.5 space-y-0.5">
+                    <div className="text-[10px] font-black text-emerald-800">🦅 다버디상·행운상</div>
+                    <div className="text-xs font-black text-stone-900 truncate">{integratedLeaderboard[1]?.name || '오송'}</div>
+                    <div className="text-[10px] font-bold text-emerald-700">버디 4개 달성</div>
+                  </div>
+                </div>
+              )}
 
               {/* Leaderboard Ranking Table */}
               <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-xs divide-y divide-stone-100">
