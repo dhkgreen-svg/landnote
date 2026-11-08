@@ -137,6 +137,9 @@ export default function RoundPlayPage() {
   const [specSavedToast, setSpecSavedToast] = useState<string | null>(null);
   const autoPromptedHolesRef = useRef<Record<number, boolean>>({});
 
+  // ⛳ 파(Par) 변경 시 오터치 방지 확인 팝업 상태
+  const [pendingParChange, setPendingParChange] = useState<{ fromPar: number; toPar: number } | null>(null);
+
   // Total Cumulative Score & Course Breakdown Modal State
   const [showTotalScoreModal, setShowTotalScoreModal] = useState<boolean>(false);
   const [modalActiveTab, setModalActiveTab] = useState<'COURSES' | 'INTEGRATED' | 'MATRIX'>('COURSES');
@@ -1567,10 +1570,10 @@ export default function RoundPlayPage() {
     }
 
     executeConfirmHoleSave();
-    // 🌟 [사용자 요청]: 중간 홀확인 팝업/선택 창 완전 생략! 9홀 완주가 아니면 즉시 다음 홀 스코어 입력판으로 다이렉트 직행
+    // 🌟 [사용자 요청]: 타수 확인(저장) 버튼 클릭 시 '타수 저장 완료. 다음 홀로 이동할까요?' 팝업 표출
     const currentHoleInfo = getHoleInfo(actualHoleNumber);
     if (currentHoleInfo.hInCourse !== 9) {
-      handleProceedNextHoleDirectly();
+      setIsHoleConfirmModalOpen(true);
     }
   };
 
@@ -2776,14 +2779,16 @@ export default function RoundPlayPage() {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[3, 4, 5].map((pVal) => {
-                  const isSelected = (Number(holeMetadata.par) || 3) === pVal;
+                  const currentPar = Number(holeMetadata.par) || 3;
+                  const isSelected = currentPar === pVal;
                   return (
                     <button
                       key={pVal}
                       type="button"
                       data-testid={`tee-shot-par-${pVal}`}
                       onClick={() => {
-                        handleSaveHoleSpec(pVal, holeMetadata.distanceMeter || 50, true);
+                        if (currentPar === pVal) return;
+                        setPendingParChange({ fromPar: currentPar, toPar: pVal });
                       }}
                       className={`py-2.5 rounded-xl font-black text-base sm:text-lg transition-colors cursor-pointer flex flex-col items-center justify-center border ${
                         isSelected
@@ -2963,7 +2968,8 @@ export default function RoundPlayPage() {
                     type="button"
                     data-testid={`par-tab-${pVal}`}
                     onClick={() => {
-                      handleSaveHoleSpec(pVal, holeMetadata.distanceMeter || 50, true);
+                      if (currentPar === pVal) return;
+                      setPendingParChange({ fromPar: currentPar, toPar: pVal });
                     }}
                     className={`flex-1 h-9 sm:h-10 rounded-lg font-black text-xs sm:text-sm transition-all duration-150 cursor-pointer flex items-center justify-center active:scale-95 shadow-xs ${
                       isSelected
@@ -3526,7 +3532,7 @@ export default function RoundPlayPage() {
           executeConfirmHoleSave();
           const currentHoleInfo = getHoleInfo(actualHoleNumber);
           if (currentHoleInfo.hInCourse !== 9) {
-            handleProceedNextHoleDirectly();
+            setIsHoleConfirmModalOpen(true);
           }
         }}
         isHoleConfirmModalOpen={isHoleConfirmModalOpen}
@@ -3539,6 +3545,83 @@ export default function RoundPlayPage() {
         onSaveAndFinishRound={handleSaveAndFinishRound}
         onDiscardAndExitHome={handleDiscardAndExitHome}
       />
+
+      {/* ⛳ 기준 타수(Par) 변경 확인 팝업 (오터치 방지 및 빅데이터 동기화 알림) */}
+      {pendingParChange && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white text-stone-900 rounded-3xl w-full max-w-sm shadow-2xl border border-stone-200 overflow-hidden animate-in zoom-in-95">
+            {/* 상단 헤더 */}
+            <div className="px-5 py-4 bg-gradient-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">⛳</span>
+                <div>
+                  <h3 className="text-base font-black tracking-tight">
+                    {isJapanese ? '基準打数(Par)の変更' : '기준 타수(Par) 변경'}
+                  </h3>
+                  <span className="text-[11px] text-emerald-200 font-bold">
+                    {courseLetter}-{holeInCourse}{isJapanese ? '番ホール' : '번 홀'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingParChange(null)}
+                className="w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 본문 안내 */}
+            <div className="p-5 sm:p-6 space-y-4">
+              <div className="bg-stone-50 border border-stone-200 rounded-2xl p-4 text-center">
+                <div className="flex items-center justify-center gap-3 my-1">
+                  <span className="px-3.5 py-1.5 rounded-xl bg-stone-200 text-stone-700 font-black text-base line-through">
+                    {isJapanese ? `Par ${pendingParChange.fromPar}` : `파${pendingParChange.fromPar}`}
+                  </span>
+                  <span className="text-xl font-black text-amber-500">➔</span>
+                  <span className="px-4 py-2 rounded-xl bg-amber-400 text-stone-950 font-black text-xl shadow-md ring-2 ring-amber-300">
+                    {isJapanese ? `Par ${pendingParChange.toPar}` : `파${pendingParChange.toPar}`}
+                  </span>
+                </div>
+                <p className="text-sm sm:text-base font-black text-stone-900 mt-3 leading-snug">
+                  {isJapanese
+                    ? `現地の看板に合わせて基準打数を[Par ${pendingParChange.toPar}]に変更しますか？`
+                    : `현장 팻말에 맞춰 기준 타수를 [파${pendingParChange.toPar}]로 바꾸시겠습니까?`}
+                </p>
+                <p className="text-[11px] text-stone-500 font-semibold mt-1">
+                  {isJapanese
+                    ? '※ 変更すると同伴者のスコア基準およびクラウドデータに即時反映されます。'
+                    : '※ 확인을 누르면 동반자 스코어와 빅데이터 기준 타수에 즉시 반영됩니다.'}
+                </p>
+              </div>
+
+              {/* 하단 액션 버튼 2개 */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setPendingParChange(null)}
+                  className="w-full min-h-[48px] py-3 px-3 rounded-2xl bg-stone-100 hover:bg-stone-200 active:scale-[0.98] text-stone-700 font-bold text-sm sm:text-base border border-stone-300 transition cursor-pointer"
+                >
+                  {isJapanese ? 'キャンセル' : '취소'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const toPar = pendingParChange.toPar;
+                    setPendingParChange(null);
+                    handleSaveHoleSpec(toPar, holeMetadata.distanceMeter || 50, true);
+                  }}
+                  className="w-full min-h-[48px] py-3 px-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white font-black text-sm sm:text-base shadow-md border border-emerald-400 transition cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-100" />
+                  <span>{isJapanese ? `Par ${pendingParChange.toPar}に変更` : `파${pendingParChange.toPar}로 변경`}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 7. Course & Hole Picker Modal ("어느 코스로 이동하시겠습니까?") */}
       {showCoursePicker && (
