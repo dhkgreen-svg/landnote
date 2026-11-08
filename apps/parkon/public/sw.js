@@ -1,5 +1,5 @@
-// Service Worker for ParkGolf All-in-One (파크골프 올인원) PWA - v2026.11.08.05
-const CACHE_NAME = 'parkon-v20261108-05';
+// Service Worker for ParkGolf All-in-One (파크골프 올인원) PWA - v2026.11.08.06
+const CACHE_NAME = 'parkon-v20261108-06';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

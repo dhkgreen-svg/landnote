@@ -254,6 +254,7 @@ export default function RoundPlayPage() {
     par: number;
     distanceMeter?: number;
   } | null>(null);
+  const transitionBannerTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 4인 조별 경기 규칙: 조원은 조장의 설정을 100% 자동 추종(미러링), 조장 또는 1인은 본인 로컬 설정 적용
   const effectiveHoleDisplayMode: HoleDisplayMode =
@@ -2097,20 +2098,22 @@ export default function RoundPlayPage() {
       });
 
       setCurrentHole(nextH);
-      if (effectiveTransitionPopup === 'ON') {
-        // ON: 다음 홀 전환 시 1.5초 가벼운 코스 안내 카드 표출 후 자동 페이드아웃 (스코어보드 유지)
-        const nextActualLetter = session.selectedCourseLetters?.[Math.floor((nextH - 1) / 9)] || 'A';
-        const nextHoleInC = ((nextH - 1) % 9) + 1;
-        setTransitionBannerInfo({
-          courseLetter: nextActualLetter,
-          holeNumber: nextHoleInC,
-          par: nextHolePar,
-          distanceMeter: nextMeta?.distanceMeter,
-        });
-        setTimeout(() => {
-          setTransitionBannerInfo(null);
-        }, 1500);
+      // 🌟 [대표님 지시]: 다음 홀 이동 시 2.3초간 홀 번호 & 파수 확인 안내 팝업 자동 표출 후 페이드아웃
+      const nextHoleInfo = getHoleInfo(nextActualHole);
+      const nextActualLetter = nextHoleInfo.cLetter || 'A';
+      const nextHoleInC = nextHoleInfo.hInCourse || 1;
+      setTransitionBannerInfo({
+        courseLetter: nextActualLetter,
+        holeNumber: nextHoleInC,
+        par: nextHolePar,
+        distanceMeter: nextMeta?.distanceMeter,
+      });
+      if (transitionBannerTimerRef.current) {
+        clearTimeout(transitionBannerTimerRef.current);
       }
+      transitionBannerTimerRef.current = setTimeout(() => {
+        setTransitionBannerInfo(null);
+      }, 2300);
       // 🌟 [사용자 요청]: 다음 홀 전환 시 중간 안내판 거치지 않고 곧바로 스코어 입력판(SCORING)으로 다이렉트 진입!
       setHoleStep('SCORING');
       setRestingPlayerIds([]);
@@ -2549,26 +2552,38 @@ export default function RoundPlayPage() {
   return (
     <div className={`p-3 pb-28 space-y-2.5 transition-colors ${sunlightMode ? 'bg-stone-950 text-white min-h-screen' : ''}`}>
 
-      {/* 🏌️ 홀 전환 1.5초 가벼운 코스 안내 카드 (ON 모드 활성 시) */}
+      {/* 🏌️ [대표님 특명] 다음 홀 이동 시 2.3초 자동 안내 팝업 (파수 확인 유도 & 자동 소멸) */}
       {transitionBannerInfo && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[90] max-w-sm w-[92%] bg-gradient-to-r from-emerald-950 via-teal-900 to-emerald-900 text-white p-3.5 rounded-2xl shadow-2xl border-2 border-yellow-400 flex items-center justify-between animate-fadeIn">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl animate-bounce">⛳</span>
+        <div
+          onClick={() => setTransitionBannerInfo(null)}
+          className="fixed top-14 left-1/2 -translate-x-1/2 z-[99] max-w-sm w-[92%] bg-gradient-to-r from-emerald-950 via-teal-900 to-emerald-900 text-white p-3.5 rounded-2xl shadow-2xl border-2 border-yellow-400 flex items-center justify-between animate-fadeIn cursor-pointer"
+          title="터치 시 즉시 닫힘"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="text-3xl animate-bounce">⛳</span>
             <div>
-              <div className="text-xs font-black text-yellow-300 flex items-center gap-2">
-                <span>{transitionBannerInfo.courseLetter}-{transitionBannerInfo.holeNumber}번 홀 공략 시작!</span>
-                <span className="bg-yellow-400 text-stone-950 font-black text-[10px] px-1.5 py-0.2 rounded-full shadow-xs">
+              <div className="text-sm font-black text-yellow-300 flex items-center gap-2">
+                <span>{transitionBannerInfo.courseLetter}-{transitionBannerInfo.holeNumber}번 홀로 이동했습니다!</span>
+                <span className="bg-yellow-400 text-stone-950 font-black text-xs px-2 py-0.5 rounded-full shadow-xs">
                   Par {transitionBannerInfo.par}
                 </span>
               </div>
-              <p className="text-[11px] text-emerald-200 font-bold mt-0.5">
-                {transitionBannerInfo.distanceMeter ? `공식 거리: ${transitionBannerInfo.distanceMeter}m` : '1.5초 후 스코어카드로 전환'}
+              <p className="text-xs text-emerald-200 font-bold mt-1">
+                {isJapanese
+                  ? '現場看板のパー(Par)数を確認してからティーショットしてください！'
+                  : '티박스 팻말의 파(Par)수를 확인하시고 치시기 바랍니다!'}
               </p>
+              {transitionBannerInfo.distanceMeter ? (
+                <span className="text-[10px] text-yellow-200/90 font-semibold">
+                  (공식 거리: {transitionBannerInfo.distanceMeter}m)
+                </span>
+              ) : null}
             </div>
           </div>
-          <span className="text-[10px] text-yellow-300 font-mono bg-black/40 px-2 py-0.5 rounded-full border border-yellow-400/30">
-            1.5s
-          </span>
+          <div className="flex flex-col items-center gap-0.5 text-stone-400 hover:text-white pl-2">
+            <span className="text-xs">✕</span>
+            <span className="text-[9px] text-yellow-300 font-mono">2s</span>
+          </div>
         </div>
       )}
 
