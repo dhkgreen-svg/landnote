@@ -32,24 +32,59 @@ export const CourseStampModal: React.FC<CourseStampModalProps> = ({
   const [showCourseSelector, setShowCourseSelector] = useState<boolean>(false);
   const [selectedCourseChip, setSelectedCourseChip] = useState<string>('');
 
+  const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+  const baseNumCourses = course
+    ? course.totalCourses || Math.max(1, Math.round((course.totalHoles || 18) / 9))
+    : 4;
+
+  const defaultLetters = Array.from(new Set([
+    ...COURSE_LETTERS.slice(0, Math.max(2, baseNumCourses)),
+    ...(session.selectedCourseLetters || []),
+    ...(info?.nextRecommendedLetter ? [info.nextRecommendedLetter] : [])
+  ])).filter(Boolean);
+
+  const [courseLettersList, setCourseLettersList] = useState<string[]>(defaultLetters);
+
   useEffect(() => {
     if (isOpen) {
       playCelebrationFanfare();
       triggerCelebrationHaptic();
       setShowCourseSelector(false);
+      const letters = Array.from(new Set([
+        ...COURSE_LETTERS.slice(0, Math.max(2, baseNumCourses)),
+        ...(session.selectedCourseLetters || []),
+        ...(info?.nextRecommendedLetter ? [info.nextRecommendedLetter] : [])
+      ])).filter(Boolean);
+      setCourseLettersList(letters);
       if (info?.nextRecommendedLetter) {
         setSelectedCourseChip(info.nextRecommendedLetter);
+      } else if (letters.length > 0) {
+        setSelectedCourseChip(letters[0]);
       }
     }
-  }, [isOpen, info?.nextRecommendedLetter]);
+  }, [isOpen]);
+
+  const handleAddNextCourseLetter = () => {
+    const nextIdx = courseLettersList.length;
+    if (nextIdx < COURSE_LETTERS.length) {
+      const nextLetter = COURSE_LETTERS[nextIdx];
+      const updated = [...courseLettersList, nextLetter];
+      setCourseLettersList(updated);
+      setSelectedCourseChip(nextLetter);
+    }
+  };
+
+  const handleRemoveLastCourseLetter = () => {
+    if (courseLettersList.length > 2) {
+      const updated = courseLettersList.slice(0, -1);
+      setCourseLettersList(updated);
+      if (!updated.includes(selectedCourseChip)) {
+        setSelectedCourseChip(updated[updated.length - 1]);
+      }
+    }
+  };
 
   if (!isOpen || !info) return null;
-
-  const numCourses = course
-    ? course.totalCourses || Math.max(1, Math.round((course.totalHoles || 18) / 9))
-    : 4;
-  const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-  const availableLetters = COURSE_LETTERS.slice(0, Math.max(2, numCourses));
 
   // 9홀 누적 스코어 랭킹 계산
   const curConfirmed = session.confirmedHoles || [];
@@ -180,17 +215,46 @@ export const CourseStampModal: React.FC<CourseStampModalProps> = ({
               /* 코스 선택 칩 인라인 전개 */
               <div className="bg-emerald-50 border-2 border-emerald-400 rounded-2xl p-3 space-y-2 animate-fadeIn">
                 <div className="flex items-center justify-between text-xs font-black text-emerald-950">
-                  <span>⛳ {isJapanese ? '次に進むコースを選択' : '이어서 칠 다음 코스 선택'}</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowCourseSelector(false)}
-                    className="text-[11px] text-stone-500 underline font-bold"
-                  >
-                    {isJapanese ? '戻る' : '닫기'}
-                  </button>
+                  <span className="flex items-center gap-1.5">
+                    <span>⛳</span>
+                    <span>{isJapanese ? '次に進むコースを選択' : '이어서 칠 다음 코스 선택'}</span>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {/* 🌟 [대표님 지시]: 현장 실정에 맞게 코스 수 증감 (+/-) 즉시 제어 */}
+                    <div className="flex items-center bg-white rounded-lg border border-emerald-300 p-0.5 shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={handleRemoveLastCourseLetter}
+                        disabled={courseLettersList.length <= 2}
+                        title={isJapanese ? 'コース削除 (-)' : '코스 빼기 (-)'}
+                        className="w-5 h-5 flex items-center justify-center rounded text-stone-600 hover:bg-stone-100 disabled:opacity-30 disabled:pointer-events-none font-black text-xs cursor-pointer"
+                      >
+                        −
+                      </button>
+                      <span className="text-[10px] font-black text-emerald-800 px-1 select-none whitespace-nowrap">
+                        {courseLettersList.length}개
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleAddNextCourseLetter}
+                        disabled={courseLettersList.length >= COURSE_LETTERS.length}
+                        title={isJapanese ? 'コース追加 (+)' : '코스 추가 (+)'}
+                        className="w-5 h-5 flex items-center justify-center rounded text-emerald-700 hover:bg-emerald-50 disabled:opacity-30 disabled:pointer-events-none font-black text-xs cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCourseSelector(false)}
+                      className="text-[11px] text-stone-500 hover:text-stone-800 underline font-bold px-0.5 cursor-pointer"
+                    >
+                      {isJapanese ? '戻る' : '닫기'}
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
-                  {availableLetters.map((letter) => {
+                  {courseLettersList.map((letter) => {
                     const isRec = letter === info.nextRecommendedLetter;
                     const isSel = selectedCourseChip === letter;
                     return (
@@ -213,6 +277,18 @@ export const CourseStampModal: React.FC<CourseStampModalProps> = ({
                       </button>
                     );
                   })}
+                  {/* 🌟 [대표님 지시]: 원터치 코스 추가 버튼 (+ D코스 추가) */}
+                  {courseLettersList.length < COURSE_LETTERS.length && (
+                    <button
+                      type="button"
+                      onClick={handleAddNextCourseLetter}
+                      className="py-2.5 rounded-xl font-bold text-xs flex flex-col items-center justify-center transition active:scale-95 border-2 border-dashed border-emerald-400 bg-emerald-50/70 hover:bg-emerald-100/70 text-emerald-800 cursor-pointer shadow-2xs"
+                      title={`${COURSE_LETTERS[courseLettersList.length]}코스 즉시 추가`}
+                    >
+                      <span className="text-sm font-black">+ {COURSE_LETTERS[courseLettersList.length]}코스</span>
+                      <span className="text-[9px] text-emerald-600 font-semibold">{isJapanese ? '追加' : '추가'}</span>
+                    </button>
+                  )}
                 </div>
                 <button
                   type="button"

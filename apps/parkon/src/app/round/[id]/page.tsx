@@ -1387,7 +1387,7 @@ export default function RoundPlayPage() {
 
   // Available courses for this facility
   const totalNumCourses = course.totalCourses || Math.max(1, Math.round(course.totalHoles / 9));
-  const allAvailableLetters = COURSE_LETTERS.slice(0, totalNumCourses);
+  const allAvailableLetters = COURSE_LETTERS.slice(0, Math.max(4, totalNumCourses));
 
   // Open course and hole picker modal (조장 전용)
   const openCoursePicker = () => {
