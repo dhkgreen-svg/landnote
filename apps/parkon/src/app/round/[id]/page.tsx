@@ -2892,10 +2892,10 @@ export default function RoundPlayPage() {
           <div className="bg-gradient-to-r from-emerald-950 via-teal-950 to-emerald-950 text-white px-3 py-1.5 sm:py-2 rounded-2xl flex items-center justify-between shadow-lg border border-emerald-500/40 gap-2 sm:gap-3">
             {/* 좌측: A-1 번홀 꽉 차게 특대형 표출 (모바일 야외 시인성 극대화) */}
             <div className="flex items-baseline gap-1 pl-1 shrink-0">
-              <span className="text-3xl sm:text-4xl font-black text-yellow-300 drop-shadow-md tracking-tight leading-none">
+              <span className="text-[36px] sm:text-[44px] font-black text-yellow-300 drop-shadow-md tracking-tighter leading-none select-none">
                 {courseLetter}-{holeInCourse}
               </span>
-              <span className="text-xs sm:text-sm font-black text-white/90 leading-none">
+              <span className="text-sm sm:text-base font-black text-white/90 leading-none select-none">
                 {isJapanese ? '番ホール' : '번홀'}
               </span>
             </div>
