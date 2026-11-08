@@ -2562,20 +2562,21 @@ export default function RoundPlayPage() {
           className="fixed top-14 left-1/2 -translate-x-1/2 z-[99] max-w-sm w-[92%] bg-gradient-to-r from-emerald-950 via-teal-900 to-emerald-900 text-white p-3.5 rounded-2xl shadow-2xl border-2 border-yellow-400 flex items-center justify-between animate-fadeIn cursor-pointer"
           title="터치 시 즉시 닫힘"
         >
-          <div className="flex items-center gap-2.5">
-            <span className="text-3xl animate-bounce">⛳</span>
-            <div>
-              <div className="text-sm font-black text-yellow-300 flex items-center gap-2">
-                <span>{transitionBannerInfo.courseLetter}-{transitionBannerInfo.holeNumber}번 홀로 이동했습니다!</span>
-                <span className="bg-yellow-400 text-stone-950 font-black text-xs px-2 py-0.5 rounded-full shadow-xs">
-                  Par {transitionBannerInfo.par}
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">⛳</span>
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-xl sm:text-2xl font-black text-yellow-300 tracking-tight">
+                  {transitionBannerInfo.courseLetter}-{transitionBannerInfo.holeNumber}홀
+                </span>
+                <span className="bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 font-black text-sm px-2.5 py-0.5 rounded-xl shadow-md border border-yellow-200">
+                  {isJapanese ? `Par ${transitionBannerInfo.par}` : `파${transitionBannerInfo.par}`}
                 </span>
               </div>
-              <p className="text-xs text-emerald-200 font-bold mt-1">
-                {isJapanese
-                  ? '現場看板のパー(Par)数を確認してからティーショットしてください！'
-                  : '티박스 팻말의 파(Par 3·4·5)수를 확인하시고 치시기 바랍니다!'}
-              </p>
+              <div className="text-xs sm:text-sm font-extrabold text-emerald-100 flex items-center gap-1">
+                <span>👉</span>
+                <span>{isJapanese ? '現場看板のパー(Par)数を確認！' : '티박스 팻말 파수 확인!'}</span>
+              </div>
             </div>
           </div>
           <div className="flex flex-col items-center gap-0.5 text-stone-400 hover:text-white pl-2">
