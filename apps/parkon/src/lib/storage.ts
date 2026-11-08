@@ -60,6 +60,7 @@ const STORAGE_KEYS = {
   COURSE_CONDITIONS: 'parkon_course_conditions_v1',
   CROWD_HOLE_SPECS: 'parkon_crowd_hole_specs_v1',
   CROWD_HOLE_TIPS: 'parkon_crowd_hole_tips_v1',
+  CROWD_COURSE_EXPANSIONS: 'parkon_crowd_course_expansions_v1',
   USER_PROFILE: 'parkon_user_profile_v1',
   SUNLIGHT_MODE: 'parkon_sunlight_mode_v1',
   KAKAO_USER: 'parkon_kakao_user_v1',
@@ -109,6 +110,14 @@ export interface CrowdSpecProposal {
   distanceMeter: number;
   votes: number;
   updatedAt: string;
+}
+
+export interface CrowdsourcedCourseExpansion {
+  courseId: string;
+  courseName: string;
+  totalCourses: number;
+  updatedAt: string;
+  contributor?: string;
 }
 
 export interface CrowdsourcedHoleSpec {
@@ -1123,12 +1132,17 @@ export const ParkOnStorage = {
       const customNameMap = new Map(customCourses.map((c) => [c.name.replace(/\s+/g, ''), c]));
 
       // Apply customized overrides onto default courses
+      const crowdExpansions = this.getCrowdsourcedCourseExpansions();
       const defaults = ALL_BASE_COURSES.map((d) => {
         const cleanName = d.name.replace(/\s+/g, '');
         const custom = customMap.get(d.id) || customNameMap.get(cleanName);
+        const expansion = crowdExpansions[d.id] || crowdExpansions[cleanName];
+        const expandedCourses = expansion ? Math.max(d.totalCourses || 2, expansion.totalCourses) : (d.totalCourses || 2);
+        const expandedHoles = expandedCourses * 9;
+
         if (custom) {
-          const userHoles = custom.totalHoles || d.totalHoles;
-          const userCourses = custom.totalCourses || Math.max(1, Math.round(userHoles / 9));
+          const userHoles = Math.max(custom.totalHoles || d.totalHoles, expandedHoles);
+          const userCourses = Math.max(custom.totalCourses || Math.max(1, Math.round(userHoles / 9)), expandedCourses);
           const holes = (custom.holesMetadata && custom.holesMetadata.length >= userHoles)
             ? custom.holesMetadata.slice(0, userHoles)
             : (d.holesMetadata && d.holesMetadata.length >= userHoles
@@ -1142,6 +1156,14 @@ export const ParkOnStorage = {
             totalCourses: userCourses,
             totalHoles: userHoles,
             holesMetadata: holes,
+          });
+        }
+        if (expansion) {
+          return applyCrowdSpecs({
+            ...d,
+            totalCourses: expandedCourses,
+            totalHoles: expandedHoles,
+            holesMetadata: generateStandardHoles(expandedHoles),
           });
         }
         return applyCrowdSpecs(d);
@@ -1158,6 +1180,75 @@ export const ParkOnStorage = {
       return [...pureCustom, ...defaults];
     } catch {
       return ALL_BASE_COURSES;
+    }
+  },
+
+  // 4-1. Crowdsourced Course Expansions (Big Data Course Letters)
+  getCrowdsourcedCourseExpansions(): Record<string, CrowdsourcedCourseExpansion> {
+    if (typeof window === 'undefined') return {};
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CROWD_COURSE_EXPANSIONS);
+      return data ? JSON.parse(data) : {};
+    } catch {
+      return {};
+    }
+  },
+
+  saveCrowdsourcedCourseExpansion(
+    courseId: string,
+    courseName: string,
+    totalCourses: number,
+    contributor?: string
+  ): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const map = this.getCrowdsourcedCourseExpansions();
+      const cleanName = courseName ? courseName.replace(/\s+/g, '') : '';
+      const numCourses = Math.max(2, Math.min(12, Number(totalCourses) || 2));
+      const record: CrowdsourcedCourseExpansion = {
+        courseId,
+        courseName,
+        totalCourses: numCourses,
+        updatedAt: new Date().toISOString(),
+        contributor: contributor || '골퍼 코스 확장 기여',
+      };
+      if (courseId) map[courseId] = record;
+      if (cleanName) map[cleanName] = record;
+      localStorage.setItem(STORAGE_KEYS.CROWD_COURSE_EXPANSIONS, JSON.stringify(map));
+
+      // CUSTOM_COURSES에도 자동 확장 반영
+      const customData = localStorage.getItem(STORAGE_KEYS.CUSTOM_COURSES);
+      let list: Course[] = customData ? JSON.parse(customData) : [];
+      let target = list.find((c) => c.id === courseId || c.name.replace(/\s+/g, '') === cleanName);
+      if (!target) {
+        const def = ALL_BASE_COURSES.find((d) => d.id === courseId || d.name.replace(/\s+/g, '') === cleanName);
+        if (def) {
+          target = { ...def };
+          list.push(target);
+        }
+      }
+      if (target) {
+        target.totalCourses = Math.max(target.totalCourses || 2, numCourses);
+        target.totalHoles = Math.max(target.totalHoles || 18, target.totalCourses * 9);
+        const existingHoles = target.holesMetadata ? [...target.holesMetadata] : [];
+        const STANDARD_PARS: (3 | 4 | 5)[] = [4, 3, 4, 3, 4, 4, 3, 3, 5];
+        const STANDARD_DISTS = [75, 50, 80, 55, 70, 85, 45, 60, 130];
+        for (let h = 1; h <= target.totalHoles; h++) {
+          if (!existingHoles.some((m) => Number(m.hole) === h)) {
+            const idxIn9 = (h - 1) % 9;
+            existingHoles.push({
+              hole: h,
+              par: STANDARD_PARS[idxIn9] || 3,
+              distanceMeter: STANDARD_DISTS[idxIn9] || 65,
+              isVerified: false,
+            });
+          }
+        }
+        target.holesMetadata = existingHoles;
+        this.updateCourse(target);
+      }
+    } catch (e) {
+      console.error('Failed to save crowdsourced course expansion:', e);
     }
   },
 
@@ -1178,7 +1269,8 @@ export const ParkOnStorage = {
     hole: number,
     par: number,
     distanceMeter: number,
-    forceConsensus: boolean = false
+    forceConsensus: boolean = false,
+    contributorName?: string
   ): CrowdSpecSaveResult {
     const numHole = Number(hole);
     const numPar = Number(par);
@@ -1212,11 +1304,11 @@ export const ParkOnStorage = {
       let votesForThisSpec = 1;
       let message = '';
 
-      // [규칙 1] 최초 등록자 여부 검사: 최초 등록자는 무조건 100% 즉시 전국 빅데이터 공식 제원으로 확정!
-      if (!existing || !existing.isInitialRegistered) {
-        isInitial = true;
+      // [규칙 1] 강제 확인(forceConsensus) 또는 최초 등록: 즉시 빅데이터 및 로컬 공식 제원으로 승격 확정!
+      if (forceConsensus || !existing || !existing.isInitialRegistered) {
+        isInitial = !existing || !existing.isInitialRegistered;
         isOfficialUpdated = true;
-        votesForThisSpec = 1;
+        votesForThisSpec = forceConsensus ? Math.max(10, (existing?.contributorCount || 0) + 1) : 1;
 
         const newItem: CrowdsourcedHoleSpec = {
           courseId,
@@ -1225,14 +1317,16 @@ export const ParkOnStorage = {
           par: numPar,
           distanceMeter: numDist,
           updatedAt: new Date().toISOString(),
-          contributorCount: 1,
+          contributorCount: votesForThisSpec,
           isInitialRegistered: true,
-          proposals: [],
+          contributorName: existing?.contributorName || '골퍼 실측 기여',
+          proposals: existing?.proposals || [],
+          currentDefaultPar: numPar,
         };
         specs[key1] = newItem;
         specs[key2] = newItem;
         localStorage.setItem(STORAGE_KEYS.CROWD_HOLE_SPECS, JSON.stringify(specs));
-        message = `🎉 최초 등록자 확인 완료! ${holeInCourse}번 홀 제원(Par ${numPar}, ${numDist}m)이 전국 빅데이터 공식 제원으로 즉시 정립되었습니다!`;
+        message = `🎉 실측 제원 반영 완료! ${holeInCourse}번 홀 제원(Par ${numPar}, ${numDist}m)이 빅데이터 공식 제원으로 즉시 확정되었습니다!`;
       } else {
         // [규칙 2] 이미 정립된 공식 제원이 존재하는 경우
         officialPar = existing.par;

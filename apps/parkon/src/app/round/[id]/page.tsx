@@ -4,7 +4,8 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, ShieldAlert, Award, Volume2, Play, Pencil, Database, BarChart2, Search, Filter, Wifi, WifiOff, Settings, Watch } from 'lucide-react';
 import Link from 'next/link';
-import { Course, CourseCompletionModalInfo, RoundPlayer, RoundSession, HoleDisplayMode, HoleTransitionPopup, RoundSettings } from '@/types/parkon';
+import { Course, CourseCompletionModalInfo, RoundPlayer, RoundSession, HoleDisplayMode, HoleTransitionPopup, RoundSettings, HoleMetadata } from '@/types/parkon';
+import { generateStandardHoles } from '@/lib/defaultCourses';
 import { getStoredRoundSettings } from '@/components/RoundSettingsModal';
 import { ParkOnStorage, requestWakeLock, releaseWakeLock, setupRoundWakeLockGuard } from '@/lib/storage';
 import { ClubStorage } from '@/lib/clubStorage';
@@ -1828,12 +1829,38 @@ export default function RoundPlayPage() {
   // 🎉 [대표님 특명 현장 표준] 매 9홀 완주 후 다음 코스로 연장 이동
   const handleProceedToNextCourse = (targetCourseLetter?: string) => {
     if (!session) return;
-    const numCourses = course
-      ? course.totalCourses || Math.max(1, Math.round(course.totalHoles / 9))
-      : 2;
-    const availableLetters = COURSE_LETTERS.slice(0, numCourses);
     const letterToUse = targetCourseLetter || courseCompletedModalInfo?.nextRecommendedLetter || 'A';
     const targetIdx = Math.max(0, COURSE_LETTERS.indexOf(letterToUse));
+    const neededCourses = targetIdx + 1;
+
+    // 🌟 [대표님 지시]: 신규 코스(C, D 등) 추가 시 구장 정보 및 빅데이터 즉시 확장 반영
+    if (course && neededCourses > (course.totalCourses || 2)) {
+      const newTotalCourses = neededCourses;
+      const newTotalHoles = newTotalCourses * 9;
+      const existingHoles = course.holesMetadata ? [...course.holesMetadata] : [];
+      const STANDARD_PARS: (3 | 4 | 5)[] = [4, 3, 4, 3, 4, 4, 3, 3, 5];
+      const STANDARD_DISTS = [75, 50, 80, 55, 70, 85, 45, 60, 130];
+      for (let h = 1; h <= newTotalHoles; h++) {
+        if (!existingHoles.some((m) => Number(m.hole) === h)) {
+          const idxIn9 = (h - 1) % 9;
+          existingHoles.push({
+            hole: h,
+            par: STANDARD_PARS[idxIn9] || 3,
+            distanceMeter: STANDARD_DISTS[idxIn9] || 65,
+            isVerified: false,
+          });
+        }
+      }
+      const updatedCourse: Course = {
+        ...course,
+        totalCourses: newTotalCourses,
+        totalHoles: newTotalHoles,
+        holesMetadata: existingHoles,
+      };
+      setCourse(updatedCourse);
+      ParkOnStorage.updateCourse(updatedCourse);
+      ParkOnStorage.saveCrowdsourcedCourseExpansion(course.id, course.name, newTotalCourses);
+    }
 
     const currentHoles = session.selectedHoleNumbers ? [...session.selectedHoleNumbers] : [];
     const pastHolesOfLetter = currentHoles.filter((h) => getHoleInfo(h).cLetter === letterToUse);
@@ -2363,22 +2390,33 @@ export default function RoundPlayPage() {
     setShowHoleSpecModal(true);
   };
 
-  const handleSaveHoleSpec = (parVal: number, distVal: number, forceConsensus: boolean = false) => {
+  const handleSaveHoleSpec = (parVal: number, distVal: number, forceConsensus: boolean = true) => {
     if (!course || !session) return;
     const validatedDist = Math.max(10, Math.min(300, Number(distVal) || 50));
     const validatedPar = Math.max(3, Math.min(5, Number(parVal) || 3));
     const targetHoleNum = Number(baseHoleNumber);
 
-    // 1. Update hole metadata in current course immediately (0ms delay, zero UI layout shift)
-    let found = false;
     const contributor = (session.players.find((p) => p.isSelf)?.name) || session.players[0]?.name || '골퍼 실측';
-    const existingMetadata = session.customHolesMetadata || course.holesMetadata || [];
-    const updatedMetadata = existingMetadata.map((m) => {
+
+    // 1. 코스 전체 홀(1..N) 목록 안전 병합: 기존 다른 홀 제원이 지워지지 않도록 완벽 보존
+    const baseHolesList: HoleMetadata[] = (course.holesMetadata && course.holesMetadata.length > 0)
+      ? course.holesMetadata
+      : generateStandardHoles(course.totalHoles || 18);
+
+    const existingMetadata: HoleMetadata[] = session.customHolesMetadata && session.customHolesMetadata.length >= baseHolesList.length
+      ? session.customHolesMetadata
+      : baseHolesList.map((bh: HoleMetadata) => {
+          const match = session.customHolesMetadata?.find((m: HoleMetadata) => Number(m.hole) === Number(bh.hole));
+          return match ? { ...bh, ...match } : bh;
+        });
+
+    let found = false;
+    const updatedMetadata: HoleMetadata[] = existingMetadata.map((m: HoleMetadata) => {
       if (Number(m.hole) === targetHoleNum) {
         found = true;
         return {
           ...m,
-          par: validatedPar,
+          par: validatedPar as 3 | 4 | 5,
           distanceMeter: validatedDist,
           isVerified: true,
           contributedBy: contributor,
@@ -2390,22 +2428,38 @@ export default function RoundPlayPage() {
     if (!found) {
       updatedMetadata.push({
         hole: targetHoleNum,
-        par: validatedPar,
+        par: validatedPar as 3 | 4 | 5,
         distanceMeter: validatedDist,
         isVerified: true,
         contributedBy: contributor,
       });
     }
 
+    const calculatedTotalCourses = Math.max(course.totalCourses || 2, Math.floor((targetHoleNum - 1) / 9) + 1);
+    const calculatedTotalHoles = Math.max(course.totalHoles || 18, Math.max(...updatedMetadata.map((m: HoleMetadata) => Number(m.hole))));
+
     const updatedCourse: Course = {
       ...course,
+      totalCourses: calculatedTotalCourses,
+      totalHoles: calculatedTotalHoles,
       holesMetadata: updatedMetadata,
       isSpecsVerified: true,
       specContributorName: course.specContributorName || contributor,
     };
     setCourse(updatedCourse);
+    ParkOnStorage.updateCourse(updatedCourse);
+    ParkOnStorage.saveCrowdsourcedCourseExpansion(course.id, course.name, calculatedTotalCourses, contributor);
+    ParkOnStorage.saveCrowdsourcedHoleSpec(
+      course.id,
+      course.name,
+      targetHoleNum,
+      validatedPar,
+      validatedDist,
+      true, // forceConsensus: true -> 즉시 전국 빅데이터 및 로컬 DB 공식 확정!
+      contributor
+    );
 
-    // 2. Recalculate total par for selected holes
+    // 2. 누적 타수 및 파 차이 즉시 재계산
     let totalParSoFar = 0;
     if (session.selectedHoleNumbers && session.selectedHoleNumbers.length > 0) {
       session.selectedHoleNumbers.forEach((hNum) => {
@@ -2422,7 +2476,7 @@ export default function RoundPlayPage() {
       }
     }
 
-    // 3. Update player scores on this hole to match new par UNCONDITIONALLY
+    // 3. 현재 홀의 미확정 선수 타수를 변경된 파(Par)로 무조건 즉각 일치 동기화
     const curConfirmed = session.confirmedHoles || [];
     const updatedPlayers = session.players.map((p) => {
       const isConfirmed = curConfirmed.includes(actualHoleNumber);
@@ -2447,23 +2501,6 @@ export default function RoundPlayPage() {
     updateSession(updatedSession); // 게임 중간 즉시 반영 (동기 저장 & 실시간 브로드캐스트)
     setShowHoleSpecModal(false);
     setShowSpecConfirmStep(false);
-
-    // 4. Perform Big Data validation and storage persistence asynchronously in background (Zero UI Shift)
-    setTimeout(() => {
-      try {
-        const isHonoraryMaster = BadgeStorage.hasInstantSpecAccess(course.id);
-        const shouldForce = forceConsensus || isHonoraryMaster;
-        ParkOnStorage.saveCrowdsourcedHoleSpec(
-          course.id,
-          course.name,
-          targetHoleNum,
-          validatedPar,
-          validatedDist,
-          shouldForce
-        );
-        ParkOnStorage.updateCourse(updatedCourse);
-      } catch (e) {}
-    }, 0);
   };
 
   // [대표님 지침]: 고수들의 현장 실전 팁(노하우) 등록 및 즉시 반영
@@ -2736,7 +2773,7 @@ export default function RoundPlayPage() {
                       type="button"
                       data-testid={`tee-shot-par-${pVal}`}
                       onClick={() => {
-                        handleSaveHoleSpec(pVal, holeMetadata.distanceMeter || 50);
+                        handleSaveHoleSpec(pVal, holeMetadata.distanceMeter || 50, true);
                       }}
                       className={`py-2.5 rounded-xl font-black text-base sm:text-lg transition-colors cursor-pointer flex flex-col items-center justify-center border ${
                         isSelected
@@ -2916,7 +2953,7 @@ export default function RoundPlayPage() {
                     type="button"
                     data-testid={`par-tab-${pVal}`}
                     onClick={() => {
-                      handleSaveHoleSpec(pVal, holeMetadata.distanceMeter || 50);
+                      handleSaveHoleSpec(pVal, holeMetadata.distanceMeter || 50, true);
                     }}
                     className={`flex-1 h-9 sm:h-10 rounded-lg font-black text-xs sm:text-sm transition-all duration-150 cursor-pointer flex items-center justify-center active:scale-95 shadow-xs ${
                       isSelected

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Course, CourseCompletionModalInfo, RoundPlayer, RoundSession } from '../types/parkon';
 import { playCelebrationFanfare, triggerCelebrationHaptic } from '../lib/soundUtils';
+import { ParkOnStorage } from '../lib/storage';
 
 interface CourseStampModalProps {
   info: CourseCompletionModalInfo | null;
@@ -71,6 +72,9 @@ export const CourseStampModal: React.FC<CourseStampModalProps> = ({
       const updated = [...courseLettersList, nextLetter];
       setCourseLettersList(updated);
       setSelectedCourseChip(nextLetter);
+      if (course) {
+        ParkOnStorage.saveCrowdsourcedCourseExpansion(course.id, course.name, updated.length);
+      }
     }
   };
 
@@ -132,11 +136,6 @@ export const CourseStampModal: React.FC<CourseStampModalProps> = ({
               ? `${info.completedCourseLetter}コースのラウンドを完了しました！`
               : `${info.completedCourseLetter}코스 라운드를 무결하게 마쳤습니다!`}
           </h3>
-          <p className="text-xs text-stone-600 font-bold">
-            {isJapanese
-              ? '次のコースを続けて回るか、ここで終了して記録を保存してください。'
-              : '다음 코스로 이어서 치시겠습니까, 아니면 오늘 운동을 마감하시겠습니까?'}
-          </p>
         </div>
 
         {/* 📊 9홀 스코어 중간 합산 카드 */}
@@ -219,37 +218,27 @@ export const CourseStampModal: React.FC<CourseStampModalProps> = ({
                     <span>⛳</span>
                     <span>{isJapanese ? '次に進むコースを選択' : '이어서 칠 다음 코스 선택'}</span>
                   </span>
-                  <div className="flex items-center gap-2">
-                    {/* 🌟 [대표님 지시]: 현장 실정에 맞게 코스 수 증감 (+/-) 즉시 제어 */}
-                    <div className="flex items-center bg-white rounded-lg border border-emerald-300 p-0.5 shadow-2xs">
-                      <button
-                        type="button"
-                        onClick={handleRemoveLastCourseLetter}
-                        disabled={courseLettersList.length <= 2}
-                        title={isJapanese ? 'コース削除 (-)' : '코스 빼기 (-)'}
-                        className="w-5 h-5 flex items-center justify-center rounded text-stone-600 hover:bg-stone-100 disabled:opacity-30 disabled:pointer-events-none font-black text-xs cursor-pointer"
-                      >
-                        −
-                      </button>
-                      <span className="text-[10px] font-black text-emerald-800 px-1 select-none whitespace-nowrap">
-                        {courseLettersList.length}개
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleAddNextCourseLetter}
-                        disabled={courseLettersList.length >= COURSE_LETTERS.length}
-                        title={isJapanese ? 'コース追加 (+)' : '코스 추가 (+)'}
-                        className="w-5 h-5 flex items-center justify-center rounded text-emerald-700 hover:bg-emerald-50 disabled:opacity-30 disabled:pointer-events-none font-black text-xs cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
+                  {/* 🌟 [대표님 3안]: 닫기 제거 & 숫자(2개) 혼선 제거 -> [ ➖ 코스 빼기 ] [ ➕ 코스 추가 ] 한눈에 직관적 액션 버튼 */}
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setShowCourseSelector(false)}
-                      className="text-[11px] text-stone-500 hover:text-stone-800 underline font-bold px-0.5 cursor-pointer"
+                      onClick={handleRemoveLastCourseLetter}
+                      disabled={courseLettersList.length <= 2}
+                      title={isJapanese ? 'コース削除 (-)' : '마지막 코스 빼기'}
+                      className="px-2.5 py-1 bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 rounded-lg text-xs font-black shadow-2xs disabled:opacity-30 disabled:pointer-events-none transition active:scale-95 cursor-pointer flex items-center gap-1"
                     >
-                      {isJapanese ? '戻る' : '닫기'}
+                      <span>➖</span>
+                      <span>{isJapanese ? 'コース削除' : '코스 빼기'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddNextCourseLetter}
+                      disabled={courseLettersList.length >= COURSE_LETTERS.length}
+                      title={isJapanese ? 'コース追加 (+)' : '새로운 코스 추가'}
+                      className="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-black shadow-2xs disabled:opacity-30 disabled:pointer-events-none transition active:scale-95 cursor-pointer flex items-center gap-1"
+                    >
+                      <span>➕</span>
+                      <span>{isJapanese ? 'コース追加' : '코스 추가'}</span>
                     </button>
                   </div>
                 </div>
