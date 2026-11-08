@@ -2571,13 +2571,8 @@ export default function RoundPlayPage() {
               <p className="text-xs text-emerald-200 font-bold mt-1">
                 {isJapanese
                   ? '現場看板のパー(Par)数を確認してからティーショットしてください！'
-                  : '티박스 팻말의 파(Par)수를 확인하시고 치시기 바랍니다!'}
+                  : '티박스 팻말의 파(Par 3·4·5)수를 확인하시고 치시기 바랍니다!'}
               </p>
-              {transitionBannerInfo.distanceMeter ? (
-                <span className="text-[10px] text-yellow-200/90 font-semibold">
-                  (공식 거리: {transitionBannerInfo.distanceMeter}m)
-                </span>
-              ) : null}
             </div>
           </div>
           <div className="flex flex-col items-center gap-0.5 text-stone-400 hover:text-white pl-2">
