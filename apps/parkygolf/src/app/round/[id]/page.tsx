@@ -2116,7 +2116,7 @@ export default function RoundPlayPage() {
       }
       transitionBannerTimerRef.current = setTimeout(() => {
         setTransitionBannerInfo(null);
-      }, 2300);
+      }, 1000);
       // 🌟 [사용자 요청]: 다음 홀 전환 시 중간 안내판 거치지 않고 곧바로 스코어 입력판(SCORING)으로 다이렉트 진입!
       setHoleStep('SCORING');
       setRestingPlayerIds([]);
@@ -2555,33 +2555,25 @@ export default function RoundPlayPage() {
   return (
     <div className={`p-3 pb-28 space-y-2.5 transition-colors ${sunlightMode ? 'bg-stone-950 text-white min-h-screen' : ''}`}>
 
-      {/* 🏌️ [대표님 특명] 다음 홀 이동 시 2.3초 자동 안내 팝업 (파수 확인 유도 & 자동 소멸) */}
+      {/* 🏌️ [대표님 특명] 다음 홀 이동 시 단 1초만 뜨는 초간결 안내 (다르면 정정하세요) */}
       {transitionBannerInfo && (
         <div
           onClick={() => setTransitionBannerInfo(null)}
-          className="fixed top-14 left-1/2 -translate-x-1/2 z-[99] max-w-sm w-[92%] bg-gradient-to-r from-emerald-950 via-teal-900 to-emerald-900 text-white p-3.5 rounded-2xl shadow-2xl border-2 border-yellow-400 flex items-center justify-between animate-fadeIn cursor-pointer"
-          title="터치 시 즉시 닫힘"
+          className="fixed top-14 left-1/2 -translate-x-1/2 z-[99] max-w-sm w-[92%] bg-gradient-to-r from-emerald-950 via-stone-900 to-emerald-950 text-white py-2.5 px-4 rounded-2xl shadow-2xl border-2 border-amber-400 flex items-center justify-between animate-fadeIn cursor-pointer"
         >
-          <div className="flex items-center gap-3">
-            <span className="text-3xl">⛳</span>
-            <div className="flex flex-col gap-0.5">
-              <div className="flex items-center gap-2">
-                <span className="text-xl sm:text-2xl font-black text-yellow-300 tracking-tight">
-                  {transitionBannerInfo.courseLetter}-{transitionBannerInfo.holeNumber}홀
-                </span>
-                <span className="bg-gradient-to-r from-amber-400 to-yellow-400 text-stone-950 font-black text-sm px-2.5 py-0.5 rounded-xl shadow-md border border-yellow-200">
-                  {isJapanese ? `Par ${transitionBannerInfo.par}` : `파${transitionBannerInfo.par}`}
-                </span>
-              </div>
-              <div className="text-xs sm:text-sm font-extrabold text-emerald-100 flex items-center gap-1">
-                <span>👉</span>
-                <span>{isJapanese ? '現場看板のパー(Par)数を確認！' : '티박스 팻말 파수 확인!'}</span>
-              </div>
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl">⛳</span>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-black text-yellow-300">
+                {transitionBannerInfo.courseLetter}-{transitionBannerInfo.holeNumber}홀
+              </span>
+              <span className="bg-amber-400 text-stone-950 font-black text-xs px-2 py-0.5 rounded-lg shadow-xs">
+                {isJapanese ? `Par ${transitionBannerInfo.par}` : `파${transitionBannerInfo.par}`}
+              </span>
             </div>
           </div>
-          <div className="flex flex-col items-center gap-0.5 text-stone-400 hover:text-white pl-2">
-            <span className="text-xs">✕</span>
-            <span className="text-[9px] text-yellow-300 font-mono">2s</span>
+          <div className="text-xs sm:text-sm font-black text-amber-300 tracking-tight">
+            {isJapanese ? '異なれば訂正してください' : '다르면 정정하세요'}
           </div>
         </div>
       )}
