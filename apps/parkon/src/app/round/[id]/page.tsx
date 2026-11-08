@@ -165,7 +165,7 @@ export default function RoundPlayPage() {
         return active.holeStep;
       }
     }
-    return 'TEE_SHOT';
+    return 'SCORING';
   });
   // 🛡️ 화면 깜빡임/왔다갔다(리바운드) 방지용 최근 로컬 조작 시각 Ref (네트워크 지연 이전 패킷 역류 차단)
   const lastLocalActionTimeRef = useRef<number>(0);
@@ -422,7 +422,7 @@ export default function RoundPlayPage() {
                 selectedHoleNumbers: holeNumbers,
                 players: initialPlayers,
                 status: 'IN_PROGRESS',
-                holeStep: 'TEE_SHOT',
+                holeStep: 'SCORING',
               };
             }
 
@@ -1565,7 +1565,11 @@ export default function RoundPlayPage() {
     }
 
     executeConfirmHoleSave();
-    setIsHoleConfirmModalOpen(true);
+    // 🌟 [사용자 요청]: 중간 홀확인 팝업/선택 창 완전 생략! 9홀 완주가 아니면 즉시 다음 홀 스코어 입력판으로 다이렉트 직행
+    const currentHoleInfo = getHoleInfo(actualHoleNumber);
+    if (currentHoleInfo.hInCourse !== 9) {
+      handleProceedNextHoleDirectly();
+    }
   };
 
   // ⛳ 1. [확인] 클릭 시 3단 액션 모달 핸들러
@@ -1743,9 +1747,9 @@ export default function RoundPlayPage() {
       });
 
       setCurrentHole(targetCurrentHole);
-      setHoleStep('TEE_SHOT');
+      setHoleStep('SCORING');
       setRestingPlayerIds([]);
-      updateSession({ ...session, currentHole: targetCurrentHole, holeStep: 'TEE_SHOT', players: updatedPlayers, updatedAt: new Date().toISOString() });
+      updateSession({ ...session, currentHole: targetCurrentHole, holeStep: 'SCORING', players: updatedPlayers, updatedAt: new Date().toISOString() });
       setShowCoursePicker(false);
       window.scrollTo({ top: 0, behavior: 'instant' as any });
       return;
@@ -1814,9 +1818,9 @@ export default function RoundPlayPage() {
     };
 
     setCurrentHole(targetCurrentHole);
-    setHoleStep('TEE_SHOT');
+    setHoleStep('SCORING');
     setRestingPlayerIds([]);
-    updateSession(updatedSession);
+    updateSession({ ...updatedSession, holeStep: 'SCORING' });
     setShowCoursePicker(false);
     window.scrollTo({ top: 0, behavior: 'instant' as any });
   };
@@ -1857,7 +1861,7 @@ export default function RoundPlayPage() {
     const updatedSession: RoundSession = {
       ...session,
       currentHole: targetCurrentHole,
-      holeStep: 'TEE_SHOT',
+      holeStep: 'SCORING',
       totalHoles: updatedHolesList.length,
       selectedCourseLetters: updatedCourses,
       selectedHoleNumbers: updatedHolesList,
@@ -1866,7 +1870,7 @@ export default function RoundPlayPage() {
     };
 
     setCurrentHole(targetCurrentHole);
-    setHoleStep('TEE_SHOT');
+    setHoleStep('SCORING');
     setRestingPlayerIds([]);
     setCourseCompletedModalInfo(null);
     updateSession(updatedSession);
@@ -1944,7 +1948,7 @@ export default function RoundPlayPage() {
     const updatedSession: RoundSession = {
       ...session,
       currentHole: targetCurrentHole,
-      holeStep: 'TEE_SHOT',
+      holeStep: 'SCORING',
       totalHoles: updatedHolesList.length,
       selectedCourseLetters: updatedCourses,
       selectedHoleNumbers: updatedHolesList,
@@ -1953,9 +1957,9 @@ export default function RoundPlayPage() {
     };
 
     setCurrentHole(targetCurrentHole);
-    setHoleStep('TEE_SHOT');
+    setHoleStep('SCORING');
     setRestingPlayerIds([]);
-    updateSession(updatedSession);
+    updateSession({ ...updatedSession, holeStep: 'SCORING' });
     setShowTargetHoleReachedModal(false);
     window.scrollTo({ top: 0, behavior: 'instant' as any });
   };
@@ -2080,13 +2084,13 @@ export default function RoundPlayPage() {
           setTransitionBannerInfo(null);
         }, 1500);
       }
-      // [과업 1]: 매 홀(1~9번 홀) 전환 시 검증 루틴 고정! 홀 이동 시마다 반드시 1단 일체형 안내판을 거쳐 팻말 확인 후 넘어가도록 프로세스 고정
-      setHoleStep('TEE_SHOT');
+      // 🌟 [사용자 요청]: 다음 홀 전환 시 중간 안내판 거치지 않고 곧바로 스코어 입력판(SCORING)으로 다이렉트 진입!
+      setHoleStep('SCORING');
       setRestingPlayerIds([]);
       updateSession({
         ...session,
         currentHole: nextH,
-        holeStep: 'TEE_SHOT',
+        holeStep: 'SCORING',
         confirmedHoles: currentConfirmed,
         players: playersForNextHole,
       });
@@ -3473,7 +3477,10 @@ export default function RoundPlayPage() {
         onConfirmSaveAnyway={() => {
           setIsSaveWarningModalOpen(false);
           executeConfirmHoleSave();
-          setIsHoleConfirmModalOpen(true);
+          const currentHoleInfo = getHoleInfo(actualHoleNumber);
+          if (currentHoleInfo.hInCourse !== 9) {
+            handleProceedNextHoleDirectly();
+          }
         }}
         isHoleConfirmModalOpen={isHoleConfirmModalOpen}
         onCloseHoleConfirmModal={() => setIsHoleConfirmModalOpen(false)}

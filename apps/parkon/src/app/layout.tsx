@@ -334,7 +334,7 @@ export default function RootLayout({
           {`
             if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
               window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js?v=20261108_02')
+                navigator.serviceWorker.register('/sw.js?v=20261108_03')
                   .then(function(reg) {
                     reg.update();
                   })
