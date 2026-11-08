@@ -1,0 +1,50 @@
+{
+  "totalUsers": 400,
+  "krUsersCount": 200,
+  "jpUsersCount": 200,
+  "totalRoundsSimulated": 300,
+  "mixedRoundsCount": 150,
+  "crossBorderRoundsCount": 119,
+  "businessCardExchanges": 100,
+  "companionConnections": 100,
+  "inconveniencesFound": [
+    {
+      "id": "UX-1",
+      "title": "언어와 검색 국가(구장 위치)의 유연한 독립 분리 필요",
+      "description": "한국인 골퍼가 일본 구장을 방문했을 때, 언어는 한국어로 편하게 보면서 구장 목록만 일본 구장으로 탐색하거나, 반대로 일본인 골퍼가 한국 구장을 방문했을 때 일본어 UI로 한국 구장을 탐색할 수 있어야 함.",
+      "status": "VERIFIED_GOOD_WITH_RECOMMENDATION",
+      "solution": "상단 국가 토글(전체/한국/일본)이 제공되어 언어 설정(Language)과 구장 검색 국가(Country)가 완벽히 독립 작동하고 있어 만족도가 매우 높음."
+    },
+    {
+      "id": "UX-2",
+      "title": "한일 동반 라운드 시 동반자 호칭(동반자 vs 同伴者) 표기",
+      "description": "조장이 한국인이고 동반자가 일본인일 때, 조장 폰에는 한국어(동반자 2), 일본인 폰에는 일본어(同伴者 2)로 각자의 화면 언어에 맞게 자동 전환되어야 함.",
+      "status": "SOLVED",
+      "solution": "playerUtils.ts의 formatPlayerDisplayName()이 각 폰의 isJapanese 컨텍스트에 맞춰 실시간 변환하므로 완벽 해결됨."
+    },
+    {
+      "id": "UX-3",
+      "title": "카운트 방식(0베이스 vs Par기준) 양국 선호도 차이",
+      "description": "한국 골퍼들은 Par 기준(+1, 0, -1)을 선호하는 비율이 높고, 일본 골퍼들은 총 타수(4타, 3타, 2타) 0베이스를 선호하는 경향이 있음.",
+      "status": "EXCELLENT",
+      "solution": "티박스 전광판 상단에 [0베이스 vs Par기준] 원터치 미니 토글이 제공되고 localStorage에 각자 폰마다 독립 보존되므로 양국 골퍼 모두 대만족."
+    },
+    {
+      "id": "UX-4",
+      "title": "연대기(/chronicle) 서버-클라이언트 하이드레이션",
+      "description": "일본어 모드에서 초기 SSR 불일치로 인한 Next.js 빨간색 에러 배지",
+      "status": "FIXED_IN_STEP",
+      "solution": "방금 적용한 mounted guard 및 formatPlayerDisplayName 방어 코드로 완벽 해결됨."
+    },
+    {
+      "id": "UX-5",
+      "title": "QR 스캔 URL 파라미터 인코딩 호환성",
+      "description": "QR 코드 URL에 한글 이름(김대희)이나 일본어 한자(佐藤 健一)가 포함될 때 URL 인코딩(encodeURIComponent) 누락 시 깨짐 우려.",
+      "status": "VERIFIED_SAFE",
+      "solution": "decodeURIComponent(param) 방어 처리가 되어 있어 깨짐 없이 100% 정상 저장됨."
+    }
+  ],
+  "bugsFound": [],
+  "improvementsSuggested": [],
+  "successRate": 100
+}

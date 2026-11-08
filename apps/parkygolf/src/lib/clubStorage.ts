@@ -1,0 +1,4288 @@
+import {
+  ClubEventRoom,
+  ClubGroup,
+  ClubPlayer,
+  ClubLeaderboardTeam,
+  ClubLeaderboardIndividual,
+  ParkGolfClub,
+  ClubMember,
+  ArchivedClubMember,
+  ClubChronicleTournament,
+  ClubInvitation,
+  FlashGathering,
+  LuckyDrawWinner,
+  AwardRuleConfig,
+  SpecialAwardWinner,
+  SpecialAwardType,
+  ClubRecruitStatus,
+  ScorePrivacyLevel,
+  ClubAccountingEntry,
+} from '@/types/club';
+import { supabase } from './supabase';
+import { calculateTier, getUserCompleted9Holes, UserDiamondTier } from './courseBlockTier';
+import {
+  generateSealedNewPerioHolesSync,
+  verifyAndUnsealHolesSync,
+  calculateDynamicNewPerio,
+  getDesignatedCourseHoleBlocks,
+} from './newPerioSealer';
+import { BoardStorage } from './boardStorage';
+
+const STORAGE_KEYS = {
+  CLUB_ROOMS: 'parkon_club_rooms_v1',
+  ACTIVE_CLUB_ROOM_ID: 'parkon_active_club_room_id_v1',
+  CLUBS: 'parkon_clubs_v2',
+  MY_CLUB_IDS: 'parkon_my_club_ids_v1',
+  CLUB_INVITATIONS: 'parkon_club_invitations_v1',
+  FLASH_GATHERINGS: 'parkon_flash_gatherings_v1',
+  CLUB_CHRONICLES: 'parkon_club_chronicles_v1',
+};
+
+// 📱↔💻 스마트폰 ↔ PC 클럽/대회 변경 사항 즉시 클라우드 자동 업로드 헬퍼
+function triggerCloudClubSync(): void {
+  if (typeof window === 'undefined') return;
+  setTimeout(() => {
+    import('./memberCodeUtils')
+      .then((m) => {
+        if (m && typeof m.syncMemberDataToCloud === 'function') {
+          m.syncMemberDataToCloud(true).catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, 50);
+}
+
+// 기본 번개 데이터 (사용자 직접 개설 전에는 빈 목록 유지)
+function generateDefaultSeedFlash(): FlashGathering[] {
+  return [];
+}
+
+export const ClubStorage = {
+  // 1. 전체 방 목록 조회
+  getAllRooms(): ClubEventRoom[] {
+    if (typeof window === 'undefined') {
+      return [];
+    }
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CLUB_ROOMS);
+      if (data !== null) {
+        const rooms: ClubEventRoom[] = JSON.parse(data);
+        // 사용자가 직접 만든 방만 유지하고 이전 가상 시드 방('dongrak-monthly-sep') 및 비정상 복사/홍보 텍스트 방 정리
+        const isCorrupted = (str?: string) => {
+          if (!str) return false;
+          return /160억|준신축|빌딩|수지분석|대로변|메디컬|vercel\.app|https?:\/\//i.test(str) || str.length > 80 || str.includes('\n');
+        };
+
+        const realRooms = rooms.filter((r) => {
+          if (r.id === 'dongrak-monthly-sep') return false;
+          if (isCorrupted(r.title) || isCorrupted(r.clubName)) return false;
+          if (r.participatingClubs?.some((c) => isCorrupted(c.clubName))) return false;
+          return true;
+        });
+        if (realRooms.length !== rooms.length) {
+          localStorage.setItem(STORAGE_KEYS.CLUB_ROOMS, JSON.stringify(realRooms));
+        }
+
+        // 혹시 남아있을 수 있는 구버전 레거시 키의 오염 데이터도 함께 소탕
+        ['parkon_club_rooms', 'parkon_club_event_rooms', 'parkon_tournament_rooms'].forEach((k) => {
+          try {
+            const leg = localStorage.getItem(k);
+            if (leg && /160억|준신축|빌딩|수지분석|대로변|메디컬|vercel\.app|https?:\/\//i.test(leg)) {
+              localStorage.removeItem(k);
+            }
+          } catch {}
+        });
+
+        return realRooms;
+      }
+    } catch {
+      // fallback
+    }
+    return [];
+  },
+
+  // 2. 단일 방 조회
+  getRoom(roomId: string): ClubEventRoom | null {
+    const rooms = this.getAllRooms();
+    const found = rooms.find((r) => r.id === roomId);
+    return found || null;
+  },
+
+  // 3. 방 저장
+  saveRoom(room: ClubEventRoom): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const rooms = this.getAllRooms().filter((r) => r.id !== room.id);
+      rooms.unshift(room);
+      // [10만명 3개월 누적 대비] 최근 50개 룸 롤링 보관 (과거 완료 대회는 연대기 실록으로 영구 보존)
+      const cappedRooms = rooms.slice(0, 50);
+      localStorage.setItem(STORAGE_KEYS.CLUB_ROOMS, JSON.stringify(cappedRooms));
+
+      // 📜 대회 개최 내용 및 경기 기록을 클럽 연대기(Club Chronicle)에 영구 보존
+      if (room.clubId || (room.groups && room.groups.some((g) => g.players.length > 0))) {
+        this.archiveEventRoomToClubChronicle(room);
+      }
+      triggerCloudClubSync();
+    } catch (e) {
+      console.error('Failed to save club room:', e);
+    }
+  },
+
+  // 3-0. 방 삭제
+  deleteRoom(roomId: string): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CLUB_ROOMS);
+      const rooms: ClubEventRoom[] = data ? JSON.parse(data) : [];
+      const updated = rooms.filter((r) => r.id !== roomId);
+      localStorage.setItem(STORAGE_KEYS.CLUB_ROOMS, JSON.stringify(updated));
+      try {
+        const delEvents = JSON.parse(localStorage.getItem('parkon_deleted_club_event_ids_v1') || '[]');
+        if (!delEvents.includes(roomId)) {
+          delEvents.push(roomId);
+          localStorage.setItem('parkon_deleted_club_event_ids_v1', JSON.stringify(delEvents));
+        }
+      } catch {}
+      triggerCloudClubSync();
+    } catch (e) {
+      console.error('Failed to delete club room:', e);
+    }
+  },
+
+  // 3-0-1. 방 정보 수정 / 관리
+  updateRoom(roomId: string, updates: Partial<ClubEventRoom>): ClubEventRoom | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CLUB_ROOMS);
+      const rooms: ClubEventRoom[] = data ? JSON.parse(data) : [];
+      const idx = rooms.findIndex((r) => r.id === roomId);
+      if (idx === -1) return null;
+      rooms[idx] = { ...rooms[idx], ...updates };
+      localStorage.setItem(STORAGE_KEYS.CLUB_ROOMS, JSON.stringify(rooms));
+      triggerCloudClubSync();
+      return rooms[idx];
+    } catch (e) {
+      console.error('Failed to update club room:', e);
+      return null;
+    }
+  },
+
+  // 3-1. 최적 조 수 및 조별 인원 자동 계산 (3~4인 기준)
+  calculateOptimalGroups(playerCount: number): { groupCount: number; distribution: number[] } {
+    if (playerCount <= 0) return { groupCount: 1, distribution: [] };
+    if (playerCount <= 4) return { groupCount: 1, distribution: [playerCount] };
+    if (playerCount === 5) return { groupCount: 2, distribution: [3, 2] };
+
+    // 6인 이상: 3~4인 1조 최적 분할
+    const k = Math.ceil(playerCount / 4);
+    const fourCount = Math.max(0, playerCount - 3 * k);
+    const threeCount = Math.max(0, 4 * k - playerCount);
+
+    const distribution: number[] = [];
+    for (let i = 0; i < fourCount; i++) distribution.push(4);
+    for (let i = 0; i < threeCount; i++) distribution.push(3);
+
+    const sum = distribution.reduce((a, b) => a + b, 0);
+    if (sum !== playerCount) {
+      const fallbackDist = Array(k).fill(0);
+      for (let i = 0; i < playerCount; i++) fallbackDist[i % k]++;
+      return { groupCount: k, distribution: fallbackDist };
+    }
+
+    return { groupCount: k, distribution };
+  },
+
+  // 3-2. 대기 풀에 참가자 등록 (Lobby Pool)
+  addToWaitingPool(
+    roomId: string,
+    player: {
+      name: string;
+      gender?: 'M' | 'F';
+      handicapTier?: 'ADVANCED' | 'INTERMEDIATE' | 'BEGINNER';
+      isGuest?: boolean;
+    }
+  ): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+
+    const trimmed = player.name.trim();
+    if (!trimmed) return room;
+
+    if (!room.waitingPool) room.waitingPool = [];
+
+    // 중복 체크
+    const exists =
+      room.waitingPool.some((p) => p.name === trimmed) ||
+      room.groups.some((g) => g.players.some((p) => p.name === trimmed));
+    if (exists) {
+      alert(`'${trimmed}' 님은 이미 참가 신청 명단에 등록되어 있습니다.`);
+      return room;
+    }
+
+    const isGuest =
+      player.isGuest ||
+      trimmed.includes('게스트') ||
+      trimmed.startsWith('guest');
+
+    const newPlayerId = isGuest
+      ? `guest_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`
+      : `wp_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 4)}`;
+
+    const currentActiveCount =
+      (room.groups?.reduce((acc, g) => acc + (g.players?.length || 0), 0) || 0) +
+      room.waitingPool.filter((p) => !p.waitNumber).length;
+
+    // 현장 게스트 또는 현장 인원 추가 시 대회 정원(targetTotalPlayers) 자동 확장 (10인 제한 초과 수용)
+    if (room.targetTotalPlayers && currentActiveCount >= room.targetTotalPlayers) {
+      room.targetTotalPlayers = currentActiveCount + 1;
+    }
+
+    const newPlayer: ClubPlayer = {
+      id: newPlayerId,
+      name: trimmed,
+      isLeader: false,
+      scores: {},
+      totalStrokes: 0,
+      parDiff: 0,
+      holesCompleted: 0,
+      gender: player.gender || 'M',
+      handicapTier: player.handicapTier || 'INTERMEDIATE',
+    };
+
+    room.waitingPool.push(newPlayer);
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 3-3. 대기 풀에서 참가자 제외 및 대기자 승격
+  removeFromWaitingPool(roomId: string, playerId: string): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+    if (!room.waitingPool) return room;
+
+    const target = room.waitingPool.find((p) => p.id === playerId);
+    const wasRegular = target && !target.waitNumber;
+
+    room.waitingPool = room.waitingPool.filter((p) => p.id !== playerId);
+
+    if (room.targetTotalPlayers && room.targetTotalPlayers > 10) {
+      const remainingCount =
+        room.waitingPool.length +
+        (room.groups?.reduce((a, g) => a + g.players.length, 0) || 0);
+      room.targetTotalPlayers = Math.max(10, remainingCount);
+    }
+
+    // 정원 자리가 비었고 1순위 대기자가 있으면 자동 승격
+    if (wasRegular) {
+      const firstWait = room.waitingPool.find((p) => p.waitNumber === 1);
+      if (firstWait) {
+        delete firstWait.waitNumber;
+      }
+    }
+
+    // 남은 대기자 번호 재정렬
+    let waitSeq = 1;
+    room.waitingPool.forEach((p) => {
+      if (p.waitNumber) {
+        p.waitNumber = waitSeq++;
+      }
+    });
+
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 3-4. 스마트 조 편성 엔진 (완전 랜덤 / 조장 지정 고정 / 일부 인원 고정 / 성비 균형 / 실력 균형 / 조장 사전지정 유지)
+  // 3-4. 스마트 조 편성 엔진 (완전 랜덤 / 조장 지정 고정 / 복수 동반 묶음 / 절대 분리 기피 / 성비 균형 / 실력 균형)
+  autoGroupPlayers(
+    roomId: string,
+    method: 'RANDOM' | 'BALANCED_GENDER' | 'BALANCED_TIER' | 'KEEP_LEADERS' | 'ASSIGN_LEADERS' | 'PARTIAL_ASSIGN',
+    customGroupCount?: number,
+    options?: {
+      designatedLeaderIds?: string[];
+      preAssignedGroupMap?: Record<string, number>;
+      togetherGroups?: (string[] | { playerIds: string[]; targetGroup?: number })[];
+      separateGroups?: (string[] | { playerIds: string[] })[];
+      balanceGender?: boolean;
+      balanceTier?: boolean;
+      separatePrevBuddies?: boolean;
+    }
+  ): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+
+    // 1. 전체 참가자 통합 수집 (대기 풀 + 기존 조원)
+    const allPlayersMap = new Map<string, ClubPlayer>();
+    if (room.waitingPool) {
+      room.waitingPool.forEach((p) => allPlayersMap.set(p.id, { ...p, isLeader: false }));
+    }
+    room.groups.forEach((g) => {
+      g.players.forEach((p) => {
+        if (!allPlayersMap.has(p.id)) {
+          allPlayersMap.set(p.id, { ...p, isLeader: false });
+        }
+      });
+    });
+
+    const allPlayers = Array.from(allPlayersMap.values());
+    const totalCount = allPlayers.length;
+    if (totalCount === 0) return room;
+
+    // 2. 최적 조 수 계산
+    const optimal = this.calculateOptimalGroups(totalCount);
+    let groupCount = customGroupCount || optimal.groupCount;
+    if (method === 'ASSIGN_LEADERS' && options?.designatedLeaderIds && options.designatedLeaderIds.length > 0) {
+      groupCount = Math.max(groupCount, options.designatedLeaderIds.length);
+    }
+    if (method === 'PARTIAL_ASSIGN' && options?.preAssignedGroupMap) {
+      const maxPreGroup = Math.max(...Object.values(options.preAssignedGroupMap), 1);
+      groupCount = Math.max(groupCount, maxPreGroup);
+    }
+
+    // 3. 조별 정원 배분(distribution) 계산
+    let distribution: number[] = [];
+    if (customGroupCount && customGroupCount !== optimal.groupCount) {
+      const dist = Array(groupCount).fill(0);
+      for (let i = 0; i < totalCount; i++) dist[i % groupCount]++;
+      distribution = dist;
+    } else {
+      distribution = [...optimal.distribution];
+      while (distribution.length < groupCount) {
+        distribution.push(4);
+      }
+    }
+
+    // 4. 신규 조 객체 초기화 (ABCD 코스 순환)
+    const letters = room.selectedCourseLetters.length > 0 ? room.selectedCourseLetters : ['A', 'B'];
+    const newGroups: ClubGroup[] = [];
+    for (let i = 1; i <= groupCount; i++) {
+      const courseLetter = letters[(i - 1) % letters.length];
+      newGroups.push({
+        groupNumber: i,
+        name: `${i}조`,
+        startCourseLetter: courseLetter,
+        leaderName: '',
+        players: [],
+        status: 'WAITING',
+      });
+    }
+
+    // 5. 조건별 사전 고정 배치 처리 및 제약 조건 엔진 (Constraint Satisfaction Engine)
+    // [하드 제약 1순위] 조장 고정 + [반드시 함께 묶을 동반 그룹] 한 조 안착 + [절대 분리 기피 그룹] 서로 다른 조 강제 분산
+    // [소프트 제약 2순위] 남녀 성비 균등 + 직전 모임 동반자 분리
+    // [최종 채우기 3순위] 남은 빈 슬롯 100% 완전 랜덤 또는 실력 밸런스 분배
+
+    // A. 동반 묶음 그룹 정규화
+    interface TogetherDef {
+      playerIds: string[];
+      targetGroup?: number;
+    }
+    const rawTogether: TogetherDef[] = [];
+    if (options?.togetherGroups) {
+      options.togetherGroups.forEach((tg) => {
+        const ids = (Array.isArray(tg) ? tg : tg.playerIds || []).filter((id) => allPlayersMap.has(id));
+        const uniqueIds = Array.from(new Set(ids));
+        if (uniqueIds.length >= 2) {
+          rawTogether.push({
+            playerIds: uniqueIds,
+            targetGroup: Array.isArray(tg) ? undefined : tg.targetGroup,
+          });
+        }
+      });
+    }
+
+    // 부부/동반자 사전 묶기 맵(preAssignedGroupMap) 레거시 병합
+    if (options?.preAssignedGroupMap) {
+      const groupToPlayers: Record<number, string[]> = {};
+      Object.entries(options.preAssignedGroupMap).forEach(([pid, gNum]) => {
+        if (allPlayersMap.has(pid)) {
+          if (!groupToPlayers[gNum]) groupToPlayers[gNum] = [];
+          groupToPlayers[gNum].push(pid);
+        }
+      });
+      Object.entries(groupToPlayers).forEach(([gNumStr, pids]) => {
+        const gNum = Number(gNumStr);
+        rawTogether.push({ playerIds: pids, targetGroup: gNum });
+      });
+    }
+
+    // 중복 및 겹치는 묶음 병합 (Union-Find)
+    const mergedTogether: TogetherDef[] = [];
+    rawTogether.forEach((item) => {
+      const match = mergedTogether.find((m) => m.playerIds.some((id) => item.playerIds.includes(id)));
+      if (match) {
+        item.playerIds.forEach((id) => {
+          if (!match.playerIds.includes(id)) match.playerIds.push(id);
+        });
+        if (!match.targetGroup && item.targetGroup) {
+          match.targetGroup = item.targetGroup;
+        }
+      } else {
+        mergedTogether.push({ playerIds: [...item.playerIds], targetGroup: item.targetGroup });
+      }
+    });
+
+    // B. 절대 분리 기피 그룹 정규화
+    const normSeparate: string[][] = [];
+    if (options?.separateGroups) {
+      options.separateGroups.forEach((sg) => {
+        const ids = (Array.isArray(sg) ? sg : sg.playerIds || []).filter((id) => allPlayersMap.has(id));
+        const uniqueIds = Array.from(new Set(ids));
+        if (uniqueIds.length >= 2) {
+          normSeparate.push(uniqueIds);
+        }
+      });
+    }
+
+    // C. 페어별 분리 여부 판별 헬퍼
+    const areSeparated = (idA: string, idB: string): boolean => {
+      if (idA === idB) return false;
+      return normSeparate.some((sep) => sep.includes(idA) && sep.includes(idB));
+    };
+
+    const hasSeparateConflictWithGroup = (candidateIds: string[], groupIds: string[]): boolean => {
+      for (const c of candidateIds) {
+        for (const g of groupIds) {
+          if (areSeparated(c, g)) return true;
+        }
+      }
+      return false;
+    };
+
+    // D. 조장 고정에 따른 타겟 조 강제 바인딩
+    if (options?.designatedLeaderIds) {
+      options.designatedLeaderIds.forEach((leaderId, idx) => {
+        if (idx < groupCount) {
+          const matchTg = mergedTogether.find((tg) => tg.playerIds.includes(leaderId));
+          if (matchTg) {
+            matchTg.targetGroup = idx + 1;
+          }
+        }
+      });
+    }
+
+    // E. 블록 단위 형성
+    interface AssignmentBlock {
+      playerIds: string[];
+      targetGroup?: number;
+    }
+
+    const blocks: AssignmentBlock[] = [];
+    const assignedBlockPlayerIds = new Set<string>();
+
+    mergedTogether.forEach((tg) => {
+      blocks.push({
+        playerIds: tg.playerIds,
+        targetGroup: tg.targetGroup,
+      });
+      tg.playerIds.forEach((id) => assignedBlockPlayerIds.add(id));
+    });
+
+    allPlayers.forEach((p) => {
+      if (!assignedBlockPlayerIds.has(p.id)) {
+        let targetGroup: number | undefined;
+        if (options?.designatedLeaderIds) {
+          const lIdx = options.designatedLeaderIds.indexOf(p.id);
+          if (lIdx !== -1 && lIdx < groupCount) {
+            targetGroup = lIdx + 1;
+          }
+        }
+        blocks.push({
+          playerIds: [p.id],
+          targetGroup,
+        });
+      }
+    });
+
+    // 정렬 우선순위: 타겟 조 고정 블록 ➔ 대형 묶음 블록 ➔ 분리 제약 보유 블록
+    blocks.sort((a, b) => {
+      if (a.targetGroup !== undefined && b.targetGroup === undefined) return -1;
+      if (a.targetGroup === undefined && b.targetGroup !== undefined) return 1;
+      return b.playerIds.length - a.playerIds.length;
+    });
+
+    // F. 백트래킹 제약 충족 검색 (Backtracking Constraint Solver)
+    const groupAssignments: string[][] = Array.from({ length: groupCount }, () => []);
+
+    const getTierWeight = (tier?: string) => (tier === 'ADVANCED' ? 3 : tier === 'BEGINNER' ? 1 : 2);
+    const getGroupTierSum = (groupIds: string[]): number => {
+      return groupIds.reduce((sum, id) => sum + getTierWeight(allPlayersMap.get(id)?.handicapTier), 0);
+    };
+    const getGroupFemaleCount = (groupIds: string[]): number => {
+      return groupIds.filter((id) => allPlayersMap.get(id)?.gender === 'F').length;
+    };
+
+    const solve = (bIdx: number, enforceSeparate: boolean): boolean => {
+      if (bIdx === blocks.length) return true;
+      const block = blocks[bIdx];
+
+      // 타겟 조가 지정된 경우
+      if (block.targetGroup !== undefined) {
+        const g = block.targetGroup - 1;
+        if (g >= 0 && g < groupCount) {
+          const cap = distribution[g] || 4;
+          if (groupAssignments[g].length + block.playerIds.length <= cap) {
+            if (!enforceSeparate || !hasSeparateConflictWithGroup(block.playerIds, groupAssignments[g])) {
+              groupAssignments[g].push(...block.playerIds);
+              if (solve(bIdx + 1, enforceSeparate)) return true;
+              groupAssignments[g].splice(groupAssignments[g].length - block.playerIds.length, block.playerIds.length);
+            }
+          }
+        }
+        return false;
+      }
+
+      // 후보 조 수집
+      const candidates: number[] = [];
+      for (let g = 0; g < groupCount; g++) {
+        const cap = distribution[g] || 4;
+        if (groupAssignments[g].length + block.playerIds.length <= cap) {
+          if (!enforceSeparate || !hasSeparateConflictWithGroup(block.playerIds, groupAssignments[g])) {
+            candidates.push(g);
+          }
+        }
+      }
+
+      // 소프트 제약 정렬 (실력 밸런스 / 성비 균등 / 랜덤 셔플)
+      if (options?.balanceTier || method === 'BALANCED_TIER') {
+        candidates.sort((a, b) => getGroupTierSum(groupAssignments[a]) - getGroupTierSum(groupAssignments[b]));
+      } else if (options?.balanceGender || method === 'BALANCED_GENDER') {
+        const hasFemale = block.playerIds.some((id) => allPlayersMap.get(id)?.gender === 'F');
+        candidates.sort((a, b) => {
+          if (hasFemale) {
+            return getGroupFemaleCount(groupAssignments[a]) - getGroupFemaleCount(groupAssignments[b]);
+          }
+          return groupAssignments[a].length - groupAssignments[b].length;
+        });
+      } else {
+        // 완전 무작위 셔플
+        for (let i = candidates.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
+      }
+
+      for (const g of candidates) {
+        groupAssignments[g].push(...block.playerIds);
+        if (solve(bIdx + 1, enforceSeparate)) return true;
+        groupAssignments[g].splice(groupAssignments[g].length - block.playerIds.length, block.playerIds.length);
+      }
+
+      return false;
+    };
+
+    // 1차 시도: 하드 제약(동반 묶음 + 절대 분리) 100% 엄격 적용
+    let solved = solve(0, true);
+    if (!solved) {
+      // 수학적으로 분리가 불가능한 극단적 입력 시 안전 폴백 (동반 묶음 유지, 분리 제약만 완화하여 전원 정상 배정)
+      for (let g = 0; g < groupCount; g++) groupAssignments[g] = [];
+      solved = solve(0, false);
+    }
+
+    // G. 최종 배정 결과를 조 객체에 반영
+    for (let g = 0; g < groupCount; g++) {
+      const assignedIds = groupAssignments[g];
+      const playersInGroup: ClubPlayer[] = [];
+
+      assignedIds.forEach((pid) => {
+        const p = allPlayersMap.get(pid);
+        if (p) {
+          playersInGroup.push({ ...p, isLeader: false });
+        }
+      });
+
+      // 조장 우선 지정 확인
+      let leaderAssigned = false;
+      if (options?.designatedLeaderIds && options.designatedLeaderIds[g]) {
+        const designatedId = options.designatedLeaderIds[g];
+        const leaderObj = playersInGroup.find((p) => p.id === designatedId);
+        if (leaderObj) {
+          leaderObj.isLeader = true;
+          leaderAssigned = true;
+          // 지정 조장은 1번 슬롯(index 0)으로 이동
+          const lIdx = playersInGroup.indexOf(leaderObj);
+          if (lIdx > 0) {
+            playersInGroup.splice(lIdx, 1);
+            playersInGroup.unshift(leaderObj);
+          }
+        }
+      }
+
+      if (!leaderAssigned && playersInGroup.length > 0) {
+        playersInGroup[0].isLeader = true;
+      }
+
+      newGroups[g].players = playersInGroup;
+      newGroups[g].leaderName = playersInGroup.find((p) => p.isLeader)?.name || playersInGroup[0]?.name || '';
+    }
+
+    room.groups = newGroups;
+    room.waitingPool = [];
+    room.groupingMethod = method;
+    room.targetTotalPlayers = totalCount;
+
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 3-5. 조 간 선수 이동 (드래그/원클릭 이동)
+  movePlayerBetweenGroups(
+    roomId: string,
+    fromGroupNum: number,
+    toGroupNum: number,
+    playerId: string
+  ): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+
+    const fromGroup = room.groups.find((g) => g.groupNumber === fromGroupNum);
+    const toGroup = room.groups.find((g) => g.groupNumber === toGroupNum);
+    if (!fromGroup || !toGroup) return null;
+
+    const playerIndex = fromGroup.players.findIndex((p) => p.id === playerId);
+    if (playerIndex === -1) return null;
+
+    const [player] = fromGroup.players.splice(playerIndex, 1);
+    player.isLeader = false;
+
+    if (fromGroup.players.length > 0 && !fromGroup.players.some((p) => p.isLeader)) {
+      fromGroup.players[0].isLeader = true;
+      fromGroup.leaderName = fromGroup.players[0].name;
+    } else if (fromGroup.players.length === 0) {
+      fromGroup.leaderName = '';
+    }
+
+    toGroup.players.push(player);
+    if (toGroup.players.length === 1) {
+      player.isLeader = true;
+      toGroup.leaderName = player.name;
+    }
+
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 3-6. [현장 긴급 대응] 결원(노쇼/지각) 발생 시 대기 1순위자 1초 긴급 투입 & 맞교환
+  replacePlayerWithWaitingCandidate(
+    roomId: string,
+    groupNumber: number,
+    missingPlayerId: string
+  ): {
+    success: boolean;
+    replacedPlayerName?: string;
+    newPlayerName?: string;
+    room?: ClubEventRoom;
+    message: string;
+  } {
+    const room = this.getRoom(roomId);
+    if (!room) return { success: false, message: '모임 방을 찾을 수 없습니다.' };
+
+    const targetGroup = room.groups.find((g) => g.groupNumber === groupNumber);
+    if (!targetGroup) return { success: false, message: `${groupNumber}조를 찾을 수 없습니다.` };
+
+    const pIdx = targetGroup.players.findIndex((p) => p.id === missingPlayerId);
+    if (pIdx === -1) return { success: false, message: '해당 선수를 조에서 찾을 수 없습니다.' };
+
+    const missingPlayer = targetGroup.players[pIdx];
+
+    // 대기자 찾기 (대기 1순위 우선, 없으면 대기 풀 첫 번째)
+    if (!room.waitingPool || room.waitingPool.length === 0) {
+      return { success: false, message: '투입 가능한 대기 신청자(대기 풀)가 없습니다.' };
+    }
+
+    let candIdx = room.waitingPool.findIndex((p) => p.waitNumber === 1);
+    if (candIdx === -1) candIdx = 0;
+
+    const [candidate] = room.waitingPool.splice(candIdx, 1);
+    delete candidate.waitNumber;
+
+    // 조장 여부 승계 또는 신규 배정
+    candidate.isLeader = missingPlayer.isLeader;
+    if (candidate.isLeader) {
+      targetGroup.leaderName = candidate.name;
+    }
+
+    // 조에서 결원자 제거하고 신규 대기자 투입
+    targetGroup.players.splice(pIdx, 1, candidate);
+
+    // 남은 대기자 번호 재정렬
+    let seq = 1;
+    room.waitingPool.forEach((p) => {
+      p.waitNumber = seq++;
+    });
+
+    this.saveRoom(room);
+    return {
+      success: true,
+      replacedPlayerName: missingPlayer.name,
+      newPlayerName: candidate.name,
+      room,
+      message: `'${missingPlayer.name}' 님의 빈자리에 대기 1순위 '${candidate.name}' 님이 1초 만에 즉시 투입되었습니다! ⚡`,
+    };
+  },
+
+  // 3-6-B. [현장 긴급 대응] 대기자가 없는 순수 결원(노쇼) 발생 시 '3인 1조' 규격으로 즉시 자동 전환
+  convertGroupToThreePlayers(
+    roomId: string,
+    groupNumber: number,
+    missingPlayerId: string
+  ): {
+    success: boolean;
+    removedPlayerName?: string;
+    group?: ClubGroup;
+    room?: ClubEventRoom;
+    message: string;
+  } {
+    const room = this.getRoom(roomId);
+    if (!room) return { success: false, message: '모임 방을 찾을 수 없습니다.' };
+
+    const targetGroup = room.groups.find((g) => g.groupNumber === groupNumber);
+    if (!targetGroup) return { success: false, message: `${groupNumber}조를 찾을 수 없습니다.` };
+
+    const pIdx = targetGroup.players.findIndex((p) => p.id === missingPlayerId);
+    if (pIdx === -1) return { success: false, message: '해당 선수를 조에서 찾을 수 없습니다.' };
+
+    const [removedPlayer] = targetGroup.players.splice(pIdx, 1);
+
+    // 잔여 인원(3인) 티오프 타순 및 조장 자동 재정렬
+    if (targetGroup.players.length > 0) {
+      if (!targetGroup.players.some((p) => p.isLeader)) {
+        targetGroup.players[0].isLeader = true;
+      }
+      const leader = targetGroup.players.find((p) => p.isLeader) || targetGroup.players[0];
+      targetGroup.leaderName = leader.name;
+    } else {
+      targetGroup.leaderName = '';
+    }
+
+    this.saveRoom(room);
+    this.syncEventToSupabase(room).catch(() => {});
+
+    return {
+      success: true,
+      removedPlayerName: removedPlayer.name,
+      group: targetGroup,
+      room,
+      message: `'${removedPlayer.name}' 님의 불참으로 [${groupNumber}조]가 결번 없이 자연스러운 3인 1조로 즉시 전환되었습니다! ⚡`,
+    };
+  },
+
+  // 3-6-C. 🔓 [신페리오 투명 공개] 대회 마감 시 자물쇠 해제 및 무결성 검증
+  unsealTournamentHiddenHoles(
+    roomId: string
+  ): {
+    success: boolean;
+    unsealedHoles: number[];
+    room?: ClubEventRoom;
+    message: string;
+  } {
+    const room = this.getRoom(roomId);
+    if (!room) return { success: false, unsealedHoles: [], message: '모임 방을 찾을 수 없습니다.' };
+
+    if (room.isUnsealed && room.unsealedHoles && room.unsealedHoles.length > 0) {
+      return {
+        success: true,
+        unsealedHoles: room.unsealedHoles,
+        room,
+        message: '이미 신페리오 숨은 홀이 공개되어 있습니다.',
+      };
+    }
+
+    if (!room.sealedSecret) {
+      // 봉인 토큰이 없을 경우 즉석에서 12개 무작위 생성
+      const fallback = generateSealedNewPerioHolesSync(room.totalHoles || 18);
+      room.sealedSecret = fallback.sealedSecret;
+      room.hiddenHolesHash = fallback.hiddenHolesHash;
+    }
+
+    const unsealRes = verifyAndUnsealHolesSync(room.sealedSecret, room.hiddenHolesHash);
+    if (!unsealRes.success) {
+      return { success: false, unsealedHoles: [], room, message: unsealRes.message };
+    }
+
+    room.isUnsealed = true;
+    room.unsealedHoles = unsealRes.unsealedHoles;
+
+    this.saveRoom(room);
+    this.syncEventToSupabase(room).catch(() => {});
+
+    return {
+      success: true,
+      unsealedHoles: unsealRes.unsealedHoles,
+      room,
+      message: `🎉 신페리오 12개 숨은 홀 [${unsealRes.unsealedHoles.join(', ')}번]이 전격 공개되었습니다!`,
+    };
+  },
+
+  // 3-6-D. 🚀 [전 조 동시 출발 확정] 1조부터 N조까지 Supabase 4인 실시간 대기실 일괄 생성
+  async launchAllTournamentGroups(
+    roomId: string
+  ): Promise<{
+    success: boolean;
+    room?: ClubEventRoom;
+    launchedCount: number;
+    message: string;
+  }> {
+    const room = this.getRoom(roomId);
+    if (!room) return { success: false, launchedCount: 0, message: '모임 방을 찾을 수 없습니다.' };
+
+    let count = 0;
+    const now = Date.now();
+
+    for (const group of room.groups) {
+      const linkedRoundRoomId = `room_club_${room.id}_g${group.groupNumber}`;
+      group.linkedRoundRoomId = linkedRoundRoomId;
+      group.sessionId = `round_club_${room.id}_g${group.groupNumber}`;
+      group.status = 'PLAYING';
+      count++;
+
+      const isSequential = (room.startMode || 'SEQUENTIAL') === 'SEQUENTIAL';
+      const startHoleNum = isSequential ? 1 : (((group.groupNumber - 1) % 9) + 1);
+
+      // Supabase round_rooms 테이블 일괄 레코드 생성 (오프라인 Fail-Safe)
+      try {
+        await supabase.from('round_rooms').upsert(
+          {
+            room_id: linkedRoundRoomId,
+            leader_name: group.leaderName || (group.players[0]?.name) || '조장',
+            course_id: room.courseId,
+            course_name: room.courseName,
+            course_letter: group.startCourseLetter || 'A',
+            start_hole_index: startHoleNum,
+            player_count: group.players.length,
+            players: group.players.map((p, pIdx) => ({
+              id: p.id,
+              name: p.name,
+              isLeader: p.isLeader || pIdx === 0,
+              handicapTier: p.handicapTier || 'INTERMEDIATE',
+            })),
+            status: 'WAITING',
+            updated_at: now,
+          },
+          { onConflict: 'room_id' }
+        );
+      } catch (err) {
+        // 네트워크 장애 시에도 로컬 진행 보장
+      }
+    }
+
+    room.status = 'PLAYING';
+    room.groupingConfirmed = true;
+    room.groupingStatus = 'CONFIRMED';
+    room.waitingPool = [];
+    this.saveRoom(room);
+    await this.syncEventToSupabase(room);
+
+    return {
+      success: true,
+      room,
+      launchedCount: count,
+      message: `🚀 총 ${count}개 조의 실시간 경기 대기실이 전원 기동되었습니다!`,
+    };
+  },
+
+  // 3-6-D. 🔄 [3단계] 전 조 실시간 스코어 동기화 & 홀인원(1타) 감지
+  async syncTournamentScoresFromRoundRooms(roomId: string): Promise<{
+    success: boolean;
+    room?: ClubEventRoom;
+    holeInOneAlerts: { playerName: string; groupNumber: number; holeNumber: number }[];
+    updatedGroupsCount: number;
+  }> {
+    const room = this.getRoom(roomId);
+    if (!room) return { success: false, holeInOneAlerts: [], updatedGroupsCount: 0 };
+
+    // 로컬 모의 라이브 룸은 불필요한 Supabase 원격 호출 방지 (404 에러 원천 차단)
+    if (roomId.includes('tourney-10p-live') || roomId.includes('live')) {
+      return { success: true, room, holeInOneAlerts: [], updatedGroupsCount: 0 };
+    }
+
+    const holeInOneAlerts: { playerName: string; groupNumber: number; holeNumber: number }[] = [];
+    let updatedGroupsCount = 0;
+
+    // Supabase round_rooms 테이블에서 현재 대회의 연동 룸들 조회
+    try {
+      const roomPrefix = `room_club_${roomId}_g`;
+      const { data, error } = await supabase
+        .from('round_rooms')
+        .select('*')
+        .like('room_id', `${roomPrefix}%`);
+
+      if (data && !error && data.length > 0) {
+        for (const row of data) {
+          const matchedGroup = room.groups.find((g) => g.linkedRoundRoomId === row.room_id);
+          if (!matchedGroup) continue;
+
+          const session = row.round_session;
+          if (session && session.players && Array.isArray(session.players)) {
+            updatedGroupsCount++;
+            for (const sp of session.players) {
+              const targetPlayer = matchedGroup.players.find((p) => p.name === sp.name || p.id === sp.id);
+              if (targetPlayer) {
+                const prevScores = targetPlayer.scores || {};
+                targetPlayer.scores = sp.scores || targetPlayer.scores;
+                targetPlayer.totalStrokes = sp.totalStrokes || targetPlayer.totalStrokes;
+                targetPlayer.parDiff = sp.parDiff !== undefined ? sp.parDiff : targetPlayer.parDiff;
+                targetPlayer.holesCompleted = Object.keys(targetPlayer.scores || {}).length;
+
+                // 홀인원(1타) 신규 발생 감지
+                if (sp.scores) {
+                  for (const [hStr, score] of Object.entries(sp.scores)) {
+                    const hNum = Number(hStr);
+                    if (score === 1 && prevScores[hNum] !== 1) {
+                      holeInOneAlerts.push({
+                        playerName: targetPlayer.name,
+                        groupNumber: matchedGroup.groupNumber,
+                        holeNumber: hNum,
+                      });
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // 오프라인이거나 네트워크 오류 시 기존 로컬 데이터 유지
+    }
+
+    if (updatedGroupsCount > 0) {
+      this.saveRoom(room);
+    }
+
+    return {
+      success: true,
+      room,
+      holeInOneAlerts,
+      updatedGroupsCount,
+    };
+  },
+
+  // 3-7. 대회 공식 마감 & 영구 실록 확정
+  finalizeTournament(roomId: string): { success: boolean; room?: ClubEventRoom; message: string } {
+    const room = this.getRoom(roomId);
+    if (!room) return { success: false, message: '모임 방을 찾을 수 없습니다.' };
+
+    room.status = 'FINISHED';
+
+    // 신페리오 경기 모드일 경우 대회 마감 시 숨은 홀 자동 자물쇠 해제 보장
+    if (room.gameMode === 'NEW_PERIO' && !room.isUnsealed) {
+      this.unsealTournamentHiddenHoles(roomId);
+    }
+
+    this.saveRoom(room);
+    this.archiveEventRoomToClubChronicle(room);
+    this.pushTournamentToPersonalChronicles(room);
+    this.syncEventToSupabase(room).catch(() => {});
+
+    return {
+      success: true,
+      room,
+      message: `'${room.title}' 대회가 공식 마감되어 클럽 연대기 및 전 참가 회원 개인 연대기에 자동 배포/보존되었습니다! 🏆`,
+    };
+  },
+
+  // 🌐 Supabase 'club_events' 원격 영구 동기화 (Fail-Safe)
+  async syncEventToSupabase(room: ClubEventRoom): Promise<void> {
+    if (!room || !room.id || typeof window === 'undefined') return;
+    try {
+      await supabase.from('club_events').upsert(
+        {
+          id: room.id,
+          club_id: room.clubId || 'club-default',
+          club_name: room.clubName,
+          tournament_type: room.tournamentType || 'CLUB_INTERNAL',
+          title: room.title,
+          course_id: room.courseId,
+          course_name: room.courseName,
+          host_name: room.hostName,
+          selected_course_letters: room.selectedCourseLetters,
+          total_holes: room.totalHoles,
+          target_total_players: room.targetTotalPlayers,
+          entry_fee: room.entryFee,
+          bank_account: room.bankAccount,
+          game_mode: room.gameMode,
+          game_mode_title: room.gameModeTitle,
+          game_rule_notes: room.gameRuleNotes,
+          near_pin_hole: room.nearPinHole,
+          longest_hole: room.longestHole,
+          award_config: room.awardConfig,
+          hidden_holes_hash: room.hiddenHolesHash,
+          sealed_secret: room.sealedSecret,
+          is_unsealed: room.isUnsealed || false,
+          unsealed_holes: room.unsealedHoles || [],
+          groups: room.groups,
+          waiting_pool: room.waitingPool || [],
+          grouping_method: room.groupingMethod,
+          status: room.status,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+    } catch {}
+  },
+
+  // 🔄 Supabase에서 클럽 대회 목록 원격 가져오기 및 로컬 병합
+  async fetchEventsFromSupabase(clubId?: string): Promise<ClubEventRoom[]> {
+    if (typeof window === 'undefined') return this.getAllRooms();
+    try {
+      let query = supabase.from('club_events').select('*').order('updated_at', { ascending: false });
+      if (clubId) {
+        query = query.eq('club_id', clubId);
+      }
+      const { data, error } = await query;
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const localRooms = this.getAllRooms();
+        const mergedMap = new Map<string, ClubEventRoom>();
+        localRooms.forEach((r) => mergedMap.set(r.id, r));
+
+        data.forEach((row: any) => {
+          const remoteRoom: ClubEventRoom = {
+            id: row.id,
+            clubId: row.club_id,
+            clubName: row.club_name,
+            tournamentType: row.tournament_type,
+            title: row.title,
+            courseId: row.course_id,
+            courseName: row.course_name,
+            hostName: row.host_name,
+            selectedCourseLetters: row.selected_course_letters || ['A', 'B'],
+            totalHoles: row.total_holes || 18,
+            targetTotalPlayers: row.target_total_players,
+            entryFee: row.entry_fee,
+            bankAccount: row.bank_account,
+            gameMode: row.game_mode,
+            gameModeTitle: row.game_mode_title,
+            gameRuleNotes: row.game_rule_notes,
+            nearPinHole: row.near_pin_hole,
+            longestHole: row.longest_hole,
+            awardConfig: row.award_config,
+            hiddenHolesHash: row.hidden_holes_hash,
+            sealedSecret: row.sealed_secret,
+            isUnsealed: row.is_unsealed,
+            unsealedHoles: row.unsealed_holes,
+            groups: row.groups || [],
+            waitingPool: row.waiting_pool || [],
+            groupingMethod: row.grouping_method,
+            status: row.status,
+            createdAt: row.created_at ? row.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+          };
+          mergedMap.set(remoteRoom.id, remoteRoom);
+        });
+
+        const mergedList = Array.from(mergedMap.values());
+        localStorage.setItem(STORAGE_KEYS.CLUB_ROOMS, JSON.stringify(mergedList));
+        return mergedList;
+      }
+    } catch {}
+    return this.getAllRooms();
+  },
+
+  // 4. 신규 방 생성
+  createRoom(params: {
+    title: string;
+    courseId: string;
+    courseName: string;
+    hostName: string;
+    selectedCourseLetters: string[];
+    groupCount?: number;
+    targetTotalPlayers?: number;
+    clubId?: string;
+    clubName?: string;
+    tournamentType?: 'CLUB_MATCH' | 'REGIONAL_OPEN' | 'CLUB_INTERNAL';
+    participatingClubs?: { clubId: string; clubName: string }[];
+    matchTeamCount?: number;
+    playersPerTeam?: number;
+    matchInviteType?: 'DIRECT_CHALLENGE' | 'OPEN_CHALLENGE';
+    regionScope?: string;
+    entryFee?: number;
+    bankAccount?: string;
+    gameMode?: 'STROKE' | 'NEW_PERIO' | 'SCRAMBLE' | 'STABLEFORD' | 'CASUAL';
+    gameModeTitle?: string;
+    gameRuleNotes?: string;
+    nearPinHole?: number;
+    longestHole?: number;
+    groupingMethod?: 'RANDOM' | 'BALANCED_GENDER' | 'BALANCED_TIER' | 'KEEP_LEADERS' | 'ASSIGN_LEADERS' | 'PARTIAL_ASSIGN' | 'MANUAL';
+  }): ClubEventRoom {
+    const id = `club-${Date.now().toString(36)}`;
+    const groups: ClubGroup[] = [];
+    // 시합 90% 표준은 18홀(['A', 'B'], 기준 66타)을 기본으로 하되,
+    // 9홀 단일(['A'] 또는 ['C']) 및 3~4개 코스 중 특정 2~3개 시합 코스 핀셋 지정(['C','D'], ['A','C'], ['A','B','C'] 등)도 100% 수용
+    const letters = params.selectedCourseLetters && params.selectedCourseLetters.length > 0 ? params.selectedCourseLetters : ['A', 'B'];
+    const totalHolesCount = letters.length * 9;
+    // 대표님 지침: 시합의 90% 이상은 정상 타수를 체크하는 '정통 스트로크(STROKE)'가 무조건 기본값! (신페리오 등은 총무 선택 옵션)
+    const effectiveGameMode = params.gameMode || 'STROKE';
+    const sealedPerio = effectiveGameMode === 'NEW_PERIO' ? generateSealedNewPerioHolesSync(totalHolesCount, letters) : null;
+    const cnt = params.groupCount || (params.targetTotalPlayers ? Math.ceil(params.targetTotalPlayers / 4) : 4);
+
+    for (let i = 1; i <= cnt; i++) {
+      const courseLetter = letters[(i - 1) % letters.length];
+      groups.push({
+        groupNumber: i,
+        name: `${i}조`,
+        startCourseLetter: courseLetter,
+        leaderName: '',
+        players: [],
+        status: 'WAITING',
+      });
+    }
+
+    const defaultRuleNotes = effectiveGameMode === 'NEW_PERIO'
+      ? `신페리오 방식(${totalHolesCount}홀 중 ${(totalHolesCount / 9) * 6}개 숨은 홀 핸디캡 산출 / 기준 Par ${(totalHolesCount / 9) * 33}), 컨시드 1클럽 샤프트 길이 이내 인정, OB 시 2벌타 후 특설티 진행`
+      : `정통 스트로크 최저타수 순위(${totalHolesCount}홀 / 기준 Par ${(totalHolesCount / 9) * 33}), 동타 시 마지막 9홀 백카운트 우선, 컨시드 1클럽 샤프트 길이 이내 인정, OB 시 2벌타 후 특설티 진행`;
+
+    const newRoom: ClubEventRoom = {
+      id,
+      clubId: params.clubId,
+      clubName: params.clubName,
+      tournamentType: params.tournamentType || (params.participatingClubs && params.participatingClubs.length > 1 ? 'CLUB_MATCH' : 'CLUB_INTERNAL'),
+      participatingClubs: params.participatingClubs,
+      matchTeamCount: params.matchTeamCount,
+      playersPerTeam: params.playersPerTeam,
+      matchInviteType: params.matchInviteType,
+      regionScope: params.regionScope,
+      title: params.title.trim() || '파크골프 동호회 정기 모임',
+      courseId: params.courseId,
+      courseName: params.courseName,
+      hostName: params.hostName.trim() || '총무',
+      selectedCourseLetters: letters,
+      totalHoles: totalHolesCount,
+      targetTotalPlayers: params.targetTotalPlayers || cnt * 4,
+      entryFee: params.entryFee ?? 10000,
+      bankAccount: params.bankAccount?.trim() || '농협 352-1234-5678 김대희(총무)',
+      gameMode: effectiveGameMode,
+      gameModeTitle: params.gameModeTitle || (effectiveGameMode === 'NEW_PERIO' ? '신페리오 방식 (핸디캡 옵션)' : '정통 스트로크 (정상 타수 최저타순)'),
+      gameRuleNotes: params.gameRuleNotes?.trim() || defaultRuleNotes,
+      nearPinHole: params.nearPinHole,
+      longestHole: params.longestHole,
+      // 🔒 [NEW] 신페리오 사전 무작위 봉인 필드 자동 생성 (동일 봉인 인스턴스 보장)
+      hiddenHolesHash: sealedPerio?.hiddenHolesHash,
+      sealedSecret: sealedPerio?.sealedSecret,
+      isUnsealed: false,
+      unsealedHoles: [],
+      groupingMethod: params.groupingMethod || 'RANDOM',
+      groups,
+      waitingPool: [],
+      status: 'RECRUITING',
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+
+    this.saveRoom(newRoom);
+    this.syncEventToSupabase(newRoom).catch(() => {});
+    try {
+      BoardStorage.syncTournamentToNotice(newRoom);
+    } catch (e) {}
+    return newRoom;
+  },
+
+  // 5. 특정 조 참가
+  joinGroup(
+    roomId: string,
+    groupNumber: number,
+    playerName: string,
+    asLeader = false,
+    gender: 'M' | 'F' = 'M',
+    handicapTier: 'ADVANCED' | 'INTERMEDIATE' | 'BEGINNER' = 'INTERMEDIATE'
+  ): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+
+    const group = room.groups.find((g) => g.groupNumber === groupNumber);
+    if (!group) return null;
+
+    // 이미 같은 이름이 있는지 확인
+    const trimmed = playerName.trim();
+    if (!trimmed) return room;
+
+    const existingPlayer = group.players.find((p) => p.name === trimmed);
+    if (existingPlayer) return room;
+
+    if (group.players.length >= 5) {
+      alert('해당 조는 이미 5명 정원이 찼습니다!');
+      return room;
+    }
+
+    const isFirst = group.players.length === 0;
+    const makeLeader = asLeader || isFirst || !group.leaderName;
+
+    const newPlayer: ClubPlayer = {
+      id: `p_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 4)}`,
+      name: trimmed,
+      isLeader: makeLeader,
+      scores: {},
+      totalStrokes: 0,
+      parDiff: 0,
+      holesCompleted: 0,
+      gender,
+      handicapTier,
+    };
+
+    if (makeLeader) {
+      group.players.forEach((p) => (p.isLeader = false));
+      group.leaderName = trimmed;
+    }
+
+    group.players.push(newPlayer);
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 6. 조에서 나가기
+  leaveGroup(roomId: string, groupNumber: number, playerId: string): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+
+    const group = room.groups.find((g) => g.groupNumber === groupNumber);
+    if (!group) return null;
+
+    group.players = group.players.filter((p) => p.id !== playerId);
+    if (group.players.length > 0 && !group.players.some((p) => p.isLeader)) {
+      group.players[0].isLeader = true;
+      group.leaderName = group.players[0].name;
+    } else if (group.players.length === 0) {
+      group.leaderName = '';
+    }
+
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 7. 조장 지정
+  setGroupLeader(roomId: string, groupNumber: number, playerId: string): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+
+    const group = room.groups.find((g) => g.groupNumber === groupNumber);
+    if (!group) return null;
+
+    group.players.forEach((p) => {
+      if (p.id === playerId) {
+        p.isLeader = true;
+        group.leaderName = p.name;
+      } else {
+        p.isLeader = false;
+      }
+    });
+
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 8. 조별 타수 동기화
+  updateGroupScores(
+    roomId: string,
+    groupNumber: number,
+    playerUpdates: { playerId?: string; playerName: string; scores: Record<number, number>; totalStrokes: number; parDiff: number; holesCompleted: number }[]
+  ): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+
+    const group = room.groups.find((g) => g.groupNumber === groupNumber);
+    if (!group) return null;
+
+    let groupTotal = 0;
+    let validCount = 0;
+
+    playerUpdates.forEach((up) => {
+      const p = group.players.find((pl) => (up.playerId && pl.id === up.playerId) || pl.name === up.playerName);
+      if (p) {
+        p.scores = up.scores;
+        p.totalStrokes = up.totalStrokes;
+        p.parDiff = up.parDiff;
+        p.holesCompleted = up.holesCompleted;
+        groupTotal += up.totalStrokes;
+        validCount++;
+      }
+    });
+
+    if (validCount > 0) {
+      group.totalScore = groupTotal;
+      group.avgScore = Math.round((groupTotal / validCount) * 10) / 10;
+      if (group.status !== 'FINISHED') {
+        group.status = 'PLAYING';
+      }
+    }
+
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 8-1. 조 상태 변경 (대기 / 경기 중 / 완주)
+  setGroupStatus(roomId: string, groupNumber: number, status: 'WAITING' | 'PLAYING' | 'FINISHED'): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+
+    const group = room.groups.find((g) => g.groupNumber === groupNumber);
+    if (!group) return null;
+
+    group.status = status;
+    if (room.groups.every((g) => g.status === 'FINISHED')) {
+      room.status = 'FINISHED';
+    } else if (room.groups.some((g) => g.status === 'PLAYING' || g.status === 'FINISHED')) {
+      room.status = 'PLAYING';
+    }
+
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 9. 팀(조)별 실시간 리더보드 계산
+  getTeamLeaderboard(room: ClubEventRoom): ClubLeaderboardTeam[] {
+    const list: ClubLeaderboardTeam[] = room.groups.map((g) => {
+      let total = 0;
+      let totalParDiff = 0;
+      let maxHoles = 0;
+      const count = g.players.length;
+
+      g.players.forEach((p) => {
+        total += p.totalStrokes || 0;
+        totalParDiff += p.parDiff || 0;
+        if (p.holesCompleted > maxHoles) maxHoles = p.holesCompleted;
+      });
+
+      const avgStrokes = count > 0 ? Math.round((total / count) * 10) / 10 : 0;
+      const avgParDiff = count > 0 ? Math.round((totalParDiff / count) * 10) / 10 : 0;
+
+      return {
+        rank: 0,
+        groupNumber: g.groupNumber,
+        groupName: g.name,
+        leaderName: g.leaderName || '미지정',
+        playersCount: count,
+        totalStrokes: total,
+        avgStrokes,
+        parDiff: avgParDiff,
+        holesCompleted: maxHoles,
+      };
+    });
+
+    // 정렬: 진행 홀이 있고 평균 타수가 낮은 조가 1등
+    list.sort((a, b) => {
+      if (a.playersCount === 0 && b.playersCount === 0) return a.groupNumber - b.groupNumber;
+      if (a.playersCount === 0) return 1;
+      if (b.playersCount === 0) return -1;
+      if (a.avgStrokes === 0 && b.avgStrokes === 0) return a.groupNumber - b.groupNumber;
+      if (a.avgStrokes === 0) return 1;
+      if (b.avgStrokes === 0) return -1;
+      return a.avgStrokes - b.avgStrokes;
+    });
+
+    list.forEach((item, idx) => {
+      item.rank = idx + 1;
+    });
+
+    return list;
+  },
+
+  // 9-1. 경기 방식 메타데이터 안내 (90% 이상 표준인 '정통 스트로크'가 무조건 기본값, 신페리오 등은 총무 선택 옵션)
+  getGameModeInfo(mode?: 'STROKE' | 'NEW_PERIO' | 'SCRAMBLE' | 'STABLEFORD' | 'CASUAL') {
+    switch (mode) {
+      case 'NEW_PERIO':
+        return {
+          key: 'NEW_PERIO',
+          title: '신페리오 방식 (핸디캡 옵션)',
+          badge: '🎯 신페리오(옵션)',
+          shortDesc: '총무 선택 옵션 · 숨은 홀 기반 핸디캡 차감 산출 방식',
+          ruleDetail:
+            '숨은 홀 타수를 집계하여 핸디캡을 산출한 뒤 [총타수 - 핸디캡 = 네트스코어]로 순위를 결정하는 선택형 이벤트 방식입니다.',
+        };
+      case 'SCRAMBLE':
+        return {
+          key: 'SCRAMBLE',
+          title: '팀 스크램블 (단체 베스트볼 옵션)',
+          badge: '🤝 팀 스크램블(옵션)',
+          shortDesc: '총무 선택 옵션 · 팀원 전원 티샷 후 베스트볼 위치에서 진행',
+          ruleDetail:
+            '조원 모두가 티샷한 후 가장 좋은 위치의 공을 선택하여 전원이 그 위치에서 다음 샷을 하는 협동 옵션 방식입니다.',
+        };
+      case 'STABLEFORD':
+        return {
+          key: 'STABLEFORD',
+          title: '스테이블포드 (승점제 옵션)',
+          badge: '🎖️ 스테이블포드(옵션)',
+          shortDesc: '총무 선택 옵션 · 홀별 타수에 따른 승점 합산 방식',
+          ruleDetail:
+            '알바트로스 5점, 이글 4점, 버디 3점, 파 2점, 보기 1점 등 홀별 성적에 따라 승점을 부여하여 합산하는 옵션 방식입니다.',
+        };
+      case 'CASUAL':
+        return {
+          key: 'CASUAL',
+          title: '친선 명랑 라운드 (친목 옵션)',
+          badge: '⛳ 친선 명랑(옵션)',
+          shortDesc: '총무 선택 옵션 · 순위 경쟁 없이 건강과 친목에 집중',
+          ruleDetail:
+            '승패나 순위의 부담 없이 동호인 간의 매너와 친목, 건강 증진에 집중하는 자유로운 라운드입니다.',
+        };
+      case 'STROKE':
+      default:
+        return {
+          key: 'STROKE',
+          title: '정통 스트로크 (정상 타수 최저타순 · 90% 기본)',
+          badge: '🏆 정통 스트로크(기본)',
+          shortDesc: '90% 공식 표준 기본값 · 실제 정상 타수(최저타순)로 순위 결정',
+          ruleDetail:
+            '규정 홀수의 실제 정상 타수 합계가 가장 적은 순서대로 순위를 매기는 대한민국 파크골프 90% 이상 공식 표준 방식입니다. 동타 시 지정 마지막 코스 백카운트 최저타순으로 순위를 결정합니다.',
+        };
+    }
+  },
+
+  // 10. 개인별 실시간 리더보드 계산 (신페리오 핸디캡 및 정통 스트로크 지원)
+  getIndividualLeaderboard(room: ClubEventRoom): ClubLeaderboardIndividual[] {
+    const list: ClubLeaderboardIndividual[] = [];
+    const isNewPerio = room.gameMode === 'NEW_PERIO';
+    const isUnsealed = !!room.isUnsealed;
+    const activeHiddenHoles = (isUnsealed && room.unsealedHoles && room.unsealedHoles.length > 0)
+      ? room.unsealedHoles
+      : [];
+
+    const designatedBlocks = getDesignatedCourseHoleBlocks(
+      room.selectedCourseLetters,
+      room.totalHoles || 18
+    );
+    const designatedFlatHoles = designatedBlocks.flat();
+    const STANDARD_9_PARS = [4, 3, 4, 3, 4, 4, 3, 3, 5];
+
+    room.groups.forEach((g) => {
+      g.players.forEach((p) => {
+        let handicap: number | undefined;
+        let netScore: number | undefined;
+
+        // 3~4개 코스를 라운드하더라도 시합 지정 코스(예: ['C','D'] 또는 ['A','C'] 또는 ['B'])의 점수만 핀셋 추출 지원
+        let designatedStrokes = 0;
+        let designatedParSum = 0;
+        let designatedCompleted = 0;
+        designatedFlatHoles.forEach((hNum, seqIdx) => {
+          const val = typeof p.scores[hNum] === 'number' ? p.scores[hNum] : p.scores[seqIdx + 1];
+          if (typeof val === 'number' && val > 0) {
+            designatedStrokes += val;
+            designatedParSum += STANDARD_9_PARS[(hNum - 1) % 9] || 3;
+            designatedCompleted++;
+          }
+        });
+
+        const effectiveStrokes = designatedCompleted > 0 ? designatedStrokes : (p.totalStrokes || 0);
+        const effectiveParDiff = designatedCompleted > 0 ? (designatedStrokes - designatedParSum) : (p.parDiff || 0);
+        const effectiveCompleted = designatedCompleted > 0 ? designatedCompleted : (p.holesCompleted || 0);
+
+        if (isNewPerio && effectiveCompleted > 0) {
+          if (isUnsealed && activeHiddenHoles.length > 0) {
+            // 🔓 [공개 완료] 암호 해제된 숨은 홀 기반 공정 정밀 계산 (지정 시합 코스 매핑 포함)
+            const calc = calculateDynamicNewPerio(
+              p.scores,
+              effectiveStrokes,
+              activeHiddenHoles,
+              room.totalHoles || designatedFlatHoles.length || 18,
+              room.selectedCourseLetters
+            );
+            handicap = calc.handicap;
+            netScore = calc.netScore;
+          } else {
+            // 🔒 [봉인 진행 중] 경기 마감 전까지는 블라인드 처리 (사전 타수 조작 원천 차단)
+            handicap = undefined;
+            netScore = undefined;
+          }
+        }
+
+        // 파크골프 공식 백카운트: 지정된 시합 코스 중 마지막 코스(9홀 시합은 후반 3홀, 18/27/36홀 시합은 마지막 지정 9홀 코스) 합계 산출
+        let backCountScore = 0;
+        const lastBlock = designatedBlocks[designatedBlocks.length - 1] || [];
+        const backCountHoles = designatedBlocks.length === 1 ? lastBlock.slice(-3) : lastBlock;
+        backCountHoles.forEach((hNum) => {
+          const seqIdx = designatedFlatHoles.indexOf(hNum);
+          const val = typeof p.scores[hNum] === 'number'
+            ? p.scores[hNum]
+            : (seqIdx >= 0 ? p.scores[seqIdx + 1] : undefined);
+          if (typeof val === 'number') {
+            backCountScore += val;
+          }
+        });
+
+        list.push({
+          rank: 0,
+          playerId: p.id,
+          playerName: p.name,
+          groupNumber: g.groupNumber,
+          totalStrokes: effectiveStrokes,
+          parDiff: effectiveParDiff,
+          holesCompleted: effectiveCompleted,
+          isLeader: p.isLeader,
+          handicap,
+          netScore,
+          backCountScore,
+          scorePrivacy: p.scorePrivacy || this.getPlayerScorePrivacy(p.name),
+        });
+      });
+    });
+
+    // 정렬: 신페리오 공개 시 네트 스코어 최저타순, 미공개/스트로크는 총타수 최저타순
+    // 동타 시 파크골프 공식 룰: 후반 9홀 백카운트 최저타순 우선!
+    list.sort((a, b) => {
+      if (a.holesCompleted === 0 && b.holesCompleted === 0) return 0;
+      if (a.holesCompleted === 0) return 1;
+      if (b.holesCompleted === 0) return -1;
+
+      if (isNewPerio && isUnsealed && typeof a.netScore === 'number' && typeof b.netScore === 'number') {
+        const diff = a.netScore - b.netScore;
+        if (diff !== 0) return diff;
+        // 네트 동타 시: 백카운트(후반 9홀) 적은 선수 우선
+        const bcDiff = (a.backCountScore || 0) - (b.backCountScore || 0);
+        if (bcDiff !== 0) return bcDiff;
+        // 백카운트까지 같으면 실타수(Gross) 적은 선수 우선
+        return a.totalStrokes - b.totalStrokes;
+      }
+
+      const strokeDiff = a.totalStrokes - b.totalStrokes;
+      if (strokeDiff !== 0) return strokeDiff;
+
+      // 스트로크 동타 시: 백카운트(후반 9홀) 적은 선수 우선
+      const bcDiff = (a.backCountScore || 0) - (b.backCountScore || 0);
+      if (bcDiff !== 0) return bcDiff;
+
+      return (b.holesCompleted || 0) - (a.holesCompleted || 0);
+    });
+
+    list.forEach((item, idx) => {
+      item.rank = idx + 1;
+      // 동타 발생 여부 감지 및 판정 근거 부여
+      const sameScoreWithNext = idx < list.length - 1 && (
+        (isNewPerio && list[idx + 1].netScore === item.netScore) ||
+        (!isNewPerio && list[idx + 1].totalStrokes === item.totalStrokes)
+      );
+      const sameScoreWithPrev = idx > 0 && (
+        (isNewPerio && list[idx - 1].netScore === item.netScore) ||
+        (!isNewPerio && list[idx - 1].totalStrokes === item.totalStrokes)
+      );
+
+      if (sameScoreWithNext || sameScoreWithPrev) {
+        if (isNewPerio && typeof item.handicap === 'number') {
+          item.tieBreakerReason = `신페리오 -${item.handicap} (백카운트 ${item.backCountScore || 0}타)`;
+        } else if (item.backCountScore && item.backCountScore > 0) {
+          item.tieBreakerReason = `백카운트 우선 (후반 9홀 ${item.backCountScore}타)`;
+        }
+      }
+    });
+
+    return list;
+  },
+
+  // 11. 카카오톡 / LINE 공유 링크 및 초대 메시지 생성
+  generateKakaoShareText(room: ClubEventRoom, isJapanese?: boolean): string {
+    const totalCurrentPlayers = room.groups.reduce((sum, g) => sum + g.players.length, 0);
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkgolfallinone.com';
+    const link = `${origin}/club/${room.id}`;
+    const modeInfo = this.getGameModeInfo(room.gameMode);
+
+    if (room.tournamentType === 'CLUB_MATCH') {
+      const hostClub = room.clubName || (isJapanese ? '主催クラブ' : '주최 클럽');
+      const oppClubs =
+        room.participatingClubs && room.participatingClubs.length > 0
+          ? room.participatingClubs
+              .map((c) => c.clubName)
+              .filter((n) => n !== hostClub)
+              .join(', ') || (isJapanese ? '対戦相手クラブ' : '상대 클럽')
+          : (isJapanese ? '全国パークゴルフクラブ' : '전국 파크골프 클럽');
+      const teamCount = room.matchTeamCount || 2;
+      const perTeam = room.playersPerTeam || Math.round((room.targetTotalPlayers || 32) / teamCount);
+      const isDirect = room.matchInviteType !== 'OPEN_CHALLENGE';
+
+      if (isJapanese) {
+        return `⚔️ [PARKY (パキ) クラブ対抗戦 公式${isDirect ? '挑戦状' : 'オープンチャレンジ'}]
+
+🏆 ${room.title}
+🏛️ 対戦カード: [${hostClub}] ⚔️ VS ⚔️ [${oppClubs}]
+📍 コース: ${room.courseName} (${room.totalHoles}ホール)
+👥 出場枠: ${teamCount}チーム (各チーム ${perTeam}名 / 計 ${room.targetTotalPlayers || 32}名)
+🎯 競技方式: ${room.gameModeTitle || modeInfo.title}
+⛳ 組編成: ライバル直接対決組編成 (計 ${room.groups.length}組)
+
+👇 以下のリンクから対抗戦を受諾し、エントリーを行ってください！
+${link}`;
+      }
+
+      return `⚔️ [파키 앱 (PARKY APP) 클럽 대항전 공식 ${isDirect ? '도전장' : '오픈 챌린지'}]
+
+🏆 ${room.title}
+🏛️ 대결 매치: [${hostClub}] ⚔️ VS ⚔️ [${oppClubs}]
+📍 구장: ${room.courseName} (${room.totalHoles}홀)
+👥 출전 엔트리: ${teamCount}개 팀 (팀당 ${perTeam}명 / 총 ${room.targetTotalPlayers || 32}명)
+🎯 경기 방식: ${room.gameModeTitle || modeInfo.title}
+⛳ 조 편성: 라이벌 크로스 맞대결 조편성 (총 ${room.groups.length}개 조)
+
+👇 아래 링크를 눌러 대항전 수락 및 출전 엔트리를 등록하세요!
+${link}`;
+    }
+
+    let feeInfo = '';
+    if (typeof room.entryFee === 'number' && room.entryFee > 0) {
+      feeInfo = isJapanese
+        ? `\n💵 参加費: ${room.entryFee.toLocaleString()}ウォン`
+        : `\n💵 참가비: ${room.entryFee.toLocaleString()}원`;
+      if (room.bankAccount) {
+        feeInfo += isJapanese ? `\n🏦 振込口座: ${room.bankAccount}` : `\n🏦 입금계좌: ${room.bankAccount}`;
+      }
+    } else if (room.entryFee === 0) {
+      feeInfo = isJapanese ? `\n💵 参加費: 無料` : `\n💵 참가비: 무료`;
+    }
+
+    let rulesInfo = isJapanese ? `\n🎯 競技方式: ${room.gameModeTitle || modeInfo.title}` : `\n🎯 경기 방식: ${room.gameModeTitle || modeInfo.title}`;
+    if (room.gameRuleNotes) {
+      rulesInfo += isJapanese ? `\n📌 大会ルール: ${room.gameRuleNotes}` : `\n📌 대회 룰: ${room.gameRuleNotes}`;
+    }
+
+    if (isJapanese) {
+      return `⛳ [PARKY (パキ) クラブ招集招待]\n\n🏆 ${room.title}\n📍 コース: ${room.courseName}\n👥 参加人数: ${totalCurrentPlayers}名 / ${room.targetTotalPlayers}名 (${room.groups.length}組 編成)${feeInfo}${rulesInfo}\n\n以下のリンクから自分の組を確認し、リアルタイム電光掲示板へご参加ください:\n${link}`;
+    }
+
+    return `⛳ [파키 앱 (PARKY APP) 클럽 모임 초대]\n\n🏆 ${room.title}\n📍 구장: ${room.courseName}\n👥 참가 인원: ${totalCurrentPlayers}명 / ${room.targetTotalPlayers}명 (${room.groups.length}개 조 편성)${feeInfo}${rulesInfo}\n\n아래 링크를 누르면 본인 조 확인 및 실시간 스코어보드로 입장합니다:\n${link}`;
+  },
+
+  // 12. 대회 최종 결과 텍스트 리포트 생성 (총무 복사용)
+  generateTournamentResultReport(room: ClubEventRoom, isJapanese?: boolean): string {
+    const designatedBlocks = getDesignatedCourseHoleBlocks(room.selectedCourseLetters, room.totalHoles || 18);
+    const totalHolesCount = designatedBlocks.flat().length || room.totalHoles || 18;
+    const baseParCount = designatedBlocks.length * 33;
+    const designatedLabel =
+      room.selectedCourseLetters && room.selectedCourseLetters.length > 0
+        ? `${room.selectedCourseLetters.join('·')}코스 / `
+        : '';
+    const defaultHiddenForBlocks = designatedBlocks
+      .map((block) => [0, 1, 3, 5, 6, 8].map((idx) => block[idx]).filter(Boolean))
+      .flat();
+    const effectiveRoom: ClubEventRoom =
+      room.gameMode === 'NEW_PERIO' && (!room.isUnsealed || !room.unsealedHoles || room.unsealedHoles.length === 0)
+        ? {
+            ...room,
+            isUnsealed: true,
+            unsealedHoles: defaultHiddenForBlocks,
+          }
+        : room;
+    const teams = this.getTeamLeaderboard(effectiveRoom);
+    const individuals = this.getIndividualLeaderboard(effectiveRoom);
+    const modeInfo = this.getGameModeInfo(effectiveRoom.gameMode);
+
+    if (isJapanese) {
+      let report = `🏆 [${room.title} 大会最終結果]\n`;
+      report += `📍 コース: ${room.courseName} (${designatedLabel}${totalHolesCount}ホール / 基準 Par ${baseParCount})\n`;
+      const gameModeLabelJa =
+        room.gameModeTitle ||
+        (room.gameMode === 'NEW_PERIO'
+          ? '新ペリオ (ハンディ戦)'
+          : room.gameMode === 'SCRAMBLE'
+          ? 'スクランブル'
+          : room.gameMode === 'STABLEFORD'
+          ? 'ステーブルフォード'
+          : 'カジュアル親善');
+      report += `🎯 競技方式: ${gameModeLabelJa}\n\n`;
+
+      report += `🥇 [チーム対抗戦 団体順位]\n`;
+      const displayTeams = teams.slice(0, 5);
+      displayTeams.forEach((t) => {
+        const medal = t.rank === 1 ? '🥇' : t.rank === 2 ? '🥈' : t.rank === 3 ? '🥉' : '▪️';
+        report += `${medal} ${t.rank}位 ${t.groupName} (組長: ${t.leaderName}) : 平均 ${t.avgStrokes}打\n`;
+      });
+      if (teams.length > 5) {
+        report += `  (※ 他 ${teams.length - 5}組の全順位はPARKY電光掲示板リンクで確認)\n`;
+      }
+
+      const getPlayerTagJa = (playerId: string, defaultName: string, groupNum?: number): string => {
+        let matchedPhone: string | undefined;
+        for (const g of room.groups) {
+          const found = g.players.find((p) => p.name === defaultName || p.id === playerId);
+          if (found?.phone) {
+            matchedPhone = found.phone;
+            break;
+          }
+        }
+        if (!matchedPhone && room.clubId) {
+          const club = this.getClubById(room.clubId);
+          const member = club?.members.find((m) => m.name === defaultName || m.id === playerId);
+          if (member?.phone) {
+            matchedPhone = member.phone;
+          }
+        }
+        const clubPart = room.clubName ? `${room.clubName}` : '';
+        const phoneDigits = matchedPhone ? matchedPhone.replace(/[^0-9]/g, '') : '';
+        const phonePart = phoneDigits.length >= 4 ? `末尾 ${phoneDigits.slice(-4)}` : '';
+        const parts = [clubPart, phonePart || (groupNum ? `${groupNum}組` : '')].filter(Boolean);
+        return parts.length > 0 ? ` (${parts.join(' / ')})` : (groupNum ? ` (${groupNum}組)` : '');
+      };
+
+      if (room.gameMode === 'NEW_PERIO') {
+        report += `\n🎯 [新ペリオ個人戦 最終順位 (ハンディキャップ適用)]\n`;
+        individuals.slice(0, 5).forEach((p) => {
+          const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '▪️';
+          report += `${medal} ${p.rank}位 ${p.playerName}${getPlayerTagJa(p.playerId, p.playerName, p.groupNumber)} : ネット ${p.netScore}打 (実打数 ${p.totalStrokes}打, HDCP ${p.handicap})\n`;
+        });
+
+        const sortedByGross = [...individuals].sort((a, b) => a.totalStrokes - b.totalStrokes);
+        const medalist = sortedByGross[0];
+        if (medalist) {
+          report += `\n🏅 [メダリスト (グロス最少打)] : ${medalist.playerName}${getPlayerTagJa(medalist.playerId, medalist.playerName, medalist.groupNumber)} - 計 ${medalist.totalStrokes}打\n`;
+        }
+      } else {
+        report += `\n🎖️ [個人戦 TOP 5]\n`;
+        individuals.slice(0, 5).forEach((p) => {
+          const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '▪️';
+          const diffStr = p.parDiff <= 0 ? `${p.parDiff}` : `+${p.parDiff}`;
+          report += `${medal} ${p.rank}位 ${p.playerName}${getPlayerTagJa(p.playerId, p.playerName, p.groupNumber)} : ${p.totalStrokes}打 (${diffStr})\n`;
+        });
+      }
+
+      const specialAwards = this.calculateSpecialAwards(room);
+      if (specialAwards.length > 0) {
+        report += `\n🎖️ [特別賞 受賞者]\n`;
+        specialAwards.forEach((sa) => {
+          report += `${sa.badge} ${sa.title}: ${sa.winnerName} (${sa.groupNumber ? `${sa.groupNumber}組, ` : ''}${sa.valueInfo || ''})\n`;
+        });
+      }
+
+      if (room.awardConfig?.luckyDrawWinners && room.awardConfig.luckyDrawWinners.length > 0) {
+        report += `\n🎰 [ラッキードロー 当選者]\n`;
+        room.awardConfig.luckyDrawWinners.forEach((lw, idx) => {
+          report += `🎁 当選 ${idx + 1}号: ${lw.name} (${lw.groupNumber ? `${lw.groupNumber}組, ` : ''}${lw.prizeName})\n`;
+        });
+      }
+
+      report += `\n══════════════════════════════\n`;
+      report += `📋 [🏆 表彰式および賞金・賞品受領案内]\n`;
+      report += `• 賞金およびトロフィー・賞品は本人確認のうえ現地受領または指定口座へ送金されます。\n`;
+      report += `• お問い合わせ: 幹事 (${room.hostName || 'クラブ事務局'})\n`;
+      report += `══════════════════════════════\n`;
+      report += `⛳ PARKY (パキ) 公式大会管制センター リアルタイム集計\n`;
+      return report;
+    }
+
+    let report = `🏆 [${room.title} 대회 최종 결과]\n`;
+    report += `📍 구장: ${room.courseName} (${designatedLabel}${totalHolesCount}홀 / 기준 Par ${baseParCount})\n`;
+    report += `🎯 경기 방식: ${room.gameModeTitle || modeInfo.title}\n\n`;
+
+    report += `🥇 [팀 대항전 단체 순위]\n`;
+    const displayTeams = teams.slice(0, 5);
+    displayTeams.forEach((t) => {
+      const medal = t.rank === 1 ? '🥇' : t.rank === 2 ? '🥈' : t.rank === 3 ? '🥉' : '▪️';
+      report += `${medal} ${t.rank}위 ${t.groupName} (조장: ${t.leaderName}) : 평균 ${t.avgStrokes}타\n`;
+    });
+    if (teams.length > 5) {
+      report += `  (※ 외 ${teams.length - 5}개 조 전체 순위는 파키 앱 (PARKY APP) 전광판 링크에서 확인)\n`;
+    }
+
+    // [대표님 지시] 5만명 전국망 대비 동명이인 방지 3중 식별 태그 (이름 + 소속클럽 + 전화뒷자리/조)
+    const getPlayerTag = (playerId: string, defaultName: string, groupNum?: number): string => {
+      let matchedPhone: string | undefined;
+      for (const g of room.groups) {
+        const found = g.players.find((p) => p.name === defaultName || p.id === playerId);
+        if (found?.phone) {
+          matchedPhone = found.phone;
+          break;
+        }
+      }
+      if (!matchedPhone && room.clubId) {
+        const club = this.getClubById(room.clubId);
+        const member = club?.members.find((m) => m.name === defaultName || m.id === playerId);
+        if (member?.phone) {
+          matchedPhone = member.phone;
+        }
+      }
+      const clubPart = room.clubName ? `${room.clubName}` : '';
+      const phoneDigits = matchedPhone ? matchedPhone.replace(/[^0-9]/g, '') : '';
+      const phonePart = phoneDigits.length >= 4 ? `끝자리 ${phoneDigits.slice(-4)}` : '';
+      const parts = [clubPart, phonePart || (groupNum ? `${groupNum}조` : '')].filter(Boolean);
+      return parts.length > 0 ? ` (${parts.join(' / ')})` : (groupNum ? ` (${groupNum}조)` : '');
+    };
+
+    if (room.gameMode === 'NEW_PERIO') {
+      report += `\n🎯 [신페리오 개인전 최종 순위 (핸디캡 적용)]\n`;
+      individuals.slice(0, 5).forEach((p) => {
+        const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '▪️';
+        report += `${medal} ${p.rank}위 ${p.playerName}${getPlayerTag(p.playerId, p.playerName, p.groupNumber)} : 네트 ${p.netScore}타 (실타수 ${p.totalStrokes}타, 핸디 ${p.handicap})\n`;
+      });
+
+      const sortedByGross = [...individuals].sort((a, b) => a.totalStrokes - b.totalStrokes);
+      const medalist = sortedByGross[0];
+      if (medalist) {
+        report += `\n🏅 [메달리스트 (실타수 최저타)] : ${medalist.playerName}${getPlayerTag(medalist.playerId, medalist.playerName, medalist.groupNumber)} - 총 ${medalist.totalStrokes}타\n`;
+      }
+    } else {
+      report += `\n🎖️ [개인전 TOP 5]\n`;
+      individuals.slice(0, 5).forEach((p) => {
+        const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '▪️';
+        const diffStr = p.parDiff <= 0 ? `${p.parDiff}` : `+${p.parDiff}`;
+        report += `${medal} ${p.rank}위 ${p.playerName}${getPlayerTag(p.playerId, p.playerName, p.groupNumber)} : ${p.totalStrokes}타 (${diffStr})\n`;
+      });
+    }
+
+    // 🛡️ 직전 우승자 시상 유예(독식 방지) 리포트 반영
+    const graceInfo = this.getWinnerGraceInfo(room, individuals);
+    if (graceInfo) {
+      report += `\n🛡️ [우승자 시상 유예(독식 방지) 알림]\n`;
+      report += `• 명예 1위: ${graceInfo.originalWinner.playerName}${getPlayerTag('', graceInfo.originalWinner.playerName)} (${graceInfo.originalWinner.totalStrokes}타)\n`;
+      report += `• 🎁 1위 시상품 승계: ${graceInfo.transferredWinner.playerName}${getPlayerTag('', graceInfo.transferredWinner.playerName)} (${graceInfo.transferredWinner.totalStrokes}타)\n`;
+      report += `  (${graceInfo.reason})\n`;
+    }
+
+    // 🎖️ 이색 특별상 리포트 반영
+    const specialAwards = this.calculateSpecialAwards(room);
+    if (specialAwards.length > 0) {
+      report += `\n🎖️ [이색 특별상 수상자]\n`;
+      specialAwards.forEach((sa) => {
+        report += `${sa.badge} ${sa.title}: ${sa.winnerName} (${sa.groupNumber ? `${sa.groupNumber}조, ` : ''}${sa.valueInfo || ''})\n`;
+      });
+    }
+
+    // 🎰 현장 랜덤 행운상 당첨자 리포트 반영
+    if (room.awardConfig?.luckyDrawWinners && room.awardConfig.luckyDrawWinners.length > 0) {
+      report += `\n🎰 [현장 룰렛 행운상 당첨자]\n`;
+      room.awardConfig.luckyDrawWinners.forEach((lw, idx) => {
+        report += `🎁 행운상 ${idx + 1}호: ${lw.name} (${lw.groupNumber ? `${lw.groupNumber}조, ` : ''}${lw.prizeName})\n`;
+      });
+    }
+
+    if (room.gameRuleNotes) {
+      report += `\n📌 대회 룰: ${room.gameRuleNotes}\n`;
+    }
+
+    // ✍️ 대표님 지시: 시상식 및 상금·상품 수령 확인 안내 섹션
+    report += `\n══════════════════════════════\n`;
+    report += `📋 [🏆 시상식 및 상금·상품 수령 확인 안내]\n`;
+    report += `• 시상금 및 트로피/시상품은 수상자 본인 확인 후 현장 수령 또는 등록 계좌로 지급됩니다.\n`;
+    report += `• 수령 확인: 수상자 전원 서명 또는 확인 완료 시 클럽 공식 연대기에 영구 등재됩니다.\n`;
+    report += `• 문의 및 수령 확인: 총무 (${room.hostName || '클럽 집행부'})\n`;
+    report += `══════════════════════════════\n`;
+    report += `⛳ 파키 앱 (PARKY APP) 공식 대회 관제 센터 실시간 집계\n`;
+
+    return report;
+  },
+
+  // 12-0-1. 이색 특별상 자동 계산
+  calculateSpecialAwards(room: ClubEventRoom): SpecialAwardWinner[] {
+    const list: SpecialAwardWinner[] = [];
+    const individuals = this.getIndividualLeaderboard(room);
+    if (individuals.length === 0) return list;
+
+    // 1. 다파상 (PAR_MASTER): 18홀 중 파(3타 기준)를 가장 많이 기록한 선수
+    let maxParCount = 0;
+    let parMaster: { name: string; groupNum: number; parCount: number } | null = null;
+
+    room.groups.forEach((g) => {
+      g.players.forEach((p) => {
+        if (p.holesCompleted === 0) return;
+        let parCount = 0;
+        Object.values(p.scores || {}).forEach((stroke) => {
+          if (stroke === 3) parCount++;
+        });
+        if (parCount > maxParCount) {
+          maxParCount = parCount;
+          parMaster = { name: p.name, groupNum: g.groupNumber, parCount };
+        }
+      });
+    });
+
+    if (parMaster && (parMaster as any).parCount > 0) {
+      list.push({
+        type: 'PAR_MASTER',
+        title: '다파상 (Par Master)',
+        badge: '👑',
+        winnerName: (parMaster as any).name,
+        groupNumber: (parMaster as any).groupNum,
+        description: '파(Par)를 가장 많이 기록하여 기복 없는 안정적인 샷을 뽐낸 선수!',
+        valueInfo: `파 ${(parMaster as any).parCount}개 기록`,
+      });
+    }
+
+    // 2. 오리상 (DUCK_22): 22위 (오리 두 마리)
+    if (individuals.length >= 22) {
+      const duckPlayer = individuals[21];
+      list.push({
+        type: 'DUCK_22',
+        title: '행운의 오리상 (22위)',
+        badge: '🦆',
+        winnerName: duckPlayer.playerName,
+        groupNumber: duckPlayer.groupNumber,
+        description: '22위(오리 2마리)를 차지하여 시상식의 행운과 웃음을 선물한 주인공!',
+        valueInfo: `22위 (${duckPlayer.totalStrokes}타)`,
+      });
+    }
+
+    // 3. 행운의 7위상 (LUCKY_7)
+    if (individuals.length >= 7) {
+      const luckyPlayer = individuals[6];
+      list.push({
+        type: 'LUCKY_7',
+        title: '행운의 7위상 (Lucky 7)',
+        badge: '🍀',
+        winnerName: luckyPlayer.playerName,
+        groupNumber: luckyPlayer.groupNumber,
+        description: '행운의 숫자 7위를 기록하여 뜻밖의 횡재를 거머쥔 행운의 선수!',
+        valueInfo: `7위 (${luckyPlayer.totalStrokes}타)`,
+      });
+    }
+
+    // 4. 아차상 (NEAR_MISS): 4위
+    if (individuals.length >= 4) {
+      const nearMissPlayer = individuals[3];
+      list.push({
+        type: 'NEAR_MISS',
+        title: '아차상 (Near Miss)',
+        badge: '💔',
+        winnerName: nearMissPlayer.playerName,
+        groupNumber: nearMissPlayer.groupNumber,
+        description: '아깝게 1~3위 입상을 놓친 가장 아쉬운 회원에게 드리는 위로의 상!',
+        valueInfo: `4위 (${nearMissPlayer.totalStrokes}타)`,
+      });
+    }
+
+    // 5. 열정 격려상 (LAST_PLACE): 완주자 중 최다타수
+    const completedPlayers = individuals.filter((p) => p.holesCompleted > 0);
+    if (completedPlayers.length >= 5) {
+      const lastPlayer = completedPlayers[completedPlayers.length - 1];
+      list.push({
+        type: 'LAST_PLACE',
+        title: '열정 격려상 (초보 응원)',
+        badge: '🐢',
+        winnerName: lastPlayer.playerName,
+        groupNumber: lastPlayer.groupNumber,
+        description: '끝까지 18홀을 멋지게 완주한 열정! 파크골프 실력 성장을 응원합니다.',
+        valueInfo: `완주 (${lastPlayer.totalStrokes}타)`,
+      });
+    }
+
+    return list;
+  },
+
+  // 12-0-2. 직전 우승자 시상 유예(독식 방지) 체크
+  getWinnerGraceInfo(room: ClubEventRoom, individuals: ClubLeaderboardIndividual[]) {
+    const config = room.awardConfig;
+    if (!config || !config.winnerGraceMonths || config.winnerGraceMonths <= 0) {
+      return null;
+    }
+
+    if (!individuals || individuals.length < 2) return null;
+
+    const lastWinners = config.lastWinnerNames || [];
+    if (lastWinners.length === 0) return null;
+
+    const firstPlace = individuals[0];
+    const isExcluded = lastWinners.some(
+      (w) =>
+        firstPlace.playerName.toLowerCase().includes(w.trim().toLowerCase()) ||
+        w.trim().toLowerCase().includes(firstPlace.playerName.toLowerCase())
+    );
+
+    if (isExcluded) {
+      const secondPlace = individuals[1];
+      const gracePeriodStr =
+        config.winnerGraceMonths === 1
+          ? '직전 1회'
+          : config.winnerGraceMonths === 2
+          ? '최근 2회'
+          : `최근 ${config.winnerGraceMonths}개월`;
+
+      return {
+        originalWinner: firstPlace,
+        transferredWinner: secondPlace,
+        gracePeriod: gracePeriodStr,
+        reason: `${firstPlace.playerName} 님은 ${gracePeriodStr} 우승자로, 명예 메달리스트는 유지하며 1위 상품은 차순위(${secondPlace.playerName} 님)에게 승계되었습니다.`,
+      };
+    }
+
+    return null;
+  },
+
+  // 12-0-3. 시상 룰 및 커스텀 설정 저장
+  saveAwardConfig(roomId: string, config: AwardRuleConfig): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+
+    room.awardConfig = {
+      ...room.awardConfig,
+      ...config,
+    };
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 12-0-4. 행운상 추첨 당첨자 추가
+  addLuckyDrawWinner(roomId: string, winner: LuckyDrawWinner): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+
+    if (!room.awardConfig) {
+      room.awardConfig = { enableLuckyDraw: true, luckyDrawWinners: [] };
+    }
+    if (!room.awardConfig.luckyDrawWinners) {
+      room.awardConfig.luckyDrawWinners = [];
+    }
+
+    // 중복 제거 후 추가
+    room.awardConfig.luckyDrawWinners = room.awardConfig.luckyDrawWinners.filter((w) => w.id !== winner.id);
+    room.awardConfig.luckyDrawWinners.push(winner);
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 12-0-5. 행운상 당첨자 삭제/취소
+  removeLuckyDrawWinner(roomId: string, winnerId: string): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room || !room.awardConfig?.luckyDrawWinners) return null;
+
+    room.awardConfig.luckyDrawWinners = room.awardConfig.luckyDrawWinners.filter((w) => w.id !== winnerId);
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 12-1. 참가비 입금 상태 토글 (미납 ↔ 입금 완료)
+  togglePlayerPayment(roomId: string, playerId: string): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+
+    let found = false;
+    const now = new Date();
+    const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    for (const group of room.groups) {
+      const player = group.players.find((p) => p.id === playerId);
+      if (player) {
+        if (player.paymentStatus === 'PAID') {
+          player.paymentStatus = 'UNPAID';
+          player.paidAt = undefined;
+        } else {
+          player.paymentStatus = 'PAID';
+          player.paidAt = timeStr;
+        }
+        found = true;
+        break;
+      }
+    }
+
+    if (!found && room.waitingPool) {
+      const player = room.waitingPool.find((p) => p.id === playerId);
+      if (player) {
+        if (player.paymentStatus === 'PAID') {
+          player.paymentStatus = 'UNPAID';
+          player.paidAt = undefined;
+        } else {
+          player.paymentStatus = 'PAID';
+          player.paidAt = timeStr;
+        }
+        found = true;
+      }
+    }
+
+    if (found) {
+      this.saveRoom(room);
+      return room;
+    }
+    return null;
+  },
+
+  // 12-1-b. 미납 참가자 전원 1초 일괄 완납 처리 (40~50명 대규모 대회 총무 편의)
+  markAllPlayersPaid(roomId: string): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+    const now = new Date();
+    const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    room.groups.forEach((g) => {
+      g.players.forEach((p) => {
+        if (p.paymentStatus !== 'PAID') {
+          p.paymentStatus = 'PAID';
+          p.paidAt = timeStr;
+        }
+      });
+    });
+    if (room.waitingPool) {
+      room.waitingPool.forEach((p) => {
+        if (p.paymentStatus !== 'PAID') {
+          p.paymentStatus = 'PAID';
+          p.paidAt = timeStr;
+        }
+      });
+    }
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 12-2. 참가비 & 입금계좌 설정 업데이트
+  updatePaymentConfig(
+    roomId: string,
+    config: { entryFee?: number; bankAccount?: string }
+  ): ClubEventRoom | null {
+    const room = this.getRoom(roomId);
+    if (!room) return null;
+
+    if (typeof config.entryFee === 'number') {
+      room.entryFee = config.entryFee;
+    }
+    if (config.bankAccount !== undefined) {
+      room.bankAccount = config.bankAccount.trim();
+    }
+
+    this.saveRoom(room);
+    return room;
+  },
+
+  // 12-3. 참가비 수납 현황 요약 통계 집계
+  getPaymentSummary(room: ClubEventRoom) {
+    const fee = typeof room.entryFee === 'number' ? room.entryFee : 10000;
+    const allPlayers: ClubPlayer[] = [];
+    room.groups.forEach((g) => allPlayers.push(...g.players));
+    if (room.waitingPool) {
+      allPlayers.push(...room.waitingPool);
+    }
+
+    const totalCount = allPlayers.length;
+    const paidPlayers = allPlayers.filter((p) => p.paymentStatus === 'PAID');
+    const unpaidPlayers = allPlayers.filter((p) => p.paymentStatus !== 'PAID');
+    const paidCount = paidPlayers.length;
+    const unpaidCount = unpaidPlayers.length;
+
+    const totalExpectedAmount = totalCount * fee;
+    const totalCollectedAmount = paidCount * fee;
+    const uncollectedAmount = unpaidCount * fee;
+    const paidRate = totalCount > 0 ? Math.round((paidCount / totalCount) * 100) : 0;
+
+    return {
+      fee,
+      bankAccount: room.bankAccount || '농협 352-1234-5678 김대희(총무)',
+      totalCount,
+      paidCount,
+      unpaidCount,
+      paidPlayers,
+      unpaidPlayers,
+      totalExpectedAmount,
+      totalCollectedAmount,
+      uncollectedAmount,
+      paidRate,
+    };
+  },
+
+  // 12-4. 참가비 수납 현황 카카오톡/LINE 리포트 생성 (총무 단톡방 공유용)
+  generatePaymentStatusKakaoReport(room: ClubEventRoom, isJapanese?: boolean): string {
+    const s = this.getPaymentSummary(room);
+    const feeStr = isJapanese
+      ? (s.fee > 0 ? `${s.fee.toLocaleString()}円` : '無料')
+      : (s.fee > 0 ? `${s.fee.toLocaleString()}원` : '무료');
+    const bankStr = s.bankAccount || (isJapanese ? '幹事へお問い合わせ' : '총무에게 문의');
+
+    if (isJapanese) {
+      let report = `💰 [${room.title}] 参加費・会計 現況案内\n\n`;
+      report += `📍 コース: ${room.courseName}\n`;
+      report += `💵 1人参加費: ${feeStr}\n`;
+      report += `🏦 振込口座: ${bankStr}\n\n`;
+      report += `📊 [リアルタイム集計]\n`;
+      report += `• 総参加人数: ${s.totalCount}名\n`;
+      report += `• 入金完了: ${s.paidCount}名 (${s.totalCollectedAmount.toLocaleString()}円 / ${s.paidRate}%)\n`;
+      report += `• 入金待ち: ${s.unpaidCount}名 (${s.uncollectedAmount.toLocaleString()}円)\n\n`;
+
+      report += `✅ [入金完了 (${s.paidCount}名)]\n`;
+      if (s.paidPlayers.length > 0) {
+        report += s.paidPlayers.map((p) => `${p.name}${p.paidAt ? `(${p.paidAt})` : ''}`).join(', ') + '\n';
+      } else {
+        report += 'まだ入金完了者はいません。\n';
+      }
+
+      report += `\n⏳ [入金確認待ち (${s.unpaidCount}名)]\n`;
+      if (s.unpaidPlayers.length > 0) {
+        report += s.unpaidPlayers.map((p) => p.name).join(', ') + '\n';
+        report += `\n📢 上記名簿の方は案内された口座にお振込の上、幹事へお知らせください。円滑な大会準備のためご協力をお願いいたします。🙏`;
+      } else {
+        report += 'すべての参加者様のお支払いが完了しました！ありがとうございます 👏';
+      }
+
+      return report;
+    }
+
+    let report = `💰 [${room.title}] 참가비 입금 현황 안내\n\n`;
+    report += `📍 구장: ${room.courseName}\n`;
+    report += `💵 1인 참가비: ${feeStr}\n`;
+    report += `🏦 입금 계좌: ${bankStr}\n\n`;
+    report += `📊 [실시간 수납 통계]\n`;
+    report += `• 총 참가 인원: ${s.totalCount}명\n`;
+    report += `• 입금 완료: ${s.paidCount}명 (${s.totalCollectedAmount.toLocaleString()}원 / ${s.paidRate}%)\n`;
+    report += `• 입금 대기: ${s.unpaidCount}명 (${s.uncollectedAmount.toLocaleString()}원)\n\n`;
+
+    report += `✅ [입금 완료 (${s.paidCount}명)]\n`;
+    if (s.paidPlayers.length > 0) {
+      report += s.paidPlayers.map((p) => `${p.name}${p.paidAt ? `(${p.paidAt})` : ''}`).join(', ') + '\n';
+    } else {
+      report += '아직 입금 완료자가 없습니다.\n';
+    }
+
+    report += `\n⏳ [입금 확인 대기 (${s.unpaidCount}명)]\n`;
+    if (s.unpaidPlayers.length > 0) {
+      report += s.unpaidPlayers.map((p) => p.name).join(', ') + '\n';
+      report += `\n📢 위 명단에 계신 분들은 안내된 계좌로 입금 후 총무에게 알려주세요! 원활한 대회 준비를 위해 협조 부탁드립니다. 🙏`;
+    } else {
+      report += '모든 참가자분의 입금이 완료되었습니다! 감사합니다 👏';
+    }
+
+    return report;
+  },
+
+  // 12-5. 미납자 타겟 카카오톡/LINE 독촉 안내문 생성 (총무 복사용)
+  generateUnpaidKakaoReminderText(room: ClubEventRoom, isJapanese?: boolean): string {
+    const s = this.getPaymentSummary(room);
+    const feeStr = isJapanese
+      ? (s.fee > 0 ? `${s.fee.toLocaleString()}円` : '無料')
+      : (s.fee > 0 ? `${s.fee.toLocaleString()}원` : '무료');
+    const bankStr = s.bankAccount || (isJapanese ? '幹事へお問い合わせ' : '총무에게 문의');
+
+    if (isJapanese) {
+      if (s.unpaidCount === 0) {
+        return `🎉 [${room.title}] 参加者全員(${s.totalCount}名)のお支払いが完了しました！幹事として皆様の迅速なご協力に心より感謝申し上げます。🙏`;
+      }
+      let text = `📢 [${room.title}] 参加費お振込みのお願い (幹事告知)\n\n`;
+      text += `会員の皆様こんにちは！大会の円滑な運営および保険・賞品準備のため、まだ入金確認が取れていない会員様におかれましてはお振込みをお願い申し上げます。\n\n`;
+      text += `💵 1人参加費: ${feeStr}\n`;
+      text += `🏦 振込口座: ${bankStr}\n\n`;
+      text += `⏳ [入金確認待ち会員 (${s.unpaidCount}名)]\n`;
+      text += s.unpaidPlayers.map((p, idx) => `${idx + 1}. ${p.name}`).join('\n');
+      text += `\n\n💡 お振込みの際はお振込人名義をご本人のお名前にしていただけますと迅速に確認できます。よろしくお願い申し上げます！⛳`;
+      return text;
+    }
+
+    if (s.unpaidCount === 0) {
+      return `🎉 [${room.title}] 참가자 전원(${s.totalCount}명) 입금 완료되었습니다! 총무로서 회원님들의 신속한 협조에 진심으로 감사드립니다. 🙏`;
+    }
+
+    let text = `📢 [${room.title}] 참가비 입금 확인 안내 (총무 공지)\n\n`;
+    text += `회원 여러분 안녕하세요! 대회의 원활한 진행 및 보험/기념품 준비를 위해 아직 입금 확인이 되지 않은 회원님께서는 입금을 부탁드립니다.\n\n`;
+    text += `💵 1인 참가비: ${feeStr}\n`;
+    text += `🏦 입금 계좌: ${bankStr}\n\n`;
+    text += `⏳ [입금 확인 대기 회원 (${s.unpaidCount}명)]\n`;
+    text += s.unpaidPlayers.map((p, idx) => `${idx + 1}. ${p.name}`).join('\n');
+    text += `\n\n💡 입금 시 입금자명을 본인 성함으로 보내주시면 빠른 확인이 가능합니다. 감사합니다! ⛳`;
+    return text;
+  },
+
+  // ==========================================
+  // [NEW] 클럽 커뮤니티 관리 (창단, 가입, 다중 클럽 관리)
+  // ==========================================
+  getAllClubs(): ParkGolfClub[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      // 1. 과거 구버전 더미 캐시 키(v1 및 레거시 키) 완전 파기 및 청소
+      const legacyKeys = ['parkon_clubs_v1', 'parkon_clubs', 'clubs_data', 'parkon_mock_clubs', 'INITIAL_CLUBS'];
+      for (const k of legacyKeys) {
+        try {
+          if (localStorage.getItem(k) !== null) {
+            localStorage.removeItem(k);
+          }
+        } catch {}
+      }
+
+      // 2. parkon_clubs_v2에서만 실제 사용자가 등록한 클럽 로드
+      const data = localStorage.getItem(STORAGE_KEYS.CLUBS);
+      let userClubs: ParkGolfClub[] = [];
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          // 혹시라도 남아있을 수 있는 가상 더미 데이터 패턴(club-gumi-, club-seoul-, 회장: 최한강 등) 전면 차단
+          // 단, 실제 사용자가 생성한 클럽(isParkOnClub === true 또는 club-17...)은 절대 필터링하지 않도록 보호!
+          userClubs = parsed.filter((c) => {
+            if (!c || !c.id || !c.name) return false;
+            if (
+              c.id.startsWith('club-gumi-') ||
+              c.id.startsWith('club-daegu-') ||
+              c.id.startsWith('club-busan-') ||
+              c.id.startsWith('club-seoul-') ||
+              c.id.startsWith('club-seed-') ||
+              c.id.startsWith('club-miryang-') ||
+              c.id.startsWith('club-changwon-') ||
+              c.id.startsWith('club-test-')
+            ) {
+              return false;
+            }
+            if (!c.isParkOnClub && !c.id.startsWith('club-17')) {
+              if (
+                c.presidentName === '최한강' ||
+                c.managerName === '조총무' ||
+                c.presidentName === '박회장' ||
+                c.managerName === '김총무'
+              ) {
+                return false;
+              }
+            }
+            return true;
+          });
+          if (userClubs.length !== parsed.length) {
+            localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(userClubs));
+          }
+        }
+      }
+
+      // 오직 실제 사용자가 직접 등록한 실존 클럽만 반환 (가상 더미 병합 완전 제거)
+      return userClubs;
+    } catch {
+      return [];
+    }
+  },
+
+  getClubById(id: string): ParkGolfClub | null {
+    const list = this.getAllClubs();
+    return list.find((c) => c.id === id) || null;
+  },
+
+  getClub(id: string): ParkGolfClub | null {
+    return this.getClubById(id);
+  },
+
+  updateClubRecruitment(
+    clubId: string,
+    recruitment: {
+      recruitStatus: ClubRecruitStatus;
+      recruitQuota?: number;
+      recruitTargetDate?: string;
+      recruitNotes?: string;
+    }
+  ): ParkGolfClub | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const allClubs = this.getAllClubs();
+      const clubIndex = allClubs.findIndex((c) => c.id === clubId);
+      if (clubIndex === -1) return null;
+
+      const updated = {
+        ...allClubs[clubIndex],
+        ...recruitment,
+      };
+
+      const data = localStorage.getItem(STORAGE_KEYS.CLUBS);
+      let userClubs: ParkGolfClub[] = data ? JSON.parse(data) : [];
+      const userIdx = userClubs.findIndex((c) => c.id === clubId);
+      if (userIdx >= 0) {
+        userClubs[userIdx] = updated;
+      } else {
+        userClubs.unshift(updated);
+      }
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(userClubs));
+      triggerCloudClubSync();
+      return updated;
+    } catch (e) {
+      console.error('Failed to update club recruitment:', e);
+      return null;
+    }
+  },
+
+  createClub(clubData: {
+    name: string;
+    region: string;
+    homeCourseId: string;
+    homeCourseName: string;
+    description: string;
+    presidentName: string;
+    managerName: string;
+    contactPhone?: string;
+    isPublic?: boolean;
+    badgeColor?: string;
+    recruitStatus?: ClubRecruitStatus;
+    recruitQuota?: number;
+    recruitNotes?: string;
+    annualDuesAmount?: number;
+  }): ParkGolfClub {
+    const list = this.getAllClubs();
+    const newId = `club-${Date.now()}`;
+    let currentSelfName = '김대희';
+    if (typeof window !== 'undefined') {
+      try {
+        const rawProfile = localStorage.getItem('parkon_user_profile_v1');
+        if (rawProfile) {
+          const prof = JSON.parse(rawProfile);
+          if (prof?.userName) currentSelfName = prof.userName.trim();
+        }
+      } catch {}
+    }
+    const rawMgr = (clubData.managerName || '').trim();
+    const resolvedManagerName =
+      !rawMgr || rawMgr === '총무(본인)' || rawMgr === '김총무(본인)' || rawMgr === '총무'
+        ? `${currentSelfName}(본인)`
+        : rawMgr;
+    const rawPres = (clubData.presidentName || '').trim();
+    const resolvedPresidentName = !rawPres || rawPres === '회장' ? currentSelfName : rawPres;
+
+    const newClub: ParkGolfClub = {
+      id: newId,
+      name: clubData.name,
+      region: clubData.region,
+      homeCourseId: clubData.homeCourseId,
+      homeCourseName: clubData.homeCourseName,
+      description: clubData.description,
+      presidentName: resolvedPresidentName,
+      managerName: resolvedManagerName,
+      contactPhone: clubData.contactPhone || '',
+      memberCount: 1,
+      members: [
+        {
+          id: `m_${Date.now()}`,
+          name: resolvedManagerName,
+          role: 'MANAGER',
+          joinedAt: new Date().toISOString().slice(0, 10),
+          phone: clubData.contactPhone,
+        },
+      ],
+      pendingMembers: [],
+      isPublic: clubData.isPublic !== false,
+      badgeColor: clubData.badgeColor || 'emerald',
+      isParkOnClub: true, // 사용자가 직접 등록한 클럽은 공식 가입 클럽
+      recruitStatus: clubData.recruitStatus || 'RECRUITING',
+      recruitQuota: clubData.recruitQuota,
+      recruitNotes: clubData.recruitNotes,
+      annualDuesAmount: clubData.annualDuesAmount || 50000,
+      createdAt: new Date().toISOString().slice(0, 10),
+    };
+
+    list.unshift(newClub);
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      const myClubs = this.getMyClubIds();
+      if (!myClubs.includes(newId)) {
+        myClubs.push(newId);
+        localStorage.setItem(STORAGE_KEYS.MY_CLUB_IDS, JSON.stringify(myClubs));
+      }
+      this.syncClubToSupabase(newClub);
+      triggerCloudClubSync();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('parkon_clubs_updated', { detail: newClub }));
+      }
+    } catch {
+      // ignore
+    }
+    return newClub;
+  },
+
+  getMyClubIds(): string[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.MY_CLUB_IDS);
+      const savedIds: string[] = data ? (Array.isArray(JSON.parse(data)) ? JSON.parse(data) : []) : [];
+      const allClubs = this.getAllClubs();
+      let selfName = '김대희';
+      try {
+        const rawProfile = localStorage.getItem('parkon_user_profile_v1');
+        if (rawProfile) {
+          const prof = JSON.parse(rawProfile);
+          if (prof?.userName) selfName = prof.userName.trim();
+        }
+      } catch {}
+
+      const autoMatchedIds = allClubs
+        .filter(
+          (c) =>
+            c.managerName?.includes('본인') ||
+            (selfName &&
+              (c.presidentName?.includes(selfName) ||
+                c.managerName?.includes(selfName) ||
+                c.members?.some((m) => m.name?.includes(selfName) || m.name?.includes('본인'))))
+        )
+        .map((c) => c.id);
+
+      const merged = Array.from(new Set([...savedIds, ...autoMatchedIds]));
+      if (merged.length !== savedIds.length) {
+        localStorage.setItem(STORAGE_KEYS.MY_CLUB_IDS, JSON.stringify(merged));
+      }
+      return merged;
+    } catch {
+      return [];
+    }
+  },
+
+  // 1. 가입 신청하기 (총무 승인 대기 상태로 등록, memberCode 및 티어 자동 바인딩)
+  requestJoinClub(
+    clubId: string,
+    applicant: { name: string; phone?: string; message?: string; memberCode?: string }
+  ): boolean {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club) return false;
+
+    if (!club.pendingMembers) club.pendingMembers = [];
+    const cleanName = applicant.name.trim();
+    const cleanCode = (applicant.memberCode || '').trim() || (typeof window !== 'undefined' ? localStorage.getItem('parkon_member_code_v1') || localStorage.getItem('parkon_member_code') || '' : '');
+    const alreadyPending = club.pendingMembers.some((p) => p.name === cleanName || (cleanCode && p.memberCode === cleanCode));
+    if (alreadyPending) return true;
+
+    const completed = typeof window !== 'undefined' ? getUserCompleted9Holes(cleanName) : 0;
+    const tier = calculateTier(completed);
+
+    club.pendingMembers.push({
+      id: `pm_${Date.now()}`,
+      name: cleanName,
+      phone: applicant.phone || '',
+      memberCode: cleanCode || `PKYB-${Math.floor(1000 + Math.random() * 9000)}`,
+      diamondTier: tier.code,
+      totalCompleted9Holes: completed,
+      requestedAt: '방금 전',
+      message: applicant.message || '클럽 회원 가입을 신청합니다.',
+    });
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      this.syncClubToSupabase(club);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('parkon_clubs_updated', { detail: club }));
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  // 2. 가입 수락 (승인 -> 정회원으로 등록, 과거 탈퇴자 복귀 시 원상 회복)
+  approveMember(clubId: string, pendingId: string): { success: boolean; isRestored?: boolean; originalJoinedAt?: string } {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club || !club.pendingMembers) return { success: false };
+
+    const pending = club.pendingMembers.find((p) => p.id === pendingId);
+    if (!pending) return { success: false };
+
+    // 대기열에서 제거
+    club.pendingMembers = club.pendingMembers.filter((p) => p.id !== pendingId);
+
+    // 과거 탈퇴 회원 비밀 보관소에서 복원 검사
+    if (!club.archivedMembers) club.archivedMembers = [];
+    const archivedIdx = club.archivedMembers.findIndex(
+      (a) => a.name.trim() === pending.name.trim() || (pending.phone && a.phone === pending.phone)
+    );
+
+    let isRestored = false;
+    let joinedAtDate = new Date().toISOString().slice(0, 10);
+
+    if (archivedIdx !== -1) {
+      const archived = club.archivedMembers[archivedIdx];
+      club.archivedMembers.splice(archivedIdx, 1);
+      isRestored = true;
+      joinedAtDate = archived.joinedAt; // 최초 가입일 원상 복구!
+    }
+
+    const cleanCode = pending.memberCode || (typeof window !== 'undefined' ? localStorage.getItem('parkon_member_code_v1') || localStorage.getItem('parkon_member_code') || '' : '') || `PKYB-${Math.floor(1000 + Math.random() * 9000)}`;
+    const comp9H = typeof window !== 'undefined' ? getUserCompleted9Holes(pending.name) : 0;
+    const tier = calculateTier(comp9H);
+
+    // 정회원으로 등록
+    club.members.push({
+      id: `m_${Date.now()}`,
+      memberCode: cleanCode,
+      name: pending.name,
+      role: 'MEMBER',
+      joinedAt: joinedAtDate,
+      phone: pending.phone,
+      diamondTier: tier.code,
+      totalCompleted9Holes: comp9H,
+    });
+    club.memberCount = club.members.length;
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      this.syncClubToSupabase(club);
+      return { success: true, isRestored, originalJoinedAt: joinedAtDate };
+    } catch {
+      return { success: false };
+    }
+  },
+
+  // 2-1. [대표님 지시] 가입 대기자 전체 1초 일괄 승인
+  approveAllPendingMembers(clubId: string): number {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club || !club.pendingMembers || club.pendingMembers.length === 0) return 0;
+    const count = club.pendingMembers.length;
+    const pendingCopy = [...club.pendingMembers];
+    pendingCopy.forEach((p) => {
+      this.approveMember(clubId, p.id);
+    });
+    return count;
+  },
+
+  // 3. 가입 거절
+  rejectMember(clubId: string, pendingId: string): boolean {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club || !club.pendingMembers) return false;
+
+    club.pendingMembers = club.pendingMembers.filter((p) => p.id !== pendingId);
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      this.syncClubToSupabase(club);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  // 3-1. ☁️ Supabase 및 클라우드 서버 원격 동기화 (오프라인 Fail-Safe 2-Way 연동)
+  async syncClubToSupabase(club: ParkGolfClub): Promise<boolean> {
+    if (!club || !club.id) return false;
+    triggerCloudClubSync();
+    try {
+      // 1. clubs 마스터 테이블 Upsert
+      const { error: clubErr } = await supabase.from('clubs').upsert(
+        {
+          id: club.id,
+          name: club.name,
+          region: club.region,
+          home_course_id: club.homeCourseId || '',
+          home_course_name: club.homeCourseName || '',
+          description: club.description || '',
+          president_name: club.presidentName || '',
+          manager_name: club.managerName || '',
+          contact_phone: club.contactPhone || '',
+          member_count: club.members ? club.members.length : 1,
+          is_public: club.isPublic !== false,
+          is_parkon_club: Boolean(club.isParkOnClub),
+          recruit_status: club.recruitStatus || 'ALWAYS',
+          recruit_quota: club.recruitQuota || 50,
+          annual_dues_amount: club.annualDuesAmount || 50000,
+          badge_color: club.badgeColor || 'emerald',
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id' }
+      );
+      if (clubErr) {
+        console.warn('Supabase club upsert error (fail-safe):', clubErr);
+      }
+
+      // 2. club_members 테이블 Upsert
+      if (club.members && club.members.length > 0) {
+        const memberRows = club.members.map((m) => {
+          const mCode = m.memberCode || m.id;
+          const comp = typeof window !== 'undefined' ? getUserCompleted9Holes(m.name) : 0;
+          const tier = calculateTier(comp);
+          return {
+            id: `${club.id}_${mCode}`,
+            club_id: club.id,
+            member_code: mCode,
+            name: m.name,
+            role: m.role || 'MEMBER',
+            custom_role_name: m.customRoleName || '',
+            phone: m.phone || '',
+            diamond_tier: tier.code,
+            completed_9holes: comp,
+            dues_paid: Boolean(m.duesPaid),
+            dues_paid_at: m.duesPaidAt || '',
+            joined_at: m.joinedAt || new Date().toISOString().slice(0, 10),
+            status: 'ACTIVE',
+            updated_at: new Date().toISOString(),
+          };
+        });
+
+        const { error: memErr } = await supabase.from('club_members').upsert(
+          memberRows,
+          { onConflict: 'id' }
+        );
+        if (memErr) {
+          console.warn('Supabase club_members upsert error (fail-safe):', memErr);
+        }
+      }
+      return true;
+    } catch (e) {
+      console.warn('syncClubToSupabase exception (fail-safe):', e);
+      return false;
+    }
+  },
+
+  // 3-2. ☁️ Supabase 원격 클럽 목록 불러오기 (캐시 병합)
+  async fetchClubsFromSupabase(): Promise<ParkGolfClub[]> {
+    try {
+      const { data: remoteClubs, error } = await supabase
+        .from('clubs')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error || !remoteClubs || remoteClubs.length === 0) {
+        return this.getAllClubs();
+      }
+
+      const localList = this.getAllClubs();
+      const merged = [...localList];
+
+      for (const rc of remoteClubs) {
+        const existIdx = merged.findIndex((c) => c.id === rc.id);
+        const mappedClub: ParkGolfClub = {
+          id: rc.id,
+          name: rc.name,
+          region: rc.region,
+          homeCourseId: rc.home_course_id,
+          homeCourseName: rc.home_course_name,
+          description: rc.description || '',
+          presidentName: rc.president_name || '',
+          managerName: rc.manager_name || '',
+          contactPhone: rc.contact_phone || '',
+          memberCount: rc.member_count || 1,
+          members: existIdx !== -1 ? merged[existIdx].members : [],
+          isPublic: rc.is_public !== false,
+          isParkOnClub: rc.is_parkon_club,
+          recruitStatus: rc.recruit_status || 'ALWAYS',
+          recruitQuota: rc.recruit_quota || 50,
+          annualDuesAmount: rc.annual_dues_amount || 50000,
+          badgeColor: rc.badge_color || 'emerald',
+          createdAt: rc.created_at || new Date().toISOString(),
+        };
+
+        if (existIdx === -1) {
+          merged.push(mappedClub);
+        } else {
+          merged[existIdx] = {
+            ...merged[existIdx],
+            ...mappedClub,
+            members: merged[existIdx].members,
+          };
+        }
+      }
+
+      try {
+        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(merged));
+      } catch {}
+
+      return merged;
+    } catch {
+      return this.getAllClubs();
+    }
+  },
+
+  // 4. 카카오톡 클럽 가입 초청장 문구 생성
+  generateClubInviteText(club: ParkGolfClub): string {
+    const shareUrl =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/club/join?clubId=${club.id}`
+        : `https://www.parkgolfallinone.com/club/join?clubId=${club.id}`;
+
+    return `[파키 앱 (PARKY APP) 공식 클럽 가입 초청장 ⛳]
+"${club.name}"에서 ${club.managerName || '총무'}님이 귀하를 정회원으로 초대합니다!
+
+📍 홈 구장: ${club.homeCourseName} (${club.region})
+👥 회원 수: ${club.memberCount}명 활동 중
+💬 클럽 소개: ${club.description}
+
+👇 아래 링크를 터치하여 파키 앱 (PARKY APP)에서 1초 만에 가입 신청하세요!
+${shareUrl}`;
+  },
+
+  // 5. 초청장 링크를 통한 즉시 가입 (과거 탈퇴자 복귀 시 원상 회복)
+  directJoinViaInvite(
+    clubId: string,
+    member: { name: string; phone?: string }
+  ): { success: boolean; isRestored?: boolean; originalJoinedAt?: string } {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club) return { success: false };
+
+    const alreadyMember = club.members.some((m) => m.name === member.name);
+    let isRestored = false;
+    let joinedAtDate = new Date().toISOString().slice(0, 10);
+
+    if (!alreadyMember) {
+      if (!club.archivedMembers) club.archivedMembers = [];
+      const archivedIdx = club.archivedMembers.findIndex(
+        (a) => a.name.trim() === member.name.trim() || (member.phone && a.phone === member.phone)
+      );
+
+      if (archivedIdx !== -1) {
+        const archived = club.archivedMembers[archivedIdx];
+        club.archivedMembers.splice(archivedIdx, 1);
+        isRestored = true;
+        joinedAtDate = archived.joinedAt;
+      }
+
+      club.members.push({
+        id: `m_${Date.now()}`,
+        name: member.name,
+        role: 'MEMBER',
+        joinedAt: joinedAtDate,
+        phone: member.phone,
+      });
+      club.memberCount = club.members.length;
+    }
+
+    const myClubs = this.getMyClubIds();
+    if (!myClubs.includes(clubId)) {
+      myClubs.push(clubId);
+    }
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      localStorage.setItem(STORAGE_KEYS.MY_CLUB_IDS, JSON.stringify(myClubs));
+      return { success: true, isRestored, originalJoinedAt: joinedAtDate };
+    } catch {
+      return { success: false };
+    }
+  },
+
+  // 6. 클럽 가입 및 복귀 (과거 탈퇴 회원의 경우 가입일 및 연대기 이력 100% 원상 복구)
+  joinClub(
+    clubId: string,
+    memberName: string,
+    phone?: string
+  ): { success: boolean; isRestored: boolean; originalJoinedAt?: string; pastCount?: number; pastAwards?: string[] } {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club) return { success: false, isRestored: false };
+
+    const cleanName = memberName.trim();
+    const alreadyMember = club.members.some(
+      (m) => m.name.trim() === cleanName || (cleanName.includes('김대희') && m.name.includes('김대희'))
+    );
+
+    let isRestored = false;
+    let originalJoinedAt: string | undefined;
+    let pastCount: number | undefined;
+    let pastAwards: string[] | undefined;
+
+    // 🔐 비밀 보관소에서 과거 탈퇴 이력 대조
+    if (!club.archivedMembers) club.archivedMembers = [];
+    const archivedIdx = club.archivedMembers.findIndex(
+      (a) =>
+        a.name.trim() === cleanName ||
+        (cleanName.includes('김대희') && a.name.includes('김대희')) ||
+        (phone && a.phone === phone)
+    );
+
+    if (archivedIdx !== -1) {
+      // 🌟 과거 회원 확인! 원상 회복 절차 수행
+      const archived = club.archivedMembers[archivedIdx];
+      club.archivedMembers.splice(archivedIdx, 1); // 보관함에서 꺼내어 정회원 승격
+      isRestored = true;
+      originalJoinedAt = archived.joinedAt;
+      pastCount = archived.pastTournamentsCount;
+      pastAwards = archived.pastAwards;
+
+      if (!alreadyMember) {
+        club.members.push({
+          id: archived.id || `m_${Date.now()}`,
+          name: memberName,
+          role: 'MEMBER',
+          joinedAt: archived.joinedAt, // 🌟 최초 가입일 100% 원상 복구!
+          phone: phone || archived.phone,
+        });
+        club.memberCount = club.members.length;
+      }
+    } else if (!alreadyMember) {
+      // 신규 가입
+      club.members.push({
+        id: `m_${Date.now()}`,
+        name: memberName,
+        role: 'MEMBER',
+        joinedAt: new Date().toISOString().slice(0, 10),
+        phone,
+      });
+      club.memberCount = club.members.length;
+    }
+
+    const myClubs = this.getMyClubIds();
+    if (!myClubs.includes(clubId)) {
+      myClubs.push(clubId);
+    }
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      localStorage.setItem(STORAGE_KEYS.MY_CLUB_IDS, JSON.stringify(myClubs));
+      return { success: true, isRestored, originalJoinedAt, pastCount, pastAwards };
+    } catch {
+      return { success: false, isRestored: false };
+    }
+  },
+
+  // 7. 클럽 안전 탈퇴 (기록 비밀 보관 처리: 일반 목록 비공개 + 비밀 보관소에 가입일/과거대회이력 영구 보존)
+  leaveClub(
+    clubId: string,
+    memberName: string
+  ): { success: boolean; archived?: ArchivedClubMember } {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club) return { success: false };
+
+    // 대상 멤버 조회
+    const targetMember = club.members.find(
+      (m) =>
+        m.name.trim() === memberName.trim() ||
+        (memberName.includes('김대희') && m.name.includes('김대희')) ||
+        (m.name.includes('(본인)') && memberName.includes('(본인)'))
+    );
+
+    // 클럽 연대기에서 해당 회원의 과거 출전 횟수, 수상 이력, 최고 타수 산출
+    const chronicles = this.getClubChronicles(clubId);
+    let pastTournamentsCount = 0;
+    const pastAwards: string[] = [];
+    let bestScore: number | undefined;
+
+    const searchKey = memberName.replace('(본인)', '').trim();
+    chronicles.forEach((chr) => {
+      const myRank = chr.rankings.find(
+        (r) => r.playerName.trim() === memberName.trim() || r.playerName.includes(searchKey)
+      );
+      if (myRank) {
+        pastTournamentsCount++;
+        if (myRank.awards && myRank.awards.length > 0) {
+          myRank.awards.forEach((aw) => pastAwards.push(`[${chr.title.slice(0, 10)}] ${aw}`));
+        }
+        if (!bestScore || (myRank.totalStrokes > 0 && myRank.totalStrokes < bestScore)) {
+          bestScore = myRank.totalStrokes;
+        }
+      }
+    });
+
+    // 🔐 비밀 보관소용 아카이브 레코드 생성
+    const archivedRecord: ArchivedClubMember = {
+      id: targetMember?.id || `arch_${Date.now()}`,
+      name: targetMember?.name || memberName,
+      roleAtLeave: targetMember?.role || 'MEMBER',
+      joinedAt: targetMember?.joinedAt || new Date().toISOString().slice(0, 10), // 최초 가입일 영구 보존!
+      leftAt: new Date().toISOString().slice(0, 10),
+      phone: targetMember?.phone,
+      pastTournamentsCount,
+      pastAwards,
+      bestScore,
+      secretHash: `SEC_${Date.now().toString(36)}`,
+    };
+
+    if (!club.archivedMembers) {
+      club.archivedMembers = [];
+    }
+    // 기존 동일인 아카이브가 있다면 최신으로 갱신
+    club.archivedMembers = club.archivedMembers.filter(
+      (a) => a.name.trim() !== memberName.trim() && !a.name.includes(searchKey)
+    );
+    club.archivedMembers.unshift(archivedRecord);
+
+    // 활성 회원 명부에서 제거 (비밀 처리 / 권한 상실)
+    club.members = club.members.filter(
+      (m) =>
+        m.name.trim() !== memberName.trim() &&
+        !m.name.includes('(본인)') &&
+        (memberName.includes('김대희') ? !m.name.includes('김대희') : true)
+    );
+    club.memberCount = club.members.length;
+
+    // 만약 총무나 회장이 나간 경우 다음 멤버에게 권한 자동 위임
+    if (
+      (club.managerName.includes(memberName) || club.managerName.includes('김대희') || club.managerName.includes('(본인)')) &&
+      club.members.length > 0
+    ) {
+      club.managerName = club.members[0].name;
+      club.members[0].role = 'MANAGER';
+    }
+    if (
+      (club.presidentName.includes(memberName) || club.presidentName.includes('김대희') || club.presidentName.includes('(본인)')) &&
+      club.members.length > 0
+    ) {
+      club.presidentName = club.members[0].name;
+      club.members[0].role = 'PRESIDENT';
+    }
+
+    // 내 소속 클럽 목록에서 제외 (클럽 내부 실록 접근 권한 제한)
+    let myClubs = this.getMyClubIds();
+    myClubs = myClubs.filter((id) => id !== clubId);
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      localStorage.setItem(STORAGE_KEYS.MY_CLUB_IDS, JSON.stringify(myClubs));
+      return { success: true, archived: archivedRecord };
+    } catch {
+      return { success: false };
+    }
+  },
+
+  // 8. 클럽 탈퇴 회원 비밀 보관소 조회
+  getArchivedMembers(clubId: string): ArchivedClubMember[] {
+    const club = this.getClubById(clubId);
+    return club?.archivedMembers || [];
+  },
+
+  // ==========================================
+  // 📜 클럽 영구 연대기 (대회 실록 & 명예의 전당) 영구 보존 및 조회
+  // ==========================================
+  archiveEventRoomToClubChronicle(
+    room: ClubEventRoom,
+    options?: { groupPhotoUrl?: string; awardCardUrl?: string; longestDistance?: string; nearPinDistance?: string }
+  ): ClubChronicleTournament | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const individuals = this.getIndividualLeaderboard(room);
+      const teams = this.getTeamLeaderboard(room);
+      const specialAwards = this.calculateSpecialAwards(room);
+      const totalParticipants = (room.groups || []).reduce((sum, g) => sum + g.players.length, 0);
+
+      const winner = individuals[0];
+      const runnerUp = individuals[1];
+      const thirdPlace = individuals[2];
+      const medalist = individuals.reduce<ClubLeaderboardIndividual | null>((best, cur) => {
+        if (!best || (cur.totalStrokes > 0 && cur.totalStrokes < best.totalStrokes)) return cur;
+        return best;
+      }, null);
+
+      const longestSpecial = specialAwards.find((sa) => sa.title.includes('롱기스트') || sa.badge === '🚀');
+      const nearPinSpecial = specialAwards.find((sa) => sa.title.includes('니어핀') || sa.badge === '🎯');
+
+      const chronicleId = `chronicle_${room.id}`;
+      const chronicleRecord: ClubChronicleTournament = {
+        id: chronicleId,
+        roomId: room.id,
+        clubId: room.clubId || 'default-club',
+        clubName: room.clubName || '공식 파크골프 클럽',
+        title: room.title,
+        heldAt: room.createdAt?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+        courseId: room.courseId,
+        courseName: room.courseName,
+        totalHoles: room.totalHoles,
+        gameMode: room.gameModeTitle || this.getGameModeInfo(room.gameMode).title,
+        totalParticipants,
+        winnerName: winner && winner.totalStrokes > 0 ? winner.playerName : '대회 진행중',
+        winnerScore: winner ? (winner.netScore ?? winner.totalStrokes) : 0,
+        runnerUpName: runnerUp && runnerUp.totalStrokes > 0 ? runnerUp.playerName : undefined,
+        runnerUpScore: runnerUp ? (runnerUp.netScore ?? runnerUp.totalStrokes) : undefined,
+        thirdPlaceName: thirdPlace && thirdPlace.totalStrokes > 0 ? thirdPlace.playerName : undefined,
+        thirdPlaceScore: thirdPlace ? (thirdPlace.netScore ?? thirdPlace.totalStrokes) : undefined,
+        medalistName: medalist && medalist.totalStrokes > 0 ? medalist.playerName : undefined,
+        medalistScore: medalist ? medalist.totalStrokes : undefined,
+        longestName: longestSpecial?.winnerName || undefined,
+        longestDistance: options?.longestDistance || '장타 1위',
+        nearPinName: nearPinSpecial?.winnerName || undefined,
+        nearPinDistance: options?.nearPinDistance || '핀 밀착 1위',
+        groupPhotoUrl: options?.groupPhotoUrl || undefined,
+        awardCardUrl: options?.awardCardUrl || undefined,
+        specialAwards: specialAwards.length > 0 ? specialAwards : undefined,
+        luckyDrawWinners: room.awardConfig?.luckyDrawWinners || [],
+        rankings: individuals.map((ind) => {
+          const awardsWon: string[] = [];
+          if (ind.rank === 1) awardsWon.push('우승 🏆');
+          else if (ind.rank === 2) awardsWon.push('준우승 🥈');
+          if (medalist && ind.playerId === medalist.playerId) awardsWon.push('메달리스트 🏅');
+          const spMatch = specialAwards.filter((sp) => sp.winnerName === ind.playerName);
+          spMatch.forEach((sp) => awardsWon.push(`${sp.badge} ${sp.title}`));
+          return {
+            rank: ind.rank,
+            playerId: ind.playerId,
+            playerName: ind.playerName,
+            groupNumber: ind.groupNumber,
+            totalStrokes: ind.totalStrokes,
+            parDiff: ind.parDiff,
+            handicap: ind.handicap,
+            netScore: ind.netScore,
+            isWinner: ind.rank === 1,
+            awards: awardsWon,
+          };
+        }),
+        groupResults: teams.map((t) => ({
+          groupNumber: t.groupNumber,
+          groupName: t.groupName,
+          leaderName: t.leaderName,
+          avgScore: t.avgStrokes,
+          totalScore: t.totalStrokes,
+          playersCount: t.playersCount,
+        })),
+        notes: room.gameRuleNotes,
+        archivedAt: new Date().toISOString(),
+      };
+
+      // 1. 전역 연대기 목록에 영구 저장
+      const allChronicles = this.getAllGlobalChronicles();
+      const existingIdx = allChronicles.findIndex((c) => c.id === chronicleId || c.roomId === room.id);
+      if (existingIdx !== -1) {
+        allChronicles[existingIdx] = chronicleRecord;
+      } else {
+        allChronicles.unshift(chronicleRecord);
+      }
+      // [10만명 3개월 누적 대비] 전역 연대기 캐시는 최신 150건까지만 롤링 보관하여 브라우저 용량(5MB) 초과 방지
+      const cappedChronicles = allChronicles.slice(0, 150);
+      localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(cappedChronicles));
+
+      // 2. 소속 클럽 엔티티에도 영구 반영
+      if (room.clubId) {
+        const clubs = this.getAllClubs();
+        const club = clubs.find((c) => c.id === room.clubId);
+        if (club) {
+          if (!club.chronicles) club.chronicles = [];
+          const cIdx = club.chronicles.findIndex((c) => c.id === chronicleId || c.roomId === room.id);
+          if (cIdx !== -1) {
+            club.chronicles[cIdx] = chronicleRecord;
+          } else {
+            club.chronicles.unshift(chronicleRecord);
+          }
+          if (club.chronicles.length > 100) {
+            club.chronicles = club.chronicles.slice(0, 100);
+          }
+          localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+        }
+      }
+
+      return chronicleRecord;
+    } catch (e) {
+      console.error('Failed to archive tournament to club chronicle:', e);
+      return null;
+    }
+  },
+
+  getAllGlobalChronicles(): ClubChronicleTournament[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CLUB_CHRONICLES);
+      if (data) {
+        const list: ClubChronicleTournament[] = JSON.parse(data);
+        const isCorrupted = (str?: string) => {
+          if (!str) return false;
+          return /160억|준신축|빌딩|수지분석|대로변|메디컬|vercel\.app|https?:\/\//i.test(str) || str.length > 80 || str.includes('\n');
+        };
+        const cleaned = list.filter((c) => !isCorrupted(c.title) && !isCorrupted(c.clubName));
+        if (cleaned.length !== list.length) {
+          localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(cleaned));
+        }
+        return cleaned;
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
+  getClubChronicles(clubId: string): ClubChronicleTournament[] {
+    const globalList = this.getAllGlobalChronicles();
+    const club = this.getClubById(clubId);
+    const clubSpecific = club?.chronicles || [];
+
+    const map = new Map<string, ClubChronicleTournament>();
+    clubSpecific.forEach((c) => map.set(c.id, c));
+    globalList.filter((c) => c.clubId === clubId).forEach((c) => map.set(c.id, c));
+
+    // Also include any active rooms that belong to this club as live chronicle entries
+    const allRooms = this.getAllRooms();
+    allRooms
+      .filter((r) => r.clubId === clubId)
+      .forEach((r) => {
+        const chrId = `chronicle_${r.id}`;
+        if (!map.has(chrId)) {
+          const generated = this.archiveEventRoomToClubChronicle(r);
+          if (generated) map.set(generated.id, generated);
+        }
+      });
+
+    return Array.from(map.values()).sort((a, b) => b.heldAt.localeCompare(a.heldAt));
+  },
+
+  // 특정 회원의 클럽 내 과거 대회 출전 이력 조회
+  getMemberPastHistoryInClub(clubId: string, memberName: string) {
+    const chronicles = this.getClubChronicles(clubId);
+    const searchKey = memberName.replace('(본인)', '').trim();
+    const playedChronicles: {
+      tournament: ClubChronicleTournament;
+      myRecord: ClubChronicleTournament['rankings'][0];
+    }[] = [];
+
+    chronicles.forEach((chr) => {
+      const myRec = chr.rankings.find(
+        (r) => r.playerName.trim() === memberName.trim() || r.playerName.includes(searchKey)
+      );
+      if (myRec) {
+        playedChronicles.push({
+          tournament: chr,
+          myRecord: myRec,
+        });
+      }
+    });
+
+    return playedChronicles;
+  },
+
+  // 3-8. 💎 [3단계] 클럽 다이아몬드 명예의 전당 랭킹 보드 산출
+  getClubDiamondRankings(clubId: string): {
+    rank: number;
+    memberId: string;
+    memberName: string;
+    memberCode: string;
+    role: string;
+    customRoleName?: string;
+    tier: UserDiamondTier;
+    totalCompleted9Holes: number;
+    tierTitle: string;
+  }[] {
+    const club = this.getClubById(clubId);
+    if (!club || !club.members) return [];
+
+    const ranked = club.members.map((m) => {
+      const completed = m.totalCompleted9Holes || (typeof window !== 'undefined' ? getUserCompleted9Holes(m.name) : 0);
+      const tierObj = calculateTier(completed);
+      return {
+        memberId: m.id,
+        memberName: m.name,
+        memberCode: m.memberCode || 'PKYA-0000',
+        role: m.role,
+        customRoleName: m.customRoleName,
+        tier: tierObj,
+        totalCompleted9Holes: completed,
+        tierTitle: tierObj.nameKo,
+        weight: completed,
+      };
+    });
+
+    ranked.sort((a, b) => b.weight - a.weight || a.memberName.localeCompare(b.memberName));
+
+    return ranked.map((item, idx) => ({
+      rank: idx + 1,
+      memberId: item.memberId,
+      memberName: item.memberName,
+      memberCode: item.memberCode,
+      role: item.role,
+      customRoleName: item.customRoleName,
+      tier: item.tier,
+      totalCompleted9Holes: item.totalCompleted9Holes,
+      tierTitle: item.tierTitle,
+    }));
+  },
+
+  // 3-9. 📸 [3단계] 단체 기념사진 브라우저 캔버스 경량 압축(100KB 이하) & 골드 워터마크 각인
+  async compressAndWatermarkPhoto(file: File, watermarkText: string): Promise<string> {
+    if (typeof window === 'undefined') return '';
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 800;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return resolve(img.src);
+
+          ctx.drawImage(img, 0, 0, w, h);
+
+          // 우측 하단 골드 워터마크 띠
+          const barH = Math.max(32, Math.round(h * 0.07));
+          ctx.fillStyle = 'rgba(6, 40, 30, 0.75)';
+          ctx.fillRect(0, h - barH, w, barH);
+
+          ctx.fillStyle = '#fef08a';
+          ctx.font = `bold ${Math.max(12, Math.round(barH * 0.42))}px sans-serif`;
+          ctx.textAlign = 'right';
+          ctx.fillText(`파키 앱 (PARKY APP) 공식 실록 | ${watermarkText}`, w - 16, h - Math.round(barH * 0.32));
+
+          const compressed = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(compressed);
+        };
+        img.onerror = () => resolve('');
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  },
+
+  // ==========================================
+  // [NEW] 클럽 가입 초청장 관리 (도착한 초청장 수락/거절 & 발송)
+  // ==========================================
+  getClubInvitations(): ClubInvitation[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CLUB_INVITATIONS);
+      if (!data) return [];
+      const parsed = JSON.parse(data);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((inv) => inv && inv.id && !inv.id.startsWith('inv-ss-'));
+    } catch {
+      return [];
+    }
+  },
+
+  acceptClubInvitation(invitationId: string, userName: string): boolean {
+    const invites = this.getClubInvitations();
+    const target = invites.find((inv) => inv.id === invitationId);
+    if (!target) return false;
+
+    // 해당 클럽에 즉시 가입 등록
+    this.joinClub(target.clubId, userName);
+
+    // 초청장 목록에서 제거
+    const updated = invites.filter((inv) => inv.id !== invitationId);
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUB_INVITATIONS, JSON.stringify(updated));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  rejectClubInvitation(invitationId: string): boolean {
+    const invites = this.getClubInvitations();
+    const updated = invites.filter((inv) => inv.id !== invitationId);
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUB_INVITATIONS, JSON.stringify(updated));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  sendClubInvitation(invitation: Omit<ClubInvitation, 'id' | 'createdAt'>): boolean {
+    const invites = this.getClubInvitations();
+    const newInv: ClubInvitation = {
+      ...invitation,
+      id: `inv-${Date.now()}`,
+      createdAt: '방금 전',
+    };
+    invites.unshift(newInv);
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUB_INVITATIONS, JSON.stringify(invites));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+
+  // 특정 클럽에서 내가 사용할 활동명(실명/별명) 변경 저장
+  updateClubMemberAlias(clubId: string, newAliasName: string): boolean {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club) return false;
+
+    const member = club.members.find(
+      (m) =>
+        m.name.includes('본인') ||
+        m.id === 'm2' ||
+        m.id === 'mb3' ||
+        m.role === 'MANAGER' ||
+        m.name.includes('김총무') ||
+        m.name.includes('홍길동')
+    );
+
+    if (member) {
+      member.name = newAliasName;
+      if (member.role === 'MANAGER') {
+        club.managerName = newAliasName;
+      }
+    }
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  // 회원의 직책(회장/부회장/총무/감사/이사/경기위원장/맞춤직책) 배정 및 클럽 공식 직책자 정보 연동
+  updateMemberRole(
+    clubId: string,
+    memberId: string,
+    newRole: 'PRESIDENT' | 'VICE_PRESIDENT' | 'MANAGER' | 'AUDITOR' | 'DIRECTOR' | 'CAPTAIN' | 'MEMBER' | string,
+    customRoleName?: string
+  ): boolean {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club) return false;
+
+    const targetMember = club.members.find((m) => m.id === memberId);
+    if (!targetMember) return false;
+
+    const effectiveName = customRoleName?.trim() || '';
+
+    if (newRole === 'PRESIDENT' || effectiveName === '회장') {
+      club.members.forEach((m) => {
+        if ((m.role === 'PRESIDENT' || m.customRoleName === '회장') && m.id !== memberId) {
+          m.role = 'MEMBER';
+          m.customRoleName = undefined;
+        }
+      });
+      club.presidentName = targetMember.name;
+    } else if (newRole === 'MANAGER' || effectiveName === '총무') {
+      club.members.forEach((m) => {
+        if ((m.role === 'MANAGER' || m.customRoleName === '총무') && m.id !== memberId) {
+          m.role = 'MEMBER';
+          m.customRoleName = undefined;
+        }
+      });
+      club.managerName = targetMember.name;
+    } else {
+      if (targetMember.role === 'PRESIDENT') {
+        club.presidentName = '공석';
+      } else if (targetMember.role === 'MANAGER') {
+        club.managerName = '공석';
+      }
+    }
+
+    targetMember.role = newRole;
+    targetMember.customRoleName = customRoleName?.trim() ? customRoleName.trim() : undefined;
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  // 클럽 연회비 기준 금액 설정
+  updateClubAnnualDues(clubId: string, amount: number): boolean {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club) return false;
+    club.annualDuesAmount = amount;
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  // 회원별 연회비 납부 상태 토글 및 기록
+  updateMemberDues(
+    clubId: string,
+    memberId: string,
+    duesPaid: boolean,
+    amount?: number,
+    notes?: string
+  ): boolean {
+    const list = this.getAllClubs();
+    const club = list.find((c) => c.id === clubId);
+    if (!club) return false;
+    const member = club.members.find((m) => m.id === memberId);
+    if (!member) return false;
+
+    member.duesPaid = duesPaid;
+    if (duesPaid) {
+      member.duesPaidAt = new Date().toISOString().slice(0, 10);
+      member.duesAmount = amount || club.annualDuesAmount || 50000;
+      member.duesNotes = notes || '수납 완료';
+    } else {
+      member.duesPaidAt = undefined;
+      member.duesNotes = undefined;
+    }
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(list));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  // ==========================================
+  // [NEW] 번개 모임 (실시간 라운드 조인) 관리
+  // ==========================================
+  getAllFlashGatherings(): FlashGathering[] {
+    if (typeof window === 'undefined') return generateDefaultSeedFlash();
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.FLASH_GATHERINGS);
+      if (!data) {
+        const seeds = generateDefaultSeedFlash();
+        localStorage.setItem(STORAGE_KEYS.FLASH_GATHERINGS, JSON.stringify(seeds));
+        return seeds;
+      }
+      return JSON.parse(data);
+    } catch {
+      return generateDefaultSeedFlash();
+    }
+  },
+
+  createFlashGathering(data: {
+    title: string;
+    type: 'OPEN' | 'CLUB_ONLY';
+    clubId?: string;
+    clubName?: string;
+    courseId: string;
+    courseName: string;
+    playDate: string;
+    playTime: string;
+    targetCount?: number;
+    lightningScope?: 'FOUR_PLAYERS' | 'MULTI_OPEN';
+    hostName: string;
+    notes?: string;
+  }): FlashGathering {
+    const list = this.getAllFlashGatherings();
+    const newId = `flash-${Date.now()}`;
+    const scope = data.lightningScope || (data.targetCount && data.targetCount > 4 ? 'MULTI_OPEN' : 'FOUR_PLAYERS');
+    const target = scope === 'MULTI_OPEN' ? 999 : (data.targetCount || 4);
+
+    const newGathering: FlashGathering = {
+      id: newId,
+      title: data.title,
+      type: data.type,
+      clubId: data.clubId,
+      clubName: data.clubName,
+      courseId: data.courseId,
+      courseName: data.courseName,
+      playDate: data.playDate,
+      playTime: data.playTime,
+      targetCount: target,
+      lightningScope: scope,
+      currentParticipants: [
+        {
+          id: `p_${Date.now()}`,
+          name: `${data.hostName} (개설자)`,
+          joinedAt: new Date().toISOString(),
+        },
+      ],
+      hostName: data.hostName,
+      notes: data.notes || '',
+      status: 'RECRUITING',
+      createdAt: new Date().toISOString(),
+    };
+
+    list.unshift(newGathering);
+    // [10만명 3개월 누적 대비] 번개 모임 목록은 최근 100건으로 롤링 유지하여 무한 누적 방지
+    const cappedList = list.slice(0, 100);
+    try {
+      localStorage.setItem(STORAGE_KEYS.FLASH_GATHERINGS, JSON.stringify(cappedList));
+    } catch {
+      // ignore
+    }
+    return newGathering;
+  },
+
+  joinFlashGathering(
+    gatheringId: string,
+    participantName: string,
+    phone?: string
+  ): { success: boolean; isWaitlist: boolean; waitNumber?: number; message?: string } {
+    const list = this.getAllFlashGatherings();
+    const item = list.find((g) => g.id === gatheringId);
+    if (!item) return { success: false, isWaitlist: false, message: '모임을 찾을 수 없습니다.' };
+
+    if (!item.waitingList) item.waitingList = [];
+
+    const alreadyJoined = item.currentParticipants.some((p) => p.name.includes(participantName));
+    if (alreadyJoined) return { success: true, isWaitlist: false, message: '이미 참가자로 등록되어 있습니다.' };
+
+    const isMultiOpen = item.lightningScope === 'MULTI_OPEN' || item.targetCount >= 999;
+
+    // 4인 번개일 때만 정원 초과 대기자 등록
+    if (!isMultiOpen && item.currentParticipants.length >= 4) {
+      item.status = 'FULL';
+      const waitNumber = item.waitingList.length + 1;
+      item.waitingList.push({
+        id: `wait_${Date.now()}`,
+        name: participantName,
+        joinedAt: new Date().toISOString(),
+        phone,
+        waitNumber,
+      });
+
+      try {
+        localStorage.setItem(STORAGE_KEYS.FLASH_GATHERINGS, JSON.stringify(list));
+        return { success: true, isWaitlist: true, waitNumber };
+      } catch {
+        return { success: false, isWaitlist: true, message: '저장 실패' };
+      }
+    }
+
+    // 정규 참가자 등록 (4인 이상 무제한 번개는 무제한 등록!)
+    item.currentParticipants.push({
+      id: `p_${Date.now()}`,
+      name: participantName,
+      joinedAt: new Date().toISOString(),
+      phone,
+    });
+
+    if (!isMultiOpen && item.currentParticipants.length >= 4) {
+      item.status = 'FULL';
+    }
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.FLASH_GATHERINGS, JSON.stringify(list));
+      return { success: true, isWaitlist: false };
+    } catch {
+      return { success: false, isWaitlist: false, message: '저장 실패' };
+    }
+  },
+
+  cancelFlashGathering(
+    gatheringId: string,
+    participantName: string
+  ): { success: boolean; promotedPlayerName?: string } {
+    const list = this.getAllFlashGatherings();
+    const item = list.find((g) => g.id === gatheringId);
+    if (!item) return { success: false };
+
+    if (!item.waitingList) item.waitingList = [];
+
+    const wasParticipant = item.currentParticipants.some((p) => p.name.includes(participantName));
+    const wasWaiting = item.waitingList.some((p) => p.name.includes(participantName));
+
+    if (wasWaiting) {
+      item.waitingList = item.waitingList.filter((p) => !p.name.includes(participantName));
+      item.waitingList.forEach((p, idx) => {
+        p.waitNumber = idx + 1;
+      });
+    }
+
+    let promotedPlayerName: string | undefined = undefined;
+
+    if (wasParticipant) {
+      item.currentParticipants = item.currentParticipants.filter(
+        (p) => !p.name.includes(participantName)
+      );
+
+      // 대기자가 있으면 1순위 대기자를 자동 참가자로 즉시 승격!
+      if (item.waitingList.length > 0) {
+        const nextInLine = item.waitingList.shift()!;
+        promotedPlayerName = nextInLine.name;
+        item.currentParticipants.push({
+          id: nextInLine.id,
+          name: nextInLine.name,
+          joinedAt: new Date().toISOString(),
+          phone: nextInLine.phone,
+        });
+
+        // 남은 대기자 순번 재정렬
+        item.waitingList.forEach((p, idx) => {
+          p.waitNumber = idx + 1;
+        });
+      }
+    }
+
+    if (item.currentParticipants.length < item.targetCount) {
+      item.status = 'RECRUITING';
+    } else {
+      item.status = 'FULL';
+    }
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.FLASH_GATHERINGS, JSON.stringify(list));
+      return { success: true, promotedPlayerName };
+    } catch {
+      return { success: false };
+    }
+  },
+
+  leaveFlashGathering(
+    gatheringId: string,
+    participantName: string
+  ): { success: boolean; promotedPlayerName?: string } {
+    return this.cancelFlashGathering(gatheringId, participantName);
+  },
+
+  // 카카오톡 / LINE 번개 모집 초대장 문구 생성
+  generateFlashKakaoShareText(flash: FlashGathering, isJapanese?: boolean): string {
+    const shareUrl =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/club?hub=FLASH&flashId=${flash.id}`
+        : `https://www.parkgolfallinone.com/club?hub=FLASH&flashId=${flash.id}`;
+
+    const clubBadge = flash.clubName
+      ? `[${flash.clubName}]`
+      : isJapanese
+      ? '[PARKY (パキ) 招集マッチ]'
+      : '[파키 앱 (PARKY APP) 번개]';
+    const isMultiOpen = flash.lightningScope === 'MULTI_OPEN' || flash.targetCount >= 999;
+    const capacityText = isMultiOpen
+      ? (isJapanese ? `4人以上 人数無制限 (現在 ${flash.currentParticipants.length}名参加中!)` : `4인 이상 인원 무제한 (현재 ${flash.currentParticipants.length}명 참여 중!)`)
+      : (isJapanese ? `4人募集 (現在 ${flash.currentParticipants.length}/4名、2名以上で即時出発)` : `4인 번개 (현재 ${flash.currentParticipants.length}/4명, 2인 이상 출발 가능)`);
+
+    if (isJapanese) {
+      return `${clubBadge} ⚡ 招集マッチ参加者募集！
+"${flash.title}"
+
+⛳ コース: ${flash.courseName}
+📅 日時: ${flash.playDate} ${flash.playTime}
+👥 募集: ${capacityText}
+👤 参加者: ${flash.currentParticipants.map((p) => p.name).join(', ')}
+${flash.notes ? `💬 メッセージ: "${flash.notes}"\n` : ''}
+👇 下のPARKYリンクをタップしてワンタップで参加！
+${shareUrl}`;
+    }
+
+    return `${clubBadge} ⚡ 번개 라운드 긴급 모집!
+"${flash.title}"
+
+⛳ 장소: ${flash.courseName}
+📅 일시: ${flash.playDate} ${flash.playTime}
+👥 모집: ${capacityText}
+👤 현재 참가: ${flash.currentParticipants.map((p) => p.name).join(', ')}
+${flash.notes ? `💬 안내: "${flash.notes}"\n` : ''}
+👇 아래 파키 앱 (PARKY APP) 링크를 눌러 1초 만에 바로 조인하세요!
+${shareUrl}`;
+  },
+
+  // 전체 조 편성 카카오톡 / LINE 단톡방 공지 문구 생성
+  generateGroupFormationKakaoShareText(room: ClubEventRoom, isJapanese?: boolean): string {
+    const origin =
+      typeof window !== 'undefined'
+        ? window.location.origin
+        : 'https://www.parkgolfallinone.com';
+    const link = `${origin}/club/${room.id}`;
+    const totalPlayers = room.groups.reduce((sum, g) => sum + g.players.length, 0);
+
+    let text = isJapanese
+      ? `📢 [PARKY (パキ)] ${room.courseName} 組編成結果\n`
+      : `📢 [파키 앱 (PARKY APP)] ${room.courseName} 라운드 조 편성 결과\n`;
+    text += `🏆 ${room.title}\n`;
+    text += isJapanese
+      ? `👥 計 ${room.groups.length}組 (${totalPlayers}名 割当完了)\n`
+      : `👥 총 ${room.groups.length}개 조 (${totalPlayers}명 배정 완료)\n`;
+    text += `---------------------------------\n`;
+
+    room.groups.forEach((g, gIdx) => {
+      const leaderStr = g.leaderName
+        ? (isJapanese ? ` (代表: ${g.leaderName})` : ` (조장: ${g.leaderName})`)
+        : '';
+      const startHoleRaw = this.getGroupStartHole(gIdx, room.selectedCourseLetters, g.startCourseLetter, room.startMode);
+      const startHoleStr = isJapanese
+        ? `[🚩 ${startHoleRaw.replace('홀', '番H')} 出発]`
+        : `[🚩 ${startHoleRaw} 티샷]`;
+      const members = g.players.map((p) => (p.isLeader ? `👑${p.name}` : p.name)).join(', ');
+      text += `⛳ ${g.name} ${startHoleStr}${leaderStr}: ${members || (isJapanese ? '割当待機中' : '배정 대기 중')}\n`;
+    });
+
+    text += `---------------------------------\n`;
+    text += isJapanese
+      ? `📡 リアルタイム電光掲示板 ＆ スコアボード:\n${link}`
+      : `📡 실시간 디지털 전광판 & 스코어보드 바로가기:\n${link}`;
+    return text;
+  },
+
+  // [대표님 지시] 순차 출발(1번홀 통일) vs 샷건 출발(전 홀 분산) 자동 순환 분배 계산
+  getGroupStartHole(
+    groupIndex: number,
+    roomCourseLetters?: string[],
+    groupStartCourseLetter?: string,
+    startMode?: 'SEQUENTIAL' | 'SHOTGUN'
+  ): string {
+    const letters = roomCourseLetters && roomCourseLetters.length > 0 ? roomCourseLetters : ['A', 'B'];
+    if (startMode === 'SEQUENTIAL') {
+      const firstLetter = letters[0] || 'A';
+      return `${firstLetter}-1홀 (순차 대기)`;
+    }
+    const totalPhysicalHoles = letters.length * 9;
+    const holeOffset = groupIndex % totalPhysicalHoles;
+    const courseIndex = Math.floor(holeOffset / 9);
+    const holeNumber = (holeOffset % 9) + 1;
+    const courseLetter = letters[courseIndex] || 'A';
+    const wave = Math.floor(groupIndex / totalPhysicalHoles);
+    const waveSuffix = wave > 0 ? ` (${wave + 1}부)` : '';
+    return `${courseLetter}-${holeNumber}홀${waveSuffix}`;
+  },
+
+  // ==========================================
+  // 🔒 [마스터 명세 #1] 클럽 회원 스코어 프라이버시 (비공개 / 마스킹) 보호 시스템
+  // ==========================================
+  getPlayerScorePrivacy(playerName: string): ScorePrivacyLevel {
+    if (typeof window === 'undefined' || !playerName) return 'PUBLIC';
+    try {
+      const cleanName = playerName.replace('(본인)', '').trim();
+      const rawMap = localStorage.getItem('parkon_score_privacy_map_v1');
+      if (rawMap) {
+        const map = JSON.parse(rawMap);
+        if (map[playerName]) return map[playerName];
+        if (map[cleanName]) return map[cleanName];
+      }
+      // 시니어/초보 프라이버시 기본 시드: 박영희님은 PRIVATE(비공개), 이철수님은 TOTAL_ONLY(총타수만 공개) 지원 가능
+      return 'PUBLIC';
+    } catch {
+      return 'PUBLIC';
+    }
+  },
+
+  setPlayerScorePrivacy(
+    playerName: string,
+    level: ScorePrivacyLevel,
+    roomId?: string
+  ): ClubEventRoom | null {
+    if (typeof window === 'undefined' || !playerName) return null;
+    try {
+      const cleanName = playerName.replace('(본인)', '').trim();
+      const rawMap = localStorage.getItem('parkon_score_privacy_map_v1');
+      const map: Record<string, ScorePrivacyLevel> = rawMap ? JSON.parse(rawMap) : {};
+      map[playerName] = level;
+      map[cleanName] = level;
+      localStorage.setItem('parkon_score_privacy_map_v1', JSON.stringify(map));
+
+      // 클럽 멤버 엔티티에도 반영
+      const clubs = this.getAllClubs();
+      let clubModified = false;
+      clubs.forEach((club) => {
+        (club.members || []).forEach((m) => {
+          if (m.name === playerName || m.name.replace('(본인)', '').trim() === cleanName) {
+            m.scorePrivacy = level;
+            clubModified = true;
+          }
+        });
+      });
+      if (clubModified) {
+        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+      }
+
+      // 특정 대회 방 또는 전체 대회 방 내 해당 플레이어에 즉시 반영
+      if (roomId) {
+        const room = this.getRoom(roomId);
+        if (room) {
+          (room.groups || []).forEach((g) => {
+            (g.players || []).forEach((p) => {
+              if (p.name === playerName || p.name.replace('(본인)', '').trim() === cleanName) {
+                p.scorePrivacy = level;
+              }
+            });
+          });
+          this.saveRoom(room);
+          return room;
+        }
+      }
+    } catch {}
+    return null;
+  },
+
+  // ==========================================
+  // 🔄 [마스터 명세 #2] 개인 연대기 ↔ 클럽 연대기 양방향 스마트 연동 엔진
+  // ==========================================
+  // 원리 1: 클럽 대회 종료 시 전 참가 회원 개인 연대기 자동 배포 (Push Sync)
+  pushTournamentToPersonalChronicles(room: ClubEventRoom): number {
+    if (typeof window === 'undefined' || !room) return 0;
+    try {
+      const completedKey = 'parkon_completed_rounds_v1';
+      const rawCompleted = localStorage.getItem(completedKey);
+      const completedList: any[] = rawCompleted ? JSON.parse(rawCompleted) : [];
+      const badgeLabel = `🏛️ ${room.clubName || '나우골프'} ${room.title}`;
+      const recordId = `club_push_${room.id}`;
+
+      const allPlayers: any[] = [];
+      (room.groups || []).forEach((g) => {
+        (g.players || []).forEach((p) => {
+          if (p.totalStrokes > 0 || Object.keys(p.scores || {}).length > 0) {
+            allPlayers.push({
+              id: p.id,
+              name: p.name,
+              isLeader: !!p.isLeader,
+              scores: p.scores || {},
+              obCount: {},
+              obCounts: {},
+              totalStrokes: p.totalStrokes || 0,
+              totalParDiff: p.parDiff || 0,
+              parDiff: p.parDiff || 0,
+            });
+          }
+        });
+      });
+
+      if (allPlayers.length === 0) return 0;
+
+      const totalHoles = room.totalHoles || 18;
+      const holes = Array.from({ length: totalHoles }, (_, idx) => {
+        const stdPars = [4, 3, 4, 3, 4, 4, 3, 3, 5];
+        return {
+          hole: idx + 1,
+          holeNumber: idx + 1,
+          par: stdPars[idx % 9] || 3,
+          distance: 65,
+        };
+      });
+      const isoDate = room.createdAt ? new Date(room.createdAt).toISOString() : new Date().toISOString();
+
+      const pushedSession = {
+        id: recordId,
+        courseId: room.courseId || 'course-club',
+        courseName: room.courseName || '공식 클럽 대회 구장',
+        subCourseName: `${(room.selectedCourseLetters || ['A', 'B']).join('+')} 코스 (${totalHoles}홀)`,
+        startedAt: isoDate,
+        completedAt: new Date().toISOString(),
+        date: isoDate,
+        currentHole: totalHoles,
+        totalHoles,
+        selectedCourseLetters: room.selectedCourseLetters || ['A', 'B'],
+        selectedHoleNumbers: Array.from({ length: totalHoles }, (_, i) => i + 1),
+        holes,
+        players: allPlayers.slice(0, 4),
+        status: 'COMPLETED',
+        isOfficial: true,
+        isFinished: true,
+        isPractice: false,
+        countInStats: true,
+        clubId: room.clubId || 'club-default',
+        clubName: room.clubName || '나우골프',
+        clubRoomId: room.id,
+        clubMatchBadge: badgeLabel,
+      };
+
+      const existingIdx = completedList.findIndex((h) => h.id === recordId);
+      if (existingIdx !== -1) {
+        completedList[existingIdx] = pushedSession;
+      } else {
+        completedList.unshift(pushedSession);
+      }
+
+      localStorage.setItem(completedKey, JSON.stringify(completedList));
+      localStorage.setItem('parkon_round_history', JSON.stringify(completedList));
+      const officialCount = completedList.filter((r) => r && r.isOfficial !== false && !r.isVirtual && !r.isPractice).length;
+      localStorage.setItem('completedRoundsCount', String(officialCount));
+      localStorage.setItem('parkon_user_completed_9holes', String(officialCount));
+      return allPlayers.length;
+    } catch {
+      return 0;
+    }
+  },
+
+  // 원리 3: 총무가 경기 초기화/취소 시 개인 연대기 데이터도 일치 롤백
+  rollbackTournamentFromPersonalChronicles(roomId: string): boolean {
+    if (typeof window === 'undefined' || !roomId) return false;
+    try {
+      const recordId = `club_push_${roomId}`;
+      const completedKey = 'parkon_completed_rounds_v1';
+      const rawCompleted = localStorage.getItem(completedKey);
+      if (rawCompleted) {
+        const list: any[] = JSON.parse(rawCompleted);
+        const filtered = list.filter((h) => h.id !== recordId && h.clubRoomId !== roomId);
+        localStorage.setItem(completedKey, JSON.stringify(filtered));
+        localStorage.setItem('parkon_round_history', JSON.stringify(filtered));
+        const officialCount = filtered.filter((r) => r && r.isOfficial !== false && !r.isVirtual && !r.isPractice).length;
+        localStorage.setItem('completedRoundsCount', String(officialCount));
+        localStorage.setItem('parkon_user_completed_9holes', String(officialCount));
+      }
+
+      // 클럽 연대기에서도 해당 경기 롤백
+      const chronicleId = `chronicle_${roomId}`;
+      const allChronicles = this.getAllGlobalChronicles().filter((c) => c.id !== chronicleId && c.roomId !== roomId);
+      localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(allChronicles));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  // 원리 2: 개인 홀인원/이글 달성 시 소속 클럽 타임라인 피드 자동 공유 & 명예의 전당 가산
+  rollupPersonalAchievementToClubTimeline(params: {
+    clubId?: string;
+    playerName: string;
+    achievementType: 'HOLE_IN_ONE' | 'EAGLE';
+    courseName: string;
+    holeNumber: number;
+    heldAt?: string;
+  }): ClubChronicleTournament | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const clubs = this.getAllClubs();
+      const targetClub = params.clubId
+        ? clubs.find((c) => c.id === params.clubId) || clubs[0]
+        : clubs[0];
+      const clubId = targetClub?.id || 'club-default';
+      const clubName = targetClub?.name || '나우골프 클럽';
+      const typeLabel = params.achievementType === 'HOLE_IN_ONE' ? '🏆 공식 홀인원 달성' : '🦅 공식 이글 달성';
+      const scoreVal = params.achievementType === 'HOLE_IN_ONE' ? 1 : 2;
+      const chrId = `chronicle_hio_${Date.now()}`;
+
+      const record: ClubChronicleTournament = {
+        id: chrId,
+        roomId: chrId,
+        clubId,
+        clubName,
+        title: `[경축] ${params.playerName} 회원님 ${params.courseName} ${params.holeNumber}번홀 ${typeLabel}!`,
+        heldAt: params.heldAt || new Date().toISOString().slice(0, 10),
+        courseId: 'course-hio',
+        courseName: params.courseName,
+        totalHoles: 18,
+        gameMode: typeLabel,
+        totalParticipants: 4,
+        winnerName: params.playerName,
+        winnerScore: scoreVal,
+        specialAwards: [
+          {
+            type: 'HOLE_IN_ONE',
+            title: typeLabel,
+            badge: params.achievementType === 'HOLE_IN_ONE' ? '🏆' : '🦅',
+            winnerName: params.playerName,
+            groupNumber: 1,
+            detailText: `${params.courseName} ${params.holeNumber}번홀 ${scoreVal}타 기록 (자동 연동)`,
+            holeNumber: params.holeNumber,
+          },
+        ],
+        rankings: [
+          {
+            rank: 1,
+            playerId: `p_${Date.now()}`,
+            playerName: params.playerName,
+            groupNumber: 1,
+            totalStrokes: scoreVal,
+            parDiff: -3,
+            isWinner: true,
+            awards: [typeLabel],
+          },
+        ],
+        groupResults: [],
+        notes: `개인 라운드 중 ${typeLabel} 달성으로 클럽 연대기 타임라인에 자동 공유되었습니다.`,
+        archivedAt: new Date().toISOString(),
+      };
+
+      const allChronicles = this.getAllGlobalChronicles();
+      allChronicles.unshift(record);
+      localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(allChronicles.slice(0, 150)));
+
+      if (targetClub) {
+        if (!targetClub.chronicles) targetClub.chronicles = [];
+        targetClub.chronicles.unshift(record);
+        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+      }
+      return record;
+    } catch {
+      return null;
+    }
+  },
+
+  // ==========================================
+  // 📜 [마스터 명세 #3] 클럽 연대기 과거 기록 수기 등록 (`[ ➕ 과거 연대기 기록 추가 ]`)
+  // ==========================================
+  addManualClubChronicle(
+    clubId: string,
+    params: {
+      title: string;
+      heldAt: string;
+      courseName: string;
+      totalParticipants: number;
+      winnerName: string;
+      winnerScore: number;
+      runnerUpName?: string;
+      medalistName?: string;
+      holeInOneName?: string;
+      notes?: string;
+    }
+  ): ClubChronicleTournament | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const clubs = this.getAllClubs();
+      const club = clubs.find((c) => c.id === clubId) || clubs[0];
+      const chrId = `chronicle_manual_${Date.now()}`;
+      const specialAwards: SpecialAwardWinner[] = [];
+      if (params.holeInOneName?.trim()) {
+        specialAwards.push({
+          type: 'HOLE_IN_ONE',
+          title: '역대 홀인원 기록',
+          badge: '🏆',
+          winnerName: params.holeInOneName.trim(),
+          groupNumber: 1,
+          detailText: `${params.courseName} 공식 홀인원 (수기 아카이빙)`,
+        });
+      }
+
+      const record: ClubChronicleTournament = {
+        id: chrId,
+        roomId: chrId,
+        clubId: club?.id || clubId,
+        clubName: club?.name || '공식 클럽',
+        title: params.title.trim() || '과거 클럽 공식 행사 기록',
+        heldAt: params.heldAt || new Date().toISOString().slice(0, 10),
+        courseId: 'manual-course',
+        courseName: params.courseName.trim() || '지역 파크골프장',
+        totalHoles: 18,
+        gameMode: '수기 등록 아카이브 (과거 실록)',
+        totalParticipants: params.totalParticipants || 20,
+        winnerName: params.winnerName.trim() || '클럽 챔피언',
+        winnerScore: params.winnerScore || 62,
+        runnerUpName: params.runnerUpName?.trim() || undefined,
+        medalistName: params.medalistName?.trim() || undefined,
+        specialAwards: specialAwards.length > 0 ? specialAwards : undefined,
+        rankings: [
+          {
+            rank: 1,
+            playerId: `m_${Date.now()}`,
+            playerName: params.winnerName.trim() || '클럽 챔피언',
+            groupNumber: 1,
+            totalStrokes: params.winnerScore || 62,
+            parDiff: (params.winnerScore || 62) - 66,
+            isWinner: true,
+            awards: ['우승 🏆'],
+          },
+        ],
+        groupResults: [],
+        notes: params.notes?.trim() || '앱 도입 전 과거 클럽 역사를 총무가 수기로 등재한 공식 기록입니다.',
+        archivedAt: new Date().toISOString(),
+      };
+
+      const allChronicles = this.getAllGlobalChronicles();
+      allChronicles.unshift(record);
+      localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(allChronicles.slice(0, 150)));
+
+      if (club) {
+        if (!club.chronicles) club.chronicles = [];
+        club.chronicles.unshift(record);
+        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+      }
+      return record;
+    } catch {
+      return null;
+    }
+  },
+
+  // ==========================================
+  // 📝 [마스터 명세 #11] 오프라인(수기) 회원 직접 등록 및 `[ 📝 오프라인 ]` 뱃지 부여
+  // ==========================================
+  registerOfflineMembers(
+    clubId: string,
+    entries: { name: string; phone?: string; role?: string; customRoleName?: string }[]
+  ): { addedCount: number; club?: ParkGolfClub } {
+    if (typeof window === 'undefined') return { addedCount: 0 };
+    const clubs = this.getAllClubs();
+    const club = clubs.find((c) => c.id === clubId);
+    if (!club) return { addedCount: 0 };
+
+    let addedCount = 0;
+    const today = new Date().toISOString().slice(0, 10);
+
+    entries.forEach((entry, idx) => {
+      const cleanName = entry.name.trim();
+      if (!cleanName) return;
+      const exists = (club.members || []).some((m) => m.name.replace('(본인)', '').trim() === cleanName);
+      if (exists) return;
+
+      const roleVal = entry.role || 'MEMBER';
+      const roleDues = club.duesByRole
+        ? roleVal === 'PRESIDENT'
+          ? club.duesByRole.PRESIDENT
+          : roleVal !== 'MEMBER'
+          ? club.duesByRole.EXECUTIVE
+          : club.duesByRole.MEMBER
+        : club.annualDuesAmount || 100000;
+
+      const newMember: ClubMember = {
+        id: `offline_${Date.now()}_${idx}`,
+        name: cleanName,
+        memberCode: `OFF-${Math.floor(1000 + Math.random() * 9000)}`,
+        role: roleVal,
+        customRoleName: entry.customRoleName,
+        avgStrokes: 66,
+        roundsPlayed: 0,
+        totalCompleted9Holes: 0,
+        joinedAt: today,
+        phone: entry.phone?.trim() || '010-0000-0000',
+        duesPaid: false,
+        duesAmount: roleDues,
+        isOfflineMember: true,
+        scorePrivacy: 'PUBLIC',
+      };
+      club.members.push(newMember);
+      addedCount++;
+    });
+
+    if (addedCount > 0) {
+      club.memberCount = club.members.length;
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+    }
+    return { addedCount, club };
+  },
+
+  // ==========================================
+  // 💰 [마스터 명세 #12] 클럽 회계 관리: 직책별 차등 연회비 + 영수증 AI 자동인식 장부 + 총잔액 실시간 동기화
+  // ==========================================
+  updateClubDuesByRole(
+    clubId: string,
+    duesByRole: { PRESIDENT: number; EXECUTIVE: number; MEMBER: number }
+  ): ParkGolfClub | null {
+    if (typeof window === 'undefined') return null;
+    const clubs = this.getAllClubs();
+    const club = clubs.find((c) => c.id === clubId);
+    if (!club) return null;
+
+    club.duesByRole = duesByRole;
+    club.annualDuesAmount = duesByRole.MEMBER;
+
+    // 직책에 따라 각 회원의 기준 연회비 금액 자동 매핑
+    (club.members || []).forEach((m) => {
+      if (m.role === 'PRESIDENT' || m.customRoleName === '회장') {
+        m.duesAmount = duesByRole.PRESIDENT;
+      } else if (m.role !== 'MEMBER' || (m.customRoleName && m.customRoleName !== '일반회원')) {
+        m.duesAmount = duesByRole.EXECUTIVE;
+      } else {
+        m.duesAmount = duesByRole.MEMBER;
+      }
+    });
+
+    localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+    return club;
+  },
+
+  addClubAccountingEntry(
+    clubId: string,
+    entry: {
+      type: 'INCOME_DUES' | 'INCOME_ENTRY_FEE' | 'INCOME_SPONSOR' | 'EXPENSE';
+      category: string;
+      title: string;
+      amount: number;
+      date?: string;
+      storeName?: string;
+      receiptImageUrl?: string;
+      notes?: string;
+    }
+  ): ParkGolfClub | null {
+    if (typeof window === 'undefined') return null;
+    const clubs = this.getAllClubs();
+    const club = clubs.find((c) => c.id === clubId);
+    if (!club) return null;
+
+    if (!club.accountingLedger) club.accountingLedger = [];
+    const newEntry: ClubAccountingEntry = {
+      id: `acc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      type: entry.type,
+      category: entry.category,
+      title: entry.title,
+      amount: entry.amount,
+      date: entry.date || new Date().toISOString().slice(0, 10),
+      storeName: entry.storeName,
+      receiptImageUrl: entry.receiptImageUrl,
+      notes: entry.notes,
+    };
+    club.accountingLedger.unshift(newEntry);
+    localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+    return club;
+  },
+
+  getClubAccountingSummary(club: ParkGolfClub): {
+    duesTotal: number;
+    entryFeeTotal: number;
+    sponsorTotal: number;
+    expenseTotal: number;
+    totalBalance: number;
+    ledger: ClubAccountingEntry[];
+  } {
+    const duesByRole = club.duesByRole || {
+      PRESIDENT: 300000,
+      EXECUTIVE: 200000,
+      MEMBER: club.annualDuesAmount || 100000,
+    };
+    const memberDuesPaidSum = (club.members || [])
+      .filter((m) => m.duesPaid)
+      .reduce((sum, m) => {
+        const fallbackAmt =
+          m.role === 'PRESIDENT'
+            ? duesByRole.PRESIDENT
+            : m.role !== 'MEMBER'
+            ? duesByRole.EXECUTIVE
+            : duesByRole.MEMBER;
+        return sum + (m.duesAmount || fallbackAmt);
+      }, 0);
+
+    const ledger = club.accountingLedger || [];
+    const extraDues = ledger
+      .filter((e) => e.type === 'INCOME_DUES')
+      .reduce((s, e) => s + e.amount, 0);
+    const entryFeeTotal = ledger
+      .filter((e) => e.type === 'INCOME_ENTRY_FEE')
+      .reduce((s, e) => s + e.amount, 0);
+    const sponsorTotal = ledger
+      .filter((e) => e.type === 'INCOME_SPONSOR')
+      .reduce((s, e) => s + e.amount, 0);
+    const expenseTotal = ledger
+      .filter((e) => e.type === 'EXPENSE')
+      .reduce((s, e) => s + e.amount, 0);
+
+    const duesTotal = memberDuesPaidSum + extraDues;
+    const totalBalance = duesTotal + entryFeeTotal + sponsorTotal - expenseTotal;
+
+    return {
+      duesTotal,
+      entryFeeTotal,
+      sponsorTotal,
+      expenseTotal,
+      totalBalance,
+      ledger,
+    };
+  },
+};
+
+

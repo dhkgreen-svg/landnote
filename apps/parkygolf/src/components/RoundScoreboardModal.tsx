@@ -1,0 +1,1622 @@
+'use client';
+
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  X,
+  Trash2,
+  Trophy,
+  Camera,
+  Download,
+  Sparkles,
+  Scissors,
+  Check,
+  CheckSquare,
+  Square,
+  ShieldCheck,
+  MapPin,
+  Clock,
+  Lock,
+  Plus,
+} from 'lucide-react';
+import { Course, RoundSession, RoundPlayer } from '@/types/parkon';
+import { HoleScoreBadge, ScoreBadgeLegend } from '@/components/HoleScoreBadge';
+import { formatPlayerDisplayName } from '@/lib/playerUtils';
+import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { ParkOnStorage } from '@/lib/storage';
+import { DiamondTierBadge } from '@/components/DiamondTierBadge';
+import { calculateTier, getUserCompleted9Holes } from '@/lib/courseBlockTier';
+import { generateScorecardImage, GeneratedScorecardResult } from '@/lib/scorecardImageGenerator';
+
+export interface RoundScoreboardModalProps {
+  round: RoundSession | null;
+  courses?: Course[];
+  isOpen: boolean;
+  onClose: () => void;
+  onDelete?: (roundId: string) => void;
+  onUpdate?: (updatedRound: RoundSession) => void;
+}
+
+const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+
+export function RoundScoreboardModal({
+  round,
+  courses,
+  isOpen,
+  onClose,
+  onDelete,
+  onUpdate,
+}: RoundScoreboardModalProps) {
+  const { isJapanese, isEnglish } = useTranslation();
+  const [currentRound, setCurrentRound] = useState<RoundSession | null>(round);
+  const [modalActiveTab, setModalActiveTab] = useState<'COURSES' | 'INTEGRATED' | 'PHOTOS' | 'CERTIFICATE'>('COURSES');
+  const [courseFilterLetter, setCourseFilterLetter] = useState<string>('ALL');
+  const [selectedCourseKeys, setSelectedCourseKeys] = useState<string[]>([]);
+  const [isGeneratingImage, setIsGeneratingImage] = useState<boolean>(false);
+  const [previewImageResult, setPreviewImageResult] = useState<GeneratedScorecardResult | null>(null);
+  const [selectedPhotoForZoom, setSelectedPhotoForZoom] = useState<string | null>(null);
+  const [shareToast, setShareToast] = useState<string | null>(null);
+  const [pruneToast, setPruneToast] = useState<string | null>(null);
+  // [과업 3]: 상단 4대 기능 팝업 상태 (코스별 관리, 통합 요약, 현장 사진, 공인 완주증)
+  const [showCourseManagePopup, setShowCourseManagePopup] = useState<boolean>(false);
+  const [showIntegratedPopup, setShowIntegratedPopup] = useState<boolean>(false);
+  const [showPhotosPopup, setShowPhotosPopup] = useState<boolean>(false);
+  const [showCertPopup, setShowCertPopup] = useState<boolean>(false);
+
+  useEffect(() => {
+    setCurrentRound(round);
+    setSelectedCourseKeys([]);
+  }, [round]);
+
+  // Clean up Object URL on unmount to free memory
+  useEffect(() => {
+    return () => {
+      if (previewImageResult?.objectUrl) {
+        try {
+          URL.revokeObjectURL(previewImageResult.objectUrl);
+        } catch {}
+      }
+    };
+  }, [previewImageResult]);
+
+  // Resolve Course data
+  const activeCourse: Course = useMemo(() => {
+    if (!currentRound) {
+      return {
+        id: 'default',
+        name: '파크골프장',
+        region: '전국',
+        isVerified: true,
+        totalHoles: 18,
+        totalCourses: 2,
+        address: '',
+        holesMetadata: Array.from({ length: 72 }, (_, i) => ({
+          hole: i + 1,
+          par: 3,
+          distanceMeter: 0,
+        })),
+      };
+    }
+    const allCourses = courses || ParkOnStorage.getAllCourses();
+    const found = allCourses.find((c) => c.id === currentRound.courseId || c.name === currentRound.courseName);
+    if (found && found.holesMetadata && found.holesMetadata.length > 0) {
+      return found;
+    }
+    return {
+      id: currentRound.courseId || 'default',
+      name: currentRound.courseName || '파크골프장',
+      region: '전국',
+      isVerified: true,
+      totalHoles: currentRound.totalHoles || 18,
+      totalCourses: Math.max(1, Math.ceil((currentRound.totalHoles || 18) / 9)),
+      address: '',
+      holesMetadata: Array.from({ length: 72 }, (_, i) => ({
+        hole: i + 1,
+        par: 3,
+        distanceMeter: 0,
+      })),
+    };
+  }, [currentRound, courses]);
+
+  // Helper to extract base hole (1..72), round number (1, 2, ...), course letter, and hole-in-course (1..9)
+  const getHoleInfo = (hNum: number) => {
+    const num = Number(hNum);
+    const base = ((num - 1) % 1000) + 1;
+    const roundNum = Math.floor((num - 1) / 1000) + 1;
+    const cIdx = Math.floor((base - 1) / 9);
+    const cLetter = COURSE_LETTERS[cIdx] || 'A';
+    const hInCourse = ((base - 1) % 9) + 1;
+    return { num, base, round: roundNum, cLetter, hInCourse, cIdx };
+  };
+
+  // Derive all confirmed/scored holes
+  const confirmedHoles: number[] = useMemo(() => {
+    if (!currentRound) return [];
+    if (currentRound.confirmedHoles && currentRound.confirmedHoles.length > 0) {
+      return currentRound.confirmedHoles;
+    }
+    const holeSet = new Set<number>();
+    (currentRound.players || []).forEach((p) => {
+      Object.keys(p.scores || {}).forEach((k) => {
+        const hNum = Number(k);
+        if (hNum > 0 && p.scores[hNum] !== undefined && p.scores[hNum] > 0) {
+          holeSet.add(hNum);
+        }
+      });
+    });
+    if (holeSet.size > 0) {
+      return Array.from(holeSet).sort((a, b) => a - b);
+    }
+    if (currentRound.selectedHoleNumbers && currentRound.selectedHoleNumbers.length > 0) {
+      return currentRound.selectedHoleNumbers;
+    }
+    return Array.from({ length: currentRound.totalHoles || 18 }, (_, i) => i + 1);
+  }, [currentRound]);
+
+  // Course segments calculation (A코스, B코스...)
+  const courseSegments = useMemo(() => {
+    if (!currentRound || confirmedHoles.length === 0) return [];
+    const allHoleInfos = confirmedHoles.map(getHoleInfo);
+
+    const distinctSegments: Array<{ cLetter: string; round: number; cIdx: number }> = [];
+    allHoleInfos.forEach((info) => {
+      if (!distinctSegments.some((s) => s.cLetter === info.cLetter && s.round === info.round)) {
+        distinctSegments.push({ cLetter: info.cLetter, round: info.round, cIdx: info.cIdx });
+      }
+    });
+
+    const roundsPerLetter: Record<string, number> = {};
+    distinctSegments.forEach((s) => {
+      roundsPerLetter[s.cLetter] = (roundsPerLetter[s.cLetter] || 0) + 1;
+    });
+
+    return distinctSegments.map((seg) => {
+      const key = `${seg.cLetter}_${seg.round}`;
+      const roundOffset = (seg.round - 1) * 1000;
+      const courseStartHole = seg.cIdx * 9 + 1;
+      const fullHoles = [0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => roundOffset + courseStartHole + i);
+      const confirmedInSeg = fullHoles.filter((h) => confirmedHoles.includes(h));
+      const playedCount = confirmedInSeg.length;
+      const isCompleted = playedCount >= 9;
+
+      const segmentPar = confirmedInSeg.reduce((sum, h) => {
+        const base = ((h - 1) % 1000) + 1;
+        const meta = activeCourse.holesMetadata?.find((m) => Number(m.hole) === base);
+        const isVerified = Boolean(meta?.isVerified === true || meta?.contributedBy);
+        const holePar = isVerified ? (Number(meta?.par) || 3) : 3;
+        return sum + holePar;
+      }, 0);
+
+      const title = roundsPerLetter[seg.cLetter] > 1 || seg.round > 1
+        ? `${seg.cLetter}코스 (${seg.round}회차)`
+        : `${seg.cLetter}코스`;
+
+      const playerSummaries = (currentRound.players || []).map((p) => {
+        const strokes = confirmedInSeg.reduce((sum, h) => sum + (p.scores?.[h] || 0), 0);
+        const diff = strokes - segmentPar;
+        const avgHole = playedCount > 0 ? (strokes / playedCount).toFixed(2) : '0.00';
+
+        const holeDetails = fullHoles.map((hNum, i) => {
+          const base = ((hNum - 1) % 1000) + 1;
+          const meta = activeCourse.holesMetadata?.find((m) => Number(m.hole) === base);
+          const isVerified = Boolean(meta?.isVerified === true || meta?.contributedBy);
+          const par = isVerified ? (Number(meta?.par) || 3) : 3;
+          const isConfirmed = confirmedHoles.includes(hNum);
+          const s = isConfirmed ? p.scores?.[hNum] : undefined;
+          const d = s !== undefined ? s - par : undefined;
+          const ob = p.obCount?.[hNum] || 0;
+          return {
+            hNum,
+            baseHole: base,
+            holeInCourse: i + 1,
+            par,
+            isConfirmed,
+            strokes: s,
+            diff: d,
+            ob,
+          };
+        });
+
+        return {
+          player: p,
+          strokes,
+          diff,
+          avgHole,
+          playedCount,
+          holeDetails,
+        };
+      }).sort((a, b) => a.strokes - b.strokes);
+
+      return {
+        key,
+        cLetter: seg.cLetter,
+        round: seg.round,
+        title,
+        fullHoles,
+        confirmedInSeg,
+        playedCount,
+        isCompleted,
+        segmentPar,
+        playerSummaries,
+      };
+    });
+  }, [currentRound, confirmedHoles, activeCourse]);
+
+  const allSegmentKeys = useMemo(() => courseSegments.map((s) => s.key), [courseSegments]);
+
+  // Active filtered segments based on user course selection
+  const activeSegments = useMemo(() => {
+    if (selectedCourseKeys.length === 0) return courseSegments;
+    return courseSegments.filter((s) => selectedCourseKeys.includes(s.key));
+  }, [courseSegments, selectedCourseKeys]);
+
+  const toggleCourseSelection = (key: string) => {
+    setSelectedCourseKeys((prev) => {
+      const current = prev.length > 0 ? prev : allSegmentKeys;
+      if (current.includes(key)) {
+        if (current.length === 1) return current; // Keep at least one course
+        return current.filter((k) => k !== key);
+      } else {
+        return [...current, key];
+      }
+    });
+  };
+
+  const activeConfirmedHoles = useMemo(() => {
+    return activeSegments.flatMap((s) => s.confirmedInSeg);
+  }, [activeSegments]);
+
+  const activeTotalPar = useMemo(() => {
+    return activeSegments.reduce((sum, s) => sum + s.segmentPar, 0);
+  }, [activeSegments]);
+
+  const isFiltered = activeSegments.length < courseSegments.length;
+
+  // Integrated 4-Player Leaderboard recalculated dynamically for active segments
+  const integratedSummary = useMemo(() => {
+    if (!currentRound) return [];
+
+    return (currentRound.players || []).map((p, originalIdx) => {
+      const scoredHoles = activeConfirmedHoles.filter((h) => (p.scores?.[h] || 0) > 0);
+      const strokes = scoredHoles.reduce((sum, h) => sum + (p.scores?.[h] || 0), 0);
+      const diff = strokes - activeTotalPar;
+      const scoredCount = scoredHoles.length;
+      const avgPerHole = scoredCount > 0 ? (strokes / scoredCount).toFixed(2) : '0.00';
+      const converted9Hole = scoredCount > 0 ? ((strokes / scoredCount) * 9).toFixed(1) : '0.0';
+      const converted18Hole = scoredCount > 0 ? ((strokes / scoredCount) * 18).toFixed(1) : '0.0';
+      const totalOB = activeConfirmedHoles.reduce<number>((acc, h) => acc + (p.obCount?.[h] || 0), 0);
+
+      return {
+        player: p,
+        originalIdx,
+        strokes,
+        diff,
+        scoredCount,
+        avgPerHole,
+        converted9Hole,
+        converted18Hole,
+        totalOB,
+      };
+    }).sort((a, b) => a.strokes - b.strokes);
+  }, [currentRound, activeConfirmedHoles, activeTotalPar]);
+
+  // Pruning function: Permanently exclude unselected courses and keep only chosen ones
+  const handlePruneUnselected = () => {
+    if (!currentRound) return;
+    const selectedNames = activeSegments.map((s) => s.title).join(', ');
+    const confirmMsg = isJapanese
+      ? `選択した【${selectedNames}】のみを残し、除外されたコースのスコア記録を永久削除しますか？`
+      : `선택하신 [${selectedNames}] 기록(${activeConfirmedHoles.length}홀)만 남기고, 나머지 제외된 코스 기록을 영구 삭제하시겠습니까?\n(삭제 후 다시 복구할 수 없습니다.)`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    const updatedPlayers = currentRound.players.map((p) => {
+      const newScores: Record<number, number> = {};
+      const newOb: Record<number, number> = {};
+      let totalStrokes = 0;
+
+      activeConfirmedHoles.forEach((h) => {
+        const s = p.scores?.[h];
+        if (s !== undefined && s > 0) {
+          newScores[h] = s;
+          totalStrokes += s;
+        }
+        const o = p.obCount?.[h];
+        if (o !== undefined && o > 0) {
+          newOb[h] = o;
+        }
+      });
+
+      return {
+        ...p,
+        scores: newScores,
+        obCount: newOb,
+        totalStrokes,
+        totalParDiff: totalStrokes - activeTotalPar,
+      };
+    });
+
+    const activeLetters = Array.from(new Set(activeSegments.map((s) => s.cLetter)));
+    const updatedRound: RoundSession = {
+      ...currentRound,
+      players: updatedPlayers,
+      totalHoles: activeConfirmedHoles.length,
+      confirmedHoles: activeConfirmedHoles,
+      selectedCourseLetters: activeLetters,
+    };
+
+    setCurrentRound(updatedRound);
+    ParkOnStorage.saveCompletedRound(updatedRound);
+    onUpdate?.(updatedRound);
+    setSelectedCourseKeys([]);
+    setPruneToast(
+      isJapanese
+        ? `【${selectedNames}】のみを反映して保存しました！`
+        : `선택하신 [${selectedNames}] ${activeConfirmedHoles.length}홀만 깔끔하게 저장되었습니다!`
+    );
+    setTimeout(() => setPruneToast(null), 3500);
+  };
+
+  // ⛳ [대표님 지시] 특정 코스 1개만 단독 1클릭 영구 삭제 (완주한 나머지 코스 기록은 안전 보존)
+  const handleDeleteSingleCourse = (targetSegKey: string) => {
+    if (!currentRound) return;
+    if (courseSegments.length <= 1) {
+      alert(
+        isJapanese
+          ? '最後の1コースは個別削除できません。下部の「全試合削除」をご利用ください。'
+          : '남은 1개 코스는 개별 삭제할 수 없습니다. 이 경기 전체를 지우시려면 하단의 [전체 경기 삭제] 버튼을 이용해 주세요.'
+      );
+      return;
+    }
+
+    const targetSeg = courseSegments.find((s) => s.key === targetSegKey);
+    if (!targetSeg) return;
+
+    const remainingSegs = courseSegments.filter((s) => s.key !== targetSegKey);
+    const remainingNames = remainingSegs.map((s) => s.title).join(', ');
+    const confirmMsg = isJapanese
+      ? `【${targetSeg.title}】(${targetSeg.confirmedInSeg.length}ホール) の記録をこの試合から完全に削除しますか？\n\n※ 完走した【${remainingNames}】の記録は安全に保存されます。`
+      : `[${targetSeg.title}] (${targetSeg.confirmedInSeg.length}홀) 기록을 이 경기에서 완전히 삭제하시겠습니까?\n\n※ 완주하신 [${remainingNames}] 기록은 안전하게 보존됩니다.`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    const remainingConfirmedHoles = remainingSegs.flatMap((s) => s.confirmedInSeg);
+    const remainingTotalPar = remainingSegs.reduce((sum, s) => sum + s.segmentPar, 0);
+
+    const updatedPlayers = currentRound.players.map((p) => {
+      const newScores: Record<number, number> = {};
+      const newOb: Record<number, number> = {};
+      let totalStrokes = 0;
+
+      remainingConfirmedHoles.forEach((h) => {
+        const s = p.scores?.[h];
+        if (s !== undefined && s > 0) {
+          newScores[h] = s;
+          totalStrokes += s;
+        }
+        const o = p.obCount?.[h];
+        if (o !== undefined && o > 0) {
+          newOb[h] = o;
+        }
+      });
+
+      return {
+        ...p,
+        scores: newScores,
+        obCount: newOb,
+        totalStrokes,
+        totalParDiff: totalStrokes - remainingTotalPar,
+      };
+    });
+
+    const remainingLetters = Array.from(new Set(remainingSegs.map((s) => s.cLetter)));
+    const updatedRound: RoundSession = {
+      ...currentRound,
+      players: updatedPlayers,
+      totalHoles: remainingConfirmedHoles.length,
+      confirmedHoles: remainingConfirmedHoles,
+      selectedCourseLetters: remainingLetters,
+    };
+
+    setCurrentRound(updatedRound);
+    ParkOnStorage.saveCompletedRound(updatedRound);
+    onUpdate?.(updatedRound);
+    setSelectedCourseKeys((prev) => prev.filter((k) => k !== targetSegKey));
+    setPruneToast(
+      isJapanese
+        ? `【${targetSeg.title}】を削除しました。残りの【${remainingNames}】(${remainingConfirmedHoles.length}ホール)で保存されました！`
+        : `[${targetSeg.title}]가 삭제되었습니다. 남은 [${remainingNames}] (${remainingConfirmedHoles.length}홀)로 안전하게 저장되었습니다!`
+    );
+    setTimeout(() => setPruneToast(null), 3500);
+  };
+
+  // 📸 현장 사진 추가 핸들러 (스마트 1200px 캔버스 압축으로 브라우저 메모리 폭주 및 용량 초과 원천 방지)
+  const handleAddPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentRound) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const srcUrl = event.target?.result as string;
+      if (!srcUrl) return;
+
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 1200;
+        let w = img.width;
+        let h = img.height;
+        if (w > MAX_DIM || h > MAX_DIM) {
+          if (w > h) {
+            h = Math.round((h * MAX_DIM) / w);
+            w = MAX_DIM;
+          } else {
+            w = Math.round((w * MAX_DIM) / h);
+            h = MAX_DIM;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, w, h);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          const updatedPhotos = [...(currentRound.photos || []), compressedDataUrl];
+          const updatedRound: RoundSession = {
+            ...currentRound,
+            photos: updatedPhotos,
+          };
+          setCurrentRound(updatedRound);
+          ParkOnStorage.saveCompletedRound(updatedRound);
+          setShareToast(isJapanese ? '📸 現地写真を追加しました！' : '📸 현장 기념사진이 추가되었습니다!');
+          setTimeout(() => setShareToast(null), 3000);
+        }
+      };
+      img.src = srcUrl;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  // 📥 [대표님 1순위 핵심 지시]: 스코어카드 이미지 파일 초고속 다운로드 (폰 갤러리에 즉시 저장)
+  const handleDownloadScorecardImage = async () => {
+    if (!currentRound) return;
+    setIsGeneratingImage(true);
+    try {
+      const activeLetters = activeSegments.map((s) => s.cLetter);
+      const res = await generateScorecardImage({
+        round: currentRound,
+        course: activeCourse,
+        selectedCourseLetters: activeLetters,
+        isJapanese,
+      });
+
+      if (!res) throw new Error('Failed to generate image');
+
+      // 이전 생성된 메모리 Blob URL 안전 해제
+      if (previewImageResult?.objectUrl) {
+        try {
+          URL.revokeObjectURL(previewImageResult.objectUrl);
+        } catch {}
+      }
+
+      // 0.05초 만에 직접 파일 다운로드 트리거
+      const link = document.createElement('a');
+      link.download = res.fileName;
+      link.href = res.objectUrl || res.dataUrl;
+      link.click();
+
+      setPreviewImageResult(res);
+      setShareToast(
+        isJapanese
+          ? '✅ スコアカード画像が端末に保存されました！'
+          : '✅ 스코어카드가 갤러리에 저장되었습니다! 카톡이나 라인 대화방에서 사진으로 보내보세요.'
+      );
+    } catch (e) {
+      console.error('Download error:', e);
+      alert(isJapanese ? '画像生成に失敗しました。' : '스코어카드 이미지 생성에 실패했습니다.');
+    } finally {
+      setIsGeneratingImage(false);
+      setTimeout(() => setShareToast(null), 4000);
+    }
+  };
+
+  if (!isOpen || !currentRound) return null;
+
+  // Date and exact immutable timestamps
+  const endDObj = currentRound.completedAt ? new Date(currentRound.completedAt) : currentRound.startedAt ? new Date(currentRound.startedAt) : new Date();
+  const startDObj = currentRound.startedAt ? new Date(currentRound.startedAt) : endDObj;
+  const dateFormatted = `${startDObj.getFullYear()}.${String(startDObj.getMonth() + 1).padStart(2, '0')}.${String(startDObj.getDate()).padStart(2, '0')} (${['일', '월', '화', '수', '목', '금', '토'][startDObj.getDay()]})`;
+
+  const startTimeStr = startDObj.toLocaleTimeString(isJapanese ? 'ja-JP' : 'ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const endTimeStr = endDObj.toLocaleTimeString(isJapanese ? 'ja-JP' : 'ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const durationMin = currentRound.durationMinutes || Math.max(1, Math.round((endDObj.getTime() - startDObj.getTime()) / 60000));
+  const durationText = durationMin >= 60 ? `${Math.floor(durationMin / 60)}시간 ${durationMin % 60}분` : `${durationMin}분`;
+
+  const isOfficial = currentRound.isOfficial !== false && !currentRound.isVirtual;
+  const is18Holes = activeConfirmedHoles.length >= 18;
+  const holesCount = activeConfirmedHoles.length || currentRound.totalHoles || 9;
+  const isRealisticTime = durationMin >= (holesCount <= 9 ? 25 : 50);
+  const isFieldVerified = currentRound.isFieldVerified ?? (isOfficial && isRealisticTime && !currentRound.isVirtual);
+  const isFastTest = !isRealisticTime && durationMin < 15;
+
+  // Helper to resolve photo classification metadata (Hole-in-One / Eagle / Regular)
+  const getPhotoMetaForIndex = (idx: number) => {
+    const explicitMeta = currentRound.photoMetadata?.[idx];
+    const dStr = `${startDObj.getFullYear()}.${String(startDObj.getMonth() + 1).padStart(2, '0')}.${String(startDObj.getDate()).padStart(2, '0')}`;
+    const shortCourse = (currentRound.courseName || '해평').replace('파크골프장', '').replace('파크골프', '').trim();
+
+    if (explicitMeta && explicitMeta.photoType) {
+      const hLbl = (explicitMeta.holeLabel || 'A-1홀').replace('번홀', '홀');
+      const ach = explicitMeta.achieverName || currentRound.players?.[0]?.name || '김대희';
+      return {
+        photoType: explicitMeta.photoType,
+        achieverName: ach,
+        holeLabel: hLbl,
+        dateStr: explicitMeta.dateStr || dStr,
+        shortCourse,
+        caption:
+          explicitMeta.photoType === 'hole_in_one'
+            ? `${explicitMeta.dateStr || dStr} ${shortCourse} ${hLbl} ${ach} 님 홀인원`
+            : explicitMeta.photoType === 'eagle'
+            ? `${explicitMeta.dateStr || dStr} ${shortCourse} ${hLbl} ${ach} 님 이글 달성`
+            : `${explicitMeta.dateStr || dStr} ${shortCourse} ${hLbl} 라운드 추억`,
+      };
+    }
+
+    // Fallback: auto-detect if any player in currentRound has 1 stroke (Hole-in-One)
+    for (const pl of currentRound.players || []) {
+      for (const [hKey, strokeVal] of Object.entries(pl.scores || {})) {
+        if (Number(strokeVal) === 1) {
+          const baseNum = ((Number(hKey) - 1) % 1000) + 1;
+          const cIdx = Math.floor((baseNum - 1) / 9);
+          const letter = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][cIdx] || 'A';
+          const hInCourse = ((baseNum - 1) % 9) + 1;
+          const hLbl = `${letter}-${hInCourse}홀`;
+          const ach = pl.name || '김대희';
+          if (idx === 0) {
+            return {
+              photoType: 'hole_in_one' as const,
+              achieverName: ach,
+              holeLabel: hLbl,
+              dateStr: dStr,
+              shortCourse,
+              caption: `${dStr} ${shortCourse} ${hLbl} ${ach} 님 홀인원`,
+            };
+          }
+        }
+      }
+    }
+
+    return {
+      photoType: 'regular' as const,
+      achieverName: currentRound.players?.[0]?.name || '김대희',
+      holeLabel: 'A-1홀',
+      dateStr: dStr,
+      shortCourse,
+      caption: `${dStr} ${shortCourse} 라운드 추억`,
+    };
+  };
+
+  const handleDelete = () => {
+    if (!onDelete || !currentRound) return;
+    const msg = isJapanese
+      ? 'このラウンド記録を年代記から完全に削除しますか？ 削除すると累積完走回数や統計からも差し引かれます。'
+      : '해당 라운드 기록을 연대기에서 완전히 삭제하시겠습니까? 삭제 시 누적 완주 횟수 및 통계에서도 차감됩니다.';
+    if (window.confirm(msg)) {
+      onDelete(currentRound.id);
+      onClose();
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-xl rounded-3xl p-3.5 sm:p-5 space-y-3 shadow-2xl border border-stone-200 max-h-[94vh] flex flex-col animate-scaleUp"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Toast Notifier */}
+        {(shareToast || pruneToast) && (
+          <div className="p-3 bg-emerald-800 text-white rounded-2xl shadow-lg text-center text-xs font-black flex items-center justify-center gap-1.5 animate-in fade-in shrink-0">
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <span>{shareToast || pruneToast}</span>
+          </div>
+        )}
+
+        {/* Modal Header */}
+        <div className="flex items-center justify-between border-b pb-2.5 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-700 text-white flex items-center justify-center text-xl font-black shadow-xs shrink-0">
+              ⛳
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h3 className="font-black text-stone-900 text-base leading-tight truncate">
+                  {currentRound.courseName}
+                </h3>
+                {isFieldVerified ? (
+                  <span className="text-[9.5px] bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 border border-amber-300 shadow-xs">
+                    <span>🏅</span>
+                    <span>{isJapanese ? 'コース公式完走 認証' : '정규 필드 완주 인증'}</span>
+                  </span>
+                ) : isFastTest ? (
+                  <span className="text-[9px] bg-stone-200 text-stone-700 font-bold px-1.5 py-0.5 rounded-full shrink-0 flex items-center gap-0.5">
+                    <span>🧪</span>
+                    <span>{isJapanese ? '模擬 / 入力テスト' : '모의 / 빠른 입력'}</span>
+                  </span>
+                ) : (
+                  <span className="text-[9px] bg-stone-100 text-stone-600 font-medium px-1.5 py-0.5 rounded-full shrink-0">
+                    {isJapanese ? '一般記録' : '일반 기록'}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-stone-500 font-medium truncate flex items-center gap-1 mt-0.5">
+                <Clock className="w-3 h-3 text-stone-400" />
+                <span>{dateFormatted} · {startTimeStr} ~ {endTimeStr} ({durationText} 소요)</span>
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 flex items-center justify-center font-bold text-base transition shrink-0 cursor-pointer ml-2 active:scale-95"
+            title={isJapanese ? '閉じる' : '닫기'}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* [과업 3]: 상단 4개 미니 탭 바 팝업화 ([코스별 관리], [통합], [현장 사진], [완주증]) */}
+        <div className="grid grid-cols-4 gap-1 p-1 bg-stone-100 rounded-2xl shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowCourseManagePopup(true)}
+            className="py-2 px-0.5 rounded-xl font-black text-[11px] sm:text-xs transition flex items-center justify-center gap-0.5 bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs cursor-pointer active:scale-95"
+            title="코스 선택/체크 해제/개별 휴지통 삭제"
+          >
+            <span>⚙️</span>
+            <span>{isJapanese ? 'コース管理' : '코스별 관리'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowIntegratedPopup(true)}
+            className="py-2 px-0.5 rounded-xl font-black text-[11px] sm:text-xs transition flex items-center justify-center gap-0.5 bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs cursor-pointer active:scale-95"
+            title="코스 통합 성적 요약 모달"
+          >
+            <span>📊</span>
+            <span>{isJapanese ? '統合' : '통합'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowPhotosPopup(true)}
+            className="py-2 px-0.5 rounded-xl font-black text-[11px] sm:text-xs transition flex items-center justify-center gap-0.5 bg-white hover:bg-stone-50 text-stone-800 border border-stone-300 shadow-2xs cursor-pointer active:scale-95"
+            title="현장 사진 갤러리 팝업"
+          >
+            <span>📸</span>
+            <span>{isJapanese ? '写真' : '현장 사진'}</span>
+            {currentRound.photos && currentRound.photos.length > 0 && (
+              <span className="text-[9px] px-1 py-0.2 rounded-full bg-amber-400 text-stone-950 font-black">
+                {currentRound.photos.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowCertPopup(true)}
+            className="py-2 px-0.5 rounded-xl font-black text-[11px] sm:text-xs transition flex items-center justify-center gap-0.5 bg-white hover:bg-yellow-50 text-amber-900 border border-yellow-400 shadow-2xs cursor-pointer active:scale-95"
+            title="완주 디지털 뱃지 모달"
+          >
+            <span>📜</span>
+            <span>{isJapanese ? '認定書' : '완주증'}</span>
+          </button>
+        </div>
+
+        {/* Modal Scrollable Body: 홀별 타수 스코어보드 테이블(전체 점수표) 메인 즉시 표출 */}
+        <div className="overflow-y-auto flex-1 pr-0.5 space-y-3" data-testid="chronicle-scoreboard-main-body">
+          {/* TAB 1: COURSES (홀별 타수 스코어보드 테이블 메인 표출) */}
+          {modalActiveTab === 'COURSES' && (
+            <div className="space-y-3">
+              {/* [대표님 지시] 외부 스코어보드 사진 / 촬영 스코어보드가 있을 경우 상세보기 최상단에 큼직하고 선명하게 즉시 표출 */}
+              {(currentRound.paperScorecardPhoto || (currentRound.photos && currentRound.photos.length > 0)) && (
+                <div
+                  data-testid="chronicle-original-scoreboard-photo-banner"
+                  className="bg-stone-950 rounded-2xl p-2.5 border-2 border-amber-400 shadow-md space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-2 px-1">
+                    <span className="text-xs font-black text-amber-300 flex items-center gap-1 whitespace-nowrap truncate">
+                      <span>📸</span>
+                      <span>등록된 스코어보드 원본 (터치 확대)</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowPhotosPopup(true)}
+                      className="text-[10px] font-black bg-white/15 hover:bg-white/25 text-white px-2 py-0.5 rounded-lg cursor-pointer transition whitespace-nowrap shrink-0"
+                    >
+                      사진 보기 ({currentRound.photos?.length || 1}장) ❯
+                    </button>
+                  </div>
+                  <div
+                    onClick={() => setSelectedPhotoForZoom(currentRound.paperScorecardPhoto || currentRound.photos![0])}
+                    className="relative w-full rounded-xl overflow-hidden bg-black cursor-pointer group"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={currentRound.paperScorecardPhoto || currentRound.photos![0]}
+                      alt="등록된 스코어보드 원본"
+                      className="w-full max-h-64 object-contain mx-auto block group-hover:scale-[1.01] transition"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 📋 코스별 공식 홀별 타수 스코어보드 테이블 (불필요한 상단/하단 안내 바 제거 후 메인 즉시 표출) */}
+              {activeSegments.map((seg) => (
+                <div key={seg.key} className="bg-stone-50 rounded-2xl p-3 border border-stone-200 shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-stone-200">
+                    <span className="text-xs font-black text-emerald-900 flex items-center gap-1">
+                      <span>⛳</span>
+                      <span>{seg.title} (기준 Par {seg.segmentPar})</span>
+                    </span>
+                    <span className="text-[11px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-lg">
+                      {seg.playedCount}{isJapanese ? 'ホール完走' : '홀 완주'}
+                    </span>
+                  </div>
+
+                  {/* 4인 스코어보드 테이블 */}
+                  <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-2xs" data-testid="chronicle-hole-scoreboard-table">
+                    <table className="w-full text-center text-xs">
+                      <thead>
+                        <tr className="bg-stone-100 text-stone-700 font-bold border-b border-stone-200 text-[11px]">
+                          <th className="py-2 px-2 text-left min-w-[70px] whitespace-nowrap">{isJapanese ? '選手' : '선수'}</th>
+                          {seg.fullHoles.map((hNum) => {
+                            const base = ((hNum - 1) % 1000) + 1;
+                            const meta = activeCourse.holesMetadata?.find((m) => Number(m.hole) === base);
+                            const par = meta?.par || 3;
+                            return (
+                              <th key={hNum} className="py-2 px-1 font-black text-stone-800 min-w-[34px]">
+                                <div>{((base - 1) % 9) + 1}H</div>
+                                <div className="text-[9px] font-normal text-stone-400">P{par}</div>
+                              </th>
+                            );
+                          })}
+                          <th className="py-2 px-2 bg-emerald-100 text-emerald-950 font-black min-w-[44px]">소계</th>
+                          <th className="py-2 px-1.5 bg-rose-50 text-rose-800 font-black min-w-[34px]">OB</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100 font-medium">
+                        {seg.playerSummaries.map((ps, pIdx) => {
+                          const medal = pIdx === 0 ? '🥇' : pIdx === 1 ? '🥈' : pIdx === 2 ? '🥉' : '';
+                          const totalOb = seg.fullHoles.reduce((sum, hNum) => sum + (ps.player.obCount?.[hNum] || 0), 0);
+                          return (
+                            <tr key={ps.player.id} className="hover:bg-stone-50/80">
+                              <td className="py-2.5 px-2 text-left font-black text-stone-900 text-xs">
+                                <div className="flex items-center gap-1">
+                                  {medal && <span className="shrink-0">{medal}</span>}
+                                  <span className="truncate max-w-[65px]">{ps.player.name}</span>
+                                  {ps.player.isLeader && (
+                                    <span className="text-[8px] bg-amber-100 text-amber-900 px-1 rounded font-bold shrink-0">조장</span>
+                                  )}
+                                  {ps.player.isSelf && (
+                                    <span className="text-[8px] bg-emerald-100 text-emerald-800 px-1 rounded font-bold shrink-0">본인</span>
+                                  )}
+                                </div>
+                              </td>
+                              {seg.fullHoles.map((hNum) => {
+                                const base = ((hNum - 1) % 1000) + 1;
+                                const meta = activeCourse.holesMetadata?.find((m) => Number(m.hole) === base);
+                                const par = Number(meta?.par || 3);
+                                const s = ps.player.scores?.[hNum];
+                                const ob = ps.player.obCount?.[hNum] || 0;
+                                const isScored = s !== undefined && s > 0;
+                                return (
+                                  <td key={hNum} className="py-2 px-1 text-center">
+                                    <div className="flex flex-col items-center justify-center">
+                                      <HoleScoreBadge
+                                        score={s}
+                                        par={par}
+                                        isConfirmed={isScored}
+                                        size="sm"
+                                      />
+                                      {ob > 0 && (
+                                        <span className="text-[7.5px] text-rose-600 font-black leading-none mt-0.5">
+                                          OB{ob}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                              <td className="py-2 px-2 bg-emerald-50 text-emerald-950 font-black text-xs">
+                                <div>{ps.strokes}타</div>
+                                <div className="text-[9px] text-stone-500 font-normal">
+                                  ({ps.diff === 0 ? 'E' : ps.diff > 0 ? `+${ps.diff}` : `${ps.diff}`})
+                                </div>
+                              </td>
+                              <td className="py-2 px-1.5 bg-rose-50/40 text-rose-700 font-black text-[11px]">
+                                {totalOb > 0 ? totalOb : '-'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+
+              {/* 🎯 골프 공인 언더파 기호 안내 범례 */}
+              <ScoreBadgeLegend />
+            </div>
+          )}
+
+          {modalActiveTab === 'INTEGRATED' && (
+            <div className="space-y-3">
+              <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-2.5 text-xs text-amber-950 font-bold flex items-center justify-between">
+                <span>🏆 {activeSegments.length}개 코스 통합 성적 (총 {activeConfirmedHoles.length}홀 · 기준 Par {activeTotalPar})</span>
+                <span className="text-[10px] text-amber-700">1홀 평균 타수 기준 정렬</span>
+              </div>
+
+              <div className="space-y-2">
+                {integratedSummary.map((item, idx) => {
+                  const medal = idx === 0 ? '🥇 1위' : idx === 1 ? '🥈 2위' : idx === 2 ? '🥉 3위' : `  ${idx + 1}위`;
+                  return (
+                    <div
+                      key={item.player.id}
+                      className={`p-3 rounded-2xl border space-y-1.5 ${
+                        idx === 0
+                          ? 'bg-amber-50/50 border-amber-300'
+                          : 'bg-stone-50 border-stone-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-stone-900 flex items-center gap-1.5">
+                          <span className="text-amber-800 font-black">{medal}</span>
+                          <span>{item.player.name}</span>
+                          {item.player.isSelf && (
+                            <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1 rounded font-bold">
+                              본인
+                            </span>
+                          )}
+                        </span>
+                        <div className="text-right">
+                          <span className="text-sm font-black text-stone-900">{item.strokes}타</span>
+                          <span className="text-[11px] text-stone-500 ml-1">
+                            ({item.diff === 0 ? 'E' : item.diff > 0 ? `+${item.diff}` : `${item.diff}`})
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-1 pt-1 border-t border-stone-200/60 text-center text-[10px]">
+                        <div className="p-1 bg-white rounded-lg border border-stone-200/50">
+                          <span className="text-stone-400 block">1홀 평균</span>
+                          <span className="font-black text-stone-800">{item.avgPerHole}타</span>
+                        </div>
+                        <div className="p-1 bg-white rounded-lg border border-stone-200/50">
+                          <span className="text-stone-400 block">9홀 환산</span>
+                          <span className="font-black text-stone-800">{item.converted9Hole}타</span>
+                        </div>
+                        <div className="p-1 bg-white rounded-lg border border-stone-200/50">
+                          <span className="text-stone-400 block">18홀 환산</span>
+                          <span className="font-black text-emerald-800">{item.converted18Hole}타</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: DEDICATED PHOTO GALLERY (방안 A: 전용 현장 사진 탭) */}
+          {modalActiveTab === 'PHOTOS' && (
+            <div className="space-y-3 animate-in fade-in">
+              <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-amber-600" />
+                    <span>
+                      {isJapanese ? '📸 ラウンド記念写真 ギャラリー' : '📸 함께 찍은 현장 기념사진 갤러리'}
+                      {currentRound.photos && currentRound.photos.length > 0 ? ` (${currentRound.photos.length}장)` : ''}
+                    </span>
+                  </span>
+                  <label className="text-xs font-black text-amber-950 bg-amber-300 hover:bg-amber-400 px-2.5 py-1 rounded-xl cursor-pointer transition flex items-center gap-1 shadow-xs active:scale-95">
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{isJapanese ? '写真追加' : '사진 추가'}</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleAddPhoto} />
+                  </label>
+                </div>
+
+                <p className="text-[10.5px] text-amber-800/90 font-medium leading-relaxed">
+                  💡 썸네일을 터치하시면 크게 확대하여 볼 수 있습니다.<br />
+                  <span className="text-emerald-700 font-black">★ 스코어카드 저장 시 1번 사진(#1)이 공식 카드 상단에 황금 액자로 자동 합성됩니다! (사진 미등록 시 공식 마스코트 파키(PARKY) 액자 자동 합성)</span>
+                </p>
+              </div>
+
+              {currentRound.photos && currentRound.photos.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {currentRound.photos.map((imgUrl, i) => {
+                    const pMeta = getPhotoMetaForIndex(i);
+                    const isHio = pMeta.photoType === 'hole_in_one';
+                    const isEagle = pMeta.photoType === 'eagle';
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => setSelectedPhotoForZoom(imgUrl)}
+                        className={`aspect-square rounded-2xl overflow-hidden relative cursor-pointer shadow-sm hover:scale-[1.02] transition group bg-stone-900 ${
+                          isHio
+                            ? 'border-3 border-amber-400 ring-2 ring-yellow-300 shadow-amber-300/40'
+                            : isEagle
+                            ? 'border-2 border-sky-400 ring-1 ring-sky-200'
+                            : 'border border-stone-300'
+                        }`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imgUrl} alt={`기념사진 ${i + 1}`} className="w-full h-full object-cover" />
+                        {isHio ? (
+                          <div
+                            data-testid="photo-badge-hole-in-one"
+                            className="absolute top-1.5 left-1.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md border border-yellow-100"
+                          >
+                            🏆 공식 홀인원 기념
+                          </div>
+                        ) : isEagle ? (
+                          <div
+                            data-testid="photo-badge-eagle"
+                            className="absolute top-1.5 left-1.5 bg-sky-500 text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md border border-sky-200"
+                          >
+                            🦅 이글 달성 기념
+                          </div>
+                        ) : (
+                          <div
+                            data-testid="photo-badge-regular"
+                            className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg"
+                          >
+                            📸 라운드 추억
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-8 text-center bg-stone-50 border-2 border-dashed border-stone-300 rounded-3xl space-y-3">
+                  <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-2xl mx-auto shadow-2xs">
+                    📷
+                  </div>
+                  <div>
+                    <h4 className="font-black text-stone-800 text-sm">
+                      {isJapanese ? 'まだ登録された写真がありません' : '등록된 현장 기념사진이 없습니다'}
+                    </h4>
+                    <p className="text-[11px] text-stone-500 mt-1">
+                      {isJapanese
+                        ? '同伴者と一緒に撮った記念写真を登録すると、公式スコアカードに自動合成されます！ (未登録時は公式マスコットのパキが自動合成されます)'
+                        : '동반자와 함께 찍은 현장 사진을 올리시면 공식 스코어카드에 멋진 액자로 자동 합성됩니다. (사진이 없을 시 공식 마스코트 파키(PARKY)가 대신 예쁘게 합성됩니다)'}
+                    </p>
+                  </div>
+                  <label className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black cursor-pointer shadow-md active:scale-95 transition">
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{isJapanese ? '今すぐ写真を追加する' : '지금 첫 번째 현장 사진 등록하기'}</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleAddPhoto} />
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 4: DIGITAL COMPLETION CERTIFICATE (공인 완주 인증서) */}
+          {modalActiveTab === 'CERTIFICATE' && (
+            <div className="relative rounded-3xl p-5 bg-gradient-to-b from-amber-50/90 via-white to-amber-50/80 border-4 border-double border-amber-400 shadow-md text-stone-800 space-y-4 animate-in fade-in">
+              {/* Certificate Header Emblem */}
+              <div className="text-center space-y-1 pb-3 border-b-2 border-amber-300/80">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100/90 text-amber-950 rounded-full text-[10.5px] font-black tracking-wider border border-amber-300 shadow-2xs">
+                  <span>🏆</span>
+                  <span>{isJapanese ? '大韓パークゴルフ協会 規定準拠 · 公式公認' : '(사)대한파크골프협회 경기 규정 준수 · 정규 필드'}</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black text-amber-950 tracking-tight pt-1">
+                  {isJapanese ? '公式フィールド完走認定書' : '공식 필드 완주 인증서'}
+                </h3>
+                <p className="text-[10px] text-amber-800/80 font-bold tracking-widest font-mono">
+                  CERTIFICATE OF COMPLETION · NO. PKG-{startDObj.getFullYear()}-{(currentRound.id || 'OFFICIAL').slice(-6).toUpperCase()}
+                </p>
+              </div>
+
+              {/* Golfer & Course Info Box */}
+              <div className="bg-white/95 rounded-2xl p-4 border border-amber-200/90 space-y-3 shadow-2xs">
+                <div className="flex items-center justify-between pb-2.5 border-b border-amber-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-11 h-11 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-black text-xl shadow-xs shrink-0">
+                      🏅
+                    </div>
+                    <div>
+                      <div className="text-[10.5px] text-stone-400 font-bold">{isJapanese ? '授与対象 (ゴルファー)' : '수여 대상 (골퍼)'}</div>
+                      <div className="text-base font-black text-stone-900 flex items-center gap-1.5 flex-wrap">
+                        {(() => {
+                          const selfPlayer = currentRound.players?.find((p) => p.isSelf) || currentRound.players?.[0];
+                          const pName = selfPlayer?.name || (isJapanese ? 'プレイヤー' : '골퍼');
+                          const comp9H = getUserCompleted9Holes(pName);
+                          const pTier = calculateTier(comp9H);
+                          return (
+                            <>
+                              <span>{pName}</span>
+                              <DiamondTierBadge
+                                tier={pTier}
+                                completedCount={comp9H}
+                                size="xs"
+                                showLabel={true}
+                                showCount={true}
+                              />
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10.5px] text-stone-400 font-bold block">{isJapanese ? '最終完走記録' : '최종 완주 타수'}</span>
+                    <span className="text-xl font-black text-emerald-700">
+                      {(currentRound.players?.find((p) => p.isSelf) || currentRound.players?.[0])?.totalStrokes || 0}타
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 bg-stone-50 rounded-xl border border-stone-200/60">
+                    <span className="text-[10px] text-stone-400 block font-bold">{isJapanese ? '公認球場' : '공인 구장'}</span>
+                    <span className="font-black text-stone-900 text-xs sm:text-sm truncate block">{currentRound.courseName}</span>
+                  </div>
+                  <div className="p-2.5 bg-stone-50 rounded-xl border border-stone-200/60">
+                    <span className="text-[10px] text-stone-400 block font-bold">{isJapanese ? '完走規模' : '완주 규모'}</span>
+                    <span className="font-black text-stone-900 text-xs sm:text-sm">
+                      {activeSegments.map((s) => s.title).join(', ')} ({activeConfirmedHoles.length}홀 · 기준 Par {activeTotalPar})
+                    </span>
+                  </div>
+                  <div className="p-2.5 bg-stone-50 rounded-xl border border-stone-200/60">
+                    <span className="text-[10px] text-stone-400 block font-bold">{isJapanese ? '完走日時' : '완주 일시'}</span>
+                    <span className="font-bold text-stone-800 text-[11px] block">{dateFormatted}</span>
+                  </div>
+                  <div className="p-2.5 bg-stone-50 rounded-xl border border-stone-200/60">
+                    <span className="text-[10px] text-stone-400 block font-bold">{isJapanese ? '所要時間' : '경기 소요 시간'}</span>
+                    <span className="font-bold text-stone-800 text-[11px] block">⏱️ {durationText} 소요</span>
+                  </div>
+                </div>
+
+                {currentRound.players && currentRound.players.length > 1 && (
+                  <div className="pt-2 text-[11px] text-stone-600 border-t border-stone-100 flex items-center justify-between">
+                    <span className="font-bold text-stone-400 shrink-0">{isJapanese ? '同行同伴者:' : '함께 완주한 동반자:'}</span>
+                    <span className="font-black text-stone-800 truncate ml-2 text-right">
+                      {currentRound.players.map((p) => p.name).join(', ')}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Official Affirmation Text */}
+              <div className="text-center px-2 py-1">
+                <p className="text-xs font-bold text-stone-700 leading-relaxed">
+                  {isJapanese
+                    ? '上記のゴルファーは、正規競技規則を厳格に遵守し、全ホールを誠実に完走したことを証明し、本デジタル公認認定書を授与します。'
+                    : '위 골퍼는 정규 파크골프 경기 규칙을 엄격히 준수하고, 공인 필드 라운드를 성공적으로 완주하였으므로 본 공식 디지털 인증서를 수여합니다.'}
+                </p>
+              </div>
+
+              {/* Official Seal and Signature */}
+              <div className="pt-2 border-t border-amber-200/80 flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="text-[10px] text-emerald-800 font-bold flex items-center gap-1">
+                    <span>🛡️</span>
+                    <span>{isJapanese ? 'GPS現場認証·改ざん防止' : 'GPS 현장 위치 인증 완료 · 위변조 방지 블록체인'}</span>
+                  </div>
+                  <div className="text-xs font-black text-stone-900 tracking-wider">
+                    {isJapanese ? 'パークゴルフ オールインワン 運営委員会' : '파키 앱 (PARKY APP) (ParkGolf All-in-One)'}
+                  </div>
+                </div>
+
+                {/* Circular Red Stamp Seal */}
+                <div className="w-14 h-14 rounded-full border-2 border-rose-600 flex flex-col items-center justify-center text-rose-600 rotate-[-6deg] shadow-xs select-none bg-rose-50/60 shrink-0">
+                  <span className="text-[7.5px] font-black leading-none">파크골프</span>
+                  <span className="text-[10.5px] font-black leading-none my-0.5">公認 직인</span>
+                  <span className="text-[7.5px] font-bold leading-none">ALL-IN-ONE</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 스코어보드 직하단 1열 액션 버튼 ([ 🗑️ 전체 경기 삭제 ]  [ 확인 (닫기) ]) */}
+        <div className="pt-3 border-t grid grid-cols-2 gap-2.5 shrink-0 mt-2">
+          {onDelete ? (
+            <button
+              type="button"
+              data-testid="chronicle-modal-delete-all-btn"
+              onClick={handleDelete}
+              className="w-full py-3.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-black rounded-2xl text-xs sm:text-sm transition active:scale-95 border border-rose-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Trash2 className="w-4 h-4 text-rose-600" />
+              <span>{isJapanese ? '🗑️ 全試合削除' : '🗑️ 전체 경기 삭제'}</span>
+            </button>
+          ) : (
+            <div />
+          )}
+          <button
+            type="button"
+            data-testid="chronicle-modal-confirm-close-btn"
+            onClick={onClose}
+            className="w-full bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-700 hover:to-teal-700 text-white font-black py-3.5 px-3 rounded-2xl text-xs sm:text-sm transition active:scale-[0.98] shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <span>{isJapanese ? '確認 (閉じる)' : '확인 (닫기)'}</span>
+          </button>
+        </div>
+
+        {/* 🎨 생성된 고화질 스코어카드 이미지 미리보기 팝업 */}
+        {previewImageResult && (
+          <div className="fixed inset-0 z-60 bg-black/85 flex items-center justify-center p-3 animate-in fade-in">
+            <div className="bg-stone-900 border border-stone-700 rounded-3xl max-w-sm w-full p-4 space-y-3 shadow-2xl relative max-h-[92vh] flex flex-col">
+              <div className="flex items-center justify-between text-white pb-2 border-b border-stone-800">
+                <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>{isJapanese ? '高画質スコアカードプレビュー' : '고화질 스코어카드 미리보기'}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPreviewImageResult(null)}
+                  className="w-7 h-7 rounded-full bg-stone-800 text-stone-400 hover:text-white flex items-center justify-center text-xs font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-auto rounded-xl bg-black border border-stone-800 flex items-center justify-center p-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={previewImageResult.objectUrl || previewImageResult.dataUrl}
+                  alt="스코어카드 미리보기"
+                  className="w-full h-auto max-h-[58vh] object-contain rounded-lg"
+                />
+              </div>
+
+              <p className="text-[10.5px] text-amber-300/90 text-center font-bold">
+                {isJapanese
+                  ? '✅ 端末に保存されました！画像を長押しして直接保存も可能です。'
+                  : '✅ 갤러리에 저장되었습니다! 위 이미지를 길게 꾹 눌러 추가 저장도 가능합니다.'}
+              </p>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <a
+                  href={previewImageResult.objectUrl || previewImageResult.dataUrl}
+                  download={previewImageResult.fileName}
+                  className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 text-center shadow-xs"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{isJapanese ? '再保存' : '다시 다운로드'}</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewImageResult(null)}
+                  className="py-2.5 px-3 bg-stone-800 hover:bg-stone-700 text-stone-200 font-black text-xs rounded-xl transition active:scale-95 text-center cursor-pointer"
+                >
+                  <span>{isJapanese ? '閉じる' : '확인 (닫기)'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 🔍 사진 썸네일 터치 시 원본 확대 모달 */}
+        {selectedPhotoForZoom && (() => {
+          const zoomIdx = Math.max(0, (currentRound.photos || []).indexOf(selectedPhotoForZoom));
+          const zoomMeta = getPhotoMetaForIndex(zoomIdx);
+          return (
+            <div className="fixed inset-0 z-[120] bg-black/90 flex items-center justify-center p-3 animate-in fade-in">
+              <div className="max-w-md w-full bg-stone-900 rounded-3xl p-4 space-y-3 relative border border-stone-800 shadow-2xl flex flex-col max-h-[92vh]">
+                <div className="flex items-center justify-between text-white pb-2 border-b border-stone-800">
+                  <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                    <Camera className="w-4 h-4 text-amber-400" />
+                    <span>
+                      {zoomMeta.photoType === 'hole_in_one'
+                        ? '🏆 공식 홀인원 기념 사진'
+                        : zoomMeta.photoType === 'eagle'
+                        ? '🦅 이글 달성 기념 사진'
+                        : '📸 라운드 추억 사진'}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPhotoForZoom(null)}
+                    className="w-7 h-7 rounded-full bg-stone-800 text-stone-400 hover:text-white flex items-center justify-center text-xs font-bold cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-auto rounded-2xl bg-black flex items-center justify-center p-1">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selectedPhotoForZoom}
+                    alt="현장 사진 원본"
+                    className="w-full h-auto max-h-[56vh] object-contain rounded-xl"
+                  />
+                </div>
+
+                {/* 확대 뷰 하단 축하 캡션 선명 노출 */}
+                <div
+                  data-testid="zoomed-photo-celebration-caption"
+                  className={`p-3 rounded-2xl text-center text-xs font-black border ${
+                    zoomMeta.photoType === 'hole_in_one'
+                      ? 'bg-amber-950/90 border-amber-400 text-amber-300'
+                      : zoomMeta.photoType === 'eagle'
+                      ? 'bg-sky-950/90 border-sky-400 text-sky-200'
+                      : 'bg-stone-800 border-stone-700 text-stone-200'
+                  }`}
+                >
+                  {zoomMeta.caption}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <a
+                    href={selectedPhotoForZoom}
+                    download={`파크골프_기념사진_${Date.now()}.jpg`}
+                    className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 text-center shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>{isJapanese ? '写真を保存' : '사진 다운로드'}</span>
+                  </a>
+                  <button
+                    type="button"
+                    data-testid="zoomed-photo-close-btn"
+                    onClick={() => setSelectedPhotoForZoom(null)}
+                    className="py-2.5 px-3 bg-stone-800 hover:bg-stone-700 text-stone-200 font-black text-xs rounded-xl transition active:scale-95 text-center cursor-pointer"
+                  >
+                    <span>{isJapanese ? '閉じる' : '확인 (닫기)'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ========================================================================= */}
+        {/* 팝업 1: [ 코스별 관리 ] 팝업 모달 */}
+        {/* ========================================================================= */}
+        {showCourseManagePopup && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 animate-fadeIn">
+            <div className="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl border-2 border-emerald-400 space-y-3.5 animate-scaleUp">
+              <div className="flex items-center justify-between pb-2 border-b border-stone-200">
+                <span className="text-sm font-black text-emerald-950 flex items-center gap-1.5">
+                  <span>⚙️</span>
+                  <span>{isJapanese ? 'コース管理 (選択および個別削除)' : '코스별 관리 (선택 및 개별 삭제)'}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowCourseManagePopup(false)}
+                  className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="text-xs text-stone-600 font-medium">
+                터치하여 스코어카드에서 <b>[제외]</b>하거나, <b>[🗑️]</b>를 눌러 해당 코스만 완전히 삭제할 수 있습니다.
+              </p>
+
+              {/* 개별 코스 토글 체크 & 단독 1클릭 삭제 버튼들 */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                {courseSegments.map((seg) => {
+                  const isChecked = activeSegments.some((s) => s.key === seg.key);
+                  return (
+                    <div
+                      key={seg.key}
+                      className={`inline-flex items-center rounded-xl text-xs font-black transition border shadow-2xs overflow-hidden ${
+                        isChecked
+                          ? 'bg-emerald-700 text-white border-emerald-800 ring-2 ring-emerald-500/30'
+                          : 'bg-stone-100 text-stone-400 border-stone-300 opacity-75'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleCourseSelection(seg.key)}
+                        className="py-1.5 pl-2.5 pr-2 flex items-center gap-1.5 cursor-pointer active:scale-95"
+                        title={isChecked ? '클릭 시 이번 스코어카드에서 임시 제외' : '클릭 시 스코어카드에 다시 포함'}
+                      >
+                        {isChecked ? (
+                          <CheckSquare className="w-3.5 h-3.5 text-yellow-300 stroke-[2.5]" />
+                        ) : (
+                          <Square className="w-3.5 h-3.5 text-stone-400" />
+                        )}
+                        <span className={isChecked ? '' : 'line-through'}>
+                          {seg.title} ({seg.confirmedInSeg.length}H)
+                        </span>
+                        <span
+                          className={`text-[9px] px-1 py-0.2 rounded font-black ${
+                            isChecked ? 'bg-white/20 text-white' : 'bg-stone-200 text-stone-500'
+                          }`}
+                        >
+                          {isChecked ? '포함' : '제외됨'}
+                        </span>
+                      </button>
+
+                      {courseSegments.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteSingleCourse(seg.key);
+                          }}
+                          className={`py-1.5 px-2 border-l transition cursor-pointer flex items-center justify-center active:scale-90 ${
+                            isChecked
+                              ? 'border-emerald-600/70 hover:bg-rose-600 text-emerald-200 hover:text-white'
+                              : 'border-stone-200 hover:bg-rose-100 text-stone-400 hover:text-rose-600'
+                          }`}
+                          title={`${seg.title} 기록만 이 경기에서 영구 삭제`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {isFiltered && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCourseKeys([])}
+                    className="py-1 px-2.5 bg-white hover:bg-stone-100 text-emerald-800 border border-emerald-300 rounded-xl text-[10.5px] font-black cursor-pointer transition active:scale-95 ml-auto"
+                  >
+                    🔄 전체 다시 선택
+                  </button>
+                )}
+              </div>
+
+              {isFiltered && (
+                <div className="pt-2 border-t border-stone-200 flex items-center justify-between">
+                  <span className="text-[10px] text-stone-500 font-medium">
+                    * 제외된 코스는 스코어카드 및 완주증에서 자동 제외됩니다.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handlePruneUnselected}
+                    className="py-1 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-lg text-[10.5px] font-black flex items-center gap-1 cursor-pointer transition active:scale-95"
+                  >
+                    <Scissors className="w-3 h-3" />
+                    <span>제외 코스 일괄 영구 삭제</span>
+                  </button>
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowCourseManagePopup(false)}
+                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-xs cursor-pointer active:scale-98"
+                >
+                  확인 완료 (스코어보드로 돌아가기)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 팝업 2: [ 통합 ] 코스 통합 성적 요약 모달 */}
+        {/* ========================================================================= */}
+        {showIntegratedPopup && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 animate-fadeIn">
+            <div className="bg-white rounded-3xl p-5 max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl border-2 border-amber-400 space-y-3.5 animate-scaleUp">
+              <div className="flex items-center justify-between pb-2 border-b border-stone-200">
+                <span className="text-sm font-black text-amber-950 flex items-center gap-1.5">
+                  <span>📊</span>
+                  <span>{isJapanese ? 'コース統合 成績要約' : '코스 통합 성적 요약'}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowIntegratedPopup(false)}
+                  className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* 동반자 전원 최종 순위 및 총 타수 요약 전광판 */}
+              <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white p-3.5 rounded-2xl shadow-md border border-emerald-800 space-y-2">
+                <div className="flex items-center justify-between text-xs border-b border-white/10 pb-1.5">
+                  <span className="font-black text-amber-300 flex items-center gap-1.5">
+                    <span>🏆</span>
+                    <span>동반자 최종 순위표</span>
+                  </span>
+                  <span className="text-[11px] text-emerald-200 font-medium">
+                    {activeConfirmedHoles.length}홀 완주 · 기준 Par {activeTotalPar}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {integratedSummary.map((item, idx) => {
+                    const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : ' ';
+                    return (
+                      <div
+                        key={item.player.id}
+                        className={`p-2.5 rounded-xl border flex flex-col justify-between ${
+                          idx === 0
+                            ? 'bg-amber-500/20 border-amber-400/50 text-amber-200'
+                            : 'bg-white/5 border-white/10 text-stone-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-xs font-black truncate flex items-center gap-1">
+                            <span>{medal}</span>
+                            <span>{item.player.name}</span>
+                          </span>
+                          <span className="text-[11px] font-black text-white">
+                            {item.strokes}타
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-stone-300 font-bold mt-1">
+                          기준 대비: {item.diff === 0 ? 'E' : item.diff > 0 ? `+${item.diff}` : item.diff}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowIntegratedPopup(false)}
+                  className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-xs cursor-pointer active:scale-98"
+                >
+                  확인 (닫기)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 팝업 3: [ 현장 사진 ] 갤러리 팝업 모달 */}
+        {/* ========================================================================= */}
+        {showPhotosPopup && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 animate-fadeIn">
+            <div className="bg-white rounded-3xl p-5 max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl border-2 border-stone-800 space-y-3.5 animate-scaleUp">
+              <div className="flex items-center justify-between pb-2 border-b border-stone-200">
+                <span className="text-sm font-black text-stone-900 flex items-center gap-1.5">
+                  <span>📸</span>
+                  <span>{isJapanese ? '現場記念写真ギャラリー' : '현장 기념사진 갤러리'}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowPhotosPopup(false)}
+                  className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {currentRound.photos && currentRound.photos.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2.5">
+                  {currentRound.photos.map((imgUrl, idx) => {
+                    const pMeta = getPhotoMetaForIndex(idx);
+                    const isHio = pMeta.photoType === 'hole_in_one';
+                    const isEagle = pMeta.photoType === 'eagle';
+                    return (
+                      <div
+                        key={idx}
+                        data-testid={`chronicle-photo-card-${idx}`}
+                        onClick={() => setSelectedPhotoForZoom(imgUrl)}
+                        className={`aspect-square rounded-2xl overflow-hidden bg-stone-900 relative group cursor-pointer shadow-sm ${
+                          isHio
+                            ? 'border-3 border-amber-400 ring-2 ring-yellow-300 shadow-amber-300/40'
+                            : isEagle
+                            ? 'border-2 border-sky-400 ring-1 ring-sky-200'
+                            : 'border border-stone-200'
+                        }`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imgUrl} alt={`기념사진 ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                        {isHio ? (
+                          <div
+                            data-testid="chronicle-photo-badge-hole_in_one"
+                            className="absolute top-2 left-2 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md border border-yellow-100"
+                          >
+                            🏆 공식 홀인원 기념
+                          </div>
+                        ) : isEagle ? (
+                          <div
+                            data-testid="chronicle-photo-badge-eagle"
+                            className="absolute top-2 left-2 bg-sky-500 text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md border border-sky-200"
+                          >
+                            🦅 이글 달성 기념
+                          </div>
+                        ) : (
+                          <div
+                            data-testid="chronicle-photo-badge-regular"
+                            className="absolute top-2 left-2 bg-black/75 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg"
+                          >
+                            📸 라운드 추억
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent p-2 text-[10px] font-bold text-white truncate">
+                          {pMeta.caption}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-8 text-center text-xs text-stone-500 font-medium">
+                  📸 등록된 현장 사진이 없습니다.
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-between items-center">
+                <label className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl cursor-pointer flex items-center gap-1.5 shadow-xs">
+                  <Camera className="w-4 h-4" />
+                  <span>+ 새 사진 추가</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleAddPhoto} />
+                </label>
+                <button
+                  type="button"
+                  data-testid="photos-popup-close-btn"
+                  onClick={() => setShowPhotosPopup(false)}
+                  className="py-2 px-4 bg-stone-800 hover:bg-stone-700 text-stone-200 font-black text-xs rounded-xl cursor-pointer"
+                >
+                  확인 (닫기)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 팝업 4: [ 완주증 ] 공인 완주 디지털 뱃지 모달 */}
+        {/* ========================================================================= */}
+        {showCertPopup && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 animate-fadeIn">
+            <div className="bg-white rounded-3xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto shadow-2xl border-2 border-yellow-400 space-y-3.5 animate-scaleUp text-center">
+              <div className="flex items-center justify-between pb-2 border-b border-stone-200">
+                <span className="text-sm font-black text-amber-950 flex items-center gap-1.5">
+                  <span>📜</span>
+                  <span>{isJapanese ? '公認 完走認定書' : '공인 완주 증명서'}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowCertPopup(false)}
+                  className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 flex items-center justify-center font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* 완주증 본문 카드 */}
+              <div className="bg-gradient-to-b from-amber-50 to-yellow-100 p-5 rounded-2xl border-2 border-amber-300 space-y-2.5">
+                <span className="text-4xl block">🏆</span>
+                <h4 className="text-base font-black text-amber-950">
+                  {currentRound.courseName} 공식 완주
+                </h4>
+                <p className="text-xs text-amber-900 font-bold">
+                  {activeSegments.map((s) => s.title).join(' + ')} ({activeConfirmedHoles.length}홀 · 기준 Par {activeTotalPar})
+                </p>
+                <div className="pt-2 text-[11px] text-stone-600 font-medium">
+                  {new Date(currentRound.startedAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowCertPopup(false)}
+                  className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black text-xs rounded-xl shadow-xs cursor-pointer active:scale-98"
+                >
+                  확인 (닫기)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
