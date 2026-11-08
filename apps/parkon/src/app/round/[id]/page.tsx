@@ -259,6 +259,43 @@ export default function RoundPlayPage() {
   } | null>(null);
   const transitionBannerTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 🌟 [대표님 지시]: 1번 홀(시작 홀) 진입 시에도 1.5초간 '다르면 정정하세요' 배너 자동 표출 (React Hook 규칙 준수)
+  const hasShownFirstHoleBannerRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (!mounted || !session || !course || hasShownFirstHoleBannerRef.current) return;
+    hasShownFirstHoleBannerRef.current = true;
+
+    const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+    const curH = session.currentHole || 1;
+    const actH = Number(
+      session.selectedHoleNumbers && session.selectedHoleNumbers[curH - 1]
+        ? session.selectedHoleNumbers[curH - 1]
+        : curH
+    );
+    const baseH = ((actH - 1) % 1000) + 1;
+    const cIdx = Math.floor((baseH - 1) / 9);
+    const cLetter = COURSE_LETTERS[cIdx] || 'A';
+    const hInC = ((baseH - 1) % 9) + 1;
+
+    const activeMeta = session?.customHolesMetadata || course?.holesMetadata || [];
+    const meta = activeMeta.find((m) => Number(m.hole) === baseH);
+    const isVer = Boolean(meta?.isVerified === true || meta?.contributedBy);
+    const pVal = isVer ? (Number(meta?.par) || 3) : 3;
+
+    setTransitionBannerInfo({
+      courseLetter: cLetter,
+      holeNumber: hInC,
+      par: pVal,
+      distanceMeter: meta?.distanceMeter,
+    });
+    if (transitionBannerTimerRef.current) {
+      clearTimeout(transitionBannerTimerRef.current);
+    }
+    transitionBannerTimerRef.current = setTimeout(() => {
+      setTransitionBannerInfo(null);
+    }, 1500);
+  }, [mounted, session, course]);
+
   // 4인 조별 경기 규칙: 조원은 조장의 설정을 100% 자동 추종(미러링), 조장 또는 1인은 본인 로컬 설정 적용
   const effectiveHoleDisplayMode: HoleDisplayMode =
     !isCurrentUserLeader && session?.roundSettings?.holeDisplayMode
@@ -1078,6 +1115,8 @@ export default function RoundPlayPage() {
     tip: undefined,
     isVerified: false,
   };
+
+
 
   // [대표님 지침]: 현장 고수 꿀팁 우선 반영
   const savedCrowdTip = course ? ParkOnStorage.getHoleTip(course.id, course.name, baseHoleNumber) : null;
@@ -2116,7 +2155,7 @@ export default function RoundPlayPage() {
       }
       transitionBannerTimerRef.current = setTimeout(() => {
         setTransitionBannerInfo(null);
-      }, 1000);
+      }, 1500);
       // 🌟 [사용자 요청]: 다음 홀 전환 시 중간 안내판 거치지 않고 곧바로 스코어 입력판(SCORING)으로 다이렉트 진입!
       setHoleStep('SCORING');
       setRestingPlayerIds([]);
