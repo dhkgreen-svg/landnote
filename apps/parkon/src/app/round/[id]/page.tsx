@@ -2437,8 +2437,10 @@ export default function RoundPlayPage() {
       ...session,
       customHolesMetadata: updatedMetadata,
       players: updatedPlayers,
+      updatedAt: new Date().toISOString(),
     };
     setSession(updatedSession);
+    updateSession(updatedSession); // 게임 중간 즉시 반영 (동기 저장 & 실시간 브로드캐스트)
     setShowHoleSpecModal(false);
     setShowSpecConfirmStep(false);
 
@@ -2456,7 +2458,6 @@ export default function RoundPlayPage() {
           shouldForce
         );
         ParkOnStorage.updateCourse(updatedCourse);
-        updateSession(updatedSession);
       } catch (e) {}
     }, 0);
   };
@@ -2887,97 +2888,55 @@ export default function RoundPlayPage() {
       {/* ========================================================================= */}
       {holeStep === 'SCORING' && (
         <div className="space-y-2.5 animate-fadeIn">
-          {/* 상단 통합 제어 바 */}
-          <div className="bg-gradient-to-r from-emerald-950 via-teal-950 to-emerald-950 text-white p-3 rounded-2xl flex items-center justify-between shadow-lg border border-emerald-500/40 relative">
-            <button
-              type="button"
-              onClick={() => {
-                const prevStep: 'TEE_SHOT' = 'TEE_SHOT';
-                setHoleStep(prevStep);
-                const updated: RoundSession = { ...session, holeStep: prevStep, updatedAt: new Date().toISOString() };
-                updateSession(updated);
-              }}
-              className="bg-white/20 hover:bg-white/30 text-white text-[11px] sm:text-xs font-black px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1 transition active:scale-95 cursor-pointer shrink-0"
-              title={isJapanese ? 'コース案内に戻る' : '코스 안내판으로 돌아가기'}
-            >
-              <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span>{isJapanese ? '案内板' : '안내판'}</span>
-            </button>
-
-            {/* [과업 1]: 상단 헤더 중앙에 거리/기타 라벨 없이 A-1 번홀 · Par 3만 특대형 표출 및 Par 터치 시 인라인 정정 칩 팝업 */}
-            <div className="relative flex flex-col items-center justify-center shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowInlineParChips(!showInlineParChips)}
-                className="flex items-center gap-1.5 bg-black/40 hover:bg-black/60 px-3 py-1 rounded-2xl border border-white/20 transition cursor-pointer active:scale-95"
-                title="터치하여 기준 타수(Par) 정정"
-              >
-                <span className="font-black text-base sm:text-lg text-yellow-300 drop-shadow-xs whitespace-nowrap">
-                  {courseLetter}-{holeInCourse} 번홀 · Par {holeMetadata.par || 3}
-                </span>
-                <Pencil className="w-3 h-3 text-amber-300 opacity-80" />
-              </button>
-
-              {/* 인라인 파3/파4/파5 정정 칩 팝업 */}
-              {showInlineParChips && (
-                <div className="absolute top-full mt-1.5 z-40 bg-stone-900/95 backdrop-blur-md border border-amber-400 p-1 rounded-full shadow-2xl flex items-center gap-1 animate-scaleUp">
-                  {[3, 4, 5].map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => {
-                        handleSaveHoleSpec(p, holeMetadata.distanceMeter || 50);
-                        setShowInlineParChips(false);
-                      }}
-                      className={`px-3 py-0.5 rounded-full text-xs font-black transition cursor-pointer ${
-                        (Number(holeMetadata.par) || 3) === p
-                          ? 'bg-yellow-400 text-stone-950 font-black shadow-xs'
-                          : 'text-stone-300 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      파{p}
-                    </button>
-                  ))}
-                </div>
-              )}
+          {/* 상단 통합 제어 바: 세로 높이는 슬림하게 줄이고(타수 입력 공간 최대 확보), 가로 넓이(폭)는 시원하게 키운 원터치 Par 탭 */}
+          <div className="bg-gradient-to-r from-emerald-950 via-teal-950 to-emerald-950 text-white px-3 py-1.5 sm:py-2 rounded-2xl flex items-center justify-between shadow-lg border border-emerald-500/40 gap-2 sm:gap-3">
+            {/* 좌측: A-1 번홀 꽉 차게 특대형 표출 (모바일 야외 시인성 극대화) */}
+            <div className="flex items-baseline gap-1 pl-1 shrink-0">
+              <span className="text-3xl sm:text-4xl font-black text-yellow-300 drop-shadow-md tracking-tight leading-none">
+                {courseLetter}-{holeInCourse}
+              </span>
+              <span className="text-xs sm:text-sm font-black text-white/90 leading-none">
+                {isJapanese ? '番ホール' : '번홀'}
+              </span>
             </div>
 
-            {/* [과업 3]: 타수 입력 화면 상단 우측에 [ 📋 전체 스코어 ] 버튼 상시 배치 */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowTotalScoreModal(true)}
-                className="bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-700 hover:border-amber-400/60 text-[11px] sm:text-xs font-black px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1 transition active:scale-95 cursor-pointer shrink-0 shadow-sm"
-                title="전체 스코어카드 상시 열람"
-              >
-                <span>📋</span>
-                <span className="hidden xs:inline">전체 스코어</span>
-                <span className="xs:hidden">스코어</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('parkon_open_round_settings'))}
-                className="w-7 h-7 rounded-xl bg-black/40 hover:bg-black/60 text-stone-300 hover:text-white border border-white/20 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0"
-                title={isJapanese ? "⚙️ ラウンド環境設定" : "⚙️ 라운드 환경 설정"}
-              >
-                <Settings className="w-3.5 h-3.5 text-amber-300" />
-              </button>
+            {/* 우측: 파3 / 파4 / 파5 가로 와이드 탭 (높이는 슬림 h-9~10 유지, 가로 폭은 flex-1로 널찍하게 확장) */}
+            <div className="flex-1 max-w-[260px] sm:max-w-[300px] flex items-center gap-1.5 p-1 bg-black/50 rounded-xl border border-white/20 shadow-inner">
+              {[3, 4, 5].map((pVal) => {
+                const currentPar = Number(holeMetadata.par) || 3;
+                const isSelected = currentPar === pVal;
+                const label = isJapanese ? `Par ${pVal}` : `파${pVal}`;
+                return (
+                  <button
+                    key={pVal}
+                    type="button"
+                    data-testid={`par-tab-${pVal}`}
+                    onClick={() => {
+                      handleSaveHoleSpec(pVal, holeMetadata.distanceMeter || 50);
+                    }}
+                    className={`flex-1 h-9 sm:h-10 rounded-lg font-black text-xs sm:text-sm transition-all duration-150 cursor-pointer flex items-center justify-center active:scale-95 shadow-xs ${
+                      isSelected
+                        ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 text-stone-950 shadow-md ring-2 ring-yellow-200 border border-yellow-100 font-black'
+                        : 'bg-white/10 hover:bg-white/20 text-stone-300 hover:text-white border border-white/10'
+                    }`}
+                    title={`기준 타수를 Par ${pVal}로 즉시 변경 (밑에 자동 반영)`}
+                  >
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
           {/* 4인 스코어 기입 그리드 */}
-          <div className="space-y-2 pt-0.5">
+          <div className="space-y-1.5 pt-0">
             {/* 플레이어 목록 안내 및 조장/동반자 설정 버튼 */}
-            <div className="flex items-center justify-between px-1 py-0.5 text-xs">
-              <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center justify-between px-1 py-0 text-xs">
+              <div className="flex items-center gap-1.5">
                 <span className={`font-black ${sunlightMode ? 'text-yellow-300' : 'text-stone-800'}`}>
                   {isJapanese ? 'プレーヤー' : '플레이어'} ({session.players.filter((p) => !p.isOut).length}{isJapanese ? '名参加' : '명 참여'}
                   {restingPlayerIds.length > 0 && (
                     <span className="text-amber-600 font-bold">{isJapanese ? ` · ${restingPlayerIds.length}名休憩` : ` · ${restingPlayerIds.length}명 휴식`}</span>
                   )})
-                </span>
-                <span className={`text-[11px] ${sunlightMode ? 'text-stone-400' : 'text-stone-500'} font-medium`}>
-                  {isJapanese ? `· 1番 👑代表 / 2~${session.players.filter((p) => !p.isOut).length}番 五十音順` : `· 1번 👑조장 / 2~${session.players.filter((p) => !p.isOut).length}번 가나다순`}
                 </span>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
