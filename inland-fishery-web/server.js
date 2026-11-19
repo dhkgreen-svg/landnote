@@ -21,16 +21,28 @@ const MIME_TYPES = {
   '.svg': 'image/svg+xml'
 };
 
-async function loadDb() {
+let memoryDb = null;
+let lastDbFetchTime = 0;
+const DB_CACHE_TTL = 30 * 1000;
+
+async function loadDb(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && memoryDb && (now - lastDbFetchTime < DB_CACHE_TTL)) {
+    return memoryDb;
+  }
   try {
     const res = await fetch(FIREBASE_RTDB_URL);
     if (!res.ok) {
+      if (memoryDb) return memoryDb;
       console.error('Error loading DB from Firebase:', await res.text());
       return { users: [], pendingUsers: [], gallery: [], accounting: [], contactInfo: {}, boardList: [] };
     }
     const data = await res.json();
-    return data || { users: [], pendingUsers: [], gallery: [], accounting: [], contactInfo: {}, boardList: [] };
+    memoryDb = data || { users: [], pendingUsers: [], gallery: [], accounting: [], contactInfo: {}, boardList: [] };
+    lastDbFetchTime = now;
+    return memoryDb;
   } catch (err) {
+    if (memoryDb) return memoryDb;
     console.error('Firebase Exception:', err.message);
     return { users: [], pendingUsers: [], gallery: [], accounting: [], contactInfo: {}, boardList: [] };
   }
@@ -47,6 +59,8 @@ async function saveDb(db) {
       console.error('Error saving DB to Firebase:', await res.text());
       throw new Error('Failed to save to Firebase');
     }
+    memoryDb = db;
+    lastDbFetchTime = Date.now();
   } catch (err) {
     console.error('Firebase Exception:', err.message);
     throw err;
@@ -68,7 +82,10 @@ const server = http.createServer(async (req, res) => {
   // API Endpoints
   if (req.url === '/api/data' && req.method === 'GET') {
     const db = await loadDb();
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'public, max-age=15, s-maxage=30, stale-while-revalidate=60'
+    });
     res.end(JSON.stringify(db));
     return;
   }

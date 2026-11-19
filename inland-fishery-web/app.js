@@ -1,3 +1,47 @@
+// 🚀 [초기 화면 초고속 로딩] LocalStorage 내 구버전 11MB 대용량 Base64 이미지 자동 청소 및 정적 이미지 전환
+(function cleanupLegacyLocalStorageBloat() {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    const keysToCheck = [
+      'kifa_board_list',
+      'kifa_delegate_list',
+      'kifa_branch_org_list',
+      'kifa_president_greeting'
+    ];
+    const nameToImg = {
+      '이재완': 'lee_jaewan_id.jpg',
+      '장종익': 'jang_jongik_id.jpg',
+      '김대희': 'kim_daehee_id.jpg',
+      '최종열': 'choi_jongyeol_id.jpg',
+      '모영래': 'mo_youngrae_id.jpg'
+    };
+    keysToCheck.forEach(key => {
+      const val = localStorage.getItem(key);
+      if (val && val.includes('data:image')) {
+        let parsed = JSON.parse(val);
+        function stripLargeBlobs(obj) {
+          if (!obj) return;
+          if (Array.isArray(obj)) {
+            obj.forEach(stripLargeBlobs);
+          } else if (typeof obj === 'object') {
+            for (let k in obj) {
+              if (typeof obj[k] === 'string' && obj[k].startsWith('data:image')) {
+                obj[k] = nameToImg[obj.name] || 'lee_jaewan_id.jpg';
+              } else {
+                stripLargeBlobs(obj[k]);
+              }
+            }
+          }
+        }
+        stripLargeBlobs(parsed);
+        localStorage.setItem(key, JSON.stringify(parsed));
+      }
+    });
+  } catch (e) {
+    console.warn('LocalStorage cleanup skipped:', e);
+  }
+})();
+
 
 // ==========================================================================
 // 🌟 항상 고정 끄기 탭 전역 관리자 (공지가 열릴 때만 뜨고, 꺼지면 즉시 사라짐)
@@ -4679,8 +4723,8 @@ window.onclick = function(event) {
 
 document.addEventListener('DOMContentLoaded', () => {
   updateHeaderUserStatus();
-  loadServerData();
-  filterDirectory('board');
+  filterDirectory('board'); // ⚡ 초기 화면 임원 디렉토리 즉시 렌더링 (0.05초)
+  loadServerData();        // ⚡ 백그라운드 최신 서버 데이터 동기화
 });
 updateHeaderUserStatus();
 
