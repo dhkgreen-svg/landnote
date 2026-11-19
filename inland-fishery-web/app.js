@@ -1480,7 +1480,7 @@ function handleAddBranchSubmit(e) {
 
     const prevImage = (existingIdx !== -1 && boardList[existingIdx].image) 
       ? boardList[existingIdx].image 
-      : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+      : '';
 
     const boardOfficerObj = {
       name: leaderName,
@@ -1565,7 +1565,7 @@ function handleAddBranchSubmit(e) {
         branchName: cleanBranchName,
         region: region || cleanBranchName,
         isBranchLeader: false,
-        image: (existingB && existingB.image) ? existingB.image : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+        image: (existingB && existingB.image) ? existingB.image : ''
       };
       if (existingB) {
         Object.assign(existingB, officerData);
@@ -1589,7 +1589,7 @@ function handleAddBranchSubmit(e) {
         role: `${cleanBranchName} 소속 대의원`,
         tag: `${cleanBranchName} 대의원`,
         tagClass: 'tag-delegate',
-        image: (existingD && existingD.image) ? existingD.image : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
+        image: (existingD && existingD.image) ? existingD.image : ''
       };
       if (existingD) {
         Object.assign(existingD, delegateData);
@@ -2589,8 +2589,10 @@ function filterDirectory(type = 'board') {
 
           <div id="dir-detail-${type}-${idx}" style="display: none; padding: 16px; border-top: 1px dashed #CBD5E1; background: #FFF;">
             <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
-              <div style="width: 105px; height: 115px; border-radius: 8px; overflow: hidden; flex-shrink: 0; border: 1px solid #E2E8F0; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
-                <img src="${item.image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}" alt="${item.name}" style="width: 100%; height: 100%; object-fit: cover;">
+              <div style="width: 105px; height: 115px; border-radius: 8px; overflow: hidden; flex-shrink: 0; border: 1px dashed #CBD5E1; background: #F8FAFC; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94A3B8; font-size: 0.74rem; gap: 4px;">
+                ${(item.image && String(item.image).trim() && !String(item.image).includes('photo-1534528741775'))
+                  ? `<img src="${item.image}" alt="${item.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none';">`
+                  : `<i class="fa-regular fa-user" style="font-size: 1.7rem; color: #CBD5E1;"></i><span>사진 없음</span>`}
               </div>
               <div style="flex: 1; min-width: 200px; font-size: 0.88rem; color: #334155; line-height: 1.8;">
                 <div style="font-size: 1.05rem; font-weight: 900; color: #0A2540; margin-bottom: 4px;">
@@ -2600,6 +2602,7 @@ function filterDirectory(type = 'board') {
                 <div>📌 <strong>직책 및 역할:</strong> ${item.role}</div>
                 <div>📞 <strong>연락처:</strong> <a href="tel:${item.phone}" style="color: #0284C7; font-weight: 800;">${item.phone}</a></div>
                 <div>📍 <strong>소속 수계 및 관할 어가:</strong> ${item.region}</div>
+                ${(user && (user.role === 'master' || user.role === 'branch')) ? `<div style="margin-top: 10px;"><button type="button" onclick="openIndividualOfficerModal(${idx}, '${type}')" style="background: #0284C7; color: #FFF; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;"><i class="fa-solid fa-pen-to-square"></i> 정보 / 사진 수정</button></div>` : ''}
               </div>
             </div>
           </div>
@@ -2964,7 +2967,7 @@ async function handleAddOfficerSubmit(e) {
   if (uploadedOfficerImageBase64 && uploadedOfficerImageBase64.startsWith('data:image')) {
       uploadedOfficerImageBase64 = await uploadToSupabase(uploadedOfficerImageBase64, 'officer');
     }
-    let finalImg = uploadedOfficerImageBase64 || urlInput || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+    let finalImg = uploadedOfficerImageBase64 || urlInput || '';
     uploadedOfficerImageBase64 = null;
 
   let branchId = null;
@@ -4591,7 +4594,7 @@ async function deleteInquiry(id) {
 // ==========================================
 // 👤 INDIVIDUAL OFFICER EDIT MODAL LOGIC (개인별 팝업 관리)
 // ==========================================
-let uploadedIndivOfficerImageBase64 = null;
+let uploadedIndivOfficerImageBase64 = null; window._clearIndivPhoto = false;
 
 function openIndividualOfficerModal(idx, type) {
   const currentList = (type === 'board') ? boardList : delegateList;
@@ -4700,7 +4703,17 @@ function handleIndivBranchSelect(branchId) {
 }
 window.handleIndivBranchSelect = handleIndivBranchSelect;
 
+function clearIndivOfficerPhoto() {
+  window._clearIndivPhoto = true;
+  uploadedIndivOfficerImageBase64 = null;
+  const f = document.getElementById('indiv-officer-image-file'); if (f) f.value = '';
+  const u = document.getElementById('indiv-officer-image-url'); if (u) u.value = '';
+  alert('사진이 비워졌습니다. [수정사항 저장하기]를 누르면 빈칸으로 저장됩니다.');
+}
+window.clearIndivOfficerPhoto = clearIndivOfficerPhoto;
+
 function handleIndivOfficerImageUpload(e) {
+  window._clearIndivPhoto = false;
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -4734,7 +4747,8 @@ async function handleIndividualOfficerSubmit(e) {
 
   const currentList = (origType === 'board') ? boardList : delegateList;
   const origOfficer = (idx >= 0 && currentList[idx]) ? currentList[idx] : {};
-  let finalImg = uploadedIndivOfficerImageBase64 || urlInput || origOfficer.image || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+  let finalImg = (window._clearIndivPhoto === true) ? '' : (uploadedIndivOfficerImageBase64 || urlInput || origOfficer.image || '');
+  window._clearIndivPhoto = false;
   uploadedIndivOfficerImageBase64 = null;
 
   const updatedObj = {
