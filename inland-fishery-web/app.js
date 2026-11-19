@@ -1822,8 +1822,8 @@ function checkAutoWelcomeNotice() {
         const modalId = 'dynamic-modal-' + notice.id;
         
         const modalHtml = '<div class="dynamic-welcome-modal" id="' + modalId + '" style="position: fixed; top: ' + topPos + '%; left: ' + leftPos + '%; transform: translate(-50%, -50%); z-index: ' + (1000 + displayIndex) + '; width: 90%; max-width: 500px; display: none;">' +
-            '<div style="position: relative; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(8px); padding: 24px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.6);">' +
-              '<button type="button" onclick="closeDynamicModal(\'' + modalId + '\')" style="position: absolute; top: 12px; right: 14px; background: #DC2626; color: #FFF; border: none; border-radius: 8px; padding: 6px 14px; font-size: 0.88rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4); z-index: 10;" title="공지사항 닫기"><i class="fa-solid fa-xmark"></i> 닫기</button>' +
+            '<div style="position: relative; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(8px); padding: 24px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.6); max-height: 85vh; max-height: 85dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; box-sizing: border-box;">' +
+              '<button type="button" onclick="closeDynamicModal(\'' + modalId + '\')" style="position: sticky; top: 0; float: right; margin: -12px -8px 0 8px; background: #DC2626; color: #FFF; border: none; border-radius: 8px; padding: 6px 14px; font-size: 0.88rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4); z-index: 10;" title="공지사항 닫기"><i class="fa-solid fa-xmark"></i> 닫기</button>' +
               '<div style="text-align: center; margin-bottom: 12px;">' +
                 '<span style="background: #0284C7; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">' +
                   '<i class="fa-solid fa-bullhorn"></i> 사단법인 연합회 공지사항' +
@@ -1850,7 +1850,7 @@ function checkAutoWelcomeNotice() {
                 '<span style="font-size: 0.8rem; color: #64748B;"><i class="fa-regular fa-calendar-check"></i> 날짜: ' + notice.date + '</span>' +
                 '<p style="margin-top: 10px; color: #334155; font-size: 0.9rem; line-height: 1.65;">' + formattedContent + '</p>' +
               '</div>' +
-              '<div style="display: flex; justify-content: space-between; align-items: center; background: #F1F5F9; padding: 10px 14px; border-radius: 10px; font-size: 0.84rem; color: #64748B; flex-wrap: wrap; gap: 8px;">' +
+              '<div style="display: flex; justify-content: space-between; align-items: center; background: #F1F5F9; padding: 10px 14px; border-radius: 10px; font-size: 0.84rem; color: #64748B; flex-wrap: wrap; gap: 8px; position: sticky; bottom: -12px; z-index: 5; box-shadow: 0 -6px 12px rgba(0,0,0,0.08);">' +
                 '<label style="cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 700;">' +
                   '<input type="checkbox" onchange="toggleHideNotice(' + notice.id + ', event)"> 오늘 하루 이 창 안 보기' +
                 '</label>' +

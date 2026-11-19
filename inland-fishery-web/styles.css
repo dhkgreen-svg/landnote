@@ -1873,3 +1873,18 @@ html, body {
 /* 불필요한 끄기 탭 제거 */
 .screen-always-fixed-close-tab, .btn-notice-ctrl-close-sticky { display: none !important; }
 
+
+/* 📌 긴 공지/창에서도 닫기 버튼이 스크롤과 함께 사라지지 않도록 고정 (sticky) */
+.modal-content > .modal-close:first-child,
+.modal-close {
+  position: sticky !important;
+  top: 8px !important;
+  right: auto !important;
+  float: right !important;
+  margin: -10px -6px 8px 10px !important;
+  width: auto !important;
+  min-width: 68px !important;
+  height: 38px !important;
+  font-size: 0.9rem !important;
+  z-index: 99999 !important;
+}
