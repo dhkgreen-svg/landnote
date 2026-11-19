@@ -55,6 +55,17 @@ function applyNoticeFontSize() {
   if (welcomeTitle) {
     welcomeTitle.style.fontSize = conf.titleSize;
   }
+
+  // 4. Dynamic welcome modals
+  document.querySelectorAll('.dynamic-welcome-modal').forEach(modal => {
+    const dTitle = modal.querySelector('h3');
+    const dText = modal.querySelector('p');
+    if (dTitle) dTitle.style.fontSize = conf.titleSize;
+    if (dText) {
+      dText.style.fontSize = conf.size;
+      dText.style.lineHeight = conf.lineHeight;
+    }
+  });
 }
 window.applyNoticeFontSize = applyNoticeFontSize;
 
@@ -95,7 +106,31 @@ window.addEventListener('error', function(e) {
 // Global State
 function closeWelcomeNotice() {
   document.querySelectorAll('.dynamic-welcome-modal').forEach(el => el.remove());
+  if (typeof hideModalClean === 'function') {
+    hideModalClean('welcome-notice-modal');
+  }
+  const wm = document.getElementById('welcome-notice-modal');
+  if (wm) {
+    wm.style.display = 'none';
+    wm.classList.remove('show');
+  }
 }
+window.closeWelcomeNotice = closeWelcomeNotice;
+
+function dismissWelcomeNoticeToday() {
+  const today = new Date().toISOString().slice(0, 10);
+  localStorage.setItem('kifa_welcome_hidden_date', today);
+  localStorage.setItem('kifa_hide_welcome_today', today);
+  closeWelcomeNotice();
+}
+window.dismissWelcomeNoticeToday = dismissWelcomeNoticeToday;
+
+function dismissNoticeToday(id, modalId) {
+  const today = new Date().toISOString().slice(0, 10);
+  localStorage.setItem('kifa_hide_notice_' + id, today);
+  closeDynamicModal(modalId);
+}
+window.dismissNoticeToday = dismissNoticeToday;
 let pastNotices = [];
 let galleryItems = [];
 let inquiriesList = [];
@@ -1639,11 +1674,28 @@ function checkAutoWelcomeNotice() {
         const modalId = 'dynamic-modal-' + notice.id;
         
         const modalHtml = '<div class="dynamic-welcome-modal" id="' + modalId + '" style="position: fixed; top: ' + topPos + '%; left: ' + leftPos + '%; transform: translate(-50%, -50%); z-index: ' + (1000 + displayIndex) + '; width: 90%; max-width: 500px; display: none;">' +
-            '<div style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); padding: 25px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.4);">' +
-              '<div style="text-align: center; margin-bottom: 16px;">' +
+            '<div style="position: relative; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(8px); padding: 24px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.6);">' +
+              '<button class="modal-close" onclick="closeDynamicModal(\'' + modalId + '\')" style="position: absolute; top: 12px; right: 14px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748B; line-height: 1;">&times;</button>' +
+              '<div style="text-align: center; margin-bottom: 12px;">' +
                 '<span style="background: #0284C7; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">' +
                   '<i class="fa-solid fa-bullhorn"></i> 사단법인 연합회 공지사항' +
                 '</span>' +
+              '</div>' +
+              '<div class="notice-font-ctrl-bar" style="margin-bottom: 12px; padding: 6px 10px;">' +
+                '<div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">' +
+                  '<span class="notice-font-ctrl-label" style="font-size: 0.78rem;">' +
+                    '<i class="fa-solid fa-text-height"></i> 크기:' +
+                  '</span>' +
+                  '<div class="notice-font-btn-group">' +
+                    '<button type="button" onclick="setNoticeFontSize(\'sm\')" class="btn-notice-font" data-size="sm">가-</button>' +
+                    '<button type="button" onclick="setNoticeFontSize(\'md\')" class="btn-notice-font" data-size="md">보통</button>' +
+                    '<button type="button" onclick="setNoticeFontSize(\'lg\')" class="btn-notice-font" data-size="lg">가+</button>' +
+                    '<button type="button" onclick="setNoticeFontSize(\'xl\')" class="btn-notice-font" data-size="xl">가++</button>' +
+                  '</div>' +
+                '</div>' +
+                '<button type="button" onclick="closeDynamicModal(\'' + modalId + '\')" class="btn-notice-ctrl-close" style="padding: 4px 10px; font-size: 0.78rem;" title="창 끄기">' +
+                  '<i class="fa-solid fa-xmark"></i> 끄기' +
+                '</button>' +
               '</div>' +
               '<div style="background: #F8FAFC; padding: 18px; border-radius: 12px; border: 1px solid #E2E8F0; margin-bottom: 16px;">' +
                 '<span style="background: ' + tagColor + '; color: #FFF; padding: 3px 8px; border-radius: 4px; font-size: 0.76rem; font-weight: 800;">' + tagText + '</span>' +
@@ -1651,11 +1703,14 @@ function checkAutoWelcomeNotice() {
                 '<span style="font-size: 0.8rem; color: #64748B;"><i class="fa-regular fa-calendar-check"></i> 날짜: ' + notice.date + '</span>' +
                 '<p style="margin-top: 10px; color: #334155; font-size: 0.9rem; line-height: 1.65;">' + formattedContent + '</p>' +
               '</div>' +
-              '<div style="display: flex; justify-content: space-between; align-items: center; background: #F1F5F9; padding: 10px 14px; border-radius: 10px; font-size: 0.84rem; color: #64748B;">' +
-                '<label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">' +
+              '<div style="display: flex; justify-content: space-between; align-items: center; background: #F1F5F9; padding: 10px 14px; border-radius: 10px; font-size: 0.84rem; color: #64748B; flex-wrap: wrap; gap: 8px;">' +
+                '<label style="cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 700;">' +
                   '<input type="checkbox" onchange="toggleHideNotice(' + notice.id + ', event)"> 오늘 하루 이 창 안 보기' +
                 '</label>' +
-                '<button onclick="closeDynamicModal(\'' + modalId + '\')" style="background: #0A2540; color: #FFF; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 700; cursor: pointer;">닫기</button>' +
+                '<div style="display: flex; gap: 6px;">' +
+                  '<button type="button" onclick="dismissNoticeToday(' + notice.id + ', \'' + modalId + '\')" style="background: #E2E8F0; color: #334155; border: 1px solid #CBD5E1; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 0.82rem; cursor: pointer;">오늘 하루 끄기</button>' +
+                  '<button onclick="closeDynamicModal(\'' + modalId + '\')" style="background: #0A2540; color: #FFF; border: none; padding: 6px 16px; border-radius: 6px; font-weight: 800; font-size: 0.86rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-xmark"></i> 창 끄기</button>' +
+                '</div>' +
               '</div>' +
             '</div>' +
           '</div>';
@@ -3379,17 +3434,22 @@ function openNoticeModal(title, date, content) {
   const conf = NOTICE_FONT_SIZES[currentNoticeFontSize] || NOTICE_FONT_SIZES.md;
   
   modalContent.innerHTML = `
-    <!-- 🔍 공지사항 상세 글자 크기 조절 상단 바 -->
+    <!-- 🔍 공지사항 상세 글자 크기 조절 & 끄기 상단 바 -->
     <div class="notice-font-ctrl-bar">
-      <span class="notice-font-ctrl-label">
-        <i class="fa-solid fa-text-height"></i> 공지사항 글자 크기
-      </span>
-      <div class="notice-font-btn-group">
-        <button type="button" onclick="setNoticeFontSize('sm')" class="btn-notice-font ${currentNoticeFontSize === 'sm' ? 'active' : ''}" data-size="sm">가- 작게</button>
-        <button type="button" onclick="setNoticeFontSize('md')" class="btn-notice-font ${currentNoticeFontSize === 'md' ? 'active' : ''}" data-size="md">보통</button>
-        <button type="button" onclick="setNoticeFontSize('lg')" class="btn-notice-font ${currentNoticeFontSize === 'lg' ? 'active' : ''}" data-size="lg">가+ 크게</button>
-        <button type="button" onclick="setNoticeFontSize('xl')" class="btn-notice-font ${currentNoticeFontSize === 'xl' ? 'active' : ''}" data-size="xl">가++ 아주크게</button>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <span class="notice-font-ctrl-label">
+          <i class="fa-solid fa-text-height"></i> 공지사항 글자 크기
+        </span>
+        <div class="notice-font-btn-group">
+          <button type="button" onclick="setNoticeFontSize('sm')" class="btn-notice-font ${currentNoticeFontSize === 'sm' ? 'active' : ''}" data-size="sm">가- 작게</button>
+          <button type="button" onclick="setNoticeFontSize('md')" class="btn-notice-font ${currentNoticeFontSize === 'md' ? 'active' : ''}" data-size="md">보통</button>
+          <button type="button" onclick="setNoticeFontSize('lg')" class="btn-notice-font ${currentNoticeFontSize === 'lg' ? 'active' : ''}" data-size="lg">가+ 크게</button>
+          <button type="button" onclick="setNoticeFontSize('xl')" class="btn-notice-font ${currentNoticeFontSize === 'xl' ? 'active' : ''}" data-size="xl">가++ 아주크게</button>
+        </div>
       </div>
+      <button type="button" onclick="closeModal()" class="btn-notice-ctrl-close" title="공지사항 창 끄기">
+        <i class="fa-solid fa-xmark"></i> 끄기 / 닫기
+      </button>
     </div>
 
     <span style="background: #EF4444; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">공지사항</span>
@@ -3397,6 +3457,13 @@ function openNoticeModal(title, date, content) {
     <span style="font-size: 0.82rem; color: #64748B; display: block; margin-bottom: 16px;"><i class="fa-regular fa-calendar"></i> 공시일: ${date}</span>
     <div id="notice-detail-text-box" style="background: #F8FAFC; padding: 18px; border-radius: 10px; border: 1px solid #E2E8F0; line-height: ${conf.lineHeight}; color: #334155; font-size: ${conf.size}; word-break: break-word;">
       ${content}
+    </div>
+
+    <!-- 하단 크고 선명한 끄기(닫기) 버튼 -->
+    <div style="margin-top: 20px; display: flex; justify-content: center; gap: 12px;">
+      <button type="button" onclick="closeModal()" class="btn-notice-bottom-close">
+        <i class="fa-solid fa-xmark"></i> 공지사항 창 닫기 (끄기)
+      </button>
     </div>
   `;
   showModalClean('detail-modal');

@@ -1663,3 +1663,46 @@ html, body {
   border-color: #0284C7 !important;
   box-shadow: 0 2px 5px rgba(2, 132, 199, 0.3) !important;
 }
+
+/* 끄기 / 닫기 버튼 전용 스타일 (시니어 접근성 강화) */
+.btn-notice-ctrl-close {
+  background: #DC2626;
+  color: #FFFFFF;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.btn-notice-ctrl-close:hover {
+  background: #B91C1C;
+  transform: translateY(-1px);
+}
+.btn-notice-bottom-close {
+  background: #0A2540;
+  color: #FFFFFF;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(10, 37, 64, 0.25);
+  transition: all 0.15s ease;
+  min-width: 180px;
+}
+.btn-notice-bottom-close:hover {
+  background: #0284C7;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35);
+}
