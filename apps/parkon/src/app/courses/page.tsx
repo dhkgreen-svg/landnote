@@ -1,4 +1,5 @@
 'use client';
+import { matchesCourseAliases } from '@/lib/courseBigData';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -458,6 +459,7 @@ export default function CoursesPage() {
           name.includes(q) ||
           reg.includes(q) ||
           addr.includes(q) ||
+          matchesCourseAliases(c.aliases, q) ||
           name.replace(/\s+/g, '').includes(noSpaceQ)
         );
       });

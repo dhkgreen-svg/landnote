@@ -396,7 +396,7 @@ export function YardageBookModal({
       setGreenSpeed(existing.greenSpeed || '보통');
       setFairwayCondition(existing.fairwayCondition || '양호');
       setMemo(existing.memo || '');
-      setVisibility(existing.visibility || 'PRIVATE');
+      setVisibility('PRIVATE');
       setHoleShape(existing.holeShape || 'STRAIGHT');
       setGreenAngle(typeof existing.greenAngle === 'number' ? existing.greenAngle : 0);
       setPaperNotePhotoUrl(existing.paperNotePhotoUrl);
@@ -712,7 +712,7 @@ export function YardageBookModal({
       stamps,
       drawingDataUrl,
       paperNotePhotoUrl,
-      visibility,
+      visibility: 'PRIVATE',
       updatedAt: new Date().toISOString(),
     };
     YardageBookStorage.saveNote(note);
@@ -1320,33 +1320,12 @@ export function YardageBookModal({
 
             {/* 프라이버시 & 자동 펼치기 스위치 */}
             <div className="flex items-center justify-between gap-2 pt-1 border-t border-emerald-200/70 flex-wrap">
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  data-testid="btn-yardage-privacy-private"
-                  onClick={() => setVisibility('PRIVATE')}
-                  className={`px-2 py-1 rounded-lg text-[11px] font-black flex items-center gap-1 cursor-pointer border transition ${
-                    visibility === 'PRIVATE'
-                      ? 'bg-stone-900 text-white border-stone-900'
-                      : 'bg-white text-stone-600 border-stone-300'
-                  }`}
-                >
-                  <Lock className="w-3 h-3" />
-                  <span>🔒 나만 보기</span>
-                </button>
-                <button
-                  type="button"
-                  data-testid="btn-yardage-privacy-club"
-                  onClick={() => setVisibility('CLUB_SHARED')}
-                  className={`px-2 py-1 rounded-lg text-[11px] font-black flex items-center gap-1 cursor-pointer border transition ${
-                    visibility === 'CLUB_SHARED'
-                      ? 'bg-emerald-700 text-white border-emerald-700'
-                      : 'bg-white text-stone-600 border-stone-300'
-                  }`}
-                >
-                  <Building2 className="w-3 h-3" />
-                  <span>🏛️ 우리 클럽 공유</span>
-                </button>
+              <div
+                data-testid="badge-yardage-private-only"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-stone-900 text-amber-300 text-[11px] font-black border border-stone-800"
+              >
+                <Lock className="w-3 h-3" />
+                <span>나만의 비공개 공략집</span>
               </div>
 
               <label className="flex items-center gap-1.5 text-[11px] font-bold text-stone-700 cursor-pointer select-none">

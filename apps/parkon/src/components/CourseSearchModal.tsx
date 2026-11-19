@@ -7,6 +7,7 @@ import { ParkOnStorage } from '@/lib/storage';
 import { getCourseDualName } from '@/lib/courseLocalization';
 import { generateStandardHoles } from '@/lib/defaultCourses';
 import { useBackHandler } from '@/lib/backNavigation';
+import { matchesCourseAliases } from '@/lib/courseBigData';
 
 interface CourseSearchModalProps {
   isOpen: boolean;
@@ -128,6 +129,7 @@ export const CourseSearchModal: React.FC<CourseSearchModalProps> = ({
         noSpaceName.includes(noSpaceQ) ||
         reg.includes(q) ||
         addr.includes(q) ||
+        matchesCourseAliases(c.aliases, q) ||
         (isYanghoQuery && isYanghoCourse)
       );
     });
@@ -269,6 +271,11 @@ export const CourseSearchModal: React.FC<CourseSearchModalProps> = ({
                     </div>
                     <div className="text-xs text-stone-500 font-medium mt-0.5">
                       📍 {displayRegion} · {holesText}
+                      {sc.aliases && sc.aliases.length > 0 && (
+                        <span className="ml-1.5 inline-block px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 text-[10px] font-black">
+                          별칭: {sc.aliases.join(', ')}
+                        </span>
+                      )}
                     </div>
                   </div>
 

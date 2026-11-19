@@ -23,6 +23,7 @@ export interface Course {
   country?: 'KR' | 'JP'; // 'KR' = 한국, 'JP' = 일본
   nameJa?: string;       // 일본어 구장명 (파크골프장 제외한 간결명)
   nameKo?: string;       // 한국어 구장명 (파크골프장 제외한 간결명)
+  aliases?: string[];    // 구장 별칭 목록 (예: ['삼국유사', '충주호', '강나루'])
   regionJa?: string;     // 일본어 지역명
   regionKo?: string;     // 한국어 지역명
   totalCourses?: number; // e.g. 7코스

@@ -1,5 +1,6 @@
 'use client';
 import { useBackHandler } from '@/lib/backNavigation';
+import { reportCourseBigDataLog } from '@/lib/courseBigData';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -46,11 +47,16 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
   );
 
   const [editedCourseName, setEditedCourseName] = useState<string>(course.name);
+  const [editedAliases, setEditedAliases] = useState<string[]>(course.aliases || []);
+  const [draftAliasesText, setDraftAliasesText] = useState<string>((course.aliases || []).join(', '));
   const [editedCourseCount, setEditedCourseCount] = useState<number>(initialCourseCount);
   const [showCourseInfoPopup, setShowCourseInfoPopup] = useState<boolean>(false);
   const [draftCourseName, setDraftCourseName] = useState<string>(course.name);
   const [draftCourseCount, setDraftCourseCount] = useState<number>(initialCourseCount);
   const [courseInfoFlash, setCourseInfoFlash] = useState<boolean>(false);
+  const [showAddZonePopup, setShowAddZonePopup] = useState<boolean>(false);
+  const [zoneDraftName, setZoneDraftName] = useState<string>('');
+  const [zoneDraftCount, setZoneDraftCount] = useState<number>(initialCourseCount);
 
   const availableCourses = COURSE_LETTERS.slice(0, Math.max(1, Math.min(12, editedCourseCount)));
   const totalRequiredHoles = availableCourses.length * 9;
@@ -94,6 +100,33 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
   useBackHandler(true, onClose);
   useBackHandler(Boolean(holePopupDraft), () => setHolePopupDraft(null));
   useBackHandler(showCourseInfoPopup, () => setShowCourseInfoPopup(false));
+  useBackHandler(showAddZonePopup, () => setShowAddZonePopup(false));
+
+  // 새 구역(2구장 등) 생성 직후 해당 구장으로 전환될 때 내부 상태 동기화
+  useEffect(() => {
+    const nextCnt = Math.max(
+      1,
+      Math.min(
+        12,
+        course.totalCourses ||
+          (course.totalHoles && course.totalHoles >= 9 ? Math.round(course.totalHoles / 9) : 4)
+      )
+    );
+    const reqHoles = nextCnt * 9;
+    const syncedHoles: HoleMetadata[] = [...(course.holesMetadata || [])];
+    if (syncedHoles.length < reqHoles) {
+      const std = generateStandardHoles(reqHoles);
+      for (let i = syncedHoles.length; i < reqHoles; i++) {
+        syncedHoles.push(std[i] || { hole: i + 1, par: 3, distanceMeter: 60, isVerified: false });
+      }
+    }
+    setEditedCourseName(course.name);
+    setEditedAliases(course.aliases || []);
+    setDraftAliasesText((course.aliases || []).join(', '));
+    setEditedCourseCount(nextCnt);
+    setEditedHoles(syncedHoles);
+    setCurrentCourseIdx(0);
+  }, [course.id]);
 
   useEffect(() => {
     const syncYardage = () => {
@@ -167,7 +200,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     actionLabel: string,
     authorName: string,
     holesOverride?: HoleMetadata[],
-    metaOverride?: { name?: string; courseCount?: number }
+    metaOverride?: { name?: string; courseCount?: number; aliases?: string[] }
   ) => {
     const todayStr = new Date().toISOString().split('T')[0];
     const newHistoryEntry: CourseContribution = {
@@ -178,6 +211,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     const existingHistory = course.contributionHistory || [];
     const updatedHistory = [newHistoryEntry, ...existingHistory].slice(0, 15);
     const finalName = (metaOverride?.name ?? editedCourseName).trim() || course.name;
+    const finalAliases = metaOverride?.aliases ?? editedAliases;
     const finalCourseCount = Math.max(1, Math.min(12, metaOverride?.courseCount ?? editedCourseCount));
     const finalTotalHoles = finalCourseCount * 9;
     const updatedCourse: Course = {
@@ -185,6 +219,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
       name: finalName,
       nameKo: isJapanese ? course.nameKo : finalName,
       nameJa: isJapanese ? finalName : course.nameJa,
+      aliases: finalAliases.length > 0 ? finalAliases : undefined,
       totalCourses: finalCourseCount,
       totalHoles: finalTotalHoles,
       holesMetadata: holesOverride || editedHoles,
@@ -215,7 +250,16 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
         nextHoles.push(std[i] || { hole: i + 1, par: 3, distanceMeter: 60, isVerified: false });
       }
     }
+    const parsedAliases = Array.from(
+      new Set(
+        draftAliasesText
+          .split(/[,，]/)
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0 && s !== cleanName)
+      )
+    ).slice(0, 10);
     setEditedCourseName(cleanName);
+    setEditedAliases(parsedAliases);
     setEditedCourseCount(nextCount);
     setEditedHoles(nextHoles);
     if (currentCourseIdx >= nextCount) {
@@ -225,10 +269,95 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     persistCourseChanges(`구장 정보 수정 (${cleanName} · ${nextCount}코스 ${requiredHoles}홀)`, authorName, nextHoles, {
       name: cleanName,
       courseCount: nextCount,
+      aliases: parsedAliases,
+    });
+    reportCourseBigDataLog({
+      eventType: 'COURSE_INFO_EDIT',
+      courseId: course.id,
+      courseName: cleanName,
+      aliases: parsedAliases,
+      region: course.region,
+      totalCourses: nextCount,
+      totalHoles: requiredHoles,
+      contributorName: authorName,
     });
     setShowCourseInfoPopup(false);
     setCourseInfoFlash(true);
     setTimeout(() => setCourseInfoFlash(false), 1400);
+  };
+
+  const handleOpenAddZone = () => {
+    const baseName = (draftCourseName || editedCourseName)
+      .replace(/\s*\(?\d+구장\)?\s*$/g, '')
+      .replace(/\s*제?\d+구장\s*$/g, '')
+      .trim() || editedCourseName;
+    const all = ParkOnStorage.getAllCourses();
+    let nextZoneNum = 2;
+    while (
+      all.some((c) => {
+        const norm = c.name.replace(/\s+/g, '');
+        return (
+          norm === `${baseName}(${nextZoneNum}구장)`.replace(/\s+/g, '') ||
+          norm === `${baseName}${nextZoneNum}구장`.replace(/\s+/g, '')
+        );
+      })
+    ) {
+      nextZoneNum += 1;
+    }
+    setZoneDraftName(`${baseName} (${nextZoneNum}구장)`);
+    setZoneDraftCount(Math.max(1, Math.min(12, draftCourseCount)));
+    setShowAddZonePopup(true);
+  };
+
+  const handleAddZoneConfirm = () => {
+    const cleanName = zoneDraftName.trim();
+    if (!cleanName) {
+      alert('새 구역(구장) 이름을 입력해 주세요.');
+      return;
+    }
+    const nextCount = Math.max(1, Math.min(12, zoneDraftCount));
+    const totalHoles = nextCount * 9;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const authorName = editorName.trim() || '현장 골퍼';
+    const newZoneCourse: Course = {
+      ...course,
+      id: `course-zone-${Date.now()}`,
+      name: cleanName,
+      nameKo: isJapanese ? course.nameKo : cleanName,
+      nameJa: isJapanese ? cleanName : course.nameJa,
+      totalCourses: nextCount,
+      totalHoles,
+      holesMetadata: generateStandardHoles(totalHoles),
+      isVerified: false,
+      isSpecsVerified: false,
+      isLocked: false,
+      courseMaster: authorName,
+      contributorName: authorName,
+      contributedAt: todayStr,
+      createdAt: new Date().toISOString(),
+      contributionHistory: [
+        {
+          author: authorName,
+          date: todayStr,
+          action: `별도 구역 새 구장 생성 (${cleanName} · ${nextCount}코스 ${totalHoles}홀)`,
+        },
+      ],
+    };
+    ParkOnStorage.updateCourse(newZoneCourse);
+    reportCourseBigDataLog({
+      eventType: 'ADD_ZONE_COURSE',
+      courseId: newZoneCourse.id,
+      courseName: cleanName,
+      region: course.region,
+      totalCourses: nextCount,
+      totalHoles,
+      contributorName: authorName,
+    });
+    onSaved(newZoneCourse);
+    setShowAddZonePopup(false);
+    setShowCourseInfoPopup(false);
+    setCourseInfoFlash(true);
+    setTimeout(() => setCourseInfoFlash(false), 1600);
   };
 
   const handleSingleHoleConfirm = (holeNumber: number, holeLabel: string) => {
@@ -250,6 +379,18 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     const authorName = editorName.trim() || '현장 골퍼';
     const holeLabel = `${holePopupDraft.courseLetter}-${holePopupDraft.holeInCourse}홀`;
     persistCourseChanges(`${holeLabel} 제원 현장 확인·수정`, authorName, nextHoles);
+    reportCourseBigDataLog({
+      eventType: 'HOLE_SPEC_EDIT',
+      courseId: course.id,
+      courseName: editedCourseName,
+      region: course.region,
+      holeNumber: holePopupDraft.holeNumber,
+      courseLetter: holePopupDraft.courseLetter,
+      holeInCourse: holePopupDraft.holeInCourse,
+      par: holePopupDraft.par,
+      distanceMeter: holePopupDraft.distanceMeter,
+      contributorName: authorName,
+    });
     const savedHole = holePopupDraft.holeNumber;
     setHolePopupDraft(null);
     setHoleConfirmFlash(savedHole);
@@ -306,6 +447,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
               data-testid="btn-course-info-edit"
               onClick={() => {
                 setDraftCourseName(editedCourseName);
+                setDraftAliasesText(editedAliases.join(', '));
                 setDraftCourseCount(editedCourseCount);
                 setShowCourseInfoPopup(true);
               }}
@@ -738,6 +880,21 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
                 />
               </div>
 
+              {/* 1-2. 구장 별칭 입력 (검색 연동 · 빅데이터 수집) */}
+              <div>
+                <label className="text-sm font-black text-stone-700 block mb-1.5">
+                  구장 별칭 <span className="text-xs font-bold text-stone-400">(선택 · 쉼표로 여러 개)</span>
+                </label>
+                <input
+                  type="text"
+                  data-testid="input-popup-course-aliases"
+                  value={draftAliasesText}
+                  onChange={(e) => setDraftAliasesText(e.target.value)}
+                  placeholder="예: 삼국유사, 충주호, 강나루"
+                  className="w-full bg-stone-50 border-2 border-stone-300 focus:border-emerald-600 rounded-2xl px-4 py-2.5 text-base font-bold text-stone-900 placeholder:text-stone-400 outline-none transition"
+                />
+              </div>
+
               {/* 2. 코스 수 선택 (좌우 - / + 스텝퍼) */}
               <div>
                 <label className="text-sm font-black text-stone-700 block mb-2.5">
@@ -792,6 +949,26 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
                   </button>
                 </div>
               </div>
+
+              {/* 3. 별도 구역 (2구장 등) 새 구장 추가 */}
+              <button
+                type="button"
+                data-testid="btn-open-add-zone"
+                onClick={handleOpenAddZone}
+                className="w-full border-2 border-dashed border-emerald-500 bg-emerald-50 hover:bg-emerald-100/80 active:scale-[0.99] rounded-2xl p-3.5 flex items-center justify-between gap-2.5 text-left transition cursor-pointer"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-black text-emerald-900">
+                    + 별도 구역 (2구장 등) 추가
+                  </div>
+                  <div className="text-[11px] font-bold text-emerald-700 leading-snug mt-0.5">
+                    A코스부터 다시 시작하는 구역이 있을 때 새 구장으로 1초 분리
+                  </div>
+                </div>
+                <span className="px-3 py-1.5 rounded-xl bg-emerald-700 text-amber-300 text-xs font-black shrink-0 shadow-xs">
+                  구역 추가
+                </span>
+              </button>
             </div>
 
             {/* 팝업 하단 버튼 */}
@@ -810,6 +987,129 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
                 className="py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-600 active:scale-98 text-white font-black text-lg shadow-md cursor-pointer transition"
               >
                 ✓ 수정 완료
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 별도 구역(2구장 등) 새 구장 생성 팝업창 */}
+      {showAddZonePopup && (
+        <div
+          data-testid="add-zone-course-popup"
+          className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setShowAddZonePopup(false)}
+        >
+          <div
+            className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border-2 border-emerald-600/40 animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-teal-950 px-5 py-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-amber-300 text-xl font-black leading-none">+</span>
+                <span className="font-black text-lg tracking-tight text-white">
+                  별도 구역 (새 구장) 추가
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddZonePopup(false)}
+                className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center text-base font-black transition cursor-pointer"
+                title="닫기"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 space-y-5">
+              <div>
+                <label className="text-sm font-black text-stone-700 block mb-2">
+                  새 구장명 (예: 구장명 2구장)
+                </label>
+                <input
+                  type="text"
+                  data-testid="input-add-zone-name"
+                  value={zoneDraftName}
+                  onChange={(e) => setZoneDraftName(e.target.value)}
+                  placeholder="예: 한림술뫼 (2구장)"
+                  className="w-full bg-emerald-50/70 border-2 border-emerald-600 rounded-2xl px-4 py-3.5 text-xl font-black text-emerald-950 outline-none focus:ring-2 focus:ring-emerald-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-black text-stone-700 block mb-2.5">
+                  새 구역 코스 수 선택
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    data-testid="btn-add-zone-minus"
+                    disabled={zoneDraftCount <= 1}
+                    onClick={() => setZoneDraftCount((prev) => Math.max(1, prev - 1))}
+                    className={`w-16 h-16 rounded-2xl border-2 text-4xl font-black flex items-center justify-center shrink-0 transition cursor-pointer ${
+                      zoneDraftCount <= 1
+                        ? 'bg-stone-100 text-stone-300 border-stone-200 cursor-not-allowed'
+                        : 'bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-800 border-stone-300 shadow-xs'
+                    }`}
+                    aria-label="새 구역 코스 수 감소"
+                  >
+                    −
+                  </button>
+
+                  <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-600 rounded-2xl py-2.5 px-3 text-center shadow-inner">
+                    <div className="flex items-baseline justify-center gap-1">
+                      <span
+                        data-testid="text-add-zone-count"
+                        className="text-4xl font-black text-emerald-950 leading-none"
+                      >
+                        {zoneDraftCount}
+                      </span>
+                      <span className="text-xl font-black text-emerald-800">코스</span>
+                    </div>
+                    <div className="text-xs font-black text-emerald-700 mt-1">
+                      {zoneDraftCount === 1
+                        ? 'A 코스 · 총 9홀'
+                        : `A~${COURSE_LETTERS[zoneDraftCount - 1]} 코스 · 총 ${zoneDraftCount * 9}홀`}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    data-testid="btn-add-zone-plus"
+                    disabled={zoneDraftCount >= 12}
+                    onClick={() => setZoneDraftCount((prev) => Math.min(12, prev + 1))}
+                    className={`w-16 h-16 rounded-2xl border-2 text-4xl font-black flex items-center justify-center shrink-0 transition cursor-pointer ${
+                      zoneDraftCount >= 12
+                        ? 'bg-stone-100 text-stone-300 border-stone-200 cursor-not-allowed'
+                        : 'bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-amber-300 border-emerald-800 shadow-md'
+                    }`}
+                    aria-label="새 구역 코스 수 증가"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 leading-relaxed">
+                기존 구장의 지역·주소·위치 정보가 자동 복사되어 <b>A코스부터 시작하는 별개 구장</b>으로 바로 등록됩니다.
+              </p>
+            </div>
+
+            <div className="p-4 bg-stone-50 border-t border-stone-200 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAddZonePopup(false)}
+                className="py-4 rounded-2xl bg-stone-200 hover:bg-stone-300 active:scale-98 text-stone-800 font-black text-lg cursor-pointer transition"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                data-testid="btn-confirm-add-zone"
+                onClick={handleAddZoneConfirm}
+                className="py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-600 active:scale-98 text-white font-black text-lg shadow-md cursor-pointer transition"
+              >
+                ✓ 새 구장 생성
               </button>
             </div>
           </div>

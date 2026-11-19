@@ -1,5 +1,6 @@
 'use client';
 import { useBackHandler } from '@/lib/backNavigation';
+import { matchesCourseAliases } from '@/lib/courseBigData';
 // Build: 2026-10-03-field-ux-analytics-baseline-160
 import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
@@ -3518,6 +3519,7 @@ export default function HomePage() {
                     noSpaceName.includes(noSpaceQ) ||
                     reg.includes(q) ||
                     addr.includes(q) ||
+                    matchesCourseAliases(c.aliases, q) ||
                     (isYanghoQuery && isYanghoCourse)
                   );
                 })
@@ -4089,6 +4091,7 @@ export default function HomePage() {
                     noSpaceName.includes(noSpaceQ) ||
                     reg.includes(q) ||
                     addr.includes(q) ||
+                    matchesCourseAliases(c.aliases, q) ||
                     (isYanghoQuery && isYanghoCourse)
                   );
                 });
