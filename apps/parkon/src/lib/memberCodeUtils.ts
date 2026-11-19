@@ -3,6 +3,7 @@
 import { ParkOnStorage, KakaoAuthUser, UserGolfProfile } from './storage';
 import { CompanionStorage, Companionship } from './companionStorage';
 import { BadgeStorage } from './badgeStorage';
+import { YardageBookStorage } from './yardageBookStorage';
 import { RoundSession } from '@/types/parkon';
 
 export const MEMBER_CODE_STORAGE_KEY = 'parkon_member_code_v1';
@@ -351,6 +352,8 @@ export async function syncMemberDataToCloud(forceImmediate = false): Promise<{ s
 
     const customCourses = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_custom_courses_v1') || '[]') : [];
     const crowdSpecs = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_crowd_hole_specs_v1') || '{}') : {};
+    const yardageNotes = YardageBookStorage.getAllNotes();
+    const deletedYardageIds = YardageBookStorage.getDeletedNoteIds();
     const clubs = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_clubs_v2') || '[]') : [];
     const myClubIds = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_my_club_ids_v1') || '[]') : [];
     const clubEvents = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_club_rooms_v1') || localStorage.getItem('parkon_club_events_v2') || '[]') : [];
@@ -374,6 +377,8 @@ export async function syncMemberDataToCloud(forceImmediate = false): Promise<{ s
       tour,
       customCourses,
       crowdSpecs,
+      yardageNotes,
+      deletedYardageIds,
       clubs,
       myClubIds,
       clubEvents,
@@ -493,6 +498,8 @@ export async function fetchAndRestoreMemberData(
       tour,
       customCourses,
       crowdSpecs,
+      yardageNotes: cloudYardageNotes,
+      deletedYardageIds: cloudDeletedYardageIds,
       clubs: cloudClubs,
       myClubIds: cloudMyClubIds,
       clubEvents: cloudClubEvents,
@@ -606,12 +613,71 @@ export async function fetchAndRestoreMemberData(
       localStorage.setItem('parkon_national_tour_v1', JSON.stringify(tour));
     }
 
-    // 7. 현장 실측 수정 구장 제원 및 빅데이터 홀 스펙 복원
-    if (Array.isArray(customCourses) && customCourses.length > 0) {
-      localStorage.setItem('parkon_custom_courses_v1', JSON.stringify(customCourses));
+    // 7. 현장 실측 수정 구장 제원, 빅데이터 홀 스펙, 나만의 코스 공략집 무손실 타임스탬프 병합 복원
+    let hasUnsyncedLocalSpecsOrYardage = false;
+    try {
+      const localCourses: any[] = JSON.parse(localStorage.getItem('parkon_custom_courses_v1') || '[]');
+      const courseMap = new Map<string, any>();
+      if (Array.isArray(customCourses)) {
+        customCourses.forEach((c: any) => {
+          if (c && c.id) courseMap.set(c.id, c);
+        });
+      }
+      if (Array.isArray(localCourses)) {
+        localCourses.forEach((lc: any) => {
+          if (!lc || !lc.id) return;
+          const cc = courseMap.get(lc.id);
+          if (!cc) {
+            courseMap.set(lc.id, lc);
+            hasUnsyncedLocalSpecsOrYardage = true;
+          } else {
+            const tLocal = new Date(lc.updatedAt || lc.contributedAt || 0).getTime();
+            const tCloud = new Date(cc.updatedAt || cc.contributedAt || 0).getTime();
+            if (tLocal >= tCloud) {
+              courseMap.set(lc.id, lc);
+              if (tLocal > tCloud) hasUnsyncedLocalSpecsOrYardage = true;
+            }
+          }
+        });
+      }
+      if (courseMap.size > 0) {
+        localStorage.setItem('parkon_custom_courses_v1', JSON.stringify(Array.from(courseMap.values())));
+      }
+    } catch {}
+    try {
+      const localSpecs: Record<string, any> = JSON.parse(localStorage.getItem('parkon_crowd_hole_specs_v1') || '{}');
+      const mergedSpecs: Record<string, any> = {};
+      if (crowdSpecs && typeof crowdSpecs === 'object') {
+        Object.entries(crowdSpecs).forEach(([k, v]) => {
+          if (k && v) mergedSpecs[k] = v;
+        });
+      }
+      Object.entries(localSpecs).forEach(([k, lv]) => {
+        if (!k || !lv) return;
+        const cv = mergedSpecs[k];
+        if (!cv) {
+          mergedSpecs[k] = lv;
+          hasUnsyncedLocalSpecsOrYardage = true;
+        } else {
+          const tLocal = new Date(lv.updatedAt || 0).getTime();
+          const tCloud = new Date(cv.updatedAt || 0).getTime();
+          if (tLocal >= tCloud) {
+            mergedSpecs[k] = lv;
+            if (tLocal > tCloud) hasUnsyncedLocalSpecsOrYardage = true;
+          }
+        }
+      });
+      if (Object.keys(mergedSpecs).length > 0) {
+        localStorage.setItem('parkon_crowd_hole_specs_v1', JSON.stringify(mergedSpecs));
+      }
+    } catch {}
+    if (YardageBookStorage.mergeCloudNotes(cloudYardageNotes, cloudDeletedYardageIds)) {
+      hasUnsyncedLocalSpecsOrYardage = true;
     }
-    if (crowdSpecs && typeof crowdSpecs === 'object' && Object.keys(crowdSpecs).length > 0) {
-      localStorage.setItem('parkon_crowd_hole_specs_v1', JSON.stringify(crowdSpecs));
+    if (hasUnsyncedLocalSpecsOrYardage) {
+      setTimeout(() => {
+        syncMemberDataToCloud(true).catch(() => {});
+      }, 400);
     }
 
     // 7-B. 📱↔💻 스마트폰 ↔ PC 클럽(clubs), 내 소속 클럽(myClubIds), 대회 전광판(clubEvents), 번개(flashGatherings) 무손실 양방향 동기화!

@@ -1616,13 +1616,14 @@ export const ParkOnStorage = {
     try {
       const customData = localStorage.getItem(STORAGE_KEYS.CUSTOM_COURSES);
       let list: Course[] = customData ? JSON.parse(customData) : [];
+      const courseWithTimestamp = { ...updatedCourse, updatedAt: new Date().toISOString() } as Course & { updatedAt: string };
       const idx = list.findIndex(
         (c) => c.id === updatedCourse.id || c.name.replace(/\s+/g, '') === updatedCourse.name.replace(/\s+/g, '')
       );
       if (idx >= 0) {
-        list[idx] = updatedCourse;
+        list[idx] = courseWithTimestamp;
       } else {
-        list.push(updatedCourse);
+        list.push(courseWithTimestamp);
       }
       localStorage.setItem(STORAGE_KEYS.CUSTOM_COURSES, JSON.stringify(list));
 
@@ -1663,6 +1664,7 @@ export const ParkOnStorage = {
 
       window.dispatchEvent(new CustomEvent('parkon_course_updated', { detail: updatedCourse }));
       window.dispatchEvent(new Event('storage'));
+      import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud(true)).catch(() => {});
     } catch (e) {
       console.error('Failed to update course:', e);
     }

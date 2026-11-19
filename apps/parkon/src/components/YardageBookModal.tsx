@@ -132,18 +132,20 @@ function drawBaseCourseDiagram(
     ctx.lineWidth = 2.5;
     ctx.setLineDash([5, 4]);
     ctx.beginPath();
-    ctx.ellipse(safeX, safeY, 44, 26, 0, 0, Math.PI * 2);
+    ctx.ellipse(safeX, safeY, 44, 30, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.font = '900 22px sans-serif';
+    ctx.font = '900 18px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 4.5;
-    ctx.strokeText('안전', safeX, safeY + 1);
+    ctx.lineWidth = 4;
+    ctx.strokeText('욕심', safeX, safeY - 9);
+    ctx.strokeText('금지', safeX, safeY + 10);
     ctx.fillStyle = '#DC2626';
-    ctx.fillText('안전', safeX, safeY + 1);
+    ctx.fillText('욕심', safeX, safeY - 9);
+    ctx.fillText('금지', safeX, safeY + 10);
     ctx.restore();
   }
 
@@ -746,26 +748,11 @@ export function YardageBookModal({
       className="fixed inset-0 z-[75] bg-black/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-fadeIn"
     >
       <div className="bg-white text-stone-900 rounded-3xl w-full max-w-lg max-h-[94vh] flex flex-col shadow-2xl border-2 border-emerald-500 overflow-hidden">
-        {/* 상단 헤더 */}
-        <div className="px-4 py-3 bg-gradient-to-r from-emerald-950 via-teal-900 to-emerald-900 text-white flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-9 h-9 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center text-lg font-black shrink-0 shadow-xs">
-              📓
-            </span>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <h3 className="text-sm sm:text-base font-black tracking-tight">
-                  나만의 코스 공략집
-                </h3>
-                <span className="px-2 py-0.5 rounded-full bg-yellow-400 text-stone-950 text-[11px] font-black">
-                  {courseLetter}-{holeInCourse}홀 · Par {par} · 공식 {officialDistance || 60}m
-                </span>
-              </div>
-              <p className="text-[11px] text-emerald-200 font-bold truncate">
-                {courseName}
-              </p>
-            </div>
-          </div>
+        {/* 상단 헤더 (초슬림 핵심 정보 + 확인 및 닫기) */}
+        <div className="px-3.5 py-2.5 bg-gradient-to-r from-emerald-950 via-teal-900 to-emerald-900 text-white flex items-center justify-between gap-2 shrink-0">
+          <span className="px-3 py-1.5 rounded-xl bg-yellow-400 text-stone-950 text-xs sm:text-sm font-black shadow-xs truncate">
+            {courseLetter}-{holeInCourse}홀 · Par {par} · 공식 {officialDistance || 60}m
+          </span>
           <button
             type="button"
             data-testid="btn-yardage-header-confirm-close"
@@ -929,13 +916,25 @@ export function YardageBookModal({
                       key={ts}
                       type="button"
                       onClick={() => setTargetScore(ts)}
-                      className={`w-full py-2.5 px-1 rounded-lg text-xs font-black border cursor-pointer transition leading-none text-center ${
+                      className={`w-full px-1 rounded-lg text-xs font-black border cursor-pointer transition text-center ${
+                        ts === '안전 운영' ? 'py-1.5 leading-[1.12]' : 'py-2.5 leading-none'
+                      } ${
                         targetScore === ts
                           ? 'bg-amber-400 text-stone-950 border-yellow-200 shadow-sm'
                           : 'bg-stone-900/80 text-stone-300 border-stone-700 hover:bg-stone-700'
                       }`}
                     >
-                      {ts === '버디 도전' ? '버디' : ts === '파 세이브(3~4타)' ? '파' : '안전'}
+                      {ts === '버디 도전' ? (
+                        '버디'
+                      ) : ts === '파 세이브(3~4타)' ? (
+                        '파'
+                      ) : (
+                        <span className="block text-center leading-[1.12]">
+                          욕심
+                          <br />
+                          금지
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -1364,7 +1363,7 @@ export function YardageBookModal({
           </div>
 
           {/* 스크롤 최하단 저장·삭제 바 (고정 해제하여 도면·입력창 공간 확보) */}
-          <div className="pt-1 pb-2 flex items-center gap-1.5">
+          <div className="pt-1 pb-8 flex items-center gap-1.5">
             <button
               type="button"
               onClick={onClose}

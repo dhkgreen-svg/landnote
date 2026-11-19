@@ -1373,7 +1373,7 @@ export default function HomePage() {
             <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
               {/* 왼쪽: 📓 미리보기 및 설정 (홀별 공략집 + 오늘 구장 상태 통합) */}
               {(() => {
-                const targetCourse = homeCourse || getCurrentActiveCourse() || courses[0];
+                const targetCourse = mounted ? (homeCourse || getCurrentActiveCourse() || courses[0]) : courses[0];
                 return (
                   <button
                     type="button"
@@ -1402,7 +1402,7 @@ export default function HomePage() {
 
               {/* 오른쪽: 라운딩 바로 시작하기 (실전 정식 기록) */}
               {(() => {
-                const targetCourse = homeCourse || getCurrentActiveCourse() || courses[0];
+                const targetCourse = mounted ? (homeCourse || getCurrentActiveCourse() || courses[0]) : courses[0];
                 const courseId = targetCourse?.id || 'course_1';
                 const courseShortName = (targetCourse?.name || '구미 동락').replace('파크골프장', '').replace('파크골프', '').trim();
                 return (

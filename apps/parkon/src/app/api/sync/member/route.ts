@@ -19,6 +19,8 @@ export interface MemberSyncRecord {
   tour?: any;
   customCourses?: any[];
   crowdSpecs?: any;
+  yardageNotes?: Record<string, any>;
+  deletedYardageIds?: string[];
   clubs?: any[];
   myClubIds?: string[];
   clubEvents?: any[];
@@ -957,9 +959,34 @@ export async function POST(req: NextRequest) {
     }
     const mergedFlashGatherings = Array.from(flashMap.values());
 
+    const mergedDeletedYardage = Array.from(new Set<string>([
+      ...(Array.isArray(existing?.deletedYardageIds) ? existing!.deletedYardageIds! : []),
+      ...(Array.isArray(body.deletedYardageIds) ? body.deletedYardageIds : []),
+    ]));
+    const mergedDelYSet = new Set(mergedDeletedYardage);
+    const mergedYardageNotes: Record<string, any> = {};
+    if (existing?.yardageNotes && typeof existing.yardageNotes === 'object') {
+      Object.entries(existing.yardageNotes).forEach(([k, v]) => {
+        if (k && v && !mergedDelYSet.has(k)) mergedYardageNotes[k] = v;
+      });
+    }
+    if (body.yardageNotes && typeof body.yardageNotes === 'object') {
+      Object.entries(body.yardageNotes).forEach(([k, v]: [string, any]) => {
+        if (!k || !v) return;
+        mergedDelYSet.delete(k);
+        mergedYardageNotes[k] = v;
+      });
+    }
+    const mergedCrowdSpecs: Record<string, any> = {
+      ...(existing?.crowdSpecs && typeof existing.crowdSpecs === 'object' ? existing.crowdSpecs : {}),
+      ...(body.crowdSpecs && typeof body.crowdSpecs === 'object' ? body.crowdSpecs : {}),
+    };
     const record: MemberSyncRecord = {
       ...existing,
       ...body,
+      crowdSpecs: mergedCrowdSpecs,
+      yardageNotes: mergedYardageNotes,
+      deletedYardageIds: Array.from(mergedDelYSet),
       completedRounds: mergedRounds,
       clubs: mergedClubs,
       myClubIds: mergedMyClubIds,

@@ -45,6 +45,7 @@ export interface YardageHoleNote {
 
 const YARDAGE_STORAGE_PREFIX = 'parkon_yardage_book_v1';
 const YARDAGE_AUTO_OPEN_KEY = 'parkon_yardage_auto_open_v1';
+const YARDAGE_DELETED_IDS_KEY = 'parkon_deleted_yardage_ids_v1';
 
 function getActiveOwnerKey(): string {
   if (typeof window === 'undefined') return 'guest';
@@ -123,9 +124,65 @@ export const YardageBookStorage = {
         updatedAt: new Date().toISOString(),
       };
       localStorage.setItem(this.getStorageKey(), JSON.stringify(all));
+      // Remove from deleted set if previously deleted
+      try {
+        const delSet = new Set(this.getDeletedNoteIds());
+        if (delSet.delete(note.id)) {
+          localStorage.setItem(YARDAGE_DELETED_IDS_KEY, JSON.stringify(Array.from(delSet)));
+        }
+      } catch {}
       window.dispatchEvent(new CustomEvent('parkon_yardage_updated', { detail: { id: note.id } }));
+      import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud(true)).catch(() => {});
     } catch (e) {
       console.error('Failed to save yardage note:', e);
+    }
+  },
+
+  getDeletedNoteIds(): string[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem(YARDAGE_DELETED_IDS_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return [];
+    }
+  },
+
+  mergeCloudNotes(cloudNotes?: Record<string, YardageHoleNote>, cloudDeletedIds?: string[]): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      const localNotes = this.getAllNotes();
+      const localDeleted = this.getDeletedNoteIds();
+      const mergedDeleted = new Set<string>([...localDeleted, ...(Array.isArray(cloudDeletedIds) ? cloudDeletedIds : [])]);
+      const merged: Record<string, YardageHoleNote> = {};
+      let hasUnsyncedLocal = false;
+      if (cloudNotes && typeof cloudNotes === 'object') {
+        Object.entries(cloudNotes).forEach(([id, note]) => {
+          if (note && id && !mergedDeleted.has(id)) merged[id] = note;
+        });
+      }
+      Object.entries(localNotes).forEach(([id, localNote]) => {
+        if (!localNote || !id || mergedDeleted.has(id)) return;
+        const cloudNote = merged[id];
+        if (!cloudNote) {
+          merged[id] = localNote;
+          hasUnsyncedLocal = true;
+        } else {
+          const tLocal = new Date(localNote.updatedAt || 0).getTime();
+          const tCloud = new Date(cloudNote.updatedAt || 0).getTime();
+          if (tLocal >= tCloud) {
+            merged[id] = localNote;
+            if (tLocal > tCloud) hasUnsyncedLocal = true;
+          }
+        }
+      });
+      localStorage.setItem(YARDAGE_DELETED_IDS_KEY, JSON.stringify(Array.from(mergedDeleted)));
+      localStorage.setItem(this.getStorageKey(), JSON.stringify(merged));
+      window.dispatchEvent(new CustomEvent('parkon_yardage_updated'));
+      return hasUnsyncedLocal;
+    } catch {
+      return false;
     }
   },
 
@@ -138,11 +195,15 @@ export const YardageBookStorage = {
     try {
       const all = this.getAllNotes();
       const id = buildYardageNoteId(courseId, courseLetter, holeInCourse);
+      const delSet = new Set(this.getDeletedNoteIds());
+      delSet.add(id);
+      localStorage.setItem(YARDAGE_DELETED_IDS_KEY, JSON.stringify(Array.from(delSet)));
       if (all[id]) {
         delete all[id];
         localStorage.setItem(this.getStorageKey(), JSON.stringify(all));
         window.dispatchEvent(new CustomEvent('parkon_yardage_updated', { detail: { id } }));
       }
+      import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud(true)).catch(() => {});
     } catch {}
   },
 
