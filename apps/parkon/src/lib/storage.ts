@@ -1626,6 +1626,35 @@ export const ParkOnStorage = {
       }
       localStorage.setItem(STORAGE_KEYS.CUSTOM_COURSES, JSON.stringify(list));
 
+      // Keep CROWD_HOLE_SPECS in sync with user-edited holesMetadata so getAllCourses() on reload never reverts user edits
+      if (Array.isArray(updatedCourse.holesMetadata) && updatedCourse.holesMetadata.length > 0) {
+        try {
+          const specs = this.getCrowdsourcedHoleSpecs();
+          const cleanName = (updatedCourse.name || '').replace(/\s+/g, '');
+          const nowIso = new Date().toISOString();
+          updatedCourse.holesMetadata.forEach((h) => {
+            const numHole = Number(h.hole);
+            const key1 = `${updatedCourse.id}_hole_${numHole}`;
+            const key2 = `${cleanName}_hole_${numHole}`;
+            if (specs[key1] || specs[key2] || h.isVerified) {
+              const entry: CrowdsourcedHoleSpec = {
+                courseId: updatedCourse.id,
+                courseName: updatedCourse.name,
+                hole: numHole,
+                par: Number(h.par) || 3,
+                distanceMeter: Number(h.distanceMeter) || 0,
+                isInitialRegistered: true,
+                updatedAt: nowIso,
+                contributorName: updatedCourse.contributorName || h.contributedBy || '현장 골퍼',
+              };
+              specs[key1] = entry;
+              if (cleanName) specs[key2] = entry;
+            }
+          });
+          localStorage.setItem(STORAGE_KEYS.CROWD_HOLE_SPECS, JSON.stringify(specs));
+        } catch {}
+      }
+
       if (this.getHomeCourseId() === updatedCourse.id) {
         try {
           localStorage.setItem('parkon_home_course', JSON.stringify(updatedCourse));

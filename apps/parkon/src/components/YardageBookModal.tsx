@@ -355,6 +355,7 @@ export function YardageBookModal({
   const currentStrokeRef = useRef<{ x: number; y: number }[]>([]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const scrollBodyRef = useRef<HTMLDivElement | null>(null);
+  const initialSwingRef = useRef<number>(60);
 
   // OCR & Voice STT states
   const [isOcrLoading, setIsOcrLoading] = useState<boolean>(false);
@@ -379,7 +380,9 @@ export function YardageBookModal({
     const existing = YardageBookStorage.getNote(courseId, courseLetter, holeInCourse);
     if (existing) {
       setHasExistingNote(true);
-      setTargetDistance(existing.targetDistance ?? (officialDistance || 60));
+      const loadedDist = existing.targetDistance ?? (officialDistance || 60);
+      initialSwingRef.current = loadedDist;
+      setTargetDistance(loadedDist);
       const isPreset = AIMING_PRESETS.some((p) => p.id === existing.aimingPoint);
       setAimingPoint(existing.aimingPoint || '깃대');
       setCustomAiming(isPreset ? '' : existing.aimingPoint || '');
@@ -412,6 +415,7 @@ export function YardageBookModal({
             : officialDistance > 0
               ? Math.min(officialDistance, 80)
               : 75;
+      initialSwingRef.current = defaultSwing;
       setTargetDistance(defaultSwing);
       setAimingPoint('깃대');
       setCustomAiming('');
@@ -765,7 +769,26 @@ export function YardageBookModal({
           <button
             type="button"
             data-testid="btn-yardage-header-confirm-close"
-            onClick={onClose}
+            onClick={() => {
+              const isModified =
+                hasExistingNote ||
+                strokes.length > 0 ||
+                stamps.length > 0 ||
+                memo.trim() !== '' ||
+                holeShape !== 'STRAIGHT' ||
+                greenAngle !== 0 ||
+                backSpace !== '여유' ||
+                sideSpace !== '여유' ||
+                aimingPoint !== '깃대' ||
+                customAiming.trim() !== '' ||
+                targetScore !== '파 세이브(3~4타)' ||
+                targetDistance !== initialSwingRef.current ||
+                Boolean(paperNotePhotoUrl);
+              if (isModified) {
+                persistCurrentNote();
+              }
+              onClose();
+            }}
             aria-label="확인 및 닫기"
             className="px-3.5 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs sm:text-sm shadow-lg border-2 border-yellow-200 flex items-center gap-1 cursor-pointer active:scale-95 transition shrink-0"
           >
