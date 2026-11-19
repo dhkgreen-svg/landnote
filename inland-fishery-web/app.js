@@ -1,5 +1,42 @@
 
 // ==========================================================================
+// 🌟 항상 고정 끄기 탭 전역 관리자 (Always-Fixed Close Tab Controller)
+// ==========================================================================
+function updateFixedCloseTabVisibility() {
+  const tab = document.getElementById('always-fixed-close-tab');
+  if (!tab) return;
+  
+  const hasActiveNoticeModal = 
+    document.querySelector('#detail-modal.active') ||
+    document.querySelector('#notice-modal.active') ||
+    document.querySelector('#welcome-notice-modal.active') ||
+    document.querySelector('.dynamic-welcome-modal[style*="display: block"]') ||
+    document.querySelector('.dynamic-welcome-modal:not([style*="display: none"])');
+    
+  if (hasActiveNoticeModal) {
+    tab.style.display = 'inline-flex';
+  } else {
+    tab.style.display = 'none';
+  }
+}
+window.updateFixedCloseTabVisibility = updateFixedCloseTabVisibility;
+
+function closeAllNoticeModals() {
+  if (typeof closeModal === 'function') closeModal();
+  if (typeof closeNoticeModalFull === 'function') closeNoticeModalFull();
+  if (typeof closeWelcomeNotice === 'function') closeWelcomeNotice();
+  document.querySelectorAll('.dynamic-welcome-modal').forEach(el => el.remove());
+  if (typeof hideModalClean === 'function') {
+    hideModalClean('detail-modal');
+    hideModalClean('notice-modal');
+    hideModalClean('welcome-notice-modal');
+  }
+  updateFixedCloseTabVisibility();
+}
+window.closeAllNoticeModals = closeAllNoticeModals;
+
+
+// ==========================================================================
 // 📢 Notice Font Size Zoom Controller (어르신 맞춤 공지사항 글자 크기 조절)
 // ==========================================================================
 let currentNoticeFontSize = localStorage.getItem('kifa_notice_font_size') || 'md';
@@ -1537,6 +1574,9 @@ function showModalClean(modalId) {
   modal.style.display = 'flex';
   modal.classList.add('active');
   modal.scrollTop = 0;
+  if (typeof updateFixedCloseTabVisibility === 'function') {
+    setTimeout(updateFixedCloseTabVisibility, 50);
+  }
   const content = modal.querySelector('.modal-content');
   if (content) content.scrollTop = 0;
 }
@@ -1546,6 +1586,9 @@ function hideModalClean(modalId) {
   if (!modal) return;
   modal.classList.remove('active');
   modal.style.display = 'none';
+  if (typeof updateFixedCloseTabVisibility === 'function') {
+    setTimeout(updateFixedCloseTabVisibility, 50);
+  }
 }
 
 let welcomeNotice = {
@@ -1720,6 +1763,9 @@ function checkAutoWelcomeNotice() {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         document.getElementById(modalId).style.display = 'block';
         displayIndex++;
+        if (typeof updateFixedCloseTabVisibility === 'function') {
+          setTimeout(updateFixedCloseTabVisibility, 50);
+        }
     });
 }
 
@@ -1736,6 +1782,9 @@ function toggleHideNotice(id, e) {
 function closeDynamicModal(modalId) {
     const el = document.getElementById(modalId);
     if (el) el.remove();
+    if (typeof updateFixedCloseTabVisibility === 'function') {
+      setTimeout(updateFixedCloseTabVisibility, 50);
+    }
 }
 function togglePastNoticesList() {
   const archive = document.getElementById('past-notices-archive');
