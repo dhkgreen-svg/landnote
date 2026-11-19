@@ -3599,12 +3599,12 @@ function openGalleryDetailModal(id) {
 
     ${(item.images && item.images.length > 0) ? `
       <div style="font-size: 0.82rem; color: #475569; margin-bottom: 8px; font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
-        <span><i class="fa-regular fa-images" style="color: #0284C7;"></i> 등록된 행사 사진 (${item.images.length}장) <span style="font-size: 0.75rem; color: #94A3B8; font-weight: normal;">(좌우 스크롤 / 클릭시 원본 확대)</span></span>
+        <span><i class="fa-regular fa-images" style="color: #0284C7;"></i> 등록된 행사 사진 (${item.images.length}장) <span style="font-size: 0.75rem; color: #94A3B8; font-weight: normal;">(좌우로 넘기기 / 누르면 크게 보기)</span></span>
       </div>
       <div style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 16px; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory;">
         ${item.images.map((img, idx) => `
           <div style="flex: 0 0 88%; max-width: 520px; scroll-snap-align: center; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.08); background: #F1F5F9; position: relative; border: 1px solid #E2E8F0;">
-            <img src="${img}" alt="행사 사진 ${idx + 1}" loading="lazy" onerror="this.onerror=null; this.src=\'${item.image || 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80'}\';" style="width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; cursor: pointer; transition: transform 0.2s ease;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" onclick="window.open('${img}', '_blank')" title="클릭하여 원본 사진 크게 보기">
+            <img src="${img}" alt="행사 사진 ${idx + 1}" loading="lazy" onerror="this.onerror=null; this.src=\'${item.image || 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80'}\';" style="width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; cursor: pointer; transition: transform 0.2s ease;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" onclick="openPhotoViewer(this.getAttribute('src'))" title="눌러서 사진 크게 보기">
             <span style="position: absolute; bottom: 8px; right: 8px; background: rgba(15, 23, 42, 0.75); color: #fff; font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 12px; pointer-events: none; backdrop-filter: blur(4px);"><i class="fa-solid fa-camera"></i> ${idx + 1} / ${item.images.length}</span>
           </div>
         `).join('')}
@@ -5456,3 +5456,38 @@ window.applyNoticeFontSize = applyNoticeFontSize;
   }
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
 })();
+
+
+// ==========================================================================
+// 🔍 사진 크게 보기 (새 탭을 열지 않고 화면 안에서 확대 — 뒤로가기/닫기로 상세창으로 복귀)
+// ==========================================================================
+function openPhotoViewer(src) {
+  if (!src) return;
+  let v = document.getElementById('photo-viewer-modal');
+  if (!v) {
+    v = document.createElement('div');
+    v.className = 'modal';
+    v.id = 'photo-viewer-modal';
+    v.innerHTML =
+      '<div class="modal-content" style="max-width: 96vw; width: auto; background: #0B1220; padding: 10px 10px 14px; text-align: center;">' +
+        '<button type="button" class="modal-close" onclick="closePhotoViewer()"><i class="fa-solid fa-xmark"></i> 닫기</button>' +
+        '<img id="photo-viewer-img" alt="사진 크게 보기" style="max-width: 100%; max-height: 82vh; object-fit: contain; border-radius: 8px; display: block; margin: 8px auto 0; touch-action: pinch-zoom;">' +
+      '</div>';
+    v.addEventListener('click', (e) => { if (e.target === v) closePhotoViewer(); });
+    document.body.appendChild(v);
+  }
+  document.getElementById('photo-viewer-img').src = src;
+  v.style.zIndex = '400000';
+  v.style.display = 'flex';
+  v.classList.add('active');
+  const mc = v.querySelector('.modal-content'); if (mc) mc.scrollTop = 0;
+}
+function closePhotoViewer() {
+  const v = document.getElementById('photo-viewer-modal');
+  if (!v) return;
+  v.classList.remove('active');
+  v.style.display = 'none';
+  const im = document.getElementById('photo-viewer-img'); if (im) im.removeAttribute('src');
+}
+window.openPhotoViewer = openPhotoViewer;
+window.closePhotoViewer = closePhotoViewer;
