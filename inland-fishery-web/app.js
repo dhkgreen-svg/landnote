@@ -5402,11 +5402,28 @@ window.applyNoticeFontSize = applyNoticeFontSize;
     timer = setTimeout(() => { timer = null; syncHistory(); }, 60);
   }
 
-  window.addEventListener('popstate', () => {
+  // 홈 화면에서 뒤로가기: 빈 화면(about:blank)으로 튕기지 않도록 한 번 막고 안내, 2.5초 안에 한 번 더 누르면 종료
+  let lastHomeBack = 0;
+  function showBackToast() {
+    let el = document.getElementById('kifa-back-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'kifa-back-toast';
+      el.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:rgba(15,23,42,.92);color:#fff;padding:12px 20px;border-radius:24px;font-size:.95rem;font-weight:700;z-index:2147483647;box-shadow:0 6px 20px rgba(0,0,0,.35);transition:opacity .3s;pointer-events:none;white-space:nowrap;';
+      el.textContent = '뒤로가기를 한 번 더 누르면 종료됩니다';
+      document.body.appendChild(el);
+    }
+    el.style.opacity = '1';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.style.opacity = '0'; }, 2200);
+  }
+
+  window.addEventListener('popstate', (ev) => {
     if (ignorePop > 0) { ignorePop--; return; }
     const open = getOpenLayers();
     if (open.length > 0) {
       histDepth = Math.max(0, histDepth - 1);
+      lastHomeBack = 0;             // 창을 닫는 뒤로가기는 '종료 확인'에 포함하지 않음
       const top = open[0];
       closeLayer(top);              // 가장 위에 있는 창 하나만 닫기 = 이전 화면
       const back = returnMap[top.id];
@@ -5414,11 +5431,24 @@ window.applyNoticeFontSize = applyNoticeFontSize;
       if (back && top.classList.contains('modal') && typeof window.showModalClean === 'function') window.showModalClean(back);
     } else {
       histDepth = 0;
+      const st = ev && ev.state;
+      if (!(st && (st.kifaHome || st.kifaLayer))) { // 홈 화면에서 뒤로가기를 누른 경우
+        const now = Date.now();
+        if (now - lastHomeBack < 2500) { lastHomeBack = 0; history.back(); return; } // 두 번 연속 = 종료
+        lastHomeBack = now;
+        try { history.pushState({ kifaHome: true }, ''); } catch (e) {}
+        showBackToast();
+      }
     }
     scheduleSync();
   });
 
   function start() {
+    // 홈 화면 보호 기록 1개 (새로고침 때 중복으로 쌓이지 않게 확인)
+    try {
+      const cs = history.state;
+      if (!(cs && (cs.kifaHome || cs.kifaLayer))) history.pushState({ kifaHome: true }, '');
+    } catch (e) {}
     new MutationObserver(scheduleSync).observe(document.body, {
       attributes: true, subtree: true, attributeFilter: ['class', 'style'], childList: true
     });
