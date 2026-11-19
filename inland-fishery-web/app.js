@@ -65,9 +65,11 @@ function updateFixedCloseTabVisibility() {
 
   const hasAnyOpen = Boolean(isDetailOpen || isNoticeOpen || isWelcomeOpen || hasDynamic);
   
-  if (hasAnyOpen) {
+  // ⚠️ 이미 같은 상태면 건드리지 않음 (MutationObserver 무한루프 → 화면 먹통 방지)
+  const isActive = tab.classList.contains('active');
+  if (hasAnyOpen && !isActive) {
     tab.classList.add('active');
-  } else {
+  } else if (!hasAnyOpen && isActive) {
     tab.classList.remove('active');
   }
 }
@@ -104,8 +106,12 @@ window.closeAllNoticeModals = closeAllNoticeModals;
 if (typeof window !== 'undefined' && typeof MutationObserver !== 'undefined') {
   window.addEventListener('DOMContentLoaded', () => {
     updateFixedCloseTabVisibility();
-    const observer = new MutationObserver(() => {
-      updateFixedCloseTabVisibility();
+    let obsTimer = null;
+    const observer = new MutationObserver((mutations) => {
+      // 끄기 탭 자신의 변경은 무시 + 디바운스 (무한루프 차단)
+      if (mutations.every(m => m.target && m.target.id === 'always-fixed-close-tab')) return;
+      if (obsTimer) return;
+      obsTimer = setTimeout(() => { obsTimer = null; updateFixedCloseTabVisibility(); }, 80);
     });
     observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class', 'style'] });
     
