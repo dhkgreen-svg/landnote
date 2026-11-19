@@ -192,43 +192,16 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col border border-stone-200 animate-in fade-in zoom-in-95 duration-200">
-        {/* 1. Header */}
-        <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-teal-950 p-4 text-white flex items-center justify-between shrink-0 shadow-sm">
+        {/* 1. Header (초슬림 구장 실측 정보 제목만 노출) */}
+        <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-teal-950 px-4 py-3 text-white flex items-center justify-between shrink-0 shadow-sm">
           {(() => {
             const dual = getCourseDualName(course, isJapanese);
-            const displayRegion = isJapanese
-              ? course.regionJa || course.region
-              : course.regionKo || course.region;
-            const displayClosedDay =
-              getLocalizedCourseClosedDay(course, isJapanese) ||
-              (isJapanese ? '毎週月曜日休場' : '매주 월요일 휴장');
             return (
               <div className="min-w-0 flex-1 pr-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-black text-base sm:text-lg text-white tracking-tight truncate flex items-center gap-1.5">
-                    {dual.flag && <span>{dual.flag}</span>}
-                    <span>{dual.primary} {isJapanese ? '実測諸元' : '실측 정보'}</span>
-                  </span>
-                  <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full">
-                    {isJapanese ? '公式スペック' : '공식 제원'}
-                  </span>
-                </div>
-                {dual.showSecondary && dual.secondary && (
-                  <div className="text-xs text-emerald-200 font-bold truncate mt-0.5">
-                    {dual.secondary}
-                  </div>
-                )}
-                <p className="text-[11px] text-emerald-300/80 mt-0.5 truncate">
-                  {displayRegion} · {isJapanese ? `全${availableCourses.length}コース ${course.totalHoles || 36}H 実測諸元表` : `총 ${availableCourses.length}코스 ${course.totalHoles || 36}홀 실측 제원표`}
-                </p>
-                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                  <span className="text-[10px] bg-emerald-700/80 text-emerald-100 font-bold px-2 py-0.5 rounded-md border border-emerald-500/40">
-                    🌿 {isJapanese ? '芝状態: 優秀' : '잔디 상태: 우수'}
-                  </span>
-                  <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-md shadow-xs">
-                    📅 {isJapanese ? '休場日: ' : '휴장: '}{displayClosedDay}
-                  </span>
-                </div>
+                <span className="font-black text-base sm:text-lg text-white tracking-tight truncate flex items-center gap-1.5">
+                  {dual.flag && <span>{dual.flag}</span>}
+                  <span>{dual.primary}</span>
+                </span>
               </div>
             );
           })()}
@@ -313,23 +286,9 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
                       <div className={`text-sm sm:text-base font-black leading-tight ${isActive ? 'text-amber-300' : 'text-stone-900'}`}>
                         {letter} 코스
                       </div>
-                      <div className={`text-[10px] font-bold mt-0.5 ${isActive ? 'text-emerald-200' : 'text-stone-500'}`}>
-                        1~9홀 (9홀)
-                      </div>
                     </button>
                   );
                 })}
-              </div>
-
-              {/* 현재 코스 요약 띠 */}
-              <div className="flex items-center justify-between px-1 text-xs">
-                <span className="font-black text-stone-800 flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-                  <span>{currentCourseLetter}코스 상세 제원 (1~9번 홀)</span>
-                </span>
-                <div className="font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-lg border border-emerald-200">
-                  Par {totalParCurrent} · 총 {totalDistCurrent}m
-                </div>
               </div>
             </div>
 
@@ -353,68 +312,63 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
             {currentHoles.map((h) => {
               const holeInCourse = ((h.hole - 1) % 9) + 1;
               const isHoleEditing = isEditing || editingHoleNum === h.hole;
+              const yId = buildYardageNoteId(course.id, currentCourseLetter, holeInCourse);
+              const hasY = Boolean(yardageNotesMap[yId]);
+              const openHoleYardage = () =>
+                setYardageTargetHole({
+                  courseLetter: currentCourseLetter,
+                  holeInCourse,
+                  holeNumber: h.hole,
+                  par: (h.par as 3 | 4 | 5) || 3,
+                  officialDistance: h.distanceMeter || 60,
+                });
 
               return (
                 <div
                   key={h.hole}
-                  className={`rounded-2xl p-3 border transition flex flex-col gap-1.5 shadow-2xs ${
+                  onClick={() => {
+                    if (!isHoleEditing) openHoleYardage();
+                  }}
+                  className={`rounded-2xl px-3 py-2.5 border transition flex flex-col gap-1.5 shadow-2xs ${
                     isHoleEditing
                       ? 'bg-amber-50/40 border-amber-300 ring-1 ring-amber-300'
-                      : 'bg-white hover:bg-stone-50/80 border-stone-200'
+                      : 'bg-white hover:bg-stone-50/80 border-stone-200 cursor-pointer active:scale-[0.99]'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    {/* 홀 번호: 오직 C-1, C-2 형태로만 표기 */}
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-10 h-10 rounded-xl bg-emerald-800 text-amber-300 font-black text-sm flex items-center justify-center shrink-0 shadow-2xs">
+                    {/* 홀 번호 + 공략메모 탭 (작성 및 보기) */}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-11 h-10 rounded-xl bg-emerald-800 text-amber-300 font-black text-sm flex items-center justify-center shrink-0 shadow-2xs">
                         {currentCourseLetter}-{holeInCourse}
                       </span>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-black text-base text-stone-900 tracking-tight">
-                            {currentCourseLetter}-{holeInCourse}홀
-                          </span>
-                          {(() => {
-                            const yId = buildYardageNoteId(course.id, currentCourseLetter, holeInCourse);
-                            const hasY = Boolean(yardageNotesMap[yId]);
-                            return (
-                              <button
-                                type="button"
-                                data-testid={`btn-course-yardage-${currentCourseLetter}-${holeInCourse}`}
-                                onClick={() =>
-                                  setYardageTargetHole({
-                                    courseLetter: currentCourseLetter,
-                                    holeInCourse,
-                                    holeNumber: h.hole,
-                                    par: (h.par as 3 | 4 | 5) || 3,
-                                    officialDistance: h.distanceMeter || 60,
-                                  })
-                                }
-                                className={`relative inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-black border cursor-pointer transition active:scale-95 ${
-                                  hasY
-                                    ? 'bg-amber-100 text-amber-950 border-amber-400 shadow-2xs'
-                                    : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                                }`}
-                              >
-                                <span>📓 내 공략집</span>
-                                {hasY && (
-                                  <span
-                                    data-testid={`yardage-badge-dot-${currentCourseLetter}-${holeInCourse}`}
-                                    className="w-2 h-2 rounded-full bg-emerald-500 ring-1 ring-amber-400"
-                                  />
-                                )}
-                              </button>
-                            );
-                          })()}
-                        </div>
-                        <p className="text-[11px] text-emerald-800 font-bold leading-tight mt-0.5 truncate">
-                          {h.localRule ? `⚠️ ${h.localRule}` : h.tip ? `💡 ${h.tip}` : '중앙 페어웨이 안전 공략'}
-                        </p>
-                      </div>
+                      <button
+                        type="button"
+                        data-testid={`btn-course-yardage-${currentCourseLetter}-${holeInCourse}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openHoleYardage();
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border cursor-pointer transition active:scale-95 shrink-0 ${
+                          hasY
+                            ? 'bg-amber-100 text-amber-950 border-amber-400 shadow-2xs'
+                            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                        }`}
+                      >
+                        <span>공략메모</span>
+                        {hasY && (
+                          <span
+                            data-testid={`yardage-badge-dot-${currentCourseLetter}-${holeInCourse}`}
+                            className="w-2 h-2 rounded-full bg-emerald-500 ring-1 ring-amber-400"
+                          />
+                        )}
+                      </button>
                     </div>
 
                     {/* Par & 거리 + 홀별 수정 탭 */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div
+                      className="flex items-center gap-1.5 shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {isHoleEditing ? (
                         <div className="flex items-center gap-1.5">
                           <select
@@ -460,7 +414,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
                                 : 'bg-stone-100 hover:bg-amber-100 text-stone-700 border-stone-300'
                             }`}
                           >
-                            {holeConfirmFlash === h.hole ? '✓ 저장됨' : '✏️ 수정'}
+                            {holeConfirmFlash === h.hole ? '✓ 저장됨' : '✏️ 거리수정'}
                           </button>
                         </div>
                       )}
