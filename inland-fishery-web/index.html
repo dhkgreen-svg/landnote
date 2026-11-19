@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800;900&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=20261119_paste_v12">
+  <link rel="stylesheet" href="styles.css?v=20261119_back_v13">
 </head>
 <body>
 
@@ -30,8 +30,8 @@
         <span><i class="fa-solid fa-phone"></i> 대표문의: <span id="header-contact-tel"></span></span>
       </div>
       <div class="top-links">
-        <a href="#about-section" onclick="openAboutModal()"><i class="fa-solid fa-circle-info"></i> 연합회 소개</a>
-        <a href="#notice-section" onclick="openNoticeModalFull()"><i class="fa-solid fa-bell"></i> 법정 결산 공시</a>
+        <a href="#about-section" onclick="openAboutModal(event)"><i class="fa-solid fa-circle-info"></i> 연합회 소개</a>
+        <a href="#notice-section" onclick="openNoticeModalFull(event)"><i class="fa-solid fa-bell"></i> 법정 결산 공시</a>
         <span id="header-user-status-area" style="margin-left: 10px;">
           <!-- Dynamically updated by JS (Guest vs Logged-in User) -->
         </span>
@@ -42,7 +42,7 @@
   <!-- Header -->
   <header class="header">
     <div class="container header-content">
-      <a href="#" class="logo">
+      <a href="#" class="logo" onclick="window.scrollTo(0,0);return false;">
         <img src="logo_clean.svg" alt="사단법인 전국내수면어로어업인연합회 로고" class="logo-badge-img">
         <div class="logo-text">
           <span class="logo-badge">해양수산부 등록 사단법인</span>
@@ -68,10 +68,10 @@
 
         <!-- 2개 핵심 이동 버튼 바 -->
         <div class="hero-nav-2btns margin-top-lg">
-          <button class="hero-nav-btn btn-nav-about" onclick="openAboutModal()">
+          <button class="hero-nav-btn btn-nav-about" onclick="openAboutModal(event)">
             <i class="fa-solid fa-sitemap"></i> 🏛️ 연합회 소개 및 조직도
           </button>
-          <button class="hero-nav-btn btn-nav-notice" onclick="openNoticeModalFull()">
+          <button class="hero-nav-btn btn-nav-notice" onclick="openNoticeModalFull(event)">
             <i class="fa-solid fa-bullhorn" style="color: #FCD34D;"></i> 📢 알림 / 법정 결산공시
           </button>
         </div>
@@ -847,15 +847,12 @@
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
             <label for="entry-desc" style="margin: 0; font-weight: 700;">상세 내용 및 세부 집행 설명 *</label>
             <div style="display: flex; gap: 6px;">
-              <button type="button" onclick="insertPtTemplate('entry-desc')" style="background: #E0F2FE; color: #0284C7; border: 1px solid #BAE6FD; padding: 3px 8px; border-radius: 4px; font-size: 0.74rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="클릭 시 표준 PT/보고서 양식을 입력창에 자동으로 채워줍니다">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> 🪄 PT 표준 양식 불러오기
-              </button>
               <button type="button" onclick="autoFormatPtText('entry-desc')" style="background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; padding: 3px 8px; border-radius: 4px; font-size: 0.74rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="작성한 줄글이나 메모를 1초 만에 행·열 표준 양식으로 자동 정렬합니다">
                 <i class="fa-solid fa-bolt"></i> ⚡ 1초 자동 정렬
               </button>
             </div>
           </div>
-          <textarea id="entry-desc" rows="5" required placeholder="진행된 연합회 활동 성과와 해당 날짜의 예산 집행 세부 내용을 적어주세요. 상단의 [🪄 PT 표준 양식 불러오기]를 누르시면 행과 열이 정렬된 서식이 자동으로 채워집니다."></textarea>
+          <textarea id="entry-desc" rows="5" required placeholder="진행된 연합회 활동 성과와 해당 날짜의 예산 집행 세부 내용을 적어주세요. 회의 내용을 붙여넣은 뒤 [⚡ 자동 정렬]을 누르면 보기 좋게 정렬됩니다."></textarea>
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -977,9 +974,6 @@
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
             <label for="branch-entry-desc" style="margin: 0; font-weight: 700;">지회 행사 상세 내용 및 세부 보고 *</label>
             <div style="display: flex; gap: 6px;">
-              <button type="button" onclick="insertPtTemplate('branch-entry-desc')" style="background: #E0F2FE; color: #0284C7; border: 1px solid #BAE6FD; padding: 3px 8px; border-radius: 4px; font-size: 0.74rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> 🪄 PT 표준 서식
-              </button>
               <button type="button" onclick="autoFormatPtText('branch-entry-desc')" style="background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; padding: 3px 8px; border-radius: 4px; font-size: 0.74rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
                 <i class="fa-solid fa-bolt"></i> ⚡ 1초 정렬
               </button>
@@ -1627,7 +1621,7 @@
     window.firebaseUploadString = uploadString;
     window.firebaseGetDownloadURL = getDownloadURL;
   </script>
-  <script defer src="app.js?v=20261119_paste_v12"></script>
+  <script defer src="app.js?v=20261119_back_v13"></script>
 
   <!-- 📩 INQUIRY LIST MODAL -->
   <div class="modal" id="inquiry-list-modal">

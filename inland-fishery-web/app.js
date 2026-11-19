@@ -5257,3 +5257,89 @@ window.showModalClean = showModalClean;
 window.hideModalClean = hideModalClean;
 window.setNoticeFontSize = setNoticeFontSize;
 window.applyNoticeFontSize = applyNoticeFontSize;
+
+
+// ==========================================================================
+// 📱 휴대폰 '뒤로가기(▽/◁)' = 항상 이전 화면으로 (열린 창을 하나씩 닫고, 앱은 꺼지지 않음)
+// ==========================================================================
+(function setupBackButtonNavigation() {
+  if (typeof window === 'undefined' || !window.history || !window.history.pushState) return;
+  let histDepth = 0;   // 우리가 쌓아 둔 기록(열려 있는 창 개수와 맞춤)
+  let ignorePop = 0;   // 코드로 되돌린 popstate는 무시
+  let timer = null;
+
+  function isVisible(el) {
+    if (!el || !el.isConnected) return false;
+    const cs = window.getComputedStyle(el);
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && el.offsetHeight > 0;
+  }
+  function getOpenLayers() {
+    const list = Array.prototype.slice.call(document.querySelectorAll('.modal, .dynamic-welcome-modal')).filter(isVisible);
+    list.sort((a, b) => (parseInt(window.getComputedStyle(b).zIndex, 10) || 0) - (parseInt(window.getComputedStyle(a).zIndex, 10) || 0));
+    return list;
+  }
+  // 상세창을 열기 직전에 열려 있던 화면(공지 목록 등)을 기억 → 뒤로가기 시 그 화면으로 복귀
+  const returnMap = {};
+  const _origShow = window.showModalClean;
+  if (typeof _origShow === 'function') {
+    window.showModalClean = function (id) {
+      const prev = getOpenLayers().filter(e => e.classList.contains('modal') && e.id !== id)[0];
+      if (prev) returnMap[id] = prev.id; else delete returnMap[id];
+      return _origShow.apply(this, arguments);
+    };
+  }
+
+  function closeLayer(el) {
+    try {
+      if (el.classList.contains('dynamic-welcome-modal')) {
+        if (typeof closeDynamicModal === 'function') closeDynamicModal(el.id); else el.remove();
+      } else {
+        const btn = el.querySelector('.modal-close');
+        if (btn) btn.click(); else if (typeof hideModalClean === 'function') hideModalClean(el.id);
+      }
+    } catch (e) { console.warn('back close error', e); }
+    if (isVisible(el)) { // 그래도 안 닫히면 강제로 닫기
+      el.classList.remove('active');
+      if (el.classList.contains('dynamic-welcome-modal')) el.remove(); else el.style.display = 'none';
+    }
+  }
+  function syncHistory() {
+    const n = getOpenLayers().length;
+    if (n > histDepth) {
+      while (histDepth < n) { histDepth++; history.pushState({ kifaLayer: histDepth }, ''); }
+    } else if (n < histDepth) { // 버튼으로 창을 닫았으면 쌓아 둔 기록도 정리
+      const diff = histDepth - n;
+      histDepth = n;
+      ignorePop++;
+      history.go(-diff);
+    }
+  }
+  function scheduleSync() {
+    if (timer) return;
+    timer = setTimeout(() => { timer = null; syncHistory(); }, 60);
+  }
+
+  window.addEventListener('popstate', () => {
+    if (ignorePop > 0) { ignorePop--; return; }
+    const open = getOpenLayers();
+    if (open.length > 0) {
+      histDepth = Math.max(0, histDepth - 1);
+      const top = open[0];
+      closeLayer(top);              // 가장 위에 있는 창 하나만 닫기 = 이전 화면
+      const back = returnMap[top.id];
+      delete returnMap[top.id];
+      if (back && top.classList.contains('modal') && typeof window.showModalClean === 'function') window.showModalClean(back);
+    } else {
+      histDepth = 0;
+    }
+    scheduleSync();
+  });
+
+  function start() {
+    new MutationObserver(scheduleSync).observe(document.body, {
+      attributes: true, subtree: true, attributeFilter: ['class', 'style'], childList: true
+    });
+    scheduleSync();
+  }
+  if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+})();
