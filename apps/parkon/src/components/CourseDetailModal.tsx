@@ -34,17 +34,28 @@ const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', '
 
 export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModalProps) {
   const { isJapanese } = useTranslation();
-  // 동락파크골프장 또는 36홀 이상인 경우 최소 4코스(A, B, C, D) 보장
+  // 초기 코스 수 산정 (저장된 totalCourses 우선, 없으면 totalHoles 기준)
   const isDongrakOr36 = course.name.includes('동락') || (course.totalHoles && course.totalHoles >= 36);
-  const totalCoursesCount = Math.max(
-    course.totalCourses || 0,
-    Math.round((course.totalHoles || 0) / 9),
-    isDongrakOr36 ? 4 : 1
+  const initialCourseCount = Math.max(
+    1,
+    Math.min(
+      12,
+      course.totalCourses ||
+        (course.totalHoles && course.totalHoles >= 9 ? Math.round(course.totalHoles / 9) : isDongrakOr36 ? 4 : 4)
+    )
   );
-  const availableCourses = COURSE_LETTERS.slice(0, Math.max(totalCoursesCount, 4));
+
+  const [editedCourseName, setEditedCourseName] = useState<string>(course.name);
+  const [editedCourseCount, setEditedCourseCount] = useState<number>(initialCourseCount);
+  const [showCourseInfoPopup, setShowCourseInfoPopup] = useState<boolean>(false);
+  const [draftCourseName, setDraftCourseName] = useState<string>(course.name);
+  const [draftCourseCount, setDraftCourseCount] = useState<number>(initialCourseCount);
+  const [courseInfoFlash, setCourseInfoFlash] = useState<boolean>(false);
+
+  const availableCourses = COURSE_LETTERS.slice(0, Math.max(1, Math.min(12, editedCourseCount)));
   const totalRequiredHoles = availableCourses.length * 9;
 
-  // 전체 홀 데이터가 부족할 경우 36홀 표준 홀로 자동 보강
+  // 전체 홀 데이터가 부족할 경우 표준 홀로 자동 보강
   const initialHoles: HoleMetadata[] = [...(course.holesMetadata || [])];
   if (initialHoles.length < totalRequiredHoles) {
     const std = generateStandardHoles(totalRequiredHoles);
@@ -82,6 +93,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
   // 스마트폰 뒤로가기 시 팝업부터 순서대로 닫기 (파수·거리 수정 팝업 -> 상세 모달)
   useBackHandler(true, onClose);
   useBackHandler(Boolean(holePopupDraft), () => setHolePopupDraft(null));
+  useBackHandler(showCourseInfoPopup, () => setShowCourseInfoPopup(false));
 
   useEffect(() => {
     const syncYardage = () => {
@@ -151,7 +163,12 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     reader.readAsDataURL(file);
   };
 
-  const persistCourseChanges = (actionLabel: string, authorName: string, holesOverride?: HoleMetadata[]) => {
+  const persistCourseChanges = (
+    actionLabel: string,
+    authorName: string,
+    holesOverride?: HoleMetadata[],
+    metaOverride?: { name?: string; courseCount?: number }
+  ) => {
     const todayStr = new Date().toISOString().split('T')[0];
     const newHistoryEntry: CourseContribution = {
       author: authorName,
@@ -160,10 +177,16 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     };
     const existingHistory = course.contributionHistory || [];
     const updatedHistory = [newHistoryEntry, ...existingHistory].slice(0, 15);
+    const finalName = (metaOverride?.name ?? editedCourseName).trim() || course.name;
+    const finalCourseCount = Math.max(1, Math.min(12, metaOverride?.courseCount ?? editedCourseCount));
+    const finalTotalHoles = finalCourseCount * 9;
     const updatedCourse: Course = {
       ...course,
-      totalCourses: availableCourses.length,
-      totalHoles: Math.max(course.totalHoles || 0, totalRequiredHoles),
+      name: finalName,
+      nameKo: isJapanese ? course.nameKo : finalName,
+      nameJa: isJapanese ? finalName : course.nameJa,
+      totalCourses: finalCourseCount,
+      totalHoles: finalTotalHoles,
       holesMetadata: holesOverride || editedHoles,
       imageUrl: imageUrl.trim() || undefined,
       isLocked: isLocked,
@@ -175,6 +198,37 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     ParkOnStorage.updateCourse(updatedCourse);
     onSaved(updatedCourse);
     return updatedCourse;
+  };
+
+  const handleCourseInfoConfirm = () => {
+    const cleanName = draftCourseName.trim();
+    if (!cleanName) {
+      alert('골프장 이름을 입력해 주세요.');
+      return;
+    }
+    const nextCount = Math.max(1, Math.min(12, draftCourseCount));
+    const requiredHoles = nextCount * 9;
+    const nextHoles = [...editedHoles];
+    if (nextHoles.length < requiredHoles) {
+      const std = generateStandardHoles(requiredHoles);
+      for (let i = nextHoles.length; i < requiredHoles; i++) {
+        nextHoles.push(std[i] || { hole: i + 1, par: 3, distanceMeter: 60, isVerified: false });
+      }
+    }
+    setEditedCourseName(cleanName);
+    setEditedCourseCount(nextCount);
+    setEditedHoles(nextHoles);
+    if (currentCourseIdx >= nextCount) {
+      setCurrentCourseIdx(nextCount - 1);
+    }
+    const authorName = editorName.trim() || '현장 골퍼';
+    persistCourseChanges(`구장 정보 수정 (${cleanName} · ${nextCount}코스 ${requiredHoles}홀)`, authorName, nextHoles, {
+      name: cleanName,
+      courseCount: nextCount,
+    });
+    setShowCourseInfoPopup(false);
+    setCourseInfoFlash(true);
+    setTimeout(() => setCourseInfoFlash(false), 1400);
   };
 
   const handleSingleHoleConfirm = (holeNumber: number, holeLabel: string) => {
@@ -224,10 +278,21 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
         {/* 1. Header (초슬림 구장 실측 정보 제목만 노출) */}
         <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-teal-950 px-4 py-3 text-white flex items-center justify-between shrink-0 shadow-sm">
           {(() => {
-            const dual = getCourseDualName(course, isJapanese);
+            const dual = getCourseDualName(
+              {
+                ...course,
+                name: editedCourseName,
+                nameKo: isJapanese ? course.nameKo : editedCourseName,
+                nameJa: isJapanese ? editedCourseName : course.nameJa,
+              },
+              isJapanese
+            );
             return (
               <div className="min-w-0 flex-1 pr-2">
-                <span className="font-black text-base sm:text-lg text-white tracking-tight truncate flex items-center gap-1.5">
+                <span
+                  data-testid="course-detail-header-name"
+                  className="font-black text-base sm:text-lg text-white tracking-tight truncate flex items-center gap-1.5"
+                >
                   {dual.flag && <span>{dual.flag}</span>}
                   <span>{dual.primary}</span>
                 </span>
@@ -238,15 +303,20 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
-              onClick={() => setIsEditing(!isEditing)}
+              data-testid="btn-course-info-edit"
+              onClick={() => {
+                setDraftCourseName(editedCourseName);
+                setDraftCourseCount(editedCourseCount);
+                setShowCourseInfoPopup(true);
+              }}
               className={`px-2.5 py-1 rounded-xl text-xs font-black transition flex items-center gap-1 cursor-pointer active:scale-95 ${
-                isEditing
-                  ? 'bg-rose-500 hover:bg-rose-600 text-white'
+                courseInfoFlash
+                  ? 'bg-emerald-500 text-white border border-emerald-300'
                   : 'bg-white/20 hover:bg-white/30 text-amber-300 border border-white/20'
               }`}
             >
               <Edit2 className="w-3 h-3" />
-              <span>{isEditing ? '정정 취소' : '제원 정정'}</span>
+              <span>{courseInfoFlash ? '✓ 수정됨' : '구장 수정'}</span>
             </button>
             <button
               onClick={onClose}
@@ -297,7 +367,15 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
 
             {/* 2. [핵심] A, B, C, D 코스 대형 탭 버튼 (상단 고정 노출) */}
             <div className="p-3 bg-stone-100 border-b border-stone-200 shrink-0 space-y-2">
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className={`grid gap-1.5 ${
+                availableCourses.length === 1
+                  ? 'grid-cols-1'
+                  : availableCourses.length === 2
+                  ? 'grid-cols-2'
+                  : availableCourses.length === 3
+                  ? 'grid-cols-3'
+                  : 'grid-cols-4'
+              }`}>
                 {availableCourses.map((letter, idx) => {
                   const isActive = currentCourseIdx === idx;
 
@@ -613,6 +691,130 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
           </Link>
         </div>
       </div>
+
+      {/* 대형 구장 수정 전용 팝업창 (골프장명 + 코스 수) */}
+      {showCourseInfoPopup && (
+        <div
+          data-testid="course-info-edit-popup"
+          className="fixed inset-0 z-[110] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setShowCourseInfoPopup(false)}
+        >
+          <div
+            className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border-2 border-emerald-700/30 animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 팝업 헤더 */}
+            <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-teal-950 px-5 py-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-amber-300" />
+                <span className="font-black text-lg tracking-tight text-white">
+                  구장 수정
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCourseInfoPopup(false)}
+                className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center text-base font-black transition cursor-pointer"
+                title="닫기"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 팝업 본문: 골프장명 입력 + 코스 수 선택 */}
+            <div className="p-5 space-y-6">
+              {/* 1. 골프장명 수정 */}
+              <div>
+                <label className="text-sm font-black text-stone-700 block mb-2">
+                  골프장명
+                </label>
+                <input
+                  type="text"
+                  data-testid="input-popup-course-name"
+                  value={draftCourseName}
+                  onChange={(e) => setDraftCourseName(e.target.value)}
+                  placeholder="골프장 이름을 입력하세요"
+                  className="w-full bg-emerald-50/70 border-2 border-emerald-600 rounded-2xl px-4 py-3.5 text-xl font-black text-emerald-950 outline-none focus:ring-2 focus:ring-emerald-400"
+                />
+              </div>
+
+              {/* 2. 코스 수 선택 (좌우 - / + 스텝퍼) */}
+              <div>
+                <label className="text-sm font-black text-stone-700 block mb-2.5">
+                  코스 수 선택
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    data-testid="btn-popup-course-count-minus"
+                    disabled={draftCourseCount <= 1}
+                    onClick={() => setDraftCourseCount((prev) => Math.max(1, prev - 1))}
+                    className={`w-16 h-16 rounded-2xl border-2 text-4xl font-black flex items-center justify-center shrink-0 transition cursor-pointer ${
+                      draftCourseCount <= 1
+                        ? 'bg-stone-100 text-stone-300 border-stone-200 cursor-not-allowed'
+                        : 'bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-800 border-stone-300 shadow-xs'
+                    }`}
+                    aria-label="코스 수 감소"
+                  >
+                    −
+                  </button>
+
+                  <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-600 rounded-2xl py-2.5 px-3 text-center shadow-inner">
+                    <div className="flex items-baseline justify-center gap-1">
+                      <span
+                        data-testid="text-popup-course-count"
+                        className="text-4xl font-black text-emerald-950 leading-none"
+                      >
+                        {draftCourseCount}
+                      </span>
+                      <span className="text-xl font-black text-emerald-800">코스</span>
+                    </div>
+                    <div className="text-xs font-black text-emerald-700 mt-1">
+                      {draftCourseCount === 1
+                        ? 'A 코스 · 총 9홀'
+                        : `A~${COURSE_LETTERS[draftCourseCount - 1]} 코스 · 총 ${draftCourseCount * 9}홀`}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    data-testid="btn-popup-course-count-plus"
+                    disabled={draftCourseCount >= 12}
+                    onClick={() => setDraftCourseCount((prev) => Math.min(12, prev + 1))}
+                    className={`w-16 h-16 rounded-2xl border-2 text-4xl font-black flex items-center justify-center shrink-0 transition cursor-pointer ${
+                      draftCourseCount >= 12
+                        ? 'bg-stone-100 text-stone-300 border-stone-200 cursor-not-allowed'
+                        : 'bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-amber-300 border-emerald-800 shadow-md'
+                    }`}
+                    aria-label="코스 수 증가"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 팝업 하단 버튼 */}
+            <div className="p-4 bg-stone-50 border-t border-stone-200 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setShowCourseInfoPopup(false)}
+                className="py-4 rounded-2xl bg-stone-200 hover:bg-stone-300 active:scale-98 text-stone-800 font-black text-lg cursor-pointer transition"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                data-testid="btn-popup-course-info-confirm"
+                onClick={handleCourseInfoConfirm}
+                className="py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-600 active:scale-98 text-white font-black text-lg shadow-md cursor-pointer transition"
+              >
+                ✓ 수정 완료
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 대형 파수 · 거리 수정 전용 팝업창 */}
       {holePopupDraft && (
