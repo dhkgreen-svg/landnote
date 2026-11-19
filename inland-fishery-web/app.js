@@ -3131,6 +3131,9 @@ window.insertPtTemplate = function(textareaId) {
 추진 경과 및 상세 협의: 당면 과제에 대한 논의 및 실무 협력 사항을 작성해 주세요.
 의결 결과 및 성과: 향후 추진 일정 및 확정된 실행 방안을 작성해 주세요.`;
 
+  if (el.value.trim() && !el.value.includes('[첫 번째 주요 안건명 입력]')) {
+    if (!confirm('이미 입력(붙여넣기)하신 내용이 있습니다.\n\n[PT 표준 양식 불러오기]를 누르면 지금 내용이 모두 지워지고 빈 양식으로 바뀝니다.\n\n그래도 불러올까요?\n(내용을 유지하려면 [취소] 후 [자동 정리]를 사용하세요)')) return;
+  }
   el.value = template;
   el.focus();
 };
@@ -4224,6 +4227,10 @@ async function handleBranchSubmit(e) {
   const region = document.getElementById('branch-entry-region').value;
   const urlInput = document.getElementById('branch-entry-img-url').value;
   const desc = document.getElementById('branch-entry-desc').value;
+  if (/\[첫 번째 주요 안건명 입력\]/.test(desc)) {
+    alert('상세 내용이 아직 PT 양식의 안내 문구(작성해 주세요) 그대로입니다.\n\n회의 내용을 붙여넣거나 양식을 채운 뒤 등록해 주세요.');
+    return;
+  }
 
   const finalImages = tempUploadedBranchImages.length > 0 ? [...tempUploadedBranchImages] : [];
   if (urlInput && finalImages.length === 0) finalImages.push(urlInput);
@@ -4292,6 +4299,10 @@ async function handleUnifiedSubmit(e) {
   const category = document.getElementById('entry-category').value;
   const urlInput = document.getElementById('entry-img-url').value;
   const desc = document.getElementById('entry-desc').value;
+  if (/\[첫 번째 주요 안건명 입력\]/.test(desc)) {
+    alert('상세 내용이 아직 PT 양식의 안내 문구(작성해 주세요) 그대로입니다.\n\n회의 내용을 붙여넣거나 양식을 채운 뒤 등록해 주세요.');
+    return;
+  }
 
   const categoryMap = { field: '현장활동 및 교육', meeting: '총회/이사회', branch: '지부활동' };
   
