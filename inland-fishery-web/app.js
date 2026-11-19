@@ -411,20 +411,41 @@ let branchOrgList = [
 ];
 
 // User Auth Session State
-let currentUser = JSON.parse(sessionStorage.getItem('kifa_user')) || null;
+// 로그인 유지: 탭/브라우저를 닫았다 열어도(모바일 백그라운드 포함) 30일간 유지 (localStorage)
+const LOGIN_KEEP_MS = 30 * 24 * 60 * 60 * 1000;
+function loadStoredUser() {
+  try {
+    const raw = localStorage.getItem('kifa_user_persist');
+    if (raw) {
+      const obj = JSON.parse(raw);
+      if (obj && obj.user && obj.expires > Date.now()) return obj.user;
+      localStorage.removeItem('kifa_user_persist');
+    }
+  } catch (e) {}
+  try { // 예전 방식(세션) 로그인 정보가 있으면 이어받기
+    const old = JSON.parse(sessionStorage.getItem('kifa_user'));
+    if (old) return old;
+  } catch (e) {}
+  return null;
+}
+let currentUser = loadStoredUser();
 let pendingAction = null;
 
 function getCurrentUser() {
-  return JSON.parse(sessionStorage.getItem('kifa_user')) || currentUser;
+  return currentUser || loadStoredUser();
 }
 
 function setCurrentUser(user) {
   currentUser = user;
-  if (user) {
-    sessionStorage.setItem('kifa_user', JSON.stringify(user));
-  } else {
-    sessionStorage.removeItem('kifa_user');
-  }
+  try {
+    if (user) {
+      localStorage.setItem('kifa_user_persist', JSON.stringify({ user: user, expires: Date.now() + LOGIN_KEEP_MS }));
+      sessionStorage.setItem('kifa_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('kifa_user_persist');
+      sessionStorage.removeItem('kifa_user');
+    }
+  } catch (e) {}
   updateHeaderUserStatus();
 }
 
