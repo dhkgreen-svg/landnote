@@ -230,6 +230,18 @@
         </h2>
       </div>
 
+      <!-- 🔍 웰컴 팝업 공지 글자 크기 조절 상단 바 -->
+      <div class="notice-font-ctrl-bar" id="welcome-notice-font-ctrl">
+        <span class="notice-font-ctrl-label">
+          <i class="fa-solid fa-text-height"></i> 공지사항 글자 크기
+        </span>
+        <div class="notice-font-btn-group">
+          <button type="button" onclick="setNoticeFontSize('sm')" class="btn-notice-font" data-size="sm">가- 작게</button>
+          <button type="button" onclick="setNoticeFontSize('md')" class="btn-notice-font" data-size="md">보통</button>
+          <button type="button" onclick="setNoticeFontSize('lg')" class="btn-notice-font" data-size="lg">가+ 크게</button>
+          <button type="button" onclick="setNoticeFontSize('xl')" class="btn-notice-font" data-size="xl">가++ 아주크게</button>
+        </div>
+      </div>
       <div id="welcome-notice-body">
         <div style="background: #F8FAFC; padding: 18px; border-radius: 12px; border: 1px solid #E2E8F0; margin-bottom: 16px;">
           <span style="background: #EF4444; color: #FFF; padding: 3px 8px; border-radius: 4px; font-size: 0.76rem; font-weight: 800;">NEW 공지</span>
@@ -493,7 +505,7 @@
         <div class="president-special-box">
           <div class="president-profile-side">
             <div class="president-photo-wrap">
-              <img src="logo_clean.svg" alt="이재완 회장" class="president-photo-img" id="pres-img">
+              <img src="lee_jaewan_id.jpg" alt="이재완 회장" class="president-photo-img" id="pres-img">
               <span class="president-badge" id="pres-badge">연합회장</span>
             </div>
             <h3 class="president-name" id="pres-name">이재완 <span class="title-sub">회장 (대표이사)</span></h3>
@@ -627,7 +639,20 @@
 
         <div class="notice-box-clean margin-bottom-md">
           <div style="font-size: 1.05rem; font-weight: 800; color: var(--primary); margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
             <span><i class="fa-solid fa-bullhorn" style="color: #EF4444;"></i> 📢 연합회 공식 공지사항</span>
+            <div class="notice-font-ctrl-bar" id="main-notice-font-ctrl" style="margin-bottom: 0; padding: 4px 10px;">
+              <span class="notice-font-ctrl-label" style="font-size: 0.78rem;">
+                <i class="fa-solid fa-text-height"></i> 글자크기:
+              </span>
+              <div class="notice-font-btn-group">
+                <button type="button" onclick="setNoticeFontSize('sm')" class="btn-notice-font" data-size="sm">가-</button>
+                <button type="button" onclick="setNoticeFontSize('md')" class="btn-notice-font" data-size="md">보통</button>
+                <button type="button" onclick="setNoticeFontSize('lg')" class="btn-notice-font" data-size="lg">가+</button>
+                <button type="button" onclick="setNoticeFontSize('xl')" class="btn-notice-font" data-size="xl">가++</button>
+              </div>
+            </div>
+          </div>
             <button type="button" id="btn-add-notice-main" onclick="openPastNoticeEditModal(null, event)" style="background: #0284C7; color: #FFF; border: none; padding: 7px 16px; border-radius: 6px; font-weight: 800; font-size: 0.84rem; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 5px rgba(2,132,199,0.25);">
               <i class="fa-solid fa-plus"></i> + 신규 공지사항 등록 / 작성
             </button>

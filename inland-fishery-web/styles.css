@@ -1608,3 +1608,58 @@ html, body {
     display: none !important;
   }
 }
+
+/* ==========================================================================
+   Notice Font Size Control Bar & Buttons
+   ========================================================================== */
+.notice-font-ctrl-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #F0F9FF;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #BAE6FD;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.notice-font-ctrl-label {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #0369A1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.notice-font-btn-group {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.btn-notice-font {
+  background: #FFFFFF;
+  color: #475569;
+  border: 1px solid #CBD5E1;
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-notice-font:hover {
+  background: #E0F2FE;
+  color: #0284C7;
+  border-color: #7DD3FC;
+}
+.btn-notice-font.active {
+  background: #0284C7 !important;
+  color: #FFFFFF !important;
+  border-color: #0284C7 !important;
+  box-shadow: 0 2px 5px rgba(2, 132, 199, 0.3) !important;
+}

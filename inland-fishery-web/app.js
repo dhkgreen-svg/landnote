@@ -1,4 +1,64 @@
 
+// ==========================================================================
+// 📢 Notice Font Size Zoom Controller (어르신 맞춤 공지사항 글자 크기 조절)
+// ==========================================================================
+let currentNoticeFontSize = localStorage.getItem('kifa_notice_font_size') || 'md';
+
+const NOTICE_FONT_SIZES = {
+  sm: { size: '0.86rem', lineHeight: '1.6', titleSize: '1.15rem' },
+  md: { size: '1.02rem', lineHeight: '1.75', titleSize: '1.32rem' },
+  lg: { size: '1.24rem', lineHeight: '1.85', titleSize: '1.5rem' },
+  xl: { size: '1.48rem', lineHeight: '1.95', titleSize: '1.75rem' }
+};
+
+function setNoticeFontSize(level) {
+  if (!NOTICE_FONT_SIZES[level]) level = 'md';
+  currentNoticeFontSize = level;
+  try {
+    localStorage.setItem('kifa_notice_font_size', level);
+  } catch(e) {}
+  applyNoticeFontSize();
+}
+window.setNoticeFontSize = setNoticeFontSize;
+
+function applyNoticeFontSize() {
+  const conf = NOTICE_FONT_SIZES[currentNoticeFontSize] || NOTICE_FONT_SIZES.md;
+  
+  // 1. Update button states
+  document.querySelectorAll('.btn-notice-font').forEach(btn => {
+    const bSize = btn.getAttribute('data-size');
+    if (bSize === currentNoticeFontSize) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  // 2. Detail modal
+  const detailBox = document.getElementById('notice-detail-text-box');
+  if (detailBox) {
+    detailBox.style.fontSize = conf.size;
+    detailBox.style.lineHeight = conf.lineHeight;
+  }
+  const detailTitle = document.getElementById('notice-detail-title');
+  if (detailTitle) {
+    detailTitle.style.fontSize = conf.titleSize;
+  }
+
+  // 3. Welcome notice
+  const welcomeText = document.getElementById('welcome-notice-text');
+  if (welcomeText) {
+    welcomeText.style.fontSize = conf.size;
+    welcomeText.style.lineHeight = conf.lineHeight;
+  }
+  const welcomeTitle = document.getElementById('welcome-notice-title');
+  if (welcomeTitle) {
+    welcomeTitle.style.fontSize = conf.titleSize;
+  }
+}
+window.applyNoticeFontSize = applyNoticeFontSize;
+
+
 const firebaseConfig = {
   apiKey: "AIzaSyBmzGsJJXzPFrXg5oEjRRJCMNQmiBl2Hf4",
   authDomain: "inland-fishery.firebaseapp.com",
@@ -1463,12 +1523,13 @@ function renderWelcomeNotice() {
   const container = document.getElementById('welcome-notice-body');
   if (!container) return;
   const formattedContent = (welcomeNotice.content || '').replace(/\n/g, '<br>');
+  const conf = NOTICE_FONT_SIZES[currentNoticeFontSize] || NOTICE_FONT_SIZES.md;
   container.innerHTML = `
     <div style="background: #F8FAFC; padding: 18px; border-radius: 12px; border: 1px solid #E2E8F0; margin-bottom: 16px;">
       <span style="background: #EF4444; color: #FFF; padding: 3px 8px; border-radius: 4px; font-size: 0.76rem; font-weight: 800;">NEW 공지</span>
-      <h3 style="font-size: 1.12rem; color: #0A2540; margin: 8px 0 4px; font-weight: 900;">${welcomeNotice.title}</h3>
+      <h3 id="welcome-notice-title" style="font-size: ${conf.titleSize}; color: #0A2540; margin: 8px 0 4px; font-weight: 900;">${welcomeNotice.title}</h3>
       <span style="font-size: 0.8rem; color: #64748B;"><i class="fa-regular fa-calendar-check"></i> 공시일: ${welcomeNotice.date}</span>
-      <p style="margin-top: 10px; color: #334155; font-size: 0.9rem; line-height: 1.65;">
+      <p id="welcome-notice-text" style="margin-top: 10px; color: #334155; font-size: ${conf.size}; line-height: ${conf.lineHeight};">
         ${formattedContent}
       </p>
     </div>
@@ -3315,15 +3376,31 @@ function openGalleryDetailModal(id) {
 
 function openNoticeModal(title, date, content) {
   const modalContent = document.getElementById('modal-body-content');
+  const conf = NOTICE_FONT_SIZES[currentNoticeFontSize] || NOTICE_FONT_SIZES.md;
+  
   modalContent.innerHTML = `
+    <!-- 🔍 공지사항 상세 글자 크기 조절 상단 바 -->
+    <div class="notice-font-ctrl-bar">
+      <span class="notice-font-ctrl-label">
+        <i class="fa-solid fa-text-height"></i> 공지사항 글자 크기
+      </span>
+      <div class="notice-font-btn-group">
+        <button type="button" onclick="setNoticeFontSize('sm')" class="btn-notice-font ${currentNoticeFontSize === 'sm' ? 'active' : ''}" data-size="sm">가- 작게</button>
+        <button type="button" onclick="setNoticeFontSize('md')" class="btn-notice-font ${currentNoticeFontSize === 'md' ? 'active' : ''}" data-size="md">보통</button>
+        <button type="button" onclick="setNoticeFontSize('lg')" class="btn-notice-font ${currentNoticeFontSize === 'lg' ? 'active' : ''}" data-size="lg">가+ 크게</button>
+        <button type="button" onclick="setNoticeFontSize('xl')" class="btn-notice-font ${currentNoticeFontSize === 'xl' ? 'active' : ''}" data-size="xl">가++ 아주크게</button>
+      </div>
+    </div>
+
     <span style="background: #EF4444; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">공지사항</span>
-    <h3 style="font-size: clamp(1.1rem, 4vw, 1.3rem); color: #0A2540; margin: 10px 0 6px; line-height: 1.35;">${title}</h3>
+    <h3 id="notice-detail-title" style="font-size: ${conf.titleSize}; color: #0A2540; margin: 10px 0 6px; line-height: 1.35; font-weight: 900;">${title}</h3>
     <span style="font-size: 0.82rem; color: #64748B; display: block; margin-bottom: 16px;"><i class="fa-regular fa-calendar"></i> 공시일: ${date}</span>
-    <div style="background: #F8FAFC; padding: 16px; border-radius: 10px; border: 1px solid #E2E8F0; line-height: 1.75; color: #334155; font-size: 0.9rem;">
+    <div id="notice-detail-text-box" style="background: #F8FAFC; padding: 18px; border-radius: 10px; border: 1px solid #E2E8F0; line-height: ${conf.lineHeight}; color: #334155; font-size: ${conf.size}; word-break: break-word;">
       ${content}
     </div>
   `;
   showModalClean('detail-modal');
+  applyNoticeFontSize();
 }
 
 function closeModal() {
