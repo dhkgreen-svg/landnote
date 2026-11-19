@@ -1825,6 +1825,7 @@ html, body {
    전역 항상 고정 끄기 탭 (Screen-Level Always-Fixed Close Tab)
    ========================================================================== */
 .screen-always-fixed-close-tab {
+  display: none !important; /* 평상시(공지사항 닫힌 상태)에는 완전히 숨김 */
   position: fixed !important;
   top: 18px !important;
   right: 20px !important;
@@ -1837,13 +1838,15 @@ html, body {
   font-size: 1.05rem !important;
   font-weight: 900 !important;
   cursor: pointer !important;
-  display: inline-flex !important;
   align-items: center !important;
   gap: 8px !important;
   box-shadow: 0 6px 22px rgba(220, 38, 38, 0.55), 0 0 0 3px rgba(255, 255, 255, 0.4) !important;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
   user-select: none !important;
   animation: pulseFixedCloseTab 2s infinite !important;
+}
+.screen-always-fixed-close-tab.active {
+  display: inline-flex !important; /* 공지사항이 화면에 열렸을 때만 표시 */
 }
 .screen-always-fixed-close-tab:hover {
   background: #B91C1C !important;

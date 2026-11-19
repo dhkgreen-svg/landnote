@@ -1,39 +1,78 @@
 
 // ==========================================================================
-// 🌟 항상 고정 끄기 탭 전역 관리자 (Always-Fixed Close Tab Controller)
+// 🌟 항상 고정 끄기 탭 전역 관리자 (공지가 열릴 때만 뜨고, 꺼지면 즉시 사라짐)
 // ==========================================================================
 function updateFixedCloseTabVisibility() {
   const tab = document.getElementById('always-fixed-close-tab');
   if (!tab) return;
   
-  const hasActiveNoticeModal = 
-    document.querySelector('#detail-modal.active') ||
-    document.querySelector('#notice-modal.active') ||
-    document.querySelector('#welcome-notice-modal.active') ||
-    document.querySelector('.dynamic-welcome-modal[style*="display: block"]') ||
-    document.querySelector('.dynamic-welcome-modal:not([style*="display: none"])');
-    
-  if (hasActiveNoticeModal) {
-    tab.style.display = 'inline-flex';
+  const detailModal = document.getElementById('detail-modal');
+  const noticeModal = document.getElementById('notice-modal');
+  const welcomeModal = document.getElementById('welcome-notice-modal');
+  
+  const isDetailOpen = detailModal && (detailModal.classList.contains('active') || (detailModal.style.display !== 'none' && detailModal.style.display !== ''));
+  const isNoticeOpen = noticeModal && (noticeModal.classList.contains('active') || (noticeModal.style.display !== 'none' && noticeModal.style.display !== ''));
+  const isWelcomeOpen = welcomeModal && (welcomeModal.classList.contains('active') || (welcomeModal.style.display !== 'none' && welcomeModal.style.display !== ''));
+  
+  let hasDynamic = false;
+  document.querySelectorAll('.dynamic-welcome-modal').forEach(el => {
+    if (el.style.display !== 'none' && el.offsetHeight > 0) hasDynamic = true;
+  });
+
+  const hasAnyOpen = Boolean(isDetailOpen || isNoticeOpen || isWelcomeOpen || hasDynamic);
+  
+  if (hasAnyOpen) {
+    tab.classList.add('active');
   } else {
-    tab.style.display = 'none';
+    tab.classList.remove('active');
   }
 }
 window.updateFixedCloseTabVisibility = updateFixedCloseTabVisibility;
 
 function closeAllNoticeModals() {
+  // 1. 공지사항 모달 비활성화
+  ['detail-modal', 'notice-modal', 'welcome-notice-modal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.remove('active');
+      el.style.display = 'none';
+    }
+  });
+
   if (typeof closeModal === 'function') closeModal();
   if (typeof closeNoticeModalFull === 'function') closeNoticeModalFull();
   if (typeof closeWelcomeNotice === 'function') closeWelcomeNotice();
+
+  // 2. 팝업 삭제
   document.querySelectorAll('.dynamic-welcome-modal').forEach(el => el.remove());
-  if (typeof hideModalClean === 'function') {
-    hideModalClean('detail-modal');
-    hideModalClean('notice-modal');
-    hideModalClean('welcome-notice-modal');
+  
+  // 3. 끄기 탭 즉시 숨김
+  const tab = document.getElementById('always-fixed-close-tab');
+  if (tab) {
+    tab.classList.remove('active');
   }
-  updateFixedCloseTabVisibility();
+  
+  setTimeout(updateFixedCloseTabVisibility, 30);
 }
 window.closeAllNoticeModals = closeAllNoticeModals;
+
+// DOM MutationObserver로 모달 상태 변화 실시간 자동 감지
+if (typeof window !== 'undefined' && typeof MutationObserver !== 'undefined') {
+  window.addEventListener('DOMContentLoaded', () => {
+    updateFixedCloseTabVisibility();
+    const observer = new MutationObserver(() => {
+      updateFixedCloseTabVisibility();
+    });
+    observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class', 'style'] });
+    
+    // ESC 키 누르면 공지 닫기
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        closeAllNoticeModals();
+      }
+    });
+  });
+}
 
 
 // ==========================================================================
@@ -2942,6 +2981,9 @@ window.openNoticeModalFull = openNoticeModalFull;
 
 function closeNoticeModalFull() {
   hideModalClean('notice-modal');
+  if (typeof updateFixedCloseTabVisibility === 'function') {
+    setTimeout(updateFixedCloseTabVisibility, 30);
+  }
 }
 window.closeNoticeModalFull = closeNoticeModalFull;
 
@@ -3525,6 +3567,9 @@ function openNoticeModal(title, date, content) {
 
 function closeModal() {
   hideModalClean('detail-modal');
+  if (typeof updateFixedCloseTabVisibility === 'function') {
+    setTimeout(updateFixedCloseTabVisibility, 30);
+  }
 }
 
 function editPost(id) {
