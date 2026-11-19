@@ -3306,125 +3306,59 @@ function renderActivityExecutiveReport(item) {
     return rawContent;
   }
 
-  // 예전에 자동으로 채워졌던 '가결/확정' 문구와 안내 문구는 화면에서 제외
+  // 예전에 자동 정렬이 임의로 넣었던 '가결/확정' 문구와 안내 문구만 정리
   const FILLER_LINE = /^[ \t]*(?:의결 (?:사항|결과 및 성과):[ \t]*(?:원안 가결 및 추진 확정|세부 실행 계획 수립 및 가결 완료)|추진 경과 및 상세 협의:.*관련 현장 협의 및 의견 수렴 진행|.*작성해 주세요\.?)[ \t]*$/gm;
-  const FILLER_DECISION = /^(?:원안대로 의결 및 추진 확정|원안 가결 및 세부 추진 계획 승인|원안 가결 및 추진 확정|세부 실행 계획 수립 및 가결 완료)$/;
-  const plainText = rawContent.replace(/<[^>]*>/g, '').replace(FILLER_LINE, '').replace(/주요 보고 및 의결 사항/g, '주요 토의 내용').replace(/\n{3,}/g, '\n\n').trim();
+  const plainText = rawContent
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(FILLER_LINE, '')
+    .replace(/^[ \t]*추진 경과 및 상세 협의:[ \t]*/gm, '')
+    .replace(/주요 보고 및 의결 사항/g, '주요 토의 내용')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 
-  // Parse Title
-  let docTitle = item.title ? `${item.title} 주요 토의 내용` : '사단법인 연합회 주요 토의 내용';
-  const firstMatch = plainText.match(/(?:^|\n)\s*1\.\s+/);
-  if (firstMatch) {
-    const rawTitle = plainText.substring(0, firstMatch.index).trim();
-    if (rawTitle.length > 5) docTitle = rawTitle;
-  }
+  const escapeHtml = (s) => String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 
-  // 100% Universal Parse into Sections
-  const parsedSections = universalParseSections(plainText, docTitle);
+  // 글자 그대로 보기 편하게 줄 단위로 자연스럽게 정돈 (억지 안건 박스/꼬리표 없음)
+  const formattedHtml = plainText
+    ? plainText.split('\n').map(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return '<div style="height: 10px;"></div>';
+        const safe = escapeHtml(trimmed);
+        // 번호 제목(1. 2. ...)이나 기호 소제목(■, ●, [ ])은 굵게만 강조
+        if (/^(?:\d+\.\s+|■\s*|\[[^\]]+\])/.test(trimmed)) {
+          return `<div style="font-weight: 800; color: #0A2540; font-size: 0.98rem; margin-top: 12px; margin-bottom: 4px;">${safe}</div>`;
+        }
+        // "장소: ...", "참석자: ..." 같은 콜론 라벨만 자연스럽게 굵게 (14:00 같은 시간 표기는 제외)
+        const labelMatch = trimmed.match(/^([^\d:][^:]{0,20}):\s+(.+)$/);
+        if (labelMatch) {
+          const label = escapeHtml(labelMatch[1].trim());
+          const rest = escapeHtml(labelMatch[2].trim());
+          return `<div style="margin-bottom: 4px;"><strong style="color: #0F172A;">${label}:</strong> ${rest}</div>`;
+        }
+        return `<div style="margin-bottom: 4px;">${safe}</div>`;
+      }).join('')
+    : '<div style="color: #94A3B8;">등록된 상세 내용이 없습니다.</div>';
 
-  const sectionsHtml = parsedSections.map((sec, idx) => {
-    const matchingAgenda = (item.agenda && item.agenda[idx]) ? item.agenda[idx] : null;
-    const hasDecisionInItems = sec.splitItems.some(it => it.label.includes('의결') || it.label.includes('결과') || it.label.includes('성과'));
-
-    let rowsHtml = sec.splitItems.map(it => `
-      <tr style="border-bottom: 1px solid #E2E8F0; transition: background 0.15s ease;">
-        <td style="width: 28%; min-width: 140px; background: #F8FAFC; padding: 12px 14px; font-weight: 800; color: #0F172A; font-size: 0.85rem; border-right: 1px solid #E2E8F0; vertical-align: middle;">
-          <span style="display: inline-block; width: 6px; height: 6px; background: #0284C7; border-radius: 50%; margin-right: 6px; vertical-align: middle;"></span>
-          ${it.label}
-        </td>
-        <td style="padding: 12px 16px; color: #334155; font-size: 0.88rem; line-height: 1.7; vertical-align: middle; background: #FFFFFF;">
-          ${it.desc.replace(/\n+/g, '<br>')}
-        </td>
-      </tr>
-    `).join('');
-
-    // If agenda has a distinct decision result, integrate it as an official resolution row
-    if (!hasDecisionInItems && matchingAgenda && matchingAgenda.decision && !FILLER_DECISION.test(String(matchingAgenda.decision).trim())) {
-      rowsHtml += `
-        <tr style="border-bottom: 1px solid #E2E8F0; background: #F0FDF4;">
-          <td style="width: 28%; min-width: 140px; background: #ECFDF5; padding: 12px 14px; font-weight: 800; color: #065F46; font-size: 0.85rem; border-right: 1px solid #A7F3D0; vertical-align: middle;">
-            <i class="fa-solid fa-circle-check" style="color: #10B981; margin-right: 6px;"></i> 의결 사항
-          </td>
-          <td style="padding: 12px 16px; color: #065F46; font-size: 0.88rem; line-height: 1.7; vertical-align: middle; font-weight: 700; background: #F0FDF4;">
-            ${matchingAgenda.decision}
-          </td>
-        </tr>
-      `;
-    }
-
-    // If agenda is tied to accounting, integrate shortcut button right into the table row
-    if (matchingAgenda && matchingAgenda.hasAccounting) {
-      rowsHtml += `
-        <tr style="border-bottom: 1px solid #E2E8F0; background: #FFFBEB;">
-          <td style="width: 28%; min-width: 140px; background: #FEF3C7; padding: 12px 14px; font-weight: 800; color: #92400E; font-size: 0.85rem; border-right: 1px solid #FDE68A; vertical-align: middle;">
-            <i class="fa-solid fa-receipt" style="color: #D97706; margin-right: 6px;"></i> 관련 회계 결산
-          </td>
-          <td style="padding: 10px 16px; vertical-align: middle; background: #FFFBEB;">
-            <button type="button" onclick="document.getElementById('accounting-section-wrap')?.scrollIntoView({behavior: 'smooth'})" style="background: #0284C7; color: #FFF; border: none; padding: 6px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(2,132,199,0.2);">
-              <i class="fa-solid fa-calculator"></i> 해당 활동 세부 지출·수입 회계 장부 확인 &darr;
-            </button>
-          </td>
-        </tr>
-      `;
-    }
-
-    return `
-      <div style="background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 12px; margin-bottom: 14px; overflow: hidden; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);">
-        <div style="background: linear-gradient(90deg, #0A2540 0%, #1E3A8A 100%); color: #FFFFFF; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="background: #F59E0B; color: #000; font-weight: 900; font-size: 0.74rem; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.3px;">안건 0${idx + 1}</span>
-            <span style="font-size: 0.94rem; font-weight: 800; letter-spacing: -0.3px; color: #FFFFFF;">${sec.secTitle}</span>
-          </div>
-          <span style="font-size: 0.72rem; color: #BAE6FD; font-weight: 600;"><i class="fa-regular fa-comments" style="color: #38BDF8;"></i> 토의 안건</span>
-        </div>
-        <div style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
-          <table style="width: 100%; border-collapse: collapse; text-align: left; min-width: 480px;">
-            <tbody>
-              ${rowsHtml}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    `;
-  }).join('');
+  const docTitle = escapeHtml(item.title || '연합회 활동 상세 내용');
 
   return `
     <div class="report-executive-container">
-      <!-- 공식 보고서 상단 브리핑 배너 -->
-      <div style="background: linear-gradient(135deg, #0A2540 0%, #1E293B 100%); border-radius: 12px; padding: 14px 18px; color: #FFFFFF; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(10, 37, 64, 0.12); border-left: 5px solid #0284C7; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <div>
-          <div style="font-size: 0.73rem; color: #38BDF8; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 3px; display: flex; align-items: center; gap: 6px;">
-            <i class="fa-solid fa-file-shield"></i> <span>사단법인 공식 브리핑 요약 보고서 (PT/PDF 행·열 정렬)</span>
-          </div>
-          <h4 style="font-size: 1.05rem; font-weight: 900; margin: 0; color: #FFFFFF; line-height: 1.35;">
-            ${docTitle}
-          </h4>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <!-- 뷰 모드 전환 탭 -->
-          <div style="display: flex; background: rgba(0,0,0,0.3); padding: 2px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);">
-            <button id="btn-report-view-pt" onclick="switchReportViewMode('pt')" style="background: #0284C7; color: #FFF; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">
-              <i class="fa-solid fa-table-columns"></i> PT/표 요약
-            </button>
-            <button id="btn-report-view-raw" onclick="switchReportViewMode('raw')" style="background: transparent; color: #94A3B8; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">
-              <i class="fa-solid fa-align-left"></i> 원문 줄글
-            </button>
-          </div>
-          <!-- 인쇄 / PDF 저장 -->
-          <button onclick="window.print()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #FFFFFF; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'" title="이 보고서를 PDF로 저장하거나 인쇄합니다">
-            <i class="fa-solid fa-print"></i> PDF/인쇄
-          </button>
-        </div>
+      <div style="background: linear-gradient(135deg, #0A2540 0%, #1E293B 100%); border-radius: 12px; padding: 14px 96px 14px 18px; color: #FFFFFF; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(10, 37, 64, 0.12); border-left: 5px solid #0284C7; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <h4 style="font-size: 1.02rem; font-weight: 900; margin: 0; color: #FFFFFF; line-height: 1.4;">
+          ${docTitle}
+        </h4>
+        <button onclick="window.print()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #FFFFFF; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" title="이 내용을 PDF로 저장하거나 인쇄합니다">
+          <i class="fa-solid fa-print"></i> PDF/인쇄
+        </button>
       </div>
 
-      <!-- 1) PT/표 요약 뷰 -->
-      <div id="report-view-pt" class="report-sections-wrap">
-        ${sectionsHtml}
-      </div>
-
-      <!-- 2) 원문 텍스트 뷰 (초기 숨김) -->
-      <div id="report-view-raw" style="display: none; background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 12px; padding: 18px 20px; line-height: 1.85; color: #334155; font-size: 0.92rem; white-space: pre-line; box-shadow: 0 2px 8px rgba(15,23,42,0.04);">
-        ${plainText}
+      <div style="background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 12px; padding: 18px 20px; line-height: 1.85; color: #1E293B; font-size: 0.94rem; box-shadow: 0 2px 8px rgba(15,23,42,0.04); word-break: keep-all;">
+        ${formattedHtml}
       </div>
     </div>
   `;
