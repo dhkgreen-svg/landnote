@@ -79,6 +79,14 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // URL 정규화: 쿼리스트링 제거 + 클라이언트가 호출하는 별칭 경로 매핑
+  const __origUrl = req.url;
+  if (req.url.startsWith('/api/')) {
+    req.url = req.url.split('?')[0];
+    if (req.url === '/api/signup-request') req.url = '/api/signup';
+    if (req.url === '/api/submit-inquiry') req.url = '/api/inquiry';
+  }
+
   // API Endpoints
   if (req.url === '/api/data' && req.method === 'GET') {
     const db = await loadDb();
@@ -124,17 +132,32 @@ const server = http.createServer(async (req, res) => {
     req.on('end', async () => {
       try {
         const payload = JSON.parse(body);
-        const db = await loadDb();
+        const db = await loadDb(true);
         
         if (!db.gallery) db.gallery = [];
         if (!db.accounting) db.accounting = [];
 
-        if (payload.type === 'gallery') {
-          payload.data.id = Date.now();
-          db.gallery.push(payload.data);
-        } else if (payload.type === 'accounting') {
-          payload.data.id = Date.now();
-          db.accounting.push(payload.data);
+        const upsert = (arr, entry) => {
+          const idx = arr.findIndex(i => String(i.id) === String(entry.id));
+          if (idx >= 0) arr[idx] = entry; else arr.push(entry);
+        };
+
+        // 현재 화면(app.js)이 보내는 형식: { editingItemId, galleryEntry, accountingEntry }
+        if (payload.galleryEntry) {
+          if (!payload.galleryEntry.id) payload.galleryEntry.id = Date.now();
+          upsert(db.gallery, payload.galleryEntry);
+        }
+        if (payload.accountingEntry) {
+          if (!payload.accountingEntry.id) payload.accountingEntry.id = (payload.galleryEntry && payload.galleryEntry.id) || Date.now();
+          upsert(db.accounting, payload.accountingEntry);
+        }
+        // 구형 형식: { type, data }
+        if (payload.type === 'gallery' && payload.data) {
+          payload.data.id = payload.data.id || Date.now();
+          upsert(db.gallery, payload.data);
+        } else if (payload.type === 'accounting' && payload.data) {
+          payload.data.id = payload.data.id || Date.now();
+          upsert(db.accounting, payload.data);
         }
         
         await saveDb(db);
