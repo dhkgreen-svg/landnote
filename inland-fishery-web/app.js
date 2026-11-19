@@ -3121,15 +3121,15 @@ window.insertPtTemplate = function(textareaId) {
   const titleEl = document.getElementById(isBranch ? 'branch-entry-title' : 'entry-title');
   const title = (titleEl && titleEl.value.trim()) ? titleEl.value.trim() : (isBranch ? '시·도 지회 현장 활동' : '연합회 주요 활동');
 
-  const template = `사)전국내수면어업연합회 ${title} 주요 보고 및 의결 사항
+  const template = `사)전국내수면어업연합회 ${title} 주요 토의 내용
 
 1. [첫 번째 주요 안건명 입력]
 추진 경과 및 상세 협의: 현장에서 진행된 주요 협의 내용, 참석자 의견 및 추진 경과를 작성해 주세요.
-의결 결과 및 성과: 이사회 또는 지회에서 의결된 결과 및 핵심 추진 성과를 작성해 주세요.
+의결 사항: 이사회 또는 지회에서 의결된 결과 및 핵심 추진 성과를 작성해 주세요.
 
 2. [두 번째 주요 안건명 입력]
 추진 경과 및 상세 협의: 당면 과제에 대한 논의 및 실무 협력 사항을 작성해 주세요.
-의결 결과 및 성과: 향후 추진 일정 및 확정된 실행 방안을 작성해 주세요.`;
+의결 사항: 향후 추진 일정 및 확정된 실행 방안을 작성해 주세요.`;
 
   if (el.value.trim() && !el.value.includes('[첫 번째 주요 안건명 입력]')) {
     if (!confirm('이미 입력(붙여넣기)하신 내용이 있습니다.\n\n[PT 표준 양식 불러오기]를 누르면 지금 내용이 모두 지워지고 빈 양식으로 바뀝니다.\n\n그래도 불러올까요?\n(내용을 유지하려면 [취소] 후 [자동 정리]를 사용하세요)')) return;
@@ -3155,26 +3155,40 @@ window.autoFormatPtText = function(textareaId) {
     return;
   }
 
+  // ✅ 내용은 그대로 두고 번호·줄바꿈만 보기 좋게 정렬합니다. (가결/확정 같은 문구는 절대 자동으로 넣지 않음)
   const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
-  let formatted = `사)전국내수면어업연합회 ${title} 주요 보고 및 의결 사항\n\n`;
+  const headRe = /^(?:[0-9]+[\.\)]|\([0-9]+\))\s+/;
+  const stripBullet = (s) => s.replace(/^(?:[0-9]+[\.\)]|\([0-9]+\)|[-•*])\s*/, '').trim();
+  const hasNumbered = lines.some(l => headRe.test(l));
+  const sections = [];
 
-  let secNum = 1;
-  lines.forEach((line) => {
-    // If line starts with a number or bullet
-    let cleaned = line.replace(/^(?:[0-9]+[\.\)]|\([0-9]+\)|[-•*])\s*/, '').trim();
-    if (cleaned.length > 2) {
-      if (cleaned.includes(':')) {
-        const parts = cleaned.split(':');
-        formatted += `${secNum}. ${parts[0].trim()}\n추진 경과 및 상세 협의: ${parts.slice(1).join(':').trim()}\n의결 결과 및 성과: 원안 가결 및 추진 확정\n\n`;
-      } else {
-        formatted += `${secNum}. ${cleaned}\n추진 경과 및 상세 협의: ${cleaned} 관련 현장 협의 및 의견 수렴 진행\n의결 결과 및 성과: 세부 실행 계획 수립 및 가결 완료\n\n`;
-      }
-      secNum++;
-    }
+  if (hasNumbered) {
+    // 번호(1. 2. …)가 있으면 그 번호를 안건으로 두고, 아래 줄들은 그 안건의 토의 내용으로 묶음
+    lines.forEach(line => {
+      if (headRe.test(line)) sections.push({ title: stripBullet(line), body: [] });
+      else if (sections.length) sections[sections.length - 1].body.push(stripBullet(line));
+      else sections.push({ title: stripBullet(line), body: [] });
+    });
+  } else {
+    // 번호가 없으면 한 줄을 하나의 안건으로 정리 ("제목: 내용" 형태면 나눠서 표시)
+    lines.forEach(line => {
+      const cleaned = stripBullet(line);
+      if (cleaned.length <= 2) return;
+      const ci = cleaned.indexOf(':');
+      if (ci > 0 && ci < 40) sections.push({ title: cleaned.slice(0, ci).trim(), body: [cleaned.slice(ci + 1).trim()] });
+      else sections.push({ title: cleaned, body: [] });
+    });
+  }
+
+  let formatted = `사)전국내수면어업연합회 ${title} 주요 토의 내용\n\n`;
+  sections.forEach((s, i) => {
+    formatted += `${i + 1}. ${s.title}\n`;
+    if (s.body.length) formatted += s.body.join('\n') + '\n';
+    formatted += '\n';
   });
 
   el.value = formatted.trim();
-  alert('✨ 작성하신 내용이 행과 열이 정렬된 PT 표준 보고서 양식으로 100% 자동 변환되었습니다!');
+  alert('✨ 내용은 그대로 두고, 번호와 줄만 보기 좋게 정렬했습니다.\n(가결·확정 같은 문구는 자동으로 넣지 않습니다.)');
 };
 
 function universalParseSections(rawText, docTitle) {
@@ -3240,7 +3254,7 @@ function parseSubItems(secTitle, subText, idx) {
       });
     } else {
       splitItems.push({
-        label: '추진 세부내용',
+        label: '토의 내용',
         desc: trimmed
       });
     }
@@ -3258,9 +3272,13 @@ function generateAgendaFromContent(desc, title, date) {
   if (sections && sections.length > 0) {
     return sections.map(s => {
       const detailItem = s.splitItems.find(it => it.label.includes('협의') || it.label.includes('경과') || it.label.includes('세부') || it.label.includes('내용'));
-      const decisionItem = s.splitItems.find(it => it.label.includes('의결') || it.label.includes('결과') || it.label.includes('성과') || it.label.includes('가결'));
+      const decisionItem = s.splitItems.find(it => /의결|가결|결정/.test(it.label));
       const detail = detailItem ? detailItem.desc : (s.splitItems[0] ? s.splitItems[0].desc : '해당 안건에 대한 현장 검토 및 논의가 진행되었습니다.');
-      const decision = decisionItem ? decisionItem.desc : '원안대로 의결 및 추진 확정';
+      let decision = decisionItem ? decisionItem.desc : '';
+      if (!decision) { // 글에 의결/가결/결정이 실제로 적힌 문장이 있을 때만 의결 사항으로 표시
+        const hit = s.splitItems.map(it => it.label + ': ' + it.desc).join('\n').split('\n').filter(l => /의결|가결|결정/.test(l));
+        decision = hit.join(' / ');
+      }
       return {
         title: s.secTitle,
         detail: detail,
@@ -3273,7 +3291,7 @@ function generateAgendaFromContent(desc, title, date) {
     {
       title: `${title} 관련 주요 추진 안건`,
       detail: desc || '해당 날짜에 실시된 주요 사업 및 현장 활동 세부 협의 내용입니다.',
-      decision: '원안 가결 및 세부 추진 계획 승인',
+      decision: '',
       hasAccounting: false
     }
   ];
@@ -3285,10 +3303,13 @@ function renderActivityExecutiveReport(item) {
     return rawContent;
   }
 
-  const plainText = rawContent.replace(/<[^>]*>/g, '').trim();
+  // 예전에 자동으로 채워졌던 '가결/확정' 문구와 안내 문구는 화면에서 제외
+  const FILLER_LINE = /^[ \t]*(?:의결 (?:사항|결과 및 성과):[ \t]*(?:원안 가결 및 추진 확정|세부 실행 계획 수립 및 가결 완료)|추진 경과 및 상세 협의:.*관련 현장 협의 및 의견 수렴 진행|.*작성해 주세요\.?)[ \t]*$/gm;
+  const FILLER_DECISION = /^(?:원안대로 의결 및 추진 확정|원안 가결 및 세부 추진 계획 승인|원안 가결 및 추진 확정|세부 실행 계획 수립 및 가결 완료)$/;
+  const plainText = rawContent.replace(/<[^>]*>/g, '').replace(FILLER_LINE, '').replace(/주요 보고 및 의결 사항/g, '주요 토의 내용').replace(/\n{3,}/g, '\n\n').trim();
 
   // Parse Title
-  let docTitle = item.title ? `${item.title} 주요 보고 및 의결 사항` : '사단법인 연합회 주요 보고 및 의결 사항';
+  let docTitle = item.title ? `${item.title} 주요 토의 내용` : '사단법인 연합회 주요 토의 내용';
   const firstMatch = plainText.match(/(?:^|\n)\s*1\.\s+/);
   if (firstMatch) {
     const rawTitle = plainText.substring(0, firstMatch.index).trim();
@@ -3315,11 +3336,11 @@ function renderActivityExecutiveReport(item) {
     `).join('');
 
     // If agenda has a distinct decision result, integrate it as an official resolution row
-    if (!hasDecisionInItems && matchingAgenda && matchingAgenda.decision) {
+    if (!hasDecisionInItems && matchingAgenda && matchingAgenda.decision && !FILLER_DECISION.test(String(matchingAgenda.decision).trim())) {
       rowsHtml += `
         <tr style="border-bottom: 1px solid #E2E8F0; background: #F0FDF4;">
           <td style="width: 28%; min-width: 140px; background: #ECFDF5; padding: 12px 14px; font-weight: 800; color: #065F46; font-size: 0.85rem; border-right: 1px solid #A7F3D0; vertical-align: middle;">
-            <i class="fa-solid fa-circle-check" style="color: #10B981; margin-right: 6px;"></i> 의결 결과 및 성과
+            <i class="fa-solid fa-circle-check" style="color: #10B981; margin-right: 6px;"></i> 의결 사항
           </td>
           <td style="padding: 12px 16px; color: #065F46; font-size: 0.88rem; line-height: 1.7; vertical-align: middle; font-weight: 700; background: #F0FDF4;">
             ${matchingAgenda.decision}
@@ -3351,7 +3372,7 @@ function renderActivityExecutiveReport(item) {
             <span style="background: #F59E0B; color: #000; font-weight: 900; font-size: 0.74rem; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.3px;">안건 0${idx + 1}</span>
             <span style="font-size: 0.94rem; font-weight: 800; letter-spacing: -0.3px; color: #FFFFFF;">${sec.secTitle}</span>
           </div>
-          <span style="font-size: 0.72rem; color: #BAE6FD; font-weight: 600;"><i class="fa-solid fa-circle-check" style="color: #38BDF8;"></i> 의결/추진 확정</span>
+          <span style="font-size: 0.72rem; color: #BAE6FD; font-weight: 600;"><i class="fa-regular fa-comments" style="color: #38BDF8;"></i> 토의 안건</span>
         </div>
         <div style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
           <table style="width: 100%; border-collapse: collapse; text-align: left; min-width: 480px;">
@@ -3430,7 +3451,7 @@ function renderInteractiveAgendaSection(item) {
     const isObj = (typeof a === 'object' && a !== null);
     const title = isObj ? (a.title || '안건') : a;
     const detail = isObj ? a.detail : '해당 안건에 대해 이사회 및 집행부 간 심도 있는 현안 협의와 심의가 진행되었습니다.';
-    const decision = isObj ? a.decision : '원안 가결 및 세부 추진 계획 승인';
+    const decision = isObj ? a.decision : '';
     const hasAcc = isObj ? a.hasAccounting : (title.includes('회계') || title.includes('예산') || title.includes('집행') || title.includes('정산'));
 
     // By default, open the first item (idx === 0) for great immediate preview
@@ -3466,7 +3487,7 @@ function renderInteractiveAgendaSection(item) {
           ${decision ? `
             <div style="margin-bottom: ${hasAcc ? '10px' : '0'};">
               <strong style="color: #059669; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                <i class="fa-solid fa-circle-check"></i> 의결 결과 및 성과:
+                <i class="fa-solid fa-circle-check"></i> 의결 사항:
               </strong>
               <div style="background: #ECFDF5; padding: 10px 14px; border-radius: 8px; border: 1px solid #A7F3D0; color: #065F46; font-weight: 600;">
                 ${decision}
@@ -3490,7 +3511,7 @@ function renderInteractiveAgendaSection(item) {
     <div style="margin-top: 16px; background: #F8FAFC; padding: 16px; border-radius: 12px; border: 1px solid #E2E8F0; box-shadow: 0 2px 8px rgba(15,23,42,0.03);">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 6px;">
         <h4 style="font-size: 0.98rem; color: #0A2540; margin: 0; font-weight: 800; display: flex; align-items: center; gap: 8px;">
-          <i class="fa-solid fa-list-check" style="color: #0284C7;"></i> 주요 성과 및 의결 안건
+          <i class="fa-solid fa-list-check" style="color: #0284C7;"></i> 주요 토의 안건
           <span style="font-size: 0.75rem; color: #64748B; font-weight: normal;">(클릭 시 세부 내용이 펼쳐집니다)</span>
         </h4>
         <span style="background: #E0F2FE; color: #0369A1; font-size: 0.73rem; font-weight: 800; padding: 3px 9px; border-radius: 12px;">
