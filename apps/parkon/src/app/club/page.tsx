@@ -56,6 +56,7 @@ import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
 import { calculateTier, getUserCompleted9Holes } from '@/lib/courseBlockTier';
 import { DiamondTierBadge } from '@/components/DiamondTierBadge';
+import { PaperScorecardModal } from '@/components/PaperScorecardModal';
 
 const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
@@ -155,6 +156,7 @@ export default function ClubGatheringHomePage() {
 
   // 안내 토스트 메시지
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showClubScorecardOcrModal, setShowClubScorecardOcrModal] = useState(false);
 
   // ========================================================
   // 1. [내 클럽 관리] 상태
@@ -399,19 +401,18 @@ export default function ClubGatheringHomePage() {
         }
       }
 
-      // 📱↔💻 마운트 및 화면 포커스 복귀 시 스마트폰과 PC 간 전체 데이터(클럽/대회/전적) 100% 무버튼 자동 동기화
+      // 📱↔💻 마운트 및 화면 포커스 복귀 시 본인 인증된 회원 코드가 있는 경우에만 자동 동기화 (제3자 신규 기기는 100% 백지 상태 보장)
       const runAutoCloudSync = () => {
         import('@/lib/memberCodeUtils')
           .then(async (m) => {
-            const localClubs = ClubStorage.getAllClubs();
+            const code = m.getSavedMemberCode();
+            if (!code) return;
+            await m.fetchAndRestoreMemberData(code).catch(() => {});
+            refreshAllData();
+            const localClubs = ClubStorage.getAllClubs().filter((c) => c.id !== 'club-default-1');
             const localRooms = ClubStorage.getAllRooms();
             if (localClubs.length > 0 || localRooms.length > 0) {
               await m.syncMemberDataToCloud(true).catch(() => {});
-            }
-            const code = m.getSavedMemberCode() || 'PKYA-7788';
-            if (code) {
-              await m.fetchAndRestoreMemberData(code).catch(() => {});
-              refreshAllData();
             }
           })
           .catch(() => {});
@@ -531,24 +532,20 @@ export default function ClubGatheringHomePage() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // [권한 제어] 특정 클럽의 총무/회장(임원진) 권한 여부 판별 (100% 자동 직책 판별)
+  // [권한 제어] 특정 클럽의 총무/회장(임원진) 권한 여부 판별 (본인 실명 기준 엄격 판별)
   const isClubExecutive = (club: ParkGolfClub | null | undefined): boolean => {
     if (!club) return false;
     const selfName = (ParkOnStorage.getUserDisplayName(club.id) || ParkOnStorage.getUserDisplayName()).trim();
+    if (!selfName || selfName === '플레이어' || selfName === '파크골퍼') return false;
     const myMemberInfo = club.members?.find(
-      (m) =>
-        m.name.trim() === selfName ||
-        m.name.includes('(본인)') ||
-        m.name === '김대희' ||
-        m.id === 'm1'
+      (m) => m.name.trim() === selfName || m.name.replace('(본인)', '').trim() === selfName
     );
     const actualManager =
       myMemberInfo?.role === 'MANAGER' ||
-      club.managerName?.includes(selfName) ||
-      club.managerName?.includes('김대희') ||
-      club.managerName?.includes('본인');
+      Boolean(selfName && club.managerName?.includes(selfName));
     const actualPresident =
-      myMemberInfo?.role === 'PRESIDENT' || club.presidentName?.includes(selfName);
+      myMemberInfo?.role === 'PRESIDENT' ||
+      Boolean(selfName && club.presidentName?.includes(selfName));
     return Boolean(actualManager || actualPresident);
   };
 
@@ -1775,6 +1772,11 @@ ${shareUrl}`;
   return (
     <div className="p-3 max-w-xl mx-auto space-y-3 pb-12">
       {/* 안내 토스트 피드백 (스크롤 위치와 상관없이 화면 하단에 항상 고정 플로팅) */}
+      <PaperScorecardModal
+        isOpen={showClubScorecardOcrModal}
+        onClose={() => setShowClubScorecardOcrModal(false)}
+      />
+
       {toastMessage && (
         <div className="fixed bottom-6 inset-x-4 max-w-sm mx-auto z-[9999] bg-stone-950/95 backdrop-blur-sm text-white text-xs font-black p-4 rounded-2xl shadow-2xl border-2 border-emerald-400 flex items-center justify-between animate-bounce">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -2006,6 +2008,29 @@ ${shareUrl}`;
                 return null;
               })()}
 
+              {/* 📸 [총무 핵심 업무] 앱 미설치 회원의 종이 스코어카드 사진 ➔ AI 자동 판독 ➔ DB 저장 & 시상식 평가 */}
+              <button
+                type="button"
+                data-testid="btn-club-manager-scorecard-ocr"
+                onClick={() => setShowClubScorecardOcrModal(true)}
+                className="w-full py-2.5 px-3.5 bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 hover:from-emerald-800 hover:to-teal-800 text-white rounded-2xl shadow-md border border-emerald-500/40 flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5 text-left">
+                  <span className="w-8 h-8 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center text-base font-black shrink-0">
+                    📸
+                  </span>
+                  <div>
+                    <div className="text-xs font-black text-amber-300">
+                      총무 종이 스코어카드 사진 AI 판독 · DB 평가
+                    </div>
+                    <div className="text-[10.5px] text-emerald-100/90 font-medium">
+                      앱 미사용 회원 카드도 카메라로 찍어 1초 DB화 & 자동 순위 산정
+                    </div>
+                  </div>
+                </div>
+                <ArrowRight className="w-4 h-4 text-amber-300 shrink-0" />
+              </button>
+
               {/* 도착한 초청장 목록 */}
               {clubInvitations.length > 0 && (
                 <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 rounded-2xl p-4 border-2 border-amber-400 shadow-md space-y-3">
@@ -2135,23 +2160,22 @@ ${shareUrl}`;
                 )}
 
                 {myClubs.map((club) => {
-                  const selfName = (ParkOnStorage.getUserDisplayName(club.id) || ParkOnStorage.getUserDisplayName()).trim();
-                  const myMemberInfo =
-                    club.members.find(
-                      (m) =>
-                        m.name.trim() === selfName ||
-                        m.name.includes('(본인)') ||
-                        m.name === '김대희' ||
-                        m.id === 'm1'
-                    ) || club.members[0];
+                  const rawSelfName = (ParkOnStorage.getUserDisplayName(club.id) || ParkOnStorage.getUserDisplayName()).trim();
+                  const selfName = rawSelfName && rawSelfName !== '플레이어' && rawSelfName !== '파크골퍼' ? rawSelfName : '';
+                  const myMemberInfo = selfName
+                    ? club.members.find(
+                        (m) =>
+                          m.name.trim() === selfName ||
+                          m.name.replace('(본인)', '').trim() === selfName
+                      )
+                    : undefined;
 
                   const actualManager =
                     myMemberInfo?.role === 'MANAGER' ||
-                    club.managerName.includes(selfName) ||
-                    club.managerName.includes('김대희') ||
-                    club.managerName.includes('본인');
+                    Boolean(selfName && club.managerName.includes(selfName));
                   const actualPresident =
-                    myMemberInfo?.role === 'PRESIDENT' || club.presidentName.includes(selfName);
+                    myMemberInfo?.role === 'PRESIDENT' ||
+                    Boolean(selfName && club.presidentName.includes(selfName));
                   const actualExecutive = actualManager || actualPresident;
 
                   // 대표님 지시: 클럽별 실제 권한(총무/회장 등)에 따라 100% 자동 직책 판별

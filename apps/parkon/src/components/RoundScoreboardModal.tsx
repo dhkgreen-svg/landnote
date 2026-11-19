@@ -608,6 +608,37 @@ export function RoundScoreboardModal({
     }
   };
 
+  // [AI 사무실 처방 1 반영] 동반자 카톡 공유 & 1초 연대기 자동 담기 바이럴 루프
+  const handleShareRoundToCompanions = async () => {
+    if (!currentRound) return;
+    try {
+      const compactPayload = {
+        c: currentRound.courseName || '해평파크골프장',
+        sc: (currentRound as any).subCourseName || activeSegments.map((s) => s.title).join('·') || 'A·B코스',
+        d: (currentRound.completedAt || currentRound.startedAt || new Date().toISOString()).slice(0, 10),
+        h: activeConfirmedHoles.length || currentRound.totalHoles || 18,
+        p: (currentRound.players || []).map((pl) => ({
+          n: pl.name,
+          t: pl.totalStrokes || 64,
+        })),
+      };
+      const encoded = btoa(encodeURIComponent(JSON.stringify(compactPayload)));
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.parkgolfallinone.com';
+      const shareUrl = `${origin}/?importRound=${encoded}`;
+      const playerLine = compactPayload.p.map((pl, idx) => `${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '⛳'} ${pl.n} ${pl.t}타`).join(' · ');
+      const shareText = `⛳ [파키 앱] ${compactPayload.c} (${compactPayload.sc}) 공식 스코어보드 도착!\n📅 일시: ${dateFormatted}\n🏆 기록: ${playerLine}\n\n👇 아래 링크를 누르면 내 휴대폰 '나의 파크골프 연대기'에 이 경기 스코어보드가 1초 만에 자동 저장됩니다!\n${shareUrl}`;
+
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareText);
+      }
+      setShareToast('💬 동반자 카톡 공유용 스코어보드 & 1초 연대기 담기 링크가 복사되었습니다!');
+      setTimeout(() => setShareToast(null), 3500);
+    } catch {
+      setShareToast('✅ 스코어보드 공유 정보가 준비되었습니다!');
+      setTimeout(() => setShareToast(null), 3000);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in"
@@ -924,11 +955,18 @@ export function RoundScoreboardModal({
                       {currentRound.photos && currentRound.photos.length > 0 ? ` (${currentRound.photos.length}장)` : ''}
                     </span>
                   </span>
-                  <label className="text-xs font-black text-amber-950 bg-amber-300 hover:bg-amber-400 px-2.5 py-1 rounded-xl cursor-pointer transition flex items-center gap-1 shadow-xs active:scale-95">
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{isJapanese ? '写真追加' : '사진 추가'}</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleAddPhoto} />
-                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-black text-amber-950 bg-amber-300 hover:bg-amber-400 px-2.5 py-1 rounded-xl cursor-pointer transition flex items-center gap-1 shadow-xs active:scale-95">
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>{isJapanese ? 'カメラ撮影' : '카메라 촬영'}</span>
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleAddPhoto} />
+                    </label>
+                    <label className="text-xs font-bold text-stone-700 bg-white hover:bg-stone-100 border border-stone-300 px-2 py-1 rounded-xl cursor-pointer transition flex items-center gap-1 shadow-2xs active:scale-95">
+                      <Plus className="w-3 h-3" />
+                      <span>{isJapanese ? 'アルバム' : '앨범'}</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleAddPhoto} />
+                    </label>
+                  </div>
                 </div>
 
                 <p className="text-[10.5px] text-amber-800/90 font-medium leading-relaxed">
@@ -998,11 +1036,18 @@ export function RoundScoreboardModal({
                         : '동반자와 함께 찍은 현장 사진을 올리시면 공식 스코어카드에 멋진 액자로 자동 합성됩니다. (사진이 없을 시 공식 마스코트 파키(PARKY)가 대신 예쁘게 합성됩니다)'}
                     </p>
                   </div>
-                  <label className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black cursor-pointer shadow-md active:scale-95 transition">
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{isJapanese ? '今すぐ写真を追加する' : '지금 첫 번째 현장 사진 등록하기'}</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleAddPhoto} />
-                  </label>
+                  <div className="flex items-center justify-center gap-2">
+                    <label className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black cursor-pointer shadow-md active:scale-95 transition">
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>{isJapanese ? 'カメラで撮影する' : '카메라로 바로 촬영하기'}</span>
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleAddPhoto} />
+                    </label>
+                    <label className="inline-flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 rounded-xl text-xs font-bold cursor-pointer shadow-xs active:scale-95 transition">
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{isJapanese ? 'アルバム' : '앨범 선택'}</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleAddPhoto} />
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
@@ -1127,26 +1172,34 @@ export function RoundScoreboardModal({
           )}
         </div>
 
-        {/* 스코어보드 직하단 1열 액션 버튼 ([ 🗑️ 전체 경기 삭제 ]  [ 확인 (닫기) ]) */}
-        <div className="pt-3 border-t grid grid-cols-2 gap-2.5 shrink-0 mt-2">
+        {/* 스코어보드 직하단 1열 액션 버튼 ([ 🗑️ 경기 삭제 ] [ 💬 동반자 공유 ] [ 확인 (닫기) ]) */}
+        <div className="pt-3 border-t grid grid-cols-3 gap-2 shrink-0 mt-2">
           {onDelete ? (
             <button
               type="button"
               data-testid="chronicle-modal-delete-all-btn"
               onClick={handleDelete}
-              className="w-full py-3.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-black rounded-2xl text-xs sm:text-sm transition active:scale-95 border border-rose-200 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              className="w-full py-3 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-black rounded-2xl text-xs transition active:scale-95 border border-rose-200 flex items-center justify-center gap-1 cursor-pointer shadow-xs whitespace-nowrap"
             >
-              <Trash2 className="w-4 h-4 text-rose-600" />
-              <span>{isJapanese ? '🗑️ 全試合削除' : '🗑️ 전체 경기 삭제'}</span>
+              <Trash2 className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+              <span>{isJapanese ? '試合削除' : '경기 삭제'}</span>
             </button>
           ) : (
             <div />
           )}
           <button
             type="button"
+            data-testid="btn-share-chronicle-round-kakao"
+            onClick={handleShareRoundToCompanions}
+            className="w-full py-3 px-2 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black rounded-2xl text-xs transition active:scale-95 border border-amber-500 flex items-center justify-center gap-1 cursor-pointer shadow-xs whitespace-nowrap"
+          >
+            <span>{isJapanese ? '💬 同伴者共有' : '💬 동반자 공유'}</span>
+          </button>
+          <button
+            type="button"
             data-testid="chronicle-modal-confirm-close-btn"
             onClick={onClose}
-            className="w-full bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-700 hover:to-teal-700 text-white font-black py-3.5 px-3 rounded-2xl text-xs sm:text-sm transition active:scale-[0.98] shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+            className="w-full bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-700 hover:to-teal-700 text-white font-black py-3 px-2 rounded-2xl text-xs transition active:scale-[0.98] shadow-md cursor-pointer flex items-center justify-center gap-1 whitespace-nowrap"
           >
             <span>{isJapanese ? '確認 (閉じる)' : '확인 (닫기)'}</span>
           </button>

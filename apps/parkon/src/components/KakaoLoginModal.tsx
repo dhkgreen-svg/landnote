@@ -195,7 +195,7 @@ const [showAddNickname, setShowAddNickname] = useState(false);
     setIsRestoring(true);
     setSyncStatus(null);
 
-    const res = await fetchAndRestoreMemberData(codeToRestore.trim());
+    const res = await fetchAndRestoreMemberData(codeToRestore.trim(), { verifiedByPhoneOrKakao: true });
     setIsRestoring(false);
 
     if (res.success) {
@@ -1006,7 +1006,7 @@ const handleAddNewNickname = () => {
                         {isJapanese ? '8桁会員番号 (パスワード不要)' : isEnglish ? '8-digit Member Code' : '8자리 평생 고유번호 (비밀번호 없음)'}
                       </div>
                       <span className="text-sm sm:text-base font-black text-stone-900 tracking-wider font-mono">
-                        {memberCode || 'PKYA-7788'}
+                        {memberCode || '미발급 (신규 등록 필요)'}
                       </span>
                     </div>
                   </div>
@@ -1287,11 +1287,7 @@ const handleAddNewNickname = () => {
                       onClick={async () => {
                         const cleanN = newName.trim();
                         if (!cleanN) return;
-                        if (cleanN.includes('김대희')) {
-                          await handleRestoreByMemberCodeWith('PKYA-7788');
-                        } else {
-                          await handleRegisterNewWithPhone();
-                        }
+                        await handleRegisterNewWithPhone();
                       }}
                       className="w-full py-2.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 text-white font-black text-xs rounded-xl shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-700 disabled:opacity-50"
                     >

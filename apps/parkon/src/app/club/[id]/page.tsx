@@ -6775,17 +6775,28 @@ ${origin}/club/${room.id}`;
                   </button>
                 </div>
 
-                <label className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition">
-                  <Camera className="w-4 h-4 text-stone-950" />
-                  <span>📷 스마트폰 카메라로 직접 찍기 / 사진첩 선택</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handleManagerPhotoFileUpload}
-                    className="hidden"
-                  />
-                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <label className="col-span-2 py-2.5 px-3 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-stone-950 font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition">
+                    <Camera className="w-4 h-4 text-stone-950" />
+                    <span>📷 카메라로 바로 찍기</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleManagerPhotoFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  <label className="py-2.5 px-2 bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 font-bold text-xs rounded-xl shadow-2xs flex items-center justify-center gap-1 cursor-pointer transition">
+                    <span>🖼️ 앨범</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleManagerPhotoFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
 
                 {managerPhotoDataUrl && (
                   <div className="rounded-2xl overflow-hidden border-2 border-amber-400 shadow-md bg-stone-950 relative">

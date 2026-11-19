@@ -10,6 +10,8 @@ import { ClubStorage } from '@/lib/clubStorage';
 import { ConditionStatus } from '@/components/ConditionStatus';
 import { CourseTodayModal } from '@/components/CourseTodayModal';
 import { CourseDetailModal } from '@/components/CourseDetailModal';
+import { YardageBookModal } from '@/components/YardageBookModal';
+import { YardageBookStorage, YardageHoleNote } from '@/lib/yardageBookStorage';
 import { InstallPrompt } from '@/components/InstallPrompt';
 import { autoEscapeIfKakao, isKakaoTalkWebView, escapeKakaoTalk, isIOS } from '@/lib/kakaoEscape';
 import { KakaoLoginModal } from '@/components/KakaoLoginModal';
@@ -55,7 +57,8 @@ export default function HomePage() {
   const [completedRounds, setCompletedRounds] = useState<RoundSession[]>([]);
   const [userProfile, setUserProfile] = useState<UserGolfProfile>(DEFAULT_USER_PROFILE);
   const [showStatsModal, setShowStatsModal] = useState<boolean>(false);
-  const [statsSubTab, setStatsSubTab] = useState<'TIMELINE_RANK' | 'PHOTO_ALBUM' | 'MEDALS_COURSES'>('TIMELINE_RANK');
+  const [statsSubTab, setStatsSubTab] = useState<'TIMELINE_RANK' | 'PHOTO_ALBUM' | 'MEDALS_COURSES' | 'YARDAGE_LIBRARY'>('TIMELINE_RANK');
+  const [chronicleYardageNote, setChronicleYardageNote] = useState<YardageHoleNote | null>(null);
   const [chroniclePhotos, setChroniclePhotos] = useState<ChroniclePhotoItem[]>([]);
   const [photoAlbumFilterCourse, setPhotoAlbumFilterCourse] = useState<string>('ALL');
   const [photoAlbumFilterCompanion, setPhotoAlbumFilterCompanion] = useState<string>('ALL');
@@ -233,8 +236,10 @@ export default function HomePage() {
     hasRestoredMemberRef.current = true;
 
     const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const isLocalHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     const queryCode = urlParams?.get('code') || urlParams?.get('memberCode');
-    if (queryCode) {
+    // 🛡️ [대표님 지침]: 실서버에서 카카오톡 등으로 링크 공유 시 타인 기기에 내 정보가 절대 넘어가지 않도록 URL 코드 자동 주입은 로컬 4인 테스트에서만 허용
+    if (queryCode && isLocalHost) {
       const norm = normalizeMemberCode(queryCode);
       if (norm) {
         localStorage.setItem(MEMBER_CODE_STORAGE_KEY, norm);
@@ -391,6 +396,68 @@ export default function HomePage() {
           }
         })
         .catch(() => {});
+
+      // [AI 사무실 처방 1 반영] 동반자가 카톡 공유한 스코어보드 링크(?importRound=...) 클릭 시 1초 만에 내 연대기로 자동 담기
+      if (typeof window !== 'undefined') {
+        const importParam = new URLSearchParams(window.location.search).get('importRound');
+        if (importParam) {
+          try {
+            const decoded = JSON.parse(decodeURIComponent(atob(importParam)));
+            if (decoded && decoded.c && Array.isArray(decoded.p)) {
+              const stdPars = [4, 3, 4, 3, 4, 4, 3, 3, 5];
+              const hCount = Number(decoded.h) || 18;
+              const confirmedHoles = Array.from({ length: hCount }, (_, i) => i + 1);
+              const holes = confirmedHoles.map((hNum) => ({
+                holeNumber: hNum,
+                par: stdPars[(hNum - 1) % 9] || 3,
+                distance: 65,
+              }));
+              const isoDate = decoded.d ? `${decoded.d}T11:00:00.000Z` : new Date().toISOString();
+              const importedRound: any = {
+                id: `shared_round_${Date.now()}`,
+                courseId: `shared_${Date.now()}`,
+                courseName: decoded.c,
+                subCourseName: decoded.sc || 'A·B코스',
+                startedAt: isoDate,
+                completedAt: isoDate,
+                date: isoDate,
+                totalHoles: hCount,
+                currentHole: hCount,
+                confirmedHoles,
+                holes,
+                players: decoded.p.map((pl: any, idx: number) => {
+                  const total = Number(pl.t) || 64;
+                  const perHole = Math.floor(total / hCount);
+                  const rem = total - perHole * hCount;
+                  const scores: Record<number, number> = {};
+                  confirmedHoles.forEach((hNum, hIdx) => {
+                    scores[hNum] = hIdx < rem ? perHole + 1 : perHole;
+                  });
+                  return {
+                    id: `imp_p_${idx}_${Date.now()}`,
+                    name: pl.n || `동반자${idx + 1}`,
+                    isSelf: idx === 0,
+                    isLeader: idx === 0,
+                    scores,
+                    obCount: {},
+                    totalStrokes: total,
+                    totalParDiff: total - (hCount / 9) * 33,
+                  };
+                }),
+                status: 'COMPLETED',
+                isFinished: true,
+                isOfficial: true,
+                isPractice: false,
+                countInStats: true,
+                durationMinutes: 100,
+              };
+              ParkOnStorage.saveCompletedRound(importedRound);
+              setShowStatsModal(true);
+              window.history.replaceState({}, '', window.location.pathname);
+            }
+          } catch {}
+        }
+      }
 
       const completed = ParkOnStorage.getCompletedRounds();
       setCompletedRounds(completed);
@@ -557,7 +624,7 @@ export default function HomePage() {
 
   const openStatsModalWithCourse = (
     courseId?: string,
-    defaultTab: 'TIMELINE_RANK' | 'PHOTO_ALBUM' | 'MEDALS_COURSES' = 'TIMELINE_RANK'
+    defaultTab: 'TIMELINE_RANK' | 'PHOTO_ALBUM' | 'MEDALS_COURSES' | 'YARDAGE_LIBRARY' = 'TIMELINE_RANK'
   ) => {
     const currentActive = getCurrentActiveCourse();
     setStatsCourseId(courseId || currentActive?.id || courses[0]?.id || '');
@@ -1301,37 +1368,33 @@ export default function HomePage() {
             })()
           )}
 
-          {/* 대표님 지침 UX: 2분할 버튼 [오늘 구장 상태 확인] vs [스코어 기록 시작하기] */}
+          {/* 홈 화면 메인 구장 카드: [📓 미리보기 및 설정] 통합 버튼 vs [스코어 기록 시작하기] */}
           <div className="pt-1">
             <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-              {/* 왼쪽: 🌿 오늘 구장 상태 확인 (실시간 잔디·날씨·휴장) */}
+              {/* 왼쪽: 📓 미리보기 및 설정 (홀별 공략집 + 오늘 구장 상태 통합) */}
               {(() => {
                 const targetCourse = homeCourse || getCurrentActiveCourse() || courses[0];
-                const rawName = targetCourse?.name || '골프장';
-                const shortName = rawName.replace('파크골프장', '').replace('파크골프', '').trim();
                 return (
                   <button
                     type="button"
+                    data-testid="btn-home-course-preview-settings"
                     onClick={() => {
-                      if (!homeCourse) {
-                        setShowHomeModal(true);
+                      if (targetCourse) {
+                        setSelectedCourseForDetail(targetCourse);
                       } else {
-                        setShowCourseTodayModal(true);
+                        setShowHomeModal(true);
                       }
                     }}
                     className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-stone-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition active:scale-[0.97] cursor-pointer border-2 border-amber-300 group"
                   >
                     <div className="flex items-center gap-1.5 text-sm sm:text-base font-black leading-tight">
-                      <span className="text-base sm:text-lg">🌿</span>
+                      <span className="text-base sm:text-lg">📓</span>
                       <span className="truncate">
-                        {isJapanese
-                          ? '本日コース状況'
-                          : (homeCourse ? `오늘 ${shortName} 상태` : '오늘 구장 상태')}
+                        {isJapanese ? 'プレビュー・設定' : '미리보기 및 설정'}
                       </span>
                     </div>
-                    <span className="text-[10px] sm:text-[10.5px] font-extrabold text-stone-900 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap truncate max-w-full flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
-                      <span>{isJapanese ? 'リアルタイム天気·芝生' : '실시간 잔디·날씨 확인'}</span>
+                    <span className="text-[10px] sm:text-[10.5px] font-extrabold text-stone-900 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap truncate max-w-full">
+                      {isJapanese ? '攻略ノート · コース状況' : '공략집 · 오늘 구장 상태'}
                     </span>
                   </button>
                 );
@@ -1632,6 +1695,19 @@ export default function HomePage() {
               >
                 <span className="text-sm">🏅</span>
                 <span>{isJapanese ? 'コース＆メダル' : '구장 & 메달'}</span>
+              </button>
+              <button
+                type="button"
+                data-testid="tab-chronicle-yardage-library"
+                onClick={() => setStatsSubTab('YARDAGE_LIBRARY')}
+                className={`flex-1 py-2 px-1 rounded-xl text-[11px] font-black transition flex items-center justify-center gap-0.5 cursor-pointer ${
+                  statsSubTab === 'YARDAGE_LIBRARY'
+                    ? 'bg-white text-emerald-950 shadow-xs border border-emerald-500/40'
+                    : 'text-stone-600 hover:text-stone-900 hover:bg-white/60'
+                }`}
+              >
+                <span className="text-sm">📓</span>
+                <span>{isJapanese ? '攻略書庫' : '내 공략집 서재'}</span>
               </button>
             </div>
 
@@ -2939,6 +3015,55 @@ export default function HomePage() {
                   </div>
                 );
               })()}
+
+              {/* ======================= [탭 4: 📓 내 공략집 서재] ======================= */}
+              {statsSubTab === 'YARDAGE_LIBRARY' && (() => {
+                const allNotes = Object.values(YardageBookStorage.getAllNotes());
+                const grouped = allNotes.reduce<Record<string, { courseName: string; courseId: string; notes: YardageHoleNote[] }>>((acc, n) => {
+                  const key = n.courseId || n.courseName;
+                  if (!acc[key]) acc[key] = { courseId: n.courseId, courseName: n.courseName, notes: [] };
+                  acc[key].notes.push(n);
+                  return acc;
+                }, {});
+                const groups = Object.values(grouped);
+                return (
+                  <div className="space-y-3" data-testid="chronicle-yardage-library-panel">
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-950 font-bold">
+                      📓 내가 직접 그린 홀별 공략집 서재입니다. 홀을 누르면 라운드 후 복기 및 수정이 가능합니다.
+                    </div>
+                    {groups.length === 0 ? (
+                      <div className="text-center py-8 text-xs text-stone-500 font-bold bg-stone-50 rounded-2xl border border-stone-200">
+                        아직 저장된 홀 공략집이 없습니다.<br />구장 [미리보기 및 설정] 또는 라운드 중 등록해 보세요!
+                      </div>
+                    ) : (
+                      groups.map((grp) => (
+                        <div key={grp.courseId} className="bg-white border border-stone-200 rounded-2xl p-3 space-y-2 shadow-2xs">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-sm text-stone-900">{grp.courseName}</span>
+                            <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                              {grp.notes.length}개 홀 저장
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {grp.notes
+                              .sort((a, b) => a.holeNumber - b.holeNumber)
+                              .map((n) => (
+                                <button
+                                  key={n.id}
+                                  type="button"
+                                  onClick={() => setChronicleYardageNote(n)}
+                                  className="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-xs font-black text-stone-900 cursor-pointer transition"
+                                >
+                                  {n.courseLetter}-{n.holeInCourse}홀 · {n.targetDistance}m
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* 고정 하단 닫기 버튼 */}
@@ -4077,6 +4202,20 @@ export default function HomePage() {
           />
         );
       })()}
+
+      {chronicleYardageNote && (
+        <YardageBookModal
+          isOpen={true}
+          onClose={() => setChronicleYardageNote(null)}
+          courseId={chronicleYardageNote.courseId}
+          courseName={chronicleYardageNote.courseName}
+          courseLetter={chronicleYardageNote.courseLetter}
+          holeInCourse={chronicleYardageNote.holeInCourse}
+          holeNumber={chronicleYardageNote.holeNumber}
+          par={chronicleYardageNote.par}
+          officialDistance={chronicleYardageNote.officialDistance}
+        />
+      )}
 
       {/* 구장 코스 둘러보기 모달 (홀별 거리·파·공략팁) */}
       {selectedCourseForDetail && (

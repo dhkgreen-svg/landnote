@@ -15,6 +15,8 @@ import { ConditionVoteModal } from '@/components/ConditionVoteModal';
 import { cleanPlayerName, sortPlayersByLeaderAndAlphabetical, getDefaultSelfName, syncRoundSelfNameToUserProfile, formatPlayerDisplayName, isSampleOrPlaceholder, isDefaultCompanionName } from '@/lib/playerUtils';
 import { HoleScoreBadge, ScoreBadgeLegend } from '@/components/HoleScoreBadge';
 import { FloatingCameraFAB } from '@/components/FloatingCameraFAB';
+import { YardageBookModal } from '@/components/YardageBookModal';
+import { YardageBookStorage } from '@/lib/yardageBookStorage';
 import { BadgeStorage } from '@/lib/badgeStorage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
@@ -251,50 +253,65 @@ export default function RoundPlayPage() {
     }
     return 'OFF';
   });
-  const [transitionBannerInfo, setTransitionBannerInfo] = useState<{
-    courseLetter: string;
-    holeNumber: number;
-    par: number;
-    distanceMeter?: number;
-  } | null>(null);
-  const transitionBannerTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // 🌟 [대표님 지시]: 1번 홀(시작 홀) 진입 시에도 1.5초간 '다르면 정정하세요' 배너 자동 표출 (React Hook 규칙 준수)
-  const hasShownFirstHoleBannerRef = useRef<boolean>(false);
-  useEffect(() => {
-    if (!mounted || !session || !course || hasShownFirstHoleBannerRef.current) return;
-    hasShownFirstHoleBannerRef.current = true;
-
-    const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
-    const curH = session.currentHole || 1;
-    const actH = Number(
-      session.selectedHoleNumbers && session.selectedHoleNumbers[curH - 1]
-        ? session.selectedHoleNumbers[curH - 1]
-        : curH
-    );
-    const baseH = ((actH - 1) % 1000) + 1;
-    const cIdx = Math.floor((baseH - 1) / 9);
-    const cLetter = COURSE_LETTERS[cIdx] || 'A';
-    const hInC = ((baseH - 1) % 9) + 1;
-
-    const activeMeta = session?.customHolesMetadata || course?.holesMetadata || [];
-    const meta = activeMeta.find((m) => Number(m.hole) === baseH);
-    const isVer = Boolean(meta?.isVerified === true || meta?.contributedBy);
-    const pVal = isVer ? (Number(meta?.par) || 3) : 3;
-
-    setTransitionBannerInfo({
-      courseLetter: cLetter,
-      holeNumber: hInC,
-      par: pVal,
-      distanceMeter: meta?.distanceMeter,
-    });
-    if (transitionBannerTimerRef.current) {
-      clearTimeout(transitionBannerTimerRef.current);
+  // 🌟 [대표님 지시]: 홀 변경 시 불편한 1.5초 플로팅 안내 팝업은 전면 제거하고,
+  // 상단 [파3 / 파4 / 파5] 바 전체가 3회 깜빡(깜빡·깜빡·깜빡)인 뒤 현재 파(예: 파4 노란색)로 고정되어 원터치 즉시 설정되도록 구현!
+  const [showYardageBookModal, setShowYardageBookModal] = useState<boolean>(false);
+  const [yardageRevision, setYardageRevision] = useState<number>(0);
+  const lastAutoOpenedYardageHoleRef = useRef<string>('');
+  const [isParBarBlinking, setIsParBarBlinking] = useState<boolean>(false);
+  const parBlinkTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const triggerParBarBlink = () => {
+    if (parBlinkTimerRef.current) {
+      clearTimeout(parBlinkTimerRef.current);
     }
-    transitionBannerTimerRef.current = setTimeout(() => {
-      setTransitionBannerInfo(null);
-    }, 1500);
-  }, [mounted, session, course]);
+    setIsParBarBlinking(false);
+    setTimeout(() => {
+      setIsParBarBlinking(true);
+      parBlinkTimerRef.current = setTimeout(() => {
+        setIsParBarBlinking(false);
+      }, 1850);
+    }, 20);
+  };
+
+  useEffect(() => {
+    const onYardageUpdated = () => setYardageRevision((v) => v + 1);
+    window.addEventListener('parkon_yardage_updated', onYardageUpdated);
+    return () => window.removeEventListener('parkon_yardage_updated', onYardageUpdated);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || !session || !course) return;
+    if (YardageBookStorage.getAutoOpenInRound()) {
+      const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+      const curH = session.currentHole || 1;
+      const actH = Number(
+        session.selectedHoleNumbers && session.selectedHoleNumbers[curH - 1]
+          ? session.selectedHoleNumbers[curH - 1]
+          : curH
+      );
+      const baseH = ((actH - 1) % 1000) + 1;
+      const cLetter = LETTERS[Math.floor((baseH - 1) / 9)] || 'A';
+      const hInC = ((baseH - 1) % 9) + 1;
+      const holeKey = `${course.id}_${cLetter}_${hInC}`;
+      if (
+        lastAutoOpenedYardageHoleRef.current !== holeKey &&
+        YardageBookStorage.hasNote(course.id, cLetter, hInC)
+      ) {
+        lastAutoOpenedYardageHoleRef.current = holeKey;
+        setShowYardageBookModal(true);
+      }
+    }
+  }, [mounted, session, course, currentHole, yardageRevision]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    triggerParBarBlink();
+    return () => {
+      if (parBlinkTimerRef.current) {
+        clearTimeout(parBlinkTimerRef.current);
+      }
+    };
+  }, [mounted, currentHole, holeStep]);
 
   // 4인 조별 경기 규칙: 조원은 조장의 설정을 100% 자동 추종(미러링), 조장 또는 1인은 본인 로컬 설정 적용
   const effectiveHoleDisplayMode: HoleDisplayMode =
@@ -1103,6 +1120,7 @@ export default function RoundPlayPage() {
   const currentRoundNumber = currentHoleInfo.round;
   const courseLetter = currentHoleInfo.cLetter;
   const holeInCourse = currentHoleInfo.hInCourse;
+
 
   // 1순위: session에 실시간 동기화된 customHolesMetadata (팀원 전원 즉각 일치)
   // 2순위: course.holesMetadata
@@ -2140,22 +2158,8 @@ export default function RoundPlayPage() {
       });
 
       setCurrentHole(nextH);
-      // 🌟 [대표님 지시]: 다음 홀 이동 시 2.3초간 홀 번호 & 파수 확인 안내 팝업 자동 표출 후 페이드아웃
-      const nextHoleInfo = getHoleInfo(nextActualHole);
-      const nextActualLetter = nextHoleInfo.cLetter || 'A';
-      const nextHoleInC = nextHoleInfo.hInCourse || 1;
-      setTransitionBannerInfo({
-        courseLetter: nextActualLetter,
-        holeNumber: nextHoleInC,
-        par: nextHolePar,
-        distanceMeter: nextMeta?.distanceMeter,
-      });
-      if (transitionBannerTimerRef.current) {
-        clearTimeout(transitionBannerTimerRef.current);
-      }
-      transitionBannerTimerRef.current = setTimeout(() => {
-        setTransitionBannerInfo(null);
-      }, 1500);
+      // 🌟 [대표님 지시]: 홀 전환 시 상단 [파3 / 파4 / 파5] 바 전체가 3번 깜빡거린 뒤 현재 Par에 고정
+      triggerParBarBlink();
       // 🌟 [사용자 요청]: 다음 홀 전환 시 중간 안내판 거치지 않고 곧바로 스코어 입력판(SCORING)으로 다이렉트 진입!
       setHoleStep('SCORING');
       setRestingPlayerIds([]);
@@ -2594,28 +2598,38 @@ export default function RoundPlayPage() {
   return (
     <div className={`p-3 pb-28 space-y-2.5 transition-colors ${sunlightMode ? 'bg-stone-950 text-white min-h-screen' : ''}`}>
 
-      {/* 🏌️ [대표님 특명] 다음 홀 이동 시 단 1초만 뜨는 초간결 안내 (다르면 정정하세요) */}
-      {transitionBannerInfo && (
-        <div
-          onClick={() => setTransitionBannerInfo(null)}
-          className="fixed top-14 left-1/2 -translate-x-1/2 z-[99] max-w-sm w-[92%] bg-gradient-to-r from-emerald-950 via-stone-900 to-emerald-950 text-white py-2.5 px-4 rounded-2xl shadow-2xl border-2 border-amber-400 flex items-center justify-between animate-fadeIn cursor-pointer"
-        >
-          <div className="flex items-center gap-2.5">
-            <span className="text-xl">⛳</span>
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-black text-yellow-300">
-                {transitionBannerInfo.courseLetter}-{transitionBannerInfo.holeNumber}홀
-              </span>
-              <span className="bg-amber-400 text-stone-950 font-black text-xs px-2 py-0.5 rounded-lg shadow-xs">
-                {isJapanese ? `Par ${transitionBannerInfo.par}` : `파${transitionBannerInfo.par}`}
-              </span>
-            </div>
-          </div>
-          <div className="text-xs sm:text-sm font-black text-amber-300 tracking-tight">
-            {isJapanese ? '異なれば訂正してください' : '다르면 정정하세요'}
-          </div>
-        </div>
-      )}
+      {/* 🏌️ [대표님 지시]: 홀 변경 시 1.5초 안내 팝업 대신 [파3 / 파4 / 파5] 3개 전체 3회 깜빡임(깜빡·깜빡·깜빡) 애니메이션 */}
+      <style>{`
+        @keyframes parGroupBlink3x {
+          0%, 100% {
+            box-shadow: 0 0 0px rgba(250, 204, 21, 0);
+            border-color: rgba(255, 255, 255, 0.25);
+          }
+          50% {
+            box-shadow: 0 0 20px rgba(250, 204, 21, 0.98), inset 0 0 12px rgba(250, 204, 21, 0.5);
+            border-color: #fde047;
+          }
+        }
+        @keyframes parBtnBlink3x {
+          0%, 100% {
+            filter: brightness(1);
+            transform: scale(1);
+          }
+          50% {
+            background: linear-gradient(90deg, #fde047 0%, #facc15 50%, #f59e0b 100%) !important;
+            color: #0c0a09 !important;
+            border-color: #fef08a !important;
+            box-shadow: 0 0 14px rgba(250, 204, 21, 0.95) !important;
+            transform: scale(1.04);
+          }
+        }
+        .par-group-blink-3x {
+          animation: parGroupBlink3x 0.6s ease-in-out 3;
+        }
+        .par-btn-blink-3x {
+          animation: parBtnBlink3x 0.6s ease-in-out 3;
+        }
+      `}</style>
 
       {/* ⚖️ 공식 시합용 홀 전담 심판 모드 알림 배너 */}
       {isRefereeMode && (
@@ -2801,6 +2815,31 @@ export default function RoundPlayPage() {
                 {courseLetter}-{holeInCourse}
                 <span className="text-2xl sm:text-3xl font-bold ml-1.5 text-white">{isJapanese ? '番ホール' : '번 홀'}</span>
               </div>
+              <div className="mt-2 flex justify-center">
+                {(() => {
+                  const hasNote = YardageBookStorage.hasNote(course.id, courseLetter, holeInCourse);
+                  return (
+                    <button
+                      type="button"
+                      data-testid="btn-round-pretee-yardage"
+                      onClick={() => setShowYardageBookModal(true)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black border cursor-pointer transition active:scale-95 ${
+                        hasNote
+                          ? 'bg-amber-400 text-stone-950 border-yellow-200 shadow-md'
+                          : 'bg-white/15 hover:bg-white/25 text-white border-white/30'
+                      }`}
+                    >
+                      <span>📓 내 공략집</span>
+                      {hasNote && (
+                        <span
+                          data-testid="round-yardage-badge-dot"
+                          className="w-2 h-2 rounded-full bg-emerald-600 ring-2 ring-white"
+                        />
+                      )}
+                    </button>
+                  );
+                })()}
+              </div>
             </div>
 
             {/* 2. 중앙: 기준 타수 3-Way 원터치 버튼 (현재 Par 하이라이트 활성화, 터치 시 즉시 변경) */}
@@ -2809,7 +2848,7 @@ export default function RoundPlayPage() {
                 <span>⛳ {isJapanese ? '現地看板 基準打数' : '현장 팻말 기준 타수'}</span>
                 <span className="text-[10px] text-amber-300 font-bold">{isJapanese ? '(タップで即時変更)' : '(터치 시 즉시 변경)'}</span>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className={`grid grid-cols-3 gap-2 rounded-xl p-1 ${isParBarBlinking ? 'par-group-blink-3x' : ''}`}>
                 {[3, 4, 5].map((pVal) => {
                   const currentPar = Number(holeMetadata.par) || 3;
                   const isSelected = currentPar === pVal;
@@ -2819,10 +2858,13 @@ export default function RoundPlayPage() {
                       type="button"
                       data-testid={`tee-shot-par-${pVal}`}
                       onClick={() => {
-                        if (currentPar === pVal) return;
-                        setPendingParChange({ fromPar: currentPar, toPar: pVal });
+                        if (parBlinkTimerRef.current) clearTimeout(parBlinkTimerRef.current);
+                        setIsParBarBlinking(false);
+                        handleSaveHoleSpec(pVal, holeMetadata.distanceMeter || 50, true);
                       }}
                       className={`py-2.5 rounded-xl font-black text-base sm:text-lg transition-colors cursor-pointer flex flex-col items-center justify-center border ${
+                        isParBarBlinking ? 'par-btn-blink-3x ' : ''
+                      }${
                         isSelected
                           ? 'bg-gradient-to-r from-yellow-400 to-amber-400 text-stone-950 font-black shadow-lg border-yellow-200 ring-2 ring-yellow-200'
                           : 'bg-white/10 hover:bg-white/20 text-stone-300 border-white/15'
@@ -2978,18 +3020,49 @@ export default function RoundPlayPage() {
         <div className="space-y-2.5 animate-fadeIn">
           {/* 상단 통합 제어 바: 세로 높이는 슬림하게 줄이고(타수 입력 공간 최대 확보), 가로 넓이(폭)는 시원하게 키운 원터치 Par 탭 */}
           <div className="bg-gradient-to-r from-emerald-950 via-teal-950 to-emerald-950 text-white px-3 py-1.5 sm:py-2 rounded-2xl flex items-center justify-between shadow-lg border border-emerald-500/40 gap-2 sm:gap-3">
-            {/* 좌측: A-1 번홀 꽉 차게 특대형 표출 (모바일 야외 시인성 극대화) */}
-            <div className="flex items-baseline gap-1 pl-1 shrink-0">
-              <span className="text-[36px] sm:text-[44px] font-black text-yellow-300 drop-shadow-md tracking-tighter leading-none select-none">
-                {courseLetter}-{holeInCourse}
-              </span>
-              <span className="text-sm sm:text-base font-black text-white/90 leading-none select-none">
-                {isJapanese ? '番ホール' : '번홀'}
-              </span>
+            {/* 좌측: A-1 번홀 + [📓 내 공략집] 알약 버튼 (작성된 홀은 금색/녹색 점 하이라이트) */}
+            <div className="flex items-center gap-1.5 pl-1 shrink-0">
+              <div className="flex items-baseline gap-0.5">
+                <span className="text-[32px] sm:text-[42px] font-black text-yellow-300 drop-shadow-md tracking-tighter leading-none select-none">
+                  {courseLetter}-{holeInCourse}
+                </span>
+                <span className="text-xs sm:text-sm font-black text-white/90 leading-none select-none">
+                  {isJapanese ? '番' : '홀'}
+                </span>
+              </div>
+              {(() => {
+                const hasNote = YardageBookStorage.hasNote(course.id, courseLetter, holeInCourse);
+                return (
+                  <button
+                    type="button"
+                    data-testid="btn-round-scoring-yardage"
+                    onClick={() => setShowYardageBookModal(true)}
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-black border cursor-pointer transition active:scale-95 shrink-0 ${
+                      hasNote
+                        ? 'bg-amber-400 text-stone-950 border-yellow-200 shadow-sm'
+                        : 'bg-white/15 hover:bg-white/25 text-white border-white/25'
+                    }`}
+                    title="나만의 코스 공략집 열기"
+                  >
+                    <span>📓 공략</span>
+                    {hasNote && (
+                      <span
+                        data-testid="round-scoring-yardage-badge-dot"
+                        className="w-2 h-2 rounded-full bg-emerald-600 ring-1 ring-white"
+                      />
+                    )}
+                  </button>
+                );
+              })()}
             </div>
 
-            {/* 우측: 파3 / 파4 / 파5 가로 와이드 탭 (높이는 슬림 h-9~10 유지, 가로 폭은 flex-1로 널찍하게 확장) */}
-            <div className="flex-1 max-w-[260px] sm:max-w-[300px] flex items-center gap-1.5 p-1 bg-black/50 rounded-xl border border-white/20 shadow-inner">
+            {/* 우측: 파3 / 파4 / 파5 가로 와이드 탭 (홀 변경 시 3개 전체 3번 깜빡인 후 현재 Par 색상에 고정, 터치 시 팝업 없이 즉시 자동 반영!) */}
+            <div
+              data-testid="scoring-par-selector-group"
+              className={`flex-1 max-w-[260px] sm:max-w-[300px] flex items-center gap-1.5 p-1 bg-black/50 rounded-xl border border-white/20 shadow-inner ${
+                isParBarBlinking ? 'par-group-blink-3x' : ''
+              }`}
+            >
               {[3, 4, 5].map((pVal) => {
                 const currentPar = Number(holeMetadata.par) || 3;
                 const isSelected = currentPar === pVal;
@@ -3000,10 +3073,13 @@ export default function RoundPlayPage() {
                     type="button"
                     data-testid={`par-tab-${pVal}`}
                     onClick={() => {
-                      if (currentPar === pVal) return;
-                      setPendingParChange({ fromPar: currentPar, toPar: pVal });
+                      if (parBlinkTimerRef.current) clearTimeout(parBlinkTimerRef.current);
+                      setIsParBarBlinking(false);
+                      handleSaveHoleSpec(pVal, holeMetadata.distanceMeter || 50, true);
                     }}
                     className={`flex-1 h-9 sm:h-10 rounded-lg font-black text-xs sm:text-sm transition-all duration-150 cursor-pointer flex items-center justify-center active:scale-95 shadow-xs ${
+                      isParBarBlinking ? 'par-btn-blink-3x ' : ''
+                    }${
                       isSelected
                         ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 text-stone-950 shadow-md ring-2 ring-yellow-200 border border-yellow-100 font-black'
                         : 'bg-white/10 hover:bg-white/20 text-stone-300 hover:text-white border border-white/10'
@@ -5652,6 +5728,19 @@ export default function RoundPlayPage() {
       )}
 
       {/* 대표님 원칙 1단계: 라운드 중 상시 플로팅 카메라 (FAB) & 실시간 필드 워터마크 인증샷 */}
+      <YardageBookModal
+        isOpen={showYardageBookModal}
+        onClose={() => setShowYardageBookModal(false)}
+        courseId={course.id}
+        courseName={course.name}
+        courseLetter={courseLetter}
+        holeInCourse={holeInCourse}
+        holeNumber={baseHoleNumber}
+        par={(Number(holeMetadata.par) as 3 | 4 | 5) || 3}
+        officialDistance={Number(holeMetadata.distanceMeter) || 60}
+        onSaved={() => setYardageRevision((v) => v + 1)}
+      />
+
       <FloatingCameraFAB
         session={session}
         currentHoleNumber={actualHoleNumber}

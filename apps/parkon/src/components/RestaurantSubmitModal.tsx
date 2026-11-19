@@ -80,11 +80,11 @@ export function RestaurantSubmitModal({
       const savedUser = ParkOnStorage.getUserDisplayName();
       const mCode =
         typeof localStorage !== 'undefined'
-          ? localStorage.getItem('parkon_member_code_v1') || localStorage.getItem('parkon_member_code') || 'PKYA-7788'
-          : 'PKYA-7788';
+          ? localStorage.getItem('parkon_member_code_v1') || localStorage.getItem('parkon_member_code') || ''
+          : '';
       setMemberCode(mCode);
 
-      const cleanName = savedUser && savedUser !== '파크골퍼' && savedUser !== '플레이어' ? savedUser : '김대표';
+      const cleanName = savedUser && savedUser !== '파크골퍼' && savedUser !== '플레이어' ? savedUser : '동호인';
       setRecommendedBy(`${mCode} ${cleanName}`.trim());
 
       // 기본 구장 주변 식당 자동 로드

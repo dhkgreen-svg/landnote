@@ -231,63 +231,62 @@ export default function RootLayout({
                     return;
                   }
 
-                  if (localStorage.getItem('parkon_identity_purged_v3') !== 'true') {
-                    localStorage.setItem('parkon_identity_purged_v3', 'true');
+                  // 1. 휴대폰 기기 고유 식별 번호(Device Fingerprint) 발급 및 보존
+                  var devId = localStorage.getItem('parkon_device_id_v1');
+                  if (!devId) {
+                    devId = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 10);
+                    localStorage.setItem('parkon_device_id_v1', devId);
+                  }
 
-                    var profStr = localStorage.getItem('parkon_user_profile_v1');
-                    var kakaoStr = localStorage.getItem('parkon_kakao_user_v1') || localStorage.getItem('parkon_kakao_auth_v1');
-                    var memberCode = localStorage.getItem('parkon_member_code_v1');
+                  // 2. 제3자(타인) 기기에서 본인 인증(휴대폰번호/카카오) 없이 오염된 '김대희 / PKYA-7788' 데이터 100% 백지 초기화
+                  var verifiedOwnerCode = localStorage.getItem('parkon_device_verified_code_v2') || '';
+                  var profStrNow = localStorage.getItem('parkon_user_profile_v1') || localStorage.getItem('parkon_user_profile') || '';
+                  var memberCodeNow = localStorage.getItem('parkon_member_code_v1') || localStorage.getItem('parkon_member_code') || '';
+                  var displayNow = localStorage.getItem('parkon_user_display_name') || localStorage.getItem('parkon_player_name') || '';
 
-                    // 더미 계정(プレイヤー, 플레이어 등) 자동 정화
-                    if (kakaoStr) {
-                      try {
-                        var k = JSON.parse(kakaoStr);
-                        if (k && (k.realName === 'プレイヤー' || k.nickname === 'プレイヤー' || k.realName === '플레이어' || k.nickname === '플레이어' || !k.id)) {
-                          localStorage.removeItem('parkon_kakao_user_v1');
-                          localStorage.removeItem('parkon_kakao_auth_v1');
-                          localStorage.removeItem('parkon_user_profile_v1');
-                          localStorage.removeItem('parkon_member_code_v1');
-                        }
-                      } catch(e) {}
+                  var isDaeheeContaminated = false;
+                  if (memberCodeNow === 'PKYA-7788' || memberCodeNow === 'PKY-7788' || memberCodeNow === 'PKYA7788') {
+                    isDaeheeContaminated = true;
+                  }
+                  if (displayNow === '김대희') {
+                    isDaeheeContaminated = true;
+                  }
+                  if (profStrNow) {
+                    try {
+                      var pNow = JSON.parse(profStrNow);
+                      if (pNow && (pNow.userName === '김대희' || pNow.memberCode === 'PKYA-7788' || pNow.memberCode === 'PKY-7788')) {
+                        isDaeheeContaminated = true;
+                      }
+                    } catch(e) {}
+                  }
+
+                  // 만약 이 휴대폰 기기에서 정식 휴대폰 번호(010-9999-3399) 또는 카카오 본인 확인 서명이 없는데 대표님 정보가 들어있다면 즉시 백지 상태로 초기화!
+                  if (isDaeheeContaminated && verifiedOwnerCode !== 'PKYA-7788') {
+                    var keysToPurge = [
+                      'parkon_member_code_v1',
+                      'parkon_member_code',
+                      'parkon_user_profile_v1',
+                      'parkon_user_profile',
+                      'parkon_kakao_user_v1',
+                      'parkon_kakao_user',
+                      'parkon_kakao_auth_v1',
+                      'parkon_completed_rounds_v1',
+                      'parkon_completed_rounds',
+                      'parkon_safety_stash_rounds_v1',
+                      'parkon_clubs_v2',
+                      'parkon_my_club_ids_v1',
+                      'parkon_companions_v1',
+                      'parkon_user_display_name',
+                      'parkon_player_name',
+                      'parkon_registered_name',
+                      'parkon_user_phone',
+                      'parkon_welcomed',
+                      'parkon_welcome_dismissed',
+                      'parkon_onboarding_seen'
+                    ];
+                    for (var i = 0; i < keysToPurge.length; i++) {
+                      localStorage.removeItem(keysToPurge[i]);
                     }
-
-                    // 깨진 자모가 포함된 최근 동반자 기록 자동 정화 (+ ㅅ순덕, + 죄순ㄷ덕 등)
-                    var partnersRaw = localStorage.getItem('parkon_recent_partners');
-                    if (partnersRaw) {
-                      try {
-                        var parsedP = JSON.parse(partnersRaw);
-                        if (Array.isArray(parsedP)) {
-                          var cleanP = parsedP.filter(function(n) {
-                            return typeof n === 'string' && n.trim().length > 0 && !/[ㄱ-ㅎㅏ-ㅣ]/.test(n);
-                          });
-                          if (cleanP.length !== parsedP.length) {
-                            localStorage.setItem('parkon_recent_partners', JSON.stringify(cleanP));
-                          }
-                        }
-                      } catch(e) {}
-                    }
-
-                    var isKakaoLoggedIn = false;
-                    if (kakaoStr) {
-                      try {
-                        var k = JSON.parse(kakaoStr);
-                        if (k && k.id && !k.id.toString().startsWith('guest_') && k.realName !== 'プレイヤー' && k.nickname !== 'プレイヤー') {
-                          isKakaoLoggedIn = true;
-                        }
-                      } catch(e) {}
-                    }
-
-                    var isProfileDaehee = false;
-                    if (profStr) {
-                      try {
-                        var p = JSON.parse(profStr);
-                        if (p && p.userName === '김대희') {
-                          isProfileDaehee = true;
-                        }
-                      } catch(e) {}
-                    }
-
-                    // 🛡️ [대표님 절대 원칙]: 로컬에 보관된 사용자 프로필 및 고유번호는 영구 보존
                   }
                 } catch(e) {}
               })();

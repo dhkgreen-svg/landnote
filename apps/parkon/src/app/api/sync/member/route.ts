@@ -74,8 +74,8 @@ function isMockOrCorruptedRound(r: any): boolean {
 
 const getMembersMap = (): Map<string, MemberSyncRecord> => {
   const g = globalThis as any;
-  if (!g.__parkonMemberSyncV3) {
-    g.__parkonMemberSyncV3 = new Map<string, MemberSyncRecord>();
+  if (!g.__parkonMemberSyncV4) {
+    g.__parkonMemberSyncV4 = new Map<string, MemberSyncRecord>();
     // 1. 번들된 영구 베이스라인 공식 회원 우선 적재
     try {
       if (baselineMembersData && typeof baselineMembersData === 'object') {
@@ -84,30 +84,50 @@ const getMembersMap = (): Map<string, MemberSyncRecord> => {
           if (rec && Array.isArray(rec.completedRounds)) {
             rec.completedRounds = rec.completedRounds.filter((r) => !isMockOrCorruptedRound(r));
           }
-          g.__parkonMemberSyncV3.set(k.toUpperCase().replace(/[^A-Z0-9]/g, ''), rec);
+          g.__parkonMemberSyncV4.set(k.toUpperCase().replace(/[^A-Z0-9]/g, ''), rec);
         }
       }
     } catch (e) {
       console.error('Failed to load baseline member sync records:', e);
     }
-    // 2. 디스크에 추가 저장된 캐시가 있으면 최신본으로 오버레이
+    // 2. 디스크에 추가 저장된 캐시가 있으면 최신본으로 오버레이 (단, 베이스라인 공식 클럽/라운드는 무손실 병합)
     try {
       if (fs.existsSync(MEMBER_SYNC_CACHE_FILE)) {
         const raw = fs.readFileSync(MEMBER_SYNC_CACHE_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
         for (const [k, v] of Object.entries(parsed)) {
+          const cleanKey = k.toUpperCase().replace(/[^A-Z0-9]/g, '');
           const rec = v as MemberSyncRecord;
           if (rec && Array.isArray(rec.completedRounds)) {
             rec.completedRounds = rec.completedRounds.filter((r) => !isMockOrCorruptedRound(r));
           }
-          g.__parkonMemberSyncV3.set(k.toUpperCase().replace(/[^A-Z0-9]/g, ''), rec);
+          const baseRec = g.__parkonMemberSyncV4.get(cleanKey) as MemberSyncRecord | undefined;
+          if (baseRec) {
+            const clubMap = new Map<string, any>();
+            (Array.isArray(baseRec.clubs) ? baseRec.clubs : []).forEach((c: any) => {
+              if (c && c.id) clubMap.set(c.id, c);
+            });
+            (Array.isArray(rec.clubs) ? rec.clubs : []).forEach((c: any) => {
+              if (c && c.id && c.id !== 'club-default-1') clubMap.set(c.id, c);
+            });
+            rec.clubs = Array.from(clubMap.values());
+            const myIds = new Set<string>([
+              ...(Array.isArray(baseRec.myClubIds) ? baseRec.myClubIds : []),
+              ...(Array.isArray(rec.myClubIds) ? rec.myClubIds : []),
+            ]);
+            if (rec.clubs.some((c: any) => c.id !== 'club-default-1')) {
+              myIds.delete('club-default-1');
+            }
+            rec.myClubIds = Array.from(myIds);
+          }
+          g.__parkonMemberSyncV4.set(cleanKey, rec);
         }
       }
     } catch (e) {
       console.error('Failed to load member sync records from disk:', e);
     }
   }
-  return g.__parkonMemberSyncV3;
+  return g.__parkonMemberSyncV4;
 };
 
 const persistMembers = (members: Map<string, MemberSyncRecord>) => {
@@ -734,8 +754,8 @@ export async function GET(req: NextRequest) {
         if (!deletedClubSet.has(id)) myClubIdSet.add(id);
       });
     }
-    if (Array.isArray(otherRec.clubs)) {
-      otherRec.clubs.forEach((c) => mergeClubCandidate(c, sameUser));
+    if (sameUser && Array.isArray(otherRec.clubs)) {
+      otherRec.clubs.forEach((c) => mergeClubCandidate(c, true));
     }
     if (Array.isArray(otherRec.clubEvents)) {
       otherRec.clubEvents.forEach((ev) => {
@@ -751,8 +771,10 @@ export async function GET(req: NextRequest) {
     }
   });
 
-  record.clubs = Array.from(clubMap.values());
-  record.myClubIds = Array.from(myClubIdSet).filter((id) => !deletedClubSet.has(id));
+  const allMergedClubs = Array.from(clubMap.values());
+  const hasRealClub = allMergedClubs.some((c: any) => c && c.id && c.id !== 'club-default-1');
+  record.clubs = hasRealClub ? allMergedClubs.filter((c: any) => c.id !== 'club-default-1') : allMergedClubs;
+  record.myClubIds = Array.from(myClubIdSet).filter((id) => !deletedClubSet.has(id) && (!hasRealClub || id !== 'club-default-1'));
   record.clubEvents = Array.from(eventMap.values());
   record.flashGatherings = Array.from(flashMap.values());
 

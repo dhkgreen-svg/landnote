@@ -6,6 +6,47 @@ import { BadgeStorage } from './badgeStorage';
 import { RoundSession } from '@/types/parkon';
 
 export const MEMBER_CODE_STORAGE_KEY = 'parkon_member_code_v1';
+export const DEVICE_ID_STORAGE_KEY = 'parkon_device_id_v1';
+export const DEVICE_VERIFIED_CODE_KEY = 'parkon_device_verified_code_v2';
+
+export function getOrCreateDeviceId(): string {
+  if (typeof window === 'undefined') return 'server';
+  try {
+    let devId = localStorage.getItem(DEVICE_ID_STORAGE_KEY);
+    if (!devId) {
+      devId = `dev_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem(DEVICE_ID_STORAGE_KEY, devId);
+    }
+    return devId;
+  } catch {
+    return 'unknown_device';
+  }
+}
+
+export function markDeviceOwnerVerified(memberCode: string): void {
+  if (typeof window === 'undefined' || !memberCode) return;
+  try {
+    const norm = normalizeMemberCode(memberCode);
+    if (norm) {
+      localStorage.setItem(DEVICE_VERIFIED_CODE_KEY, norm);
+      getOrCreateDeviceId();
+    }
+  } catch {}
+}
+
+export function isDeviceVerifiedForMember(memberCode: string): boolean {
+  if (typeof window === 'undefined' || !memberCode) return false;
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return true;
+  }
+  try {
+    const norm = normalizeMemberCode(memberCode);
+    const verified = localStorage.getItem(DEVICE_VERIFIED_CODE_KEY) || '';
+    return Boolean(norm && verified === norm);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * 8자리 고유 회원번호 규격:
@@ -140,11 +181,17 @@ export function getSavedMemberCode(): string {
     const isMasterDaehee = rawName?.includes('김대희');
     const existing = localStorage.getItem(MEMBER_CODE_STORAGE_KEY);
 
+    const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     if (existing && existing.trim()) {
       const norm = normalizeMemberCode(existing.trim());
       // 7자리에서 8자리로 자동 승격되었거나 포맷이 바뀌었으면 로컬스토리지 즉시 동기화
       if (norm && norm !== existing) {
         localStorage.setItem(MEMBER_CODE_STORAGE_KEY, norm);
+      }
+      // 🛡️ [기기 신원 보호]: 실서버에서 기기 본인 인증(휴대폰 번호/카카오 확인) 없이 들어간 PKYA-7788은 즉시 차단 및 초기화!
+      if ((norm === 'PKYA-7788' || norm === 'PKY-7788') && !isLocalHost && !isDeviceVerifiedForMember('PKYA-7788')) {
+        localStorage.removeItem(MEMBER_CODE_STORAGE_KEY);
+        return '';
       }
       // 만약 기존 코드가 PKYA-7788 또는 PKY-7788인데 이름이 김대희가 아닌 경우(예: '1', '홍길동'), 과거 로컬 기본값 버그이므로 자동 재발급
       if ((norm === 'PKYA-7788' || norm === 'PKY-7788') && !isMasterDaehee && rawName && !isPlaceholderName(rawName)) {
@@ -215,9 +262,16 @@ export function getOrGenerateMemberCode(forceGenerate = false): string {
     const userPhone = profile?.phoneNumber || (typeof window !== 'undefined' ? localStorage.getItem('parkon_user_phone') || '' : '');
     const cleanDigits = userPhone.replace(/\D/g, '');
 
-    if (isMasterDaehee) {
+    const isVerifiedDaeheePhone =
+      cleanDigits === '01099993399' ||
+      cleanDigits === '01038141422' ||
+      cleanDigits.endsWith('99993399') ||
+      cleanDigits.endsWith('38141422');
+
+    if (isMasterDaehee && (isLocalHost || isVerifiedDaeheePhone || isDeviceVerifiedForMember('PKYA-7788'))) {
       prefix = 'PKYA';
-      codeSuffix = '7788'; // 김대희 대표님 전용 8자리 골드 넘버 (PKYA-7788)
+      codeSuffix = '7788'; // 김대희 대표님 전용 8자리 골드 넘버 (본인 기기/번호 확인 시에만 부여)
+      markDeviceOwnerVerified('PKYA-7788');
     } else if (cleanDigits.length >= 8) {
       // 휴대폰 번호가 있는 경우: 중간 4자리로 프리픽스 분산 + 끝 4자리로 서픽스 배치 (충돌 0건 보장)
       const midDigits = cleanDigits.slice(-8, -4);
@@ -352,7 +406,10 @@ export async function syncMemberDataToCloud(forceImmediate = false): Promise<{ s
 /**
  * 회원번호 8자리(또는 기존 7자리)로 클라우드에서 모든 경기 기록, 연대기, 프로필을 가져와 자동 로그인
  */
-export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
+export async function fetchAndRestoreMemberData(
+  inputCode: string,
+  options?: { verifiedByPhoneOrKakao?: boolean }
+): Promise<{
   success: boolean;
   memberCode: string;
   userName?: string;
@@ -363,17 +420,30 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
     return { success: false, memberCode: inputCode, message: '브라우저 환경이 아닙니다.' };
   }
 
+  const cleanCode = normalizeMemberCode(inputCode);
+  if (!cleanCode || cleanCode.replace('-', '').length < 6) {
+    return { success: false, memberCode: inputCode, message: '올바른 8자리 고유 회원번호를 입력해 주세요.' };
+  }
+
+  const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if (options?.verifiedByPhoneOrKakao) {
+    markDeviceOwnerVerified(cleanCode);
+  }
+
+  // 🛡️ [제3자 기기 오복원 원천 차단]: 실서버에서 기기 본인 인증 없이 대표님(PKYA-7788) 정보를 자동으로 당겨오는 행위 전면 차단
+  if ((cleanCode === 'PKYA-7788' || cleanCode === 'PKY-7788') && !isLocalHost && !isDeviceVerifiedForMember('PKYA-7788')) {
+    return {
+      success: false,
+      memberCode: cleanCode,
+      message: '다른 기기에서 계정을 옮기실 때는 휴대폰 번호 또는 카카오톡 본인 확인이 필요합니다.',
+    };
+  }
+
   // 중복 복원 작업 락
   if (isRestoringMemberData) {
     return { success: false, memberCode: inputCode, message: '이미 복원 작업이 진행 중입니다.' };
   }
   isRestoringMemberData = true;
-
-  const cleanCode = normalizeMemberCode(inputCode);
-  if (!cleanCode || cleanCode.replace('-', '').length < 6) {
-    isRestoringMemberData = false;
-    return { success: false, memberCode: inputCode, message: '올바른 8자리 고유 회원번호를 입력해 주세요. (예: PKYA-7788)' };
-  }
 
   try {
     // 0. 스마트폰/로컬 기기의 기존 실전 기록 영구 안전 백업 (Safety Stash)
@@ -564,9 +634,13 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
           }
         });
       }
+      const hasRealCloudClubs = Array.isArray(cloudClubs) && cloudClubs.some((c: any) => c && c.id && c.id !== 'club-default-1');
       if (Array.isArray(localClubsRaw)) {
         localClubsRaw.forEach((c: any) => {
           if (c && c.id && !deletedClubIdsSet.has(c.id)) {
+            if (hasRealCloudClubs && c.id === 'club-default-1') {
+              return;
+            }
             if (!cloudClubIds.has(c.id)) {
               hasUnsyncedLocalClubData = true;
             }
@@ -591,7 +665,9 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
           }
         });
       }
-      const mergedClubs = Array.from(clubMap.values());
+      const rawMergedClubs = Array.from(clubMap.values());
+      const hasRealClubOverall = rawMergedClubs.some((c: any) => c && c.id && c.id !== 'club-default-1');
+      const mergedClubs = hasRealClubOverall ? rawMergedClubs.filter((c: any) => c.id !== 'club-default-1') : rawMergedClubs;
       if (mergedClubs.length > 0) {
         localStorage.setItem('parkon_clubs_v2', JSON.stringify(mergedClubs));
       }
@@ -612,7 +688,7 @@ export async function fetchAndRestoreMemberData(inputCode: string): Promise<{
             )
             .map((c: any) => c.id),
         ])
-      ).filter((id) => !deletedClubIdsSet.has(id));
+      ).filter((id) => !deletedClubIdsSet.has(id) && (!hasRealClubOverall || id !== 'club-default-1'));
 
       if (mergedMyClubIds.length > 0) {
         localStorage.setItem('parkon_my_club_ids_v1', JSON.stringify(mergedMyClubIds));

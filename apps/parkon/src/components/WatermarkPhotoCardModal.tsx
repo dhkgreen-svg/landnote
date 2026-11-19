@@ -38,6 +38,7 @@ export function WatermarkPhotoCardModal({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const albumInputRef = useRef<HTMLInputElement | null>(null);
   const lastAutoDetectedHoleRef = useRef<string>('');
 
   const myName = ParkOnStorage.getUserDisplayName() || '김대희';
@@ -77,37 +78,11 @@ export function WatermarkPhotoCardModal({
     if (lastAutoDetectedHoleRef.current === detectKey) return;
     lastAutoDetectedHoleRef.current = detectKey;
 
-    let detectedType: 'hole_in_one' | 'eagle' | 'regular' = 'regular';
-    let detectedPlayer = players.find((p) => p.isSelf)?.name || players[0]?.name || myName;
-
-    // 1. Check current hole first for 1 stroke (Hole-in-One)
-    const hioPlayerOnCurrent = players.find((p) => Number(p.scores?.[activeHole]) === 1);
-    if (hioPlayerOnCurrent) {
-      detectedType = 'hole_in_one';
-      detectedPlayer = hioPlayerOnCurrent.name || myName;
-    } else {
-      // Check any hole in session for 1 stroke
-      const hioPlayerAny = players.find((p) =>
-        Object.values(p.scores || {}).some((s) => Number(s) === 1)
-      );
-      if (hioPlayerAny) {
-        detectedType = 'hole_in_one';
-        detectedPlayer = hioPlayerAny.name || myName;
-      } else {
-        // Check for Eagle (strokes > 1 and par - strokes >= 2)
-        const eaglePlayer = players.find((p) => {
-          const s = Number(p.scores?.[activeHole] || 0);
-          return s > 1 && activePar - s >= 2;
-        });
-        if (eaglePlayer) {
-          detectedType = 'eagle';
-          detectedPlayer = eaglePlayer.name || myName;
-        }
-      }
-    }
-
-    setPhotoType(detectedType);
-    setAchieverName(detectedPlayer);
+    // 🌟 [대표님 지시]: 사진 촬영 시 무조건 메달을 우선 띄우지 않고, 깨끗한 사진('regular')을 기본으로 유지!
+    // (메달·기념 배지는 사용자가 상단 옵션에서 직접 원할 때만 선택 추가)
+    const defaultPlayer = players.find((p) => p.isSelf)?.name || players[0]?.name || myName;
+    setPhotoType('regular');
+    setAchieverName(defaultPlayer);
   }, [isOpen, currentHoleNumber, currentHolePar, session?.id, session?.currentHole, session?.players, myName]);
 
   // Serialize players snapshot into primitive string to prevent infinite dependency loops
@@ -172,19 +147,42 @@ export function WatermarkPhotoCardModal({
           ctx.fill();
         }
 
-        // 2. Top & Bottom Scrims
-        const topScrim = ctx.createLinearGradient(0, 0, 0, 240);
-        topScrim.addColorStop(0, 'rgba(0, 0, 0, 0.78)');
+        // 🌟 [대표님 지시]: 일반 사진('regular') + 실사 이미지가 있을 때는 화면을 가리는 상단 배너·거대한 메달 박스 전면 제거!
+        // 하단에 아주 얇은 1줄(구장명 · 날짜)만 깔끔하게 넣고 사진 이미지 전체를 100% 시원하게 표출
+        if (theme === 'regular' && userImg) {
+          const barH = 56;
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.56)';
+          ctx.fillRect(0, canvas.height - barH, canvas.width, barH);
+
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(`📍 ${courseName} · ${dateStr}`, 28, canvas.height - 19);
+
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+          ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText(`PARKY`, canvas.width - 28, canvas.height - 20);
+          ctx.textAlign = 'left';
+
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+          setCardDataUrl(dataUrl);
+          setIsGenerating(false);
+          return;
+        }
+
+        // 2. Top & Bottom Scrims (옵션 메달 모드 또는 배경 없음 카드용)
+        const topScrim = ctx.createLinearGradient(0, 0, 0, 180);
+        topScrim.addColorStop(0, 'rgba(0, 0, 0, 0.55)');
         topScrim.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = topScrim;
-        ctx.fillRect(0, 0, canvas.width, 240);
+        ctx.fillRect(0, 0, canvas.width, 180);
 
-        const bottomScrim = ctx.createLinearGradient(0, 620, 0, canvas.height);
+        const bottomScrim = ctx.createLinearGradient(0, 960, 0, canvas.height);
         bottomScrim.addColorStop(0, 'rgba(0, 0, 0, 0)');
-        bottomScrim.addColorStop(0.35, 'rgba(0, 0, 0, 0.72)');
-        bottomScrim.addColorStop(1, 'rgba(0, 0, 0, 0.94)');
+        bottomScrim.addColorStop(1, 'rgba(0, 0, 0, 0.85)');
         ctx.fillStyle = bottomScrim;
-        ctx.fillRect(0, 620, canvas.width, canvas.height - 620);
+        ctx.fillRect(0, 960, canvas.width, canvas.height - 960);
 
         // 3. Theme Frame Border (Golden Frame for Hole-in-One, Sky Frame for Eagle)
         if (theme === 'hole_in_one') {
@@ -278,118 +276,26 @@ export function WatermarkPhotoCardModal({
           ctx.textAlign = 'left';
         }
 
-        // 5. Bottom Metadata Card
-        const cardY = 735;
-        const cardH = 405;
-        ctx.fillStyle =
-          theme === 'hole_in_one'
-            ? 'rgba(28, 25, 23, 0.90)'
-            : 'rgba(15, 23, 42, 0.88)';
-        ctx.beginPath();
-        ctx.roundRect(48, cardY, canvas.width - 96, cardH, 32);
-        ctx.fill();
-        ctx.strokeStyle =
-          theme === 'hole_in_one'
-            ? '#FBBF24'
-            : theme === 'eagle'
-            ? '#38BDF8'
-            : 'rgba(255, 255, 255, 0.25)';
-        ctx.lineWidth = theme === 'hole_in_one' ? 4 : 2.5;
-        ctx.stroke();
-
-        // Standard Base Text: 구장명 / 일시 / 현재 진행 코스·홀(예: A-3번홀)
-        ctx.fillStyle = '#FBBF24';
-        ctx.font = 'bold 23px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-        ctx.fillText(`📍 ${courseName} / ${dateStr} / ${holeLabel}`, 80, cardY + 52);
-
-        // Main Title inside Bottom Card
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = '900 34px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-        if (theme === 'hole_in_one') {
-          ctx.fillText(`🏆 ${targetAchiever || myName} 님 홀인원(1타) 공식 달성!`, 80, cardY + 102);
-        } else if (theme === 'eagle') {
-          ctx.fillText(`🦅 ${targetAchiever || myName} 님 이글(Eagle) 달성!`, 80, cardY + 102);
-        } else {
-          ctx.fillText(`${courseName} (${holeLabel})`, 80, cardY + 102);
-        }
-
-        // Divider
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(80, cardY + 124);
-        ctx.lineTo(canvas.width - 80, cardY + 124);
-        ctx.stroke();
-
-        // Players Grid (No '999홀 완주' or '완주 참가' ever!)
-        const activeHole = currentHoleNumber || session?.currentHole || 1;
-        const allPlayers =
-          session?.players && session.players.length > 0
-            ? session.players.slice(0, 4)
-            : [{ id: 'p1', name: targetAchiever || myName, scores: { [activeHole]: theme === 'hole_in_one' ? 1 : 3 }, totalStrokes: 1, totalParDiff: 0, isSelf: true }];
-
-        const gridX = 80;
-        const gridY = cardY + 142;
-        const colW = 385;
-        const rowH = 92;
-
-        allPlayers.forEach((pl: any, idx: number) => {
-          const col = idx % 2;
-          const row = Math.floor(idx / 2);
-          const px = gridX + col * (colW + 24);
-          const py = gridY + row * (rowH + 12);
-
-          const isAchiever =
-            (theme !== 'regular' && pl.name === targetAchiever) ||
-            Number(pl.scores?.[activeHole]) === 1;
-
-          ctx.fillStyle = isAchiever
-            ? 'rgba(245, 158, 11, 0.25)'
-            : 'rgba(255, 255, 255, 0.08)';
-          ctx.beginPath();
-          ctx.roundRect(px, py, colW, rowH, 16);
-          ctx.fill();
-          ctx.strokeStyle = isAchiever ? '#FBBF24' : 'rgba(255, 255, 255, 0.18)';
-          ctx.lineWidth = isAchiever ? 2.5 : 1.5;
-          ctx.stroke();
-
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = 'bold 21px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-          const pName = pl.name || `동반자 ${idx + 1}`;
-          ctx.fillText(isAchiever ? `🏆 ${pName}` : `🏌️ ${pName}`, px + 18, py + 36);
-
-          const holeStroke = Number(pl.scores?.[activeHole] || 0);
-          if (holeStroke === 1 || (theme === 'hole_in_one' && pl.name === targetAchiever)) {
-            ctx.fillStyle = '#FDE047';
-            ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-            ctx.fillText(`1타 (홀인원 🏆)`, px + 18, py + 72);
-          } else if (holeStroke > 0) {
-            ctx.fillStyle = '#34D399';
-            ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-            ctx.fillText(`${holeLabel} ${holeStroke}타`, px + 18, py + 72);
-          } else if (pl.totalStrokes && pl.totalStrokes > 0) {
-            ctx.fillStyle = '#34D399';
-            ctx.font = '900 24px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-            ctx.fillText(`누적 ${pl.totalStrokes}타`, px + 18, py + 72);
-          } else {
-            ctx.fillStyle = '#A7F3D0';
-            ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
-            ctx.fillText(`${holeLabel} 라운드 동반`, px + 18, py + 72);
-          }
-        });
-
-        // Footer Watermark
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.68)';
-        ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
+        // 5. Compact Bottom 1-Line Footer (메달 선택 시에도 사진을 가리지 않도록 하단 슬림 바 유지)
+        const barH = 88;
+        const barY = canvas.height - barH;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+        ctx.fillRect(0, barY, canvas.width, barH);
+        ctx.fillStyle = theme === 'hole_in_one' ? '#FDE047' : theme === 'eagle' ? '#7DD3FC' : '#FFFFFF';
+        ctx.font = '900 26px -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif';
         ctx.fillText(
-          `⛳ 파키 앱 (PARKY APP) 공식 인증 포토카드 · ${courseName} / ${dateStr} / ${holeLabel}`,
-          80,
-          cardY + 378
+          theme === 'hole_in_one'
+            ? `🏆 ${targetAchiever || myName} 홀인원 · ${courseName} · ${dateStr}`
+            : theme === 'eagle'
+            ? `🦅 ${targetAchiever || myName} 이글 · ${courseName} · ${dateStr}`
+            : `📍 ${courseName} · ${dateStr}`,
+          32,
+          barY + 54
         );
-
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
         setCardDataUrl(dataUrl);
         setIsGenerating(false);
+        return;
       };
 
       if (imageSrc) {
@@ -561,9 +467,17 @@ export function WatermarkPhotoCardModal({
           </button>
         </div>
 
-        {/* Hidden File Input */}
+        {/* Hidden Camera Input (카메라 우선!) & Album Input (선택) */}
         <input
           ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handlePhotoSelect}
+        />
+        <input
+          ref={albumInputRef}
           type="file"
           accept="image/*"
           className="hidden"
@@ -575,6 +489,18 @@ export function WatermarkPhotoCardModal({
           <div className="grid grid-cols-3 gap-1.5">
             <button
               type="button"
+              data-testid="theme-chip-regular"
+              onClick={() => setPhotoType('regular')}
+              className={`py-2 px-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition cursor-pointer border ${
+                photoType === 'regular'
+                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
+                  : 'bg-stone-800 text-stone-300 border-stone-700 hover:bg-stone-700'
+              }`}
+            >
+              <span>📸 기본 깔끔사진</span>
+            </button>
+            <button
+              type="button"
               data-testid="theme-chip-hole-in-one"
               onClick={() => setPhotoType('hole_in_one')}
               className={`py-2 px-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition cursor-pointer border ${
@@ -583,7 +509,7 @@ export function WatermarkPhotoCardModal({
                   : 'bg-stone-800 text-stone-300 border-stone-700 hover:bg-stone-700'
               }`}
             >
-              <span>🏆 홀인원</span>
+              <span>+ 🏆 홀인원</span>
             </button>
             <button
               type="button"
@@ -595,19 +521,7 @@ export function WatermarkPhotoCardModal({
                   : 'bg-stone-800 text-stone-300 border-stone-700 hover:bg-stone-700'
               }`}
             >
-              <span>🦅 이글</span>
-            </button>
-            <button
-              type="button"
-              data-testid="theme-chip-regular"
-              onClick={() => setPhotoType('regular')}
-              className={`py-2 px-2 rounded-xl text-xs font-black flex items-center justify-center gap-1 transition cursor-pointer border ${
-                photoType === 'regular'
-                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-md'
-                  : 'bg-stone-800 text-stone-300 border-stone-700 hover:bg-stone-700'
-              }`}
-            >
-              <span>📸 라운드 기념</span>
+              <span>+ 🦅 이글</span>
             </button>
           </div>
 
@@ -674,26 +588,35 @@ export function WatermarkPhotoCardModal({
           </div>
         </div>
 
-        {/* 4. Fixed Bottom Bar: [ ✅ 등록 완료 ] & [ 🔄 다시 찍기 ] immediately visible without scroll */}
-        <div className="p-3.5 bg-stone-900 border-t border-stone-800 shrink-0 grid grid-cols-2 gap-2.5">
+        {/* 4. Fixed Bottom Bar: 카메라 다시 찍기(우선) / 앨범 / 등록 완료 */}
+        <div className="p-3.5 bg-stone-900 border-t border-stone-800 shrink-0 grid grid-cols-3 gap-2">
           <button
             type="button"
             data-testid="photo-retake-btn"
             onClick={() => fileInputRef.current?.click()}
             disabled={isSaving}
-            className="w-full py-3.5 px-3 bg-stone-800 hover:bg-stone-700 text-stone-100 font-black rounded-2xl text-sm flex items-center justify-center gap-1.5 border border-stone-600 transition active:scale-95 cursor-pointer"
+            className="w-full py-3 px-2 bg-stone-800 hover:bg-stone-700 text-stone-100 font-black rounded-2xl text-xs flex items-center justify-center gap-1 border border-stone-600 transition active:scale-95 cursor-pointer"
           >
-            <RefreshCw className="w-4 h-4 text-amber-400" />
-            <span>🔄 다시 찍기</span>
+            <Camera className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span>📷 카메라</span>
+          </button>
+          <button
+            type="button"
+            data-testid="photo-album-btn"
+            onClick={() => albumInputRef.current?.click()}
+            disabled={isSaving}
+            className="w-full py-3 px-2 bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold rounded-2xl text-xs flex items-center justify-center gap-1 border border-stone-700 transition active:scale-95 cursor-pointer"
+          >
+            <span>🖼️ 앨범</span>
           </button>
           <button
             type="button"
             data-testid="photo-confirm-save-btn"
             onClick={handleSaveComplete}
             disabled={isSaving || isGenerating}
-            className="w-full py-3.5 px-3 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black rounded-2xl text-sm flex items-center justify-center gap-1.5 shadow-lg border border-emerald-400 transition active:scale-95 cursor-pointer"
+            className="w-full py-3 px-2 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black rounded-2xl text-xs flex items-center justify-center gap-1 shadow-lg border border-emerald-400 transition active:scale-95 cursor-pointer"
           >
-            <Check className="w-4.5 h-4.5 text-yellow-300 stroke-[3]" />
+            <Check className="w-4 h-4 text-yellow-300 stroke-[3] shrink-0" />
             <span>✅ 등록 완료</span>
           </button>
         </div>

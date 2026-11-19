@@ -56,7 +56,7 @@ export function FloatingCameraFAB({
         <button
           type="button"
           data-testid="floating-camera-fab"
-          onClick={() => setShowPhotoModal(true)}
+          onClick={() => fileInputRef.current?.click()}
           aria-label={isJapanese ? '記念写真の撮影' : isEnglish ? 'Take photo' : '현장 인증샷 촬영'}
           className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 text-stone-950 shadow-2xl flex flex-col items-center justify-center border-2 border-white/90 active:scale-90 transition-transform cursor-pointer group hover:shadow-amber-500/50"
         >

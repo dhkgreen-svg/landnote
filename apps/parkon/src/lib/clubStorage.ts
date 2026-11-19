@@ -2381,7 +2381,7 @@ ${link}`;
   }): ParkGolfClub {
     const list = this.getAllClubs();
     const newId = `club-${Date.now()}`;
-    let currentSelfName = '김대희';
+    let currentSelfName = '총무';
     if (typeof window !== 'undefined') {
       try {
         const rawProfile = localStorage.getItem('parkon_user_profile_v1');
@@ -2455,23 +2455,27 @@ ${link}`;
       const data = localStorage.getItem(STORAGE_KEYS.MY_CLUB_IDS);
       const savedIds: string[] = data ? (Array.isArray(JSON.parse(data)) ? JSON.parse(data) : []) : [];
       const allClubs = this.getAllClubs();
-      let selfName = '김대희';
+      let selfName = '';
       try {
         const rawProfile = localStorage.getItem('parkon_user_profile_v1');
         if (rawProfile) {
           const prof = JSON.parse(rawProfile);
-          if (prof?.userName) selfName = prof.userName.trim();
+          if (prof?.userName && prof.userName !== '플레이어' && prof.userName !== '파크골퍼') {
+            selfName = prof.userName.trim();
+          }
         }
       } catch {}
+
+      if (!selfName) {
+        return savedIds;
+      }
 
       const autoMatchedIds = allClubs
         .filter(
           (c) =>
-            c.managerName?.includes('본인') ||
-            (selfName &&
-              (c.presidentName?.includes(selfName) ||
-                c.managerName?.includes(selfName) ||
-                c.members?.some((m) => m.name?.includes(selfName) || m.name?.includes('본인'))))
+            c.presidentName?.includes(selfName) ||
+            c.managerName?.includes(selfName) ||
+            c.members?.some((m) => m.name?.replace('(본인)', '').trim() === selfName)
         )
         .map((c) => c.id);
 
@@ -3257,15 +3261,16 @@ ${shareUrl}`;
 
           ctx.drawImage(img, 0, 0, w, h);
 
-          // 우측 하단 골드 워터마크 띠
-          const barH = Math.max(32, Math.round(h * 0.07));
-          ctx.fillStyle = 'rgba(6, 40, 30, 0.75)';
+          // 하단 얇은 1줄 워터마크 띠 (사진 이미지 최우선 보존)
+          const barH = Math.max(28, Math.round(h * 0.052));
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
           ctx.fillRect(0, h - barH, w, barH);
 
-          ctx.fillStyle = '#fef08a';
-          ctx.font = `bold ${Math.max(12, Math.round(barH * 0.42))}px sans-serif`;
+          const todayStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\s/g, '');
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `bold ${Math.max(12, Math.round(barH * 0.46))}px sans-serif`;
           ctx.textAlign = 'right';
-          ctx.fillText(`파키 앱 (PARKY APP) 공식 실록 | ${watermarkText}`, w - 16, h - Math.round(barH * 0.32));
+          ctx.fillText(`📍 ${watermarkText} · ${todayStr}`, w - 14, h - Math.round(barH * 0.3));
 
           const compressed = canvas.toDataURL('image/jpeg', 0.7);
           resolve(compressed);

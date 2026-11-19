@@ -2,30 +2,20 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { X, MapPin, Navigation, Phone, Search, Play, Check, Copy } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { Course } from '@/types/parkon';
 import { ConditionStatus } from '@/components/ConditionStatus';
 import { CourseSpecialNoticeCard } from '@/components/CourseSpecialNoticeCard';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
 
-interface CourseTodayModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface CourseTodayContentProps {
   course: Course;
-  onOpenCourseDetail?: () => void;
-  onStartRound?: () => void;
+  isActive?: boolean;
 }
 
-export function CourseTodayModal({
-  isOpen,
-  onClose,
-  course,
-  onOpenCourseDetail,
-  onStartRound,
-}: CourseTodayModalProps) {
-  const { t, isJapanese, isEnglish } = useTranslation();
-  const [copied, setCopied] = useState(false);
+export function CourseTodayContent({ course, isActive = true }: CourseTodayContentProps) {
+  const { isJapanese } = useTranslation();
   const [weatherData, setWeatherData] = useState<{
     temp: number;
     weatherText: string;
@@ -45,7 +35,7 @@ export function CourseTodayModal({
   });
 
   useEffect(() => {
-    if (!isOpen || !course) return;
+    if (!isActive || !course) return;
 
     const lat = course.lat || 36.0947;
     const lng = course.lng || 128.4013;
@@ -101,7 +91,7 @@ export function CourseTodayModal({
           precipitation: precip,
           rainText: rainDesc,
         });
-      } catch (err) {
+      } catch {
         // Fallback safely
       }
     };
@@ -110,13 +100,8 @@ export function CourseTodayModal({
     return () => {
       isMounted = false;
     };
-  }, [isOpen, course?.id, isJapanese]);
+  }, [isActive, course?.id, course?.lat, course?.lng, isJapanese]);
 
-  if (!isOpen || !course) return null;
-
-  const dual = getCourseDualName(course, isJapanese);
-
-  // 오늘 요일 계산 및 휴장일 판별
   const todayDayIdx = new Date().getDay();
   const todayDayName = isJapanese
     ? ['日', '月', '火', '水', '木', '金', '土'][todayDayIdx]
@@ -136,25 +121,103 @@ export function CourseTodayModal({
     }
   }
 
-  const cAddr = course.address || course.region || (isJapanese ? 'コース住所未登録' : '구장 주소 미등록');
-  const cPhone = course.phone || '';
-  const searchKeyword = encodeURIComponent(`${course.name} 주차장`);
-  const kakaoNaviUrl = `https://map.kakao.com/link/search/${searchKeyword}`;
-  const naverMapUrl = `https://map.naver.com/v5/search/${searchKeyword}`;
-  const tmapWebUrl = `https://tmap.life/search?q=${searchKeyword}`;
+  return (
+    <div className="space-y-3.5" data-testid="course-today-content">
+      {/* 1. 운영 상태 & 실시간 날씨 전광판 */}
+      <div className="bg-gradient-to-br from-amber-50/90 via-white to-sky-50/90 rounded-2xl p-4 border-2 border-emerald-500/80 shadow-md space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            {isClosedToday ? (
+              <span className="inline-flex items-center gap-1.5 bg-rose-500 text-white text-xs font-black px-2.5 py-0.5 rounded-full shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                {isJapanese ? `本日(${todayDayName}) 休場日` : `오늘(${todayDayName}) 휴장일`}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 bg-emerald-600 text-white text-xs font-black px-2.5 py-0.5 rounded-full shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                {isJapanese ? `本日(${todayDayName}) 通常営業` : `오늘(${todayDayName}) 정상 운영`}
+              </span>
+            )}
+            <span className="text-xs font-bold text-stone-700">
+              {isClosedToday ? closedReasonText : (isJapanese ? `利用時間: ${course.openHours || '08:30 ~ 17:30'}` : `이용: ${course.openHours || '08:30 ~ 17:30'}`)}
+            </span>
+          </div>
+          <span className="text-[10px] text-emerald-800 font-bold bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200">
+            {isJapanese ? '気象庁 リアルタイム' : '기상청 실시간'}
+          </span>
+        </div>
 
-  const handleCopyAddr = () => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(cAddr);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="bg-white/95 rounded-xl p-2.5 border-2 border-amber-200/90 shadow-2xs flex flex-col items-center justify-center">
+            <span className="text-[10px] text-amber-700 font-bold flex items-center gap-1">
+              <span>{weatherData.weatherIcon}</span> {isJapanese ? '気温・天気' : '기온·날씨'}
+            </span>
+            <span className="text-base sm:text-lg font-black text-stone-900 mt-0.5">
+              {weatherData.temp}°C
+            </span>
+            <span className="text-[10px] text-amber-800 font-black">
+              {weatherData.weatherText}
+            </span>
+          </div>
+
+          <div className="bg-white/95 rounded-xl p-2.5 border-2 border-teal-200/90 shadow-2xs flex flex-col items-center justify-center">
+            <span className="text-[10px] text-teal-700 font-bold flex items-center gap-1">
+              <span>🍃</span> {isJapanese ? '風速' : '바람세기'}
+            </span>
+            <span className="text-base sm:text-lg font-black text-stone-900 mt-0.5">
+              {weatherData.windSpeed}m/s
+            </span>
+            <span className="text-[10px] text-teal-800 font-black">
+              {weatherData.windText}
+            </span>
+          </div>
+
+          <div className="bg-white/95 rounded-xl p-2.5 border-2 border-sky-200/90 shadow-2xs flex flex-col items-center justify-center">
+            <span className="text-[10px] text-sky-700 font-bold flex items-center gap-1">
+              <span>💧</span> {isJapanese ? '降水量' : '강수확률'}
+            </span>
+            <span className="text-base sm:text-lg font-black text-stone-900 mt-0.5">
+              {weatherData.precipitation > 0 ? `${weatherData.precipitation}mm` : '0%'}
+            </span>
+            <span className={`text-[10px] font-black ${weatherData.precipitation > 0 ? 'text-rose-600' : 'text-sky-800'}`}>
+              {weatherData.rainText}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. 실시간 잔디 상태 리포트 (ConditionStatus) */}
+      <div className="space-y-1">
+        <ConditionStatus courseId={course.id} courseName={course.name} />
+      </div>
+
+      {/* 3. 실시간 구장 특이사항 & 현장 제보 카드 */}
+      <CourseSpecialNoticeCard courseId={course.id} courseName={course.name} />
+    </div>
+  );
+}
+
+interface CourseTodayModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  course: Course;
+  onOpenCourseDetail?: () => void;
+  onStartRound?: () => void;
+}
+
+export function CourseTodayModal({
+  isOpen,
+  onClose,
+  course,
+}: CourseTodayModalProps) {
+  const { isJapanese } = useTranslation();
+  if (!isOpen || !course) return null;
+
+  const dual = getCourseDualName(course, isJapanese);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="bg-stone-100 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-stone-200 flex flex-col my-auto max-h-[92vh]">
-        {/* 모달 상단 헤더 바 */}
         <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-teal-950 p-4 text-white flex items-center justify-between shrink-0 shadow-sm">
           <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-amber-300 text-lg shrink-0">
@@ -190,85 +253,10 @@ export function CourseTodayModal({
           </button>
         </div>
 
-        {/* 모달 본문 스크롤 영역 */}
-        <div className="p-3.5 sm:p-4 space-y-3.5 overflow-y-auto flex-1">
-          {/* 1. 운영 상태 & 실시간 날씨 전광판 */}
-          <div className="bg-gradient-to-br from-amber-50/90 via-white to-sky-50/90 rounded-2xl p-4 border-2 border-emerald-500/80 shadow-md space-y-3">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                {isClosedToday ? (
-                  <span className="inline-flex items-center gap-1.5 bg-rose-500 text-white text-xs font-black px-2.5 py-0.5 rounded-full shadow-2xs">
-                    <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                    {isJapanese ? `本日(${todayDayName}) 休場日` : `오늘(${todayDayName}) 휴장일`}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 bg-emerald-600 text-white text-xs font-black px-2.5 py-0.5 rounded-full shadow-2xs">
-                    <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                    {isJapanese ? `本日(${todayDayName}) 通常営業` : `오늘(${todayDayName}) 정상 운영`}
-                  </span>
-                )}
-                <span className="text-xs font-bold text-stone-700">
-                  {isClosedToday ? closedReasonText : (isJapanese ? `利用時間: ${course.openHours || '08:30 ~ 17:30'}` : `이용: ${course.openHours || '08:30 ~ 17:30'}`)}
-                </span>
-              </div>
-              <span className="text-[10px] text-emerald-800 font-bold bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200">
-                {isJapanese ? '気象庁 リアルタイム' : '기상청 실시간'}
-              </span>
-            </div>
-
-            {/* 실시간 날씨 3열 칩 (밝고 선명한 화이트 카드 디자인) */}
-            <div className="grid grid-cols-3 gap-2 text-center">
-              {/* 기온/날씨 */}
-              <div className="bg-white/95 rounded-xl p-2.5 border-2 border-amber-200/90 shadow-2xs flex flex-col items-center justify-center">
-                <span className="text-[10px] text-amber-700 font-bold flex items-center gap-1">
-                  <span>{weatherData.weatherIcon}</span> {isJapanese ? '気温・天気' : '기온·날씨'}
-                </span>
-                <span className="text-base sm:text-lg font-black text-stone-900 mt-0.5">
-                  {weatherData.temp}°C
-                </span>
-                <span className="text-[10px] text-amber-800 font-black">
-                  {weatherData.weatherText}
-                </span>
-              </div>
-
-              {/* 바람 */}
-              <div className="bg-white/95 rounded-xl p-2.5 border-2 border-teal-200/90 shadow-2xs flex flex-col items-center justify-center">
-                <span className="text-[10px] text-teal-700 font-bold flex items-center gap-1">
-                  <span>🍃</span> {isJapanese ? '風速' : '바람세기'}
-                </span>
-                <span className="text-base sm:text-lg font-black text-stone-900 mt-0.5">
-                  {weatherData.windSpeed}m/s
-                </span>
-                <span className="text-[10px] text-teal-800 font-black">
-                  {weatherData.windText}
-                </span>
-              </div>
-
-              {/* 강수확률 */}
-              <div className="bg-white/95 rounded-xl p-2.5 border-2 border-sky-200/90 shadow-2xs flex flex-col items-center justify-center">
-                <span className="text-[10px] text-sky-700 font-bold flex items-center gap-1">
-                  <span>💧</span> {isJapanese ? '降水量' : '강수확률'}
-                </span>
-                <span className="text-base sm:text-lg font-black text-stone-900 mt-0.5">
-                  {weatherData.precipitation > 0 ? `${weatherData.precipitation}mm` : '0%'}
-                </span>
-                <span className={`text-[10px] font-black ${weatherData.precipitation > 0 ? 'text-rose-600' : 'text-sky-800'}`}>
-                  {weatherData.rainText}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* 2. 실시간 잔디 상태 리포트 (ConditionStatus) */}
-          <div className="space-y-1">
-            <ConditionStatus courseId={course.id} courseName={course.name} />
-          </div>
-
-          {/* 3. 실시간 구장 특이사항 & 현장 제보 카드 (공사, 행사, 운영 상태 제보) */}
-          <CourseSpecialNoticeCard courseId={course.id} courseName={course.name} />
+        <div className="p-3.5 sm:p-4 overflow-y-auto flex-1">
+          <CourseTodayContent course={course} isActive={isOpen} />
         </div>
 
-        {/* 하단 푸터 바: 닫기 & 바로 시작하기 */}
         <div className="p-3 bg-white border-t border-stone-200 flex items-center gap-2 shrink-0">
           <button
             type="button"

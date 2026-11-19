@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { X, Award, CheckCircle2, Camera, Edit2, Lock, Unlock, Save, ShieldCheck, History, Play, AlertTriangle, Trophy } from 'lucide-react';
 import { Course, HoleMetadata, CourseContribution } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
 import { generateStandardHoles } from '@/lib/defaultCourses';
+import { YardageBookModal } from '@/components/YardageBookModal';
+import { YardageBookStorage, buildYardageNoteId } from '@/lib/yardageBookStorage';
 import { CourseHallOfFameModal } from '@/components/CourseHallOfFameModal';
+import { CourseTodayContent } from '@/components/CourseTodayModal';
 import { CourseRestaurantList } from '@/components/CourseRestaurantList';
 import { RestaurantStorage } from '@/lib/restaurantStorage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
@@ -51,14 +54,55 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
 
   const [currentCourseIdx, setCurrentCourseIdx] = useState<number>(0);
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editingHoleNum, setEditingHoleNum] = useState<number | null>(null);
+  const [holeConfirmFlash, setHoleConfirmFlash] = useState<number | null>(null);
   const [editedHoles, setEditedHoles] = useState<HoleMetadata[]>(initialHoles);
   const [editorName, setEditorName] = useState<string>('');
   const [imageUrl, setImageUrl] = useState<string>(course.imageUrl || '');
   const [isLocked, setIsLocked] = useState<boolean>(course.isLocked || false);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
   const [showPhotoSection, setShowPhotoSection] = useState<boolean>(false);
+  const [yardageTargetHole, setYardageTargetHole] = useState<{
+    courseLetter: string;
+    holeInCourse: number;
+    holeNumber: number;
+    par: 3 | 4 | 5;
+    officialDistance: number;
+  } | null>(null);
+  const [yardageNotesMap, setYardageNotesMap] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    const syncYardage = () => {
+      setYardageNotesMap(YardageBookStorage.getAllNotes());
+    };
+    syncYardage();
+    try {
+      const profile = ParkOnStorage.getUserProfile();
+      const kakao = ParkOnStorage.getKakaoUser();
+      const rawName = (kakao?.nickname || profile?.userName || localStorage.getItem('parkon_player_name') || '').trim();
+      const isPlaceholder = !rawName || ['파크골퍼', '손오공', '홍길동', '게스트'].includes(rawName);
+      if (!isPlaceholder) {
+        setEditorName((prev) => (prev ? prev : rawName));
+      }
+    } catch {}
+    window.addEventListener('parkon_yardage_updated', syncYardage);
+    return () => window.removeEventListener('parkon_yardage_updated', syncYardage);
+  }, []);
   const [showHallOfFameModal, setShowHallOfFameModal] = useState<boolean>(false);
-  const [activeDetailTab, setActiveDetailTab] = useState<'COURSES' | 'RESTAURANTS'>('COURSES');
+  const [activeDetailTab, setActiveDetailTab] = useState<'YARDAGE' | 'TODAY' | 'RESTAURANTS'>('YARDAGE');
+  const openHoleYardage = (courseLetter: string, holeInCourse: number) => {
+    const cIdx = Math.max(0, availableCourses.indexOf(courseLetter));
+    const holeNumber = cIdx * 9 + holeInCourse;
+    const hMeta = editedHoles.find((h) => h.hole === holeNumber);
+    setCurrentCourseIdx(cIdx);
+    setYardageTargetHole({
+      courseLetter,
+      holeInCourse,
+      holeNumber,
+      par: (hMeta?.par === 4 || hMeta?.par === 5 ? hMeta.par : 3) as 3 | 4 | 5,
+      officialDistance: hMeta?.distanceMeter || 60,
+    });
+  };
 
   const courseRestaurants = RestaurantStorage.getRestaurantsByCourse(course.name || course.id);
 
@@ -95,24 +139,15 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     reader.readAsDataURL(file);
   };
 
-  // 제원 정정 저장
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editorName.trim()) {
-      alert('실측 제원 검증 및 명예의 전당 등록을 위해 기여자 성함(또는 닉네임)을 입력해 주세요.');
-      return;
-    }
-
+  const persistCourseChanges = (actionLabel: string, authorName: string) => {
     const todayStr = new Date().toISOString().split('T')[0];
     const newHistoryEntry: CourseContribution = {
-      author: editorName.trim(),
+      author: authorName,
       date: todayStr,
-      action: `${currentCourseLetter}코스 홀별 거리(m) 및 기준타수(Par) 현장 실측 정정`,
+      action: actionLabel,
     };
-
     const existingHistory = course.contributionHistory || [];
     const updatedHistory = [newHistoryEntry, ...existingHistory].slice(0, 15);
-
     const updatedCourse: Course = {
       ...course,
       totalCourses: availableCourses.length,
@@ -120,17 +155,36 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
       holesMetadata: editedHoles,
       imageUrl: imageUrl.trim() || undefined,
       isLocked: isLocked,
-      courseMaster: course.courseMaster || editorName.trim(),
-      contributorName: editorName.trim(),
+      courseMaster: course.courseMaster || authorName,
+      contributorName: authorName,
       contributedAt: todayStr,
       contributionHistory: updatedHistory,
     };
-
     ParkOnStorage.updateCourse(updatedCourse);
+    onSaved(updatedCourse);
+    return updatedCourse;
+  };
+
+  const handleSingleHoleConfirm = (holeNumber: number, holeLabel: string) => {
+    const authorName = editorName.trim() || '현장 골퍼';
+    persistCourseChanges(`${holeLabel} 제원 현장 확인·수정`, authorName);
+    setEditingHoleNum(null);
+    setHoleConfirmFlash(holeNumber);
+    setTimeout(() => setHoleConfirmFlash(null), 1200);
+  };
+
+  // 제원 정정 저장
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editorName.trim()) {
+      alert('실측 제원 검증 및 명예의 전당 등록을 위해 기여자 성함(또는 닉네임)을 입력해 주세요.');
+      return;
+    }
+    persistCourseChanges(`${currentCourseLetter}코스 홀별 거리(m) 및 기준타수(Par) 현장 실측 정정`, editorName.trim());
     setSavedSuccess(true);
     setTimeout(() => {
-      onSaved(updatedCourse);
       setIsEditing(false);
+      setEditingHoleNum(null);
       setSavedSuccess(false);
     }, 800);
   };
@@ -202,58 +256,42 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
           </div>
         </div>
 
-        {/* [대표님 신규 기능]: ⛳ 코스/홀 제원 vs 🍲 동호인 단골 맛집 탭 전환 */}
-        <div className="px-3 pt-2.5 bg-stone-100 border-b border-stone-200 shrink-0">
+        {/* 최상단 2단 보조 탭: [📓 홀별 공략집 (미리보기·편집)] vs [🌱 오늘의 구장 상태] */}
+        <div className="px-3 pt-2.5 pb-2 bg-stone-100 border-b border-stone-200 shrink-0 space-y-1.5">
           <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-200/90 rounded-2xl">
             <button
               type="button"
-              onClick={() => setActiveDetailTab('COURSES')}
-              className={`py-2 px-3 rounded-xl font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                activeDetailTab === 'COURSES'
+              data-testid="tab-course-detail-yardage"
+              onClick={() => setActiveDetailTab('YARDAGE')}
+              className={`py-2 px-2 rounded-xl font-black text-[11px] sm:text-xs transition flex items-center justify-center gap-1 cursor-pointer ${
+                activeDetailTab === 'YARDAGE'
                   ? 'bg-emerald-800 text-amber-300 shadow-sm'
                   : 'text-stone-700 hover:text-stone-950 font-bold'
               }`}
             >
-              <span>⛳ 코스/홀 제원</span>
+              <span>📓 홀별 공략집</span>
             </button>
             <button
               type="button"
-              onClick={() => setActiveDetailTab('RESTAURANTS')}
-              className={`py-2 px-3 rounded-xl font-black text-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                activeDetailTab === 'RESTAURANTS'
+              data-testid="tab-course-detail-today"
+              onClick={() => setActiveDetailTab('TODAY')}
+              className={`py-2 px-2 rounded-xl font-black text-[11px] sm:text-xs transition flex items-center justify-center gap-1 cursor-pointer ${
+                activeDetailTab === 'TODAY'
                   ? 'bg-emerald-800 text-amber-300 shadow-sm'
                   : 'text-stone-700 hover:text-stone-950 font-bold'
               }`}
             >
-              <span>🍲 동호인 단골 맛집</span>
-              {courseRestaurants.length > 0 && (
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                  activeDetailTab === 'RESTAURANTS' ? 'bg-amber-400 text-stone-950' : 'bg-emerald-600 text-white'
-                }`}>
-                  {courseRestaurants.length}
-                </span>
-              )}
+              <span>🌱 오늘의 구장 상태</span>
             </button>
           </div>
         </div>
 
-        {activeDetailTab === 'RESTAURANTS' ? (
+        {activeDetailTab === 'TODAY' ? (
           <div className="flex-1 overflow-y-auto p-3.5">
-            <CourseRestaurantList courseId={course.id} courseName={course.name} />
+            <CourseTodayContent course={course} isActive={true} />
           </div>
         ) : (
           <>
-            {/* 대표님 원칙 2단계: 최다 완주 명예의 전당 바로가기 */}
-            <div className="px-3 pt-2.5 bg-stone-100 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setShowHallOfFameModal(true)}
-                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black text-xs shadow-xs flex items-center justify-center gap-1.5 transition active:scale-98 cursor-pointer"
-              >
-                <Trophy className="w-4 h-4 fill-current text-stone-950" />
-                <span>🏆 이 구장 최다 완주 명예의 전당 (TOP 10 랭킹) 보기</span>
-              </button>
-            </div>
 
             {/* 2. [핵심] A, B, C, D 코스 대형 탭 버튼 (상단 고정 노출) */}
             <div className="p-3 bg-stone-100 border-b border-stone-200 shrink-0 space-y-2">
@@ -312,14 +350,15 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
 
           {/* 9개 홀 상세 카드 (오직 C-1, C-2... 스타일로 표기) */}
           <div className="space-y-2">
-            {currentHoles.map((h, i) => {
+            {currentHoles.map((h) => {
               const holeInCourse = ((h.hole - 1) % 9) + 1;
+              const isHoleEditing = isEditing || editingHoleNum === h.hole;
 
               return (
                 <div
                   key={h.hole}
                   className={`rounded-2xl p-3 border transition flex flex-col gap-1.5 shadow-2xs ${
-                    isEditing
+                    isHoleEditing
                       ? 'bg-amber-50/40 border-amber-300 ring-1 ring-amber-300'
                       : 'bg-white hover:bg-stone-50/80 border-stone-200'
                   }`}
@@ -331,10 +370,42 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
                         {currentCourseLetter}-{holeInCourse}
                       </span>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-black text-base text-stone-900 tracking-tight">
                             {currentCourseLetter}-{holeInCourse}홀
                           </span>
+                          {(() => {
+                            const yId = buildYardageNoteId(course.id, currentCourseLetter, holeInCourse);
+                            const hasY = Boolean(yardageNotesMap[yId]);
+                            return (
+                              <button
+                                type="button"
+                                data-testid={`btn-course-yardage-${currentCourseLetter}-${holeInCourse}`}
+                                onClick={() =>
+                                  setYardageTargetHole({
+                                    courseLetter: currentCourseLetter,
+                                    holeInCourse,
+                                    holeNumber: h.hole,
+                                    par: (h.par as 3 | 4 | 5) || 3,
+                                    officialDistance: h.distanceMeter || 60,
+                                  })
+                                }
+                                className={`relative inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-black border cursor-pointer transition active:scale-95 ${
+                                  hasY
+                                    ? 'bg-amber-100 text-amber-950 border-amber-400 shadow-2xs'
+                                    : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                                }`}
+                              >
+                                <span>📓 내 공략집</span>
+                                {hasY && (
+                                  <span
+                                    data-testid={`yardage-badge-dot-${currentCourseLetter}-${holeInCourse}`}
+                                    className="w-2 h-2 rounded-full bg-emerald-500 ring-1 ring-amber-400"
+                                  />
+                                )}
+                              </button>
+                            );
+                          })()}
                         </div>
                         <p className="text-[11px] text-emerald-800 font-bold leading-tight mt-0.5 truncate">
                           {h.localRule ? `⚠️ ${h.localRule}` : h.tip ? `💡 ${h.tip}` : '중앙 페어웨이 안전 공략'}
@@ -342,9 +413,9 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
                       </div>
                     </div>
 
-                    {/* Par & 거리 */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      {isEditing ? (
+                    {/* Par & 거리 + 홀별 수정 탭 */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isHoleEditing ? (
                         <div className="flex items-center gap-1.5">
                           <select
                             value={h.par}
@@ -357,39 +428,72 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
                           </select>
                           <div className="flex items-center gap-0.5">
                             <input
-                              type="number"
-                              value={h.distanceMeter}
-                              onChange={(e) => handleHoleChange(h.hole, 'distanceMeter', Number(e.target.value))}
+                              type="text"
+                              inputMode="numeric"
+                              data-testid={`input-hole-dist-${currentCourseLetter}-${holeInCourse}`}
+                              value={h.distanceMeter === 0 ? '' : String(h.distanceMeter)}
+                              placeholder="0"
+                              onChange={(e) => {
+                                const digits = e.target.value.replace(/[^0-9]/g, '');
+                                handleHoleChange(h.hole, 'distanceMeter', digits === '' ? 0 : Number(digits));
+                              }}
                               className="w-14 bg-white border-2 border-emerald-600 rounded-lg px-1 py-1 font-black text-xs text-center text-stone-900 outline-none"
                             />
                             <span className="text-xs font-black text-stone-600">m</span>
                           </div>
                         </div>
                       ) : (
-                        <div className="text-right">
-                          <div className="flex items-center gap-1.5 justify-end">
-                            <span className="bg-stone-100 text-stone-800 text-xs font-black px-2 py-0.5 rounded-lg border border-stone-200">
-                              Par {h.par}
-                            </span>
-                            <span className="text-sm font-black text-emerald-800">
-                              {h.distanceMeter}m
-                            </span>
-                          </div>
+                        <div className="flex items-center gap-1.5 justify-end">
+                          <span className="bg-stone-100 text-stone-800 text-xs font-black px-2 py-0.5 rounded-lg border border-stone-200">
+                            Par {h.par}
+                          </span>
+                          <span className="text-sm font-black text-emerald-800">
+                            {h.distanceMeter}m
+                          </span>
+                          <button
+                            type="button"
+                            data-testid={`btn-hole-edit-${currentCourseLetter}-${holeInCourse}`}
+                            onClick={() => setEditingHoleNum(h.hole)}
+                            className={`px-2 py-1 rounded-lg text-[11px] font-black border cursor-pointer transition ${
+                              holeConfirmFlash === h.hole
+                                ? 'bg-emerald-600 text-white border-emerald-600'
+                                : 'bg-stone-100 hover:bg-amber-100 text-stone-700 border-stone-300'
+                            }`}
+                          >
+                            {holeConfirmFlash === h.hole ? '✓ 저장됨' : '✏️ 수정'}
+                          </button>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* 정정 모드 시 로컬룰/공략팁 직접 편집 */}
-                  {isEditing && (
-                    <div className="pt-1 border-t border-amber-200/60 mt-0.5">
+                  {/* 정정 모드 시 로컬룰/공략팁 직접 편집 + 홀별 즉시 확인 버튼 */}
+                  {isHoleEditing && (
+                    <div className="pt-1.5 border-t border-amber-200/60 mt-0.5 flex items-center gap-1.5">
                       <input
                         type="text"
                         placeholder="현장 로컬룰 또는 공략 팁 (예: 좌측 OB 주의, 1클럽 구제 등)"
                         value={h.localRule || h.tip || ''}
                         onChange={(e) => handleHoleChange(h.hole, 'localRule', e.target.value)}
-                        className="w-full bg-white border border-stone-300 rounded-lg px-2.5 py-1 text-xs text-stone-800 placeholder:text-stone-400 outline-none focus:border-emerald-600"
+                        className="flex-1 min-w-0 bg-white border border-stone-300 rounded-lg px-2.5 py-1.5 text-xs text-stone-800 placeholder:text-stone-400 outline-none focus:border-emerald-600"
                       />
+                      {editingHoleNum === h.hole && !isEditing && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingHoleNum(null)}
+                          className="px-2.5 py-1.5 rounded-lg bg-stone-200 hover:bg-stone-300 text-stone-700 font-black text-xs cursor-pointer shrink-0"
+                        >
+                          취소
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        data-testid={`btn-hole-confirm-${currentCourseLetter}-${holeInCourse}`}
+                        onClick={() => handleSingleHoleConfirm(h.hole, `${currentCourseLetter}-${holeInCourse}홀`)}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs cursor-pointer shrink-0 shadow-xs active:scale-95 transition"
+                      >
+                        ✓ 확인
+                      </button>
                     </div>
                   )}
                 </div>
@@ -526,6 +630,44 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
         courseId={course.id}
         courseName={course.name}
       />
+
+      {yardageTargetHole && (() => {
+        const cIdx = Math.max(0, availableCourses.indexOf(yardageTargetHole.courseLetter));
+        const hasPrev = !(cIdx === 0 && yardageTargetHole.holeInCourse === 1);
+        const hasNext = !(cIdx === availableCourses.length - 1 && yardageTargetHole.holeInCourse === 9);
+        const goPrev = () => {
+          if (yardageTargetHole.holeInCourse > 1) {
+            openHoleYardage(yardageTargetHole.courseLetter, yardageTargetHole.holeInCourse - 1);
+          } else if (cIdx > 0) {
+            openHoleYardage(availableCourses[cIdx - 1], 9);
+          }
+        };
+        const goNext = () => {
+          if (yardageTargetHole.holeInCourse < 9) {
+            openHoleYardage(yardageTargetHole.courseLetter, yardageTargetHole.holeInCourse + 1);
+          } else if (cIdx < availableCourses.length - 1) {
+            openHoleYardage(availableCourses[cIdx + 1], 1);
+          }
+        };
+        return (
+          <YardageBookModal
+            isOpen={true}
+            onClose={() => setYardageTargetHole(null)}
+            courseId={course.id}
+            courseName={course.name}
+            courseLetter={yardageTargetHole.courseLetter}
+            holeInCourse={yardageTargetHole.holeInCourse}
+            holeNumber={yardageTargetHole.holeNumber}
+            par={yardageTargetHole.par}
+            officialDistance={yardageTargetHole.officialDistance}
+            availableCourses={availableCourses}
+            savedHoleIds={new Set(Object.keys(yardageNotesMap))}
+            onSelectHole={(letter, hInC) => openHoleYardage(letter, hInC)}
+            onPrevHole={hasPrev ? goPrev : undefined}
+            onNextHole={hasNext ? goNext : undefined}
+          />
+        );
+      })()}
     </div>
   );
 }
