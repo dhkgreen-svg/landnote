@@ -5,6 +5,7 @@ import QRCode from 'qrcode';
 import { X, QrCode, Copy, Check, UserPlus, Sparkles, ShieldCheck, Heart } from 'lucide-react';
 import { ParkOnStorage } from '@/lib/storage';
 import { CompanionStorage } from '@/lib/companionStorage';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface CompanionQRModalProps {
   isOpen: boolean;
@@ -37,6 +38,8 @@ export function CompanionQRModal({ isOpen, onClose, onCompanionAdded }: Companio
       .then((url) => setQrUrl(url))
       .catch((err) => console.error('QR code generation error:', err));
   }, [isOpen, myName]);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
@@ -739,6 +740,8 @@ export function YardageBookModal({
     setConfirmDelete(false);
     onClose();
   };
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

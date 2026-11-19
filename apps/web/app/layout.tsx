@@ -22,6 +22,7 @@ export const viewport: Viewport = {
 
 import { Toaster } from '@/components/ui/toaster';
 import { QueryProvider } from '@/components/providers/query-provider';
+import { BackNavigationProvider } from '@/components/BackNavigationProvider';
 
 import Script from 'next/script';
 
@@ -63,6 +64,7 @@ export default function RootLayout({
           }}
         />
         <QueryProvider>
+          <BackNavigationProvider />
           {children}
         </QueryProvider>
         <Toaster />

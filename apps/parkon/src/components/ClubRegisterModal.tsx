@@ -5,6 +5,7 @@ import { X, Check, Users, MapPin, Phone, Shield, Sparkles, Building, Info } from
 import { Course } from '@/types/parkon';
 import { ParkGolfClub, ClubRecruitStatus } from '@/types/club';
 import { ClubStorage } from '@/lib/clubStorage';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface ClubRegisterModalProps {
   isOpen: boolean;
@@ -85,6 +86,8 @@ export function ClubRegisterModal({
       }
     }
   }, [isOpen, initialCourseId, courses]);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

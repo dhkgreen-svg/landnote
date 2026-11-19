@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -256,6 +257,30 @@ export default function RoundPlayPage() {
   // 🌟 [대표님 지시]: 홀 변경 시 불편한 1.5초 플로팅 안내 팝업은 전면 제거하고,
   // 상단 [파3 / 파4 / 파5] 바 전체가 3회 깜빡(깜빡·깜빡·깜빡)인 뒤 현재 파(예: 파4 노란색)로 고정되어 원터치 즉시 설정되도록 구현!
   const [showYardageBookModal, setShowYardageBookModal] = useState<boolean>(false);
+
+  // 스마트폰 뒤로가기: 열린 경기 팝업부터 닫고, 팝업이 없을 땐 안전 종료 확인창 띄우기
+  useBackHandler(true, () => setShowExitConfirm(true));
+  useBackHandler(showExitConfirm, () => setShowExitConfirm(false));
+  useBackHandler(showCoursePicker, () => setShowCoursePicker(false));
+  useBackHandler(showConditionModal, () => setShowConditionModal(false));
+  useBackHandler(showHoleSpecModal, () => setShowHoleSpecModal(false));
+  useBackHandler(showTotalScoreModal, () => setShowTotalScoreModal(false));
+  useBackHandler(showFinishOfficialModal, () => setShowFinishOfficialModal(false));
+  useBackHandler(showVirtualFinishModal, () => setShowVirtualFinishModal(false));
+  useBackHandler(showPlayerEditModal, () => setShowPlayerEditModal(false));
+  useBackHandler(showTargetHoleReachedModal, () => setShowTargetHoleReachedModal(false));
+  useBackHandler(Boolean(courseCompletedModalInfo), () => setCourseCompletedModalInfo(null));
+  useBackHandler(showPlayerCrossCheckModal, () => setShowPlayerCrossCheckModal(false));
+  useBackHandler(showRefereeAssignModal, () => setShowRefereeAssignModal(false));
+  useBackHandler(showRefereeInviteModal, () => setShowRefereeInviteModal(false));
+  useBackHandler(showLeaderTransferModal, () => setShowLeaderTransferModal(false));
+  useBackHandler(isExitModalOpen, () => setIsExitModalOpen(false));
+  useBackHandler(isRestModalOpen, () => setIsRestModalOpen(false));
+  useBackHandler(isLeaderDelegateModalOpen, () => setIsLeaderDelegateModalOpen(false));
+  useBackHandler(isSwitchCourseModalOpen, () => setIsSwitchCourseModalOpen(false));
+  useBackHandler(isSaveWarningModalOpen, () => setIsSaveWarningModalOpen(false));
+  useBackHandler(isHoleConfirmModalOpen, () => setIsHoleConfirmModalOpen(false));
+  useBackHandler(isRoundSaveOptionModalOpen, () => setIsRoundSaveOptionModalOpen(false));
   const [yardageRevision, setYardageRevision] = useState<number>(0);
   const lastAutoOpenedYardageHoleRef = useRef<string>('');
   const [isParBarBlinking, setIsParBarBlinking] = useState<boolean>(false);

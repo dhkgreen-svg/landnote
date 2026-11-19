@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { X, Download, Upload, CheckCircle2, ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
 import { ChroniclePhotoStorage } from '@/lib/chroniclePhotoStorage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface ChronicleBackupModalProps {
   isOpen: boolean;
@@ -22,6 +23,8 @@ export function ChronicleBackupModal({
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [isImporting, setIsImporting] = useState<boolean>(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

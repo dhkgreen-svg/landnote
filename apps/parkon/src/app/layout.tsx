@@ -6,6 +6,7 @@ import { VisitorTracker } from '@/components/VisitorTracker';
 import { MainWrapper } from '@/components/MainWrapper';
 import { LanguageProvider } from '@/lib/i18n/LanguageContext';
 import { InAppBrowserGuideModal } from '@/components/InAppBrowserGuideModal';
+import { BackNavigationProvider } from '@/components/BackNavigationProvider';
 import Script from 'next/script';
 
 export const metadata: Metadata = {
@@ -344,6 +345,7 @@ export default function RootLayout({
         </Script>
         <LanguageProvider>
           <VisitorTracker />
+          <BackNavigationProvider />
           <Header />
           <MainWrapper>
             {children}

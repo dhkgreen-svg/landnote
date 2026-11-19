@@ -6,6 +6,7 @@ import { Course, formatCourseHolesText } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
 import { getCourseDualName } from '@/lib/courseLocalization';
 import { generateStandardHoles } from '@/lib/defaultCourses';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface CourseSearchModalProps {
   isOpen: boolean;
@@ -136,6 +137,8 @@ export const CourseSearchModal: React.FC<CourseSearchModalProps> = ({
     if (!isOpen || searchResults.length > 0 || !trimmedQ) return [];
     return findSimilarCourses(trimmedQ, courses);
   }, [isOpen, searchResults.length, trimmedQ, courses]);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

@@ -22,6 +22,7 @@ import {
 } from '@/lib/restaurantStorage';
 import { ParkOnStorage } from '@/lib/storage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface KakaoPlace {
   id: string;
@@ -118,6 +119,8 @@ export function RestaurantSubmitModal({
       setIsSearching(false);
     }
   };
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

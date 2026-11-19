@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -55,6 +56,13 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
   const [currentCourseIdx, setCurrentCourseIdx] = useState<number>(0);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editingHoleNum, setEditingHoleNum] = useState<number | null>(null);
+  const [holePopupDraft, setHolePopupDraft] = useState<{
+    holeNumber: number;
+    courseLetter: string;
+    holeInCourse: number;
+    par: 3 | 4 | 5;
+    distanceMeter: number;
+  } | null>(null);
   const [holeConfirmFlash, setHoleConfirmFlash] = useState<number | null>(null);
   const [editedHoles, setEditedHoles] = useState<HoleMetadata[]>(initialHoles);
   const [editorName, setEditorName] = useState<string>('');
@@ -70,6 +78,10 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     officialDistance: number;
   } | null>(null);
   const [yardageNotesMap, setYardageNotesMap] = useState<Record<string, any>>({});
+
+  // 스마트폰 뒤로가기 시 팝업부터 순서대로 닫기 (파수·거리 수정 팝업 -> 상세 모달)
+  useBackHandler(true, onClose);
+  useBackHandler(Boolean(holePopupDraft), () => setHolePopupDraft(null));
 
   useEffect(() => {
     const syncYardage = () => {
@@ -139,7 +151,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     reader.readAsDataURL(file);
   };
 
-  const persistCourseChanges = (actionLabel: string, authorName: string) => {
+  const persistCourseChanges = (actionLabel: string, authorName: string, holesOverride?: HoleMetadata[]) => {
     const todayStr = new Date().toISOString().split('T')[0];
     const newHistoryEntry: CourseContribution = {
       author: authorName,
@@ -152,7 +164,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
       ...course,
       totalCourses: availableCourses.length,
       totalHoles: Math.max(course.totalHoles || 0, totalRequiredHoles),
-      holesMetadata: editedHoles,
+      holesMetadata: holesOverride || editedHoles,
       imageUrl: imageUrl.trim() || undefined,
       isLocked: isLocked,
       courseMaster: course.courseMaster || authorName,
@@ -170,6 +182,23 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     persistCourseChanges(`${holeLabel} 제원 현장 확인·수정`, authorName);
     setEditingHoleNum(null);
     setHoleConfirmFlash(holeNumber);
+    setTimeout(() => setHoleConfirmFlash(null), 1200);
+  };
+
+  const handlePopupHoleConfirm = () => {
+    if (!holePopupDraft) return;
+    const nextHoles = editedHoles.map((h) =>
+      h.hole === holePopupDraft.holeNumber
+        ? { ...h, par: holePopupDraft.par, distanceMeter: holePopupDraft.distanceMeter, isVerified: true }
+        : h
+    );
+    setEditedHoles(nextHoles);
+    const authorName = editorName.trim() || '현장 골퍼';
+    const holeLabel = `${holePopupDraft.courseLetter}-${holePopupDraft.holeInCourse}홀`;
+    persistCourseChanges(`${holeLabel} 제원 현장 확인·수정`, authorName, nextHoles);
+    const savedHole = holePopupDraft.holeNumber;
+    setHolePopupDraft(null);
+    setHoleConfirmFlash(savedHole);
     setTimeout(() => setHoleConfirmFlash(null), 1200);
   };
 
@@ -407,7 +436,15 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
                           <button
                             type="button"
                             data-testid={`btn-hole-edit-${currentCourseLetter}-${holeInCourse}`}
-                            onClick={() => setEditingHoleNum(h.hole)}
+                            onClick={() =>
+                              setHolePopupDraft({
+                                holeNumber: h.hole,
+                                courseLetter: currentCourseLetter,
+                                holeInCourse,
+                                par: h.par === 3 || h.par === 4 || h.par === 5 ? h.par : 3,
+                                distanceMeter: h.distanceMeter || 0,
+                              })
+                            }
                             className={`px-2 py-1 rounded-lg text-[11px] font-black border cursor-pointer transition ${
                               holeConfirmFlash === h.hole
                                 ? 'bg-emerald-600 text-white border-emerald-600'
@@ -576,6 +613,133 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
           </Link>
         </div>
       </div>
+
+      {/* 대형 파수 · 거리 수정 전용 팝업창 */}
+      {holePopupDraft && (
+        <div
+          data-testid="hole-spec-edit-popup"
+          className="fixed inset-0 z-[110] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setHolePopupDraft(null)}
+        >
+          <div
+            className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border-2 border-emerald-700/30 animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 팝업 헤더 */}
+            <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-teal-950 px-5 py-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="bg-amber-300 text-emerald-950 font-black text-lg px-3 py-1 rounded-xl shadow-xs">
+                  {holePopupDraft.courseLetter}-{holePopupDraft.holeInCourse}홀
+                </span>
+                <span className="font-black text-lg tracking-tight text-white">
+                  파수 · 거리 수정
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHolePopupDraft(null)}
+                className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center text-base font-black transition cursor-pointer"
+                title="닫기"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 팝업 본문: 대형 파수(Par) 선택 + 대형 거리(m) 입력 */}
+            <div className="p-5 space-y-6">
+              {/* 1. 파수 (Par) 선택 */}
+              <div>
+                <label className="text-sm font-black text-stone-700 block mb-2.5">
+                  기준타수 (Par) 선택
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {([3, 4, 5] as const).map((parVal) => {
+                    const active = holePopupDraft.par === parVal;
+                    return (
+                      <button
+                        key={parVal}
+                        type="button"
+                        data-testid={`btn-popup-par-${parVal}`}
+                        onClick={() => setHolePopupDraft((prev) => (prev ? { ...prev, par: parVal } : prev))}
+                        className={`py-4 rounded-2xl text-2xl font-black border-2 transition active:scale-95 cursor-pointer ${
+                          active
+                            ? 'bg-emerald-700 text-amber-300 border-emerald-800 shadow-lg ring-2 ring-emerald-400'
+                            : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border-stone-200'
+                        }`}
+                      >
+                        Par {parVal}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 2. 홀 거리 (m) 입력 */}
+              <div>
+                <label className="text-sm font-black text-stone-700 block mb-2.5">
+                  홀 거리 (m) 입력
+                </label>
+                <div className="flex items-center justify-center gap-2 bg-emerald-50/80 border-2 border-emerald-600 rounded-2xl px-4 py-3.5 shadow-inner">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    data-testid="input-popup-hole-dist"
+                    value={holePopupDraft.distanceMeter === 0 ? '' : String(holePopupDraft.distanceMeter)}
+                    placeholder="0"
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/[^0-9]/g, '');
+                      setHolePopupDraft((prev) =>
+                        prev ? { ...prev, distanceMeter: digits === '' ? 0 : Math.min(999, Number(digits)) } : prev
+                      );
+                    }}
+                    className="w-40 bg-transparent text-center text-5xl font-black text-emerald-950 outline-none tracking-tight"
+                  />
+                  <span className="text-3xl font-black text-emerald-700">m</span>
+                </div>
+
+                {/* 빠른 거리 조절 버튼 */}
+                <div className="grid grid-cols-4 gap-2 mt-3">
+                  {[-10, -1, 1, 10].map((delta) => (
+                    <button
+                      key={delta}
+                      type="button"
+                      onClick={() =>
+                        setHolePopupDraft((prev) =>
+                          prev
+                            ? { ...prev, distanceMeter: Math.max(0, Math.min(999, (prev.distanceMeter || 0) + delta)) }
+                            : prev
+                        )
+                      }
+                      className="py-3 rounded-xl bg-stone-100 hover:bg-stone-200 active:scale-95 border border-stone-300 text-base font-black text-stone-800 cursor-pointer transition"
+                    >
+                      {delta > 0 ? `+${delta}m` : `${delta}m`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 팝업 하단 버튼 */}
+            <div className="p-4 bg-stone-50 border-t border-stone-200 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setHolePopupDraft(null)}
+                className="py-4 rounded-2xl bg-stone-200 hover:bg-stone-300 active:scale-98 text-stone-800 font-black text-lg cursor-pointer transition"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                data-testid="btn-popup-hole-confirm"
+                onClick={handlePopupHoleConfirm}
+                className="py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-600 active:scale-98 text-white font-black text-lg shadow-md cursor-pointer transition"
+              >
+                ✓ 수정 완료
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 대표님 원칙 2단계: 구장별 실시간 명예의 전당 (최다 완주 TOP 10) */}
       <CourseHallOfFameModal

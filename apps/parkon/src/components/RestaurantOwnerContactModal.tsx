@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { X, Sparkles, Phone, MessageSquare, CheckCircle2, TrendingUp, Award } from 'lucide-react';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface RestaurantOwnerContactModalProps {
   isOpen: boolean;
@@ -10,6 +11,8 @@ interface RestaurantOwnerContactModalProps {
 }
 
 export function RestaurantOwnerContactModal({ isOpen, onClose, courseName }: RestaurantOwnerContactModalProps) {
+  useBackHandler(isOpen, onClose);
+
   if (!isOpen) return null;
 
   return (

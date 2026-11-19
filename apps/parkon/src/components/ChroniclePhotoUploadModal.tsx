@@ -6,6 +6,7 @@ import { RoundSession } from '@/types/parkon';
 import { ChroniclePhotoStorage, compressAndProcessImage, ChroniclePhotoItem } from '@/lib/chroniclePhotoStorage';
 import { ParkOnStorage } from '@/lib/storage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface ChroniclePhotoUploadModalProps {
   isOpen: boolean;
@@ -150,6 +151,8 @@ export function ChroniclePhotoUploadModal({
       setIsProcessing(false);
     }
   };
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

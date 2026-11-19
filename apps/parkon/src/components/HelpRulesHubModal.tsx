@@ -6,6 +6,7 @@ import { X, BookOpen, HelpCircle, Sparkles, ChevronRight, CheckCircle, ShieldChe
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { QuickGuideModal } from './QuickGuideModal';
 import { RulesWebtoonModal } from './RulesWebtoonModal';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface HelpRulesHubModalProps {
   isOpen: boolean;
@@ -17,6 +18,8 @@ export function HelpRulesHubModal({ isOpen, onClose }: HelpRulesHubModalProps) {
   const { isJapanese, isEnglish } = useTranslation();
   const [showQuickGuide, setShowQuickGuide] = useState(false);
   const [showRulesWebtoon, setShowRulesWebtoon] = useState(false);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

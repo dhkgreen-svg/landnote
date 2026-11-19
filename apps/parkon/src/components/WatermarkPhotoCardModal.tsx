@@ -6,6 +6,7 @@ import { RoundSession, PhotoCardMeta } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
 import { ChroniclePhotoStorage } from '@/lib/chroniclePhotoStorage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface WatermarkPhotoCardModalProps {
   isOpen: boolean;
@@ -334,6 +335,8 @@ export function WatermarkPhotoCardModal({
       generatePhotoCard(selectedImage, photoType, achieverName || myName);
     }
   }, [isOpen, selectedImage, photoType, achieverName, myName, generatePhotoCard]);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, CheckCircle2, AlertTriangle, Coffee, ArrowRight, Sparkles, Smartphone, Users, ChevronRight, RotateCcw, ShieldCheck } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface QuickGuideModalProps {
   isOpen: boolean;
@@ -15,6 +16,8 @@ export function QuickGuideModal({ isOpen, onClose, homeCourseId }: QuickGuideMod
   const router = useRouter();
   const { isJapanese, isEnglish } = useTranslation();
   const [activeStep, setActiveStep] = useState<number>(1);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

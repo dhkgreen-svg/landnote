@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { X, Play } from 'lucide-react';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface PlayStartNoticeModalProps {
   isOpen: boolean;
@@ -20,6 +21,8 @@ export function PlayStartNoticeModal({
   courseLetter = 'A',
   startHole = 1,
 }: PlayStartNoticeModalProps) {
+  useBackHandler(isOpen, onClose);
+
   if (!isOpen) return null;
 
   const handleStart = () => {

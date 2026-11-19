@@ -5,8 +5,12 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useBackHandler } from "@/lib/backNavigation"
 
-const Dialog = DialogPrimitive.Root
+const Dialog: React.FC<React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>> = ({ open, onOpenChange, ...props }) => {
+  useBackHandler(Boolean(open && onOpenChange), () => onOpenChange?.(false));
+  return <DialogPrimitive.Root open={open} onOpenChange={onOpenChange} {...props} />;
+};
 
 const DialogTrigger = DialogPrimitive.Trigger
 

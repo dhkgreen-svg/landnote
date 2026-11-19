@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, Sparkles, MapPin, Phone, Gift, Image, Plus, Minus, Calendar, DollarSign, Bus } from 'lucide-react';
 import { TourPackage, TourStorage } from '@/lib/tourStorage';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface TourRegisterModalProps {
   isOpen: boolean;
@@ -73,6 +74,8 @@ export function TourRegisterModal({
       resetForm();
     }
   }, [isOpen]);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

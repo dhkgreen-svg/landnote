@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { X, Watch, Copy, Check, ExternalLink, Smartphone, Sparkles, ShieldCheck, Wifi } from 'lucide-react';
 import Link from 'next/link';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface WatchConnectModalProps {
   isOpen: boolean;
@@ -41,6 +42,8 @@ export function WatchConnectModal({ isOpen, onClose, roundId }: WatchConnectModa
       .then((url) => setQrUrl(url))
       .catch((err) => console.error('Watch QR generation error:', err));
   }, [isOpen, roundId]);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

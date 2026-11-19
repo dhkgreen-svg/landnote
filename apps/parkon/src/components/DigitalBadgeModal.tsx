@@ -6,6 +6,7 @@ import { CourseBadgeRecord, getBadgeTierInfo, BadgeStorage } from '@/lib/badgeSt
 import { playCelebrationFanfare, triggerCelebrationHaptic } from '@/lib/soundUtils';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface DigitalBadgeModalProps {
   isOpen: boolean;
@@ -83,6 +84,8 @@ export function DigitalBadgeModal({
       triggerCelebrationHaptic();
     }
   }, [isOpen]);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

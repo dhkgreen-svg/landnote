@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Trophy, Flame, User, Users, Crown, ArrowRight, Sparkles, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { Course, RoundSession } from '@/types/parkon';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface NationalRankingDetailModalProps {
   isOpen: boolean;
@@ -42,6 +43,8 @@ export function NationalRankingDetailModal({
 }: NationalRankingDetailModalProps) {
   const { isJapanese } = useTranslation();
   const [activeTab, setActiveTab] = useState<'ANALYSIS' | 'RIVALS' | 'TOP100'>('ANALYSIS');
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

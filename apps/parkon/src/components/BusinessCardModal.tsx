@@ -21,6 +21,7 @@ import {
 import { UserBusinessCard, BUSINESS_INDUSTRIES, BusinessCardVisibility } from '@/types/businessCard';
 import { BusinessCardStorage, SAMPLE_COMMUNITY_CARDS } from '@/lib/businessCardStorage';
 import { ParkOnStorage } from '@/lib/storage';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface BusinessCardModalProps {
   isOpen: boolean;
@@ -72,6 +73,8 @@ export function BusinessCardModal({
       setExchangedCards(list);
     }
   }, [isOpen]);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

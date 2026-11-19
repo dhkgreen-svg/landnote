@@ -6,6 +6,7 @@ import { HoleDisplayMode, HoleTransitionPopup, RoundSettings } from '@/types/par
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { GeoCountryService, ServiceCountry } from '@/lib/geoCountryService';
 import { ParkOnStorage } from '@/lib/storage';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface RoundSettingsModalProps {
   isOpen: boolean;
@@ -42,6 +43,8 @@ export function RoundSettingsModal({
       setHoleTransitionPopup(current.holeTransitionPopup);
     }
   }, [isOpen]);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

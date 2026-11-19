@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 // Build: 2026-10-03-field-ux-analytics-baseline-160
 import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
@@ -99,6 +100,19 @@ export default function HomePage() {
   const [showQuickGuideModal, setShowQuickGuideModal] = useState<boolean>(false);
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const [showShareToast, setShowShareToast] = useState<boolean>(false);
+
+  // 스마트폰 뒤로가기 시 홈 화면 인라인 팝업들을 순서대로 닫기
+  useBackHandler(showHomeModal, () => setShowHomeModal(false));
+  useBackHandler(showStatsModal, () => setShowStatsModal(false));
+  useBackHandler(showGradePopup, () => setShowGradePopup(false));
+  useBackHandler(showNationalStatsModal, () => setShowNationalStatsModal(false));
+  useBackHandler(showRulesSolomonPopup, () => setShowRulesSolomonPopup(false));
+  useBackHandler(showLeaderboard100Popup, () => setShowLeaderboard100Popup(false));
+  useBackHandler(Boolean(showRankingDetailPopup), () => setShowRankingDetailPopup(null));
+  useBackHandler(showStatsSearchModal, () => setShowStatsSearchModal(false));
+  useBackHandler(showCourseTodayModal, () => setShowCourseTodayModal(false));
+  useBackHandler(showCourseEditModal, () => setShowCourseEditModal(false));
+  useBackHandler(showPhotoViewerModal, () => setShowPhotoViewerModal(false));
   const [shareToastMessage, setShareToastMessage] = useState<string>('✓ 파키 앱 (PARKY APP) 주소(https://www.parkgolfallinone.com)가 복사되었습니다!');
 
   const getLocalizedCourseName = (c: Course | null | undefined): string => {

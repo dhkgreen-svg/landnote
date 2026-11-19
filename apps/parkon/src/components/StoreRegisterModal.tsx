@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Check, Store, Sparkles, MapPin, Phone, Gift, Image, Plus, Minus, Search, AlertCircle } from 'lucide-react';
 import { Course } from '@/types/parkon';
 import { AffiliatedStore, StoreCategory, RestaurantSubCategory, AUCTION_RULES, AuctionStorage } from '@/lib/auctionStorage';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface StoreRegisterModalProps {
   isOpen: boolean;
@@ -106,6 +107,8 @@ export function StoreRegisterModal({
     if (planType === 'FREE') return 0;
     return AuctionStorage.calculateTotal(selectedCourseIds.length, bidAmount);
   }, [planType, selectedCourseIds.length, bidAmount]);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

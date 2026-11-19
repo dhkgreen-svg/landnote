@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, ChevronDown, Sparkles, Heart, ShieldCheck, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { useBackHandler } from '@/lib/backNavigation';
 
 export interface RulesWebtoonModalProps {
   isOpen: boolean;
@@ -274,6 +275,8 @@ export function RulesWebtoonModal({ isOpen, onClose, lang, isJp }: RulesWebtoonM
   const { language, isJapanese: contextIsJapanese } = useTranslation();
   const [activeTab, setActiveTab] = useState<'WEBTOON_LESSON' | 'WEBTOON_MANNER' | 'RULES_QA'>('WEBTOON_LESSON');
   const [openQaIndex, setOpenQaIndex] = useState<number | null>(0);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

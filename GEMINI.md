@@ -88,6 +88,9 @@
 - **Vercel 온라인 배포 절대 사전 금지**:
   - Vercel 빌드 카운트 제한 및 비용/안정성 관리를 위해, 작업 중 임의로 Vercel CLI 배포(`vercel deploy`)나 `git push origin main/master`를 실행하지 않습니다.
   - 모든 코딩과 기능 검증이 완벽히 정리된 후, **반드시 대표님께 "로컬 검증 완료. Vercel 실서버에 배포할까요?"라고 먼저 여쭙고, 대표님의 명시적 승인이 있을 때에만 온라인 배포를 진행**합니다.
+- **단일 프로젝트 배포 고정 (`landnote-parkon` 단독)**:
+  - 파키 앱 실서버 배포는 오직 **`landnote-parkon`** (`https://parkongolf.com` / `https://parkgolfallinone.com`, 루트 `apps/parkon`) **1개만** 사용합니다.
+  - Git 자동 배포가 해제된 8개 프로젝트(`parkon`, `parkgolf-v2`, `golfon-app`, `google_drive_docs_search`, `landnote`, `landnote-api`, `inland-fishery-web-legacy`, `landnote-web`)는 재연결하지 않으며, 현재 `dhkgreen-svg/landnote`에는 **`landnote-parkon` 단 1개만** 연결되어 있습니다. `git push` 후 자동 빌드가 동작하면 `vercel --prod`를 중복 실행하지 않습니다.
 
 ---
 
@@ -158,3 +161,12 @@
 - **저장 절대 규칙**:
   - 6단 만화 웹 스튜디오(포트 3050)에서 원클릭 또는 실시간 편집으로 생성되는 **모든 이미지(마스터 6단 만화 원본 및 1080x1080 개별 SNS 카드 6장 폴더)는 무조건 위 '공식만화_모음' 폴더 안에만 저장**한다.
   - 바탕화면 루트에 낱개 `.jpg` 이미지 파일을 흩뿌려 저장하지 않고, 반드시 위 공식 폴더 내부로 단일화하여 영구 관리한다.
+
+---
+
+## 9. 모바일·PWA 3중 뒤로가기 필수 아키텍처 (모든 앱 공통 영구 표준)
+- **적용 대상**: `apps/parkon` (파키 앱), `apps/web` (랜드노트) 및 향후 제작·수정되는 모든 웹/PWA 앱의 모든 모달·팝업·상세창·서브 페이지
+- **핵심 규칙**:
+  1. 모든 모달/팝업/다이얼로그는 `lib/backNavigation.ts`의 `useBackHandler(isOpen, onClose)`를 필수 연동하여 뒤로가기 시 가장 위 팝업부터 1단계씩 닫히도록 구현한다.
+  2. 루트 `layout.tsx`에 `BackNavigationProvider`를 탑재해 안드로이드 크롬 제스처 가드, 홈(`/`) 2.2초 이중 확인 토스트, 서브 페이지 직접 진입 시 홈(`/`) 안전 복귀를 보장한다.
+  3. 상세 템플릿 및 검증 절차는 전역 스킬 `mobile-back-navigation`을 따른다.

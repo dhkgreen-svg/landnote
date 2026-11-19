@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Smartphone, Laptop, CheckCircle, ExternalLink, Copy, Check, Rocket } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { escapeKakaoTalk, copyCurrentUrl, isKakaoTalkWebView, isIOS, isAndroid } from '@/lib/kakaoEscape';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface InstallGuideModalProps {
   isOpen: boolean;
@@ -46,6 +47,8 @@ export function InstallGuideModal({ isOpen, onClose, deferredPrompt: initialProm
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, [isOpen, initialTab]);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

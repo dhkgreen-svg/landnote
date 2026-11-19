@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Copy, Check, MessageCircle, Send, Share2, Sparkles } from 'lucide-react';
 import { ParkOnStorage } from '@/lib/storage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface AppShareModalProps {
   isOpen: boolean;
@@ -13,6 +14,8 @@ interface AppShareModalProps {
 export function AppShareModal({ isOpen, onClose }: AppShareModalProps) {
   const { isJapanese, isEnglish } = useTranslation();
   const [copied, setCopied] = useState(false);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

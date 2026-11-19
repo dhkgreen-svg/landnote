@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Star, Camera, Check, Sparkles } from 'lucide-react';
 import { Course } from '@/types/parkon';
 import { CourseReview, CourseReviewStorage } from '@/lib/courseReviewStorage';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface CourseReviewFormModalProps {
   isOpen: boolean;
@@ -34,6 +35,8 @@ export function CourseReviewFormModal({
   const [authorName, setAuthorName] = useState<string>('');
   const [comment, setComment] = useState<string>('');
   const [selectedPhoto, setSelectedPhoto] = useState<string>(SAMPLE_REVIEW_PHOTOS[0].url);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

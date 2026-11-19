@@ -6,6 +6,7 @@ import { X, Zap, Users, MapPin, Calendar, Clock, Sparkles, Check, ChevronRight, 
 import { ParkOnStorage } from '@/lib/storage';
 import { CompanionStorage, CompanionLightningRound } from '@/lib/companionStorage';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface CompanionLightningModalProps {
   isOpen: boolean;
@@ -42,6 +43,8 @@ export function CompanionLightningModal({ isOpen, onClose, onRoundCreated }: Com
     window.addEventListener('parkon_lightning_updated', load);
     return () => window.removeEventListener('parkon_lightning_updated', load);
   }, [isOpen]);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

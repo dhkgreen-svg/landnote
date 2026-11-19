@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Check, AlertTriangle } from 'lucide-react';
 import { ParkOnStorage } from '@/lib/storage';
 import { CourseSpecialReport } from '@/types/parkon';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface CourseSpecialNoticeModalProps {
   courseId: string;
@@ -23,6 +24,8 @@ export function CourseSpecialNoticeModal({
   const [selectedType, setSelectedType] = useState<'EVENT' | 'CONSTRUCTION' | 'CLOSURE' | 'WAITING' | 'OTHER' | null>(null);
   const [memo, setMemo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

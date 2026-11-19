@@ -24,6 +24,7 @@ import { ParkOnStorage, ALL_BASE_COURSES } from '@/lib/storage';
 import { ChroniclePhotoStorage } from '@/lib/chroniclePhotoStorage';
 import { CompanionStorage } from '@/lib/companionStorage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
+import { useBackHandler } from '@/lib/backNavigation';
 
 export interface PaperScorecardModalProps {
   isOpen: boolean;
@@ -749,6 +750,8 @@ export function PaperScorecardModal({
       alert('기록 병합 중 오류가 발생했습니다.');
     }
   };
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

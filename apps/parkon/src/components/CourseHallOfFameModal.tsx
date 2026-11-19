@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Trophy, Flame, Crown, Medal, Play, ArrowRight, Sparkles } from 'lucide-react';
 import { BadgeStorage, HallOfFameRanker } from '@/lib/badgeStorage';
 import { useRouter } from 'next/navigation';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface CourseHallOfFameModalProps {
   isOpen: boolean;
@@ -22,6 +23,8 @@ export function CourseHallOfFameModal({
 }: CourseHallOfFameModalProps) {
   const router = useRouter();
   const [tab, setTab] = useState<'ALL_TIME' | 'MONTHLY'>('ALL_TIME');
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

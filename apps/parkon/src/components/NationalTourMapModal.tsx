@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -50,6 +51,8 @@ export function NationalTourMapModal({ isOpen, onClose }: NationalTourMapModalPr
       setCurrentProvPhoto(null);
     }
   }, [selectedProvince]);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 

@@ -9,6 +9,7 @@ import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getOrGenerateMemberCode, getSavedMemberCode, fetchAndRestoreMemberData, syncMemberDataToCloud, normalizeMemberCode, findMemberCodeByNameAndPhone, isPlaceholderName, isMockOrCorruptedRound, maskPhoneNumber, MEMBER_CODE_STORAGE_KEY } from '@/lib/memberCodeUtils';
 import { BadgeStorage } from '@/lib/badgeStorage';
 import { DEFAULT_USER_PROFILE } from '@/lib/storage';
+import { useBackHandler } from '@/lib/backNavigation';
 
 interface KakaoLoginModalProps {
   isOpen: boolean;
@@ -182,6 +183,8 @@ const [showAddNickname, setShowAddNickname] = useState(false);
       setIsSavedNotice(false);
     }
   }, [isOpen, initialMode, initialName]);
+
+  useBackHandler(isOpen, onClose);
 
   if (!isOpen) return null;
 
