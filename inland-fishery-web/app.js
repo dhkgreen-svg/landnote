@@ -2519,7 +2519,7 @@ function renderGalleryGrid(filterCategory = 'all', event = null) {
     card.onclick = () => openGalleryDetailModal(item.id);
     card.innerHTML = `
       <div class="card-img-wrap">
-        <img src="${item.image}" alt="${item.title}" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80';">
+        <img src="${item.thumb || item.image}" loading="lazy" decoding="async" alt="${item.title}" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80';">
         <span class="card-badge ${badgeClass}">${badgeName}</span>
       </div>
       <div class="card-body">
@@ -4212,7 +4212,7 @@ async function previewImageFile(e) {
       alert("최대 20장까지만 업로드 가능합니다.");
       break;
     }
-    const resized = await resizeImage(files[i]);
+    const resized = await resizeImage(files[i], 1280, 1280);
     tempUploadedImages.push(resized);
   }
   
@@ -4232,7 +4232,7 @@ async function previewBranchImageFile(e) {
       alert("최대 20장까지만 업로드 가능합니다.");
       break;
     }
-    const resized = await resizeImage(files[i]);
+    const resized = await resizeImage(files[i], 1280, 1280);
     tempUploadedBranchImages.push(resized);
   }
   
@@ -4240,6 +4240,48 @@ async function previewBranchImageFile(e) {
   renderImagePreviews('branch-img-preview-box', tempUploadedBranchImages, tempMainBranchImageIndex, 'branch');
 }
 
+// ==========================================================================
+// 🖼️ 사진: 큰 사진 + 썸네일을 Firebase Storage에 올리고 DB에는 주소만 저장
+// (실패하면 예전 방식으로 안전하게 대체)
+// ==========================================================================
+function makeThumbDataUrl(dataUrl, maxSide = 420, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      const k = Math.min(1, maxSide / Math.max(w, h));
+      w = Math.round(w * k); h = Math.round(h * k);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
+async function persistActivityImages(images, mainIdx, prefix) {
+  const out = [];
+  for (const img of (images || [])) {
+    let url = img;
+    if (typeof img === 'string' && img.startsWith('data:image')) {
+      try { url = await uploadToSupabase(img, prefix); }
+      catch (e) { console.warn('사진 업로드 실패, 임시로 원본 저장:', e); url = img; }
+    }
+    out.push(url);
+  }
+  const mainSrc = (images || [])[mainIdx] || (images || [])[0];
+  let thumb = '';
+  if (typeof mainSrc === 'string' && mainSrc.startsWith('data:image')) {
+    try {
+      const t = await makeThumbDataUrl(mainSrc);
+      const up = await uploadToSupabase(t, prefix + '_thumb');
+      if (up && !String(up).startsWith('data:')) thumb = up;
+    } catch (e) { console.warn('썸네일 생성/업로드 실패:', e); }
+  }
+  return { images: out, image: out[mainIdx] || out[0] || '', thumb: thumb };
+}
 async function handleBranchSubmit(e) {
   e.preventDefault();
 
@@ -4253,9 +4295,18 @@ async function handleBranchSubmit(e) {
     return;
   }
 
-  const finalImages = tempUploadedBranchImages.length > 0 ? [...tempUploadedBranchImages] : [];
+  let finalImages = tempUploadedBranchImages.length > 0 ? [...tempUploadedBranchImages] : [];
   if (urlInput && finalImages.length === 0) finalImages.push(urlInput);
-  const finalImg = finalImages.length > 0 ? finalImages[tempMainBranchImageIndex] || finalImages[0] : 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80';
+  let finalImg = finalImages.length > 0 ? finalImages[tempMainBranchImageIndex] || finalImages[0] : 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80';
+  // 사진을 서버 저장소에 올리고(큰 사진+썸네일) 주소만 저장
+  const _sb = e.target && e.target.querySelector ? e.target.querySelector('[type=submit]') : null;
+  const _sbText = _sb ? _sb.innerHTML : '';
+  if (_sb) { _sb.disabled = true; _sb.innerHTML = '사진 올리는 중...'; }
+  let finalThumb = '';
+  try {
+    const _p = await persistActivityImages(finalImages, tempMainBranchImageIndex, 'gallery');
+    finalImages = _p.images; finalImg = _p.image || finalImg; finalThumb = _p.thumb;
+  } finally { if (_sb) { _sb.disabled = false; _sb.innerHTML = _sbText; } }
 
   const targetId = editingItemId || Date.now();
 
@@ -4269,6 +4320,7 @@ async function handleBranchSubmit(e) {
     participants: `${region} 회원 어업인`,
     image: finalImg,
     images: finalImages,
+    thumb: finalThumb || (() => { const _o = galleryItems.find(i => i.id === targetId); return (_o && _o.image === finalImg && _o.thumb) ? _o.thumb : ''; })(),
     summary: desc.substring(0, 60),
     agenda: generateAgendaFromContent(desc, title, new Date().toISOString().slice(0, 10)),
     accountingBreakdown: [],
@@ -4327,9 +4379,18 @@ async function handleUnifiedSubmit(e) {
 
   const categoryMap = { field: '현장활동 및 교육', meeting: '총회/이사회', branch: '지부활동' };
   
-  const finalImages = tempUploadedImages.length > 0 ? [...tempUploadedImages] : [];
+  let finalImages = tempUploadedImages.length > 0 ? [...tempUploadedImages] : [];
   if (urlInput && finalImages.length === 0) finalImages.push(urlInput);
-  const finalImg = finalImages.length > 0 ? finalImages[tempMainImageIndex] || finalImages[0] : 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80';
+  let finalImg = finalImages.length > 0 ? finalImages[tempMainImageIndex] || finalImages[0] : 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80';
+  // 사진을 서버 저장소에 올리고(큰 사진+썸네일) 주소만 저장
+  const _sb = e.target && e.target.querySelector ? e.target.querySelector('[type=submit]') : null;
+  const _sbText = _sb ? _sb.innerHTML : '';
+  if (_sb) { _sb.disabled = true; _sb.innerHTML = '사진 올리는 중...'; }
+  let finalThumb = '';
+  try {
+    const _p = await persistActivityImages(finalImages, tempMainImageIndex, 'gallery');
+    finalImages = _p.images; finalImg = _p.image || finalImg; finalThumb = _p.thumb;
+  } finally { if (_sb) { _sb.disabled = false; _sb.innerHTML = _sbText; } }
 
   let breakdown = [];
   let incomeSummaryList = [];
@@ -4369,6 +4430,7 @@ async function handleUnifiedSubmit(e) {
     participants: '전국 지회장 및 회원 어업인',
     image: finalImg,
     images: finalImages,
+    thumb: finalThumb || (() => { const _o = galleryItems.find(i => i.id === targetId); return (_o && _o.image === finalImg && _o.thumb) ? _o.thumb : ''; })(),
     summary: desc.substring(0, 60),
     agenda: generateAgendaFromContent(desc, title, date),
     accountingBreakdown: breakdown,
