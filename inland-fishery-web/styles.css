@@ -1869,3 +1869,7 @@ html, body {
     font-size: 0.92rem !important;
   }
 }
+
+/* 불필요한 끄기 탭 제거 */
+.screen-always-fixed-close-tab, .btn-notice-ctrl-close-sticky { display: none !important; }
+

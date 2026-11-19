@@ -16,14 +16,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800;900&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=20261119_loopfix_v8">
+  <link rel="stylesheet" href="styles.css?v=20261119_cleanup_v9">
 </head>
 <body>
-
-  <!-- 🌟 항상 화면 최상단/우측에 고정되어 떠 있는 전역 공지사항 끄기 탭 -->
-  <button id="always-fixed-close-tab" type="button" onclick="closeAllNoticeModals()" class="screen-always-fixed-close-tab" style="display: none;" title="공지사항 창 끄기">
-    <i class="fa-solid fa-circle-xmark"></i> <span>공지 끄기 탭</span>
-  </button>
 
 
   <!-- Top Bar -->
@@ -251,9 +246,6 @@
               <button type="button" onclick="setNoticeFontSize('xl')" class="btn-notice-font" data-size="xl">가++ 아주크게</button>
             </div>
           </div>
-          <button type="button" onclick="closeWelcomeNotice()" class="btn-notice-ctrl-close-sticky" title="창 끄기">
-            <i class="fa-solid fa-xmark"></i> 끄기 탭
-          </button>
         </div>
       </div>
       <div id="welcome-notice-body">
@@ -670,9 +662,6 @@
                     <button type="button" onclick="setNoticeFontSize('xl')" class="btn-notice-font" data-size="xl">가++</button>
                   </div>
                 </div>
-                <button type="button" onclick="closeNoticeModalFull()" class="btn-notice-ctrl-close-sticky" style="padding: 4px 12px; font-size: 0.8rem;" title="창 끄기">
-                  <i class="fa-solid fa-xmark"></i> 끄기 탭
-                </button>
               </div>
             </div>
           </div>
@@ -1638,7 +1627,7 @@
     window.firebaseUploadString = uploadString;
     window.firebaseGetDownloadURL = getDownloadURL;
   </script>
-  <script defer src="app.js?v=20261119_loopfix_v8"></script>
+  <script defer src="app.js?v=20261119_cleanup_v9"></script>
 
   <!-- 📩 INQUIRY LIST MODAL -->
   <div class="modal" id="inquiry-list-modal">

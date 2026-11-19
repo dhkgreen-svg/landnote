@@ -1842,9 +1842,6 @@ function checkAutoWelcomeNotice() {
                       '<button type="button" onclick="setNoticeFontSize(\'xl\')" class="btn-notice-font" data-size="xl">가++</button>' +
                     '</div>' +
                   '</div>' +
-                  '<button type="button" onclick="closeDynamicModal(\'' + modalId + '\')" class="btn-notice-ctrl-close-sticky" style="padding: 4px 12px; font-size: 0.8rem;" title="창 끄기">' +
-                    '<i class="fa-solid fa-xmark"></i> 끄기 탭' +
-                  '</button>' +
                 '</div>' +
               '</div>' +
               '<div style="background: #F8FAFC; padding: 18px; border-radius: 12px; border: 1px solid #E2E8F0; margin-bottom: 16px;">' +
@@ -3611,9 +3608,6 @@ function openNoticeModal(title, date, content) {
             <button type="button" onclick="setNoticeFontSize('xl')" class="btn-notice-font ${currentNoticeFontSize === 'xl' ? 'active' : ''}" data-size="xl">가++ 아주크게</button>
           </div>
         </div>
-        <button type="button" onclick="closeModal()" class="btn-notice-ctrl-close-sticky" title="공지사항 창 끄기">
-          <i class="fa-solid fa-xmark"></i> 끄기 탭
-        </button>
       </div>
     </div>
 
