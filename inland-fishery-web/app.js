@@ -200,12 +200,32 @@ const firebaseConfig = {
   databaseURL: "https://inland-fishery-default-rtdb.firebaseio.com"
 };
 
-const app = window.firebaseInitializeApp(firebaseConfig);
-const storage = window.firebaseGetStorage(app);
+let firebaseApp = null;
+let firebaseStorage = null;
+
+function getFirebaseStorage() {
+  if (!firebaseStorage && typeof window !== 'undefined') {
+    try {
+      if (typeof window.firebaseInitializeApp === 'function' && typeof window.firebaseGetStorage === 'function') {
+        firebaseApp = window.firebaseInitializeApp(firebaseConfig);
+        firebaseStorage = window.firebaseGetStorage(firebaseApp);
+      }
+    } catch (e) {
+      console.warn('Firebase lazy init warning:', e);
+    }
+  }
+  return firebaseStorage;
+}
 
 async function uploadToSupabase(base64Data, prefix) {
-  if (!base64Data.startsWith('data:image')) return base64Data;
-  const mimeType = base64Data.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,/)[1];
+  if (!base64Data || !base64Data.startsWith('data:image')) return base64Data;
+  const storage = getFirebaseStorage();
+  if (!storage || typeof window.firebaseRef !== 'function' || typeof window.firebaseUploadString !== 'function' || typeof window.firebaseGetDownloadURL !== 'function') {
+    console.warn('Firebase Storage not ready, fallback to raw string');
+    return base64Data;
+  }
+  const match = base64Data.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,/);
+  const mimeType = match ? match[1] : 'image/jpeg';
   const ext = mimeType.split('/')[1] || 'jpg';
   const fileName = 'images/' + prefix + '_' + Date.now() + '_' + Math.floor(Math.random()*10000) + '.' + ext;
   
@@ -216,13 +236,9 @@ async function uploadToSupabase(base64Data, prefix) {
     return downloadURL;
   } catch (error) {
     console.error('Firebase Storage upload error:', error);
-    throw error;
+    return base64Data;
   }
 }
-
-window.addEventListener('error', function(e) {
-  alert('에러 발생: ' + e.message + '\n줄번호: ' + e.lineno);
-});
 // Global State
 function closeWelcomeNotice() {
   document.querySelectorAll('.dynamic-welcome-modal').forEach(el => el.remove());
@@ -1801,7 +1817,7 @@ function checkAutoWelcomeNotice() {
         
         const modalHtml = '<div class="dynamic-welcome-modal" id="' + modalId + '" style="position: fixed; top: ' + topPos + '%; left: ' + leftPos + '%; transform: translate(-50%, -50%); z-index: ' + (1000 + displayIndex) + '; width: 90%; max-width: 500px; display: none;">' +
             '<div style="position: relative; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(8px); padding: 24px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.6);">' +
-              '<button class="modal-close" onclick="closeDynamicModal(\'' + modalId + '\')" style="position: absolute; top: 12px; right: 14px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748B; line-height: 1;">&times;</button>' +
+              '<button type="button" onclick="closeDynamicModal(\'' + modalId + '\')" style="position: absolute; top: 12px; right: 14px; background: #DC2626; color: #FFF; border: none; border-radius: 8px; padding: 6px 14px; font-size: 0.88rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4); z-index: 10;" title="공지사항 닫기"><i class="fa-solid fa-xmark"></i> 닫기</button>' +
               '<div style="text-align: center; margin-bottom: 12px;">' +
                 '<span style="background: #0284C7; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">' +
                   '<i class="fa-solid fa-bullhorn"></i> 사단법인 연합회 공지사항' +
@@ -1865,10 +1881,14 @@ function toggleHideNotice(id, e) {
 function closeDynamicModal(modalId) {
     const el = document.getElementById(modalId);
     if (el) el.remove();
+    document.querySelectorAll('.dynamic-welcome-modal').forEach(m => {
+      if (m.id === modalId) m.remove();
+    });
     if (typeof updateFixedCloseTabVisibility === 'function') {
-      setTimeout(updateFixedCloseTabVisibility, 50);
+      setTimeout(updateFixedCloseTabVisibility, 30);
     }
 }
+window.closeDynamicModal = closeDynamicModal;
 function togglePastNoticesList() {
   const archive = document.getElementById('past-notices-archive');
   const chevron = document.getElementById('past-notice-chevron');
@@ -5181,3 +5201,27 @@ async function deleteApprovedUser(userId) {
 window.openPresidentEditModal = openPresidentEditModal;
 window.closePresidentEditModal = closePresidentEditModal;
 window.savePresidentGreetingData = savePresidentGreetingData;
+
+// ==========================================================================
+// 🌐 GLOBAL WINDOW API EXPORTS (인라인 onclick 및 외부 호출 100% 보장)
+// ==========================================================================
+window.updateFixedCloseTabVisibility = updateFixedCloseTabVisibility;
+window.closeAllNoticeModals = closeAllNoticeModals;
+window.closeModal = closeModal;
+window.closeNoticeModalFull = closeNoticeModalFull;
+window.openNoticeModal = openNoticeModal;
+window.openNoticeModalFull = openNoticeModalFull;
+window.openAboutModal = openAboutModal;
+window.closeAboutModal = closeAboutModal;
+window.closeWelcomeNotice = closeWelcomeNotice;
+window.closeDynamicModal = closeDynamicModal;
+window.dismissNoticeToday = dismissNoticeToday;
+window.dismissWelcomeNoticeToday = dismissWelcomeNoticeToday;
+window.toggleHideNotice = toggleHideNotice;
+window.toggleAccordion = toggleAccordion;
+window.filterDirectory = filterDirectory;
+window.renderGalleryGrid = renderGalleryGrid;
+window.showModalClean = showModalClean;
+window.hideModalClean = hideModalClean;
+window.setNoticeFontSize = setNoticeFontSize;
+window.applyNoticeFontSize = applyNoticeFontSize;

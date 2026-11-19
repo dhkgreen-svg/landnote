@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800;900&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=20261119_fast_v6">
+  <link rel="stylesheet" href="styles.css?v=20261119_unfreeze_v7">
 </head>
 <body>
 
@@ -225,7 +225,7 @@
   <!-- 🌟 FIRST TIME AUTO POPUP: 연합회 최신 공지사항 웰컴 팝업 창 -->
   <div class="modal" id="welcome-notice-modal">
     <div class="modal-content" style="max-width: 620px;">
-      <button class="modal-close" onclick="closeWelcomeNotice()">&times;</button>
+      <button class="modal-close" onclick="closeWelcomeNotice()" title="공지사항 닫기"><i class="fa-solid fa-xmark"></i> 닫기</button>
       
       <div style="text-align: center; margin-bottom: 16px;">
         <span style="background: #0284C7; color: #FFF; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 800;">
@@ -643,7 +643,7 @@
   <!-- DEDICATED FULL MODAL: 연합회 알림 & 법정 결산 공시 전용 팝업 창 -->
   <div class="modal" id="notice-modal">
     <div class="modal-content" style="max-width: 960px;">
-      <button class="modal-close" onclick="closeNoticeModalFull()">&times;</button>
+      <button class="modal-close" onclick="closeNoticeModalFull()" title="공지사항 닫기"><i class="fa-solid fa-xmark"></i> 닫기</button>
       
       <div class="about-section-block">
         <div class="section-header text-center margin-bottom-md">
@@ -739,7 +739,7 @@
   <!-- Detail Modal -->
   <div class="modal" id="detail-modal">
     <div class="modal-content">
-      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <button class="modal-close" onclick="closeModal()" title="공지사항 닫기"><i class="fa-solid fa-xmark"></i> 닫기</button>
       <div id="modal-body-content"></div><div id="detail-action-area" style="margin-top: 15px;"></div>
     </div>
   </div>
@@ -1637,7 +1637,7 @@
     window.firebaseUploadString = uploadString;
     window.firebaseGetDownloadURL = getDownloadURL;
   </script>
-  <script defer src="app.js?v=20261119_fast_v6"></script>
+  <script defer src="app.js?v=20261119_unfreeze_v7"></script>
 
   <!-- 📩 INQUIRY LIST MODAL -->
   <div class="modal" id="inquiry-list-modal">

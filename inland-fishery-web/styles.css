@@ -1460,32 +1460,33 @@ html, body {
 
 /* ALL MODALS STICKY FLOATING CLOSE BUTTON */
 .modal-close {
-  position: sticky;
-  top: 0;
-  float: right;
-  margin-top: 0;
-  margin-right: 0;
-  background: #0A2540;
-  color: #FFF;
-  border: 2px solid #00D4B2;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  font-size: 1.8rem;
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: #DC2626 !important;
+  color: #FFF !important;
+  border: 2px solid #FFF !important;
+  min-width: 68px;
+  height: 38px;
+  border-radius: 19px;
+  padding: 0 14px;
+  font-size: 0.88rem;
+  font-weight: 800;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  gap: 6px;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45);
   z-index: 99999;
   transition: var(--transition);
 }
 
 .modal-close:hover {
-  background: #EF4444;
-  border-color: #EF4444;
-  color: #FFF;
-  transform: scale(1.1) rotate(90deg);
+  background: #B91C1C !important;
+  border-color: #FFF !important;
+  color: #FFF !important;
+  transform: scale(1.06);
 }
 
 /* 📱 SMARTPHONE (9:16 PORTRAIT) PERFECT ZERO-OVERFLOW RESPONSIVE FIX */
