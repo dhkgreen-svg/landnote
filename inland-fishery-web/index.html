@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800;900&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=20261119_notice_v21">
+  <link rel="stylesheet" href="styles.css?v=20261119_notice_v22">
 </head>
 <body>
 
@@ -639,21 +639,6 @@
           <div style="font-size: 1.05rem; font-weight: 800; color: var(--primary); margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
             <span><i class="fa-solid fa-bullhorn" style="color: #EF4444;"></i> 📢 연합회 공식 공지사항</span>
-            <div class="notice-floating-sticky-header">
-              <div class="notice-font-ctrl-bar sticky-bar" id="main-notice-font-ctrl" style="margin-bottom: 0; padding: 4px 10px;">
-                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                  <span class="notice-font-ctrl-label" style="font-size: 0.78rem;">
-                    <i class="fa-solid fa-text-height"></i> 글자크기:
-                  </span>
-                  <div class="notice-font-btn-group">
-                    <button type="button" onclick="setNoticeFontSize('sm')" class="btn-notice-font" data-size="sm">가-</button>
-                    <button type="button" onclick="setNoticeFontSize('md')" class="btn-notice-font" data-size="md">보통</button>
-                    <button type="button" onclick="setNoticeFontSize('lg')" class="btn-notice-font" data-size="lg">가+</button>
-                    <button type="button" onclick="setNoticeFontSize('xl')" class="btn-notice-font" data-size="xl">가++</button>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
             <button type="button" id="btn-add-notice-main" onclick="openPastNoticeEditModal(null, event)" style="background: #0284C7; color: #FFF; border: none; padding: 7px 16px; border-radius: 6px; font-weight: 800; font-size: 0.84rem; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 5px rgba(2,132,199,0.25);">
               <i class="fa-solid fa-plus"></i> + 신규 공지사항 등록 / 작성
@@ -1611,7 +1596,7 @@
     window.firebaseUploadString = uploadString;
     window.firebaseGetDownloadURL = getDownloadURL;
   </script>
-  <script defer src="app.js?v=20261119_notice_v21"></script>
+  <script defer src="app.js?v=20261119_notice_v22"></script>
 
   <!-- 📩 INQUIRY LIST MODAL -->
   <div class="modal" id="inquiry-list-modal">
