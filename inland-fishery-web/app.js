@@ -1681,21 +1681,23 @@ function checkAutoWelcomeNotice() {
                   '<i class="fa-solid fa-bullhorn"></i> 사단법인 연합회 공지사항' +
                 '</span>' +
               '</div>' +
-              '<div class="notice-font-ctrl-bar" style="margin-bottom: 12px; padding: 6px 10px;">' +
-                '<div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">' +
-                  '<span class="notice-font-ctrl-label" style="font-size: 0.78rem;">' +
-                    '<i class="fa-solid fa-text-height"></i> 크기:' +
-                  '</span>' +
-                  '<div class="notice-font-btn-group">' +
-                    '<button type="button" onclick="setNoticeFontSize(\'sm\')" class="btn-notice-font" data-size="sm">가-</button>' +
-                    '<button type="button" onclick="setNoticeFontSize(\'md\')" class="btn-notice-font" data-size="md">보통</button>' +
-                    '<button type="button" onclick="setNoticeFontSize(\'lg\')" class="btn-notice-font" data-size="lg">가+</button>' +
-                    '<button type="button" onclick="setNoticeFontSize(\'xl\')" class="btn-notice-font" data-size="xl">가++</button>' +
+              '<div class="notice-floating-sticky-header">' +
+                '<div class="notice-font-ctrl-bar sticky-bar" style="margin-bottom: 0; padding: 6px 10px;">' +
+                  '<div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">' +
+                    '<span class="notice-font-ctrl-label" style="font-size: 0.78rem;">' +
+                      '<i class="fa-solid fa-text-height"></i> 크기:' +
+                    '</span>' +
+                    '<div class="notice-font-btn-group">' +
+                      '<button type="button" onclick="setNoticeFontSize(\'sm\')" class="btn-notice-font" data-size="sm">가-</button>' +
+                      '<button type="button" onclick="setNoticeFontSize(\'md\')" class="btn-notice-font" data-size="md">보통</button>' +
+                      '<button type="button" onclick="setNoticeFontSize(\'lg\')" class="btn-notice-font" data-size="lg">가+</button>' +
+                      '<button type="button" onclick="setNoticeFontSize(\'xl\')" class="btn-notice-font" data-size="xl">가++</button>' +
+                    '</div>' +
                   '</div>' +
+                  '<button type="button" onclick="closeDynamicModal(\'' + modalId + '\')" class="btn-notice-ctrl-close-sticky" style="padding: 4px 12px; font-size: 0.8rem;" title="창 끄기">' +
+                    '<i class="fa-solid fa-xmark"></i> 끄기 탭' +
+                  '</button>' +
                 '</div>' +
-                '<button type="button" onclick="closeDynamicModal(\'' + modalId + '\')" class="btn-notice-ctrl-close" style="padding: 4px 10px; font-size: 0.78rem;" title="창 끄기">' +
-                  '<i class="fa-solid fa-xmark"></i> 끄기' +
-                '</button>' +
               '</div>' +
               '<div style="background: #F8FAFC; padding: 18px; border-radius: 12px; border: 1px solid #E2E8F0; margin-bottom: 16px;">' +
                 '<span style="background: ' + tagColor + '; color: #FFF; padding: 3px 8px; border-radius: 4px; font-size: 0.76rem; font-weight: 800;">' + tagText + '</span>' +
@@ -3434,22 +3436,24 @@ function openNoticeModal(title, date, content) {
   const conf = NOTICE_FONT_SIZES[currentNoticeFontSize] || NOTICE_FONT_SIZES.md;
   
   modalContent.innerHTML = `
-    <!-- 🔍 공지사항 상세 글자 크기 조절 & 끄기 상단 바 -->
-    <div class="notice-font-ctrl-bar">
-      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-        <span class="notice-font-ctrl-label">
-          <i class="fa-solid fa-text-height"></i> 공지사항 글자 크기
-        </span>
-        <div class="notice-font-btn-group">
-          <button type="button" onclick="setNoticeFontSize('sm')" class="btn-notice-font ${currentNoticeFontSize === 'sm' ? 'active' : ''}" data-size="sm">가- 작게</button>
-          <button type="button" onclick="setNoticeFontSize('md')" class="btn-notice-font ${currentNoticeFontSize === 'md' ? 'active' : ''}" data-size="md">보통</button>
-          <button type="button" onclick="setNoticeFontSize('lg')" class="btn-notice-font ${currentNoticeFontSize === 'lg' ? 'active' : ''}" data-size="lg">가+ 크게</button>
-          <button type="button" onclick="setNoticeFontSize('xl')" class="btn-notice-font ${currentNoticeFontSize === 'xl' ? 'active' : ''}" data-size="xl">가++ 아주크게</button>
+    <!-- 🌟 항상 상단에 고정되어 뜨는 끄기 탭 & 글자 크기 조절 바 -->
+    <div class="notice-floating-sticky-header">
+      <div class="notice-font-ctrl-bar sticky-bar">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span class="notice-font-ctrl-label">
+            <i class="fa-solid fa-text-height"></i> 공지 글자크기
+          </span>
+          <div class="notice-font-btn-group">
+            <button type="button" onclick="setNoticeFontSize('sm')" class="btn-notice-font ${currentNoticeFontSize === 'sm' ? 'active' : ''}" data-size="sm">가- 작게</button>
+            <button type="button" onclick="setNoticeFontSize('md')" class="btn-notice-font ${currentNoticeFontSize === 'md' ? 'active' : ''}" data-size="md">보통</button>
+            <button type="button" onclick="setNoticeFontSize('lg')" class="btn-notice-font ${currentNoticeFontSize === 'lg' ? 'active' : ''}" data-size="lg">가+ 크게</button>
+            <button type="button" onclick="setNoticeFontSize('xl')" class="btn-notice-font ${currentNoticeFontSize === 'xl' ? 'active' : ''}" data-size="xl">가++ 아주크게</button>
+          </div>
         </div>
+        <button type="button" onclick="closeModal()" class="btn-notice-ctrl-close-sticky" title="공지사항 창 끄기">
+          <i class="fa-solid fa-xmark"></i> 끄기 탭
+        </button>
       </div>
-      <button type="button" onclick="closeModal()" class="btn-notice-ctrl-close" title="공지사항 창 끄기">
-        <i class="fa-solid fa-xmark"></i> 끄기 / 닫기
-      </button>
     </div>
 
     <span style="background: #EF4444; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">공지사항</span>
@@ -3459,9 +3463,9 @@ function openNoticeModal(title, date, content) {
       ${content}
     </div>
 
-    <!-- 하단 크고 선명한 끄기(닫기) 버튼 -->
-    <div style="margin-top: 20px; display: flex; justify-content: center; gap: 12px;">
-      <button type="button" onclick="closeModal()" class="btn-notice-bottom-close">
+    <!-- 🌟 스크롤 시에도 화면 하단에 항상 고정되어 떠 있는 끄기 바 -->
+    <div class="notice-sticky-bottom-bar">
+      <button type="button" onclick="closeModal()" class="btn-notice-floating-bottom">
         <i class="fa-solid fa-xmark"></i> 공지사항 창 닫기 (끄기)
       </button>
     </div>

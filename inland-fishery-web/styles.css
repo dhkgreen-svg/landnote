@@ -1706,3 +1706,117 @@ html, body {
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35);
 }
+
+/* ==========================================================================
+   항상 뜨는 공지사항 끄기 탭 & 고정 플로팅 바 (Always-Floating Sticky Close Tab)
+   ========================================================================== */
+
+/* 1. 상단 고정 끄기 탭 바 (스크롤 내려도 항상 상단에 고정) */
+.notice-floating-sticky-header {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  margin-bottom: 14px;
+  background: #FFFFFF;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.notice-font-ctrl-bar.sticky-bar {
+  margin-bottom: 0 !important;
+  background: #F0F9FF;
+  border: 2px solid #0284C7;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);
+}
+
+/* 2. 항상 눈에 띄는 빨간색 끄기 탭 뱃지 버튼 */
+.btn-notice-ctrl-close-sticky {
+  background: #DC2626;
+  color: #FFFFFF;
+  border: 2px solid #EF4444;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.88rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+.btn-notice-ctrl-close-sticky:hover {
+  background: #B91C1C;
+  transform: scale(1.05);
+  box-shadow: 0 5px 16px rgba(185, 28, 28, 0.5);
+}
+
+/* 3. 하단 고정 플로팅 끄기 바 (스크롤 내려도 항상 화면 하단에 고정되어 떠 있음) */
+.notice-sticky-bottom-bar {
+  position: -webkit-sticky;
+  position: sticky;
+  bottom: 0;
+  z-index: 999;
+  padding: 12px 10px 10px;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.98) 75%, rgba(255, 255, 255, 0));
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  border-top: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.btn-notice-floating-bottom {
+  background: #0A2540;
+  color: #FFFFFF;
+  border: 2px solid #00D4B2;
+  padding: 12px 30px;
+  border-radius: 30px;
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 6px 20px rgba(10, 37, 64, 0.35);
+  transition: all 0.2s ease;
+  min-width: 200px;
+}
+.btn-notice-floating-bottom:hover {
+  background: #DC2626;
+  border-color: #EF4444;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.5);
+}
+
+/* 4. 화면 우측 상단 항상 떠 있는 플로팅 끄기 탭 (Floating Quick Close Tab) */
+.notice-screen-floating-close {
+  position: sticky;
+  top: 6px;
+  float: right;
+  z-index: 1001;
+  background: #DC2626;
+  color: #FFFFFF;
+  border: 2px solid #FFFFFF;
+  padding: 6px 14px;
+  border-radius: 18px;
+  font-size: 0.84rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+  transition: all 0.15s ease;
+  user-select: none;
+  margin-bottom: -32px;
+}
+.notice-screen-floating-close:hover {
+  background: #991B1B;
+  transform: scale(1.06);
+}
