@@ -16,30 +16,23 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800;900&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="styles.css?v=20261119_photoview_v17">
+  <link rel="stylesheet" href="styles.css?v=20261119_header_v18">
 </head>
 <body>
 
 
-  <!-- Top Bar -->
+  <!-- Top Bar (가장 위: 이름 및 로그인/로그아웃 고정 영역) -->
   <div class="top-bar">
     <div class="container top-bar-content">
-      <div class="top-info">
-        <span><i class="fa-solid fa-building-columns"></i> 해양수산부 허가 사단법인</span>
-        <span class="divider">|</span>
-        <span><i class="fa-solid fa-phone"></i> 대표문의: <span id="header-contact-tel"></span></span>
-      </div>
-      <div class="top-links">
+      <div class="top-links top-links-desktop">
         <a href="#about-section" onclick="openAboutModal(event)"><i class="fa-solid fa-circle-info"></i> 연합회 소개</a>
         <a href="#notice-section" onclick="openNoticeModalFull(event)"><i class="fa-solid fa-bell"></i> 법정 결산 공시</a>
-        <span id="header-user-status-area" style="margin-left: 10px;">
-          <!-- Dynamically updated by JS (Guest vs Logged-in User) -->
-        </span>
       </div>
+      <div id="header-user-status-main" class="top-user-bar"></div>
     </div>
   </div>
 
-  <!-- Header -->
+  <!-- Header (연합회 공식 간판 — 1줄 풀폭 깔끔 배치) -->
   <header class="header">
     <div class="container header-content">
       <a href="#" class="logo" onclick="window.scrollTo(0,0);return false;">
@@ -49,7 +42,6 @@
           <h1 class="logo-title">전국내수면어로어업인연합회</h1>
         </div>
       </a>
-      <div id="header-user-status-main"></div>
     </div>
   </header>
 
@@ -1621,7 +1613,7 @@
     window.firebaseUploadString = uploadString;
     window.firebaseGetDownloadURL = getDownloadURL;
   </script>
-  <script defer src="app.js?v=20261119_photoview_v17"></script>
+  <script defer src="app.js?v=20261119_header_v18"></script>
 
   <!-- 📩 INQUIRY LIST MODAL -->
   <div class="modal" id="inquiry-list-modal">

@@ -1888,3 +1888,83 @@ html, body {
   font-size: 0.9rem !important;
   z-index: 99999 !important;
 }
+/* 🏛️ 상단 레이아웃 개선 (v18): 이름/로그인은 최상단 바, 연합회 간판은 흰색 바에 1줄 풀폭 */
+.top-bar {
+  padding: 8px 0 !important;
+}
+.top-bar-content {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+.top-user-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+.header-content {
+  height: auto !important;
+  min-height: 76px !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  justify-content: center !important;
+}
+.logo {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  max-width: 100% !important;
+}
+.logo-badge-img {
+  width: 50px !important;
+  height: 50px !important;
+  flex-shrink: 0 !important;
+}
+.logo-text {
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+}
+.logo-badge {
+  font-size: 0.74rem !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+}
+.logo-title {
+  font-size: clamp(1.15rem, 5.2vw, 1.55rem) !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
+  letter-spacing: -0.6px !important;
+  margin: 0 !important;
+}
+
+@media (max-width: 768px) {
+  .top-links-desktop {
+    display: none !important;
+  }
+  .top-bar-content {
+    flex-direction: row !important;
+    justify-content: flex-end !important;
+    padding: 0 12px !important;
+  }
+  .top-user-bar {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .header-content {
+    min-height: 68px !important;
+    padding: 10px 12px !important;
+  }
+  .logo {
+    gap: 10px !important;
+  }
+  .logo-badge-img {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  .logo-title {
+    font-size: clamp(1.05rem, 5.3vw, 1.38rem) !important;
+  }
+}
