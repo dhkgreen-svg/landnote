@@ -22,6 +22,7 @@ export function BackNavigationProvider() {
   const isExitWindowOpenRef = useRef<boolean>(false);
   const steppingPastStaleGuardRef = useRef<boolean>(false);
   const gestureArmedPathRef = useRef<string>('');
+  const mountSessionIdRef = useRef<string>(`m_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`);
 
   const armGuard = (forcePush = false) => {
     if (typeof window === 'undefined') return;
@@ -33,6 +34,7 @@ export function BackNavigationProvider() {
       if (
         !forcePush &&
         currentState.__appBackGuard &&
+        currentState.__appBackMountId === mountSessionIdRef.current &&
         currentState.__appBackPath === window.location.pathname
       ) {
         return;
@@ -41,6 +43,7 @@ export function BackNavigationProvider() {
         {
           ...currentState,
           __appBackGuard: true,
+          __appBackMountId: mountSessionIdRef.current,
           __appBackPath: window.location.pathname,
           __appBackSeq: Date.now(),
         },

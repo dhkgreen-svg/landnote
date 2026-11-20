@@ -102,27 +102,28 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
   useBackHandler(showCourseInfoPopup, () => setShowCourseInfoPopup(false));
   useBackHandler(showAddZonePopup, () => setShowAddZonePopup(false));
 
-  // 새 구역(2구장 등) 생성 직후 해당 구장으로 전환될 때 내부 상태 동기화
+  // 새 구역(2구장 등) 생성 직후 또는 다른 화면(구장명 수정)에서 수정 후 열릴 때 최신 데이터 동기화
   useEffect(() => {
+    const latest = ParkOnStorage.getAllCourses().find((c) => c.id === course.id) || course;
     const nextCnt = Math.max(
       1,
       Math.min(
         12,
-        course.totalCourses ||
-          (course.totalHoles && course.totalHoles >= 9 ? Math.round(course.totalHoles / 9) : 4)
+        latest.totalCourses ||
+          (latest.totalHoles && latest.totalHoles >= 9 ? Math.round(latest.totalHoles / 9) : 4)
       )
     );
     const reqHoles = nextCnt * 9;
-    const syncedHoles: HoleMetadata[] = [...(course.holesMetadata || [])];
+    const syncedHoles: HoleMetadata[] = [...(latest.holesMetadata || [])];
     if (syncedHoles.length < reqHoles) {
       const std = generateStandardHoles(reqHoles);
       for (let i = syncedHoles.length; i < reqHoles; i++) {
         syncedHoles.push(std[i] || { hole: i + 1, par: 3, distanceMeter: 60, isVerified: false });
       }
     }
-    setEditedCourseName(course.name);
-    setEditedAliases(course.aliases || []);
-    setDraftAliasesText((course.aliases || []).join(', '));
+    setEditedCourseName(latest.name);
+    setEditedAliases(latest.aliases || []);
+    setDraftAliasesText((latest.aliases || []).join(', '));
     setEditedCourseCount(nextCnt);
     setEditedHoles(syncedHoles);
     setCurrentCourseIdx(0);

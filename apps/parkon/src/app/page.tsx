@@ -4243,7 +4243,10 @@ export default function HomePage() {
             ParkOnStorage.updateCourse(updated);
             setSelectedCourseForDetail(updated);
             const all = ParkOnStorage.getAllCourses();
-            setCourses(all);
+            setCourses([...all]);
+            if (homeCourse?.id === updated.id) {
+              setHomeCourse(updated);
+            }
           }}
         />
       )}

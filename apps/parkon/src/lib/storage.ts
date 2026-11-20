@@ -1062,7 +1062,7 @@ export const ParkOnStorage = {
       let customCourses: Course[] = customData ? JSON.parse(customData) : [];
       let dirtyCustom = false;
       customCourses = customCourses.map((c) => {
-        if (c.id === 'course-90c7e293-e544-45b5-a8ad-6b240b63504e' || (c.name && c.name.includes('해병'))) {
+        if (c.name && c.name.includes('해병')) {
           dirtyCustom = true;
           return {
             ...c,
@@ -1141,13 +1141,23 @@ export const ParkOnStorage = {
         const expandedHoles = expandedCourses * 9;
 
         if (custom) {
-          const userHoles = Math.max(custom.totalHoles || d.totalHoles, expandedHoles);
-          const userCourses = Math.max(custom.totalCourses || Math.max(1, Math.round(userHoles / 9)), expandedCourses);
-          const holes = (custom.holesMetadata && custom.holesMetadata.length >= userHoles)
-            ? custom.holesMetadata.slice(0, userHoles)
-            : (d.holesMetadata && d.holesMetadata.length >= userHoles
-                ? d.holesMetadata.slice(0, userHoles)
-                : generateStandardHoles(userHoles));
+          const userCourses = custom.totalCourses
+            ? Math.max(1, Math.min(12, custom.totalCourses))
+            : custom.totalHoles
+            ? Math.max(1, Math.min(12, Math.round(custom.totalHoles / 9)))
+            : expandedCourses;
+          const userHoles = custom.totalHoles || userCourses * 9;
+          const sourceHoles =
+            custom.holesMetadata && custom.holesMetadata.length > 0
+              ? custom.holesMetadata
+              : d.holesMetadata || [];
+          const holes =
+            sourceHoles.length >= userHoles
+              ? sourceHoles.slice(0, userHoles)
+              : [
+                  ...sourceHoles,
+                  ...generateStandardHoles(userHoles).slice(sourceHoles.length),
+                ];
 
           return applyCrowdSpecs({
             ...d,
@@ -1604,8 +1614,12 @@ export const ParkOnStorage = {
     try {
       const customData = localStorage.getItem(STORAGE_KEYS.CUSTOM_COURSES);
       const list: Course[] = customData ? JSON.parse(customData) : [];
-      list.unshift(course);
+      const courseWithTs = { ...course, updatedAt: new Date().toISOString() } as Course & { updatedAt: string };
+      list.unshift(courseWithTs);
       localStorage.setItem(STORAGE_KEYS.CUSTOM_COURSES, JSON.stringify(list));
+      window.dispatchEvent(new CustomEvent('parkon_course_updated', { detail: courseWithTs }));
+      window.dispatchEvent(new Event('storage'));
+      import('./memberCodeUtils').then((m) => m.syncMemberDataToCloud(true)).catch(() => {});
     } catch (e) {
       console.error('Failed to add custom course:', e);
     }
@@ -1655,6 +1669,40 @@ export const ParkOnStorage = {
           localStorage.setItem(STORAGE_KEYS.CROWD_HOLE_SPECS, JSON.stringify(specs));
         } catch {}
       }
+
+      // Clear any stale expansion override so user's explicit personal course count always persists
+      try {
+        const expRaw = localStorage.getItem(STORAGE_KEYS.CROWD_COURSE_EXPANSIONS);
+        if (expRaw) {
+          const expMap = JSON.parse(expRaw);
+          const cleanName = (updatedCourse.name || '').replace(/\s+/g, '');
+          let expChanged = false;
+          if (updatedCourse.id && expMap[updatedCourse.id]) {
+            delete expMap[updatedCourse.id];
+            expChanged = true;
+          }
+          if (cleanName && expMap[cleanName]) {
+            delete expMap[cleanName];
+            expChanged = true;
+          }
+          if (expChanged) {
+            localStorage.setItem(STORAGE_KEYS.CROWD_COURSE_EXPANSIONS, JSON.stringify(expMap));
+          }
+        }
+      } catch {}
+
+      // 진행 중인 라운드(스코어보드)가 같은 구장이면 구장명·홀 파수/거리 제원을 즉시 동기화
+      try {
+        const active = this.getCurrentRound();
+        if (active && active.courseId === updatedCourse.id) {
+          const syncedRound = {
+            ...active,
+            courseName: updatedCourse.name,
+            customHolesMetadata: updatedCourse.holesMetadata,
+          };
+          localStorage.setItem(STORAGE_KEYS.CURRENT_ROUND, JSON.stringify(syncedRound));
+        }
+      } catch {}
 
       if (this.getHomeCourseId() === updatedCourse.id) {
         try {

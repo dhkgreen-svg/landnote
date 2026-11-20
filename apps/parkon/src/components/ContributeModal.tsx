@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useState } from 'react';
 import { X, Award, CheckCircle2, Sparkles } from 'lucide-react';
@@ -14,6 +15,7 @@ interface ContributeModalProps {
 
 export function ContributeModal({ course, onClose, onSaved }: ContributeModalProps) {
   const [contributorName, setContributorName] = useState(course.contributorName || '');
+  useBackHandler(true, onClose);
   const [description, setDescription] = useState(course.description || '');
   const [localRule, setLocalRule] = useState(course.holesMetadata[0]?.localRule || '');
   const [selectedHoles, setSelectedHoles] = useState<number>(course.totalHoles || 18);
@@ -112,26 +114,55 @@ export function ContributeModal({ course, onClose, onSaved }: ContributeModalPro
               />
             </div>
 
-            {/* Courses & Holes Selection */}
+            {/* Courses & Holes Selection (공략집 스타일 좌우 - / + 대형 스텝퍼) */}
             <div>
-              <label className="block text-xs font-black text-stone-800 mb-1">
-                코스 및 홀 수 정보 (수정 가능)
+              <label className="block text-xs font-black text-stone-800 mb-1.5">
+                코스 및 홀 수 선택 (좌우 − / + 조정)
               </label>
-              <select
-                value={selectedHoles}
-                onChange={(e) => setSelectedHoles(Number(e.target.value))}
-                className="w-full bg-stone-50 border-2 border-stone-200 rounded-xl px-3.5 py-2.5 text-sm font-bold text-stone-900 outline-none focus:border-emerald-600"
-              >
-                <option value={9}>총 1코스 9홀</option>
-                <option value={18}>총 2코스 18홀 (표준 일반)</option>
-                <option value={27}>총 3코스 27홀</option>
-                <option value={36}>총 4코스 36홀 (표준 대형)</option>
-                <option value={45}>총 5코스 45홀 (밀양 아리랑형)</option>
-                <option value={54}>총 6코스 54홀</option>
-                <option value={63}>총 7코스 63홀 (구미 지산형)</option>
-                <option value={72}>총 8코스 72홀 (창원 대산 / 지산 72홀 증설형)</option>
-                <option value={108}>총 12코스 108홀 (의성 초대형)</option>
-              </select>
+              {(() => {
+                const cnt = Math.max(1, Math.min(12, Math.round((selectedHoles || 18) / 9)));
+                const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
+                return (
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      disabled={cnt <= 1}
+                      onClick={() => setSelectedHoles(Math.max(1, cnt - 1) * 9)}
+                      className={`w-14 h-14 rounded-2xl border-2 text-3xl font-black flex items-center justify-center shrink-0 transition cursor-pointer ${
+                        cnt <= 1
+                          ? 'bg-stone-100 text-stone-300 border-stone-200 cursor-not-allowed'
+                          : 'bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-800 border-stone-300'
+                      }`}
+                      aria-label="코스 수 감소"
+                    >
+                      −
+                    </button>
+                    <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-600 rounded-2xl py-2 px-3 text-center shadow-inner">
+                      <div className="flex items-baseline justify-center gap-1">
+                        <span className="text-3xl font-black text-emerald-950 leading-none">{cnt}</span>
+                        <span className="text-base font-black text-emerald-800">코스</span>
+                        <span className="text-sm font-black text-emerald-700 ml-1">({cnt * 9}홀)</span>
+                      </div>
+                      <div className="text-[11px] font-black text-emerald-700 mt-0.5">
+                        {cnt === 1 ? 'A 코스' : `A~${letters[cnt - 1]} 코스`}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={cnt >= 12}
+                      onClick={() => setSelectedHoles(Math.min(12, cnt + 1) * 9)}
+                      className={`w-14 h-14 rounded-2xl border-2 text-3xl font-black flex items-center justify-center shrink-0 transition cursor-pointer ${
+                        cnt >= 12
+                          ? 'bg-stone-100 text-stone-300 border-stone-200 cursor-not-allowed'
+                          : 'bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-amber-300 border-emerald-800 shadow-md'
+                      }`}
+                      aria-label="코스 수 증가"
+                    >
+                      +
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Description */}

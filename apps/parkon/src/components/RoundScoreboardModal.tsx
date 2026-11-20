@@ -96,7 +96,7 @@ export function RoundScoreboardModal({
         })),
       };
     }
-    const allCourses = courses || ParkOnStorage.getAllCourses();
+    const allCourses = typeof window !== 'undefined' ? ParkOnStorage.getAllCourses() : (courses || []);
     const found = allCourses.find((c) => c.id === currentRound.courseId || c.name === currentRound.courseName);
     if (found && found.holesMetadata && found.holesMetadata.length > 0) {
       return found;

@@ -5,6 +5,8 @@ import { X, Check, Settings, Sparkles, MapPin, Flag, Edit3, PlusCircle } from 'l
 import { Course } from '@/types/parkon';
 import { ParkOnStorage } from '@/lib/storage';
 import { generateStandardHoles } from '@/lib/defaultCourses';
+import { useBackHandler } from '@/lib/backNavigation';
+import { reportCourseBigDataLog } from '@/lib/courseBigData';
 
 interface CourseEditModalProps {
   isOpen: boolean;
@@ -24,27 +26,36 @@ export const CourseEditModal: React.FC<CourseEditModalProps> = ({
   // 모드 분기: 'RENAME' (기존 구장명 오타/정정) | 'NEW_STORE' (신규 신설 매장/구장 등록)
   const [editMode, setEditMode] = useState<'RENAME' | 'NEW_STORE'>('RENAME');
   const [courseName, setCourseName] = useState<string>('');
+  const [aliasesText, setAliasesText] = useState<string>('');
   const [region, setRegion] = useState<string>('');
   const [address, setAddress] = useState<string>('');
   const [totalHoles, setTotalHoles] = useState<number>(18);
   const [contributor, setContributor] = useState<string>('');
+  const [freshCourse, setFreshCourse] = useState<Course | null>(null);
 
   useEffect(() => {
     if (course && isOpen) {
+      const latest = ParkOnStorage.getAllCourses().find((c) => c.id === course.id) || course;
+      setFreshCourse(latest);
       setEditMode('RENAME');
-      setCourseName(course.name || '');
-      setRegion(course.region || '');
-      setAddress(course.address || '');
-      setTotalHoles(course.totalHoles || 18);
+      setCourseName(latest.name || '');
+      setAliasesText((latest.aliases || []).join(', '));
+      setRegion(latest.region || '');
+      setAddress(latest.address || '');
+      const latestCourses = latest.totalCourses || Math.max(1, Math.round((latest.totalHoles || 18) / 9));
+      setTotalHoles(latest.totalHoles || latestCourses * 9);
       setContributor(
-        course.contributorName ||
+        latest.contributorName ||
         ParkOnStorage.getUserDisplayName() ||
         (isJapanese ? 'PARKY会員' : '파키 정회원')
       );
     }
   }, [course, isOpen, isJapanese]);
 
+  useBackHandler(isOpen, onClose);
+
   if (!isOpen || !course) return null;
+  const activeCourse = freshCourse && freshCourse.id === course.id ? freshCourse : course;
 
   const coursesCount = Math.max(1, Math.round(totalHoles / 9));
   const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
@@ -55,14 +66,16 @@ export const CourseEditModal: React.FC<CourseEditModalProps> = ({
     if (mode === 'NEW_STORE') {
       // 신규 구장 모드로 전환 시 기본 이름 클리어
       setCourseName('');
+      setAliasesText('');
       setAddress('');
       setTotalHoles(18);
     } else {
-      // 기존 구장 정정 모드 복귀
-      setCourseName(course.name || '');
-      setRegion(course.region || '');
-      setAddress(course.address || '');
-      setTotalHoles(course.totalHoles || 18);
+      // 기존 구장 정정 모드 복귀 (최신 동기화 데이터 반영)
+      setCourseName(activeCourse.name || '');
+      setAliasesText((activeCourse.aliases || []).join(', '));
+      setRegion(activeCourse.region || '');
+      setAddress(activeCourse.address || '');
+      setTotalHoles(activeCourse.totalHoles || 18);
     }
   };
 
@@ -76,6 +89,15 @@ export const CourseEditModal: React.FC<CourseEditModalProps> = ({
     const cleanShortName = cleanName.replace(/파크골프장|파크골프/g, '').trim() || cleanName;
     const todayStr = new Date().toISOString().split('T')[0];
 
+    const parsedAliases = Array.from(
+      new Set(
+        aliasesText
+          .split(/[,，]/)
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0 && s !== cleanName)
+      )
+    ).slice(0, 10);
+
     if (editMode === 'NEW_STORE') {
       // [분기 2]: 신규 신설 구장 DB 신규 등록
       const newCourseId = `course_custom_${Date.now()}`;
@@ -85,6 +107,7 @@ export const CourseEditModal: React.FC<CourseEditModalProps> = ({
         id: newCourseId,
         name: cleanName,
         nameKo: cleanShortName,
+        aliases: parsedAliases.length > 0 ? parsedAliases : undefined,
         region: region.trim() || '신규 등록 구장',
         address: address.trim() || '',
         totalCourses: coursesCount,
@@ -97,6 +120,16 @@ export const CourseEditModal: React.FC<CourseEditModalProps> = ({
 
       // 1. 커스텀 구장 DB 영구 저장
       ParkOnStorage.addCustomCourse(newCourse);
+      reportCourseBigDataLog({
+        eventType: 'ADD_ZONE_COURSE',
+        courseId: newCourse.id,
+        courseName: cleanName,
+        aliases: parsedAliases,
+        region: newCourse.region,
+        totalCourses: coursesCount,
+        totalHoles,
+        contributorName: newCourse.contributorName,
+      });
       // 2. 부모 및 현재 화면에 즉시 신규 구장 선택 적용
       onSave(newCourse);
       alert(isJapanese
@@ -105,26 +138,41 @@ export const CourseEditModal: React.FC<CourseEditModalProps> = ({
       );
       onClose();
     } else {
-      // [분기 1]: 기존 구장명 오타/정정
+      // [분기 1]: 기존 구장명 오타/정정 (기존 입력된 홀 제원 보존 + 부족분만 보강)
+      const baseHoles = activeCourse.holesMetadata ? [...activeCourse.holesMetadata] : [];
       const updatedHoles =
-        course.holesMetadata && course.holesMetadata.length >= totalHoles
-          ? course.holesMetadata.slice(0, totalHoles)
-          : generateStandardHoles(totalHoles);
+        baseHoles.length >= totalHoles
+          ? baseHoles.slice(0, totalHoles)
+          : [
+              ...baseHoles,
+              ...generateStandardHoles(totalHoles).slice(baseHoles.length),
+            ];
 
       const updatedCourse: Course = {
-        ...course,
+        ...activeCourse,
         name: cleanName,
         nameKo: cleanShortName,
-        region: region.trim() || course.region,
-        address: address.trim() || course.address,
+        aliases: parsedAliases.length > 0 ? parsedAliases : undefined,
+        region: region.trim() || activeCourse.region,
+        address: address.trim() || activeCourse.address,
         totalCourses: coursesCount,
         totalHoles: totalHoles,
         holesMetadata: updatedHoles,
-        contributorName: contributor.trim() || course.contributorName || '파키 정회원',
+        contributorName: contributor.trim() || activeCourse.contributorName || '파키 정회원',
         contributedAt: todayStr,
       };
 
       ParkOnStorage.updateCourse(updatedCourse);
+      reportCourseBigDataLog({
+        eventType: 'COURSE_INFO_EDIT',
+        courseId: updatedCourse.id,
+        courseName: cleanName,
+        aliases: parsedAliases,
+        region: updatedCourse.region,
+        totalCourses: coursesCount,
+        totalHoles,
+        contributorName: updatedCourse.contributorName,
+      });
       onSave(updatedCourse);
       onClose();
     }
@@ -232,8 +280,23 @@ export const CourseEditModal: React.FC<CourseEditModalProps> = ({
             </div>
           </div>
 
-          {/* 2. 총 코스 및 홀 수 */}
+          {/* 1-2. 구장 별칭 (선택 · 검색 연동) */}
           <div className="space-y-1">
+            <label className="text-xs font-bold text-stone-700 block">
+              구장 별칭 <span className="text-[10px] text-stone-400 font-medium">(선택 · 쉼표로 여러 개)</span>
+            </label>
+            <input
+              type="text"
+              data-testid="edit-course-aliases-input"
+              value={aliasesText}
+              onChange={(e) => setAliasesText(e.target.value)}
+              placeholder="예: 삼국유사, 충주호, 강나루"
+              className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-xs font-bold text-stone-900 placeholder:text-stone-400 outline-none focus:border-emerald-600"
+            />
+          </div>
+
+          {/* 2. 총 코스 및 홀 수 (좌우 - / + 대형 스텝퍼) */}
+          <div className="space-y-1.5">
             <label className="text-xs font-black text-stone-800 flex items-center justify-between">
               <span className="flex items-center gap-1">
                 <Settings className="w-3.5 h-3.5 text-emerald-600" />
@@ -243,21 +306,55 @@ export const CourseEditModal: React.FC<CourseEditModalProps> = ({
                 {courseLettersStr}
               </span>
             </label>
-            <select
-              value={totalHoles}
-              onChange={(e) => setTotalHoles(Number(e.target.value))}
-              className="w-full bg-stone-50 border-2 border-emerald-500 rounded-xl px-3 py-2.5 text-sm font-black text-stone-900 outline-none cursor-pointer"
-            >
-              <option value={9}>총 1코스 9홀 (A코스)</option>
-              <option value={18}>총 2코스 18홀 (A, B코스)</option>
-              <option value={27}>총 3코스 27홀 (A, B, C코스)</option>
-              <option value={36}>총 4코스 36홀 (A, B, C, D코스)</option>
-              <option value={45}>총 5코스 45홀 (A~E코스)</option>
-              <option value={54}>총 6코스 54홀 (A~F코스)</option>
-              <option value={63}>총 7코스 63홀 (A~G코스)</option>
-              <option value={72}>총 8코스 72홀 (A~H코스)</option>
-              <option value={108}>총 12코스 108홀 (A~L코스)</option>
-            </select>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                data-testid="btn-course-edit-minus"
+                disabled={coursesCount <= 1}
+                onClick={() => setTotalHoles(Math.max(1, coursesCount - 1) * 9)}
+                className={`w-14 h-14 rounded-2xl border-2 text-3xl font-black flex items-center justify-center shrink-0 transition cursor-pointer ${
+                  coursesCount <= 1
+                    ? 'bg-stone-100 text-stone-300 border-stone-200 cursor-not-allowed'
+                    : 'bg-stone-100 hover:bg-stone-200 active:scale-95 text-stone-800 border-stone-300'
+                }`}
+                aria-label="코스 수 감소"
+              >
+                −
+              </button>
+
+              <div className="flex-1 bg-emerald-50/80 border-2 border-emerald-600 rounded-2xl py-2 px-3 text-center shadow-inner">
+                <div className="flex items-baseline justify-center gap-1">
+                  <span
+                    data-testid="text-course-edit-count"
+                    className="text-3xl font-black text-emerald-950 leading-none"
+                  >
+                    {coursesCount}
+                  </span>
+                  <span className="text-base font-black text-emerald-800">코스</span>
+                  <span className="text-sm font-black text-emerald-700 ml-1">({totalHoles}홀)</span>
+                </div>
+                <div className="text-[11px] font-black text-emerald-700 mt-0.5">
+                  {coursesCount === 1
+                    ? 'A 코스'
+                    : `A~${COURSE_LETTERS[coursesCount - 1]} 코스`}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                data-testid="btn-course-edit-plus"
+                disabled={coursesCount >= 12}
+                onClick={() => setTotalHoles(Math.min(12, coursesCount + 1) * 9)}
+                className={`w-14 h-14 rounded-2xl border-2 text-3xl font-black flex items-center justify-center shrink-0 transition cursor-pointer ${
+                  coursesCount >= 12
+                    ? 'bg-stone-100 text-stone-300 border-stone-200 cursor-not-allowed'
+                    : 'bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-amber-300 border-emerald-800 shadow-md'
+                }`}
+                aria-label="코스 수 증가"
+              >
+                +
+              </button>
+            </div>
           </div>
 
           {/* 3. 지역 및 상세 주소 (선택) */}

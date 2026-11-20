@@ -981,9 +981,33 @@ export async function POST(req: NextRequest) {
       ...(existing?.crowdSpecs && typeof existing.crowdSpecs === 'object' ? existing.crowdSpecs : {}),
       ...(body.crowdSpecs && typeof body.crowdSpecs === 'object' ? body.crowdSpecs : {}),
     };
+    // 무손실 타임스탬프 기반 개인 수정 구장(customCourses) 병합 (최신 updatedAt 우선 영구 보존)
+    const customCourseMap = new Map<string, any>();
+    if (Array.isArray(existing?.customCourses)) {
+      existing!.customCourses!.forEach((c: any) => {
+        if (c && c.id) customCourseMap.set(c.id, c);
+      });
+    }
+    if (Array.isArray(body.customCourses)) {
+      body.customCourses.forEach((c: any) => {
+        if (!c || !c.id) return;
+        const prev = customCourseMap.get(c.id);
+        if (!prev) {
+          customCourseMap.set(c.id, c);
+        } else {
+          const tNew = new Date(c.updatedAt || c.contributedAt || 0).getTime();
+          const tPrev = new Date(prev.updatedAt || prev.contributedAt || 0).getTime();
+          if (tNew >= tPrev) {
+            customCourseMap.set(c.id, c);
+          }
+        }
+      });
+    }
+    const mergedCustomCourses = Array.from(customCourseMap.values());
     const record: MemberSyncRecord = {
       ...existing,
       ...body,
+      customCourses: mergedCustomCourses,
       crowdSpecs: mergedCrowdSpecs,
       yardageNotes: mergedYardageNotes,
       deletedYardageIds: Array.from(mergedDelYSet),

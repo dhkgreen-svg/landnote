@@ -55,8 +55,8 @@ export default function RoundPlayPage() {
       if (active && (active.id === roundId || !roundId) && active.courseId) {
         const all = ParkOnStorage.getAllCourses();
         const found = all.find((c) => c.id === active.courseId) || all[0];
-        if (found && active.customHolesMetadata && active.customHolesMetadata.length > 0) {
-          return { ...found, holesMetadata: active.customHolesMetadata, isSpecsVerified: true };
+        if (found) {
+          return found;
         }
         return found || null;
       }
@@ -300,8 +300,19 @@ export default function RoundPlayPage() {
 
   useEffect(() => {
     const onYardageUpdated = () => setYardageRevision((v) => v + 1);
+    const onCourseUpdated = () => {
+      const active = ParkOnStorage.getCurrentRound();
+      const targetId = active?.courseId;
+      if (!targetId) return;
+      const fresh = ParkOnStorage.getAllCourses().find((c) => c.id === targetId);
+      if (fresh) setCourse(fresh);
+    };
     window.addEventListener('parkon_yardage_updated', onYardageUpdated);
-    return () => window.removeEventListener('parkon_yardage_updated', onYardageUpdated);
+    window.addEventListener('parkon_course_updated', onCourseUpdated);
+    return () => {
+      window.removeEventListener('parkon_yardage_updated', onYardageUpdated);
+      window.removeEventListener('parkon_course_updated', onCourseUpdated);
+    };
   }, []);
 
   useEffect(() => {
@@ -534,10 +545,6 @@ export default function RoundPlayPage() {
             const allCourses = ParkOnStorage.getAllCourses();
             const foundCourse = allCourses.find((c) => c.id === restored.courseId) || allCourses[0];
             if (foundCourse) {
-              if (restored.customHolesMetadata && restored.customHolesMetadata.length > 0) {
-                foundCourse.holesMetadata = restored.customHolesMetadata;
-                foundCourse.isSpecsVerified = true;
-              }
               setCourse(foundCourse);
             }
           } else {
@@ -674,19 +681,7 @@ export default function RoundPlayPage() {
       }
     }
 
-    // 스마트폰 물리 뒤로가기 & 제스처 실수 방어막 (History Lock)
-    if (typeof window !== 'undefined') {
-      window.history.pushState({ parkonRoundLock: true }, '');
-    }
-
-    const handlePopState = () => {
-      // Re-push history state to prevent accidentally leaving the page
-      if (typeof window !== 'undefined') {
-        window.history.pushState({ parkonRoundLock: true }, '');
-      }
-      setShowExitConfirm(true);
-    };
-    window.addEventListener('popstate', handlePopState);
+    // 스마트폰 뒤로가기는 전역 BackNavigationProvider + useBackHandler 스택이 통합 관리
 
     // 탭 닫기 전 자동 저장
     const handleBeforeUnload = () => {
@@ -717,7 +712,6 @@ export default function RoundPlayPage() {
 
       return () => {
         cleanupWakeLockGuard();
-        window.removeEventListener('popstate', handlePopState);
         window.removeEventListener('beforeunload', handleBeforeUnload);
         window.removeEventListener('online', handleOnline);
         window.removeEventListener('offline', handleOffline);
@@ -726,7 +720,6 @@ export default function RoundPlayPage() {
 
     return () => {
       cleanupWakeLockGuard();
-      window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [roundId, router]);
@@ -1149,7 +1142,7 @@ export default function RoundPlayPage() {
 
   // 1순위: session에 실시간 동기화된 customHolesMetadata (팀원 전원 즉각 일치)
   // 2순위: course.holesMetadata
-  const activeHolesMetadata = session?.customHolesMetadata || course?.holesMetadata || [];
+  const activeHolesMetadata = (course?.holesMetadata && course.holesMetadata.length > 0) ? course.holesMetadata : (session?.customHolesMetadata || []);
   const holeMetadata = activeHolesMetadata.find((m) => Number(m.hole) === baseHoleNumber) || {
     hole: baseHoleNumber,
     par: 3,
@@ -1474,7 +1467,7 @@ export default function RoundPlayPage() {
 
   // Available courses for this facility
   const totalNumCourses = course.totalCourses || Math.max(1, Math.round(course.totalHoles / 9));
-  const allAvailableLetters = COURSE_LETTERS.slice(0, Math.max(4, totalNumCourses));
+  const allAvailableLetters = COURSE_LETTERS.slice(0, Math.max(1, totalNumCourses));
 
   // Open course and hole picker modal (조장 전용)
   const openCoursePicker = () => {
