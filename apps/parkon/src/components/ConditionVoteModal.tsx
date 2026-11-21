@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useEffect, useState } from 'react';
 import { X, CheckCircle2, Sparkles, Clock } from 'lucide-react';
@@ -45,6 +46,7 @@ export function ConditionVoteModal({
     }
   }, [courseId, isOpen]);
 
+  useBackHandler(Boolean(isOpen && evaluation), onClose);
   if (!isOpen || !evaluation) return null;
 
   const { state, statusBadgeText, isRealtime1Hour } = evaluation;

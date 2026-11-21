@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useEffect, useState } from 'react';
 import { X, Sparkles, ShieldCheck, Lock, Smartphone, ArrowRight } from 'lucide-react';
@@ -140,6 +141,7 @@ export function WelcomeModal({ onOpenKakaoLogin, onOpenInstallGuide }: WelcomeMo
     setIsOpen(false);
   };
 
+  useBackHandler(isOpen, handleClose);
   if (!isOpen) return null;
 
   return (

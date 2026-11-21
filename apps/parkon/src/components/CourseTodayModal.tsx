@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -211,6 +212,7 @@ export function CourseTodayModal({
   course,
 }: CourseTodayModalProps) {
   const { isJapanese } = useTranslation();
+  useBackHandler(Boolean(isOpen && course), onClose);
   if (!isOpen || !course) return null;
 
   const dual = getCourseDualName(course, isJapanese);

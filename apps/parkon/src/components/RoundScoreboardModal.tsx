@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import {
@@ -520,6 +521,13 @@ export function RoundScoreboardModal({
     }
   };
 
+  useBackHandler(Boolean(isOpen && currentRound), onClose);
+  useBackHandler(Boolean(isOpen && showCourseManagePopup), () => setShowCourseManagePopup(false));
+  useBackHandler(Boolean(isOpen && showIntegratedPopup), () => setShowIntegratedPopup(false));
+  useBackHandler(Boolean(isOpen && showPhotosPopup), () => setShowPhotosPopup(false));
+  useBackHandler(Boolean(isOpen && showCertPopup), () => setShowCertPopup(false));
+  useBackHandler(Boolean(isOpen && previewImageResult), () => setPreviewImageResult(null));
+  useBackHandler(Boolean(isOpen && selectedPhotoForZoom), () => setSelectedPhotoForZoom(null));
   if (!isOpen || !currentRound) return null;
 
   // Date and exact immutable timestamps

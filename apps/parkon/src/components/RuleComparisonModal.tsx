@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React from 'react';
 import { X, AlertTriangle, ShieldCheck, Flag } from 'lucide-react';
@@ -11,6 +12,7 @@ interface RuleComparisonModalProps {
 }
 
 export function RuleComparisonModal({ onClose, isJp }: RuleComparisonModalProps) {
+  useBackHandler(true, onClose);
   const { isJapanese } = useTranslation();
   const activeJp = isJp ?? isJapanese;
 

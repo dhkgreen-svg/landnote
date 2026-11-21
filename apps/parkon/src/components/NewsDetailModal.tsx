@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useState } from 'react';
 import {
@@ -45,6 +46,7 @@ export function NewsDetailModal({
     setLiked(false);
   }, [news, isJapanese]);
 
+  useBackHandler(Boolean(news), onClose);
   if (!news) return null;
 
   const resolved = resolveNewsDisplay(news, isJapanese);

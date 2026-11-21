@@ -111,9 +111,6 @@ export default function HomePage() {
   useBackHandler(showLeaderboard100Popup, () => setShowLeaderboard100Popup(false));
   useBackHandler(Boolean(showRankingDetailPopup), () => setShowRankingDetailPopup(null));
   useBackHandler(showStatsSearchModal, () => setShowStatsSearchModal(false));
-  useBackHandler(showCourseTodayModal, () => setShowCourseTodayModal(false));
-  useBackHandler(showCourseEditModal, () => setShowCourseEditModal(false));
-  useBackHandler(showPhotoViewerModal, () => setShowPhotoViewerModal(false));
   const [shareToastMessage, setShareToastMessage] = useState<string>('✓ 파키 앱 (PARKY APP) 주소(https://www.parkgolfallinone.com)가 복사되었습니다!');
 
   const getLocalizedCourseName = (c: Course | null | undefined): string => {

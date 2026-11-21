@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useEffect, useState } from 'react';
 import { ExternalLink, Copy, Check, X, Compass, Share } from 'lucide-react';
@@ -44,6 +45,7 @@ export function InAppBrowserGuideModal() {
     }
   }, [isJapanese]);
 
+  useBackHandler(show, () => setShow(false));
   if (!show) return null;
 
   const handleCopy = async () => {

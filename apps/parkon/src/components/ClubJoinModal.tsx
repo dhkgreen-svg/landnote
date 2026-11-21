@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useState, useEffect } from 'react';
 import { X, Check, Users, Phone, MapPin, Sparkles, Send, Shield, Info, Calendar } from 'lucide-react';
@@ -56,6 +57,7 @@ export function ClubJoinModal({
     }
   }, [isOpen]);
 
+  useBackHandler(Boolean(isOpen && club), onClose);
   if (!isOpen || !club) return null;
 
   const handleSubmit = (e: React.FormEvent) => {

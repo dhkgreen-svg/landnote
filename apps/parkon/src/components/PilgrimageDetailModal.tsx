@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useState } from 'react';
 import { X, Trophy, CheckCircle2, MapPin, Navigation, Share2, Sparkles, Award, Star, Compass, ThumbsUp, Calendar } from 'lucide-react';
@@ -25,6 +26,7 @@ export function PilgrimageDetailModal({
   const [showCertificate, setShowCertificate] = useState(false);
   const [copiedToast, setCopiedToast] = useState(false);
 
+  useBackHandler(Boolean(isOpen && course), onClose);
   if (!isOpen || !course) return null;
 
   const userRecord = PilgrimageStorage.getUserCourseRecord(course.courseId, completedRounds);

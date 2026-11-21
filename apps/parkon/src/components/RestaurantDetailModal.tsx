@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useState } from 'react';
 import {
@@ -50,6 +51,7 @@ export function RestaurantDetailModal({
     setShowSuccessToast(false);
   }, [restaurant]);
 
+  useBackHandler(Boolean(isOpen && currentRest), onClose);
   if (!isOpen || !currentRest) return null;
 
   const handleOpenKakaoMap = () => {

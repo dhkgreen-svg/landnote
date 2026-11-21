@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React from 'react';
 import { AlertTriangle, Coffee, Flag, LogOut, ArrowRight, UserCheck, X, Check, ShieldAlert, CheckCircle2, RotateCcw } from 'lucide-react';
@@ -97,6 +98,13 @@ export function RoundExceptionModals({
   onDiscardAndExitHome,
 }: RoundExceptionModalsProps) {
   const { isJapanese, isEnglish } = useTranslation();
+  useBackHandler(Boolean(isExitModalOpen), onCloseExitModal);
+  useBackHandler(Boolean(isRestModalOpen), onCloseRestModal);
+  useBackHandler(Boolean(isLeaderDelegateModalOpen), onCloseLeaderDelegateModal);
+  useBackHandler(Boolean(isSwitchCourseModalOpen), onCloseSwitchCourseModal);
+  useBackHandler(Boolean(isSaveWarningModalOpen), onCloseSaveWarningModal);
+  useBackHandler(Boolean(isHoleConfirmModalOpen && onCloseHoleConfirmModal), () => onCloseHoleConfirmModal?.());
+  useBackHandler(Boolean(isRoundSaveOptionModalOpen && onCloseRoundSaveOptionModal), () => onCloseRoundSaveOptionModal?.());
 
   return (
     <>

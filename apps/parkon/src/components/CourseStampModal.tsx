@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useEffect, useState } from 'react';
 import { Course, CourseCompletionModalInfo, RoundPlayer, RoundSession } from '../types/parkon';
@@ -88,6 +89,7 @@ export const CourseStampModal: React.FC<CourseStampModalProps> = ({
     }
   };
 
+  useBackHandler(Boolean(isOpen && info && showCourseSelector), () => setShowCourseSelector(false));
   if (!isOpen || !info) return null;
 
   // 9홀 누적 스코어 랭킹 계산

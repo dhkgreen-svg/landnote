@@ -58,6 +58,7 @@ import { RoundScoreboardModal } from '@/components/RoundScoreboardModal';
 import { PaperScorecardModal } from '@/components/PaperScorecardModal';
 import { RestaurantStorage } from '@/lib/restaurantStorage';
 import { ParShotAnalyticsWidget } from '@/components/ParShotAnalyticsWidget';
+import { useBackHandler } from '@/lib/backNavigation';
 
 function ChronicleContent() {
   const router = useRouter();
@@ -85,6 +86,10 @@ function ChronicleContent() {
   const [showPaperScorecardModal, setShowPaperScorecardModal] = useState<boolean>(false);
   const [timelineFilter, setTimelineFilter] = useState<'OFFICIAL' | 'ALL'>('OFFICIAL');
   const [gourmetBadgeCount, setGourmetBadgeCount] = useState<number>(0);
+
+  // 연대기 페이지 인라인 모달 뒤로가기 1단계 복귀 연동
+  useBackHandler(Boolean(selectedMedalModal), () => setSelectedMedalModal(null));
+  useBackHandler(Boolean(selectedCompanionCard), () => setSelectedCompanionCard(null));
 
   useEffect(() => {
     setGourmetBadgeCount(RestaurantStorage.getGourmetBadgeCount());

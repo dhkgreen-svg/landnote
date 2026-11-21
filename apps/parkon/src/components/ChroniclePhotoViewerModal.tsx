@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useState } from 'react';
 import { X, Calendar, MapPin, Users, Award, Trash2, Share2, Edit2, Check, Sparkles } from 'lucide-react';
@@ -33,6 +34,7 @@ export function ChroniclePhotoViewerModal({
     }
   }, [photo]);
 
+  useBackHandler(Boolean(isOpen && photo), onClose);
   if (!isOpen || !photo) return null;
 
   const handleSaveMemo = async () => {

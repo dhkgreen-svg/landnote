@@ -1,4 +1,5 @@
 'use client';
+import { useBackHandler } from '@/lib/backNavigation';
 
 import React, { useState } from 'react';
 import {
@@ -46,6 +47,7 @@ export function TournamentDetailModal({
     setIsTranslated(needsTranslation);
   }, [notice, isJapanese]);
 
+  useBackHandler(Boolean(notice), onClose);
   if (!notice) return null;
 
   const resolved = resolveNoticeDisplay(notice, isJapanese);
