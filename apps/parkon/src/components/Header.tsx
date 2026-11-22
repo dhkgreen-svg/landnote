@@ -43,13 +43,7 @@ export function Header() {
 
   const [urlUser, setUrlUser] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      const u = new URLSearchParams(window.location.search).get('user');
-      if (u) return u;
-      const stored =
-        ParkOnStorage.getUserDisplayName() ||
-        ParkOnStorage.getUserProfile()?.userName ||
-        ParkOnStorage.getKakaoUser()?.realName;
-      if (stored) return stored;
+      return new URLSearchParams(window.location.search).get('user') || '';
     }
     return '';
   });
@@ -61,13 +55,14 @@ export function Header() {
     pathname !== '/round/result'
   );
 
+  const effectiveUrlUser = urlUser && !isPlaceholderName(urlUser) ? urlUser : '';
   const rawDisplayName = mounted
-    ? (urlUser ||
+    ? (effectiveUrlUser ||
        (kakaoUser
         ? (kakaoUser.preferredDisplay === 'ALIAS'
             ? kakaoUser.aliasName || kakaoUser.realName
             : kakaoUser.realName || kakaoUser.nickname)
-        : (userProfile?.userName || '')) || '')
+        : (userProfile?.activeNickname || userProfile?.userName || '')) || '')
     : '';
 
   const hasRegisteredName = mounted && Boolean(
@@ -87,10 +82,8 @@ export function Header() {
     setMounted(true);
     const checkUser = () => {
       if (typeof window !== 'undefined') {
-        const u = new URLSearchParams(window.location.search).get('user');
-        if (u) {
-          setUrlUser(u);
-        }
+        const u = new URLSearchParams(window.location.search).get('user') || '';
+        setUrlUser(u);
       }
       setKakaoUser(ParkOnStorage.getKakaoUser());
       setUserProfile(ParkOnStorage.getUserProfile());

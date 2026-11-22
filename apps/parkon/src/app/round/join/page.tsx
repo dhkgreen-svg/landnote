@@ -9,7 +9,7 @@ import { Course, RoundSession } from '@/types/parkon';
 import { CheckCircle2, User, Users, MapPin, ArrowRight, Home, Sparkles, ShieldCheck, Smartphone, Search, MessageCircle, AlertCircle } from 'lucide-react';
 import { KakaoLoginModal } from '@/components/KakaoLoginModal';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
-import { getSavedMemberCode, MEMBER_CODE_STORAGE_KEY, normalizeMemberCode, fetchAndRestoreMemberData } from '@/lib/memberCodeUtils';
+import { getOrGenerateMemberCode, getSavedMemberCode, MEMBER_CODE_STORAGE_KEY, normalizeMemberCode, fetchAndRestoreMemberData } from '@/lib/memberCodeUtils';
 import { isSampleOrPlaceholder, isDefaultCompanionName } from '@/lib/playerUtils';
 import { supabase } from '@/lib/supabase';
 
@@ -238,11 +238,40 @@ function RoundJoinContent() {
 
     if (!isGuest) {
       try {
-        const currentProfile = ParkOnStorage.getUserProfile();
+        const currentProfile = ParkOnStorage.getUserProfile() || {};
+        const nextNicknames = Array.from(
+          new Set([trimmedName, ...(Array.isArray(currentProfile.nicknames) ? currentProfile.nicknames : [])])
+        );
         ParkOnStorage.saveUserProfile({
           ...currentProfile,
           userName: trimmedName,
+          realName: trimmedName,
+          activeNickname: trimmedName,
+          nicknames: nextNicknames,
+          nationalGrade: currentProfile.nationalGrade && currentProfile.nationalGrade !== '기록 준비중' ? currentProfile.nationalGrade : '정회원',
         });
+        const existingKakao = ParkOnStorage.getKakaoUser();
+        const guestUser: KakaoAuthUser = existingKakao
+          ? { ...existingKakao, nickname: trimmedName, realName: existingKakao.realName || trimmedName }
+          : {
+              id: 'join_' + Date.now(),
+              nickname: trimmedName,
+              realName: trimmedName,
+              aliasName: trimmedName,
+              preferredDisplay: 'REAL',
+              connectedAt: new Date().toISOString(),
+            };
+        ParkOnStorage.setKakaoUser(guestUser);
+        setKakaoUser(guestUser);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('parkon_welcomed', 'true');
+          localStorage.setItem('parkon_player_name', trimmedName);
+          localStorage.setItem('parkon_active_nickname', trimmedName);
+          localStorage.setItem('parkon_nicknames', JSON.stringify(nextNicknames));
+        }
+        getOrGenerateMemberCode(true);
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: trimmedName } }));
       } catch (e) {
         console.error(e);
       }

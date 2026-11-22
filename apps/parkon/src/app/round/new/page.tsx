@@ -1271,7 +1271,7 @@ function NewRoundForm() {
             className="bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 font-black py-1 px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition active:scale-95 text-[11px] cursor-pointer shrink-0"
           >
             <Settings className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-            <span>{isJapanese ? 'コース訂正' : '코스 정정'}</span>
+            <span>{isJapanese ? '球場修正' : '구장 수정'}</span>
           </button>
         </div>
 

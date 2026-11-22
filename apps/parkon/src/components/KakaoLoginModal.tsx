@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, CheckCircle, ShieldCheck, Sparkles, LogOut, User, UserCheck, Edit3, Copy, Check, RefreshCw, KeyRound, Smartphone, Cloud, Search, HelpCircle, MessageSquare, Trash2, ChevronDown, ChevronUp, Plus, Rocket } from 'lucide-react';
 import { KakaoAuthUser, ParkOnStorage } from '@/lib/storage';
 import { loginWithKakao, logoutKakao } from '@/lib/kakaoAuth';
@@ -74,6 +74,9 @@ export function KakaoLoginModal({
   // 신규 가입 전용 상태 (성함 + 휴대폰 번호)
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
+  const [newSignupError, setNewSignupError] = useState('');
+  const newNameInputRef = useRef<HTMLInputElement | null>(null);
+  const newPhoneInputRef = useRef<HTMLInputElement | null>(null);
 
   // 📱 휴대폰 번호 1초 조회 및 즉시 로그인 전용 상태
   const [inputPhone, setInputPhone] = useState('');
@@ -118,6 +121,7 @@ const [showAddNickname, setShowAddNickname] = useState(false);
       setSentToKakaoNotice(false);
       setLookupResult(null);
       setLookupError('');
+      setNewSignupError('');
       const profNowForPhone = ParkOnStorage.getUserProfile();
       const existingPhone = profNowForPhone?.phoneNumber || (typeof window !== 'undefined' ? localStorage.getItem('parkon_user_phone') || '' : '');
       setInputPhone(existingPhone);
@@ -481,17 +485,22 @@ const handleAddNewNickname = () => {
       const newCode = getSavedMemberCode() || getOrGenerateMemberCode();
       setMemberCode(newCode);
 
-      // 클라우드 및 Supabase에 즉시 영구 백업
-      await syncMemberDataToCloud();
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('parkon_welcomed', 'true');
+      }
 
       syncSelfPlayerNameToActiveRound(effectiveName);
 
+      // 즉시 로그인 상태 반영 (네트워크 지연으로 로그인 멈춤 방지)
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: effectiveName } }));
 
       if (onLoginSuccess) {
         onLoginSuccess(guestUser);
       }
+
+      // 클라우드 및 Supabase에 백그라운드 영구 백업
+      syncMemberDataToCloud().catch(() => {});
 
       setIsRegisteringNew(false);
       onClose();
@@ -505,12 +514,26 @@ const handleAddNewNickname = () => {
   // ⛳ 2. 미로그인 신규 가입: 성함 + 휴대폰 번호로 8자리 평생 고유번호 즉시 발급
   const handleRegisterNewUser = async () => {
     const cleanName = newName.trim();
-    if (!cleanName) {
-      alert(isJapanese ? 'お名前を入力してください。' : '성함을 입력해 주세요.');
-      return;
-    }
     const cleanDigits = newPhone.replace(/\D/g, '');
     const formattedPhone = formatPhoneWithHyphen(newPhone);
+    const hasValidName = Boolean(cleanName && !isPlaceholderName(cleanName));
+    const hasValidPhone = cleanDigits.length >= 10;
+
+    if (!hasValidName || !hasValidPhone) {
+      setNewSignupError(
+        isJapanese
+          ? '⚠️ お名前と携帯電話番号の両方を入力してください。'
+          : '⚠️ 성명과 휴대폰 번호를 모두 입력해 주세요.'
+      );
+      if (!hasValidName) {
+        newNameInputRef.current?.focus();
+      } else {
+        newPhoneInputRef.current?.focus();
+      }
+      return;
+    }
+
+    setNewSignupError('');
     setIsRegisteringNew(true);
 
     try {
@@ -550,17 +573,22 @@ const handleAddNewNickname = () => {
       const newCode = getOrGenerateMemberCode(true);
       setMemberCode(newCode);
 
-      // 클라우드 및 Supabase에 즉시 영구 백업
-      await syncMemberDataToCloud();
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('parkon_welcomed', 'true');
+      }
 
       syncSelfPlayerNameToActiveRound(cleanName);
 
+      // 즉시 로그인 상태 반영 (네트워크 지연으로 로그인 멈춤 방지)
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('parkon_profile_updated', { detail: { newName: cleanName } }));
 
       if (onLoginSuccess) {
         onLoginSuccess(guestUser);
       }
+
+      // 클라우드 및 Supabase에 백그라운드 영구 백업
+      syncMemberDataToCloud().catch(() => {});
 
       setIsRegisteringNew(false);
       onClose();
@@ -1075,11 +1103,20 @@ const handleAddNewNickname = () => {
                     </span>
                   </label>
                   <input
+                    ref={newNameInputRef}
                     type="text"
                     value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
+                    onChange={(e) => {
+                      setNewName(e.target.value);
+                      if (newSignupError) setNewSignupError('');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleRegisterNewUser();
+                    }}
                     placeholder={isJapanese ? 'お名前を入力' : '성명 입력'}
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl font-black text-xs text-stone-900 focus:border-emerald-600 focus:bg-white outline-none transition"
+                    className={`w-full px-3 py-2 bg-stone-50 border rounded-xl font-black text-xs text-stone-900 focus:border-emerald-600 focus:bg-white outline-none transition ${
+                      newSignupError && !newName.trim() ? 'border-rose-500 bg-rose-50/40' : 'border-stone-300'
+                    }`}
                     autoFocus
                   />
                 </div>
@@ -1092,26 +1129,43 @@ const handleAddNewNickname = () => {
                       <span>{isJapanese ? '携帯電話番号' : '휴대폰 번호'}</span>
                     </span>
                     <span className="text-[9.5px] text-amber-800 font-bold bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
-                      {isJapanese ? '紛失防止用' : '기록 분실 방지용'}
+                      {isJapanese ? '必須・紛失防止用' : '필수 · 기록 분실 방지용'}
                     </span>
                   </label>
                   <input
+                    ref={newPhoneInputRef}
                     type="tel"
+                    inputMode="numeric"
                     value={newPhone}
-                    onChange={(e) => setNewPhone(formatPhoneWithHyphen(e.target.value))}
+                    onChange={(e) => {
+                      setNewPhone(formatPhoneWithHyphen(e.target.value));
+                      if (newSignupError) setNewSignupError('');
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleRegisterNewUser();
                     }}
                     placeholder="010-0000-0000"
                     maxLength={13}
-                    className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl font-mono font-black text-sm tracking-wider text-stone-900 focus:border-emerald-600 focus:bg-white outline-none transition"
+                    className={`w-full px-3 py-2 bg-stone-50 border rounded-xl font-mono font-black text-sm tracking-wider text-stone-900 focus:border-emerald-600 focus:bg-white outline-none transition ${
+                      newSignupError && newPhone.replace(/\D/g, '').length < 10 ? 'border-rose-500 bg-rose-50/40' : 'border-stone-300'
+                    }`}
                   />
                 </div>
+
+                {newSignupError && (
+                  <div
+                    data-testid="kakao-signup-error"
+                    role="alert"
+                    className="w-full py-2 px-3 bg-rose-50 border-2 border-rose-400 rounded-xl text-rose-700 font-black text-xs text-center shadow-xs"
+                  >
+                    {newSignupError}
+                  </div>
+                )}
 
                 {/* 메인 버튼 */}
                 <button
                   type="button"
-                  disabled={isRegisteringNew || !newName.trim()}
+                  disabled={isRegisteringNew}
                   onClick={handleRegisterNewUser}
                   className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 disabled:opacity-50 text-white font-black text-xs sm:text-sm rounded-xl shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 border border-emerald-700"
                 >
