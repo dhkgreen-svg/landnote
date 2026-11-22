@@ -59,7 +59,7 @@ import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
 import { calculateTier, getUserCompleted9Holes } from '@/lib/courseBlockTier';
 import { DiamondTierBadge } from '@/components/DiamondTierBadge';
-import { PaperScorecardModal } from '@/components/PaperScorecardModal';
+import { useBackHandler } from '@/lib/backNavigation';
 
 const COURSE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
@@ -159,7 +159,6 @@ export default function ClubGatheringHomePage() {
 
   // 안내 토스트 메시지
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [showClubScorecardOcrModal, setShowClubScorecardOcrModal] = useState(false);
 
   // ========================================================
   // 1. [내 클럽 관리] 상태
@@ -180,6 +179,7 @@ export default function ClubGatheringHomePage() {
 
   // [NEW] 클럽 모임(정기전 / 번개) 개최 선택 모달 상태
   const [clubGatheringModal, setClubGatheringModal] = useState<ParkGolfClub | null>(null);
+  useBackHandler(Boolean(clubGatheringModal), () => setClubGatheringModal(null));
   // 📸 [대표님 지시] 공고 없이 바로 쓰는 독립형 스코어카드 사진 판독 · 전통 스트로크 빠른 등수 계산기
   const [quickScoringClub, setQuickScoringClub] = useState<ParkGolfClub | null>(null);
   const [editingChronicle, setEditingChronicle] = useState<ClubChronicleTournament | null>(null);
@@ -1782,11 +1782,6 @@ ${shareUrl}`;
   return (
     <div className="p-3 max-w-xl mx-auto space-y-3 pb-12">
       {/* 안내 토스트 피드백 (스크롤 위치와 상관없이 화면 하단에 항상 고정 플로팅) */}
-      <PaperScorecardModal
-        isOpen={showClubScorecardOcrModal}
-        onClose={() => setShowClubScorecardOcrModal(false)}
-      />
-
       {toastMessage && (
         <div className="fixed bottom-6 inset-x-4 max-w-sm mx-auto z-[9999] bg-stone-950/95 backdrop-blur-sm text-white text-xs font-black p-4 rounded-2xl shadow-2xl border-2 border-emerald-400 flex items-center justify-between animate-bounce">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -2017,29 +2012,6 @@ ${shareUrl}`;
                 }
                 return null;
               })()}
-
-              {/* 📸 [총무 핵심 업무] 앱 미설치 회원의 종이 스코어카드 사진 ➔ AI 자동 판독 ➔ DB 저장 & 시상식 평가 */}
-              <button
-                type="button"
-                data-testid="btn-club-manager-scorecard-ocr"
-                onClick={() => setShowClubScorecardOcrModal(true)}
-                className="w-full py-2.5 px-3.5 bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 hover:from-emerald-800 hover:to-teal-800 text-white rounded-2xl shadow-md border border-emerald-500/40 flex items-center justify-between transition active:scale-[0.98] cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5 text-left">
-                  <span className="w-8 h-8 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center text-base font-black shrink-0">
-                    📸
-                  </span>
-                  <div>
-                    <div className="text-xs font-black text-amber-300">
-                      총무 종이 스코어카드 사진 AI 판독 · DB 평가
-                    </div>
-                    <div className="text-[10.5px] text-emerald-100/90 font-medium">
-                      앱 미사용 회원 카드도 카메라로 찍어 1초 DB화 & 자동 순위 산정
-                    </div>
-                  </div>
-                </div>
-                <ArrowRight className="w-4 h-4 text-amber-300 shrink-0" />
-              </button>
 
               {/* 도착한 초청장 목록 */}
               {clubInvitations.length > 0 && (
@@ -2318,6 +2290,7 @@ ${shareUrl}`;
                             {/* 2. 클럽 모임 개최 (정기전 / 번개) */}
                             <button
                               type="button"
+                              data-testid={`btn-club-gathering-${club.id}`}
                               onClick={() => setClubGatheringModal(club)}
                               className="relative py-2.5 px-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-stone-950 font-black text-xs rounded-xl shadow-xs transition flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer text-center"
                               title={isJapanese ? "クラブ月例会・集まり開設" : "클럽 월례회·정기전 개설 또는 당일 번개치기"}
@@ -2372,6 +2345,7 @@ ${shareUrl}`;
                             {/* 2. 정기전·번개 참여 (일반 회원) */}
                             <button
                               type="button"
+                              data-testid={`btn-club-gathering-${club.id}`}
                               onClick={() => {
                                 setClubGatheringModal(club);
                               }}
@@ -2415,28 +2389,6 @@ ${shareUrl}`;
                           </>
                         )}
                       </div>
-
-                      {/* 📸 [대표님 지시] 총무 독립형: 공고 없이 사진 판독 & 전통 스트로크 빠른 등수 계산기 */}
-                      {isExecutive && (
-                        <button
-                          type="button"
-                          data-testid={`btn-open-quick-scoring-${club.id}`}
-                          onClick={() => { setEditingChronicle(null); setQuickScoringClub(club); }}
-                          className="w-full mt-2 py-2.5 px-3 bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl text-xs font-black flex items-center justify-between transition cursor-pointer active:scale-98 shadow-sm border border-emerald-500/40"
-                        >
-                          <span className="flex items-center gap-1.5 min-w-0">
-                            <span className="text-sm leading-none shrink-0">📸</span>
-                            <span className="truncate">
-                              {isJapanese
-                                ? 'スコアカード写真読取・即席順位計算 (告知不要)'
-                                : '사진 판독 · 빠른 등수 계산기 (공고 없이 바로)'}
-                            </span>
-                          </span>
-                          <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full shrink-0">
-                            스트로크
-                          </span>
-                        </button>
-                      )}
 
                       {/* 📜 클럽 공식 연대기 (대회 실록 & 명예의 전당) 바로가기 */}
                       <button
@@ -7021,88 +6973,146 @@ ${shareUrl}`;
               {/* Scrollable Content */}
               <div className="p-4 sm:p-5 overflow-y-auto space-y-4">
                 {/* ------------------------------------------------------------- */}
-                {/* 1. [최우선 상단 배치] 우리 클럽 전용 새 모임 개설 (번개치기 & 대회 개최) */}
+                {/* 1. [2트랙 명확 구분] ① 정상 순서 진행 vs ② 이미지 스코어보드 집계 */}
                 {/* ------------------------------------------------------------- */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-black text-sm text-stone-900 flex items-center gap-1.5">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="font-black text-sm text-stone-900 flex items-center gap-1.5 whitespace-nowrap">
                       <span className="text-emerald-700">✨</span>
-                      <span>{isJapanese ? '当クラブ専用 新規集会開設' : '우리 클럽 전용 새 모임 개설'}</span>
+                      <span>{isJapanese ? '進行方式を選択' : '모임 진행 방식 선택'}</span>
                     </h4>
-                    <span className="text-[11px] text-stone-500 font-bold">{isJapanese ? 'ワンタッチ主催' : '1초 원터치 주최'}</span>
+                    <span className="text-[10.5px] bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-full font-black border border-stone-200 whitespace-nowrap shrink-0">
+                      {isJapanese ? '2トラック区分' : '2가지 방식 구분'}
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* [ ⚡ 클럽 번개치기 ] */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setClubGatheringModal(null);
-                        setSelectedFlashClubId(c.id);
-                        setClubFlashCourseId(c.homeCourseId);
-                        setClubFlashTitle(`[${c.name}] 오늘 당일 번개 라운드 ⚡`);
-                        setClubFlashLightningScope('MULTI_OPEN');
-                        setShowCreateClubFlashModal(true);
-                      }}
-                      className="py-2.5 sm:py-3 px-2 sm:px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-98 text-stone-950 font-black text-xs sm:text-sm text-center transition cursor-pointer shadow-xs flex items-center justify-center gap-1 border border-amber-600/30 whitespace-nowrap"
-                    >
-                      <span>⚡</span>
-                      <span>{isJapanese ? '招集マッチを開設' : '클럽 번개치기'}</span>
-                    </button>
+                  {/* 트랙 ① 정상 순서 진행 (공고 ➔ 참가·조편성 ➔ 실시간 시합) */}
+                  <div
+                    data-testid="track-normal-flow"
+                    className="rounded-2xl border-2 border-amber-300/90 bg-gradient-to-br from-amber-50/90 via-white to-orange-50/50 p-3.5 space-y-2.5 shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-black shadow-2xs whitespace-nowrap shrink-0">
+                        <span>①</span>
+                        <span>{isJapanese ? '通常フロー進行' : '정상 순서 진행'}</span>
+                      </span>
+                      <span className="text-[10.5px] font-bold text-amber-900/85 whitespace-nowrap">
+                        {isJapanese ? '告知 ➔ 組編成 ➔ リアルタイム試合' : '공고 ➔ 접수·조편성 ➔ 실시간 시합'}
+                      </span>
+                    </div>
 
-                    {/* [ 🏆 대회 개최하기 (월례회 등) ] - 총무/임원진 전용 권한 제어 */}
-                    {(() => {
-                      const isExec = isClubExecutive(c);
-                      return (
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* [ ⚡ 클럽 번개치기 ] */}
+                      <button
+                        type="button"
+                        data-testid="btn-gathering-flash"
+                        onClick={() => {
+                          setClubGatheringModal(null);
+                          setSelectedFlashClubId(c.id);
+                          setClubFlashCourseId(c.homeCourseId);
+                          setClubFlashTitle(`[${c.name}] 오늘 당일 번개 라운드 ⚡`);
+                          setClubFlashLightningScope('MULTI_OPEN');
+                          setShowCreateClubFlashModal(true);
+                        }}
+                        className="py-2.5 sm:py-3 px-2 sm:px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-98 text-stone-950 font-black text-xs sm:text-sm text-center transition cursor-pointer shadow-xs flex items-center justify-center gap-1 border border-amber-600/30 whitespace-nowrap"
+                      >
+                        <span>⚡</span>
+                        <span>{isJapanese ? '招集マッチを開設' : '클럽 번개치기'}</span>
+                      </button>
+
+                      {/* [ 🏆 대회 개최 (월례회) ] - 총무/임원진 전용 권한 제어 */}
+                      {(() => {
+                        const isExec = isClubExecutive(c);
+                        return (
+                          <button
+                            type="button"
+                            data-testid="btn-gathering-tournament"
+                            onClick={() => {
+                              if (!isExec) {
+                                showToast(isJapanese ? `🔒 大会開設は「${c.name}」総務および役員専用の権限です。一般会員は開設済み大会への参加のみ可能です。` : `🔒 대회 개설은 '${c.name}' 총무 및 임원진 전용 권한입니다. 일반 회원은 개설된 대회 참가만 가능합니다.`);
+                                return;
+                              }
+                              setClubGatheringModal(null);
+                              setTournamentClubId(c.id);
+                              setTitle(isJapanese ? `[${c.name}] 第${new Date().getMonth() + 1}回 定期月例会 ⛳` : `[${c.name}] 제${new Date().getMonth() + 1}회 정기 월례회 ⛳`);
+                              setSelectedCourseId(c.homeCourseId);
+                              setHostName(c.managerName || c.presidentName || '총무');
+                              setTournamentType('CLUB_INTERNAL');
+                              setCreateModalSource('CLUB_GATHERING');
+                              setShowCreateModal(true);
+                            }}
+                            className={`py-2.5 sm:py-3 px-2 sm:px-3 rounded-xl active:scale-98 font-black text-xs sm:text-sm text-center transition cursor-pointer shadow-xs flex items-center justify-center gap-1 border whitespace-nowrap ${
+                              isExec
+                                ? 'bg-gradient-to-r from-emerald-700 to-teal-800 hover:from-emerald-800 hover:to-teal-900 text-white border-emerald-600/30'
+                                : 'bg-stone-100 hover:bg-stone-200 text-stone-500 border-stone-300'
+                            }`}
+                            title={isExec ? '클럽 정기 월례회 및 자체 대회 개설' : '대회 개설은 총무 및 임원진 전용 권한입니다.'}
+                          >
+                            <span>{isExec ? '🏆' : '🔒'}</span>
+                            <span>{isExec ? (isJapanese ? '大会開催 (月例会)' : '대회 개최 (월례회)') : (isJapanese ? '大会開催 (総務専用)' : '대회 개최 (총무 전용)')}</span>
+                          </button>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* 트랙 ② 이미지 스코어보드 집계 (공고 없이 사진 촬영 · AI 판독 · 즉시 등수 & 연대기) */}
+                  {(() => {
+                    const isExec = isClubExecutive(c);
+                    return (
+                      <div
+                        data-testid="track-image-scoreboard"
+                        className="rounded-2xl border-2 border-emerald-500/80 bg-gradient-to-br from-emerald-950 via-teal-950 to-emerald-900 p-3.5 space-y-2.5 shadow-md text-white"
+                      >
+                        <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400 text-stone-950 text-[11px] font-black shadow-2xs whitespace-nowrap shrink-0">
+                            <span>②</span>
+                            <span>{isJapanese ? '画像スコアボード集計' : '이미지 스코어보드 집계'}</span>
+                          </span>
+                          <span className="text-[10.5px] font-extrabold text-emerald-200 whitespace-nowrap">
+                            {isJapanese ? '告知不要・ストローク' : '공고 불필요 · 스트로크'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-emerald-100/90 leading-relaxed font-medium">
+                          {isJapanese
+                            ? '紙のスコアカードを撮影するだけでAI自動読取 ➔ 組別公式スコアボード画像＆順位表を即座に生成・年代記に自動登録します。'
+                            : '종이 스코어카드 사진만 찍으면 AI 자동 판독 ➔ 조별 공식 스코어보드 · 전통 스트로크 자동 순위 산정 후 클럽 연대기에 즉시 등록됩니다.'}
+                        </p>
                         <button
                           type="button"
+                          data-testid="btn-gathering-image-scoreboard"
                           onClick={() => {
                             if (!isExec) {
-                              showToast(isJapanese ? `🔒 大会開設は「${c.name}」総務および役員専用の権限です。一般会員は開設済み大会への参加のみ可能です。` : `🔒 대회 개설은 '${c.name}' 총무 및 임원진 전용 권한입니다. 일반 회원은 개설된 대회 참가만 가능합니다.`);
+                              showToast(isJapanese ? `🔒 画像スコアボード集計は「${c.name}」総務および役員専用の権限です。` : `🔒 이미지 스코어보드 집계는 '${c.name}' 총무 및 임원진 전용 기능입니다.`);
                               return;
                             }
                             setClubGatheringModal(null);
-                            setTournamentClubId(c.id);
-                            setTitle(isJapanese ? `[${c.name}] 第${new Date().getMonth() + 1}回 定期月例会 ⛳` : `[${c.name}] 제${new Date().getMonth() + 1}회 정기 월례회 ⛳`);
-                            setSelectedCourseId(c.homeCourseId);
-                            setHostName(c.managerName || c.presidentName || '총무');
-                            setTournamentType('CLUB_INTERNAL');
-                            setCreateModalSource('CLUB_GATHERING');
-                            setShowCreateModal(true);
+                            setEditingChronicle(null);
+                            setQuickScoringClub(c);
                           }}
-                          className={`py-2.5 sm:py-3 px-1.5 sm:px-3 rounded-xl active:scale-98 font-black text-[11px] sm:text-xs md:text-sm text-center transition cursor-pointer shadow-xs flex items-center justify-center gap-1 border whitespace-nowrap ${
+                          className={`w-full py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black flex items-center justify-between gap-2 transition cursor-pointer active:scale-[0.98] shadow-sm ${
                             isExec
-                              ? 'bg-gradient-to-r from-emerald-700 to-teal-800 hover:from-emerald-800 hover:to-teal-900 text-white border-emerald-600/30'
-                              : 'bg-stone-100 hover:bg-stone-200 text-stone-500 border-stone-300'
+                              ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 hover:from-amber-300 hover:to-yellow-200 text-stone-950'
+                              : 'bg-white/10 hover:bg-white/15 text-emerald-200 border border-white/20'
                           }`}
-                          title={isExec ? '클럽 정기 월례회 및 자체 대회 개설' : '대회 개설은 총무 및 임원진 전용 권한입니다.'}
                         >
-                          <span>{isExec ? '🏆' : '🔒'}</span>
-                          <span>{isExec ? (isJapanese ? '大会を開催する (月例会等)' : '대회 개최하기 (월례회 등)') : (isJapanese ? '大会開催 (総務専用)' : '대회 개최 (총무 전용)')}</span>
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-base leading-none shrink-0">{isExec ? '📸' : '🔒'}</span>
+                            <span className="truncate">
+                              {isExec
+                                ? (isJapanese ? 'スコアカード写真判読・集計' : '스코어카드 사진 판독 · 집계')
+                                : (isJapanese ? '画像スコアボード集計 (総務専用)' : '이미지 스코어보드 집계 (총무 전용)')}
+                            </span>
+                          </span>
+                          <span className={`text-[10.5px] px-2.5 py-0.5 rounded-lg shrink-0 font-black whitespace-nowrap ${
+                            isExec ? 'bg-stone-950 text-amber-300' : 'bg-white/10 text-emerald-100'
+                          }`}>
+                            {isExec ? (isJapanese ? '開始 ▶' : '시작 ▶') : (isJapanese ? '役員専用' : '총무 전용')}
+                          </span>
                         </button>
-                      );
-                    })()}
-                  </div>
-
-                  {/* 📸 총무 독립형: 공고·조편성 없이 바로 사진 판독 & 전통 스트로크 등수 매기기 */}
-                  {isClubExecutive(c) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setClubGatheringModal(null);
-                        setEditingChronicle(null); setQuickScoringClub(c);
-                      }}
-                      className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-50 via-teal-50 to-amber-50 hover:from-emerald-100 hover:to-amber-100 border-2 border-emerald-400 rounded-xl text-xs font-black text-emerald-950 flex items-center justify-between cursor-pointer transition shadow-2xs"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <span>📸</span>
-                        <span>공고 없이 스코어카드 사진 판독 · 전통 스트로크 등수 바로 매기기</span>
-                      </span>
-                      <span className="text-[10px] bg-emerald-700 text-white px-2 py-0.5 rounded-lg shrink-0">
-                        독립 채점 ▶
-                      </span>
-                    </button>
-                  )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* ------------------------------------------------------------- */}

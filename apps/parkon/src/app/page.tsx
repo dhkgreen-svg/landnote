@@ -25,6 +25,7 @@ import { NationalTourMapModal } from '@/components/NationalTourMapModal';
 import { QuickGuideModal } from '@/components/QuickGuideModal';
 import { RoundScoreboardModal } from '@/components/RoundScoreboardModal';
 import { PaperScorecardModal } from '@/components/PaperScorecardModal';
+import { ClubQuickScoringModal } from '@/components/ClubQuickScoringModal';
 import { BadgeStorage } from '@/lib/badgeStorage';
 import { AppShareModal } from '@/components/AppShareModal';
 import { WatermarkPhotoCardModal } from '@/components/WatermarkPhotoCardModal';
@@ -101,8 +102,12 @@ export default function HomePage() {
   const [showQuickGuideModal, setShowQuickGuideModal] = useState<boolean>(false);
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
   const [showShareToast, setShowShareToast] = useState<boolean>(false);
+  // 🎯 [대표님 지시] 개별 스코어보드 클릭 시 2트랙 구분 (① 실시간 입력하기 vs ② 이미지 입력하기)
+  const [individualScoreboardTarget, setIndividualScoreboardTarget] = useState<{ courseId: string; courseName: string } | null>(null);
+  const [individualImageModalCourse, setIndividualImageModalCourse] = useState<string | null>(null);
 
   // 스마트폰 뒤로가기 시 홈 화면 인라인 팝업들을 순서대로 닫기
+  useBackHandler(Boolean(individualScoreboardTarget), () => setIndividualScoreboardTarget(null));
   useBackHandler(showHomeModal, () => setShowHomeModal(false));
   useBackHandler(showStatsModal, () => setShowStatsModal(false));
   useBackHandler(showGradePopup, () => setShowGradePopup(false));
@@ -1247,7 +1252,11 @@ export default function HomePage() {
       <AutoLocationBanner
         courses={courses}
         onStartGame={(courseId) => {
-          router.push(`/round/new?courseId=${courseId}`);
+          const matched = courses.find((c) => c.id === courseId);
+          setIndividualScoreboardTarget({
+            courseId,
+            courseName: matched?.name || homeCourse?.name || '구미 동락파크골프장',
+          });
         }}
       />
 
@@ -1412,14 +1421,17 @@ export default function HomePage() {
                 );
               })()}
 
-              {/* 오른쪽: 라운딩 바로 시작하기 (실전 정식 기록) */}
+              {/* 오른쪽: 개별 스코어보드 시작 (① 실시간 입력하기 vs ② 이미지 입력하기 2트랙 구분) */}
               {(() => {
                 const targetCourse = mounted ? (homeCourse || getCurrentActiveCourse() || courses[0]) : courses[0];
                 const courseId = targetCourse?.id || 'course_1';
-                const courseShortName = (targetCourse?.name || '구미 동락').replace('파크골프장', '').replace('파크골프', '').trim();
+                const courseName = targetCourse?.name || '구미 동락파크골프장';
+                const courseShortName = courseName.replace('파크골프장', '').replace('파크골프', '').trim();
                 return (
-                  <Link
-                    href={`/round/new?courseId=${courseId}`}
+                  <button
+                    type="button"
+                    data-testid="btn-home-open-scoreboard-choice"
+                    onClick={() => setIndividualScoreboardTarget({ courseId, courseName })}
                     className="bg-gradient-to-br from-emerald-400 to-emerald-500 hover:from-emerald-300 hover:to-emerald-400 text-emerald-950 font-black p-3 sm:p-4 rounded-2xl shadow-lg flex flex-col items-center justify-center gap-1 transition active:scale-[0.97] border-2 border-emerald-300 group cursor-pointer"
                   >
                     <div className="flex items-center gap-1 text-sm sm:text-base font-black leading-tight">
@@ -1427,9 +1439,9 @@ export default function HomePage() {
                       <span className="truncate">{isJapanese ? 'スコア記録スタート' : isEnglish ? 'Start Score Record' : '스코어 기록 시작하기'}</span>
                     </div>
                     <span className="text-[10px] sm:text-[10.5px] font-extrabold text-emerald-950 bg-white/40 px-2 py-0.5 rounded-full whitespace-nowrap">
-                      {isJapanese ? '公式スコアボード保存' : isEnglish ? 'Official Scoreboard' : (homeCourse ? '공식 스코어보드 저장' : `${courseShortName} 바로 시작`)}
+                      {isJapanese ? 'リアルタイム・画像で入力' : isEnglish ? 'Live / Photo Entry' : (homeCourse ? '실시간 · 이미지로 입력' : `${courseShortName} 바로 시작`)}
                     </span>
-                  </Link>
+                  </button>
                 );
               })()}
             </div>
@@ -1763,7 +1775,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     data-testid="btn-open-external-scorecard-modal"
-                    onClick={() => setShowPaperScorecardModal(true)}
+                    onClick={() => setIndividualImageModalCourse(homeCourse?.name || courses[0]?.name || '구미 동락파크골프장')}
                     className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 hover:from-emerald-600 hover:to-teal-600 text-white rounded-2xl shadow-sm border border-emerald-500/80 flex items-center justify-center gap-2 transition active:scale-[0.99] cursor-pointer"
                   >
                     <span className="text-base shrink-0">📸</span>
@@ -4042,15 +4054,16 @@ export default function HomePage() {
                                 </button>
                               </div>
 
-                              {/* 스코어보드 바로가기 단일 버튼 (대표님 특명: 중복 이름/두 줄 깨짐 완전 제거) */}
+                              {/* 스코어보드 바로가기 단일 버튼 (클릭 시 ① 실시간 입력 vs ② 이미지 입력 구분) */}
                               <button
                                 type="button"
+                                data-testid={`btn-home-course-scoreboard-${mc.id}`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleSelectHomeCourse(mc.id);
                                   setShowHomeModal(false);
                                   setHomeModalSearch('');
-                                  router.push(`/round/new?courseId=${encodeURIComponent(mc.id)}`);
+                                  setIndividualScoreboardTarget({ courseId: mc.id, courseName: mc.name });
                                 }}
                                 className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 active:from-emerald-700 active:to-teal-700 text-white text-xs sm:text-sm font-black shadow-xs flex items-center justify-center gap-1.5 active:scale-[0.98] transition cursor-pointer"
                               >
@@ -4294,7 +4307,171 @@ export default function HomePage() {
         }}
       />
 
-      {/* 📸 외부 스코어보드 사진 / 타 구장 과거 경기 연대기 등록 모달 */}
+      {/* 🎯 [대표님 지시] 개별 스코어보드 2트랙 선택 모달 (① 실시간 입력하기 vs ② 이미지 입력하기) */}
+      {individualScoreboardTarget && (
+        <div
+          data-testid="modal-individual-scoreboard-choice"
+          onClick={() => setIndividualScoreboardTarget(null)}
+          className="fixed inset-0 z-[75] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-stone-200 overflow-hidden flex flex-col"
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-4 sm:p-5 flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="w-10 h-10 rounded-2xl bg-emerald-700/80 border border-emerald-500/40 flex items-center justify-center text-xl shadow-inner shrink-0">
+                  ⛳
+                </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h3 className="font-black text-base tracking-tight whitespace-nowrap">
+                      {isJapanese ? '個人スコアボード記録' : isEnglish ? 'Individual Scoreboard' : '개별 스코어보드 기록'}
+                    </h3>
+                    <span className="text-[10.5px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full truncate max-w-[150px]">
+                      {individualScoreboardTarget.courseName.replace('파크골프장', '').trim() || individualScoreboardTarget.courseName}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-emerald-200/90 mt-0.5">
+                    {isJapanese ? 'リアルタイム入力または画像で入力を選択してください' : '실시간 입력 또는 이미지로 입력하기를 선택하세요'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIndividualScoreboardTarget(null)}
+                className="text-stone-300 hover:text-white p-2 rounded-xl hover:bg-emerald-700/50 transition cursor-pointer shrink-0"
+                aria-label="닫기"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body: 2-Track Cards */}
+            <div className="p-4 sm:p-5 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="font-black text-sm text-stone-900 flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="text-emerald-700">✨</span>
+                  <span>{isJapanese ? '記録方式を選択' : isEnglish ? 'Select Entry Mode' : '기록 방식 선택'}</span>
+                </h4>
+                <span className="text-[10.5px] bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-full font-black border border-stone-200 whitespace-nowrap shrink-0">
+                  {isJapanese ? '2トラック区分' : '2가지 방식 구분'}
+                </span>
+              </div>
+
+              {/* 트랙 ① 실시간 입력하기 */}
+              <div
+                data-testid="track-individual-realtime"
+                className="rounded-2xl border-2 border-amber-300/90 bg-gradient-to-br from-amber-50/90 via-white to-orange-50/50 p-3.5 space-y-2.5 shadow-2xs"
+              >
+                <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500 text-stone-950 text-[11px] font-black shadow-2xs whitespace-nowrap shrink-0">
+                    <span>①</span>
+                    <span>{isJapanese ? 'リアルタイム入力' : isEnglish ? 'Live Input' : '실시간 입력하기'}</span>
+                  </span>
+                  <span className="text-[10.5px] font-bold text-amber-900/85 whitespace-nowrap">
+                    {isJapanese ? '現場ラウンド・ホール別記録' : '현장 라운드 · 홀별 실시간 기록'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-700 leading-relaxed font-medium">
+                  {isJapanese
+                    ? '同伴者を設定して1番ホールからリアルタイムに打数を入力し、公式スコアボードを自動保存します。'
+                    : '동반자를 설정하고 1홀부터 실시간 타수를 입력하며 동반자 폰과 동기화 · 공식 스코어보드를 저장합니다.'}
+                </p>
+                <button
+                  type="button"
+                  data-testid="btn-individual-realtime"
+                  onClick={() => {
+                    const targetId = individualScoreboardTarget.courseId;
+                    setIndividualScoreboardTarget(null);
+                    router.push(`/round/new?courseId=${encodeURIComponent(targetId)}`);
+                  }}
+                  className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-[0.98] text-stone-950 font-black text-xs sm:text-sm flex items-center justify-between gap-2 transition cursor-pointer shadow-xs border border-amber-600/30"
+                >
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-base leading-none shrink-0">⛳</span>
+                    <span className="truncate">{isJapanese ? 'リアルタイム入力を開始' : isEnglish ? 'Start Live Round' : '실시간 스코어 입력하기'}</span>
+                  </span>
+                  <span className="text-[10.5px] bg-stone-950 text-amber-300 px-2.5 py-0.5 rounded-lg shrink-0 font-black whitespace-nowrap">
+                    {isJapanese ? '開始 ▶' : '시작 ▶'}
+                  </span>
+                </button>
+              </div>
+
+              {/* 트랙 ② 이미지로 입력하기 */}
+              <div
+                data-testid="track-individual-image"
+                className="rounded-2xl border-2 border-emerald-500/80 bg-gradient-to-br from-emerald-950 via-teal-950 to-emerald-900 p-3.5 space-y-2.5 shadow-md text-white"
+              >
+                <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400 text-stone-950 text-[11px] font-black shadow-2xs whitespace-nowrap shrink-0">
+                    <span>②</span>
+                    <span>{isJapanese ? '画像で入力する' : isEnglish ? 'Enter via Photo' : '이미지로 입력하기'}</span>
+                  </span>
+                  <span className="text-[10.5px] font-extrabold text-emerald-200 whitespace-nowrap">
+                    {isJapanese ? '写真読取・年代記に即登録' : '사진 판독 · 연대기 즉시 등록'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-100/90 leading-relaxed font-medium">
+                  {isJapanese
+                    ? '紙のスコアカードを撮影するだけでAI自動読取 ➔ 公式スコアボード(1080×1440)を生成しマイ年代記へ即登録します。'
+                    : '종이 스코어카드 사진만 찍으면 AI 자동 판독 ➔ 공식 스코어보드(1080×1440) 생성 및 내 연대기에 즉시 등록됩니다.'}
+                </p>
+                <button
+                  type="button"
+                  data-testid="btn-individual-image-ocr"
+                  onClick={() => {
+                    const targetName = individualScoreboardTarget.courseName;
+                    setIndividualScoreboardTarget(null);
+                    setIndividualImageModalCourse(targetName);
+                  }}
+                  className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 hover:from-amber-300 hover:to-yellow-200 active:scale-[0.98] text-stone-950 font-black text-xs sm:text-sm flex items-center justify-between gap-2 transition cursor-pointer shadow-sm"
+                >
+                  <span className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-base leading-none shrink-0">📸</span>
+                    <span className="truncate">{isJapanese ? 'スコアカード画像で入力する' : isEnglish ? 'Enter via Scorecard Photo' : '스코어카드 이미지로 입력하기'}</span>
+                  </span>
+                  <span className="text-[10.5px] bg-stone-950 text-amber-300 px-2.5 py-0.5 rounded-lg shrink-0 font-black whitespace-nowrap">
+                    {isJapanese ? '開始 ▶' : '시작 ▶'}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 pb-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIndividualScoreboardTarget(null)}
+                className="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-black transition cursor-pointer"
+              >
+                {isJapanese ? '閉じる' : '닫기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📸 통합 개인 종이 스코어카드 사진 판독 · 공식 스코어보드(1080×1440) & 연대기 자동 등록 모달 */}
+      <ClubQuickScoringModal
+        isOpen={individualImageModalCourse !== null}
+        mode="INDIVIDUAL"
+        defaultCourseName={individualImageModalCourse || undefined}
+        onClose={() => setIndividualImageModalCourse(null)}
+        onPersonalRoundSaved={() => {
+          const all = ParkOnStorage.getCompletedRounds();
+          setCompletedRounds([...all]);
+          ChroniclePhotoStorage.getAllPhotos().then((photos) => setChroniclePhotos(photos)).catch(() => {});
+        }}
+        onShowToast={(msg) => {
+          setShareToastMessage(msg);
+          setShowShareToast(true);
+          setTimeout(() => setShowShareToast(false), 3500);
+        }}
+      />
+
+      {/* 📸 외부 스코어보드 사진 / 타 구장 과거 경기 연대기 등록 모달 (하위 호환) */}
       <PaperScorecardModal
         isOpen={showPaperScorecardModal}
         onClose={() => setShowPaperScorecardModal(false)}

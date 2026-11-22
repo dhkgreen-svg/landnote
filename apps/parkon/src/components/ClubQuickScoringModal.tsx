@@ -74,6 +74,7 @@ interface ClubQuickScoringModalProps {
   isOpen: boolean;
   mode?: 'CLUB' | 'INDIVIDUAL';
   club?: ParkGolfClub | null;
+  defaultCourseName?: string;
   initialChronicle?: ClubChronicleTournament | null;
   onClose: () => void;
   onClubUpdated?: (updatedClub: ParkGolfClub) => void;
@@ -194,6 +195,7 @@ export function ClubQuickScoringModal({
   isOpen,
   mode = 'CLUB',
   club = null,
+  defaultCourseName,
   initialChronicle,
   onClose,
   onClubUpdated,
@@ -250,6 +252,7 @@ export function ClubQuickScoringModal({
   const [copiedSummary, setCopiedSummary] = useState<boolean>(false);
   const [savedArchiveMsg, setSavedArchiveMsg] = useState<string>('');
 
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Reset cleanly when opened for a club or individual game (or hydrate from existing chronicle for edit/update!)
@@ -327,7 +330,7 @@ export function ClubQuickScoringModal({
         const m = new Date().getMonth() + 1;
         setActiveChronicleId(isIndividual ? `photo_round_${Date.now()}` : `quick_stroke_${Date.now()}`);
         setEventTitle(isIndividual ? `${m}월 사후 사진 라운드 기록` : `${club?.name || '클럽'} ${m}월 스트로크 채점`);
-        const defaultCourse = club?.homeCourseName || ParkOnStorage.getAllCourses()?.[0]?.name || '구미 동락파크골프장';
+        const defaultCourse = defaultCourseName || club?.homeCourseName || ParkOnStorage.getAllCourses()?.[0]?.name || '구미 동락파크골프장';
         setCourseName(defaultCourse);
         setRankingSubView('GROUPS');
         setHeldDate(new Date().toISOString().split('T')[0]);
@@ -343,7 +346,7 @@ export function ClubQuickScoringModal({
         setDivisionMode('ALL');
       }
     }
-  }, [isOpen, isIndividual, club?.id, initialChronicle?.id]);
+  }, [isOpen, isIndividual, club?.id, defaultCourseName, initialChronicle?.id]);
 
   // 3-Layer Mobile Back Navigation (LIFO: sub-popups close first, then main modal)
   useBackHandler(Boolean(isOpen && (isIndividual || club)), onClose);
@@ -690,6 +693,7 @@ export function ClubQuickScoringModal({
       console.error('Image compress error:', err);
       setOcrNotice('이미지 불러오기 중 오류가 발생했습니다. 다시 시도해 주세요.');
     } finally {
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -1435,8 +1439,20 @@ export function ClubQuickScoringModal({
 
               {inputMode === 'PHOTO' ? (
                 <div className="bg-emerald-50/70 border-2 border-dashed border-emerald-400 rounded-2xl p-4 space-y-3 text-center">
+                  {/* 📷 카메라 직접 촬영 전용 (모바일 후면 카메라 즉시 실행) */}
+                  <input
+                    ref={cameraInputRef}
+                    data-testid="input-quick-scoring-camera"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  {/* 🖼️ 갤러리(앨범) 다중 선택 전용 (capture 없음 → 앨범 바로 열림) */}
                   <input
                     ref={fileInputRef}
+                    data-testid="input-quick-scoring-gallery"
                     type="file"
                     accept="image/*"
                     multiple
@@ -1445,29 +1461,45 @@ export function ClubQuickScoringModal({
                   />
                   <div className="space-y-1">
                     <p className="text-sm font-black text-emerald-950">
-                      조별 종이 스코어카드 사진을 1장 또는 여러 장 올리세요
+                      {isIndividual
+                        ? '스코어카드 사진을 카메라로 찍거나 갤러리에서 선택하세요'
+                        : '조별 스코어카드 사진을 카메라로 찍거나 갤러리에서 선택하세요'}
                     </p>
                     <p className="text-[11px] text-emerald-800 font-bold">
-                      AI가 각 조 이름 · 홀별 타수 · 총타수를 판독하고 자동 검산합니다 (원본 사진 자동 보관)
+                      AI가 이름 · 홀별 타수 · 총타수를 판독하고 자동 검산합니다 (원본 사진 자동 보관)
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-center gap-2">
+                  {/* 📸 2대 필수 버튼: [카메라로 촬영] vs [갤러리에서 선택] 항상 동시 제공 */}
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="px-4 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs sm:text-sm rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95 transition"
+                      data-testid="btn-quick-scoring-camera"
+                      onClick={() => cameraInputRef.current?.click()}
+                      className="py-3 px-2.5 bg-gradient-to-r from-emerald-700 to-emerald-800 hover:from-emerald-600 hover:to-emerald-700 text-white font-black text-xs sm:text-sm rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition whitespace-nowrap"
                     >
-                      <Upload className="w-4 h-4" />
-                      <span>📷 조별 스코어카드 사진 촬영 / 선택</span>
+                      <Camera className="w-4 h-4 text-amber-300 shrink-0" />
+                      <span>카메라로 촬영</span>
                     </button>
+                    <button
+                      type="button"
+                      data-testid="btn-quick-scoring-gallery"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="py-3 px-2.5 bg-gradient-to-r from-teal-700 to-cyan-800 hover:from-teal-600 hover:to-cyan-700 text-white font-black text-xs sm:text-sm rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition whitespace-nowrap"
+                    >
+                      <ImageIcon className="w-4 h-4 text-amber-300 shrink-0" />
+                      <span>갤러리에서 선택</span>
+                    </button>
+                  </div>
+
+                  <div className="flex justify-center">
                     <button
                       type="button"
                       data-testid="btn-quick-scoring-load-sample"
                       onClick={handleLoadSampleGroups}
-                      className="px-3.5 py-3 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs rounded-xl shadow-xs border border-amber-500 flex items-center gap-1 cursor-pointer active:scale-95 transition"
+                      className="px-3.5 py-2 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs rounded-xl shadow-xs border border-amber-500 flex items-center gap-1 cursor-pointer active:scale-95 transition"
                     >
-                      <Sparkles className="w-4 h-4" />
+                      <Sparkles className="w-3.5 h-3.5" />
                       <span>{isIndividual ? '✨ 4인 스코어카드 샘플 체험' : '✨ 2개 조 샘플 체험'}</span>
                     </button>
                   </div>

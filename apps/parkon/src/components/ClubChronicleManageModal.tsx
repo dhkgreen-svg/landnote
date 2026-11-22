@@ -127,6 +127,7 @@ export function ClubChronicleManageModal({
   const [copiedText, setCopiedText] = useState(false);
   const [confirmDeleteArmed, setConfirmDeleteArmed] = useState(false);
 
+  const cameraPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -210,6 +211,7 @@ export function ClubChronicleManageModal({
       console.error('Photo upload failed:', err);
       onShowToast?.('사진 첨부 중 오류가 발생했습니다.');
     } finally {
+      if (cameraPhotoInputRef.current) cameraPhotoInputRef.current.value = '';
       if (photoInputRef.current) photoInputRef.current.value = '';
     }
   };
@@ -572,6 +574,14 @@ export function ClubChronicleManageModal({
                   </span>
                   <div className="flex gap-1.5">
                     <input
+                      ref={cameraPhotoInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleAddPhotos}
+                      className="hidden"
+                    />
+                    <input
                       ref={photoInputRef}
                       type="file"
                       accept="image/*"
@@ -581,11 +591,19 @@ export function ClubChronicleManageModal({
                     />
                     <button
                       type="button"
+                      onClick={() => cameraPhotoInputRef.current?.click()}
+                      className="px-2 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-black flex items-center gap-1 cursor-pointer"
+                    >
+                      <Camera className="w-3 h-3" />
+                      <span>카메라</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => photoInputRef.current?.click()}
-                      className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-black flex items-center gap-1 cursor-pointer"
+                      className="px-2 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-[11px] font-black flex items-center gap-1 cursor-pointer"
                     >
                       <Upload className="w-3 h-3" />
-                      <span>사진 추가</span>
+                      <span>갤러리</span>
                     </button>
                     <button
                       type="button"
