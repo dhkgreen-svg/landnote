@@ -4288,6 +4288,269 @@ ${shareUrl}`;
       ledger,
     };
   },
+
+  // 📱 회원의 유효한 전화번호 등록(=최종 명단 확정) 여부 판별 헬퍼
+  isMemberPhoneConfirmed(member: Pick<ClubMember, 'phone' | 'rosterStatus'>): boolean {
+    const raw = (member.phone || '').trim();
+    if (!raw || raw === '010-8888-9999' || raw === '010-0000-0000') return false;
+    const digits = raw.replace(/\D/g, '');
+    return digits.length >= 10;
+  },
+
+  // 📝 스코어카드 사진 판독 등 신규 정회원 가등록 (전화번호 추후 입력 대기)
+  registerProvisionalMembers(
+    clubId: string,
+    entries: { name: string; gender?: 'M' | 'F' }[]
+  ): { club: ParkGolfClub | null; addedCount: number; skippedCount: number } {
+    if (typeof window === 'undefined') return { club: null, addedCount: 0, skippedCount: 0 };
+    try {
+      const clubs = this.getAllClubs();
+      const idx = clubs.findIndex((c) => c.id === clubId);
+      if (idx === -1) return { club: null, addedCount: 0, skippedCount: 0 };
+
+      const club = { ...clubs[idx], members: [...(clubs[idx].members || [])] };
+      const existingNames = new Set(club.members.map((m) => m.name.trim()));
+      const today = new Date().toISOString().split('T')[0];
+
+      let addedCount = 0;
+      let skippedCount = 0;
+
+      entries.forEach((entry, i) => {
+        const cleanName = (entry.name || '').trim();
+        if (!cleanName || existingNames.has(cleanName)) {
+          skippedCount += 1;
+          return;
+        }
+        existingNames.add(cleanName);
+        club.members.push({
+          id: `mem_prov_${Date.now()}_${i}`,
+          name: cleanName,
+          role: 'MEMBER',
+          joinedAt: today,
+          phone: '',
+          isOfflineMember: true,
+          rosterStatus: 'PROVISIONAL',
+          gender: entry.gender || 'M',
+        });
+        addedCount += 1;
+      });
+
+      club.memberCount = club.members.length;
+      clubs[idx] = club;
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+      triggerCloudClubSync();
+      return { club, addedCount, skippedCount };
+    } catch (e) {
+      console.error('Failed to register provisional members:', e);
+      return { club: null, addedCount: 0, skippedCount: 0 };
+    }
+  },
+
+  // ✅ 가등록 회원에 전화번호 입력하여 최종 정회원 확정
+  confirmMemberPhone(clubId: string, memberId: string, rawPhone: string): ParkGolfClub | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const digits = rawPhone.replace(/\D/g, '').slice(0, 11);
+      if (digits.length < 10) return null;
+      const formatted =
+        digits.length === 10
+          ? `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`
+          : `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+
+      const clubs = this.getAllClubs();
+      const idx = clubs.findIndex((c) => c.id === clubId);
+      if (idx === -1) return null;
+
+      const club = { ...clubs[idx], members: [...(clubs[idx].members || [])] };
+      const mIdx = club.members.findIndex((m) => m.id === memberId);
+      if (mIdx === -1) return null;
+
+      club.members[mIdx] = {
+        ...club.members[mIdx],
+        phone: formatted,
+        rosterStatus: 'CONFIRMED',
+      };
+      clubs[idx] = club;
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+      triggerCloudClubSync();
+      return club;
+    } catch (e) {
+      console.error('Failed to confirm member phone:', e);
+      return null;
+    }
+  },
+
+  // 🏆 독립형 빠른 채점(전통 스트로크 + 조별 스코어카드 원본 사진) 클럽 영구 연대기 저장
+  saveQuickStrokeTournamentChronicle(
+    clubId: string,
+    chronicle: ClubChronicleTournament
+  ): ParkGolfClub | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const clubs = this.getAllClubs();
+      const idx = clubs.findIndex((c) => c.id === clubId);
+      if (idx === -1) return null;
+
+      const club = { ...clubs[idx] };
+      const existing = Array.isArray(club.chronicles) ? [...club.chronicles] : [];
+      const existingIdx = existing.findIndex((ch) => ch.id === chronicle.id);
+      if (existingIdx >= 0) {
+        existing[existingIdx] = chronicle;
+        club.chronicles = existing.slice(0, 60);
+      } else {
+        club.chronicles = [chronicle, ...existing].slice(0, 60);
+      }
+      clubs[idx] = club;
+
+      const stripGroupImages = (groups?: any[]) =>
+        Array.isArray(groups) ? groups.map((g) => ({ ...g, imageUrl: undefined })) : undefined;
+
+      try {
+        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+      } catch {
+        const lightChronicle: ClubChronicleTournament = {
+          ...chronicle,
+          awardCardUrl: undefined,
+          scorecardPhotos: (chronicle.scorecardPhotos || []).slice(0, 2),
+          quickScoreGroups: stripGroupImages(chronicle.quickScoreGroups),
+        };
+        const rest = existing.filter((ch) => ch.id !== chronicle.id);
+        club.chronicles = [lightChronicle, ...rest].slice(0, 40);
+        clubs[idx] = club;
+        try {
+          localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+        } catch {
+          const minimalChronicle: ClubChronicleTournament = {
+            ...chronicle,
+            awardCardUrl: undefined,
+            scorecardPhotos: undefined,
+            quickScoreGroups: stripGroupImages(chronicle.quickScoreGroups),
+          };
+          club.chronicles = [minimalChronicle, ...rest].slice(0, 40);
+          clubs[idx] = club;
+          localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+        }
+      }
+      try {
+        const rawGlobal = localStorage.getItem(STORAGE_KEYS.CLUB_CHRONICLES);
+        if (rawGlobal) {
+          const globalArr: ClubChronicleTournament[] = JSON.parse(rawGlobal);
+          const cleaned = globalArr.filter((ch) => ch.id !== chronicle.id);
+          localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(cleaned));
+        }
+      } catch {}
+      triggerCloudClubSync();
+      return club;
+    } catch (e) {
+      console.error('Failed to save quick stroke tournament chronicle:', e);
+      return null;
+    }
+  },
+
+  // ✏️ 클럽 연대기 상세 수정·보완 (사진첨부·매거진 스토리·행사 회계 등록 및 공식 회계장부 연동)
+  updateClubChronicle(
+    clubId: string,
+    updatedChronicle: ClubChronicleTournament,
+    syncAccountingToLedger: boolean = true
+  ): ParkGolfClub | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const clubs = this.getAllClubs();
+      const idx = clubs.findIndex((c) => c.id === clubId);
+      if (idx === -1) return null;
+
+      const club = { ...clubs[idx] };
+      const existing = Array.isArray(club.chronicles) ? [...club.chronicles] : [];
+      const cIdx = existing.findIndex((ch) => ch.id === updatedChronicle.id);
+      if (cIdx >= 0) {
+        existing[cIdx] = updatedChronicle;
+      } else {
+        existing.unshift(updatedChronicle);
+      }
+      club.chronicles = existing.slice(0, 60);
+
+      // 💰 행사 회계 내역을 클럽 공식 회계장부(accountingLedger)에도 자동 동기화 (중복 방지)
+      if (syncAccountingToLedger && Array.isArray(updatedChronicle.accountingItems)) {
+        const prefix = `chr_acc_${updatedChronicle.id}_`;
+        const baseLedger = (club.accountingLedger || []).filter((e) => !e.id.startsWith(prefix));
+        const syncedEntries: ClubAccountingEntry[] = updatedChronicle.accountingItems
+          .filter((item) => item.title.trim() && item.amount > 0)
+          .map((item) => ({
+            id: `${prefix}${item.id}`,
+            type: item.type === 'INCOME' ? 'INCOME_ENTRY_FEE' : 'EXPENSE',
+            category: item.type === 'INCOME' ? '행사 수입' : '행사 지출',
+            title: `[${updatedChronicle.title}] ${item.title.trim()}`,
+            amount: Number(item.amount) || 0,
+            date: updatedChronicle.heldAt || new Date().toISOString().split('T')[0],
+            notes: item.memo || '클럽 연대기 행사 회계 연동',
+          }));
+        club.accountingLedger = [...syncedEntries, ...baseLedger];
+      }
+
+      clubs[idx] = club;
+      try {
+        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+      } catch {
+        // 용량 초과 시 대용량 이미지 경량화 후 재저장
+        const lightItem: ClubChronicleTournament = {
+          ...updatedChronicle,
+          awardCardUrl: undefined,
+          eventPhotos: (updatedChronicle.eventPhotos || []).slice(0, 4),
+          scorecardPhotos: (updatedChronicle.scorecardPhotos || []).slice(0, 2),
+        };
+        const nextList = existing.map((ch) => (ch.id === updatedChronicle.id ? lightItem : ch));
+        club.chronicles = nextList.slice(0, 40);
+        clubs[idx] = club;
+        localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+      }
+
+      // 글로벌 연대기 중복 제거 (club.chronicles를 단일 진실 소스로 유지)
+      try {
+        const rawGlobal = localStorage.getItem(STORAGE_KEYS.CLUB_CHRONICLES);
+        if (rawGlobal) {
+          const globalArr: ClubChronicleTournament[] = JSON.parse(rawGlobal);
+          const cleaned = globalArr.filter((ch) => ch.id !== updatedChronicle.id);
+          localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(cleaned));
+        }
+      } catch {}
+
+      triggerCloudClubSync();
+      return club;
+    } catch (e) {
+      console.error('Failed to update club chronicle:', e);
+      return null;
+    }
+  },
+
+  // 🗑️ 클럽 연대기 대회 기록 삭제 (클럽 내부 + 글로벌 연대기 동시 삭제)
+  deleteClubChronicle(clubId: string, chronicleId: string): ParkGolfClub | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const clubs = this.getAllClubs();
+      const idx = clubs.findIndex((c) => c.id === clubId);
+      if (idx === -1) return null;
+
+      const club = { ...clubs[idx] };
+      club.chronicles = (club.chronicles || []).filter((ch) => ch.id !== chronicleId);
+      clubs[idx] = club;
+      localStorage.setItem(STORAGE_KEYS.CLUBS, JSON.stringify(clubs));
+
+      try {
+        const rawGlobal = localStorage.getItem(STORAGE_KEYS.CLUB_CHRONICLES);
+        if (rawGlobal) {
+          const globalArr: ClubChronicleTournament[] = JSON.parse(rawGlobal);
+          const filteredGlobal = globalArr.filter((ch) => ch.id !== chronicleId);
+          localStorage.setItem(STORAGE_KEYS.CLUB_CHRONICLES, JSON.stringify(filteredGlobal));
+        }
+      } catch {}
+
+      triggerCloudClubSync();
+      return club;
+    } catch (e) {
+      console.error('Failed to delete club chronicle:', e);
+      return null;
+    }
+  },
 };
 
 

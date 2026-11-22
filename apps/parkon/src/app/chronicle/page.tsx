@@ -56,6 +56,7 @@ import { PILGRIMAGE_COURSES, PilgrimageStorage, PilgrimageCourse } from '@/lib/p
 import { PilgrimageDetailModal } from '@/components/PilgrimageDetailModal';
 import { RoundScoreboardModal } from '@/components/RoundScoreboardModal';
 import { PaperScorecardModal } from '@/components/PaperScorecardModal';
+import { ClubQuickScoringModal } from '@/components/ClubQuickScoringModal';
 import { RestaurantStorage } from '@/lib/restaurantStorage';
 import { ParShotAnalyticsWidget } from '@/components/ParShotAnalyticsWidget';
 import { useBackHandler } from '@/lib/backNavigation';
@@ -2434,12 +2435,20 @@ function ChronicleContent() {
         }}
       />
 
-      {/* 📸 [과업 4]: 종이 스코어카드 AI 자동 입력 & 교차 검증 모달 */}
-      <PaperScorecardModal
+      {/* 📸 [대표님 지시] 일반 개인 게임 종이 스코어카드 사진 판독 · 공식 스코어보드 · 연대기 자동 등록 모달 (클럽과 100% 동일 방식) */}
+      <ClubQuickScoringModal
         isOpen={showPaperScorecardModal}
-        onClose={() => setShowPaperScorecardModal(false)}
-        onMergedSuccess={() => {
+        mode="INDIVIDUAL"
+        onClose={() => {
+          setShowPaperScorecardModal(false);
           setSyncVersion((v) => v + 1);
+        }}
+        onPersonalRoundSaved={() => {
+          setSyncVersion((v) => v + 1);
+        }}
+        onShowToast={(msg) => {
+          setToastMsg(msg);
+          setTimeout(() => setToastMsg(''), 3500);
         }}
       />
 

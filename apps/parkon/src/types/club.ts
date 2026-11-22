@@ -141,6 +141,8 @@ export interface ClubMember {
   totalCompleted9Holes?: number; // [NEW] 누적 9홀 완주 횟수
   scorePrivacy?: ScorePrivacyLevel; // [NEW] 점수 공개 범위 ('PUBLIC' | 'TOTAL_ONLY' | 'PRIVATE')
   isOfflineMember?: boolean; // [NEW] 오프라인(수기) 등록 회원 여부
+  rosterStatus?: 'PROVISIONAL' | 'CONFIRMED'; // [NEW] 가등록(전화번호 미입력) vs 최종 확정(전화번호 등록 완료)
+  gender?: 'M' | 'F'; // [NEW] 남/여 구분
 }
 
 // 🔐 탈퇴 회원 비밀 보관소 (영구 보존 & 복귀 시 원상 회복)
@@ -186,6 +188,18 @@ export interface ClubChronicleTournament {
   nearPinDistance?: string;
   groupPhotoUrl?: string; // [3단계] 워터마크 각인 단체 기념사진
   awardCardUrl?: string; // [3단계] 1080p 공식 시상식 카드 URL
+  scorecardPhotos?: { groupNumber: string; imageUrl: string }[]; // [NEW] 조별 종이 스코어카드 원본 보관
+  eventPhotos?: { id: string; url: string; caption?: string }[]; // [NEW] 행사 현장 사진 다중 첨부 (매거진 리포트용)
+  accountingItems?: { id: string; type: 'INCOME' | 'EXPENSE'; title: string; amount: number; memo?: string }[]; // [NEW] 행사 전용 수입/지출 회계 내역
+  magazineStory?: string; // [NEW] 매거진 리포트용 행사 후기·스케치 본문
+  quickScoreGroups?: any[]; // [NEW] 독립 채점 조별 원본 스냅샷 (연대기 재수정·보완용)
+  quickScoreSettings?: {
+    divisionMode?: 'ALL' | 'GENDER';
+    useBackcount?: boolean;
+    excludeGuestsFromAwards?: boolean;
+    graceWinnerName?: string;
+    selectedCourses?: string[];
+  };
   // 특별상 및 행운상
   specialAwards?: SpecialAwardWinner[];
   luckyDrawWinners?: LuckyDrawWinner[];
@@ -200,6 +214,8 @@ export interface ClubChronicleTournament {
     handicap?: number;
     netScore?: number;
     isWinner?: boolean;
+    isGuest?: boolean;
+    gender?: 'M' | 'F';
     awards?: string[];
   }[];
   // 조별 성적 스냅샷

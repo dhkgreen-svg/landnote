@@ -55,13 +55,19 @@ const OCR_SYSTEM_PROMPT = `당신은 대한민국 (사)대한파크골프협회 
 
 export async function POST(req: Request) {
   try {
-    const { images } = await req.json();
+    const { images, clubMemberNames, strictMode } = await req.json();
 
     if (!images || !Array.isArray(images) || images.length === 0) {
       return NextResponse.json({ error: '최소 1장 이상의 종이 스코어카드 이미지가 필요합니다.' }, { status: 400 });
     }
 
+    const memberHintText =
+      Array.isArray(clubMemberNames) && clubMemberNames.length > 0
+        ? `\n\n[참고 - 우리 클럽 등록 회원 명단 (손글씨 판독 시 유사한 이름이 있으면 우선 참고하되, 명단에 없는 새 이름·게스트는 적힌 그대로 판독)]: ${clubMemberNames.slice(0, 80).join(', ')}`
+        : '';
+
     const results: ParsedScorecardGroup[] = [];
+    const failedIndexes: number[] = [];
 
     for (let index = 0; index < images.length; index++) {
       const imgData = images[index];
@@ -87,7 +93,7 @@ export async function POST(req: Request) {
               {
                 role: 'user',
                 parts: [
-                  { text: '이 종이 스코어카드를 판독하여 선수별 이름, 각 홀 타수, 총타수 합계를 추출하고 검산해 주세요.' },
+                  { text: `이 종이 스코어카드를 판독하여 조 번호, 구장명, 선수별 이름, 각 홀 타수, 총타수 합계를 정확히 추출하고 검산해 주세요.${memberHintText}` },
                   {
                     inlineData: {
                       mimeType,
@@ -121,11 +127,19 @@ export async function POST(req: Request) {
             if (textContent) {
               const parsed = JSON.parse(textContent);
               const players: ParsedScorecardPlayer[] = (parsed.players || []).map((p: any) => {
-                const scores = p.scores || {};
-                const calcTotal = Object.values(scores).reduce((sum: number, s: any) => sum + (Number(s) || 0), 0);
+                const rawScores = p.scores || {};
+                const scores: Record<number, number> = {};
+                Object.entries(rawScores).forEach(([k, v]) => {
+                  const h = Number(k);
+                  const s = Number(v);
+                  if (!Number.isNaN(h) && !Number.isNaN(s) && s > 0) {
+                    scores[h] = s;
+                  }
+                });
+                const calcTotal = Object.values(scores).reduce((sum: number, s: number) => sum + s, 0);
                 const repTotal = Number(p.reportedTotal) || calcTotal;
                 return {
-                  name: p.name || '골퍼',
+                  name: (p.name || '골퍼').trim(),
                   scores,
                   reportedTotal: repTotal,
                   calculatedTotal: calcTotal,
@@ -147,8 +161,22 @@ export async function POST(req: Request) {
             }
           }
         } catch (e) {
-          console.warn(`Gemini Vision OCR failed for group ${index + 1}, using intelligent fallback:`, e);
+          console.warn(`Gemini Vision OCR failed for group ${index + 1}:`, e);
         }
+      }
+
+      if (strictMode) {
+        failedIndexes.push(index + 1);
+        results.push({
+          groupId: `group_manual_${Date.now()}_${index}`,
+          groupNumber: defaultGroupNum,
+          courseName: '파크골프장',
+          date: new Date().toISOString().split('T')[0],
+          courses: ['A', 'B'],
+          imageUrl: imgData,
+          players: [],
+        });
+        continue;
       }
 
       // Fallback parser (Robust mock for simulation or when offline)
@@ -199,8 +227,13 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      success: true,
+      success: failedIndexes.length === 0,
       totalGroups: results.length,
+      failedGroups: failedIndexes,
+      ocrWarning:
+        failedIndexes.length > 0
+          ? `${failedIndexes.join(', ')}조 사진의 AI 판독에 실패했습니다. 선명하게 재촬영하거나 원본 사진을 보며 직접 입력해 주세요.`
+          : undefined,
       groups: results,
     });
   } catch (error: any) {

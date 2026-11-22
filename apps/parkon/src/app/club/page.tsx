@@ -45,9 +45,12 @@ import {
   Bell,
   AlertTriangle,
 } from 'lucide-react';
-import { ClubEventRoom, ClubGroup, ClubPlayer, ParkGolfClub, ClubMember, FlashGathering, TournamentType, ClubInvitation, ClubRecruitStatus } from '@/types/club';
+import { ClubEventRoom, ClubGroup, ClubPlayer, ParkGolfClub, ClubMember, ClubChronicleTournament, FlashGathering, TournamentType, ClubInvitation, ClubRecruitStatus } from '@/types/club';
 import { Course } from '@/types/parkon';
 import { ClubStorage } from '@/lib/clubStorage';
+import { ClubQuickScoringModal } from '@/components/ClubQuickScoringModal';
+import { ClubChronicleManageModal } from '@/components/ClubChronicleManageModal';
+import { ClubMagazineTimelineModal } from '@/components/ClubMagazineTimelineModal';
 import { CompanionStorage, Companionship, CompanionLightningRound } from '@/lib/companionStorage';
 import { ParkOnStorage } from '@/lib/storage';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
@@ -177,6 +180,13 @@ export default function ClubGatheringHomePage() {
 
   // [NEW] 클럽 모임(정기전 / 번개) 개최 선택 모달 상태
   const [clubGatheringModal, setClubGatheringModal] = useState<ParkGolfClub | null>(null);
+  // 📸 [대표님 지시] 공고 없이 바로 쓰는 독립형 스코어카드 사진 판독 · 전통 스트로크 빠른 등수 계산기
+  const [quickScoringClub, setQuickScoringClub] = useState<ParkGolfClub | null>(null);
+  const [editingChronicle, setEditingChronicle] = useState<ClubChronicleTournament | null>(null);
+  const [managingChronicleCtx, setManagingChronicleCtx] = useState<{ club: ParkGolfClub; chronicle: ClubChronicleTournament; initialTab?: 'EDIT' | 'MAGAZINE' | 'DELETE' } | null>(null);
+  const [magazineTimelineClub, setMagazineTimelineClub] = useState<ParkGolfClub | null>(null);
+  const [phoneConfirmTargetId, setPhoneConfirmTargetId] = useState<string | null>(null);
+  const [phoneConfirmInput, setPhoneConfirmInput] = useState<string>('');
 
   // 클럽 3대 서브 탭 상태: 'SHORTCUT' (클럽 바로가기) | 'CREATE' (새 클럽 창단하기) | 'BROWSE' (클럽 찾아보기 가입)
   const [clubSubTab, setClubSubTab] = useState<'SHORTCUT' | 'CREATE' | 'BROWSE'>('SHORTCUT');
@@ -211,7 +221,7 @@ export default function ClubGatheringHomePage() {
   const [customRoleInput, setCustomRoleInput] = useState('');
   // [NEW] 50인 이상 대규모 클럽 회원 검색 및 직책 필터 상태
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
-  const [memberRoleFilter, setMemberRoleFilter] = useState<'ALL' | 'EXECUTIVE' | 'MEMBER'>('ALL');
+  const [memberRoleFilter, setMemberRoleFilter] = useState<'ALL' | 'EXECUTIVE' | 'MEMBER' | 'UNCONFIRMED_PHONE'>('ALL');
   const [duesFilter, setDuesFilter] = useState<'ALL' | 'PAID' | 'UNPAID'>('ALL');
   const [clubMatchModal, setClubMatchModal] = useState<ParkGolfClub | null>(null);
   const [editRecruitStatus, setEditRecruitStatus] = useState<ClubRecruitStatus>('RECRUITING');
@@ -2405,6 +2415,28 @@ ${shareUrl}`;
                           </>
                         )}
                       </div>
+
+                      {/* 📸 [대표님 지시] 총무 독립형: 공고 없이 사진 판독 & 전통 스트로크 빠른 등수 계산기 */}
+                      {isExecutive && (
+                        <button
+                          type="button"
+                          data-testid={`btn-open-quick-scoring-${club.id}`}
+                          onClick={() => { setEditingChronicle(null); setQuickScoringClub(club); }}
+                          className="w-full mt-2 py-2.5 px-3 bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl text-xs font-black flex items-center justify-between transition cursor-pointer active:scale-98 shadow-sm border border-emerald-500/40"
+                        >
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-sm leading-none shrink-0">📸</span>
+                            <span className="truncate">
+                              {isJapanese
+                                ? 'スコアカード写真読取・即席順位計算 (告知不要)'
+                                : '사진 판독 · 빠른 등수 계산기 (공고 없이 바로)'}
+                            </span>
+                          </span>
+                          <span className="text-[10px] bg-amber-400 text-stone-950 font-black px-2 py-0.5 rounded-full shrink-0">
+                            스트로크
+                          </span>
+                        </button>
+                      )}
 
                       {/* 📜 클럽 공식 연대기 (대회 실록 & 명예의 전당) 바로가기 */}
                       <button
@@ -4682,6 +4714,8 @@ ${shareUrl}`;
                 const totalMembers = managingClub.members || [];
                 const executiveCount = totalMembers.filter((m) => m.role !== 'MEMBER' || !!(m.customRoleName && m.customRoleName.trim())).length;
                 const regularCount = totalMembers.length - executiveCount;
+                const unconfirmedPhoneCount = totalMembers.filter((m) => !ClubStorage.isMemberPhoneConfirmed(m)).length;
+                const confirmedPhoneCount = totalMembers.length - unconfirmedPhoneCount;
 
                 const filteredMembers = totalMembers.filter((m) => {
                   const matchSearch =
@@ -4690,10 +4724,12 @@ ${shareUrl}`;
                     (m.phone && m.phone.includes(memberSearchTerm.trim()));
 
                   const isExec = m.role !== 'MEMBER' || !!(m.customRoleName && m.customRoleName.trim());
+                  const isPhoneOk = ClubStorage.isMemberPhoneConfirmed(m);
                   const matchRole =
                     memberRoleFilter === 'ALL' ||
                     (memberRoleFilter === 'EXECUTIVE' && isExec) ||
-                    (memberRoleFilter === 'MEMBER' && !isExec);
+                    (memberRoleFilter === 'MEMBER' && !isExec) ||
+                    (memberRoleFilter === 'UNCONFIRMED_PHONE' && !isPhoneOk);
 
                   return matchSearch && matchRole;
                 });
@@ -4766,7 +4802,7 @@ ${shareUrl}`;
                               if (offlineMemberName.trim()) {
                                 entries.push({
                                   name: offlineMemberName.trim(),
-                                  phone: offlineMemberPhone.trim() || '010-8888-9999',
+                                  phone: offlineMemberPhone.trim(),
                                   role: offlineMemberRole,
                                 });
                               }
@@ -4778,7 +4814,7 @@ ${shareUrl}`;
                                   .forEach((line) => {
                                     const parts = line.split(/\s+/);
                                     const name = parts[0];
-                                    const phone = parts.find((p) => p.includes('010')) || '010-0000-0000';
+                                    const phone = parts.find((p) => p.includes('010')) || '';
                                     const role = line.includes('고문')
                                       ? 'ADVISOR'
                                       : line.includes('부회장')
@@ -4832,8 +4868,16 @@ ${shareUrl}`;
                         )}
                       </div>
 
-                      {/* 직책 필터 탭 */}
-                      <div className="grid grid-cols-3 gap-1 text-[11px] font-bold">
+                      {/* 2단계 명단 확정 요약 바 */}
+                      <div className="flex items-center justify-between text-[11px] font-bold px-2.5 py-1.5 bg-stone-100 rounded-xl border border-stone-200">
+                        <span className="text-emerald-800">✅ 최종 확정 {confirmedPhoneCount}명</span>
+                        <span className={unconfirmedPhoneCount > 0 ? 'text-amber-700 font-black' : 'text-stone-400'}>
+                          ⏳ 번호 미등록(가등록) {unconfirmedPhoneCount}명
+                        </span>
+                      </div>
+
+                      {/* 직책 · 확정상태 필터 탭 */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-[11px] font-bold">
                         <button
                           type="button"
                           onClick={() => setMemberRoleFilter('ALL')}
@@ -4844,6 +4888,18 @@ ${shareUrl}`;
                           }`}
                         >
                           {isJapanese ? `全体 (${totalMembers.length}名)` : `전체 (${totalMembers.length}명)`}
+                        </button>
+                        <button
+                          type="button"
+                          data-testid="btn-filter-unconfirmed-phone"
+                          onClick={() => setMemberRoleFilter('UNCONFIRMED_PHONE')}
+                          className={`py-1.5 rounded-lg transition text-center cursor-pointer ${
+                            memberRoleFilter === 'UNCONFIRMED_PHONE'
+                              ? 'bg-amber-500 text-stone-950 font-black shadow-xs'
+                              : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200'
+                          }`}
+                        >
+                          ⏳ 번호 미등록 ({unconfirmedPhoneCount}명)
                         </button>
                         <button
                           type="button"
@@ -4922,8 +4978,89 @@ ${shareUrl}`;
                                     {roleBadge.text}
                                   </span>
                                 </div>
-                                {m.phone && (
-                                  <span className="text-[10px] text-stone-400 font-medium">📞 {m.phone}</span>
+                                {ClubStorage.isMemberPhoneConfirmed(m) ? (
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className="text-[10px] text-stone-500 font-bold">📞 {m.phone}</span>
+                                    <span className="text-[9.5px] px-1.5 py-0.2 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded font-black">
+                                      ✅ 최종 확정
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="mt-1 space-y-1">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span
+                                        data-testid={`badge-provisional-${m.name}`}
+                                        className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded font-black"
+                                      >
+                                        ⏳ 번호 미등록 (가등록)
+                                      </span>
+                                      {phoneConfirmTargetId !== m.id && (
+                                        <button
+                                          type="button"
+                                          data-testid={`btn-confirm-phone-${m.name}`}
+                                          onClick={() => {
+                                            setPhoneConfirmTargetId(m.id);
+                                            setPhoneConfirmInput('');
+                                          }}
+                                          className="text-[10px] px-2 py-0.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded font-black cursor-pointer"
+                                        >
+                                          📱 번호 입력 · 최종 확정
+                                        </button>
+                                      )}
+                                    </div>
+                                    {phoneConfirmTargetId === m.id && (
+                                      <div className="flex items-center gap-1">
+                                        <input
+                                          type="tel"
+                                          inputMode="numeric"
+                                          data-testid={`input-confirm-phone-${m.name}`}
+                                          value={phoneConfirmInput}
+                                          onChange={(e) => {
+                                            const d = e.target.value.replace(/\D/g, '').slice(0, 11);
+                                            const f =
+                                              d.length <= 3
+                                                ? d
+                                                : d.length <= 7
+                                                ? `${d.slice(0, 3)}-${d.slice(3)}`
+                                                : `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+                                            setPhoneConfirmInput(f);
+                                          }}
+                                          placeholder="010-0000-0000"
+                                          className="w-36 px-2 py-1 bg-white border-2 border-emerald-500 rounded-lg font-mono text-[11px] font-black"
+                                          autoFocus
+                                        />
+                                        <button
+                                          type="button"
+                                          data-testid={`btn-save-confirm-phone-${m.name}`}
+                                          onClick={() => {
+                                            const updated = ClubStorage.confirmMemberPhone(managingClub.id, m.id, phoneConfirmInput);
+                                            if (!updated) {
+                                              showToast('⚠️ 올바른 휴대폰 번호(10~11자리)를 입력해 주세요.');
+                                              return;
+                                            }
+                                            setManagingClub({ ...updated });
+                                            setClubs(ClubStorage.getAllClubs());
+                                            setPhoneConfirmTargetId(null);
+                                            setPhoneConfirmInput('');
+                                            showToast(`✅ '${m.name}' 님의 전화번호 등록 및 최종 정회원 확정이 완료되었습니다!`);
+                                          }}
+                                          className="px-2.5 py-1 bg-emerald-700 text-white rounded-lg text-[11px] font-black cursor-pointer"
+                                        >
+                                          확정
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setPhoneConfirmTargetId(null);
+                                            setPhoneConfirmInput('');
+                                          }}
+                                          className="px-2 py-1 bg-stone-200 text-stone-700 rounded-lg text-[11px] font-bold cursor-pointer"
+                                        >
+                                          취소
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -5577,6 +5714,22 @@ ${shareUrl}`;
                       )}
                     </div>
 
+                    {/* 2-B. 📰 행사 타임라인 매거진 리포트 바로가기 */}
+                    <button
+                      type="button"
+                      data-testid="btn-open-timeline-magazine"
+                      onClick={() => setMagazineTimelineClub(managingClub)}
+                      className="w-full py-2.5 px-3.5 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-300 hover:from-amber-300 text-stone-950 font-black text-xs rounded-2xl shadow-sm border border-amber-500/50 flex items-center justify-between cursor-pointer transition active:scale-98"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span>📰</span>
+                        <span>전체 행사 타임라인 매거진 리포트 보기 (사진 · 순위 · 회계)</span>
+                      </span>
+                      <span className="text-[10px] bg-stone-900 text-amber-300 px-2 py-0.5 rounded-lg shrink-0">
+                        매거진 ▶
+                      </span>
+                    </button>
+
                     {/* 3. 타임라인 피드 */}
                     <div data-testid="club-chronicle-timeline-feed" className="space-y-2">
                       {clubChronicles.map((item) => (
@@ -5592,7 +5745,52 @@ ${shareUrl}`;
                             <span className="text-[10px] font-mono font-bold text-stone-500">{item.heldAt}</span>
                           </div>
                           <h5 className="text-xs font-black text-stone-900">{item.title}</h5>
-                          <p className="text-[11px] text-stone-600 font-medium leading-relaxed">{item.notes || `${item.courseName} · 참가 ${item.totalParticipants}명 · 우승 ${item.winnerName}`}</p>
+                          <p className="text-[11px] text-stone-600 font-medium leading-relaxed">
+                            📍 {item.courseName} · 참가 {item.totalParticipants}명 · 👑 우승 {item.winnerName}
+                            {item.winnerScore > 0 ? ` (${item.winnerScore}타)` : ''}
+                            {item.notes ? ` · ${item.notes}` : ''}
+                          </p>
+                          {/* 첨부 사진 썸네일 & 회계 요약 + 단일 [⚙️ 관리] 버튼 */}
+                          {item.eventPhotos && item.eventPhotos.length > 0 && (
+                            <div className="flex items-center gap-1.5 overflow-x-auto pt-1">
+                              {item.eventPhotos.slice(0, 4).map((ph) => (
+                                <img
+                                  key={ph.id}
+                                  src={ph.url}
+                                  alt={ph.caption || '행사 사진'}
+                                  className="w-14 h-10 rounded-lg object-cover border border-stone-200 shrink-0"
+                                />
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-stone-100">
+                            <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-bold">
+                              {item.eventPhotos && item.eventPhotos.length > 0 && (
+                                <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded">
+                                  📸 사진 {item.eventPhotos.length}장
+                                </span>
+                              )}
+                              {item.accountingItems && item.accountingItems.length > 0 && (
+                                <span className="px-1.5 py-0.5 bg-amber-50 text-amber-900 border border-amber-200 rounded">
+                                  💰 회계 {item.accountingItems.length}건
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              data-testid={`btn-manage-chronicle-${item.id}`}
+                              onClick={() =>
+                                setManagingChronicleCtx({
+                                  club: managingClub,
+                                  chronicle: item,
+                                  initialTab: 'EDIT',
+                                })
+                              }
+                              className="px-3 py-1.5 bg-stone-900 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-black cursor-pointer flex items-center gap-1 shadow-2xs transition"
+                            >
+                              <span>⚙️ 관리</span>
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -6306,6 +6504,13 @@ ${shareUrl}`;
                                 <div className="flex items-center gap-1.5 shrink-0">
                                   <button
                                     type="button"
+                                    onClick={() => setMagazineTimelineClub(selectedClubDetail)}
+                                    className="px-2.5 py-1.5 min-h-[32px] bg-amber-400 hover:bg-amber-300 text-stone-950 border border-amber-500 rounded-lg transition cursor-pointer text-xs font-black"
+                                  >
+                                    📰 매거진
+                                  </button>
+                                  <button
+                                    type="button"
                                     onClick={() => {
                                       const allOpen: Record<string, boolean> = {};
                                       monthKeys.forEach((k) => (allOpen[k] = false));
@@ -6390,6 +6595,22 @@ ${shareUrl}`;
                                                       📍 {chr.courseName} · {chr.totalHoles}{isJapanese ? 'ホール' : '홀'} · {chr.totalParticipants}{isJapanese ? '名参加' : '명 참가'}
                                                     </div>
                                                   </div>
+                                                  {isClubExecutive(selectedClubDetail) && (
+                                                    <button
+                                                      type="button"
+                                                      data-testid={`btn-detail-manage-chronicle-${chr.id}`}
+                                                      onClick={() =>
+                                                        setManagingChronicleCtx({
+                                                          club: selectedClubDetail,
+                                                          chronicle: chr,
+                                                          initialTab: 'EDIT',
+                                                        })
+                                                      }
+                                                      className="px-2.5 py-1 bg-stone-900 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-black cursor-pointer shrink-0"
+                                                    >
+                                                      ⚙️ 관리
+                                                    </button>
+                                                  )}
                                                 </div>
 
                                                 {/* 👑 우승자 명예의 전당 */}
@@ -6862,6 +7083,26 @@ ${shareUrl}`;
                       );
                     })()}
                   </div>
+
+                  {/* 📸 총무 독립형: 공고·조편성 없이 바로 사진 판독 & 전통 스트로크 등수 매기기 */}
+                  {isClubExecutive(c) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClubGatheringModal(null);
+                        setEditingChronicle(null); setQuickScoringClub(c);
+                      }}
+                      className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-50 via-teal-50 to-amber-50 hover:from-emerald-100 hover:to-amber-100 border-2 border-emerald-400 rounded-xl text-xs font-black text-emerald-950 flex items-center justify-between cursor-pointer transition shadow-2xs"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span>📸</span>
+                        <span>공고 없이 스코어카드 사진 판독 · 전통 스트로크 등수 바로 매기기</span>
+                      </span>
+                      <span className="text-[10px] bg-emerald-700 text-white px-2 py-0.5 rounded-lg shrink-0">
+                        독립 채점 ▶
+                      </span>
+                    </button>
+                  )}
                 </div>
 
                 {/* ------------------------------------------------------------- */}
@@ -10382,6 +10623,70 @@ ${shareUrl}`;
           </div>
         </div>
       )}
+
+      {/* 📸 [대표님 지시] 공고 없이 바로 쓰는 독립형 스코어카드 사진 판독 · 전통 스트로크 등수 계산기 */}
+      <ClubQuickScoringModal
+        isOpen={Boolean(quickScoringClub)}
+        club={quickScoringClub}
+        initialChronicle={editingChronicle}
+        onClose={() => {
+          setQuickScoringClub(null);
+          setEditingChronicle(null);
+        }}
+        onClubUpdated={(updated) => {
+          setClubs(ClubStorage.getAllClubs());
+          if (managingClub && managingClub.id === updated.id) {
+            setManagingClub({ ...updated });
+          }
+          if (selectedClubDetail && selectedClubDetail.id === updated.id) {
+            setSelectedClubDetail({ ...updated });
+          }
+        }}
+        onShowToast={(msg) => showToast(msg)}
+      />
+
+      {/* ⚙️ [대표님 지시] 연대기 단일 관리 모달 (수정·사진첨부·회계등록 / 매거진 리포트 / 삭제) */}
+      <ClubChronicleManageModal
+        isOpen={Boolean(managingChronicleCtx)}
+        club={managingChronicleCtx?.club || null}
+        chronicle={managingChronicleCtx?.chronicle || null}
+        initialTab={managingChronicleCtx?.initialTab || 'EDIT'}
+        onClose={() => setManagingChronicleCtx(null)}
+        onOpenScoreEditor={(chr) => {
+          const targetClub = managingChronicleCtx?.club || managingClub || selectedClubDetail;
+          setManagingChronicleCtx(null);
+          if (targetClub) {
+            setEditingChronicle(chr);
+            setQuickScoringClub(targetClub);
+          }
+        }}
+        onClubUpdated={(updated) => {
+          setClubs(ClubStorage.getAllClubs());
+          if (managingClub && managingClub.id === updated.id) setManagingClub({ ...updated });
+          if (selectedClubDetail && selectedClubDetail.id === updated.id) setSelectedClubDetail({ ...updated });
+          if (managingChronicleCtx && managingChronicleCtx.club.id === updated.id) {
+            const refreshedChr = (updated.chronicles || []).find((x) => x.id === managingChronicleCtx.chronicle.id);
+            if (refreshedChr) {
+              setManagingChronicleCtx({ ...managingChronicleCtx, club: { ...updated }, chronicle: refreshedChr });
+            }
+          }
+        }}
+        onShowToast={(msg) => showToast(msg)}
+      />
+
+      {/* 📰 [대표님 지시] 클럽 전체 행사 타임라인 매거진 리포트 */}
+      <ClubMagazineTimelineModal
+        isOpen={Boolean(magazineTimelineClub)}
+        club={magazineTimelineClub}
+        chronicles={magazineTimelineClub ? ClubStorage.getClubChronicles(magazineTimelineClub.id) : []}
+        onClose={() => setMagazineTimelineClub(null)}
+        onOpenManageChronicle={(chr) => {
+          if (magazineTimelineClub) {
+            setManagingChronicleCtx({ club: magazineTimelineClub, chronicle: chr, initialTab: 'EDIT' });
+          }
+        }}
+        onShowToast={(msg) => showToast(msg)}
+      />
     </div>
   );
 }
