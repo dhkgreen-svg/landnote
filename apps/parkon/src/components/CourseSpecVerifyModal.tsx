@@ -2,13 +2,11 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertTriangle,
   Camera,
   Check,
   CheckCircle2,
   Image as ImageIcon,
   ShieldCheck,
-  Sparkles,
   X,
 } from 'lucide-react';
 import { Course, HoleMetadata } from '@/types/parkon';
@@ -86,6 +84,7 @@ function buildNormalizedHoles(totalCourses: number, sourceHoles?: HoleMetadata[]
         hole: hNum,
         par: found.par === 3 || found.par === 4 || found.par === 5 ? found.par : 3,
         distanceMeter: Number(found.distanceMeter) || 0,
+        distanceVerifiedAt: found.distanceVerifiedAt,
         localRule: found.localRule,
         tip: found.tip,
         isVerified: true,
@@ -196,7 +195,7 @@ export function CourseSpecVerifyModal({
     const file = e.target.files?.[0];
     if (!file) return;
     setIsExtracting(true);
-    setNotice({ type: 'info', text: '📸 AI가 안내판/스코어카드 사진에서 코스 수와 홀별 파·거리를 추출 중입니다...' });
+    setNotice({ type: 'info', text: 'AI 분석 중...' });
     try {
       const compressed = await compressEvidencePhoto(file);
       setEvidencePhotoUrl(compressed);
@@ -205,15 +204,20 @@ export function CourseSpecVerifyModal({
         courseNameHint: course.name,
       });
       if (res.success && res.totalCourses && Array.isArray(res.holesMetadata)) {
+        const nowIso = new Date().toISOString();
+        const stamped = res.holesMetadata.map((h) => ({
+          ...h,
+          distanceVerifiedAt: Number(h.distanceMeter) > 0 ? nowIso : undefined,
+        }));
         setTotalCourses(res.totalCourses);
-        setHoles(buildNormalizedHoles(res.totalCourses, res.holesMetadata));
+        setHoles(buildNormalizedHoles(res.totalCourses, stamped));
         setActiveCourseIdx(0);
         setSource('PHOTO_OCR');
-        setNotice({ type: 'success', text: res.note || '✅ 사진에서 코스 제원을 추출했습니다!' });
+        setNotice(null);
       } else {
         setNotice({
           type: 'error',
-          text: res.message || '사진 자동 판독에 실패했습니다. 증빙 사진은 첨부되었으니 아래 표에서 직접 파수를 선택해 주세요.',
+          text: res.message || '사진 자동 판독에 실패했습니다.',
         });
       }
     } catch (err: any) {
@@ -225,41 +229,16 @@ export function CourseSpecVerifyModal({
     }
   };
 
-  const handleLoadSampleSignboard = async () => {
-    setIsExtracting(true);
-    setNotice(null);
-    try {
-      const res = await extractCourseSpecsFromPhoto({
-        courseNameHint: course.name,
-        sampleMode: true,
-      });
-      if (res.success && res.totalCourses && Array.isArray(res.holesMetadata)) {
-        setTotalCourses(res.totalCourses);
-        setHoles(buildNormalizedHoles(res.totalCourses, res.holesMetadata));
-        setActiveCourseIdx(0);
-        setSource('PHOTO_OCR');
-        // Attach lightweight sample signboard SVG thumbnail as proof preview
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="320" viewBox="0 0 600 320">
-          <rect width="600" height="320" rx="18" fill="#064e3b"/>
-          <rect x="16" y="16" width="568" height="288" rx="12" fill="#ecfdf5" stroke="#10b981" stroke-width="3"/>
-          <text x="36" y="64" fill="#065f46" font-family="sans-serif" font-size="24" font-weight="bold">⛳ ${course.name} 코스 안내판 (샘플)</text>
-          <text x="36" y="114" fill="#047857" font-family="sans-serif" font-size="18" font-weight="bold">총 3코스 27홀 · A코스 33타 · B코스 33타 · C코스 33타</text>
-          <text x="36" y="162" fill="#334155" font-family="sans-serif" font-size="15">A: 4-3-4-3-5-3-4-3-4 (683m)</text>
-          <text x="36" y="196" fill="#334155" font-family="sans-serif" font-size="15">B: 3-4-3-4-3-4-5-3-4 (681m)</text>
-          <text x="36" y="230" fill="#334155" font-family="sans-serif" font-size="15">C: 4-3-3-4-4-3-4-3-5 (691m)</text>
-          <text x="36" y="280" fill="#b45309" font-family="sans-serif" font-size="14" font-weight="bold">PARKY APP · 사진 1장 36홀 통째 제원 추출 체험</text>
-        </svg>`;
-        setEvidencePhotoUrl(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
-        setNotice({ type: 'success', text: res.note || '샘플 안내판 제원을 불러왔습니다.' });
-      }
-    } finally {
-      setIsExtracting(false);
-    }
-  };
-
   const updateHoleSpec = (holeNum: number, patch: Partial<HoleMetadata>) => {
     setHoles((prev) =>
-      prev.map((h) => (Number(h.hole) === holeNum ? { ...h, ...patch, isVerified: true } : h))
+      prev.map((h) => {
+        if (Number(h.hole) !== holeNum) return h;
+        const next: HoleMetadata = { ...h, ...patch, isVerified: true };
+        if (patch.distanceMeter !== undefined) {
+          next.distanceVerifiedAt = patch.distanceMeter > 0 ? new Date().toISOString() : undefined;
+        }
+        return next;
+      })
     );
   };
 
@@ -408,8 +387,8 @@ export function CourseSpecVerifyModal({
 
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3.5 overscroll-contain">
-          {/* 1. 사진 1장 = 전 코스 AI 자동 추출 (카메라 + 갤러리 듀얼 분리) */}
-          <div className="bg-emerald-50/80 border-2 border-dashed border-emerald-400 rounded-2xl p-3 space-y-2.5">
+          {/* 1. 사진 촬영 / 갤러리 선택 */}
+          <div className="bg-emerald-50/80 border-2 border-dashed border-emerald-400 rounded-2xl p-3 space-y-2">
             <input
               ref={cameraInputRef}
               data-testid="input-spec-ocr-camera"
@@ -427,25 +406,6 @@ export function CourseSpecVerifyModal({
               onChange={handlePhotoSelected}
               className="hidden"
             />
-
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-emerald-700 shrink-0" />
-                <span>사진 1장으로 전 코스(9~36홀) 자동 추출</span>
-              </div>
-              {evidencePhotoUrl && (
-                <button
-                  type="button"
-                  onClick={() => setZoomPhoto(true)}
-                  className="text-[10.5px] font-black text-emerald-800 underline cursor-pointer whitespace-nowrap"
-                >
-                  증빙 사진 보기
-                </button>
-              )}
-            </div>
-            <p className="text-[11px] text-emerald-800/90 font-medium leading-snug">
-              티박스 코스 안내판이나 구장 종이 스코어카드 사진을 올리면 AI가 코스 수와 홀별 Par·거리를 통째로 읽어옵니다.
-            </p>
 
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -470,23 +430,20 @@ export function CourseSpecVerifyModal({
               </button>
             </div>
 
-            <div className="flex items-center justify-between gap-2">
-              <button
-                type="button"
-                data-testid="btn-spec-ocr-sample"
-                disabled={isExtracting}
-                onClick={handleLoadSampleSignboard}
-                className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-[11px] rounded-lg border border-amber-500 cursor-pointer flex items-center gap-1"
-              >
-                <Sparkles className="w-3 h-3" />
-                <span>✨ 안내판 3코스(27홀) 샘플 체험</span>
-              </button>
-              {evidencePhotoUrl && (
+            {evidencePhotoUrl && (
+              <div className="flex items-center justify-between pt-0.5">
                 <span className="text-[10.5px] font-black text-emerald-700 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> 증빙 사진 첨부됨
+                  <CheckCircle2 className="w-3.5 h-3.5" /> 사진 첨부됨
                 </span>
-              )}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setZoomPhoto(true)}
+                  className="text-[10.5px] font-black text-emerald-800 underline cursor-pointer whitespace-nowrap"
+                >
+                  사진 보기
+                </button>
+              </div>
+            )}
           </div>
 
           {notice && (
@@ -683,13 +640,8 @@ export function CourseSpecVerifyModal({
                 onChange={(e) => setCheckedSignboard(e.target.checked)}
                 className="mt-0.5 w-4 h-4 accent-emerald-700 shrink-0 cursor-pointer"
               />
-              <div className="text-[11px] leading-snug">
-                <div className="font-black text-stone-900">
-                  ☑️ 현장 안내판(또는 공식 스코어카드)을 직접 확인했습니다 (필수)
-                </div>
-                <div className="text-stone-600 font-medium mt-0.5">
-                  🥇 유저 현장 실입력 최우선 원칙에 따라 제출 즉시 전국 모든 파키 앱에 자동 반영됩니다.
-                </div>
+              <div className="text-xs font-black text-stone-900 leading-snug">
+                현장 안내판(또는 공식 스코어카드)을 확인했습니다 (필수)
               </div>
             </label>
           )}
