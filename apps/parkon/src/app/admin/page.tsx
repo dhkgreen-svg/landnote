@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { GeoCountryService } from '@/lib/geoCountryService';
+import { AdminCourseSpecReviewModal } from '@/components/AdminCourseSpecReviewModal';
+import { fetchAdminCourseSpecDashboard } from '@/lib/courseSpecClient';
+import { CourseSpecAuditSummary } from '@/lib/courseSpecShared';
 import { 
   ShieldAlert, 
   Users, 
@@ -242,6 +245,9 @@ export default function AdminDashboardPage() {
   const [showLiveRoundsModal, setShowLiveRoundsModal] = useState(false);
   // 전국 구장별 실제 라운딩 랭킹 팝업 모달 상태
   const [showCourseRankingsModal, setShowCourseRankingsModal] = useState(false);
+  // ⛳ 전국 구장 제원 점검 · 1초 승인 관제 팝업 모달 상태
+  const [showCourseSpecReviewModal, setShowCourseSpecReviewModal] = useState(false);
+  const [courseSpecSummary, setCourseSpecSummary] = useState<CourseSpecAuditSummary | null>(null);
   // 시·도 상세 드릴다운 팝업 모달 상태
   const [selectedProvinceModal, setSelectedProvinceModal] = useState<ProvinceStat | null>(null);
   // 시·도 상세 팝업 내 활성 탭 ('CITIES': 시·군 인프라 | 'USERS': 총 유저 가나다순 | 'LIVE': 실시간 접속 | 'CLUBS': 등록 클럽)
@@ -259,6 +265,13 @@ export default function AdminDashboardPage() {
   const [userRoundTierFilter, setUserRoundTierFilter] = useState<'ALL' | 'PHONE' | 'NAMED' | 'KAKAO' | 'ANON' | 'PLAYED' | 'HEAVY' | 'REGULAR' | 'STARTER' | 'BROWSER'>('ALL');
   const [userRoundSearchTerm, setUserRoundSearchTerm] = useState('');
   const [userRoundPageChunk, setUserRoundPageChunk] = useState(0);
+
+  // 전국 구장 제원 점검 현황 요약 조회
+  useEffect(() => {
+    fetchAdminCourseSpecDashboard().then((res) => {
+      if (res.success && res.summary) setCourseSpecSummary(res.summary);
+    }).catch(() => {});
+  }, [showCourseSpecReviewModal]);
 
   // Check saved session PIN on load (6자리 768517)
   useEffect(() => {
@@ -701,6 +714,44 @@ export default function AdminDashboardPage() {
           </div>
           <div className="px-3 py-1.5 bg-amber-600 group-hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shrink-0 whitespace-nowrap shadow-xs">
             <span>전국 구장 랭킹 열기</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </div>
+        </button>
+      </div>
+
+      {/* 3-1. ⛳ 전국 구장 제원 점검 · 1초 승인 관제 (553개 구장 코스수·파수 실시간 반영) */}
+      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-3 sm:p-3.5 shadow-xs">
+        <button
+          type="button"
+          data-testid="btn-admin-open-spec-review"
+          onClick={() => setShowCourseSpecReviewModal(true)}
+          className="w-full py-2.5 px-3 sm:px-4 bg-emerald-50/80 hover:bg-emerald-100/80 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/60 border border-emerald-300/80 dark:border-emerald-800/60 hover:border-emerald-500 rounded-xl transition-all flex items-center justify-between gap-3 text-left group cursor-pointer active:scale-99"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-emerald-700 text-amber-300 flex items-center justify-center shrink-0 shadow-2xs">
+              <Flag className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                  ⛳ 전국 구장 제원 점검 · 1초 승인 관제
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded font-black shrink-0">
+                  승인 대기 {courseSpecSummary?.pendingSubmissionsCount ?? 0}건
+                </span>
+                {courseSpecSummary && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold shrink-0">
+                    검증률 {courseSpecSummary.verifiedPercent}% (미점검 {courseSpecSummary.unverifiedTemplateCount}곳)
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                현장 사진 제보 Diff 비교·승인 및 전국 553개 구장 코스수·파수 직접 공식 확정
+              </p>
+            </div>
+          </div>
+          <div className="px-3 py-1.5 bg-emerald-700 group-hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1 shrink-0 whitespace-nowrap shadow-xs">
+            <span>제원 승인 관제 열기</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </div>
         </button>
@@ -2790,6 +2841,13 @@ export default function AdminDashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* ⛳ 전국 구장 제원 점검 · 1초 승인 관제 팝업 모달 */}
+      <AdminCourseSpecReviewModal
+        isOpen={showCourseSpecReviewModal}
+        onClose={() => setShowCourseSpecReviewModal(false)}
+        popularCourseIds={(metrics?.courseRankings || []).map((r) => r.courseId)}
+      />
     </div>
   );
 }

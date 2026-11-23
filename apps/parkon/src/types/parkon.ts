@@ -31,6 +31,8 @@ export interface Course {
   holesMetadata: HoleMetadata[];
   isVerified: boolean;
   isSpecsVerified?: boolean; // 전체 코스 제원이 공식 협회/골퍼 실측 검증 완료되었는지 여부
+  specStatus?: 'OFFICIAL_ADMIN' | 'CROWD_VERIFIED' | 'UNVERIFIED_TEMPLATE'; // 중앙 마스터 제원 검증 등급
+  specUpdatedAt?: string;
   specContributorName?: string; // 최초 제원 기여자
   isLocked?: boolean;    // 공식 제원 확정 잠금 여부
   certNo?: string;       // 일본 NPGA 공인 코스 번호 (예: 公認第439号)

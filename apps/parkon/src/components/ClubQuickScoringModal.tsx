@@ -24,7 +24,9 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { ParkGolfClub, ClubChronicleTournament } from '@/types/club';
-import { RoundSession } from '@/types/parkon';
+import { Course, HoleMetadata, RoundSession } from '@/types/parkon';
+import { CourseSpecVerifyModal } from '@/components/CourseSpecVerifyModal';
+import { resolveCourseSpecStatus } from '@/lib/courseSpecShared';
 import { ClubStorage } from '@/lib/clubStorage';
 import { ParkOnStorage } from '@/lib/storage';
 import { useBackHandler } from '@/lib/backNavigation';
@@ -51,6 +53,7 @@ export interface QuickScoreGroup {
   courseName: string;
   date: string;
   courses: string[]; // ['A', 'B'] or ['A', 'B', 'C', 'D']
+  holePars?: Record<number, number>;
   imageUrl?: string;
   players: QuickScorePlayer[];
 }
@@ -248,6 +251,12 @@ export function ClubQuickScoringModal({
   } | null>(null);
   const [zoomedPhotoUrl, setZoomedPhotoUrl] = useState<string | null>(null);
   const [generatedCardUrl, setGeneratedCardUrl] = useState<string | null>(null);
+  const [specVerifyCtx, setSpecVerifyCtx] = useState<{
+    course: Course;
+    initialHoles?: HoleMetadata[];
+    initialCourses?: number;
+    evidencePhotoUrl?: string;
+  } | null>(null);
   const [isGeneratingCard, setIsGeneratingCard] = useState<boolean>(false);
   const [copiedSummary, setCopiedSummary] = useState<boolean>(false);
   const [savedArchiveMsg, setSavedArchiveMsg] = useState<string>('');
@@ -730,6 +739,7 @@ export function ClubQuickScoringModal({
           courseName: g.courseName || courseName,
           date: g.date || heldDate,
           courses: gCourses,
+          holePars: g.holePars,
           imageUrl: g.imageUrl || stagedPhotos[gi],
           players: gPlayers,
         };
@@ -1746,6 +1756,54 @@ export function ClubQuickScoringModal({
                     </div>
                   )}
 
+                  {/* 💡 종이 스코어카드 파수 불일치 · 미점검 구장 1초 제원 제보 바 */}
+                  {(() => {
+                    const matched = ParkOnStorage.getAllCourses().find(
+                      (c) => c.name === courseName || c.name.includes(courseName) || courseName.includes(c.name.replace('파크골프장', '').trim())
+                    );
+                    if (!matched) return null;
+                    const st = resolveCourseSpecStatus(matched);
+                    const extractedPars = activeGroup.holePars || {};
+                    const hasParDiff = Object.entries(extractedPars).some(([hStr, pVal]) => {
+                      const dbHole = matched.holesMetadata?.find((hm) => Number(hm.hole) === Number(hStr));
+                      return dbHole && Number(dbHole.par) !== Number(pVal);
+                    });
+                    if (st !== 'UNVERIFIED_TEMPLATE' && !hasParDiff) return null;
+
+                    const mergedHoles: HoleMetadata[] | undefined = hasParDiff
+                      ? (matched.holesMetadata || []).map((hm) =>
+                          extractedPars[hm.hole]
+                            ? { ...hm, par: extractedPars[hm.hole], isVerified: true }
+                            : hm
+                        )
+                      : undefined;
+
+                    return (
+                      <div className="bg-amber-50 border border-amber-300 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-black text-amber-950 truncate">
+                          {hasParDiff
+                            ? `💡 종이 카드 파수가 '${matched.name}' DB와 다릅니다!`
+                            : `⚠️ '${matched.name}' 구장 제원이 기본 추정치입니다`}
+                        </span>
+                        <button
+                          type="button"
+                          data-testid="btn-scorecard-report-course-spec"
+                          onClick={() =>
+                            setSpecVerifyCtx({
+                              course: matched,
+                              initialCourses: activeGroup.courses?.length || matched.totalCourses || 2,
+                              initialHoles: mergedHoles,
+                              evidencePhotoUrl: activeGroup.imageUrl,
+                            })
+                          }
+                          className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[10.5px] font-black shrink-0 cursor-pointer whitespace-nowrap"
+                        >
+                          📸 실제 제원 제보
+                        </button>
+                      </div>
+                    );
+                  })()}
+
                   {/* 📋 [대표님 지시] 공식 스코어보드 양식(A/B코스 1H~9H) 그대로 표시 · 탭하면 수정 팝업 오픈! */}
                   <div className="space-y-2.5">
                     <OfficialGroupScoreboard
@@ -2209,9 +2267,9 @@ export function ClubQuickScoringModal({
                   <button
                     type="button"
                     onClick={() => setZoomedPhotoUrl(editingPlayerData.group.imageUrl!)}
-                    className="px-2.5 py-1 bg-amber-400 text-stone-950 rounded-lg text-[11px] font-black cursor-pointer"
+                    className="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-lg text-[11px] font-black cursor-pointer whitespace-nowrap shrink-0"
                   >
-                    📸 원본 보기
+                    📸 원본
                   </button>
                 )}
                 <button
@@ -2249,7 +2307,7 @@ export function ClubQuickScoringModal({
                         gender: p.gender === 'M' ? 'F' : 'M',
                       }))
                     }
-                    className={`px-3 py-2 rounded-xl text-xs font-black border cursor-pointer ${
+                    className={`px-2.5 py-2 rounded-xl text-xs font-black border cursor-pointer whitespace-nowrap shrink-0 ${
                       editingPlayerData.player.gender === 'F'
                         ? 'bg-pink-50 border-pink-300 text-pink-700'
                         : 'bg-blue-50 border-blue-300 text-blue-700'
@@ -2265,7 +2323,7 @@ export function ClubQuickScoringModal({
                         isGuest: !p.isGuest,
                       }))
                     }
-                    className={`px-3 py-2 rounded-xl text-xs font-black border cursor-pointer ${
+                    className={`px-2.5 py-2 rounded-xl text-xs font-black border cursor-pointer whitespace-nowrap shrink-0 ${
                       editingPlayerData.player.isGuest
                         ? 'bg-amber-400 border-amber-500 text-stone-950'
                         : 'bg-stone-100 border-stone-300 text-stone-600'
@@ -2276,113 +2334,246 @@ export function ClubQuickScoringModal({
                 </div>
               </div>
 
-              {/* Direct Total Stepper */}
-              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-black text-emerald-950">최종 합계 타수</div>
-                  <div className="text-[10px] text-emerald-700 font-bold">
-                    {editingPlayerData.player.useDirectTotal ? '총점 직접 수정 모드' : '홀별 합계 자동 계산'}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    data-testid="btn-editor-total-minus"
-                    onClick={() => {
-                      const cur = getPlayerCalcTotal(editingPlayerData.player, editingPlayerData.group.courses);
-                      updatePlayer(editingPlayerData.group.groupId, editingPlayerData.player.id, (p) => ({
-                        ...p,
-                        useDirectTotal: true,
-                        reportedTotal: Math.max(9, cur - 1),
-                      }));
-                    }}
-                    className="w-10 h-10 rounded-xl bg-white border-2 border-emerald-400 font-black text-lg text-emerald-900 cursor-pointer"
-                  >
-                    −
-                  </button>
-                  <span
-                    data-testid="editor-total-value"
-                    className="min-w-[54px] text-center text-xl font-black text-emerald-900"
-                  >
-                    {getPlayerCalcTotal(editingPlayerData.player, editingPlayerData.group.courses)}타
-                  </span>
-                  <button
-                    type="button"
-                    data-testid="btn-editor-total-plus"
-                    onClick={() => {
-                      const cur = getPlayerCalcTotal(editingPlayerData.player, editingPlayerData.group.courses);
-                      updatePlayer(editingPlayerData.group.groupId, editingPlayerData.player.id, (p) => ({
-                        ...p,
-                        useDirectTotal: true,
-                        reportedTotal: cur + 1,
-                      }));
-                    }}
-                    className="w-10 h-10 rounded-xl bg-white border-2 border-emerald-400 font-black text-lg text-emerald-900 cursor-pointer"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
+              {/* 상단: 홀별 합계 vs 기준 총타수(종이 카드) 실시간 비교 관리 */}
+              {(() => {
+                const totalHoleCount = editingPlayerData.group.courses.length * 9;
+                const holeVals = Object.values(editingPlayerData.player.scores || {}).filter(
+                  (v) => typeof v === 'number' && v > 0
+                );
+                const hasHoleScores = holeVals.length > 0;
+                const holeSum = holeVals.reduce((a, b) => a + b, 0);
+                const targetTotal =
+                  Number(editingPlayerData.player.reportedTotal) > 0
+                    ? Number(editingPlayerData.player.reportedTotal)
+                    : holeSum;
+                const diff = hasHoleScores ? holeSum - targetTotal : 0;
+                const isMatched = !hasHoleScores || diff === 0;
+                const selectedHole = Math.min(totalHoleCount, Math.max(1, editingPlayerCtx?.activeHole || 1));
+                const courseIdx = Math.floor((selectedHole - 1) / 9);
+                const courseLetter = editingPlayerData.group.courses[courseIdx] || COURSE_LETTERS[courseIdx] || 'A';
+                const holeInCourse = ((selectedHole - 1) % 9) + 1;
+                const selectedHoleScore = Number(editingPlayerData.player.scores?.[selectedHole]) || 3;
 
-              {/* Hole-by-Hole 1-Tap Keypad */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-stone-800">홀별 타수 1터치 수정</span>
-                  <span className="text-[10px] font-bold text-stone-500">수정할 홀 선택 후 아래 숫자 터치</span>
-                </div>
-                <div className="grid grid-cols-6 gap-1.5">
-                  {Array.from({ length: editingPlayerData.group.courses.length * 9 }, (_, i) => i + 1).map((h) => {
-                    const isSelected = (editingPlayerCtx?.activeHole || 1) === h;
-                    const val = editingPlayerData.player.scores?.[h];
-                    return (
-                      <button
-                        key={h}
-                        type="button"
-                        onClick={() =>
-                          setEditingPlayerCtx((prev) => (prev ? { ...prev, activeHole: h } : prev))
-                        }
-                        className={`py-1.5 rounded-xl border-2 text-center cursor-pointer transition ${
-                          isSelected
-                            ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
-                            : 'bg-stone-50 border-stone-200 text-stone-800'
-                        }`}
-                      >
-                        <div className={`text-[9px] font-bold ${isSelected ? 'text-emerald-200' : 'text-stone-400'}`}>
-                          {h}번홀
+                const adjustSelectedHole = (delta: number) => {
+                  updatePlayer(editingPlayerData.group.groupId, editingPlayerData.player.id, (p) => {
+                    const prevVal = Number(p.scores?.[selectedHole]) || 3;
+                    const nextVal = Math.max(1, Math.min(12, prevVal + delta));
+                    const nextScores = { ...(p.scores || {}), [selectedHole]: nextVal };
+                    const nextSum = Object.values(nextScores).reduce((a, b) => a + (Number(b) || 0), 0);
+                    return {
+                      ...p,
+                      useDirectTotal: false,
+                      scores: nextScores,
+                      // 기준 총타수(reportedTotal)는 유지하여 홀별 합계와 실시간 비교 가능!
+                      reportedTotal: Number(p.reportedTotal) > 0 ? Number(p.reportedTotal) : nextSum,
+                    };
+                  });
+                };
+
+                return (
+                  <>
+                    <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-3 space-y-2.5">
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* 좌측: 홀별 합계 (자동 계산) */}
+                        <div className="bg-white rounded-xl p-2.5 border border-emerald-200 text-center">
+                          <div className="text-[10.5px] font-black text-stone-500">홀별 합계 (자동)</div>
+                          <div
+                            data-testid="editor-hole-sum-value"
+                            className={`text-xl font-black mt-0.5 ${
+                              isMatched ? 'text-emerald-800' : 'text-rose-600'
+                            }`}
+                          >
+                            {hasHoleScores ? `${holeSum}타` : '-'}
+                          </div>
                         </div>
-                        <div className="text-sm font-black">{val || '-'}</div>
-                      </button>
-                    );
-                  })}
-                </div>
 
-                {/* 1~8 One-Tap Number Buttons */}
-                <div className="grid grid-cols-4 gap-1.5 pt-1">
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((stroke) => (
-                    <button
-                      key={stroke}
-                      type="button"
-                      data-testid={`btn-hole-stroke-${stroke}`}
-                      onClick={() => {
-                        const targetHole = editingPlayerCtx?.activeHole || 1;
-                        updatePlayer(editingPlayerData.group.groupId, editingPlayerData.player.id, (p) => {
-                          const nextScores = { ...(p.scores || {}), [targetHole]: stroke };
-                          const nextSum = Object.values(nextScores).reduce((a, b) => a + (Number(b) || 0), 0);
-                          return {
-                            ...p,
-                            useDirectTotal: false,
-                            scores: nextScores,
-                            reportedTotal: nextSum,
-                          };
-                        });
-                      }}
-                      className="py-2.5 bg-white hover:bg-emerald-600 hover:text-white border-2 border-emerald-300 rounded-xl font-black text-base text-emerald-950 cursor-pointer active:scale-95 transition"
-                    >
-                      {stroke}타
-                    </button>
-                  ))}
-                </div>
-              </div>
+                        {/* 우측: 기준 총타수 (카드 기재 · ± 조정 가능) */}
+                        <div className="bg-white rounded-xl p-2 border border-emerald-200 text-center flex flex-col justify-between">
+                          <div className="text-[10.5px] font-black text-stone-500">기준 총타수 (카드 기재)</div>
+                          <div className="flex items-center justify-center gap-1.5 mt-0.5">
+                            <button
+                              type="button"
+                              data-testid="btn-editor-total-minus"
+                              onClick={() => {
+                                updatePlayer(editingPlayerData.group.groupId, editingPlayerData.player.id, (p) => ({
+                                  ...p,
+                                  useDirectTotal: !hasHoleScores,
+                                  reportedTotal: Math.max(9, targetTotal - 1),
+                                }));
+                              }}
+                              className="w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-400 font-black text-base text-emerald-900 cursor-pointer flex items-center justify-center active:scale-95"
+                            >
+                              −
+                            </button>
+                            <span
+                              data-testid="editor-total-value"
+                              className="min-w-[44px] text-center text-lg font-black text-stone-900"
+                            >
+                              {targetTotal}타
+                            </span>
+                            <button
+                              type="button"
+                              data-testid="btn-editor-total-plus"
+                              onClick={() => {
+                                updatePlayer(editingPlayerData.group.groupId, editingPlayerData.player.id, (p) => ({
+                                  ...p,
+                                  useDirectTotal: !hasHoleScores,
+                                  reportedTotal: targetTotal + 1,
+                                }));
+                              }}
+                              className="w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-400 font-black text-base text-emerald-900 cursor-pointer flex items-center justify-center active:scale-95"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 실시간 총타수 비교 검산 바 */}
+                      {hasHoleScores && (
+                        <div
+                          data-testid="editor-total-compare-bar"
+                          className={`rounded-xl px-3 py-2 text-[11px] font-black flex items-center justify-between gap-2 ${
+                            isMatched
+                              ? 'bg-emerald-700 text-white'
+                              : 'bg-rose-50 border border-rose-300 text-rose-800'
+                          }`}
+                        >
+                          <span className="whitespace-nowrap">
+                            {isMatched
+                              ? `✅ 일치! 홀합 ${holeSum}타 = 기준 ${targetTotal}타`
+                              : `⚠️ 총타수 차이 ${diff > 0 ? `+${diff}` : diff}타`}
+                          </span>
+                          {!isMatched && (
+                            <button
+                              type="button"
+                              data-testid="btn-sync-target-to-holesum"
+                              onClick={() =>
+                                updatePlayer(editingPlayerData.group.groupId, editingPlayerData.player.id, (p) => ({
+                                  ...p,
+                                  useDirectTotal: false,
+                                  reportedTotal: holeSum,
+                                }))
+                              }
+                              className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[10.5px] font-black shrink-0 cursor-pointer whitespace-nowrap"
+                            >
+                              기준 {holeSum}타로 맞추기
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 중간: 홀 선택 그리드 */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-black text-stone-800 whitespace-nowrap">홀별 타수 선택</span>
+                        <span className="text-[10.5px] font-bold text-stone-500 whitespace-nowrap">선택 홀을 아래 −/+로 조정</span>
+                      </div>
+                      <div className="grid grid-cols-6 gap-1.5">
+                        {Array.from({ length: totalHoleCount }, (_, i) => i + 1).map((h) => {
+                          const isSelected = selectedHole === h;
+                          const val = editingPlayerData.player.scores?.[h];
+                          return (
+                            <button
+                              key={h}
+                              type="button"
+                              data-testid={`btn-select-hole-${h}`}
+                              onClick={() =>
+                                setEditingPlayerCtx((prev) => (prev ? { ...prev, activeHole: h } : prev))
+                              }
+                              className={`py-1.5 rounded-xl border-2 text-center cursor-pointer transition ${
+                                isSelected
+                                  ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
+                                  : 'bg-stone-50 border-stone-200 text-stone-800 hover:border-emerald-300'
+                              }`}
+                            >
+                              <div className={`text-[9px] font-bold ${isSelected ? 'text-emerald-200' : 'text-stone-400'}`}>
+                                {h}번홀
+                              </div>
+                              <div className="text-sm font-black">{val || '-'}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* 하단: 선택한 홀 타수 ± 조정 패널 (기존 1~8타 버튼 대체) */}
+                      <div
+                        data-testid="hole-stepper-panel"
+                        className="mt-2 bg-gradient-to-br from-emerald-50 via-white to-teal-50 border-2 border-emerald-400 rounded-2xl p-3 space-y-2.5 shadow-2xs"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-700 text-white text-xs font-black">
+                            <span>⛳ {selectedHole}번홀 ({courseLetter}-{holeInCourse})</span>
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              data-testid="btn-prev-hole"
+                              disabled={selectedHole <= 1}
+                              onClick={() =>
+                                setEditingPlayerCtx((prev) =>
+                                  prev ? { ...prev, activeHole: Math.max(1, selectedHole - 1) } : prev
+                                )
+                              }
+                              className="px-2.5 py-1 rounded-lg bg-white border border-stone-300 text-[11px] font-black text-stone-700 disabled:opacity-40 cursor-pointer hover:bg-stone-100"
+                            >
+                              ◀ 이전홀
+                            </button>
+                            <button
+                              type="button"
+                              data-testid="btn-next-hole"
+                              disabled={selectedHole >= totalHoleCount}
+                              onClick={() =>
+                                setEditingPlayerCtx((prev) =>
+                                  prev ? { ...prev, activeHole: Math.min(totalHoleCount, selectedHole + 1) } : prev
+                                )
+                              }
+                              className="px-2.5 py-1 rounded-lg bg-white border border-stone-300 text-[11px] font-black text-stone-700 disabled:opacity-40 cursor-pointer hover:bg-stone-100"
+                            >
+                              다음홀 ▶
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 items-center gap-2.5">
+                          <button
+                            type="button"
+                            data-testid="btn-hole-minus"
+                            onClick={() => adjustSelectedHole(-1)}
+                            className="py-3.5 rounded-2xl bg-white hover:bg-rose-50 active:scale-95 border-2 border-rose-300 text-rose-700 font-black text-2xl shadow-xs cursor-pointer transition flex items-center justify-center"
+                            aria-label="선택 홀 1타 빼기"
+                          >
+                            −
+                          </button>
+
+                          <div className="text-center bg-white rounded-2xl py-2 border-2 border-emerald-200">
+                            <div
+                              data-testid="selected-hole-stroke-value"
+                              className="text-2xl font-black text-emerald-950 leading-tight"
+                            >
+                              {editingPlayerData.player.scores?.[selectedHole] ? `${selectedHoleScore}타` : '-'}
+                            </div>
+                            <div className="text-[10px] font-bold text-stone-500 mt-0.5">
+                              선택 홀 타수
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            data-testid="btn-hole-plus"
+                            onClick={() => adjustSelectedHole(1)}
+                            className="py-3.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 active:scale-95 border-2 border-emerald-700 text-white font-black text-2xl shadow-xs cursor-pointer transition flex items-center justify-center"
+                            aria-label="선택 홀 1타 더하기"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
 
               {!isIndividual && (() => {
                 const sim = findSimilarClubMember(editingPlayerData.player.name, clubMemberNames);
@@ -2539,6 +2730,21 @@ export function ClubQuickScoringModal({
           </div>
         </div>
       )}
+
+      {/* SUB-POPUP: 종이 스코어카드 기반 구장 제원(코스수·파수) 제보 */}
+      <CourseSpecVerifyModal
+        isOpen={Boolean(specVerifyCtx)}
+        course={specVerifyCtx?.course || null}
+        initialSource="SCORECARD_DIFF"
+        initialTotalCourses={specVerifyCtx?.initialCourses}
+        initialHolesMetadata={specVerifyCtx?.initialHoles}
+        initialEvidencePhotoUrl={specVerifyCtx?.evidencePhotoUrl}
+        onClose={() => setSpecVerifyCtx(null)}
+        onUpdated={(_, msg) => {
+          onShowToast?.(msg);
+          setSpecVerifyCtx(null);
+        }}
+      />
     </div>
   );
 }

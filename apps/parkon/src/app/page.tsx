@@ -26,6 +26,7 @@ import { QuickGuideModal } from '@/components/QuickGuideModal';
 import { RoundScoreboardModal } from '@/components/RoundScoreboardModal';
 import { PaperScorecardModal } from '@/components/PaperScorecardModal';
 import { ClubQuickScoringModal } from '@/components/ClubQuickScoringModal';
+import { syncMasterCourseSpecsFromServer } from '@/lib/courseSpecClient';
 import { BadgeStorage } from '@/lib/badgeStorage';
 import { AppShareModal } from '@/components/AppShareModal';
 import { WatermarkPhotoCardModal } from '@/components/WatermarkPhotoCardModal';
@@ -301,6 +302,18 @@ export default function HomePage() {
   useEffect(() => {
     setMounted(true);
     // ParkOnStorage.purgeUnverifiedRounds();
+    syncMasterCourseSpecsFromServer().then((specs) => {
+      if (specs && Object.keys(specs).length > 0) {
+        const refreshed = ParkOnStorage.getAllCourses();
+        setCourses(refreshed);
+        const curHomeId = ParkOnStorage.getHomeCourseId();
+        if (curHomeId) {
+          const updatedHome = refreshed.find((c) => c.id === curHomeId);
+          if (updatedHome) setHomeCourse(updatedHome);
+        }
+      }
+    }).catch(() => {});
+
     const loadData = () => {
       const allCourses = ParkOnStorage.getAllCourses();
       setCourses(allCourses);

@@ -17,6 +17,7 @@ export interface ParsedScorecardGroup {
   courseName: string;
   date: string;
   courses: string[];
+  holePars?: Record<number, number>;
   imageUrl?: string;
   players: ParsedScorecardPlayer[];
 }
@@ -29,6 +30,7 @@ const OCR_SYSTEM_PROMPT = `당신은 대한민국 (사)대한파크골프협회 
 2. courseName: 구장 이름 (예: "수성파크골프장", "낙동강파크골프장" 등)
 3. date: 날짜 (YYYY-MM-DD 형식 권장)
 4. courses: 진행된 코스 목록 (예: ["A", "B", "C", "D"] 또는 ["A", "B"])
+4-1. holePars: 종이 스코어카드 상단에 인쇄된 홀별 기준 파(PAR 3/4/5)가 보이면 { "1": 4, "2": 3, ... } 형태로 함께 추출 (안 보이면 빈 객체)
 5. players: 선수별 데이터 목록 (최대 4인)
    - name: 선수 이름
    - scores: 홀 번호(1~36 또는 1~18, 1~9)를 키로 하고 타수(정수)를 값으로 갖는 객체
@@ -148,12 +150,23 @@ export async function POST(req: Request) {
                 };
               });
 
+              const rawHolePars = parsed.holePars || {};
+              const holePars: Record<number, number> = {};
+              Object.entries(rawHolePars).forEach(([k, v]) => {
+                const h = Number(k);
+                const pVal = Number(v);
+                if (!Number.isNaN(h) && (pVal === 3 || pVal === 4 || pVal === 5)) {
+                  holePars[h] = pVal;
+                }
+              });
+
               results.push({
                 groupId: `group_${Date.now()}_${index}`,
                 groupNumber: parsed.groupNumber || defaultGroupNum,
                 courseName: parsed.courseName || '파크골프장',
                 date: parsed.date || new Date().toISOString().split('T')[0],
                 courses: parsed.courses || ['A', 'B'],
+                holePars: Object.keys(holePars).length > 0 ? holePars : undefined,
                 imageUrl: imgData,
                 players,
               });

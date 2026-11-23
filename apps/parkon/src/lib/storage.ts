@@ -35,6 +35,8 @@ import {
   CourseSpecialReport,
 } from '@/types/parkon';
 import { DEFAULT_COURSES, generateStandardHoles } from './defaultCourses';
+import { getCachedMasterCourseSpecs } from './courseSpecClient';
+import { isDummyTemplateCourse } from './courseSpecShared';
 import { JAPAN_DEFAULT_COURSES } from './courseLocalization';
 
 export const ALL_BASE_COURSES: Course[] = [...DEFAULT_COURSES, ...JAPAN_DEFAULT_COURSES];
@@ -1131,14 +1133,33 @@ export const ParkOnStorage = {
       const customMap = new Map(customCourses.map((c) => [c.id, c]));
       const customNameMap = new Map(customCourses.map((c) => [c.name.replace(/\s+/g, ''), c]));
 
-      // Apply customized overrides onto default courses
+      // Apply centrally approved master course specs (Supabase/Server) + customized overrides
+      const masterSpecsMap = getCachedMasterCourseSpecs();
       const crowdExpansions = this.getCrowdsourcedCourseExpansions();
       const defaults = ALL_BASE_COURSES.map((d) => {
         const cleanName = d.name.replace(/\s+/g, '');
+        const master = masterSpecsMap[d.id];
         const custom = customMap.get(d.id) || customNameMap.get(cleanName);
         const expansion = crowdExpansions[d.id] || crowdExpansions[cleanName];
         const expandedCourses = expansion ? Math.max(d.totalCourses || 2, expansion.totalCourses) : (d.totalCourses || 2);
         const expandedHoles = expandedCourses * 9;
+
+        // 1순위: 관리자가 공식 확정한 중앙 마스터 제원 (전 사용자 강제 최신화)
+        if (master && master.specStatus === 'OFFICIAL_ADMIN') {
+          return {
+            ...d,
+            ...(custom ? { aliases: custom.aliases, name: custom.name || d.name } : {}),
+            id: d.id,
+            totalCourses: master.totalCourses,
+            totalHoles: master.totalHoles,
+            holesMetadata: master.holesMetadata,
+            isVerified: true,
+            isSpecsVerified: true,
+            specStatus: 'OFFICIAL_ADMIN' as const,
+            specContributorName: master.verifiedBy,
+            specUpdatedAt: master.updatedAt,
+          };
+        }
 
         if (custom) {
           const userCourses = custom.totalCourses
@@ -1168,15 +1189,34 @@ export const ParkOnStorage = {
             holesMetadata: holes,
           });
         }
+        if (master && master.specStatus === 'CROWD_VERIFIED') {
+          return {
+            ...d,
+            id: d.id,
+            totalCourses: master.totalCourses,
+            totalHoles: master.totalHoles,
+            holesMetadata: master.holesMetadata,
+            isVerified: true,
+            isSpecsVerified: true,
+            specStatus: 'CROWD_VERIFIED' as const,
+            specContributorName: master.verifiedBy,
+            specUpdatedAt: master.updatedAt,
+          };
+        }
         if (expansion) {
           return applyCrowdSpecs({
             ...d,
             totalCourses: expandedCourses,
             totalHoles: expandedHoles,
             holesMetadata: generateStandardHoles(expandedHoles),
+            specStatus: 'UNVERIFIED_TEMPLATE',
           });
         }
-        return applyCrowdSpecs(d);
+        const applied = applyCrowdSpecs(d);
+        return {
+          ...applied,
+          specStatus: applied.specStatus || (isDummyTemplateCourse(d) ? 'UNVERIFIED_TEMPLATE' : 'CROWD_VERIFIED'),
+        };
       });
 
       // Pure custom courses that are not matched to any default course

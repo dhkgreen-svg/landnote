@@ -13,6 +13,8 @@ import { YardageBookStorage, buildYardageNoteId } from '@/lib/yardageBookStorage
 import { CourseHallOfFameModal } from '@/components/CourseHallOfFameModal';
 import { CourseTodayContent } from '@/components/CourseTodayModal';
 import { CourseRestaurantList } from '@/components/CourseRestaurantList';
+import { CourseSpecVerifyModal } from '@/components/CourseSpecVerifyModal';
+import { getCourseSpecBadge, resolveCourseSpecStatus } from '@/lib/courseSpecShared';
 import { RestaurantStorage } from '@/lib/restaurantStorage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import {
@@ -87,6 +89,8 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
   const [isLocked, setIsLocked] = useState<boolean>(course.isLocked || false);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
   const [showPhotoSection, setShowPhotoSection] = useState<boolean>(false);
+  const [showSpecVerifyModal, setShowSpecVerifyModal] = useState<boolean>(false);
+  const [specVerifyToast, setSpecVerifyToast] = useState<string | null>(null);
   const [yardageTargetHole, setYardageTargetHole] = useState<{
     courseLetter: string;
     holeInCourse: number;
@@ -473,6 +477,41 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
 
         {/* 최상단 2단 보조 탭: [📓 홀별 공략집 (미리보기·편집)] vs [🌱 오늘의 구장 상태] */}
         <div className="px-3 pt-2.5 pb-2 bg-stone-100 border-b border-stone-200 shrink-0 space-y-1.5">
+          {/* 구장 제원 검증 상태 + 사진 1장 일괄 점검/제보 바 */}
+          {(() => {
+            const st = resolveCourseSpecStatus({
+              holesMetadata: editedHoles,
+              specStatus: course.specStatus,
+              isSpecsVerified: course.isSpecsVerified,
+            });
+            const badge = getCourseSpecBadge(st);
+            return (
+              <div
+                className={`rounded-xl px-2.5 py-2 border flex items-center justify-between gap-2 ${
+                  badge.tone === 'emerald'
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                    : badge.tone === 'blue'
+                      ? 'bg-sky-50 border-sky-300 text-sky-950'
+                      : 'bg-amber-50 border-amber-300 text-amber-950'
+                }`}
+              >
+                <span className="text-[11px] font-black truncate">{badge.label}</span>
+                <button
+                  type="button"
+                  data-testid="btn-open-course-spec-verify"
+                  onClick={() => setShowSpecVerifyModal(true)}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[10.5px] font-black shrink-0 cursor-pointer whitespace-nowrap shadow-2xs"
+                >
+                  📸 사진 · 제원 점검
+                </button>
+              </div>
+            );
+          })()}
+          {specVerifyToast && (
+            <div className="rounded-xl px-3 py-2 bg-emerald-900 text-white text-[11px] font-black">
+              {specVerifyToast}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-1.5 p-1 bg-stone-200/90 rounded-2xl">
             <button
               type="button"
@@ -1289,6 +1328,26 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
           />
         );
       })()}
+
+      {/* 📸 구장 안내판 사진 AI 추출 · 코스/파수 일괄 점검 · 2-Strike 중앙 제보 팝업 */}
+      <CourseSpecVerifyModal
+        isOpen={showSpecVerifyModal}
+        course={{
+          ...course,
+          name: editedCourseName,
+          totalCourses: editedCourseCount,
+          totalHoles: editedCourseCount * 9,
+          holesMetadata: editedHoles,
+        }}
+        onClose={() => setShowSpecVerifyModal(false)}
+        onUpdated={(updated, msg) => {
+          setEditedCourseCount(updated.totalCourses || Math.round(updated.totalHoles / 9));
+          setEditedHoles(updated.holesMetadata);
+          setSpecVerifyToast(msg);
+          setTimeout(() => setSpecVerifyToast(null), 5000);
+          onSaved(updated);
+        }}
+      />
     </div>
   );
 }
