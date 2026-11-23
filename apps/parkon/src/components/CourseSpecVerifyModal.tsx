@@ -349,12 +349,7 @@ export function CourseSpecVerifyModal({
       };
       ParkOnStorage.updateCourse(updatedCourse);
 
-      const msg =
-        res.promotedReason === 'TWO_STRIKE'
-          ? `🎉 2-Strike 집단지성 일치! '${course.name}' 제원이 전국 파키 앱 회원에게 자동 반영되었습니다.`
-          : res.promotedReason === 'EXECUTIVE_PHOTO'
-            ? `🎉 클럽 임원진 + 사진 증빙 인증! '${course.name}' 제원이 전국 파키 앱에 즉시 반영되었습니다.`
-            : `✅ 내 폰에 즉시 적용 & 중앙 점검 대기열에 접수되었습니다! (동일 제보 1건 추가 또는 관리자 승인 시 전국 반영)`;
+      const msg = `✅ 현장 실입력 최우선! '${course.name}' (${totalCourses}코스 ${totalHoles}홀) 제원이 전국 파키 앱에 즉시 자동 반영되었습니다!`;
 
       onUpdated?.(updatedCourse, msg);
       onClose();
@@ -654,8 +649,8 @@ export function CourseSpecVerifyModal({
                         inputMode="numeric"
                         min={0}
                         max={250}
-                        value={h.distanceMeter || ''}
-                        placeholder="거리"
+                        value={h.distanceMeter && h.distanceMeter > 0 ? h.distanceMeter : ''}
+                        placeholder="__"
                         onChange={(e) =>
                           updateHoleSpec(h.hole, {
                             distanceMeter: Math.max(0, Math.min(250, parseInt(e.target.value || '0', 10) || 0)),
@@ -693,9 +688,7 @@ export function CourseSpecVerifyModal({
                   ☑️ 현장 안내판(또는 공식 스코어카드)을 직접 확인했습니다 (필수)
                 </div>
                 <div className="text-stone-600 font-medium mt-0.5">
-                  {userIsClubExecutive && evidencePhotoUrl
-                    ? '👑 클럽 임원진 + 사진 증빙으로 제출 즉시 전국 자동 반영됩니다.'
-                    : '제출 즉시 내 폰에 적용되며, 동일 제보 2건(2-Strike) 또는 관리자 승인 시 전국 반영됩니다.'}
+                  🥇 유저 현장 실입력 최우선 원칙에 따라 제출 즉시 전국 모든 파키 앱에 자동 반영됩니다.
                 </div>
               </div>
             </label>

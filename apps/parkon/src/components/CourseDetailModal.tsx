@@ -14,6 +14,7 @@ import { CourseHallOfFameModal } from '@/components/CourseHallOfFameModal';
 import { CourseTodayContent } from '@/components/CourseTodayModal';
 import { CourseRestaurantList } from '@/components/CourseRestaurantList';
 import { CourseSpecVerifyModal } from '@/components/CourseSpecVerifyModal';
+import { submitCourseSpecVerification } from '@/lib/courseSpecClient';
 import { getCourseSpecBadge, resolveCourseSpecStatus } from '@/lib/courseSpecShared';
 import { RestaurantStorage } from '@/lib/restaurantStorage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
@@ -122,7 +123,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     if (syncedHoles.length < reqHoles) {
       const std = generateStandardHoles(reqHoles);
       for (let i = syncedHoles.length; i < reqHoles; i++) {
-        syncedHoles.push(std[i] || { hole: i + 1, par: 3, distanceMeter: 60, isVerified: false });
+        syncedHoles.push(std[i] || { hole: i + 1, par: 3, distanceMeter: 0, isVerified: false });
       }
     }
     setEditedCourseName(latest.name);
@@ -162,7 +163,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
       holeInCourse,
       holeNumber,
       par: (hMeta?.par === 4 || hMeta?.par === 5 ? hMeta.par : 3) as 3 | 4 | 5,
-      officialDistance: hMeta?.distanceMeter || 60,
+      officialDistance: hMeta?.distanceMeter || 0,
     });
   };
 
@@ -236,6 +237,16 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
       contributionHistory: updatedHistory,
     };
     ParkOnStorage.updateCourse(updatedCourse);
+    // 유저 현장 실입력을 중앙 마스터 DB(CROWD_VERIFIED)에도 즉시 무인 반영 (온라인 자동값을 최우선 덮어씀)
+    submitCourseSpecVerification({
+      courseId: updatedCourse.id,
+      courseName: updatedCourse.name,
+      region: updatedCourse.region,
+      totalCourses: finalCourseCount,
+      holesMetadata: updatedCourse.holesMetadata,
+      source: 'BATCH_EDIT',
+      contributorName: authorName,
+    }).catch(() => {});
     onSaved(updatedCourse);
     return updatedCourse;
   };
@@ -252,7 +263,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
     if (nextHoles.length < requiredHoles) {
       const std = generateStandardHoles(requiredHoles);
       for (let i = nextHoles.length; i < requiredHoles; i++) {
-        nextHoles.push(std[i] || { hole: i + 1, par: 3, distanceMeter: 60, isVerified: false });
+        nextHoles.push(std[i] || { hole: i + 1, par: 3, distanceMeter: 0, isVerified: false });
       }
     }
     const parsedAliases = Array.from(
@@ -609,7 +620,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
                   holeInCourse,
                   holeNumber: h.hole,
                   par: (h.par as 3 | 4 | 5) || 3,
-                  officialDistance: h.distanceMeter || 60,
+                  officialDistance: h.distanceMeter || 0,
                 });
 
               return (
@@ -674,8 +685,8 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
                               type="text"
                               inputMode="numeric"
                               data-testid={`input-hole-dist-${currentCourseLetter}-${holeInCourse}`}
-                              value={h.distanceMeter === 0 ? '' : String(h.distanceMeter)}
-                              placeholder="0"
+                              value={!h.distanceMeter || h.distanceMeter <= 0 ? '' : String(h.distanceMeter)}
+                              placeholder="__"
                               onChange={(e) => {
                                 const digits = e.target.value.replace(/[^0-9]/g, '');
                                 handleHoleChange(h.hole, 'distanceMeter', digits === '' ? 0 : Number(digits));
@@ -690,8 +701,13 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
                           <span className="bg-stone-100 text-stone-800 text-xs font-black px-2 py-0.5 rounded-lg border border-stone-200">
                             Par {h.par}
                           </span>
-                          <span className="text-sm font-black text-emerald-800">
-                            {h.distanceMeter}m
+                          <span
+                            data-testid={`hole-dist-display-${currentCourseLetter}-${holeInCourse}`}
+                            className={`text-sm font-black ${
+                              h.distanceMeter && h.distanceMeter > 0 ? 'text-emerald-800' : 'text-stone-400'
+                            }`}
+                          >
+                            {h.distanceMeter && h.distanceMeter > 0 ? `${h.distanceMeter}m` : '__m'}
                           </span>
                           <button
                             type="button"

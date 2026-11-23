@@ -734,10 +734,10 @@ export default function AdminDashboardPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  ⛳ 전국 구장 제원 점검 · 1초 승인 관제
+                  ⛳ 전국 구장 무인 자동업데이트 관제
                 </span>
-                <span className="text-[10px] px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded font-black shrink-0">
-                  승인 대기 {courseSpecSummary?.pendingSubmissionsCount ?? 0}건
+                <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-black shrink-0">
+                  완전자동 · 유저실입력 최우선
                 </span>
                 {courseSpecSummary && (
                   <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold shrink-0">

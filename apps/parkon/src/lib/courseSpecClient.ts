@@ -2,6 +2,7 @@
 
 import { HoleMetadata } from '@/types/parkon';
 import {
+  AutoScanDashboardStatus,
   CourseSpecAuditSummary,
   CourseSpecSource,
   CourseSpecSubmission,
@@ -84,7 +85,7 @@ export async function submitCourseSpecVerification(payload: {
   warnings?: string[];
   submission?: CourseSpecSubmission;
   masterSpec?: MasterCourseSpec;
-  promotedReason?: 'TWO_STRIKE' | 'EXECUTIVE_PHOTO' | null;
+  promotedReason?: 'USER_FIELD_PRIORITY' | 'ONLINE_FULL_AUTO' | 'TWO_STRIKE' | 'EXECUTIVE_PHOTO' | null;
   strikeCount?: number;
 }> {
   try {
@@ -180,5 +181,40 @@ export async function extractCourseSpecsFromPhoto(params: {
     return await res.json();
   } catch (e: any) {
     return { success: false, message: e?.message || '사진 제원 판독 중 오류' };
+  }
+}
+
+export async function fetchAutoScanStatus(): Promise<AutoScanDashboardStatus | null> {
+  try {
+    const res = await fetch('/api/admin/course-auto-scan?statusOnly=1', { cache: 'no-store' });
+    const data = await res.json();
+    return data?.success ? data.autoScanStatus || null : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function runOnlineCourseParScan(params: {
+  courseId?: string;
+  batchSize?: number;
+  simulateDemo?: boolean;
+}): Promise<{
+  success: boolean;
+  message?: string;
+  scannedCount?: number;
+  queuedCount?: number;
+  cooldownCount?: number;
+  results?: Array<{ courseId: string; courseName: string; queued: boolean; note: string }>;
+  autoScanStatus?: AutoScanDashboardStatus;
+}> {
+  try {
+    const res = await fetch('/api/admin/course-auto-scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, message: e?.message || '온라인 파수 탐색 중 오류' };
   }
 }

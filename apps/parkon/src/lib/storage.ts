@@ -1189,7 +1189,7 @@ export const ParkOnStorage = {
             holesMetadata: holes,
           });
         }
-        if (master && master.specStatus === 'CROWD_VERIFIED') {
+        if (master && (master.specStatus === 'CROWD_VERIFIED' || master.specStatus === 'ONLINE_AUTO')) {
           return {
             ...d,
             id: d.id,
@@ -1198,7 +1198,7 @@ export const ParkOnStorage = {
             holesMetadata: master.holesMetadata,
             isVerified: true,
             isSpecsVerified: true,
-            specStatus: 'CROWD_VERIFIED' as const,
+            specStatus: master.specStatus,
             specContributorName: master.verifiedBy,
             specUpdatedAt: master.updatedAt,
           };
@@ -1212,10 +1212,27 @@ export const ParkOnStorage = {
             specStatus: 'UNVERIFIED_TEMPLATE',
           });
         }
+        const isTemplate = isDummyTemplateCourse(d);
         const applied = applyCrowdSpecs(d);
+        if (isTemplate) {
+          const cleanName = d.name.replace(/\s+/g, '');
+          const cleanedHoles = applied.holesMetadata.map((hm) => {
+            const k1 = `${d.id}_hole_${hm.hole}`;
+            const k2 = `${cleanName}_hole_${hm.hole}`;
+            const hasCrowd = Boolean(crowdSpecs[k1] || crowdSpecs[k2]);
+            return hasCrowd ? hm : { ...hm, distanceMeter: 0, isVerified: false };
+          });
+          return {
+            ...applied,
+            holesMetadata: cleanedHoles,
+            isVerified: false,
+            isSpecsVerified: false,
+            specStatus: 'UNVERIFIED_TEMPLATE' as const,
+          };
+        }
         return {
           ...applied,
-          specStatus: applied.specStatus || (isDummyTemplateCourse(d) ? 'UNVERIFIED_TEMPLATE' : 'CROWD_VERIFIED'),
+          specStatus: applied.specStatus || 'CROWD_VERIFIED',
         };
       });
 

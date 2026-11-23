@@ -22,6 +22,7 @@ import { BadgeStorage } from '@/lib/badgeStorage';
 import { useTranslation } from '@/lib/i18n/LanguageContext';
 import { getCourseDualName } from '@/lib/courseLocalization';
 import { calculateDistanceMeters, GeoCountryService } from '@/lib/geoCountryService';
+import { submitCourseSpecVerification } from '@/lib/courseSpecClient';
 import { supabase } from '@/lib/supabase';
 import { CourseStampModal } from '@/components/CourseStampModal';
 import { buildCourseBlocksFromSession, incrementUserCompleted9Holes, calculateTier, getUserCompleted9Holes } from '@/lib/courseBlockTier';
@@ -1925,7 +1926,7 @@ export default function RoundPlayPage() {
           existingHoles.push({
             hole: h,
             par: STANDARD_PARS[idxIn9] || 3,
-            distanceMeter: STANDARD_DISTS[idxIn9] || 65,
+            distanceMeter: 0,
             isVerified: false,
           });
         }
@@ -2459,7 +2460,8 @@ export default function RoundPlayPage() {
 
   const handleSaveHoleSpec = (parVal: number, distVal: number, forceConsensus: boolean = true) => {
     if (!course || !session) return;
-    const validatedDist = Math.max(10, Math.min(300, Number(distVal) || 50));
+    const rawDistNum = Number(distVal) || 0;
+    const validatedDist = rawDistNum > 0 ? Math.max(10, Math.min(300, rawDistNum)) : 0;
     const validatedPar = Math.max(3, Math.min(5, Number(parVal) || 3));
     const targetHoleNum = Number(baseHoleNumber);
 
@@ -2525,6 +2527,16 @@ export default function RoundPlayPage() {
       true, // forceConsensus: true -> 즉시 전국 빅데이터 및 로컬 DB 공식 확정!
       contributor
     );
+    // 현장 경기 중 유저가 수정한 파수·거리를 중앙 마스터 DB(CROWD_VERIFIED)에도 최우선 자동 반영!
+    submitCourseSpecVerification({
+      courseId: updatedCourse.id,
+      courseName: updatedCourse.name,
+      region: updatedCourse.region,
+      totalCourses: calculatedTotalCourses,
+      holesMetadata: updatedMetadata,
+      source: 'TEEBOX',
+      contributorName: contributor,
+    }).catch(() => {});
 
     // 2. 누적 타수 및 파 차이 즉시 재계산
     let totalParSoFar = 0;
@@ -2878,7 +2890,7 @@ export default function RoundPlayPage() {
                       onClick={() => {
                         if (parBlinkTimerRef.current) clearTimeout(parBlinkTimerRef.current);
                         setIsParBarBlinking(false);
-                        handleSaveHoleSpec(pVal, holeMetadata.distanceMeter || 50, true);
+                        handleSaveHoleSpec(pVal, Number(holeMetadata.distanceMeter) || 0, true);
                       }}
                       className={`py-2.5 rounded-xl font-black text-base sm:text-lg transition-colors cursor-pointer flex flex-col items-center justify-center border ${
                         isParBarBlinking ? 'par-btn-blink-3x ' : ''
@@ -3093,7 +3105,7 @@ export default function RoundPlayPage() {
                     onClick={() => {
                       if (parBlinkTimerRef.current) clearTimeout(parBlinkTimerRef.current);
                       setIsParBarBlinking(false);
-                      handleSaveHoleSpec(pVal, holeMetadata.distanceMeter || 50, true);
+                      handleSaveHoleSpec(pVal, Number(holeMetadata.distanceMeter) || 0, true);
                     }}
                     className={`flex-1 h-9 sm:h-10 rounded-lg font-black text-xs sm:text-sm transition-all duration-150 cursor-pointer flex items-center justify-center active:scale-95 shadow-xs ${
                       isParBarBlinking ? 'par-btn-blink-3x ' : ''
@@ -3736,7 +3748,7 @@ export default function RoundPlayPage() {
                   onClick={() => {
                     const toPar = pendingParChange.toPar;
                     setPendingParChange(null);
-                    handleSaveHoleSpec(toPar, holeMetadata.distanceMeter || 50, true);
+                    handleSaveHoleSpec(toPar, Number(holeMetadata.distanceMeter) || 0, true);
                   }}
                   className="w-full min-h-[48px] py-3 px-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white font-black text-sm sm:text-base shadow-md border border-emerald-400 transition cursor-pointer flex items-center justify-center gap-1.5"
                 >
@@ -4285,7 +4297,7 @@ export default function RoundPlayPage() {
                     <span className="font-bold text-stone-600">{isJapanese ? 'ホール距離 (m)' : '홀 거리 (m)'}</span>
                     <div className="flex items-center gap-2 font-black">
                       {isHoleVerified ? (
-                        <span className="text-stone-400 line-through">{holeMetadata.distanceMeter}m</span>
+                        <span className="text-stone-400 line-through">{holeMetadata.distanceMeter && holeMetadata.distanceMeter > 0 ? `${holeMetadata.distanceMeter}m` : '__m'}</span>
                       ) : (
                         <span className="text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded text-[11px]">{isJapanese ? '未確認(空欄)' : '미확인(공란)'}</span>
                       )}
@@ -5755,7 +5767,7 @@ export default function RoundPlayPage() {
         holeInCourse={holeInCourse}
         holeNumber={baseHoleNumber}
         par={(Number(holeMetadata.par) as 3 | 4 | 5) || 3}
-        officialDistance={Number(holeMetadata.distanceMeter) || 60}
+        officialDistance={Number(holeMetadata.distanceMeter) || 0}
         onSaved={() => setYardageRevision((v) => v + 1)}
       />
 

@@ -1,8 +1,37 @@
 import { Course, HoleMetadata } from '@/types/parkon';
 
-export type CourseSpecStatus = 'OFFICIAL_ADMIN' | 'CROWD_VERIFIED' | 'UNVERIFIED_TEMPLATE';
-export type CourseSpecSource = 'PHOTO_OCR' | 'BATCH_EDIT' | 'SCORECARD_DIFF' | 'TEEBOX' | 'ADMIN_DIRECT';
+export type CourseSpecStatus = 'OFFICIAL_ADMIN' | 'CROWD_VERIFIED' | 'ONLINE_AUTO' | 'UNVERIFIED_TEMPLATE';
+export type CourseSpecSource =
+  | 'PHOTO_OCR'
+  | 'BATCH_EDIT'
+  | 'SCORECARD_DIFF'
+  | 'TEEBOX'
+  | 'ADMIN_DIRECT'
+  | 'ONLINE_IMAGE_AI';
 export type SubmissionStatus = 'PENDING' | 'AUTO_PROMOTED' | 'APPROVED' | 'REJECTED';
+
+export interface OnlineScanHistoryItem {
+  courseId: string;
+  courseName: string;
+  lastScannedAt: string;
+  outcome: 'QUEUED' | 'NO_DATA_COOLDOWN';
+  sourceUrl?: string;
+  note?: string;
+}
+
+export interface AutoScanDashboardStatus {
+  lifecycleMode: 'PHASE_1_DAILY_CONQUEST' | 'PHASE_2_MONTHLY_RADAR';
+  dailyBatchSize: number;
+  eligibleUnverifiedCount: number;
+  cooldown30dCount: number;
+  pendingQueueCount: number;
+  lastRunAt?: string;
+}
+
+export function formatHoleDistance(distanceMeter?: number | null): string {
+  const d = Number(distanceMeter) || 0;
+  return d > 0 ? `${d}m` : '__m';
+}
 
 export interface MasterCourseSpec {
   courseId: string;
@@ -11,7 +40,7 @@ export interface MasterCourseSpec {
   totalCourses: number;
   totalHoles: number;
   holesMetadata: HoleMetadata[];
-  specStatus: 'OFFICIAL_ADMIN' | 'CROWD_VERIFIED';
+  specStatus: 'OFFICIAL_ADMIN' | 'CROWD_VERIFIED' | 'ONLINE_AUTO';
   verifiedBy: string;
   evidencePhotoUrl?: string;
   strikeCount: number;
@@ -44,6 +73,7 @@ export interface CourseSpecAuditSummary {
   totalCourses: number;
   officialAdminCount: number;
   crowdVerifiedCount: number;
+  onlineAutoCount?: number;
   unverifiedTemplateCount: number;
   pendingSubmissionsCount: number;
   verifiedPercent: number;
@@ -56,7 +86,11 @@ export const COURSE_LETTERS_12 = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', '
  * 중앙 마스터 DB에서 승인되거나(OFFICIAL_ADMIN / CROWD_VERIFIED) 실제 고유 제원이 있는 구장은 false를 반환합니다.
  */
 export function isDummyTemplateCourse(course: Pick<Course, 'holesMetadata' | 'specStatus' | 'isSpecsVerified'>): boolean {
-  if (course.specStatus === 'OFFICIAL_ADMIN' || course.specStatus === 'CROWD_VERIFIED') {
+  if (
+    course.specStatus === 'OFFICIAL_ADMIN' ||
+    course.specStatus === 'CROWD_VERIFIED' ||
+    course.specStatus === 'ONLINE_AUTO'
+  ) {
     return false;
   }
   if (course.isSpecsVerified === true) {
@@ -75,7 +109,10 @@ export function isDummyTemplateCourse(course: Pick<Course, 'holesMetadata' | 'sp
   ) {
     return true;
   }
-  // 2) generateStandardHoles 기본 패턴 (75m / 50m / 80m + isVerified !== true)
+  // 2) generateStandardHoles 또는 미점검 빈칸(distanceMeter === 0 && isVerified === false)
+  if (h1?.isVerified === false && Number(h1?.distanceMeter || 0) === 0) {
+    return true;
+  }
   if (
     Number(h1?.distanceMeter) === 75 &&
     Number(h2?.distanceMeter) === 50 &&
@@ -90,6 +127,7 @@ export function isDummyTemplateCourse(course: Pick<Course, 'holesMetadata' | 'sp
 export function resolveCourseSpecStatus(course: Pick<Course, 'holesMetadata' | 'specStatus' | 'isSpecsVerified'>): CourseSpecStatus {
   if (course.specStatus === 'OFFICIAL_ADMIN') return 'OFFICIAL_ADMIN';
   if (course.specStatus === 'CROWD_VERIFIED') return 'CROWD_VERIFIED';
+  if (course.specStatus === 'ONLINE_AUTO') return 'ONLINE_AUTO';
   if (isDummyTemplateCourse(course)) return 'UNVERIFIED_TEMPLATE';
   return 'CROWD_VERIFIED';
 }
@@ -100,12 +138,15 @@ export function getCourseSpecBadge(status: CourseSpecStatus): {
   tone: 'emerald' | 'blue' | 'amber';
 } {
   if (status === 'OFFICIAL_ADMIN') {
-    return { label: '✅ 관리자 공식 제원 확정', shortLabel: '공식 확정', tone: 'emerald' };
+    return { label: '✅ 공식 확정 제원', shortLabel: '공식 확정', tone: 'emerald' };
   }
   if (status === 'CROWD_VERIFIED') {
-    return { label: '🤝 현장 실측 검증 완료', shortLabel: '실측 검증', tone: 'blue' };
+    return { label: '🥇 유저 현장 실입력 제원 (최우선)', shortLabel: '유저 실입력', tone: 'emerald' };
   }
-  return { label: '⚠️ 제원 점검 필요 (기본 추정치)', shortLabel: '제원 점검 필요', tone: 'amber' };
+  if (status === 'ONLINE_AUTO') {
+    return { label: '🌐 온라인 파수 자동반영 (현장 입력 시 즉시 갱신)', shortLabel: '온라인 자동', tone: 'blue' };
+  }
+  return { label: '⚠️ 제원 자동탐색 대기 (거리 __m)', shortLabel: '자동탐색 대기', tone: 'amber' };
 }
 
 /**

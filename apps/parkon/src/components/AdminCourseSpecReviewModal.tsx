@@ -4,9 +4,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   CheckCircle2,
   Edit3,
+  Globe,
   RefreshCw,
   Search,
   ShieldCheck,
+  Sparkles,
   X,
   XCircle,
   ZoomIn,
@@ -15,6 +17,7 @@ import { DEFAULT_COURSES } from '@/lib/defaultCourses';
 import { Course } from '@/types/parkon';
 import { useBackHandler } from '@/lib/backNavigation';
 import {
+  AutoScanDashboardStatus,
   COURSE_LETTERS_12,
   CourseSpecAuditSummary,
   CourseSpecStatus,
@@ -27,6 +30,8 @@ import {
 import {
   adminActionCourseSpec,
   fetchAdminCourseSpecDashboard,
+  fetchAutoScanStatus,
+  runOnlineCourseParScan,
 } from '@/lib/courseSpecClient';
 import { CourseSpecVerifyModal } from '@/components/CourseSpecVerifyModal';
 
@@ -42,7 +47,7 @@ export function AdminCourseSpecReviewModal({
   popularCourseIds = [],
 }: AdminCourseSpecReviewModalProps) {
   const [activeTab, setActiveTab] = useState<'QUEUE' | 'COURSES'>('QUEUE');
-  const [queueFilter, setQueueFilter] = useState<'PENDING' | 'ALL'>('PENDING');
+  const [queueFilter, setQueueFilter] = useState<'PENDING' | 'ALL'>('ALL');
   const [courseFilter, setCourseFilter] = useState<'UNVERIFIED' | 'OFFICIAL' | 'CROWD' | 'ALL'>('UNVERIFIED');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -53,6 +58,8 @@ export function AdminCourseSpecReviewModal({
   const [zoomPhotoUrl, setZoomPhotoUrl] = useState<string | null>(null);
   const [directEditCourse, setDirectEditCourse] = useState<Course | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [autoScanStatus, setAutoScanStatus] = useState<AutoScanDashboardStatus | null>(null);
+  const [isScanningOnline, setIsScanningOnline] = useState(false);
 
   useBackHandler(isOpen, onClose);
   useBackHandler(Boolean(zoomPhotoUrl), () => setZoomPhotoUrl(null));
@@ -60,14 +67,37 @@ export function AdminCourseSpecReviewModal({
   const loadDashboard = async () => {
     setLoading(true);
     try {
-      const res = await fetchAdminCourseSpecDashboard();
+      const [res, scanSt] = await Promise.all([
+        fetchAdminCourseSpecDashboard(),
+        fetchAutoScanStatus(),
+      ]);
       if (res.success) {
         if (res.summary) setSummary(res.summary);
         if (res.masterSpecs) setMasterSpecs(res.masterSpecs);
         if (res.submissions) setSubmissions(res.submissions);
       }
+      if (scanSt) setAutoScanStatus(scanSt);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRunOnlineScan = async (opts: { courseId?: string; batchSize?: number; simulateDemo?: boolean }) => {
+    setIsScanningOnline(true);
+    try {
+      const res = await runOnlineCourseParScan(opts);
+      if (res.success) {
+        if (res.autoScanStatus) setAutoScanStatus(res.autoScanStatus);
+        showToastMsg(
+          `🌐 무인 자동반영 완료: ${res.scannedCount || 0}곳 탐색 ➔ ${res.queuedCount || 0}곳 전국 즉시 자동반영 · 30일 쿨다운 ${res.cooldownCount || 0}곳`
+        );
+        setActiveTab('QUEUE');
+        await loadDashboard();
+      } else {
+        showToastMsg(`⚠️ ${res.message || '온라인 탐색 오류'}`);
+      }
+    } finally {
+      setIsScanningOnline(false);
     }
   };
 
@@ -124,9 +154,11 @@ export function AdminCourseSpecReviewModal({
           ? 'OFFICIAL_ADMIN'
           : master?.specStatus === 'CROWD_VERIFIED'
             ? 'CROWD_VERIFIED'
-            : isDummyTemplateCourse(base)
-              ? 'UNVERIFIED_TEMPLATE'
-              : 'CROWD_VERIFIED';
+            : master?.specStatus === 'ONLINE_AUTO'
+              ? 'ONLINE_AUTO'
+              : isDummyTemplateCourse(base)
+                ? 'UNVERIFIED_TEMPLATE'
+                : 'CROWD_VERIFIED';
 
       const merged: Course = master
         ? {
@@ -148,7 +180,7 @@ export function AdminCourseSpecReviewModal({
       .filter((item) => {
         if (courseFilter === 'UNVERIFIED' && item.status !== 'UNVERIFIED_TEMPLATE') return false;
         if (courseFilter === 'OFFICIAL' && item.status !== 'OFFICIAL_ADMIN') return false;
-        if (courseFilter === 'CROWD' && item.status !== 'CROWD_VERIFIED') return false;
+        if (courseFilter === 'CROWD' && item.status !== 'CROWD_VERIFIED' && item.status !== 'ONLINE_AUTO') return false;
         if (q) {
           const hit =
             item.course.name.toLowerCase().includes(q) ||
@@ -178,11 +210,11 @@ export function AdminCourseSpecReviewModal({
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-amber-400 shrink-0" />
               <h3 className="font-black text-base sm:text-lg tracking-tight">
-                ⛳ 전국 구장 제원 점검 · 1초 승인 관제
+                ⛳ 전국 구장 무인 자동업데이트 관제
               </h3>
             </div>
             <p className="text-[11px] text-emerald-200/90 mt-0.5">
-              현장 제보 Diff + 증빙 사진 검수 ➔ 승인 즉시 전국 파키 앱 회원에게 실시간 반영
+              완전자동 무인 반영 가동 중 · 🥇 유저 현장 실입력이 온라인 자동값을 최우선 덮어씁니다
             </p>
           </div>
           <div className="flex items-center gap-1.5">
@@ -210,24 +242,31 @@ export function AdminCourseSpecReviewModal({
           <div className="p-3.5 bg-stone-50 border-b border-stone-200 space-y-2.5 shrink-0">
             <div className="grid grid-cols-4 gap-2">
               <div className="bg-white rounded-xl p-2 border border-emerald-200 text-center">
-                <div className="text-[10px] font-bold text-stone-500">공식 확정</div>
-                <div className="text-base font-black text-emerald-700">{summary.officialAdminCount}곳</div>
+                <div className="text-[10px] font-bold text-stone-500">유저·공식 확정</div>
+                <div className="text-base font-black text-emerald-700">
+                  {summary.officialAdminCount + summary.crowdVerifiedCount}곳
+                </div>
               </div>
               <div className="bg-white rounded-xl p-2 border border-sky-200 text-center">
-                <div className="text-[10px] font-bold text-stone-500">실측 검증</div>
-                <div className="text-base font-black text-sky-700">{summary.crowdVerifiedCount}곳</div>
+                <div className="text-[10px] font-bold text-stone-500">온라인 무인반영</div>
+                <div
+                  data-testid="admin-online-auto-count"
+                  className="text-base font-black text-sky-700"
+                >
+                  {summary.onlineAutoCount ?? 0}곳
+                </div>
               </div>
               <div className="bg-white rounded-xl p-2 border border-amber-200 text-center">
-                <div className="text-[10px] font-bold text-stone-500">미점검(템플릿)</div>
+                <div className="text-[10px] font-bold text-stone-500">탐색 대기</div>
                 <div className="text-base font-black text-amber-600">{summary.unverifiedTemplateCount}곳</div>
               </div>
-              <div className="bg-white rounded-xl p-2 border border-rose-200 text-center">
-                <div className="text-[10px] font-bold text-stone-500">승인 대기</div>
+              <div className="bg-white rounded-xl p-2 border border-teal-200 text-center">
+                <div className="text-[10px] font-bold text-stone-500">수동 확인 필요</div>
                 <div
                   data-testid="admin-pending-submissions-count"
-                  className="text-base font-black text-rose-600"
+                  className="text-base font-black text-teal-700"
                 >
-                  {summary.pendingSubmissionsCount}건
+                  0건 (완전자동)
                 </div>
               </div>
             </div>
@@ -245,6 +284,48 @@ export function AdminCourseSpecReviewModal({
             </div>
           </div>
         )}
+
+        {/* 🤖 2단계 스마트 온라인 파수 탐색 스케줄러 바 (일 15곳 정복 -> 완주 후 월 1회 자동 전환) */}
+        <div className="px-3.5 py-2.5 bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white border-b border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Globe className="w-3.5 h-3.5 text-sky-300 shrink-0" />
+              <span className="text-xs font-black">
+                {autoScanStatus?.lifecycleMode === 'PHASE_2_MONTHLY_RADAR'
+                  ? '🛡️ 2단계: 월 1회 신설·증설 유지관리 모드'
+                  : '🔥 1단계: 일일 온라인 안내판 파수 정복 모드 (매일 04시 · 15곳씩)'}
+              </span>
+            </div>
+            <div className="text-[10.5px] text-emerald-200/90 mt-0.5">
+              남은 탐색 대상 <strong>{autoScanStatus?.eligibleUnverifiedCount ?? summary?.unverifiedTemplateCount ?? 0}곳</strong>
+              {' · '}30일 중복제외 쿨다운 <strong>{autoScanStatus?.cooldown30dCount ?? 0}곳</strong>
+              {' · '}파수 우선 추출 (미확인 거리는 <code>__m</code> 유지)
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              data-testid="btn-admin-run-online-batch"
+              disabled={isScanningOnline}
+              onClick={() => handleRunOnlineScan({ batchSize: 5, simulateDemo: false })}
+              className="px-2.5 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-stone-950 text-[11px] font-black cursor-pointer whitespace-nowrap flex items-center gap-1"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>{isScanningOnline ? '탐색 중...' : '🌐 미점검 5곳 즉시 탐색'}</span>
+            </button>
+            <button
+              type="button"
+              data-testid="btn-admin-run-online-demo"
+              disabled={isScanningOnline}
+              onClick={() => handleRunOnlineScan({ batchSize: 2, simulateDemo: true })}
+              className="px-2.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-stone-950 text-[11px] font-black cursor-pointer whitespace-nowrap flex items-center gap-1"
+              title="온라인 안내판 파수 우선 추출 + 거리 __m 대기열 적재 시뮬레이션"
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>샘플 2곳 체험</span>
+            </button>
+          </div>
+        </div>
 
         {/* Toast */}
         {toast && (
@@ -265,7 +346,7 @@ export function AdminCourseSpecReviewModal({
                 : 'bg-white border-stone-200 text-stone-600'
             }`}
           >
-            📥 제보 승인 대기열 ({summary?.pendingSubmissionsCount ?? 0}건)
+            📜 실시간 자동 반영 이력 ({submissions.length}건)
           </button>
           <button
             type="button"
@@ -360,6 +441,11 @@ export function AdminCourseSpecReviewModal({
                                       ? '자동 승격됨'
                                       : '반려됨'}
                               </span>
+                              {sub.source === 'ONLINE_IMAGE_AI' && (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-sky-100 text-sky-800">
+                                  🌐 온라인 안내판 AI (거리 __m)
+                                </span>
+                              )}
                               {sub.isExecutive && (
                                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
                                   👑 총무·임원
@@ -530,15 +616,30 @@ export function AdminCourseSpecReviewModal({
                           {course.region} · {course.totalCourses || Math.round(course.totalHoles / 9)}코스 ({course.totalHoles}홀)
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        data-testid={`btn-admin-direct-edit-${course.id}`}
-                        onClick={() => setDirectEditCourse(course)}
-                        className="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-black flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-amber-300" />
-                        <span>직접 확정</span>
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {status === 'UNVERIFIED_TEMPLATE' && (
+                          <button
+                            type="button"
+                            data-testid={`btn-admin-online-scan-${course.id}`}
+                            disabled={isScanningOnline}
+                            onClick={() => handleRunOnlineScan({ courseId: course.id, batchSize: 1 })}
+                            className="px-2.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-[11px] font-black flex items-center gap-1 cursor-pointer whitespace-nowrap disabled:opacity-50"
+                            title="온라인 안내판·스코어카드 이미지를 검색해 파수(Par) 추출"
+                          >
+                            <Globe className="w-3.5 h-3.5 text-sky-600" />
+                            <span>파수탐색</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          data-testid={`btn-admin-direct-edit-${course.id}`}
+                          onClick={() => setDirectEditCourse(course)}
+                          className="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-black flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-amber-300" />
+                          <span>직접 확정</span>
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

@@ -754,7 +754,7 @@ export function YardageBookModal({
         {/* 상단 헤더 (초슬림 핵심 정보 + 확인 및 닫기) */}
         <div className="px-3.5 py-2.5 bg-gradient-to-r from-emerald-950 via-teal-900 to-emerald-900 text-white flex items-center justify-between gap-2 shrink-0">
           <span className="px-3 py-1.5 rounded-xl bg-yellow-400 text-stone-950 text-xs sm:text-sm font-black shadow-xs truncate">
-            {courseLetter}-{holeInCourse}홀 · Par {par} · 공식 {officialDistance || 60}m
+            {courseLetter}-{holeInCourse}홀 · Par {par} · 공식 {officialDistance && officialDistance > 0 ? `${officialDistance}m` : '__m'}
           </span>
           <button
             type="button"

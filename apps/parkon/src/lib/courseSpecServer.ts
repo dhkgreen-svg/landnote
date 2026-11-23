@@ -4,10 +4,12 @@ import os from 'os';
 import { getSupabaseClient } from '@/lib/serverMemberSync';
 import { DEFAULT_COURSES } from '@/lib/defaultCourses';
 import {
+  AutoScanDashboardStatus,
   CourseSpecAuditSummary,
   CourseSpecSource,
   CourseSpecSubmission,
   MasterCourseSpec,
+  OnlineScanHistoryItem,
   computeSpecSignature,
   isDummyTemplateCourse,
   validateCourseSpecPayload,
@@ -19,12 +21,15 @@ const LOCAL_STORE_FILE = path.join(os.tmpdir(), 'parkon_course_master_specs_stor
 interface LocalSpecStore {
   masterSpecs: Record<string, MasterCourseSpec>;
   submissions: CourseSpecSubmission[];
+  onlineScanHistory: Record<string, OnlineScanHistoryItem>;
+  lastAutoScanRunAt?: string;
 }
 
 function getMemoryStore(): LocalSpecStore {
   const g = globalThis as any;
   if (!g.__parkonCourseSpecStore) {
-    let loaded: LocalSpecStore = { masterSpecs: {}, submissions: [] };
+    let loaded: LocalSpecStore = { masterSpecs: {}, submissions: {}, onlineScanHistory: {} } as any;
+    loaded.submissions = [];
     try {
       if (fs.existsSync(LOCAL_STORE_FILE)) {
         const parsed = JSON.parse(fs.readFileSync(LOCAL_STORE_FILE, 'utf-8'));
@@ -32,6 +37,8 @@ function getMemoryStore(): LocalSpecStore {
           loaded = {
             masterSpecs: parsed.masterSpecs || {},
             submissions: Array.isArray(parsed.submissions) ? parsed.submissions : [],
+            onlineScanHistory: parsed.onlineScanHistory || {},
+            lastAutoScanRunAt: parsed.lastAutoScanRunAt,
           };
         }
       }
@@ -51,6 +58,8 @@ function persistMemoryStore(store: LocalSpecStore) {
         {
           masterSpecs: store.masterSpecs,
           submissions: store.submissions.slice(-500),
+          onlineScanHistory: store.onlineScanHistory || {},
+          lastAutoScanRunAt: store.lastAutoScanRunAt,
         },
         null,
         2
@@ -82,7 +91,7 @@ export async function loadAllMasterSpecs(): Promise<Record<string, MasterCourseS
             totalCourses: Number(row.total_courses) || 2,
             totalHoles: Number(row.total_holes) || 18,
             holesMetadata: Array.isArray(row.holes_metadata) ? row.holes_metadata : [],
-            specStatus: row.spec_status === 'OFFICIAL_ADMIN' ? 'OFFICIAL_ADMIN' : 'CROWD_VERIFIED',
+            specStatus: row.spec_status === 'OFFICIAL_ADMIN' ? 'OFFICIAL_ADMIN' : row.spec_status === 'ONLINE_AUTO' ? 'ONLINE_AUTO' : 'CROWD_VERIFIED',
             verifiedBy: String(row.verified_by || '현장 검증'),
             evidencePhotoUrl: row.evidence_photo_url || undefined,
             strikeCount: Number(row.strike_count) || 1,
@@ -242,7 +251,8 @@ export async function submitCourseSpecReport(params: {
   warnings?: string[];
   submission?: CourseSpecSubmission;
   masterSpec?: MasterCourseSpec;
-  promotedReason?: 'TWO_STRIKE' | 'EXECUTIVE_PHOTO' | null;
+  promotedReason?: 'USER_FIELD_PRIORITY' | 'ONLINE_FULL_AUTO' | 'TWO_STRIKE' | 'EXECUTIVE_PHOTO' | null;
+  skippedProtected?: boolean;
   strikeCount?: number;
 }> {
   const validation = validateCourseSpecPayload({
@@ -253,47 +263,64 @@ export async function submitCourseSpecReport(params: {
     return { ok: false, error: validation.error };
   }
 
+  const allMasters = await loadAllMasterSpecs();
+  const existingMaster = allMasters[params.courseId];
+  const isOnlineAi = params.source === 'ONLINE_IMAGE_AI';
+
+  // 🔒 [절대 원칙 1]: 이미 유저 현장 실입력(CROWD_VERIFIED) 또는 관리자 확정(OFFICIAL_ADMIN)이 있는 구장은 온라인 AI가 절대 덮어쓰지 못함!
+  if (
+    isOnlineAi &&
+    existingMaster &&
+    (existingMaster.specStatus === 'CROWD_VERIFIED' || existingMaster.specStatus === 'OFFICIAL_ADMIN')
+  ) {
+    return {
+      ok: true,
+      skippedProtected: true,
+      masterSpec: existingMaster,
+      promotedReason: null,
+      strikeCount: existingMaster.strikeCount,
+    };
+  }
+
   const totalCourses = Math.round(Number(params.totalCourses));
   const totalHoles = totalCourses * 9;
   const contributorName = (params.contributorName || '현장 골퍼').trim() || '현장 골퍼';
-  const normalizedHoles = validation.normalizedHoles.map((h) => ({
-    ...h,
-    isVerified: true,
-    contributedBy: contributorName,
-  }));
+
+  // 기존 실측 거리(distanceMeter > 0)가 있고 새 입력의 거리가 0('__m')이면 기존 실측 거리 보존!
+  const prevHoleMap = new Map((existingMaster?.holesMetadata || []).map((h) => [Number(h.hole), h]));
+  const normalizedHoles = validation.normalizedHoles.map((h) => {
+    const prev = prevHoleMap.get(Number(h.hole));
+    const mergedDist =
+      Number(h.distanceMeter) > 0
+        ? Number(h.distanceMeter)
+        : Number(prev?.distanceMeter) > 0
+          ? Number(prev!.distanceMeter)
+          : 0;
+    return {
+      ...h,
+      distanceMeter: mergedDist,
+      isVerified: true,
+      contributedBy: contributorName,
+    };
+  });
+
   const signature = computeSpecSignature(totalCourses, normalizedHoles);
   const nowIso = new Date().toISOString();
-
-  // Check existing submissions for 2-Strike consensus
-  const existingSubs = await loadAllSubmissions();
-  const sameSigSubs = existingSubs.filter(
-    (s) => s.courseId === params.courseId && s.signature === signature && s.status !== 'REJECTED'
-  );
-  const submitterIdentity = (params.memberCode || contributorName).trim().toLowerCase();
-  const distinctSubmitters = new Set(
-    sameSigSubs.map((s) => (s.memberCode || s.contributorName || '').trim().toLowerCase())
-  );
-  distinctSubmitters.add(submitterIdentity);
-  const strikeCount = distinctSubmitters.size;
-
-  // Auto-promotion rules:
-  // Rule A: 2-Strike (2+ distinct golfers/teams submit exact same course count + hole pars)
-  // Rule B: Club Executive (총무/회장) + Photo Evidence attached
   const hasPhoto = Boolean(params.evidencePhotoUrl && params.evidencePhotoUrl.length > 40);
-  let promotedReason: 'TWO_STRIKE' | 'EXECUTIVE_PHOTO' | null = null;
-  if (strikeCount >= 2) {
-    promotedReason = 'TWO_STRIKE';
-  } else if (params.isExecutive && hasPhoto) {
-    promotedReason = 'EXECUTIVE_PHOTO';
-  }
+
+  // 🚀 [절대 원칙 2]: 완전자동 무인 반영!
+  // - 유저 현장 실입력(isOnlineAi === false): 즉시 최우선 CROWD_VERIFIED로 전국 반영!
+  // - 온라인 안내판 AI(isOnlineAi === true): 미점검 구장에 한해 즉시 ONLINE_AUTO로 전국 무인 반영!
+  const promotedReason = isOnlineAi ? 'ONLINE_FULL_AUTO' : 'USER_FIELD_PRIORITY';
+  const nextStatus: MasterCourseSpec['specStatus'] = isOnlineAi ? 'ONLINE_AUTO' : 'CROWD_VERIFIED';
 
   const submission: CourseSpecSubmission = {
     id: `spec_sub_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     courseId: params.courseId,
     courseName: params.courseName.trim(),
     region: params.region,
-    prevTotalCourses: params.prevTotalCourses,
-    prevHolesMetadata: params.prevHolesMetadata,
+    prevTotalCourses: existingMaster?.totalCourses ?? params.prevTotalCourses,
+    prevHolesMetadata: existingMaster?.holesMetadata ?? params.prevHolesMetadata,
     proposedTotalCourses: totalCourses,
     proposedTotalHoles: totalHoles,
     proposedHolesMetadata: normalizedHoles,
@@ -303,51 +330,30 @@ export async function submitCourseSpecReport(params: {
     contributorName,
     memberCode: params.memberCode,
     isExecutive: Boolean(params.isExecutive),
-    status: promotedReason ? 'AUTO_PROMOTED' : 'PENDING',
-    reviewNote:
-      promotedReason === 'TWO_STRIKE'
-        ? `2-Strike 집단지성 일치 (${strikeCount}팀) 자동 승격`
-        : promotedReason === 'EXECUTIVE_PHOTO'
-          ? '클럽 임원진 + 현장 증빙 사진 자동 승격'
-          : undefined,
+    status: 'AUTO_PROMOTED',
+    reviewNote: isOnlineAi
+      ? '🌐 온라인 안내판 AI 무인 자동 반영 (현장 유저 실입력 시 즉시 우선 덮어씀)'
+      : '🥇 유저 현장 실입력 최우선 즉시 전국 반영',
     createdAt: nowIso,
-    reviewedAt: promotedReason ? nowIso : undefined,
+    reviewedAt: nowIso,
   };
 
   await upsertSubmission(submission);
 
-  let masterSpec: MasterCourseSpec | undefined;
-  if (promotedReason) {
-    // Also mark previous PENDING submissions with same signature as AUTO_PROMOTED
-    for (const prev of sameSigSubs) {
-      if (prev.status === 'PENDING') {
-        await upsertSubmission({
-          ...prev,
-          status: 'AUTO_PROMOTED',
-          reviewedAt: nowIso,
-          reviewNote: `2-Strike 일치 자동 승격 (${submission.id})`,
-        });
-      }
-    }
-
-    masterSpec = {
-      courseId: submission.courseId,
-      courseName: submission.courseName,
-      region: submission.region,
-      totalCourses,
-      totalHoles,
-      holesMetadata: normalizedHoles,
-      specStatus: 'CROWD_VERIFIED',
-      verifiedBy:
-        promotedReason === 'TWO_STRIKE'
-          ? `${contributorName} 외 ${strikeCount - 1}명 (2-Strike 검증)`
-          : `${contributorName} (총무·사진 인증)`,
-      evidencePhotoUrl: submission.evidencePhotoUrl,
-      strikeCount,
-      updatedAt: nowIso,
-    };
-    await upsertMasterSpec(masterSpec);
-  }
+  const masterSpec: MasterCourseSpec = {
+    courseId: submission.courseId,
+    courseName: submission.courseName,
+    region: submission.region,
+    totalCourses,
+    totalHoles,
+    holesMetadata: normalizedHoles,
+    specStatus: nextStatus,
+    verifiedBy: isOnlineAi ? '온라인 안내판 AI 자동반영' : `${contributorName} (현장 실입력)`,
+    evidencePhotoUrl: submission.evidencePhotoUrl || existingMaster?.evidencePhotoUrl,
+    strikeCount: isOnlineAi ? 1 : (existingMaster?.strikeCount || 0) + 1,
+    updatedAt: nowIso,
+  };
+  await upsertMasterSpec(masterSpec);
 
   return {
     ok: true,
@@ -355,7 +361,7 @@ export async function submitCourseSpecReport(params: {
     submission,
     masterSpec,
     promotedReason,
-    strikeCount,
+    strikeCount: masterSpec.strikeCount,
   };
 }
 
@@ -502,6 +508,7 @@ export async function computeNationalSpecAudit(): Promise<{
 
   let officialAdminCount = 0;
   let crowdVerifiedCount = 0;
+  let onlineAutoCount = 0;
   let unverifiedTemplateCount = 0;
 
   for (const c of DEFAULT_COURSES) {
@@ -510,6 +517,8 @@ export async function computeNationalSpecAudit(): Promise<{
       officialAdminCount++;
     } else if (master?.specStatus === 'CROWD_VERIFIED') {
       crowdVerifiedCount++;
+    } else if (master?.specStatus === 'ONLINE_AUTO') {
+      onlineAutoCount++;
     } else if (isDummyTemplateCourse(c)) {
       unverifiedTemplateCount++;
     } else {
@@ -518,7 +527,7 @@ export async function computeNationalSpecAudit(): Promise<{
   }
 
   const totalCourses = DEFAULT_COURSES.length;
-  const verifiedTotal = officialAdminCount + crowdVerifiedCount;
+  const verifiedTotal = officialAdminCount + crowdVerifiedCount + onlineAutoCount;
   const pendingSubmissionsCount = submissions.filter((s) => s.status === 'PENDING').length;
 
   return {
@@ -526,6 +535,7 @@ export async function computeNationalSpecAudit(): Promise<{
       totalCourses,
       officialAdminCount,
       crowdVerifiedCount,
+      onlineAutoCount,
       unverifiedTemplateCount,
       pendingSubmissionsCount,
       verifiedPercent: totalCourses > 0 ? Math.round((verifiedTotal / totalCourses) * 1000) / 10 : 0,
@@ -533,4 +543,80 @@ export async function computeNationalSpecAudit(): Promise<{
     masterSpecs,
     submissions,
   };
+}
+
+const COOLDOWN_30D_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * 2단계 스마트 주기 엔진:
+ * - 미점검 구장(더미 템플릿) 중 ① 이미 검증된 구장 제외, ② 대기열(PENDING) 구장 제외, ③ 최근 30일 내 자료없음(NO_DATA_COOLDOWN) 구장 제외
+ * - 남은 대상이 1곳 이상이면 PHASE_1_DAILY_CONQUEST (일 15곳 순차 정복)
+ * - 남은 대상이 0곳이면 PHASE_2_MONTHLY_RADAR (완주 후 매월 1일 유지관리 모드 자동 전환!)
+ */
+export async function getAutoScanStatusAndNextBatch(batchSize = 15) {
+  const store = getMemoryStore();
+  const [masterSpecs, submissions] = await Promise.all([
+    loadAllMasterSpecs(),
+    loadAllSubmissions(),
+  ]);
+
+  const pendingCourseIds = new Set(
+    submissions.filter((s) => s.status === 'PENDING').map((s) => s.courseId)
+  );
+
+  const now = Date.now();
+  let cooldown30dCount = 0;
+  const eligible = [];
+
+  for (const c of DEFAULT_COURSES) {
+    if (masterSpecs[c.id]) continue; // 이미 공식 확정 또는 집단지성 검증 완료 -> 영구 제외!
+    if (!isDummyTemplateCourse(c)) continue; // 고유 실측 제원 구장 -> 제외!
+    if (pendingCourseIds.has(c.id)) continue; // 이미 승인 대기 중 -> 중복 제외!
+
+    const hist = store.onlineScanHistory?.[c.id];
+    if (hist && hist.outcome === 'NO_DATA_COOLDOWN') {
+      const elapsed = now - new Date(hist.lastScannedAt).getTime();
+      if (elapsed < COOLDOWN_30D_MS) {
+        cooldown30dCount++;
+        continue; // 30일 쿨다운 중 -> 중복 호출 차단!
+      }
+    }
+    eligible.push(c);
+  }
+
+  const status: AutoScanDashboardStatus = {
+    lifecycleMode: eligible.length > 0 ? 'PHASE_1_DAILY_CONQUEST' : 'PHASE_2_MONTHLY_RADAR',
+    dailyBatchSize: 15,
+    eligibleUnverifiedCount: eligible.length,
+    cooldown30dCount,
+    pendingQueueCount: pendingCourseIds.size,
+    lastRunAt: store.lastAutoScanRunAt,
+  };
+
+  return {
+    status,
+    nextBatch: eligible.slice(0, Math.max(1, batchSize)),
+  };
+}
+
+export async function recordOnlineScanOutcome(item: {
+  courseId: string;
+  courseName: string;
+  outcome: 'QUEUED' | 'NO_DATA_COOLDOWN';
+  sourceUrl?: string;
+  note?: string;
+}): Promise<void> {
+  const store = getMemoryStore();
+  const nowIso = new Date().toISOString();
+  store.onlineScanHistory = store.onlineScanHistory || {};
+  store.onlineScanHistory[item.courseId] = {
+    courseId: item.courseId,
+    courseName: item.courseName,
+    lastScannedAt: nowIso,
+    outcome: item.outcome,
+    sourceUrl: item.sourceUrl,
+    note: item.note,
+  };
+  store.lastAutoScanRunAt = nowIso;
+  persistMemoryStore(store);
 }
