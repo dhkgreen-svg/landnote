@@ -81,11 +81,66 @@ export interface CourseSpecAuditSummary {
 
 export const COURSE_LETTERS_12 = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
+export const PRE_VERIFIED_REAL_COURSE_NAMES = new Set(['수성파크골프장', '동락파크골프장']);
+
 /**
- * 533개 초기 더미 템플릿(1번홀 77m · 2번홀 45m · 3번홀 76m 동일 복제) 여부를 정밀 판별합니다.
- * 중앙 마스터 DB에서 승인되거나(OFFICIAL_ADMIN / CROWD_VERIFIED) 실제 고유 제원이 있는 구장은 false를 반환합니다.
+ * 과거 더미 템플릿(77m/45m/76m...) 또는 구버전 Par 터치 시 자동 주입된 가짜 50m/56m 캐시를 정밀 제거합니다.
+ * 오직 ① 수성·동락 공인 실측 구장, ② 중앙 마스터 DB(OFFICIAL_ADMIN/CROWD_VERIFIED/ONLINE_AUTO),
+ * 또는 ③ 유저가 실제로 거리를 입력해 distanceVerifiedAt 스탬프가 찍힌 홀만 거리(>0m)를 유지합니다.
  */
-export function isDummyTemplateCourse(course: Pick<Course, 'holesMetadata' | 'specStatus' | 'isSpecsVerified'>): boolean {
+export function sanitizeLegacyDummyCourse<T extends Partial<Course>>(course: T): T {
+  if (!course) return course;
+  const cname = (course.name || '').trim();
+  if (PRE_VERIFIED_REAL_COURSE_NAMES.has(cname)) {
+    return course;
+  }
+  if (course.specStatus === 'OFFICIAL_ADMIN' || course.specStatus === 'CROWD_VERIFIED' || course.specStatus === 'ONLINE_AUTO') {
+    return course;
+  }
+
+  const rawHoles = Array.isArray(course.holesMetadata) ? course.holesMetadata : [];
+  let hasAnyGenuineVerifiedHole = false;
+  const cleanedHoles = rawHoles.map((h) => {
+    const hasGenuineDist = Boolean(h?.distanceVerifiedAt && Number(h?.distanceMeter) > 0);
+    if (hasGenuineDist) {
+      hasAnyGenuineVerifiedHole = true;
+      return { ...h, isVerified: true };
+    }
+    return {
+      ...h,
+      distanceMeter: 0,
+      isVerified: false,
+    };
+  });
+
+  return {
+    ...course,
+    holesMetadata: cleanedHoles,
+    isVerified: hasAnyGenuineVerifiedHole,
+    isSpecsVerified: hasAnyGenuineVerifiedHole,
+    specStatus: hasAnyGenuineVerifiedHole ? 'CROWD_VERIFIED' : 'UNVERIFIED_TEMPLATE',
+  };
+}
+
+export function sanitizeLegacyCrowdSpecsMap(crowdSpecs: Record<string, any> | undefined | null): Record<string, any> {
+  if (!crowdSpecs || typeof crowdSpecs !== 'object') return {};
+  const cleaned: Record<string, any> = {};
+  for (const [k, v] of Object.entries(crowdSpecs)) {
+    if (!k || !v || typeof v !== 'object') continue;
+    const cname = String(v.courseName || '').trim();
+    const keepDist = PRE_VERIFIED_REAL_COURSE_NAMES.has(cname) || Boolean(v.distanceVerifiedAt && Number(v.distanceMeter) > 0);
+    cleaned[k] = {
+      ...v,
+      distanceMeter: keepDist ? Number(v.distanceMeter) : 0,
+    };
+  }
+  return cleaned;
+}
+
+export function isDummyTemplateCourse(course: Pick<Course, 'name' | 'holesMetadata' | 'specStatus' | 'isSpecsVerified'>): boolean {
+  if (course.name && PRE_VERIFIED_REAL_COURSE_NAMES.has(course.name.trim())) {
+    return false;
+  }
   if (
     course.specStatus === 'OFFICIAL_ADMIN' ||
     course.specStatus === 'CROWD_VERIFIED' ||
@@ -93,38 +148,14 @@ export function isDummyTemplateCourse(course: Pick<Course, 'holesMetadata' | 'sp
   ) {
     return false;
   }
-  if (course.isSpecsVerified === true) {
-    return false;
-  }
   const holes = course.holesMetadata || [];
-  if (holes.length < 3) return true;
-  const h1 = holes[0];
-  const h2 = holes[1];
-  const h3 = holes[2];
-  // 1) 초기 533개 복제 템플릿 시그니처 (77m / 45m / 76m)
-  if (
-    Number(h1?.distanceMeter) === 77 &&
-    Number(h2?.distanceMeter) === 45 &&
-    Number(h3?.distanceMeter) === 76
-  ) {
-    return true;
-  }
-  // 2) generateStandardHoles 또는 미점검 빈칸(distanceMeter === 0 && isVerified === false)
-  if (h1?.isVerified === false && Number(h1?.distanceMeter || 0) === 0) {
-    return true;
-  }
-  if (
-    Number(h1?.distanceMeter) === 75 &&
-    Number(h2?.distanceMeter) === 50 &&
-    Number(h3?.distanceMeter) === 80 &&
-    h1?.isVerified !== true
-  ) {
-    return true;
-  }
-  return false;
+  if (holes.length === 0) return true;
+  // 실제 distanceVerifiedAt 스탬프가 찍힌 홀이 하나도 없으면 미점검 구장으로 판별!
+  const hasRealStampedHole = holes.some((h) => Boolean(h?.distanceVerifiedAt && Number(h?.distanceMeter) > 0));
+  return !hasRealStampedHole;
 }
 
-export function resolveCourseSpecStatus(course: Pick<Course, 'holesMetadata' | 'specStatus' | 'isSpecsVerified'>): CourseSpecStatus {
+export function resolveCourseSpecStatus(course: Pick<Course, 'name' | 'holesMetadata' | 'specStatus' | 'isSpecsVerified'>): CourseSpecStatus {
   if (course.specStatus === 'OFFICIAL_ADMIN') return 'OFFICIAL_ADMIN';
   if (course.specStatus === 'CROWD_VERIFIED') return 'CROWD_VERIFIED';
   if (course.specStatus === 'ONLINE_AUTO') return 'ONLINE_AUTO';
@@ -233,6 +264,7 @@ export function validateCourseSpecPayload(input: {
       localRule: src?.localRule,
       tip: src?.tip,
       isVerified: true,
+      distanceVerifiedAt: rawDist > 0 ? (src?.distanceVerifiedAt || new Date().toISOString()) : undefined,
       contributedBy: src?.contributedBy,
     });
   }

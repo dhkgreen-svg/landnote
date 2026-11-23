@@ -7,6 +7,7 @@ export interface HoleMetadata {
   localRule?: string;
   tip?: string;
   isVerified?: boolean; // 실측 검증 완료 여부 (false면 미확인 팻말)
+  distanceVerifiedAt?: string; // 실제 거리(m) 실측 입력 시각 (없으면 구 더미 데이터로 간주해 0/'__m' 처리)
   contributedBy?: string; // 최초 실측 입력자
 }
 

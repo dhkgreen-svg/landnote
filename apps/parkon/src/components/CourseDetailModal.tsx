@@ -184,8 +184,23 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
 
   // 개별 홀 제원 수정 핸들러
   const handleHoleChange = (holeNumber: number, field: 'par' | 'distanceMeter' | 'localRule' | 'tip', value: any) => {
+    const nowIso = new Date().toISOString();
     setEditedHoles((prev) =>
-      prev.map((h) => (h.hole === holeNumber ? { ...h, [field]: value } : h))
+      prev.map((h) =>
+        h.hole === holeNumber
+          ? {
+              ...h,
+              [field]: value,
+              isVerified: field === 'distanceMeter' ? Number(value) > 0 : h.isVerified,
+              distanceVerifiedAt:
+                field === 'distanceMeter'
+                  ? Number(value) > 0
+                    ? nowIso
+                    : undefined
+                  : h.distanceVerifiedAt,
+            }
+          : h
+      )
     );
   };
 
@@ -386,9 +401,16 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
 
   const handlePopupHoleConfirm = () => {
     if (!holePopupDraft) return;
+    const nowIso = new Date().toISOString();
     const nextHoles = editedHoles.map((h) =>
       h.hole === holePopupDraft.holeNumber
-        ? { ...h, par: holePopupDraft.par, distanceMeter: holePopupDraft.distanceMeter, isVerified: true }
+        ? {
+            ...h,
+            par: holePopupDraft.par,
+            distanceMeter: holePopupDraft.distanceMeter,
+            isVerified: holePopupDraft.distanceMeter > 0,
+            distanceVerifiedAt: holePopupDraft.distanceMeter > 0 ? nowIso : undefined,
+          }
         : h
     );
     setEditedHoles(nextHoles);
@@ -491,6 +513,7 @@ export function CourseDetailModal({ course, onClose, onSaved }: CourseDetailModa
           {/* 구장 제원 검증 상태 + 사진 1장 일괄 점검/제보 바 */}
           {(() => {
             const st = resolveCourseSpecStatus({
+              name: course.name,
               holesMetadata: editedHoles,
               specStatus: course.specStatus,
               isSpecsVerified: course.isSpecsVerified,

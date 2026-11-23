@@ -2488,6 +2488,7 @@ export default function RoundPlayPage() {
           par: validatedPar as 3 | 4 | 5,
           distanceMeter: validatedDist,
           isVerified: true,
+          distanceVerifiedAt: validatedDist > 0 ? new Date().toISOString() : undefined,
           contributedBy: contributor,
         };
       }

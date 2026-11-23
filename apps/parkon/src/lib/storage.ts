@@ -36,7 +36,7 @@ import {
 } from '@/types/parkon';
 import { DEFAULT_COURSES, generateStandardHoles } from './defaultCourses';
 import { getCachedMasterCourseSpecs } from './courseSpecClient';
-import { isDummyTemplateCourse } from './courseSpecShared';
+import { isDummyTemplateCourse, sanitizeLegacyDummyCourse, sanitizeLegacyCrowdSpecsMap, PRE_VERIFIED_REAL_COURSE_NAMES } from './courseSpecShared';
 import { JAPAN_DEFAULT_COURSES } from './courseLocalization';
 
 export const ALL_BASE_COURSES: Course[] = [...DEFAULT_COURSES, ...JAPAN_DEFAULT_COURSES];
@@ -128,6 +128,7 @@ export interface CrowdsourcedHoleSpec {
   hole: number;
   par: number;
   distanceMeter: number;
+  distanceVerifiedAt?: string;
   updatedAt: string;
   contributorCount?: number;
   contributorName?: string;
@@ -1076,17 +1077,15 @@ export const ParkOnStorage = {
         }
         return c;
       });
-      if (dirtyCustom) {
-        localStorage.setItem(STORAGE_KEYS.CUSTOM_COURSES, JSON.stringify(customCourses));
-      }
-      const crowdSpecs = this.getCrowdsourcedHoleSpecs();
+      // 구버전 로컬 캐시에 남아 있던 가짜 거리(50m/45m/76m 등 distanceVerifiedAt 없는 더미) 일괄 자동 정화!
+      customCourses = customCourses.map((c) => sanitizeLegacyDummyCourse(c));
+      localStorage.setItem(STORAGE_KEYS.CUSTOM_COURSES, JSON.stringify(customCourses));
 
-      // [대표님 지침]: 엉터리 더미 제원 방지 & 실제 공인 검증 구장 명단
-      const VERIFIED_COURSE_NAMES = new Set([
-        '수성파크골프장',
-        '동락파크골프장',
-        '살곶이파크골프장',
-      ]);
+      const rawCrowdSpecs = this.getCrowdsourcedHoleSpecs();
+      const crowdSpecs = sanitizeLegacyCrowdSpecsMap(rawCrowdSpecs);
+
+      // [대표님 지침]: 실제 거리 검증 완료된 기본 구장 명단
+      const VERIFIED_COURSE_NAMES = PRE_VERIFIED_REAL_COURSE_NAMES;
 
       // Apply crowdsourced specs (Par, distance) onto any course's holes
       const applyCrowdSpecs = (c: Course): Course => {
@@ -1099,11 +1098,13 @@ export const ParkOnStorage = {
           const key2 = `${cleanName}_hole_${numHole}`;
           const crowd = crowdSpecs[key1] || crowdSpecs[key2];
           if (crowd) {
+            const cDist = crowd.distanceVerifiedAt ? Number(crowd.distanceMeter) || 0 : 0;
             return {
               ...h,
-              par: Number(crowd.par),
-              distanceMeter: Number(crowd.distanceMeter),
-              isVerified: true,
+              par: Number(crowd.par) || Number(h.par) || 3,
+              distanceMeter: cDist,
+              isVerified: cDist > 0,
+              distanceVerifiedAt: crowd.distanceVerifiedAt,
               contributedBy: crowd.contributorName || '골퍼 실측 기여',
             };
           }
@@ -1136,7 +1137,7 @@ export const ParkOnStorage = {
       // Apply centrally approved master course specs (Supabase/Server) + customized overrides
       const masterSpecsMap = getCachedMasterCourseSpecs();
       const crowdExpansions = this.getCrowdsourcedCourseExpansions();
-      const defaults = ALL_BASE_COURSES.map((d) => {
+      const defaults: Course[] = ALL_BASE_COURSES.map((d): Course => {
         const cleanName = d.name.replace(/\s+/g, '');
         const master = masterSpecsMap[d.id];
         const custom = customMap.get(d.id) || customNameMap.get(cleanName);
@@ -1180,7 +1181,7 @@ export const ParkOnStorage = {
                   ...generateStandardHoles(userHoles).slice(sourceHoles.length),
                 ];
 
-          return applyCrowdSpecs({
+          const appliedCustom = applyCrowdSpecs({
             ...d,
             ...custom,
             id: d.id, // preserve canonical id
@@ -1188,6 +1189,24 @@ export const ParkOnStorage = {
             totalHoles: userHoles,
             holesMetadata: holes,
           });
+          if (master && (master.specStatus === 'CROWD_VERIFIED' || master.specStatus === 'ONLINE_AUTO')) {
+            return {
+              ...appliedCustom,
+              totalCourses: master.totalCourses,
+              totalHoles: master.totalHoles,
+              holesMetadata: master.holesMetadata,
+              isVerified: true,
+              isSpecsVerified: true,
+              specStatus: master.specStatus,
+            };
+          }
+          const hasStamped = appliedCustom.holesMetadata.some((hm) => Boolean(hm.distanceVerifiedAt && hm.distanceMeter > 0));
+          return {
+            ...appliedCustom,
+            isVerified: hasStamped || VERIFIED_COURSE_NAMES.has(d.name),
+            isSpecsVerified: hasStamped || VERIFIED_COURSE_NAMES.has(d.name),
+            specStatus: hasStamped || VERIFIED_COURSE_NAMES.has(d.name) ? 'CROWD_VERIFIED' : 'UNVERIFIED_TEMPLATE',
+          };
         }
         if (master && (master.specStatus === 'CROWD_VERIFIED' || master.specStatus === 'ONLINE_AUTO')) {
           return {
@@ -1383,6 +1402,7 @@ export const ParkOnStorage = {
           hole: numHole,
           par: numPar,
           distanceMeter: numDist,
+          distanceVerifiedAt: numDist > 0 ? new Date().toISOString() : undefined,
           updatedAt: new Date().toISOString(),
           contributorCount: votesForThisSpec,
           isInitialRegistered: true,
@@ -1708,13 +1728,14 @@ export const ParkOnStorage = {
             const numHole = Number(h.hole);
             const key1 = `${updatedCourse.id}_hole_${numHole}`;
             const key2 = `${cleanName}_hole_${numHole}`;
-            if (specs[key1] || specs[key2] || h.isVerified) {
+            if (h.distanceVerifiedAt || (h.isVerified && Number(h.distanceMeter) > 0)) {
               const entry: CrowdsourcedHoleSpec = {
                 courseId: updatedCourse.id,
                 courseName: updatedCourse.name,
                 hole: numHole,
                 par: Number(h.par) || 3,
                 distanceMeter: Number(h.distanceMeter) || 0,
+                distanceVerifiedAt: Number(h.distanceMeter) > 0 ? (h.distanceVerifiedAt || nowIso) : undefined,
                 isInitialRegistered: true,
                 updatedAt: nowIso,
                 contributorName: updatedCourse.contributorName || h.contributedBy || '현장 골퍼',

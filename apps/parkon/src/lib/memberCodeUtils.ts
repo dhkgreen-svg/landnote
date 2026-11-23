@@ -5,6 +5,7 @@ import { CompanionStorage, Companionship } from './companionStorage';
 import { BadgeStorage } from './badgeStorage';
 import { YardageBookStorage } from './yardageBookStorage';
 import { RoundSession } from '@/types/parkon';
+import { sanitizeLegacyDummyCourse, sanitizeLegacyCrowdSpecsMap } from './courseSpecShared';
 
 export const MEMBER_CODE_STORAGE_KEY = 'parkon_member_code_v1';
 export const DEVICE_ID_STORAGE_KEY = 'parkon_device_id_v1';
@@ -350,8 +351,10 @@ export async function syncMemberDataToCloud(forceImmediate = false): Promise<{ s
     const badges = BadgeStorage.getAllBadges();
     const tour = BadgeStorage.getNationalTourRecords();
 
-    const customCourses = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_custom_courses_v1') || '[]') : [];
-    const crowdSpecs = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_crowd_hole_specs_v1') || '{}') : {};
+    const rawCustomCourses = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_custom_courses_v1') || '[]') : [];
+    const customCourses = Array.isArray(rawCustomCourses) ? rawCustomCourses.map((c: any) => sanitizeLegacyDummyCourse(c)) : [];
+    const rawCrowdSpecs = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_crowd_hole_specs_v1') || '{}') : {};
+    const crowdSpecs = sanitizeLegacyCrowdSpecsMap(rawCrowdSpecs);
     const yardageNotes = YardageBookStorage.getAllNotes();
     const deletedYardageIds = YardageBookStorage.getDeletedNoteIds();
     const clubs = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('parkon_clubs_v2') || '[]') : [];
@@ -641,17 +644,19 @@ export async function fetchAndRestoreMemberData(
         });
       }
       if (courseMap.size > 0) {
-        localStorage.setItem('parkon_custom_courses_v1', JSON.stringify(Array.from(courseMap.values())));
+        const cleanedArr = Array.from(courseMap.values()).map((c: any) => sanitizeLegacyDummyCourse(c));
+        localStorage.setItem('parkon_custom_courses_v1', JSON.stringify(cleanedArr));
       }
     } catch {}
     try {
-      const localSpecs: Record<string, any> = JSON.parse(localStorage.getItem('parkon_crowd_hole_specs_v1') || '{}');
+      const localSpecs: Record<string, any> = sanitizeLegacyCrowdSpecsMap(
+        JSON.parse(localStorage.getItem('parkon_crowd_hole_specs_v1') || '{}')
+      );
       const mergedSpecs: Record<string, any> = {};
-      if (crowdSpecs && typeof crowdSpecs === 'object') {
-        Object.entries(crowdSpecs).forEach(([k, v]) => {
-          if (k && v) mergedSpecs[k] = v;
-        });
-      }
+      const cleanRemoteSpecs = sanitizeLegacyCrowdSpecsMap(crowdSpecs);
+      Object.entries(cleanRemoteSpecs).forEach(([k, v]) => {
+        if (k && v) mergedSpecs[k] = v;
+      });
       Object.entries(localSpecs).forEach(([k, lv]) => {
         if (!k || !lv) return;
         const cv = mergedSpecs[k];

@@ -5,6 +5,7 @@ import os from 'os';
 import { createClient } from '@supabase/supabase-js';
 import baselineMembersData from '@/data/member_sync_baseline.json';
 import { saveCompletedRoundForAllPlayers } from '@/lib/serverMemberSync';
+import { sanitizeLegacyDummyCourse, sanitizeLegacyCrowdSpecsMap } from '@/lib/courseSpecShared';
 
 export interface MemberSyncRecord {
   memberCode: string;
@@ -780,6 +781,13 @@ export async function GET(req: NextRequest) {
   record.clubEvents = Array.from(eventMap.values());
   record.flashGatherings = Array.from(flashMap.values());
 
+  if (Array.isArray(record.customCourses)) {
+    record.customCourses = record.customCourses.map((c: any) => sanitizeLegacyDummyCourse(c));
+  }
+  if (record.crowdSpecs && typeof record.crowdSpecs === 'object') {
+    record.crowdSpecs = sanitizeLegacyCrowdSpecsMap(record.crowdSpecs);
+  }
+
   return NextResponse.json({ success: true, data: record });
 }
 
@@ -1003,12 +1011,13 @@ export async function POST(req: NextRequest) {
         }
       });
     }
-    const mergedCustomCourses = Array.from(customCourseMap.values());
+    const mergedCustomCourses = Array.from(customCourseMap.values()).map((c: any) => sanitizeLegacyDummyCourse(c));
+    const cleanedCrowdSpecs = sanitizeLegacyCrowdSpecsMap(mergedCrowdSpecs);
     const record: MemberSyncRecord = {
       ...existing,
       ...body,
       customCourses: mergedCustomCourses,
-      crowdSpecs: mergedCrowdSpecs,
+      crowdSpecs: cleanedCrowdSpecs,
       yardageNotes: mergedYardageNotes,
       deletedYardageIds: Array.from(mergedDelYSet),
       completedRounds: mergedRounds,
